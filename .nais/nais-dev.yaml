@@ -1,0 +1,29 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: esyfo-oppfolgingsansvarlig
+  namespace: team-esyfo
+spec:
+  ingresses:
+    - https://esyfo-oppfolgingsansvarlig.intern.dev.nav.no
+  image: {{image}} #
+  port: 8080
+  liveness:
+    path: /internal/is_alive
+    initialDelay: 10
+    timeout: 5
+    periodSeconds: 10
+    failureThreshold: 5
+  readiness:
+    path: /internal/is_ready
+    initialDelay: 10
+    periodSeconds: 5
+    timeout: 5
+  replicas:
+    max: 2
+    min: 1
+    cpuThresholdPercentage: 90
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi

@@ -1,0 +1,17 @@
+name: Build and deploy
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  jar-app:
+    uses: navikt/teamesyfo-github-actions-workflows/.github/workflows/jar-app.yaml@main
+    permissions:
+      actions: read
+      contents: write
+      security-events: write
+      packages: write
+      id-token: write
+    secrets: inherit
+    with:
+      app: esyfo-oppfolgingsansvarlig

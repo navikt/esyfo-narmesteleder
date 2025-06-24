@@ -1,1 +1,1 @@
-rootProject.name = "esyfo-oppfolgingsansvarlig"
+rootProject.name = "esyfo-narmesteleder"

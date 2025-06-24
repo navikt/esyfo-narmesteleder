@@ -1,11 +1,13 @@
 package no.nav.syfo
 
-import io.ktor.server.application.*
+import io.ktor.server.application.Application
+import no.nav.syfo.application.ApplicationState
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
 }
 
 fun Application.module() {
-    configureRouting()
+    val applicationState = ApplicationState()
+    configureRouting(applicationState)
 }

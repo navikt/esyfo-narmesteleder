@@ -12,5 +12,5 @@ fun main(args: Array<String>) {
 fun Application.module() {
     configureDependencies()
     configureLifecycleHooks(get())
-    configureRouting(get())
+    configureRouting(get(), get())
 }

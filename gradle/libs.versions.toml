@@ -1,6 +1,6 @@
 
 [versions]
-kotlin-version = "2.1.10"
+kotlin-version = "2.2.10"
 ktor-version = "3.2.3"
 logback-version = "1.5.18"
 micrometer-prometheus = "1.14.5"
@@ -9,7 +9,7 @@ hikaricp = "6.3.0"
 flyway="11.6.0"
 koin="4.1.0"
 [libraries]
-database-flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 database-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }

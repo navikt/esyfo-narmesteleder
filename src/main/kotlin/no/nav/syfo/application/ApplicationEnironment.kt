@@ -28,7 +28,18 @@ fun isProdEnv(): Boolean =
     getEnvVar("NAIS_CLUSTER_NAME", "local") == "prod-gcp"
 
 data class LocalEnvironment(
-    override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
+//    override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
+    override val database: DatabaseEnvironment = DatabaseEnvironment(
+        host = "localhost",
+        port = "5432",
+        name = "esyfo-narmesteleder_dev",
+        username = "username",
+        password = "password",
+        sslcert = null,
+        sslkey = "",
+        sslrootcert = "",
+        sslmode = "",
+    ),
     override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal()
 ) : Environment

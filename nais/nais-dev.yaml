@@ -47,7 +47,7 @@ spec:
         tier: db-f1-micro
         databases:
           - name: esyfo-narmesteleder-instance
-            envVarPrefix: OPPFOLGINGSPLAN_DB
+            envVarPrefix: NARMESTELEDER_DB
         diskAutoresize: true
   tokenx:
     enabled: true

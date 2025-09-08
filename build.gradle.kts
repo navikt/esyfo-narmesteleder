@@ -28,10 +28,9 @@ dependencies {
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger)
     // Database
-    implementation(libs.database.flyway.core)
     implementation(libs.database.hikaricp)
     implementation(libs.database.postgresql)
-
+    implementation(libs.database.flyway.core)
     // Metrics and Prometheus
     implementation(libs.ktor.server.micrometer)
     implementation(libs.micrometer.prometheus)

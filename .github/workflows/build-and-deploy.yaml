@@ -20,5 +20,5 @@ jobs:
       id-token: write
     secrets: inherit
     with:
-      app: esyfo-oppfolgingsansvarlig
+      app: esyfo-narmesteleder
       java-version: '21'

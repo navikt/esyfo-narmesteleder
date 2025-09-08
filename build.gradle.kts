@@ -21,6 +21,45 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.config.yaml)
+    implementation("io.ktor:ktor-serialization-jackson")
+    implementation("io.ktor:ktor-server-call-id")
+    implementation("io.ktor:ktor-server-content-negotiation")
+    implementation("io.ktor:ktor-server-status-pages")
+
+    // Metrics and Prometheus
+    implementation(libs.ktor.server.micrometer)
+    implementation(libs.micrometer.prometheus)
+
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
+}
+application {
+    mainClass.set("no.nav.syfo.ApplicationKt")
+}
+
+kotlin {
+    jvmToolchain(21)
+}
+
+tasks {
+    jar {
+        manifest.attributes["Main-Class"] = "no.nav.syfo.ApplicationKt"
+    }
+
+    register("printVersion") {
+        doLast {
+            println(project.version)
+        }
+    }
+
+    shadowJar {
+        mergeServiceFiles()
+        archiveFileName.set("app.jar")
+        archiveClassifier.set("")
+        archiveVersion.set("")
+    }
+
+    test {
+        useJUnitPlatform()
+    }
 }

@@ -1,4 +1,4 @@
-package no.nav.syfo.no.nav.syfo.application.metric
+package no.nav.syfo.application.metric
 
 import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry

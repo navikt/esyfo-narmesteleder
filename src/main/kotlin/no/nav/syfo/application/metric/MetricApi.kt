@@ -1,4 +1,4 @@
-package no.nav.syfo.no.nav.syfo.application.metric
+package no.nav.syfo.application.metric
 
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Routing

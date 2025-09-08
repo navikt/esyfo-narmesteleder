@@ -13,7 +13,18 @@ interface Environment {
 const val NAIS_DATABASE_ENV_PREFIX = "NARMESTELEDER_DB"
 
 data class NaisEnvironment(
-    override val database: DatabaseEnvironment = DatabaseEnvironment.createFromEnvVars(),
+//    override val database: DatabaseEnvironment = DatabaseEnvironment.createFromEnvVars(),
+    override val database: DatabaseEnvironment =  DatabaseEnvironment(
+        host = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_HOST"),
+        port = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_PORT"),
+        name = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_DATABASE"),
+        username = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_USERNAME"),
+        password = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_PASSWORD"),
+        sslcert = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLCERT"),
+        sslkey = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLKEY_PK8"),
+        sslrootcert = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLROOTCERT"),
+        sslmode = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLMODE"),
+    ),
     override val texas: TexasEnvironment = TexasEnvironment.createFromEnvVars(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createFromEnvVars()
 ) : Environment
@@ -28,18 +39,7 @@ fun isProdEnv(): Boolean =
     getEnvVar("NAIS_CLUSTER_NAME", "local") == "prod-gcp"
 
 data class LocalEnvironment(
-//    override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
-    override val database: DatabaseEnvironment = DatabaseEnvironment(
-        host = "localhost",
-        port = "5432",
-        name = "esyfo-narmesteleder_dev",
-        username = "username",
-        password = "password",
-        sslcert = null,
-        sslkey = "",
-        sslrootcert = "",
-        sslmode = "",
-    ),
+    override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
     override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal()
 ) : Environment

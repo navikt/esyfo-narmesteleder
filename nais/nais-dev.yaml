@@ -45,8 +45,10 @@ spec:
     sqlInstances:
       - type: POSTGRES_17
         tier: db-f1-micro
+        name: esyfo-narmesteleder-instance
+        collation: nb_NO.UTF8
         databases:
-          - name: esyfo-narmesteleder-instance
+          - name: esyfo-narmesteleder-db
             envVarPrefix: NARMESTELEDER_DB
         diskAutoresize: true
   tokenx:

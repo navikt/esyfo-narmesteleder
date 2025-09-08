@@ -1,11 +1,11 @@
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
-  name: esyfo-oppfolgingsansvarlig
+  name: esyfo-narmesteleder
   namespace: team-esyfo
 spec:
   ingresses:
-    - https://esyfo-oppfolgingsansvarlig.intern.dev.nav.no
+    - https://esyfo-narmesteleder.intern.dev.nav.no
   image: {{image}} #
   port: 8080
   liveness:
@@ -23,7 +23,19 @@ spec:
     max: 2
     min: 1
     cpuThresholdPercentage: 90
+  prometheus:
+    enabled: true
+    path: /internal/metrics
   resources:
+    limits:
+      memory: 512Mi
     requests:
-      cpu: 50m
-      memory: 32Mi
+      cpu: 100m
+      memory: 256Mi
+  observability:
+    logging:
+      destinations:
+        - id: loki
+    autoInstrumentation:
+      enabled: true
+      runtime: java

@@ -25,7 +25,12 @@ dependencies {
     implementation("io.ktor:ktor-server-call-id")
     implementation("io.ktor:ktor-server-content-negotiation")
     implementation("io.ktor:ktor-server-status-pages")
-
+    implementation(libs.koin.ktor)
+    implementation(libs.koin.logger)
+    // Database
+    implementation(libs.database.hikaricp)
+    implementation(libs.database.postgresql)
+    implementation(libs.database.flyway.core)
     // Metrics and Prometheus
     implementation(libs.ktor.server.micrometer)
     implementation(libs.micrometer.prometheus)

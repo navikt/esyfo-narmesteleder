@@ -37,3 +37,34 @@ If the server starts successfully, you'll see the following output:
 2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
 ```
 
+
+## Docker compose
+### Size of container platform
+In order to run kafka++ you will probably need to extend the default size of your container platform. (Rancher Desktop, Colima etc.)
+
+Suggestion for Colima
+```bash
+colima start --arch aarch64 --memory 8 --cpu 4 
+```
+
+We have a docker-compose.yml file to run a postgresql database, texas and a fake authserver.
+In addition, we have a docker-compose.kafka.yml that will run a kafka broker, schema registry and kafka-io
+
+Start them both using
+```bash
+docker-compose \
+  -f docker-compose.yml \
+  -f docker-compose.kafka.yml \
+  up \
+  db authserver texas broker kafka-ui \
+  -d
+```
+Stop them all again
+```bash
+docker-compose \
+  -f docker-compose.yml \
+  -f docker-compose.kafka.yml \
+  down
+```
+### Kafka-ui
+You can use [kafka-ui](http://localhost:9000) to inspect your consumers and topics. You can also publish or read messages on the topics

@@ -33,7 +33,7 @@ ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref 
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-version" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer-prometheus" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
-jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version = "jackson-datatype-jsr" }
+2.20.0310 = { module = "com.fasterxml.jackson.datatype:2.20.0310", version = "2.20.0" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }

@@ -3,7 +3,7 @@
 datafaker= "2.4.4"
 flyway="11.6.0"
 hikaricp = "6.3.0"
-koin="4.1.0"
+koin="4.1.1"
 kotest-extensions="2.0.0"
 kotest="5.9.1"
 kotlin-version = "2.2.10"

@@ -11,6 +11,7 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.api.registerPodApi
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.metric.registerMetricApi
+import no.nav.syfo.no.nav.syfo.registerApiV1
 
 fun Application.configureRouting(
     applicationState: ApplicationState,
@@ -23,6 +24,7 @@ fun Application.configureRouting(
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
+        registerApiV1()
         get("/") {
             call.respondText("Hello World!")
         }

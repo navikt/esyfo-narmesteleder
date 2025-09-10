@@ -8,7 +8,6 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: username
       POSTGRES_DB: esyfo-narmesteleder_dev
-      POSTGRES_INITDB_ARGS: "--locale=nb_NO.UTF8"
     volumes:
       - pgdata:/var/lib/postgresql/data
 

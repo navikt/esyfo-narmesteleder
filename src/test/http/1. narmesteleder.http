@@ -1,0 +1,15 @@
+### GET request to example server
+POST http://localhost:8080/api/v1/narmesteleder
+Content-Type: application/json
+
+{
+  "sykmeldtFnr": "1234567890",
+  "organisasjonsnummer": "123456789",
+  "leder": {
+    "fornavn": "Ola",
+    "etternavn": "Norman",
+    "fnr": "01010112345",
+    "mobil": "99999999",
+    "epost": "ola.norman@acme.com"
+  }
+}

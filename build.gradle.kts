@@ -1,4 +1,3 @@
-
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
@@ -16,11 +15,14 @@ repositories {
 }
 
 dependencies {
+    implementation(libs.datafaker)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.config.yaml)
+    implementation("io.ktor:ktor-client-core")
+    implementation("io.ktor:ktor-client-content-negotiation")
     implementation("io.ktor:ktor-serialization-jackson")
     implementation("io.ktor:ktor-server-call-id")
     implementation("io.ktor:ktor-server-content-negotiation")
@@ -28,15 +30,14 @@ dependencies {
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger)
     // Database
-    implementation(libs.database.hikaricp)
-    implementation(libs.database.postgresql)
-    implementation(libs.database.flyway.core)
+    implementation(libs.bundles.database)
     // Metrics and Prometheus
     implementation(libs.ktor.server.micrometer)
     implementation(libs.micrometer.prometheus)
 
     testImplementation(libs.ktor.server.test.host)
-    testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.bundles.kotest)
+    testImplementation(libs.mockk)
 }
 application {
     mainClass.set("no.nav.syfo.ApplicationKt")

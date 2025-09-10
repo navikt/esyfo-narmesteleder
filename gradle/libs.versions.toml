@@ -1,7 +1,7 @@
 
 [versions]
 datafaker= "2.4.4"
-flyway="11.6.0"
+flyway="11.12.0"
 hikaricp = "7.0.2"
 koin="4.1.1"
 kotest-extensions="2.0.0"
@@ -12,6 +12,7 @@ logback-version = "1.5.18"
 micrometer-prometheus = "1.15.4"
 mockk="1.14.2"
 postgresql = "42.7.7"
+jackson-datatype-jsr = "2.20.0"
 [libraries]
 
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
@@ -32,7 +33,7 @@ ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref 
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-version" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer-prometheus" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
-
+jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version = "jackson-datatype-jsr" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }

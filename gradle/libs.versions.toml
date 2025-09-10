@@ -1,7 +1,7 @@
 
 [versions]
 datafaker= "2.4.4"
-flyway="11.6.0"
+flyway="11.12.0"
 hikaricp = "7.0.2"
 koin="4.1.1"
 kotest-extensions="2.0.0"

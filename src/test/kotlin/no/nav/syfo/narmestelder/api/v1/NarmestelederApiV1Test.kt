@@ -49,7 +49,7 @@ class NarmestelederApiV1Test : DescribeSpec({
         }
     }
     describe("POST /narmesteleder") {
-        it("should return 200 OK for valid payload") {
+        it("should return 202 Accepted for valid payload") {
             withTestApplication {
                 // Arrange
                 // Act
@@ -59,7 +59,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 }
 
                 // Assert
-                response.status shouldBe HttpStatusCode.OK
+                response.status shouldBe HttpStatusCode.Accepted
             }
         }
 

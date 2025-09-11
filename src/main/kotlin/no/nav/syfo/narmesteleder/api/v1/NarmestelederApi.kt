@@ -8,7 +8,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.no.nav.syfo.util.logger
+import no.nav.syfo.util.logger
 
 fun Route.registerNarmestelederApiV1(
     narmestelederKafkaService: NarmestelederKafkaService

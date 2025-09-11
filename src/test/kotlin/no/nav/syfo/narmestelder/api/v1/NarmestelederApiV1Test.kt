@@ -17,6 +17,8 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
+import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.no.nav.syfo.application.api.ApiError
 import no.nav.syfo.no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.no.nav.syfo.registerApiV1
@@ -40,13 +42,13 @@ class NarmestelederApiV1Test : DescribeSpec({
                 installContentNegotiation()
                 installStatusPages()
                 routing {
-                    registerApiV1()
+                    registerApiV1(NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer()))
                 }
             }
             fn(this)
         }
     }
-   describe("POST /narmesteleder") {
+    describe("POST /narmesteleder") {
         it("should return 200 OK for valid payload") {
             withTestApplication {
                 // Arrange

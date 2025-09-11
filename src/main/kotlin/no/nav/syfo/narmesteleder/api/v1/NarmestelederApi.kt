@@ -21,8 +21,10 @@ fun Route.registerNarmestelederApiV1(
             } catch (e: Exception) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
-            narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon)
-            logger.info("Mottok NL relasjon: $nlRelasjon")
+            if (nlRelasjon.leder == null) narmestelederKafkaService.avbrytNarmesteLederRelation(
+                nlRelasjon.organisasjonsnummer,
+                nlRelasjon.sykmeldtFnr
+            ) else narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon)
             call.respond(HttpStatusCode.OK)
         }
     }

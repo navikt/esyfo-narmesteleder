@@ -25,7 +25,7 @@ fun Route.registerNarmestelederApiV1(
                 nlRelasjon.organisasjonsnummer,
                 nlRelasjon.sykmeldtFnr
             ) else narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon)
-            call.respond(HttpStatusCode.OK)
+            call.respond(HttpStatusCode.Accepted)
         }
     }
 }

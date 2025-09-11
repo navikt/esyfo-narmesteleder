@@ -1,4 +1,4 @@
-package no.nav.syfo.no.nav.syfo
+package no.nav.syfo
 
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route

@@ -9,7 +9,7 @@ import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.no.nav.syfo.registerApiV1
+import no.nav.syfo.registerApiV1
 import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {

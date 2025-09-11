@@ -6,7 +6,7 @@ import java.time.ZoneOffset
 import no.nav.syfo.narmesteleder.kafka.model.KafkaMetadata
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseKafkaMessage
-import no.nav.syfo.no.nav.syfo.util.logger
+import no.nav.syfo.util.logger
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 

@@ -1,4 +1,4 @@
-package no.nav.syfo.no.nav.syfo.application.api
+package no.nav.syfo.application.api
 
 import io.ktor.http.HttpStatusCode
 import java.time.Instant

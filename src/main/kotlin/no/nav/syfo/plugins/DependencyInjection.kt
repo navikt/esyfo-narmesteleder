@@ -1,4 +1,4 @@
-package no.nav.syfo.no.nav.syfo.plugins
+package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -10,6 +10,14 @@ import no.nav.syfo.application.database.Database
 import no.nav.syfo.application.database.DatabaseConfig
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isLocalEnv
+import no.nav.syfo.application.kafka.JacksonKafkaSerializer
+import no.nav.syfo.application.kafka.producerProperties
+import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.model.NlResponseKafkaMessage
+import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.common.serialization.StringSerializer
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import org.koin.ktor.plugin.Koin
@@ -20,9 +28,7 @@ fun Application.configureDependencies() {
         slf4jLogger()
 
         modules(
-            applicationStateModule(),
-            environmentModule(isLocalEnv()),
-            databaseModule(),
+            applicationStateModule(), environmentModule(isLocalEnv()), databaseModule(), servicesModule()
         )
     }
 }
@@ -35,6 +41,7 @@ private fun environmentModule(isLocalEnv: Boolean) = module {
         else NaisEnvironment()
     }
 }
+
 private fun databaseModule() = module {
     single<DatabaseInterface> {
         Database(
@@ -46,4 +53,16 @@ private fun databaseModule() = module {
         )
     }
 }
+
+private fun servicesModule() = module {
+    single {
+        val sykemeldingNLKafkaProducer = if (isLocalEnv()) SykemeldingNLKafkaProducer(
+            KafkaProducer<String, NlResponseKafkaMessage>(
+                producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
+            )
+        ) else FakeSykemeldingNLKafkaProducer()
+        NarmestelederKafkaService(sykemeldingNLKafkaProducer)
+    }
+}
+
 private fun Scope.env() = get<Environment>()

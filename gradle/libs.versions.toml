@@ -3,6 +3,7 @@
 datafaker= "2.4.4"
 flyway="11.12.0"
 hikaricp = "7.0.2"
+kafka="3.9.1"
 koin="4.1.1"
 kotest-extensions="2.0.0"
 kotest="6.0.3"
@@ -19,6 +20,8 @@ database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", ver
 database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 database-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 datafaker = {module = "net.datafaker:datafaker", version.ref = "datafaker"}
+kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
+kafka-twothirteen = { module = "org.apache.kafka:kafka_2.13", version.ref = "kafka" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }
 koin-logger = { module = "io.insert-koin:koin-logger-slf4j", version.ref = "koin" }
 kotest-assertions-core = {module = "io.kotest:kotest-assertions-core", version.ref = "kotest"}

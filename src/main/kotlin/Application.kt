@@ -1,8 +1,9 @@
 package no.nav.syfo
 
 import io.ktor.server.application.Application
-import no.nav.syfo.no.nav.syfo.plugins.configureDependencies
+import no.nav.syfo.application.api.configureRouting
 import no.nav.syfo.no.nav.syfo.plugins.configureLifecycleHooks
+import no.nav.syfo.plugins.configureDependencies
 import org.koin.ktor.ext.get
 
 fun main(args: Array<String>) {
@@ -12,5 +13,5 @@ fun main(args: Array<String>) {
 fun Application.module() {
     configureDependencies()
     configureLifecycleHooks(get())
-    configureRouting(get(), get())
+    configureRouting()
 }

@@ -1,8 +1,8 @@
 import java.time.Instant
 import java.util.Random
-import no.nav.syfo.no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
 import net.datafaker.Faker
-import no.nav.syfo.no.nav.syfo.narmesteleder.api.v1.Leder
+import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
+import no.nav.syfo.narmesteleder.kafka.model.Leder
 
 val faker = Faker(Random(Instant.now().epochSecond))
 

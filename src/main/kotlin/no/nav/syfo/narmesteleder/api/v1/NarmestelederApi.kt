@@ -1,4 +1,4 @@
-package no.nav.syfo.no.nav.syfo.narmesteleder.api.v1
+package no.nav.syfo.narmesteleder.api.v1
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.plugins.BadRequestException
@@ -7,10 +7,11 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.no.nav.syfo.util.logger
 
 fun Route.registerNarmestelederApiV1(
-
+    narmestelederKafkaService: NarmestelederKafkaService
 ) {
     val logger = logger()
     route("/narmesteleder") {
@@ -20,6 +21,7 @@ fun Route.registerNarmestelederApiV1(
             } catch (e: Exception) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
+            narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon)
             logger.info("Mottok NL relasjon: $nlRelasjon")
             call.respond(HttpStatusCode.OK)
         }

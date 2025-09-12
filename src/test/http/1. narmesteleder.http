@@ -14,8 +14,8 @@ Content-Type: application/json
   }
 }
 
-### POST avbryt narmesteleder relasjon
-POST http://localhost:8080/api/v1/narmesteleder
+### POST avkreft narmesteleder relasjon
+POST http://localhost:8080/api/v1/narmesteleder/avkreft
 Content-Type: application/json
 
 {

@@ -15,13 +15,26 @@ import io.ktor.http.contentType
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import io.mockk.Called
+import io.mockk.clearAllMocks
+import io.mockk.confirmVerified
+import io.mockk.spyk
+import io.mockk.verify
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.no.nav.syfo.application.api.ApiError
-import no.nav.syfo.no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.no.nav.syfo.registerApiV1
+import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.application.api.ApiError
+import no.nav.syfo.application.api.ErrorType
+import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import no.nav.syfo.registerApiV1
 
 class NarmestelederApiV1Test : DescribeSpec({
+    val narmestelederKafkaService = NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
+    val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
+    beforeTest {
+        clearAllMocks()
+    }
     fun withTestApplication(
         fn: suspend ApplicationTestBuilder.() -> Unit
     ) {
@@ -40,24 +53,32 @@ class NarmestelederApiV1Test : DescribeSpec({
                 installContentNegotiation()
                 installStatusPages()
                 routing {
-                    registerApiV1()
+                    registerApiV1(narmestelederKafkaServiceSpy)
                 }
             }
             fn(this)
         }
     }
-   describe("POST /narmesteleder") {
-        it("should return 200 OK for valid payload") {
+    describe("POST /narmesteleder") {
+        it("should return 202 Accepted for valid payload") {
             withTestApplication {
                 // Arrange
+                val narmesteLederRelasjon = narmesteLederRelasjon()
                 // Act
                 val response = client.post("/api/v1/narmesteleder") {
                     contentType(ContentType.Application.Json)
-                    setBody(narmesteLederRelasjon())
+                    setBody(narmesteLederRelasjon)
                 }
 
                 // Assert
-                response.status shouldBe HttpStatusCode.OK
+                response.status shouldBe HttpStatusCode.Accepted
+                verify(exactly = 1) {
+                    narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                        eq(narmesteLederRelasjon), eq(
+                            NlResponseSource.LPS
+                        )
+                    )
+                }
             }
         }
 
@@ -73,6 +94,47 @@ class NarmestelederApiV1Test : DescribeSpec({
                 // Assert
                 response.status shouldBe HttpStatusCode.BadRequest
                 response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                verify { narmestelederKafkaServiceSpy wasNot Called }
+            }
+        }
+    }
+
+    describe("POST /narmesteleder/avkreft") {
+        it("should return 202 Accepted for valid payload") {
+            withTestApplication {
+                // Arrange
+                val narmesteLederAvkreft = narmesteLederAvkreft()
+                // Act
+                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                    contentType(ContentType.Application.Json)
+                    setBody(narmesteLederAvkreft)
+                }
+
+                // Assert
+                response.status shouldBe HttpStatusCode.Accepted
+                verify(exactly = 1) {
+                    narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
+                        eq(narmesteLederAvkreft), eq(
+                            NlResponseSource.LPS
+                        )
+                    )
+                }
+            }
+        }
+
+        it("should return 400 Bad Request for invalid payload") {
+            withTestApplication {
+                // Arrange
+                // Act
+                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{ "navn": "Ola Nordmann" }""")
+                }
+
+                // Assert
+                response.status shouldBe HttpStatusCode.BadRequest
+                response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                verify { narmestelederKafkaServiceSpy wasNot Called }
             }
         }
     }

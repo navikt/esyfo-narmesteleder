@@ -2,6 +2,7 @@ import java.time.Instant
 import java.util.Random
 import net.datafaker.Faker
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
+import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
 import no.nav.syfo.narmesteleder.kafka.model.Leder
 
 val faker = Faker(Random(Instant.now().epochSecond))
@@ -14,6 +15,11 @@ fun narmesteLederRelasjon(): NarmesteLederRelasjonerWrite = NarmesteLederRelasjo
         mobil = faker.phoneNumber().cellPhone(),
         epost = faker.internet().emailAddress(),
     ),
+    sykmeldtFnr = faker.numerify("###########"),
+    organisasjonsnummer = faker.numerify("#########"),
+)
+
+fun narmesteLederAvkreft(): NarmestelederRelasjonAvkreft = NarmestelederRelasjonAvkreft(
     sykmeldtFnr = faker.numerify("###########"),
     organisasjonsnummer = faker.numerify("#########"),
 )

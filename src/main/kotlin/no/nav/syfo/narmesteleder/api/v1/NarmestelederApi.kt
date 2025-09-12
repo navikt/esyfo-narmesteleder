@@ -7,13 +7,12 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.util.logger
 
 fun Route.registerNarmestelederApiV1(
     narmestelederKafkaService: NarmestelederKafkaService
 ) {
-    val logger = logger()
     route("/narmesteleder") {
         post() {
             val nlRelasjon = try {
@@ -21,10 +20,20 @@ fun Route.registerNarmestelederApiV1(
             } catch (e: Exception) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
-            if (nlRelasjon.leder == null) narmestelederKafkaService.avbrytNarmesteLederRelation(
-                nlRelasjon.organisasjonsnummer,
-                nlRelasjon.sykmeldtFnr
-            ) else narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon)
+            narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
+
+            call.respond(HttpStatusCode.Accepted)
+        }
+    }
+
+    route("/narmesteleder/avkreft") {
+        post() {
+            val avkreft = try {
+                call.receive<NarmestelederRelasjonAvkreft>()
+            } catch (e: Exception) {
+                throw BadRequestException("Invalid payload in request: ${e.message}", e)
+            }
+            narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
             call.respond(HttpStatusCode.Accepted)
         }
     }

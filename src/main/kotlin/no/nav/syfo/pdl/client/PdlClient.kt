@@ -2,19 +2,14 @@ package no.nav.syfo.pdl.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.ResponseException
-import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
-import java.util.*
+import java.util.Random
 import net.datafaker.Faker
-import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
-import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.pdl.Person
 import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
 
 private const val BEHANDLINGSNUMMER_DIGITAL_OPPFOLGINGSPLAN = "B506"
@@ -31,7 +26,7 @@ private val getPersonQuery =
           etternavn
         }
       }
-      identer: hentIdenter(ident: ${'$'}ident, historikk: false) {
+      identer: hentIdenter(ident: ${'$'}ident, historikk: false, grupper: ["FOLKEREGISTERIDENT"]) {
           identer {
             ident,
             gruppe
@@ -44,17 +39,12 @@ private val getPersonQuery =
 interface IPdlClient {
     suspend fun getPerson(fnr: String): GetPersonResponse
 }
-
 class PdlClient(
     private val httpClient: HttpClient,
     private val pdlBaseUrl: String,
     private val texasHttpClient: TexasHttpClient,
     private val scope: String
-) : IPdlClient {
-    companion object {
-        private val logger = logger()
-    }
-
+): IPdlClient {
     override suspend fun getPerson(fnr: String): GetPersonResponse {
         val token = texasHttpClient.systemToken(
             "azuread",
@@ -66,24 +56,17 @@ class PdlClient(
                 query = getPersonQuery,
                 variables = GetPersonVariables(ident = fnr),
             )
-        try {
-            val pdlReponse = httpClient
-                .post(pdlBaseUrl) {
-                    setBody(getPersonRequest)
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                    header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_DIGITAL_OPPFOLGINGSPLAN)
-                    header(HttpHeaders.ContentType, "application/json")
-                }
-                .body<GetPersonResponse>()
-            if (pdlReponse.errors != null) {
-                logger.error("Error when requesting person from PDL. Got errors: ${pdlReponse.errors}")
-                throw PdlRequestException("Got errors in response from hentPerson")
+
+        return httpClient
+            .post(pdlBaseUrl) {
+                setBody(getPersonRequest)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_DIGITAL_OPPFOLGINGSPLAN)
+                header(HttpHeaders.ContentType, "application/json")
             }
-            return pdlReponse
-        } catch (e: ResponseException) {
-            logger.error("Error on findPerson query to PDL. Got status ${e.response.status} and message ${e.message}")
-            throw PdlRequestException("Error on findPerson query to PDL", e)
-        }
+            .body()
+
+
     }
 }
 
@@ -104,7 +87,7 @@ class FakePdlClient : IPdlClient {
                 ),
                 identer = IdentResponse(
                     identer = listOf(
-                        Ident(ident = fnr, gruppe = GRUPPE_IDENT_FNR),
+                        Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT"),
                     ),
                 ),
             ),

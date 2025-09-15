@@ -9,7 +9,7 @@ data class ClientProperties(
     companion object {
         fun createForLocal() = ClientProperties(
             pdlBaseUrl = "https://pdl-api.dev.intern.nav.no",
-            pdlScope = "pdl",
+            pdlScope = "pdf",
         )
 
         fun createFromEnvVars() =

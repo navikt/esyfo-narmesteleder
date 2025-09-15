@@ -1,7 +1,7 @@
 package no.nav.syfo.pdl.client
 
 data class GetPersonResponse(
-    val data: ResponseData?,
+    val data: ResponseData,
     val errors: List<ResponseError>?,
 )
 
@@ -17,11 +17,7 @@ data class IdentResponse(
 data class Ident(
     val ident: String,
     val gruppe: String,
-) {
-    companion object {
-        const val GRUPPE_IDENT_FNR = "FOLKEREGISTERIDENT"
-    }
-}
+)
 
 data class PersonResponse(
     val navn: List<Navn>?,

@@ -19,6 +19,8 @@ class NarmestelederKafkaService(
     ) {
         val sykmeldt = pdlService.getPersonFor(narmesteLederRelasjonerWrite.sykmeldtFnr)
         val leder = pdlService.getPersonFor(narmesteLederRelasjonerWrite.leder.fnr)
+        require(sykmeldt != null) { "Fant ikke sykmeldt for fnr" }
+        require(leder != null) { "Fant ikke leder for fnr" }
         kafkaSykemeldingProducer.sendSykemeldingNLRelasjon(
             NlResponse(
                 sykmeldt= Sykmeldt.from(sykmeldt),
@@ -35,6 +37,7 @@ class NarmestelederKafkaService(
     ) {
 
         val sykmeldt = pdlService.getPersonFor(narmestelederRelasjonAvkreft.sykmeldtFnr)
+        require(sykmeldt != null) { "Fant ikke sykmeldt for fnr" }
         kafkaSykemeldingProducer.sendSykemeldingNLBrudd(
             NlAvbrutt(
                 sykmeldt.fnr,

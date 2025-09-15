@@ -1,6 +1,7 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.JsonConvertException
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -17,7 +18,7 @@ fun Route.registerNarmestelederApiV1(
         post() {
             val nlRelasjon = try {
                 call.receive<NarmesteLederRelasjonerWrite>()
-            } catch (e: Exception) {
+            } catch (e: JsonConvertException) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
             narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
@@ -30,7 +31,7 @@ fun Route.registerNarmestelederApiV1(
         post() {
             val avkreft = try {
                 call.receive<NarmestelederRelasjonAvkreft>()
-            } catch (e: Exception) {
+            } catch (e: JsonConvertException) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
             narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)

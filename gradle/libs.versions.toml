@@ -10,7 +10,7 @@ kotlin-version = "2.2.10"
 ktor-version = "3.2.3"
 logback-version = "1.5.18"
 micrometer-prometheus = "1.15.4"
-mockk="1.14.2"
+mockk="1.14.5"
 postgresql = "42.7.7"
 jackson-datatype-jsr = "2.20.0"
 [libraries]

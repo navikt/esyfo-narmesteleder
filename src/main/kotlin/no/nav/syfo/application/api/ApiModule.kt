@@ -1,22 +1,22 @@
-package no.nav.syfo
+package no.nav.syfo.application.api
 
 import io.ktor.server.application.Application
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import kotlin.getValue
 import no.nav.syfo.application.ApplicationState
-import no.nav.syfo.application.api.installCallId
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.api.registerPodApi
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.metric.registerMetricApi
-import no.nav.syfo.no.nav.syfo.registerApiV1
+import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.registerApiV1
+import org.koin.ktor.ext.inject
 
-fun Application.configureRouting(
-    applicationState: ApplicationState,
-    database: DatabaseInterface
-) {
+fun Application.configureRouting() {
+    val applicationState by inject<ApplicationState>()
+    val database by inject<DatabaseInterface>()
+    val narmestelederKafkaService by inject<NarmestelederKafkaService>()
+
     installCallId()
     installContentNegotiation()
     installStatusPages()
@@ -24,7 +24,7 @@ fun Application.configureRouting(
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
-        registerApiV1()
+        registerApiV1(narmestelederKafkaService)
         get("/") {
             call.respondText("Hello World!")
         }

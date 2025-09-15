@@ -3,6 +3,8 @@
 datafaker= "2.4.4"
 flyway="11.12.0"
 hikaricp = "7.0.2"
+jackson-datatype-jsr = "2.20.0"
+kafka="3.9.1"
 koin="4.1.1"
 kotest-extensions="2.0.0"
 kotest="6.0.3"
@@ -12,13 +14,16 @@ logback-version = "1.5.18"
 micrometer-prometheus = "1.15.4"
 mockk="1.14.5"
 postgresql = "42.7.7"
-jackson-datatype-jsr = "2.20.0"
-[libraries]
+testcontainers = "1.21.3"
 
+[libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 database-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 datafaker = {module = "net.datafaker:datafaker", version.ref = "datafaker"}
+jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version = "jackson-datatype-jsr" }
+kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
+kafka-twothirteen = { module = "org.apache.kafka:kafka_2.13", version.ref = "kafka" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }
 koin-logger = { module = "io.insert-koin:koin-logger-slf4j", version.ref = "koin" }
 kotest-assertions-core = {module = "io.kotest:kotest-assertions-core", version.ref = "kotest"}
@@ -33,7 +38,9 @@ ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref 
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-version" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer-prometheus" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
-jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version = "jackson-datatype-jsr" }
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers"}
+testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers"}
+
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }

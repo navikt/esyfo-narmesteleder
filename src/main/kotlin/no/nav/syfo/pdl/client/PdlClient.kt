@@ -39,12 +39,13 @@ private val getPersonQuery =
 interface IPdlClient {
     suspend fun getPerson(fnr: String): GetPersonResponse
 }
+
 class PdlClient(
     private val httpClient: HttpClient,
     private val pdlBaseUrl: String,
     private val texasHttpClient: TexasHttpClient,
     private val scope: String
-): IPdlClient {
+) : IPdlClient {
     override suspend fun getPerson(fnr: String): GetPersonResponse {
         val token = texasHttpClient.systemToken(
             "azuread",
@@ -65,8 +66,6 @@ class PdlClient(
                 header(HttpHeaders.ContentType, "application/json")
             }
             .body()
-
-
     }
 }
 

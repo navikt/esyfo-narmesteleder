@@ -21,8 +21,11 @@ fun Route.registerNarmestelederApiV1(
             } catch (e: JsonConvertException) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
-            narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
-
+            try {
+                narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
+            } catch (e: Exception) {
+                throw BadRequestException("Error processing request: ${e.message}", e)
+            }
             call.respond(HttpStatusCode.Accepted)
         }
     }
@@ -34,7 +37,11 @@ fun Route.registerNarmestelederApiV1(
             } catch (e: JsonConvertException) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
-            narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
+            try {
+                narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
+            } catch (e: Exception) {
+                throw BadRequestException("Error processing request: ${e.message}", e)
+            }
             call.respond(HttpStatusCode.Accepted)
         }
     }

@@ -24,6 +24,8 @@ dependencies {
     implementation("io.ktor:ktor-client-core")
     implementation("io.ktor:ktor-client-content-negotiation")
     implementation("io.ktor:ktor-serialization-jackson")
+    implementation("io.ktor:ktor-server-auth")
+    implementation("io.ktor:ktor-server-auth-jwt")
     implementation("io.ktor:ktor-server-call-id")
     implementation("io.ktor:ktor-server-content-negotiation")
     implementation("io.ktor:ktor-server-status-pages")

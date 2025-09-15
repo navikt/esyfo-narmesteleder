@@ -8,10 +8,10 @@ import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 data class NarmesteLederRelasjonerWrite(
     val sykmeldtFnr: String,
     val organisasjonsnummer: String,
-    val leder: Leder?,
+    val leder: Leder,
 ) {
     fun toNlResponse(): NlResponse = NlResponse(
-        orgnummer = organisasjonsnummer, leder = leder!!, sykmeldt = Sykmeldt(
+        orgnummer = organisasjonsnummer, leder = leder, sykmeldt = Sykmeldt(
             fnr = sykmeldtFnr, navn = "PLACEHOLDER"
         )
     )

@@ -16,6 +16,9 @@ import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.client.FakePdlClient
+import no.nav.syfo.pdl.client.PdlClient
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.koin.core.scope.Scope
@@ -56,12 +59,23 @@ private fun databaseModule() = module {
 
 private fun servicesModule() = module {
     single {
+        if (isLocalEnv()) FakePdlClient() else PdlClient(
+            httpClient = get(),
+            pdlBaseUrl = env().clientProperties.pdlBaseUrl,
+            texasHttpClient = get(),
+            scope = env().clientProperties.pdlScope
+        )
+    }
+    single {
+        PdlService(get())
+    }
+    single {
         val sykemeldingNLKafkaProducer = if (isLocalEnv()) SykemeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )
         ) else FakeSykemeldingNLKafkaProducer()
-        NarmestelederKafkaService(sykemeldingNLKafkaProducer)
+        NarmestelederKafkaService(sykemeldingNLKafkaProducer, get())
     }
 }
 

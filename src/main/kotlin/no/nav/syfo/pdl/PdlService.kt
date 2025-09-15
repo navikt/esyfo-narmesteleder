@@ -1,5 +1,6 @@
 package no.nav.syfo.pdl
 
+import java.lang.IllegalStateException
 import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.util.logger
 
@@ -7,18 +8,19 @@ class PdlService(private val pdlClient: IPdlClient) {
 
     private val logger = logger()
 
-    suspend fun getPersonFor(fnr: String): Person? {
+    suspend fun getPersonFor(fnr: String): Person {
         val response = try {
             pdlClient.getPerson(fnr)
         } catch (e: Exception) {
-            logger.error("Could not fetch person from PDL", e)
-            return null
+            val message = "Could not fetch person from PDL"
+            logger.error(message, e)
+            throw IllegalStateException(message, e)
         }
         with(response.data) {
             val navn = response.data.person?.navn?.firstOrNull()
             val fnr = response.data.identer?.identer?.firstOrNull()?.ident
-            require(fnr != null) { "Fant ikke fnr" }
-            require(navn != null) { "Fant ikke navn" }
+            check(fnr != null) { "Fant ikke fnr" }
+            check(navn != null) { "Fant ikke navn" }
             return Person(
                 navn = navn, fnr = fnr
             )

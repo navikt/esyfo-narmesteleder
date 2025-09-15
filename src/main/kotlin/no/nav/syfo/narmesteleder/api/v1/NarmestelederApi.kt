@@ -26,10 +26,8 @@ fun Route.registerNarmestelederApiV1(
             }
             try {
                 narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
-            } catch (e: PdlPersonMissingPropertiesException) {
-                throw BadRequestException("Could not find one or both of the persons")
-            } catch (e: PdlRequestException) {
-                throw InternalServerErrorException("Error when validating persons")
+            } catch (e: Exception) {
+                throw BadRequestException("Error processing request: ${e.message}", e)
             }
             call.respond(HttpStatusCode.Accepted)
         }
@@ -44,10 +42,8 @@ fun Route.registerNarmestelederApiV1(
             }
             try {
                 narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
-            } catch (e: PdlPersonMissingPropertiesException) {
-                throw BadRequestException("Could not find one or both of the persons")
-            } catch (e: PdlRequestException) {
-                throw InternalServerErrorException("Error when validating persons")
+            } catch (e: Exception) {
+                throw BadRequestException("Error processing request: ${e.message}", e)
             }
             call.respond(HttpStatusCode.Accepted)
         }

@@ -15,8 +15,6 @@ import no.nav.syfo.pdl.client.IdentResponse
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.pdl.client.PersonResponse
 import no.nav.syfo.pdl.client.ResponseData
-import no.nav.syfo.pdl.exception.PdlPersonMissingPropertiesException
-import no.nav.syfo.pdl.exception.PdlRequestException
 
 class PdlServiceTest : DescribeSpec({
 
@@ -47,35 +45,35 @@ class PdlServiceTest : DescribeSpec({
             coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
         }
 
-        it("should pass through exception when PDL client throws exception") {
+        it("should throw IllegalStateException when PDL client throws exception") {
             val fnr = "12345678901"
-            val exception = PdlRequestException("PDL error")
+            val exception = Exception("PDL error")
 
             coEvery { pdlClient.getPerson(fnr) } throws exception
 
-            shouldThrow<PdlRequestException> {
+            shouldThrow<IllegalStateException> {
                 pdlService.getPersonFor(fnr)
             }
 
             coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
         }
 
-        it("should pass through throw PdlPersonMissingPropertiesException when fnr is null") {
+        it("should throw IllegalStateException when fnr is null") {
             val fnr = "12345678901"
             val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
 
             coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), emptyList())
-            shouldThrow<PdlPersonMissingPropertiesException> {
+            shouldThrow<IllegalStateException> {
                 pdlService.getPersonFor(fnr)
             }
         }
 
-        it("should throw PdlPersonMissingPropertiesException when navn is null") {
+        it("should throw IllegalStateException when navn is null") {
             val fnr = "12345678901"
             val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
             coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(emptyList(), listOf(ident))
 
-            shouldThrow<PdlPersonMissingPropertiesException> {
+            shouldThrow<IllegalStateException> {
                 pdlService.getPersonFor(fnr)
             }
         }
@@ -91,7 +89,7 @@ class PdlServiceTest : DescribeSpec({
 
             coEvery { pdlClient.getPerson(fnr) } returns response
 
-            shouldThrow<PdlPersonMissingPropertiesException> {
+            shouldThrow<IllegalStateException> {
                 pdlService.getPersonFor(fnr)
             }
         }

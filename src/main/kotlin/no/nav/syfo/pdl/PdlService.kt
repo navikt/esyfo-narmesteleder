@@ -17,8 +17,8 @@ class PdlService(private val pdlClient: IPdlClient) {
             throw IllegalStateException(message, e)
         }
         with(response.data) {
-            val navn = response.data.person?.navn?.firstOrNull()
-            val fnr = response.data.identer?.identer?.firstOrNull()?.ident
+            val navn = response.data?.person?.navn?.firstOrNull()
+            val fnr = response.data?.identer?.identer?.firstOrNull()?.ident
             check(fnr != null) { "Fant ikke fnr" }
             check(navn != null) { "Fant ikke navn" }
             return Person(

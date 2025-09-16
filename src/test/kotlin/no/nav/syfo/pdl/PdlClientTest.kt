@@ -92,9 +92,9 @@ class PdlClientTest : DescribeSpec({
 
             val result = client.getPerson(fnr)
 
-            result.data.person?.navn?.firstOrNull()?.fornavn shouldBe "Ola"
-            result.data.person?.navn?.firstOrNull()?.etternavn shouldBe "Nordmann"
-            result.data.identer?.identer?.firstOrNull()?.ident shouldBe fnr
+            result.data?.person?.navn?.firstOrNull()?.fornavn shouldBe "Ola"
+            result.data?.person?.navn?.firstOrNull()?.etternavn shouldBe "Nordmann"
+            result.data?.identer?.identer?.firstOrNull()?.ident shouldBe fnr
         }
 
         it("should throw exception when getPerson responds with non 2xx") {

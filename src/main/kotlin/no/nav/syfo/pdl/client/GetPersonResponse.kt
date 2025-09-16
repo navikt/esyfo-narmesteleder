@@ -1,7 +1,7 @@
 package no.nav.syfo.pdl.client
 
 data class GetPersonResponse(
-    val data: ResponseData,
+    val data: ResponseData?,
     val errors: List<ResponseError>?,
 )
 

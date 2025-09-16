@@ -70,6 +70,9 @@ class PdlClient(
                     header(HttpHeaders.ContentType, "application/json")
                 }
                 .body<GetPersonResponse>()
+            if  (pdlReponse.errors != null) {
+                logger.error("Feil ved henting av person fra PDL: ${pdlReponse.errors}")
+            }
             return pdlReponse
         } catch (e: Exception) {
             throw Exception("Error when getting pdlResponse", e)

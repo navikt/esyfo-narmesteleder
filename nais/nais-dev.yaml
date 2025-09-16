@@ -66,6 +66,9 @@ spec:
           atMaxAge: 680
       consumes:
         - name: "nav:syfo/narmesteleder/lps"
+  azure:
+    application:
+      enabled: true
   accessPolicy:
     inbound:
       rules:
@@ -74,7 +77,6 @@ spec:
     outbound:
       external:
         - host: pdl-api.dev-fss-pub.nais.io
-
   kafka:
     pool: nav-dev
   env:

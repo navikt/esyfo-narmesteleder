@@ -17,7 +17,11 @@ data class IdentResponse(
 data class Ident(
     val ident: String,
     val gruppe: String,
-)
+) {
+    companion object {
+        const val FNR_GRUPPE = "FOLKEREGISTERIDENT"
+    }
+}
 
 data class PersonResponse(
     val navn: List<Navn>?,

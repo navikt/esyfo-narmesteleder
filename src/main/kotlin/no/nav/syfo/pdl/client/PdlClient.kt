@@ -26,7 +26,7 @@ private val getPersonQuery =
           etternavn
         }
       }
-      identer: hentIdenter(ident: ${'$'}ident, historikk: false, grupper: ["FOLKEREGISTERIDENT"]) {
+      identer: hentIdenter(ident: ${'$'}ident, historikk: false) {
           identer {
             ident,
             gruppe
@@ -70,11 +70,13 @@ class PdlClient(
                     header(HttpHeaders.ContentType, "application/json")
                 }
                 .body<GetPersonResponse>()
-            if  (pdlReponse.errors != null) {
+            if (pdlReponse.errors != null) {
                 logger.error("Feil ved henting av person fra PDL: ${pdlReponse.errors}")
+                throw Exception("Error when in response from hentPerson")
             }
             return pdlReponse
         } catch (e: Exception) {
+            // TODO: Introduce more specific exceptions
             throw Exception("Error when getting pdlResponse", e)
         }
     }

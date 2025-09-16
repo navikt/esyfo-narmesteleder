@@ -26,7 +26,7 @@ private val getPersonQuery =
           etternavn
         }
       }
-      identer: hentIdenter(ident: ${'$'}ident, historikk: false, grupper: ["FOLKEREGISTERIDENT"]) {
+      identer: hentIdenter(ident: ${'$'}ident, historikk: false) {
           identer {
             ident,
             gruppe

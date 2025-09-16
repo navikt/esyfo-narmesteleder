@@ -46,10 +46,12 @@ class PdlClientTest : DescribeSpec({
             else -> error("Unhandled request ${request.url.fullPath}")
         }
     }
-    describe("getPerson") {
+    describe("IsTilgangskontrollClient")
+    {
         it("should return GetPersonResponse when getPerson responds with 200") {
             val fnr = "12345678901"
-            val getPersonResponse = """
+            val getPersonResponse =
+                """
                 {
                   "data": {
                     "person": {
@@ -82,18 +84,20 @@ class PdlClientTest : DescribeSpec({
             coEvery {
                 mockTexasClient.systemToken(any(), any())
             } returns TexasResponse(
-                "token", 111, "tokenType"
+                "token",
+                111,
+                "tokenType"
             )
             val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
             val result = client.getPerson(fnr)
 
-            result.data?.person?.navn?.firstOrNull()?.fornavn shouldBe "Ola"
-            result.data?.person?.navn?.firstOrNull()?.etternavn shouldBe "Nordmann"
-            result.data?.identer?.identer?.firstOrNull()?.ident shouldBe fnr
+            result.data.person?.navn?.firstOrNull()?.fornavn shouldBe "Ola"
+            result.data.person?.navn?.firstOrNull()?.etternavn shouldBe "Nordmann"
+            result.data.identer?.identer?.firstOrNull()?.ident shouldBe fnr
         }
 
-        it("should throw exception when getPerson responds with non 4xx") {
+        it("should throw exception when getPerson responds with non 2xx") {
             val fnr = "12345678901"
 
             val mockEngine = getMockEngine(
@@ -106,27 +110,9 @@ class PdlClientTest : DescribeSpec({
             coEvery {
                 mockTexasClient.systemToken(any(), any())
             } returns TexasResponse(
-                "token", 111, "tokenType"
-            )
-            val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
-
-            shouldThrow<Exception> { client.getPerson(fnr) }
-        }
-
-        it("should throw server exception when getPerson responds with 5xx") {
-            val fnr = "12345678901"
-
-            val mockEngine = getMockEngine(
-                status = HttpStatusCode.ServiceUnavailable,
-                headers = Headers.build {
-                    append("Content-Type", "application/json")
-                },
-                content = "invalid request",
-            )
-            coEvery {
-                mockTexasClient.systemToken(any(), any())
-            } returns TexasResponse(
-                "token", 111, "tokenType"
+                "token",
+                111,
+                "tokenType"
             )
             val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 

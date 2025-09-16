@@ -23,6 +23,7 @@ dependencies {
     implementation(libs.ktor.server.config.yaml)
     implementation("io.ktor:ktor-client-core")
     implementation("io.ktor:ktor-client-content-negotiation")
+    implementation("io.ktor:ktor-client-apache-jvm")
     implementation("io.ktor:ktor-serialization-jackson")
     implementation("io.ktor:ktor-server-auth")
     implementation("io.ktor:ktor-server-auth-jwt")
@@ -43,6 +44,7 @@ dependencies {
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)
     testImplementation(libs.testcontainers)
+    testImplementation(libs.ktor.client.mock)
 //    testImplementation(libs.testcontainers.postgres) // Will want this eventually
 }
 application {

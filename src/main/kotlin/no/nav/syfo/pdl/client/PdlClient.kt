@@ -6,10 +6,10 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
-import java.util.Random
+import java.util.*
 import net.datafaker.Faker
-import no.nav.syfo.pdl.Person
 import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
 
 private const val BEHANDLINGSNUMMER_DIGITAL_OPPFOLGINGSPLAN = "B506"
@@ -46,6 +46,10 @@ class PdlClient(
     private val texasHttpClient: TexasHttpClient,
     private val scope: String
 ) : IPdlClient {
+    companion object {
+        private val logger = logger()
+    }
+
     override suspend fun getPerson(fnr: String): GetPersonResponse {
         val token = texasHttpClient.systemToken(
             "azuread",
@@ -57,15 +61,19 @@ class PdlClient(
                 query = getPersonQuery,
                 variables = GetPersonVariables(ident = fnr),
             )
-
-        return httpClient
-            .post(pdlBaseUrl) {
-                setBody(getPersonRequest)
-                header(HttpHeaders.Authorization, "Bearer $token")
-                header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_DIGITAL_OPPFOLGINGSPLAN)
-                header(HttpHeaders.ContentType, "application/json")
-            }
-            .body()
+        try {
+            val pdlReponse = httpClient
+                .post(pdlBaseUrl) {
+                    setBody(getPersonRequest)
+                    header(HttpHeaders.Authorization, "Bearer $token")
+                    header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_DIGITAL_OPPFOLGINGSPLAN)
+                    header(HttpHeaders.ContentType, "application/json")
+                }
+                .body<GetPersonResponse>()
+            return pdlReponse
+        } catch (e: Exception) {
+            throw Exception("Error when getting pdlResponse", e)
+        }
     }
 }
 

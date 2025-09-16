@@ -19,6 +19,7 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
+import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.common.serialization.StringSerializer
@@ -69,6 +70,7 @@ private fun databaseModule() = module {
 }
 
 private fun servicesModule() = module {
+    single { TexasHttpClient(client = get(), environment = env().texas) }
     single {
         if (isLocalEnv()) FakePdlClient() else PdlClient(
             httpClient = get(),

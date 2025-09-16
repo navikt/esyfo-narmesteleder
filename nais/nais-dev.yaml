@@ -58,5 +58,18 @@ spec:
       rules:
         - application: tokenx-token-generator
           namespace: nais
+  maskinporten:
+    enabled: false
+    scopes:
+      exposes:
+        - accessibleForAll: true
+          delegationSource: altinn
+          enabled: true
+          product: syfo
+          separator: "/"
+          name: narmesteleder/lps
+          atMaxAge: 680
+      consumes:
+        - name: "nav:syfo/narmesteleder/lps"
   kafka:
     pool: nav-dev

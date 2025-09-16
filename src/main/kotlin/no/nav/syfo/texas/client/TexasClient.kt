@@ -6,7 +6,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import no.nav.syfo.texas.TexasEnvironment
+import no.nav.syfo.application.texas.TexasEnvironment
 
 class TexasHttpClient(
     val client: HttpClient,
@@ -23,22 +23,6 @@ class TexasHttpClient(
                 )
             )
         }.body<TexasIntrospectionResponse>()
-    }
-
-    suspend fun exchangeTokenForDineSykmeldte(token: String): TexasResponse {
-        return exchangeToken(IDENTITY_PROVIDER_TOKENX, environment.exchangeTargetDineSykmeldte, token)
-    }
-
-    suspend fun exchangeTokenForIsDialogmelding(token: String): TexasResponse {
-        return exchangeToken(IDENTITY_PROVIDER_TOKENX, environment.exchangeTargetIsDialogmelding, token)
-    }
-
-    suspend fun exchangeTokenForIsTilgangskontroll(token: String): TexasResponse {
-        return exchangeToken(
-            IDENTITY_PROVIDER_AZUREAD,
-            TexasHttpClient.getTarget(environment.exchangeTargetIsTilgangskontroll),
-            token
-        )
     }
 
     suspend fun systemToken(identityProvider: String, target: String): TexasResponse {

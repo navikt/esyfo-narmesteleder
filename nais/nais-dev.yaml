@@ -53,22 +53,11 @@ spec:
         diskAutoresize: true
   tokenx:
     enabled: true
-  maskinporten:
-    enabled: false
-    scopes:
-      exposes:
-        - accessibleForAll: true
-          delegationSource: altinn
-          enabled: true
-          product: syfo
-          separator: "/"
-          name: narmesteleder/lps
-          atMaxAge: 680
-      consumes:
-        - name: "nav:syfo/narmesteleder/lps"
   azure:
     application:
       enabled: true
+#      allowAllUsers: true
+#      tenant: trygdeetaten.no
   accessPolicy:
     inbound:
       rules:

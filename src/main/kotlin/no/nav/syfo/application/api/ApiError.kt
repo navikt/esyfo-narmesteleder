@@ -9,6 +9,7 @@ open class ApiError(
     open val message: String,
     open val path: String? = null,
     val timestamp: Instant = Instant.now(),
+    val traceId: String? = null,
 )
 enum class ErrorType {
     AUTHENTICATION_ERROR,

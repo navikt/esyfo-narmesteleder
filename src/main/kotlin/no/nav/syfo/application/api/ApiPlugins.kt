@@ -13,12 +13,13 @@ import io.ktor.server.application.log
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.NotFoundException
 import io.ktor.server.plugins.callid.CallId
-import io.ktor.server.plugins.callid.callId
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
 import java.util.*
+import no.nav.syfo.application.api.ApiError
+import no.nav.syfo.application.api.ErrorType
 
 const val NAV_CALL_ID_HEADER = "Nav-Call-Id"
 
@@ -45,9 +46,9 @@ private fun logException(call: ApplicationCall, cause: Throwable) {
     call.application.log.warn(logExceptionMessage, cause)
 }
 
-fun determineApiError(cause: Throwable, path: String, callId: String?): ApiError {
+fun determineApiError(cause: Throwable, path: String): ApiError {
     return when (cause) {
-        is BadRequestException -> cause.toApiError(path, callId)
+        is BadRequestException -> cause.toApiError(path)
         is NotFoundException -> cause.toApiError(path)
         else -> ApiError(
             HttpStatusCode.InternalServerError,
@@ -62,19 +63,18 @@ fun Application.installStatusPages() {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             logException(call, cause)
-            val apiError = determineApiError(cause, call.request.path(), call.callId)
+            val apiError = determineApiError(cause, call.request.path())
             call.respond(apiError.status, apiError)
         }
     }
 }
 
-fun BadRequestException.toApiError(path: String?, traceId: String?): ApiError {
+fun BadRequestException.toApiError(path: String?): ApiError {
     return ApiError(
         status = HttpStatusCode.BadRequest,
         type = ErrorType.BAD_REQUEST,
         message = this.message ?: "Bad request",
-        path = path,
-        traceId = traceId
+        path = path
     )
 }
 

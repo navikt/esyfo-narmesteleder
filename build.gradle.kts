@@ -32,6 +32,7 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages")
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger)
+    implementation(libs.logstash)
     implementation(libs.jackson.datatype.jsr310)
     // Database
     implementation(libs.bundles.database)

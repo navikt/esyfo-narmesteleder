@@ -15,6 +15,7 @@ micrometer-prometheus = "1.15.4"
 mockk="1.14.5"
 postgresql = "42.7.7"
 testcontainers = "1.21.3"
+logstashEncoder = "8.1"
 
 [libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
@@ -41,6 +42,7 @@ micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers"}
 testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers"}
+logstash = {module = "net.logstash.logback:logstash-logback-encoder",  version.ref = "logstashEncoder"}
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }

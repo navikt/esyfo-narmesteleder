@@ -46,12 +46,10 @@ class PdlClientTest : DescribeSpec({
             else -> error("Unhandled request ${request.url.fullPath}")
         }
     }
-    describe("IsTilgangskontrollClient")
-    {
+    describe("getPerson") {
         it("should return GetPersonResponse when getPerson responds with 200") {
             val fnr = "12345678901"
-            val getPersonResponse =
-                """
+            val getPersonResponse = """
                 {
                   "data": {
                     "person": {
@@ -84,9 +82,7 @@ class PdlClientTest : DescribeSpec({
             coEvery {
                 mockTexasClient.systemToken(any(), any())
             } returns TexasResponse(
-                "token",
-                111,
-                "tokenType"
+                "token", 111, "tokenType"
             )
             val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
@@ -110,9 +106,7 @@ class PdlClientTest : DescribeSpec({
             coEvery {
                 mockTexasClient.systemToken(any(), any())
             } returns TexasResponse(
-                "token",
-                111,
-                "tokenType"
+                "token", 111, "tokenType"
             )
             val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 

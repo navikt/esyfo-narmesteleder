@@ -40,6 +40,7 @@ fun Route.registerNarmestelederApiV1(
             try {
                 narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
             } catch (e: Exception) {
+                // TODO: Introduce more specific exceptions. Differentiate between then and reply with 4xx VS 5xx based on them.
                 throw BadRequestException("Error processing request: ${e.message}", e)
             }
             call.respond(HttpStatusCode.Accepted)

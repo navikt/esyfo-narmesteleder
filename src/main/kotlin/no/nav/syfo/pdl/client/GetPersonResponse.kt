@@ -19,7 +19,7 @@ data class Ident(
     val gruppe: String,
 ) {
     companion object {
-        const val FNR_GRUPPE = "FOLKEREGISTERIDENT"
+        const val GRUPPE_IDENT_FNR = "FOLKEREGISTERIDENT"
     }
 }
 

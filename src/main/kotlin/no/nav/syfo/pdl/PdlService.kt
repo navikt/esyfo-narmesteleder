@@ -2,7 +2,7 @@ package no.nav.syfo.pdl
 
 import java.lang.IllegalStateException
 import no.nav.syfo.pdl.client.IPdlClient
-import no.nav.syfo.pdl.client.Ident.Companion.FNR_GRUPPE
+import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.util.logger
 
 class PdlService(private val pdlClient: IPdlClient) {
@@ -19,7 +19,7 @@ class PdlService(private val pdlClient: IPdlClient) {
         }
         with(response.data) {
             val navn = response.data?.person?.navn?.firstOrNull()
-            val fnr = response.data?.identer?.identer?.firstOrNull() { it.gruppe == FNR_GRUPPE }?.ident
+            val fnr = response.data?.identer?.identer?.firstOrNull() { it.gruppe == GRUPPE_IDENT_FNR }?.ident
             check(fnr != null) { "Fant ikke fnr" }
             check(navn != null) { "Fant ikke navn" }
             return Person(

@@ -19,6 +19,7 @@ import io.mockk.Called
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.confirmVerified
+import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import no.nav.syfo.application.api.installContentNegotiation
@@ -31,8 +32,10 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
+import no.nav.syfo.texas.client.TexasHttpClient
 
 class NarmestelederApiV1Test : DescribeSpec({
+    val texasClientMock = mockk<TexasHttpClient>()
     val pdlService = PdlService(FakePdlClient())
     val narmestelederKafkaService = NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService)
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
@@ -57,7 +60,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 installContentNegotiation()
                 installStatusPages()
                 routing {
-                    registerApiV1(narmestelederKafkaServiceSpy)
+                    registerApiV1(narmestelederKafkaServiceSpy, texasClientMock)
                 }
             }
             fn(this)

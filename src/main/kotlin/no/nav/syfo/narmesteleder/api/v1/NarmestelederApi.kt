@@ -8,11 +8,12 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 
 fun Route.registerNarmestelederApiV1(
-    narmestelederKafkaService: NarmestelederKafkaService
+    narmestelederKafkaService: NarmestelederKafkaService,
 ) {
     route("/narmesteleder") {
         post() {

@@ -9,13 +9,15 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.util.logger
 
 fun Route.registerIdportenNarmestelederApiV1(
-    narmestelederKafkaService: NarmestelederKafkaService
+    narmestelederKafkaService: NarmestelederKafkaService,
+    altinnTilgangerService: AltinnTilgangerService,
 ) {
     route("/narmesteleder") {
         install(AddSBrukerPrincipalPlugin) {
@@ -42,7 +44,17 @@ fun Route.registerIdportenNarmestelederApiV1(
                 this.texasHttpClient = texasHttpClient
             }
             val bruker = call.attributes[BRUKER_PRINCIPAL]
-            logger().info("Bruker ${bruker.ident}")
+            val harTilgang = try {
+                altinnTilgangerService.harTilgangTilOrganisasjon(
+                    bruker,
+                    "123456789"
+
+                )
+            } catch (e: Exception) {
+                logger().error("Feil ved sjekk av tilgang til organisasjon for bruker ${bruker.ident}", e)
+                throw BadRequestException("Error processing request: ${e.message}", e)
+            }
+            logger().info("Bruker ${bruker.ident} har tilgang: $harTilgang")
             val avkreft = try {
                 call.receive<NarmestelederRelasjonAvkreft>()
             } catch (e: JsonConvertException) {

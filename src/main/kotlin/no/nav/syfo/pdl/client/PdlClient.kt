@@ -2,12 +2,17 @@ package no.nav.syfo.pdl.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.ResponseException
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
 import java.util.*
 import net.datafaker.Faker
+import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
+import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
@@ -71,13 +76,13 @@ class PdlClient(
                 }
                 .body<GetPersonResponse>()
             if (pdlReponse.errors != null) {
-                logger.error("Feil ved henting av person fra PDL: ${pdlReponse.errors}")
-                throw Exception("Error when in response from hentPerson")
+                logger.error("Error when requesting person from PDL. Got errors: ${pdlReponse.errors}")
+                throw PdlRequestException("Got errors in response from hentPerson")
             }
             return pdlReponse
-        } catch (e: Exception) {
-            // TODO: Introduce more specific exceptions
-            throw Exception("Error when getting pdlResponse", e)
+        } catch (e: ResponseException) {
+            logger.error("Error on findPerson query to PDL. Got status ${e.response.status} and message ${e.message}")
+            throw PdlRequestException("Error on findPerson query to PDL", e)
         }
     }
 }
@@ -99,7 +104,7 @@ class FakePdlClient : IPdlClient {
                 ),
                 identer = IdentResponse(
                     identer = listOf(
-                        Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT"),
+                        Ident(ident = fnr, gruppe = GRUPPE_IDENT_FNR),
                     ),
                 ),
             ),

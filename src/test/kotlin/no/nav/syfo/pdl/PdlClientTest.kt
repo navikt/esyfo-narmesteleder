@@ -93,11 +93,31 @@ class PdlClientTest : DescribeSpec({
             result.data?.identer?.identer?.firstOrNull()?.ident shouldBe fnr
         }
 
-        it("should throw exception when getPerson responds with non 2xx") {
+        it("should throw exception when getPerson responds with non 4xx") {
             val fnr = "12345678901"
 
             val mockEngine = getMockEngine(
                 status = HttpStatusCode.BadRequest,
+                headers = Headers.build {
+                    append("Content-Type", "application/json")
+                },
+                content = "invalid request",
+            )
+            coEvery {
+                mockTexasClient.systemToken(any(), any())
+            } returns TexasResponse(
+                "token", 111, "tokenType"
+            )
+            val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+
+            shouldThrow<Exception> { client.getPerson(fnr) }
+        }
+
+        it("should throw server exception when getPerson responds with 5xx") {
+            val fnr = "12345678901"
+
+            val mockEngine = getMockEngine(
+                status = HttpStatusCode.ServiceUnavailable,
                 headers = Headers.build {
                     append("Content-Type", "application/json")
                 },

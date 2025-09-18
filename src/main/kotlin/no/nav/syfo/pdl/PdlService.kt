@@ -1,8 +1,8 @@
 package no.nav.syfo.pdl
 
-import java.lang.IllegalStateException
 import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
+import no.nav.syfo.pdl.exception.PdlPersonMissingPropertiesException
 import no.nav.syfo.util.logger
 
 class PdlService(private val pdlClient: IPdlClient) {
@@ -10,18 +10,12 @@ class PdlService(private val pdlClient: IPdlClient) {
     private val logger = logger()
 
     suspend fun getPersonFor(fnr: String): Person {
-        val response = try {
-            pdlClient.getPerson(fnr)
-        } catch (e: Exception) {
-            val message = "Could not fetch person from PDL"
-            logger.error(message, e)
-            throw IllegalStateException(message, e)
-        }
+        val response = pdlClient.getPerson(fnr)
         with(response.data) {
             val navn = response.data?.person?.navn?.firstOrNull()
             val fnr = response.data?.identer?.identer?.firstOrNull() { it.gruppe == GRUPPE_IDENT_FNR }?.ident
-            check(fnr != null) { "Fant ikke fnr" }
-            check(navn != null) { "Fant ikke navn" }
+            if (fnr == null) throw PdlPersonMissingPropertiesException("Fant ikke fnr")
+            if (navn == null) throw PdlPersonMissingPropertiesException("Fant ikke navn")
             return Person(
                 navn = navn, fnr = fnr
             )

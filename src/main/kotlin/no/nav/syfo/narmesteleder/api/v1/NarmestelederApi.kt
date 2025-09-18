@@ -8,8 +8,11 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import no.nav.syfo.application.exception.InternalServerErrorException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.pdl.exception.PdlPersonMissingPropertiesException
+import no.nav.syfo.pdl.exception.PdlRequestException
 
 fun Route.registerNarmestelederApiV1(
     narmestelederKafkaService: NarmestelederKafkaService
@@ -23,8 +26,10 @@ fun Route.registerNarmestelederApiV1(
             }
             try {
                 narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
-            } catch (e: Exception) {
-                throw BadRequestException("Error processing request: ${e.message}", e)
+            } catch (e: PdlPersonMissingPropertiesException) {
+                throw BadRequestException("Could not find one or both of the persons")
+            } catch (e: PdlRequestException) {
+                throw InternalServerErrorException("Error when validating persons")
             }
             call.respond(HttpStatusCode.Accepted)
         }
@@ -39,9 +44,10 @@ fun Route.registerNarmestelederApiV1(
             }
             try {
                 narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
-            } catch (e: Exception) {
-                // TODO: Introduce more specific exceptions. Differentiate between then and reply with 4xx VS 5xx based on them.
-                throw BadRequestException("Error processing request: ${e.message}", e)
+            } catch (e: PdlPersonMissingPropertiesException) {
+                throw BadRequestException("Could not find one or both of the persons")
+            } catch (e: PdlRequestException) {
+                throw InternalServerErrorException("Error when validating persons")
             }
             call.respond(HttpStatusCode.Accepted)
         }

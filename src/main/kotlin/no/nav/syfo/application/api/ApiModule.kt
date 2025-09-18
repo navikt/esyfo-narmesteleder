@@ -5,6 +5,7 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import kotlin.getValue
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.metric.registerMetricApi
@@ -18,6 +19,7 @@ fun Application.configureRouting() {
     val database by inject<DatabaseInterface>()
     val narmestelederKafkaService by inject<NarmestelederKafkaService>()
     val texasHttpClient by inject<TexasHttpClient>()
+    val altinnTilgangerService by inject<AltinnTilgangerService>()
 
     installCallId()
     installContentNegotiation()
@@ -26,7 +28,7 @@ fun Application.configureRouting() {
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
-        registerApiV1(narmestelederKafkaService, texasHttpClient)
+        registerApiV1(narmestelederKafkaService, texasHttpClient, altinnTilgangerService)
         get("/") {
             call.respondText("Hello World!")
         }

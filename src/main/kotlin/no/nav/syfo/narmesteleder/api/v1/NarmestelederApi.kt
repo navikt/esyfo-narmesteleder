@@ -12,7 +12,7 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 
 fun Route.registerNarmestelederApiV1(
-    narmestelederKafkaService: NarmestelederKafkaService
+    narmestelederKafkaService: NarmestelederKafkaService,
 ) {
     route("/narmesteleder") {
         post() {

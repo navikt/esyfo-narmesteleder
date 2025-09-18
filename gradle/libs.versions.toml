@@ -15,6 +15,7 @@ micrometer-prometheus = "1.15.4"
 mockk="1.14.5"
 postgresql = "42.7.7"
 testcontainers = "1.21.3"
+logstashEncoder = "8.1"
 
 [libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
@@ -34,12 +35,14 @@ ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor-version" }
 ktor-server-micrometer = { module = "io.ktor:ktor-server-metrics-micrometer", version.ref = "ktor-version" }
 ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor-version" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor-version" }
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor-version" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-version" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer-prometheus" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers"}
 testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers"}
+logstash = {module = "net.logstash.logback:logstash-logback-encoder",  version.ref = "logstashEncoder"}
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }

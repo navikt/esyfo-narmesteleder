@@ -1,0 +1,99 @@
+package no.nav.syfo.pdl
+
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.clearAllMocks
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
+import no.nav.syfo.pdl.client.IPdlClient
+import java.lang.IllegalStateException
+import no.nav.syfo.pdl.client.GetPersonResponse
+import no.nav.syfo.pdl.client.Ident
+import no.nav.syfo.pdl.client.IdentResponse
+import no.nav.syfo.pdl.client.Navn
+import no.nav.syfo.pdl.client.PersonResponse
+import no.nav.syfo.pdl.client.ResponseData
+import no.nav.syfo.pdl.exception.PdlPersonMissingPropertiesException
+import no.nav.syfo.pdl.exception.PdlRequestException
+
+class PdlServiceTest : DescribeSpec({
+
+    val pdlClient = mockk<IPdlClient>()
+    val pdlService = PdlService(pdlClient)
+
+    beforeTest {
+        clearAllMocks()
+    }
+
+    fun getPersonResponse(navn: List<Navn>, identer: List<Ident>) = GetPersonResponse(
+        data = ResponseData(
+            person = PersonResponse(navn = navn), identer = IdentResponse(identer = identer)
+        ), errors = null
+    )
+    describe("getPersonFor") {
+        it("should return person when PDL returns valid data") {
+            val fnr = "12345678901"
+            val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
+            val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
+
+            coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), listOf(ident))
+
+            val result = pdlService.getPersonFor(fnr)
+
+            result.fnr shouldBe fnr
+            result.navn shouldBe navn
+            coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
+        }
+
+        it("should pass through exception when PDL client throws exception") {
+            val fnr = "12345678901"
+            val exception = PdlRequestException("PDL error")
+
+            coEvery { pdlClient.getPerson(fnr) } throws exception
+
+            shouldThrow<PdlRequestException> {
+                pdlService.getPersonFor(fnr)
+            }
+
+            coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
+        }
+
+        it("should pass through throw PdlPersonMissingPropertiesException when fnr is null") {
+            val fnr = "12345678901"
+            val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
+
+            coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), emptyList())
+            shouldThrow<PdlPersonMissingPropertiesException> {
+                pdlService.getPersonFor(fnr)
+            }
+        }
+
+        it("should throw PdlPersonMissingPropertiesException when navn is null") {
+            val fnr = "12345678901"
+            val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
+            coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(emptyList(), listOf(ident))
+
+            shouldThrow<PdlPersonMissingPropertiesException> {
+                pdlService.getPersonFor(fnr)
+            }
+        }
+
+        it("should throw IllegalStateException when person is null") {
+            val fnr = "12345678901"
+            val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
+            val response = GetPersonResponse(
+                data = ResponseData(
+                    person = null, identer = IdentResponse(identer = listOf(ident))
+                ), errors = null
+            )
+
+            coEvery { pdlClient.getPerson(fnr) } returns response
+
+            shouldThrow<PdlPersonMissingPropertiesException> {
+                pdlService.getPersonFor(fnr)
+            }
+        }
+    }
+})

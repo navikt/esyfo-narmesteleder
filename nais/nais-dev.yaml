@@ -53,11 +53,6 @@ spec:
         diskAutoresize: true
   tokenx:
     enabled: true
-  accessPolicy:
-    inbound:
-      rules:
-        - application: tokenx-token-generator
-          namespace: nais
   maskinporten:
     enabled: false
     scopes:
@@ -71,5 +66,21 @@ spec:
           atMaxAge: 680
       consumes:
         - name: "nav:syfo/narmesteleder/lps"
+  azure:
+    application:
+      enabled: true
+  accessPolicy:
+    inbound:
+      rules:
+        - application: tokenx-token-generator
+          namespace: nais
+    outbound:
+      external:
+        - host: pdl-api.dev-fss-pub.nais.io
   kafka:
     pool: nav-dev
+  env:
+    - name: PDL_BASE_URL
+      value: https://pdl-api.dev-fss-pub.nais.io/graphql
+    - name: PDL_SCOPE
+      value: dev-fss.pdl.pdl-api

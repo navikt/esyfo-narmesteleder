@@ -23,12 +23,16 @@ dependencies {
     implementation(libs.ktor.server.config.yaml)
     implementation("io.ktor:ktor-client-core")
     implementation("io.ktor:ktor-client-content-negotiation")
+    implementation("io.ktor:ktor-client-apache-jvm")
     implementation("io.ktor:ktor-serialization-jackson")
+    implementation("io.ktor:ktor-server-auth")
+    implementation("io.ktor:ktor-server-auth-jwt")
     implementation("io.ktor:ktor-server-call-id")
     implementation("io.ktor:ktor-server-content-negotiation")
     implementation("io.ktor:ktor-server-status-pages")
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger)
+    implementation(libs.logstash)
     implementation(libs.jackson.datatype.jsr310)
     // Database
     implementation(libs.bundles.database)
@@ -41,6 +45,7 @@ dependencies {
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)
     testImplementation(libs.testcontainers)
+    testImplementation(libs.ktor.client.mock)
 //    testImplementation(libs.testcontainers.postgres) // Will want this eventually
 }
 application {

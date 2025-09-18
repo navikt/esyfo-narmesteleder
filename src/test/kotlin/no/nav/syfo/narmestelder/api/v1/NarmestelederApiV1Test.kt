@@ -17,6 +17,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import io.mockk.Called
 import io.mockk.clearAllMocks
+import io.mockk.coVerify
 import io.mockk.confirmVerified
 import io.mockk.spyk
 import io.mockk.verify
@@ -27,10 +28,13 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
 
 class NarmestelederApiV1Test : DescribeSpec({
-    val narmestelederKafkaService = NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
+    val pdlService = PdlService(FakePdlClient())
+    val narmestelederKafkaService = NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService)
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
     beforeTest {
         clearAllMocks()
@@ -72,7 +76,7 @@ class NarmestelederApiV1Test : DescribeSpec({
 
                 // Assert
                 response.status shouldBe HttpStatusCode.Accepted
-                verify(exactly = 1) {
+                coVerify(exactly = 1) {
                     narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
                         eq(narmesteLederRelasjon), eq(
                             NlResponseSource.LPS
@@ -94,7 +98,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 // Assert
                 response.status shouldBe HttpStatusCode.BadRequest
                 response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
-                verify { narmestelederKafkaServiceSpy wasNot Called }
+                coVerify { narmestelederKafkaServiceSpy wasNot Called }
             }
         }
     }
@@ -112,7 +116,7 @@ class NarmestelederApiV1Test : DescribeSpec({
 
                 // Assert
                 response.status shouldBe HttpStatusCode.Accepted
-                verify(exactly = 1) {
+                coVerify(exactly = 1) {
                     narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                         eq(narmesteLederAvkreft), eq(
                             NlResponseSource.LPS
@@ -134,7 +138,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 // Assert
                 response.status shouldBe HttpStatusCode.BadRequest
                 response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
-                verify { narmestelederKafkaServiceSpy wasNot Called }
+                coVerify { narmestelederKafkaServiceSpy wasNot Called }
             }
         }
     }

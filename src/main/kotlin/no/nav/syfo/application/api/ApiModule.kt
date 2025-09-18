@@ -10,12 +10,14 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.registerApiV1
+import no.nav.syfo.texas.client.TexasHttpClient
 import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {
     val applicationState by inject<ApplicationState>()
     val database by inject<DatabaseInterface>()
     val narmestelederKafkaService by inject<NarmestelederKafkaService>()
+    val texasHttpClient by inject<TexasHttpClient>()
 
     installCallId()
     installContentNegotiation()
@@ -24,7 +26,7 @@ fun Application.configureRouting() {
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
-        registerApiV1(narmestelederKafkaService)
+        registerApiV1(narmestelederKafkaService, texasHttpClient)
         get("/") {
             call.respondText("Hello World!")
         }

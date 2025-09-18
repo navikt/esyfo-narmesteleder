@@ -25,6 +25,8 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
@@ -37,6 +39,7 @@ import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.client.TexasHttpClient
 
 class NarmestelederApiV1Test : DescribeSpec({
+    val texasClientMock = mockk<TexasHttpClient>()
     val pdlService = PdlService(FakePdlClient())
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = narmesteLederRelasjon()
@@ -48,6 +51,8 @@ class NarmestelederApiV1Test : DescribeSpec({
     val narmestelederKafkaService =
         NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService, aaregService)
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
+    val altinnTilgangerServiceMock = AltinnTilgangerService(FakeAltinnTilgangerClient())
+    val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
 
     beforeTest {
         clearAllMocks()
@@ -70,7 +75,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 installContentNegotiation()
                 installStatusPages()
                 routing {
-                    registerApiV1(narmestelederKafkaServiceSpy, texasHttpClientMock)
+                    registerApiV1(narmestelederKafkaServiceSpy, texasHttpClientMock, altinnTilgangerServiceSpy)
                 }
             }
             fn(this)

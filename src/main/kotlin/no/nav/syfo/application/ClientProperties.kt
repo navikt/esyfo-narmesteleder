@@ -5,6 +5,7 @@ import kotlin.String
 data class ClientProperties(
     val pdlBaseUrl: String,
     val pdlScope: String,
+    val altinnTilgangerBaseUrl: String,
     val aaregBaseUrl: String,
     val aaregScope: String,
 ) {
@@ -12,6 +13,7 @@ data class ClientProperties(
         fun createForLocal() = ClientProperties(
             pdlBaseUrl = "https://pdl-api.dev.intern.nav.no",
             pdlScope = "pdl",
+            altinnTilgangerBaseUrl = "https://altinn-tilganger-api.dev.intern.nav.no",
             aaregBaseUrl = "",
             aaregScope = "aareg",
         )
@@ -22,6 +24,7 @@ data class ClientProperties(
                 pdlScope = getEnvVar("PDL_SCOPE"),
                 aaregBaseUrl = getEnvVar("AAREG_BASE_URL"),
                 aaregScope = getEnvVar("AAREG_SCOPE"),
+                altinnTilgangerBaseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
             )
     }
 }

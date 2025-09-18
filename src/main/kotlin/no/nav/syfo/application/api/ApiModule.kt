@@ -1,8 +1,11 @@
 package no.nav.syfo.application.api
 
-import io.ktor.server.application.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+import io.ktor.server.application.Application
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+import kotlin.getValue
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
@@ -17,16 +20,16 @@ fun Application.configureRouting() {
     val database by inject<DatabaseInterface>()
     val narmestelederKafkaService by inject<NarmestelederKafkaService>()
     val texasHttpClient by inject<TexasHttpClient>()
+    val altinnTilgangerService by inject<AltinnTilgangerService>()
 
     installCallId()
     installContentNegotiation()
     installStatusPages()
 
     routing {
-
         registerPodApi(applicationState, database)
         registerMetricApi()
-        registerApiV1(narmestelederKafkaService, texasHttpClient)
+        registerApiV1(narmestelederKafkaService, texasHttpClient, altinnTilgangerService)
         get("/") {
             call.respondText("Hello World!")
         }

@@ -75,6 +75,11 @@ spec:
         - application: tokenx-token-generator
           namespace: nais
     outbound:
+      rules:
+        - application: arbeidsgiver-altinn-tilganger
+          namespace: fager
+        - application: arbeidsgiver-altinn-tilganger
+          namespace: fager
       external:
         - host: pdl-api.dev-fss-pub.nais.io
   kafka:

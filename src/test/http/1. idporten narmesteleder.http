@@ -1,0 +1,29 @@
+### POST narmesteleder relasjon
+POST http://localhost:8080/idporten/api/v1/narmesteleder
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "sykmeldtFnr": "1234567890",
+  "organisasjonsnummer": "123456789",
+  "leder": {
+    "fornavn": "Ola",
+    "etternavn": "Norman",
+    "fnr": "01010112345",
+    "mobil": "99999999",
+    "epost": "ola.norman@acme.com"
+  }
+}
+
+
+
+
+### POST avkreft narmesteleder relasjon
+POST http://localhost:8080/idporten/api/v1/narmesteleder/avkreft
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "sykmeldtFnr": "1234567890",
+  "organisasjonsnummer": "123456789"
+}

@@ -13,6 +13,28 @@ class NarmestelederKafkaService(
     val kafkaSykemeldingProducer: ISykemeldingNLKafkaProducer,
     val pdlService: PdlService,
 ) {
+//    private suspend fun validateArbeidsforhold(
+//        followUpPlanDTO: FollowUpPlanDTO,
+//        employerOrgnr: String
+//    ): List<String?> {
+//        val arbeidsforholdOversikt =
+//            arbeidsforholdOversiktClient.getArbeidsforhold(followUpPlanDTO.employeeIdentificationNumber)
+//
+//        val activeArbeidsforhold = arbeidsforholdOversikt?.arbeidsforholdoversikter?.firstOrNull {
+//            it.opplysningspliktig.getJuridiskOrgnummer() == employerOrgnr ||
+//                    it.arbeidssted.getOrgnummer() == employerOrgnr
+//        }
+//
+//        if (activeArbeidsforhold == null) {
+//            throw NoActiveEmploymentException("No active employment relationship found for given orgnumber")
+//        }
+//
+//        val validOrgnumbers = listOf(
+//            activeArbeidsforhold.opplysningspliktig.getJuridiskOrgnummer(),
+//            activeArbeidsforhold.arbeidssted.getOrgnummer(),
+//        )
+//        return validOrgnumbers
+//    }
     suspend fun sendNarmesteLederRelation(
         narmesteLederRelasjonerWrite: NarmesteLederRelasjonerWrite,
         source: NlResponseSource

@@ -1,21 +1,18 @@
 package no.nav.syfo.narmesteleder.api.v1
 
-import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.JsonConvertException
-import io.ktor.server.plugins.BadRequestException
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import no.nav.syfo.application.exception.InternalServerErrorException
+import io.ktor.http.*
+import io.ktor.serialization.*
+import io.ktor.server.plugins.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.pdl.exception.PdlPersonMissingPropertiesException
-import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.texas.client.TexasHttpClient
 
 fun Route.registerNarmestelederApiV1(
-    narmestelederKafkaService: NarmestelederKafkaService
+    narmestelederKafkaService: NarmestelederKafkaService,
+    texasHttpClient: TexasHttpClient
 ) {
     route("/narmesteleder") {
         post() {

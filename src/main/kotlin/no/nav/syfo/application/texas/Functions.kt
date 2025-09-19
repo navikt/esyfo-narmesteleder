@@ -1,4 +1,4 @@
-package no.nav.syfo.texas
+package no.nav.syfo.application.texas
 
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.authorization
@@ -9,3 +9,4 @@ fun ApplicationCall.bearerToken(): String? =
         ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
         ?.removePrefix("Bearer ")
         ?.removePrefix("bearer ")
+

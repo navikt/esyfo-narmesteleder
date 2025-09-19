@@ -1,15 +1,11 @@
 package no.nav.syfo.pdl
 
+import getMockEngine
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.Headers
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.fullPath
-import io.ktor.http.isSuccess
+import io.ktor.client.*
+import io.ktor.http.*
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -27,27 +23,6 @@ class PdlClientTest : DescribeSpec({
         clearAllMocks()
     }
 
-    fun getMockEngine(status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->
-        when (request.url.fullPath) {
-            "" -> {
-                if (status.isSuccess()) {
-                    respond(
-                        status = status,
-                        headers = headers,
-                        content = content.toByteArray(Charsets.UTF_8),
-                    )
-                } else {
-                    respond(
-                        status = status,
-                        headers = headers,
-                        content = content,
-                    )
-                }
-            }
-
-            else -> error("Unhandled request ${request.url.fullPath}")
-        }
-    }
     describe("getPerson") {
         it("should return GetPersonResponse when getPerson responds with 200") {
             val fnr = "12345678901"

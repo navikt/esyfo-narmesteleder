@@ -1,15 +1,13 @@
 package no.nav.syfo.plugins
 
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
-import no.nav.syfo.application.ApplicationState
-import no.nav.syfo.application.Environment
-import no.nav.syfo.application.LocalEnvironment
-import no.nav.syfo.application.NaisEnvironment
+import io.ktor.server.application.*
+import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.aareg.client.AaregClient
+import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.application.*
 import no.nav.syfo.application.database.Database
 import no.nav.syfo.application.database.DatabaseConfig
 import no.nav.syfo.application.database.DatabaseInterface
-import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
@@ -71,6 +69,18 @@ private fun databaseModule() = module {
 
 private fun servicesModule() = module {
     single { TexasHttpClient(client = get(), environment = env().texas) }
+    single {
+        if (isLocalEnv()) FakeAaregClient() else AaregClient(
+            aaregBaseUrl = env().clientProperties.aaregBaseUrl,
+            texasHttpClient = get(),
+            scope = env().clientProperties.aaregScope,
+        )
+    }
+    single {
+        AaregService(
+            arbeidsforholdOversiktClient = get()
+        )
+    }
     single {
         if (isLocalEnv()) FakePdlClient() else PdlClient(
             httpClient = get(),

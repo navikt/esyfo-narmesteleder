@@ -9,6 +9,11 @@ data class TexasIntrospectionRequest(
     val token: String,
 )
 
+data class OrganizationId(
+    val authority: String,
+    val ID: String,
+)
+
 @Suppress("ConstructorParameterNaming")
 data class TexasIntrospectionResponse(
     val active: Boolean,
@@ -25,4 +30,6 @@ data class TexasIntrospectionResponse(
     val sub: String? = null,
     val tid: String? = null,
     val NAVident: String? = null,
+    val consumer: OrganizationId? = null,
+    val supplier: OrganizationId? = null,
 )

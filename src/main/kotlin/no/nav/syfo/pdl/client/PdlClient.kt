@@ -12,6 +12,7 @@ import io.ktor.http.HttpHeaders
 import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
+import no.nav.syfo.pdl.exception.PdlPersonNotFoundException
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
@@ -75,9 +76,12 @@ class PdlClient(
                     header(HttpHeaders.ContentType, "application/json")
                 }
                 .body<GetPersonResponse>()
-            if (pdlReponse.errors != null) {
+            if (!pdlReponse.errors.isNullOrEmpty() ) {
                 logger.error("Error when requesting person from PDL. Got errors: ${pdlReponse.errors}")
-                throw PdlRequestException("Got errors in response from hentPerson")
+            }
+            if (pdlReponse.data?.person == null || pdlReponse.data.identer == null) {
+                logger.error("Did not find person in PDL for fnr $fnr")
+                throw PdlPersonNotFoundException("Did not find person in PDL for fnr $fnr")
             }
             return pdlReponse
         } catch (e: ResponseException) {

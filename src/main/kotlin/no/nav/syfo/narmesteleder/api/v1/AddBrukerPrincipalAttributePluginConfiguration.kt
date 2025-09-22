@@ -13,7 +13,7 @@ class AddBrukerPrincipalAttributePluginConfiguration(
 
 val BRUKER_PRINCIPAL = AttributeKey<BrukerPrincipal>("brukerPrincipal")
 
-val AddSBrukerPrincipalPlugin = createRouteScopedPlugin(
+val AddBrukerPrincipalPlugin = createRouteScopedPlugin(
     name = "AddSykmeldtBrukerFnrAttributePlugin",
     createConfiguration = ::AddBrukerPrincipalAttributePluginConfiguration,
 ) {

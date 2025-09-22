@@ -14,8 +14,8 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.pdl.client.PdlClient
-import no.nav.syfo.pdl.exception.PdlPersonNotFoundException
 import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
@@ -120,7 +120,7 @@ class PdlClientTest : DescribeSpec({
             )
             val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
-            shouldThrow<PdlPersonNotFoundException> { client.getPerson(fnr) }
+            shouldThrow< PdlResourceNotFoundException> { client.getPerson(fnr) }
         }
         it("should throw exception when getPerson responds with non 4xx") {
             val fnr = "12345678901"

@@ -11,8 +11,7 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.exception.InternalServerErrorException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.pdl.exception.PdlPersonMissingPropertiesException
-import no.nav.syfo.pdl.exception.PdlPersonNotFoundException
+import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.pdl.exception.PdlRequestException
 
 fun Route.registerNarmestelederApiV1(
@@ -27,9 +26,7 @@ fun Route.registerNarmestelederApiV1(
             }
             try {
                 narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
-            } catch (e: PdlPersonNotFoundException) {
-                throw BadRequestException("Could not find one or both of the persons")
-            } catch (e: PdlPersonMissingPropertiesException) {
+            } catch (e: PdlResourceNotFoundException) {
                 throw BadRequestException("Could not find one or both of the persons")
             } catch (e: PdlRequestException) {
                 throw InternalServerErrorException("Error when validating persons")
@@ -47,9 +44,7 @@ fun Route.registerNarmestelederApiV1(
             }
             try {
                 narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
-            } catch (e: PdlPersonNotFoundException) {
-                throw BadRequestException("Could not find sykmeldt for provided fnr")
-            } catch (e: PdlPersonMissingPropertiesException) {
+            } catch (e: PdlResourceNotFoundException) {
                 throw BadRequestException("Could not find sykmeldt for provided fnr")
             } catch (e: PdlRequestException) {
                 throw InternalServerErrorException("Error when validating fnr for sykmeldt")

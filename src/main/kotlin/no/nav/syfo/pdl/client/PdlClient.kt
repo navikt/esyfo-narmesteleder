@@ -2,9 +2,7 @@ package no.nav.syfo.pdl.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ResponseException
-import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -12,8 +10,8 @@ import io.ktor.http.HttpHeaders
 import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
-import no.nav.syfo.pdl.exception.PdlPersonNotFoundException
 import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
@@ -81,7 +79,7 @@ class PdlClient(
             }
             if (pdlReponse.data?.person == null || pdlReponse.data.identer == null) {
                 logger.error("Did not find person in PDL for fnr $fnr")
-                throw PdlPersonNotFoundException("Did not find person in PDL for fnr $fnr")
+                throw PdlResourceNotFoundException("Did not find person in PDL for fnr $fnr")
             }
             return pdlReponse
         } catch (e: ResponseException) {

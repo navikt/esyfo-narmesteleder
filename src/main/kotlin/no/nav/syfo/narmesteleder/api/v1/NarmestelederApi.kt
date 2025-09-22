@@ -8,11 +8,8 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
-import no.nav.syfo.application.exception.InternalServerErrorException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
-import no.nav.syfo.pdl.exception.PdlRequestException
 
 fun Route.registerNarmestelederApiV1(
     narmestelederKafkaService: NarmestelederKafkaService
@@ -24,13 +21,7 @@ fun Route.registerNarmestelederApiV1(
             } catch (e: JsonConvertException) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
-            try {
-                narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
-            } catch (e: PdlResourceNotFoundException) {
-                throw BadRequestException("Could not find one or both of the persons")
-            } catch (e: PdlRequestException) {
-                throw InternalServerErrorException("Error when validating persons")
-            }
+            narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
             call.respond(HttpStatusCode.Accepted)
         }
     }
@@ -42,13 +33,7 @@ fun Route.registerNarmestelederApiV1(
             } catch (e: JsonConvertException) {
                 throw BadRequestException("Invalid payload in request: ${e.message}", e)
             }
-            try {
-                narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
-            } catch (e: PdlResourceNotFoundException) {
-                throw BadRequestException("Could not find sykmeldt for provided fnr")
-            } catch (e: PdlRequestException) {
-                throw InternalServerErrorException("Error when validating fnr for sykmeldt")
-            }
+            narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
             call.respond(HttpStatusCode.Accepted)
         }
     }

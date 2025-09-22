@@ -17,7 +17,7 @@ class AltinnTilgangerService(
         try {
             val tilganger = altinnTilgangerClient.hentTilganger(brukerPrincipal)
             logger.info("Hentet altinn-tilganger for bruker: $tilganger")
-            if (tilganger?.orgNrTilTilganger[orgnummer]?.contains(OPPRETT_NL_REALASJON_RESSURSJ) != true)
+            if (tilganger?.orgNrTilTilganger[orgnummer]?.contains(OPPRETT_NL_REALASJON_RESOURCE) != true)
                 throw BadRequestException("Bruker har ikke tilgang til organisasjon $orgnummer") // Replace with ForbiddenException
         } catch (e: ResponseException) {
             throw InternalServerErrorException("Feil ved henting av altinn-tilganger")
@@ -25,7 +25,7 @@ class AltinnTilgangerService(
     }
 
     companion object {
-        const val OPPRETT_NL_REALASJON_RESSURSJ = "nav_sosialtjenester_digisos-avtal"
+        const val OPPRETT_NL_REALASJON_RESOURCE = "4596:1" // Access resource in Altinn2 to access NL relasjon
         private val logger = logger()
     }
 }

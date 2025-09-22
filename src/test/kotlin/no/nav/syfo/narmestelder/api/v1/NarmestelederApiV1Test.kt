@@ -20,7 +20,7 @@ import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages

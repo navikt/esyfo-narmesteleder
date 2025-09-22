@@ -1,5 +1,5 @@
 ### GET idporten token from fakedings
-GET https://fakedings.intern.dev.nav.no/fake/idporten?pid={{pid}} HTTP/1.1
+GET https://fakedings.intern.dev.nav.no/fake/idporten?pid={{hrWithAccessIdent}} HTTP/1.1
 
 > {%
     client.global.set("fakedings_token", response.body);

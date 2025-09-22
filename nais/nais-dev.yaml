@@ -94,4 +94,4 @@ spec:
     - name: AAREG_SCOPE
       value: dev-fss.arbeidsforhold.aareg-services-nais
     - name: ALTINN_TILGANGER_BASE_URL
-      valueL: http://arbeidsgiver-altinn-tilganger.fager
+      value: http://arbeidsgiver-altinn-tilganger.fager

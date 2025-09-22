@@ -68,3 +68,9 @@ docker-compose \
 ```
 ### Kafka-ui
 You can use [kafka-ui](http://localhost:9000) to inspect your consumers and topics. You can also publish or read messages on the topics
+
+## Authentication for dev
+In order to get a token for annsatt that has access to update narmesteleder relasjon, you can use the following url:
+https://tokenx-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp:team-esyfo:esyfo-narmesteleder
+
+Select "på høyt nivå" and give the ident of a DAgelig leder for the organisasjonsnummer you want to test with.

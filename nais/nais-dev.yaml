@@ -90,4 +90,4 @@ spec:
     - name: PDL_SCOPE
       value: dev-fss.pdl.pdl-api
     - name: ALTINN_TILGANGER_BASE_URL
-      valueL: http://arbeidsgiver-altinn-tilganger.fager
+      value: http://arbeidsgiver-altinn-tilganger.fager

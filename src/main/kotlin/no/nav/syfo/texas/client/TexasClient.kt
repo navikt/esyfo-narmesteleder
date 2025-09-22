@@ -52,7 +52,7 @@ class TexasHttpClient(
     suspend fun exchangeTokenForIsAltinnTilganger(token: String): TexasResponse {
         return exchangeToken(
             IDENTITY_PROVIDER_TOKENX,
-            TexasHttpClient.getTarget(environment.exchangeTargetIsAltinnTilganger),
+            environment.exchangeTargetIsAltinnTilganger,
             token
         )
     }

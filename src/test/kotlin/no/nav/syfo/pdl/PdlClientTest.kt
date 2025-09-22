@@ -14,6 +14,8 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.pdl.client.PdlClient
+import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
@@ -93,6 +95,33 @@ class PdlClientTest : DescribeSpec({
             result.data?.identer?.identer?.firstOrNull()?.ident shouldBe fnr
         }
 
+        it("should throw exception when response contains error") {
+            val fnr = "12345678901"
+            val getPersonResponse = """
+                {
+                  "errors": [
+                    {
+                      "message": "Noe gikk galt"
+                    }
+                  ]
+                }
+                """.trimIndent()
+            val mockEngine = getMockEngine(
+                status = HttpStatusCode.OK,
+                headers = Headers.build {
+                    append("Content-Type", "application/json")
+                },
+                content = getPersonResponse,
+            )
+            coEvery {
+                mockTexasClient.systemToken(any(), any())
+            } returns TexasResponse(
+                "token", 111, "tokenType"
+            )
+            val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+
+            shouldThrow< PdlResourceNotFoundException> { client.getPerson(fnr) }
+        }
         it("should throw exception when getPerson responds with non 4xx") {
             val fnr = "12345678901"
 
@@ -110,7 +139,7 @@ class PdlClientTest : DescribeSpec({
             )
             val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
-            shouldThrow<Exception> { client.getPerson(fnr) }
+            shouldThrow<PdlRequestException> { client.getPerson(fnr) }
         }
 
         it("should throw server exception when getPerson responds with 5xx") {
@@ -130,7 +159,7 @@ class PdlClientTest : DescribeSpec({
             )
             val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
-            shouldThrow<Exception> { client.getPerson(fnr) }
+            shouldThrow<PdlRequestException> { client.getPerson(fnr) }
         }
     }
 })

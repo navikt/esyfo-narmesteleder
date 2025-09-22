@@ -2,9 +2,7 @@ package no.nav.syfo.pdl.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ResponseException
-import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -13,6 +11,7 @@ import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
@@ -75,9 +74,12 @@ class PdlClient(
                     header(HttpHeaders.ContentType, "application/json")
                 }
                 .body<GetPersonResponse>()
-            if (pdlReponse.errors != null) {
+            if (!pdlReponse.errors.isNullOrEmpty() ) {
                 logger.error("Error when requesting person from PDL. Got errors: ${pdlReponse.errors}")
-                throw PdlRequestException("Got errors in response from hentPerson")
+            }
+            if (pdlReponse.data?.person == null || pdlReponse.data.identer == null) {
+                logger.error("Did not find person in PDL for fnr $fnr")
+                throw PdlResourceNotFoundException("Did not find person in PDL for fnr $fnr")
             }
             return pdlReponse
         } catch (e: ResponseException) {

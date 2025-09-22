@@ -8,14 +8,13 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.pdl.client.IPdlClient
-import java.lang.IllegalStateException
 import no.nav.syfo.pdl.client.GetPersonResponse
 import no.nav.syfo.pdl.client.Ident
 import no.nav.syfo.pdl.client.IdentResponse
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.pdl.client.PersonResponse
 import no.nav.syfo.pdl.client.ResponseData
-import no.nav.syfo.pdl.exception.PdlPersonMissingPropertiesException
+import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.pdl.exception.PdlRequestException
 
 class PdlServiceTest : DescribeSpec({
@@ -65,7 +64,7 @@ class PdlServiceTest : DescribeSpec({
             val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
 
             coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), emptyList())
-            shouldThrow<PdlPersonMissingPropertiesException> {
+            shouldThrow<PdlResourceNotFoundException> {
                 pdlService.getPersonFor(fnr)
             }
         }
@@ -75,7 +74,7 @@ class PdlServiceTest : DescribeSpec({
             val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
             coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(emptyList(), listOf(ident))
 
-            shouldThrow<PdlPersonMissingPropertiesException> {
+            shouldThrow<PdlResourceNotFoundException> {
                 pdlService.getPersonFor(fnr)
             }
         }
@@ -91,7 +90,7 @@ class PdlServiceTest : DescribeSpec({
 
             coEvery { pdlClient.getPerson(fnr) } returns response
 
-            shouldThrow<PdlPersonMissingPropertiesException> {
+            shouldThrow<PdlResourceNotFoundException> {
                 pdlService.getPersonFor(fnr)
             }
         }

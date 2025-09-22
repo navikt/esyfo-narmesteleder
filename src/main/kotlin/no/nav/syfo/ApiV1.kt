@@ -2,7 +2,8 @@ package no.nav.syfo
 
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.narmesteleder.api.v1.AddSBrukerPrincipalPlugin
 import no.nav.syfo.narmesteleder.api.v1.registerIdportenNarmestelederApiV1
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.narmesteleder.api.v1.registerNarmestelederApiV1
@@ -24,6 +25,9 @@ fun Route.registerApiV1(
     route("/idporten/api/v1") {
         install(TexasTokenXAuthPlugin) {
             client = texasHttpClient
+        }
+        install(AddSBrukerPrincipalPlugin) {
+            this.texasHttpClient = texasHttpClient
         }
         registerIdportenNarmestelederApiV1(narmestelederKafkaService, altinnTilgangerService)
     }

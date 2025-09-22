@@ -5,8 +5,8 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import kotlin.getValue
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.metric.registerMetricApi

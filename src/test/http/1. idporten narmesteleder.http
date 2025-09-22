@@ -5,7 +5,7 @@ Authorization: Bearer {{token}}
 
 {
   "sykmeldtFnr": "1234567890",
-  "organisasjonsnummer": "123456789",
+  "organisasjonsnummer": "879880760",
   "leder": {
     "fornavn": "Ola",
     "etternavn": "Norman",
@@ -25,5 +25,5 @@ Authorization: Bearer {{token}}
 
 {
   "sykmeldtFnr": "1234567890",
-  "organisasjonsnummer": "123456789"
+  "organisasjonsnummer": "879880760"
 }

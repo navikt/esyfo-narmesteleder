@@ -12,6 +12,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.server.routing.routing
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
@@ -20,12 +21,9 @@ import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
-import io.ktor.server.routing.*
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
-import no.nav.syfo.application.api.ApiError
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
@@ -37,6 +35,8 @@ import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.application.api.ApiError
+import no.nav.syfo.application.api.ErrorType
 
 class NarmestelederApiV1Test : DescribeSpec({
     val texasClientMock = mockk<TexasHttpClient>()

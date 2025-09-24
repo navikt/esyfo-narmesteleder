@@ -18,9 +18,8 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
 import java.util.*
-import no.nav.syfo.application.api.ApiError
-import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.ForbiddenException
 
 const val NAV_CALL_ID_HEADER = "Nav-Call-Id"
 
@@ -54,6 +53,7 @@ fun determineApiError(cause: Throwable, path: String): ApiError {
         is BadRequestException -> cause.toApiError(path)
         is NotFoundException -> cause.toApiError(path)
         is ApiErrorException -> cause.toApiError(path)
+        is ForbiddenException -> cause.toApiError(path)
         else -> ApiError(
             HttpStatusCode.InternalServerError,
             ErrorType.INTERNAL_SERVER_ERROR,
@@ -82,6 +82,14 @@ fun BadRequestException.toApiError(path: String?): ApiError {
     )
 }
 
+fun ForbiddenException.toApiError(path: String?): ApiError {
+    return ApiError(
+        status = HttpStatusCode.Forbidden,
+        type = ErrorType.AUTHORIZATION_ERROR,
+        message = this.message ?: "Forbidden",
+        path = path
+    )
+}
 fun NotFoundException.toApiError(path: String?): ApiError {
     return ApiError(
         status = HttpStatusCode.NotFound,

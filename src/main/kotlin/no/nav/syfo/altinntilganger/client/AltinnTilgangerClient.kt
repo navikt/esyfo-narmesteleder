@@ -5,10 +5,11 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
-import java.util.Random
+import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
 import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 
@@ -19,23 +20,23 @@ interface IAltinnTilgangerClient {
 }
 
 class FakeAltinnTilgangerClient : IAltinnTilgangerClient {
-    val usersWithAccess: MutableList<String> = hasAccess.toMutableList()
+    val usersWithAccess = hasAccess.toMutableList()
     override suspend fun hentTilganger(
         bruker: BrukerPrincipal,
     ): AltinnTilgangerResponse {
         val faker = Faker(Random(bruker.ident.toLong()))
         val orgnummer = faker.number().digits(9).toString()
-        val hasAccess = usersWithAccess.contains(bruker.ident)
+        val accessPair = usersWithAccess.find { it.first == bruker.ident }
         return AltinnTilgangerResponse(
             false,
             listOf(AltinnTilgang(orgnummer, setOf(), setOf(), emptyList(), faker.ghostbusters().character(), "BEDR")),
-            if (hasAccess) mapOf(orgnummer to setOf(OPPRETT_NL_REALASJON_RESOURCE)) else emptyMap(),
-            if (hasAccess) mapOf(OPPRETT_NL_REALASJON_RESOURCE to setOf(orgnummer)) else emptyMap(),
+            if (accessPair != null) mapOf(accessPair.second to setOf(OPPRETT_NL_REALASJON_RESOURCE)) else emptyMap(),
+            if (accessPair != null) mapOf(OPPRETT_NL_REALASJON_RESOURCE to setOf(accessPair.second)) else emptyMap(),
         )
     }
 
     companion object {
-        val hasAccess = listOf("72022183070")
+        val hasAccess = listOf("72022183071" to "879880760")
     }
 }
 
@@ -55,7 +56,7 @@ class AltinnTilgangerClient(
             return response
         } catch (e: ResponseException) {
             logger.error("Feil ved henting av altinn-tilganger, status: ${e.response.status}", e)
-            throw e
+            throw UpstreamRequestException("Feil ved henting av altinn-tilganger", e)
         }
     }
 

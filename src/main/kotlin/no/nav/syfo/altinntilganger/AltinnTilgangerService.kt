@@ -5,6 +5,7 @@ import io.ktor.server.plugins.BadRequestException
 import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.exception.InternalServerErrorException
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.util.logger
 
 class AltinnTilgangerService(
@@ -19,7 +20,8 @@ class AltinnTilgangerService(
             logger.info("Hentet altinn-tilganger for bruker: $tilganger")
             if (tilganger?.orgNrTilTilganger[orgnummer]?.contains(OPPRETT_NL_REALASJON_RESOURCE) != true)
                 throw BadRequestException("Bruker har ikke tilgang til organisasjon $orgnummer") // Replace with ForbiddenException
-        } catch (e: ResponseException) {
+        } catch (e: UpstreamRequestException) {
+            logger.error("Feil ved henting av tilgang til organisasjon $orgnummer", e)
             throw InternalServerErrorException("Feil ved henting av altinn-tilganger")
         }
     }

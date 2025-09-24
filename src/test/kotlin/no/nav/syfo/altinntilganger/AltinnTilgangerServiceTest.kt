@@ -3,12 +3,12 @@ package no.nav.syfo.altinntilganger
 import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
-import io.ktor.server.plugins.BadRequestException
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.exception.ForbiddenException
 import no.nav.syfo.application.exception.InternalServerErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 
@@ -25,7 +25,7 @@ class AltinnTilgangerServiceTest : DescribeSpec({
             val fnr = "12345678901"
             val orgnummer = "987654321"
             val brukerPrincipal = BrukerPrincipal(fnr, "token")
-            shouldThrow<BadRequestException> {
+            shouldThrow<ForbiddenException> {
                 altinnTilgangerService.validateTilgangToOrganisasjon(brukerPrincipal, orgnummer)
             }
         }

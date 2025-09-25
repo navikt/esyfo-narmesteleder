@@ -77,27 +77,28 @@ fun createRandomValidOrgNumbers(
     }
 
 
-fun getMockEngine(status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->
-    when (request.url.fullPath) {
-        "" -> {
-            if (status.isSuccess()) {
-                respond(
-                    status = status,
-                    headers = headers,
-                    content = content.toByteArray(Charsets.UTF_8),
-                )
-            } else {
-                respond(
-                    status = status,
-                    headers = headers,
-                    content = content,
-                )
+fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, content: String) =
+    MockEngine.Companion { request ->
+        when (request.url.fullPath) {
+            path -> {
+                if (status.isSuccess()) {
+                    respond(
+                        status = status,
+                        headers = headers,
+                        content = content.toByteArray(Charsets.UTF_8),
+                    )
+                } else {
+                    respond(
+                        status = status,
+                        headers = headers,
+                        content = content,
+                    )
+                }
             }
-        }
 
-        else -> error("Unhandled request ${request.url.fullPath}")
+            else -> error("Unhandled request ${request.url.fullPath}")
+        }
     }
-}
 
 fun AaregClient.defaultMocks(
     arbeidstakerHovedenhet: String = maskinportenIdToOrgnumber(DefaultOrganization.ID),

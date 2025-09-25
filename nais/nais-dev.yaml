@@ -75,6 +75,11 @@ spec:
         - application: tokenx-token-generator
           namespace: nais
     outbound:
+      rules:
+        - application: arbeidsgiver-altinn-tilganger
+          namespace: fager
+        - application: arbeidsgiver-altinn-tilganger
+          namespace: fager
       external:
         - host: pdl-api.dev-fss-pub.nais.io
   kafka:
@@ -84,3 +89,5 @@ spec:
       value: https://pdl-api.dev-fss-pub.nais.io/graphql
     - name: PDL_SCOPE
       value: dev-fss.pdl.pdl-api
+    - name: ALTINN_TILGANGER_BASE_URL
+      value: http://arbeidsgiver-altinn-tilganger.fager

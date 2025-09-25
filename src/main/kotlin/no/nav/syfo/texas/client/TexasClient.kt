@@ -49,7 +49,13 @@ class TexasHttpClient(
             )
         }.body<TexasResponse>()
     }
-
+    suspend fun exchangeTokenForIsAltinnTilganger(token: String): TexasResponse {
+        return exchangeToken(
+            IDENTITY_PROVIDER_TOKENX,
+            environment.exchangeTargetIsAltinnTilganger,
+            token
+        )
+    }
     companion object {
         fun getTarget(scope: String) = "api://$scope/.default"
         const val IDENTITY_PROVIDER_TOKENX = "tokenx"

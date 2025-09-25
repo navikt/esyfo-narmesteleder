@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.serialization.jackson.jackson
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -34,15 +35,17 @@ import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.client.TexasHttpClient
 
-class NarmestelederApiV1Test : DescribeSpec({
+class IdportenNarmestelederApiV1Test : DescribeSpec({
     val texasClientMock = mockk<TexasHttpClient>()
     val pdlService = PdlService(FakePdlClient())
     val narmestelederKafkaService = NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService)
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
-    val altinnTilgangerServiceMock = AltinnTilgangerService(FakeAltinnTilgangerClient())
+    val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
+    val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
     val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
     beforeTest {
         clearAllMocks()
+        fakeAltinnTilgangerClient.usersWithAccess.clear()
     }
     fun withTestApplication(
         fn: suspend ApplicationTestBuilder.() -> Unit
@@ -72,9 +75,13 @@ class NarmestelederApiV1Test : DescribeSpec({
         it("should return 202 Accepted for valid payload") {
             withTestApplication {
                 // Arrange
+                val callerPid = "12345678910"
+                texasClientMock.defaultMocks(pid = callerPid, acr = "Level4")
                 val narmesteLederRelasjon = narmesteLederRelasjon()
+                fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.organisasjonsnummer)
                 // Act
-                val response = client.post("/api/v1/narmesteleder") {
+                val response = client.post("/idporten/api/v1/narmesteleder") {
+                    bearerAuth("Bearer token")
                     contentType(ContentType.Application.Json)
                     setBody(narmesteLederRelasjon)
                 }
@@ -90,12 +97,38 @@ class NarmestelederApiV1Test : DescribeSpec({
                 }
             }
         }
+        it("should return 403 Forbidden when caller lacks altinn tilgang to organisasjonsnumer") {
+            withTestApplication {
+                // Arrange
+                val callerPid = "12345678910"
+                texasClientMock.defaultMocks(pid = callerPid, acr = "Level4")
+                val narmesteLederRelasjon = narmesteLederRelasjon()
+                // Act
+                val response = client.post("/idporten/api/v1/narmesteleder") {
+                    bearerAuth("Bearer token")
+                    contentType(ContentType.Application.Json)
+                    setBody(narmesteLederRelasjon)
+                }
+
+                // Assert
+                response.status shouldBe HttpStatusCode.Forbidden
+                coVerify(exactly = 0) {
+                    narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                        eq(narmesteLederRelasjon), eq(
+                            NlResponseSource.LPS
+                        )
+                    )
+                }
+            }
+        }
 
         it("should return 400 Bad Request for invalid payload") {
             withTestApplication {
+                texasClientMock.defaultMocks()
                 // Arrange
                 // Act
-                val response = client.post("/api/v1/narmesteleder") {
+                val response = client.post("/idporten/api/v1/narmesteleder") {
+                    bearerAuth("Bearer token")
                     contentType(ContentType.Application.Json)
                     setBody("""{ "navn": "Ola Nordmann" }""")
                 }
@@ -113,8 +146,12 @@ class NarmestelederApiV1Test : DescribeSpec({
             withTestApplication {
                 // Arrange
                 val narmesteLederAvkreft = narmesteLederAvkreft()
+                val callerPid = "12345678910"
+                texasClientMock.defaultMocks(pid = callerPid, acr = "Level4")
+                fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederAvkreft.organisasjonsnummer)
                 // Act
-                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                val response = client.post("/idporten/api/v1/narmesteleder/avkreft") {
+                    bearerAuth("Bearer token")
                     contentType(ContentType.Application.Json)
                     setBody(narmesteLederAvkreft)
                 }
@@ -133,9 +170,11 @@ class NarmestelederApiV1Test : DescribeSpec({
 
         it("should return 400 Bad Request for invalid payload") {
             withTestApplication {
+                texasClientMock.defaultMocks()
                 // Arrange
                 // Act
-                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                val response = client.post("/idporten/api/v1/narmesteleder/avkreft") {
+                    bearerAuth("Bearer token")
                     contentType(ContentType.Application.Json)
                     setBody("""{ "navn": "Ola Nordmann" }""")
                 }
@@ -144,6 +183,31 @@ class NarmestelederApiV1Test : DescribeSpec({
                 response.status shouldBe HttpStatusCode.BadRequest
                 response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
                 coVerify { narmestelederKafkaServiceSpy wasNot Called }
+            }
+        }
+
+        it("should return 403 Forbidden if caller lacks altinn tilgang for organisasjonsnumer") {
+            withTestApplication {
+                // Arrange
+                val narmesteLederAvkreft = narmesteLederAvkreft()
+                val callerPid = "12345678910"
+                texasClientMock.defaultMocks(pid = callerPid, acr = "Level4")
+                // Act
+                val response = client.post("/idporten/api/v1/narmesteleder/avkreft") {
+                    bearerAuth("Bearer token")
+                    contentType(ContentType.Application.Json)
+                    setBody(narmesteLederAvkreft)
+                }
+
+                // Assert
+                response.status shouldBe HttpStatusCode.Forbidden
+                coVerify(exactly = 0) {
+                    narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
+                        eq(narmesteLederAvkreft), eq(
+                            NlResponseSource.LPS
+                        )
+                    )
+                }
             }
         }
     }

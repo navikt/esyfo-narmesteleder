@@ -2,6 +2,9 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.Environment
 import no.nav.syfo.application.LocalEnvironment
@@ -82,6 +85,15 @@ private fun servicesModule() = module {
     single {
         PdlService(get())
     }
+    single {
+        if (isLocalEnv()) FakeAltinnTilgangerClient() else AltinnTilgangerClient(
+            texasClient = get(),
+            httpClient = get(),
+            baseUrl = env().clientProperties.altinnTilgangerBaseUrl,
+        )
+    }
+
+    single { AltinnTilgangerService(get()) }
     single {
         val sykemeldingNLKafkaProducer = if (isLocalEnv()) SykemeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(

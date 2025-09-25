@@ -1,8 +1,9 @@
 package no.nav.syfo.application.exception
 
-import io.ktor.http.*
+import io.ktor.http.HttpStatusCode
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
+
 
 sealed class ApiErrorException(message: String, cause: Throwable?) : RuntimeException(message, cause) {
     abstract fun toApiError(path: String): ApiError

@@ -1,16 +1,12 @@
 package no.nav.syfo.texas
 
-import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.response.*
 import io.ktor.util.AttributeKey
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.isLocalEnv
-import no.nav.syfo.application.texas.bearerToken
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.util.logger
 

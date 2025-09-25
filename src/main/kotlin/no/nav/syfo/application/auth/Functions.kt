@@ -3,7 +3,7 @@ package no.nav.syfo.application.auth
 import com.auth0.jwt.JWT
 import io.ktor.server.application.ApplicationCall
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.texas.bearerToken
+import no.nav.syfo.texas.bearerToken
 
 /**
  *

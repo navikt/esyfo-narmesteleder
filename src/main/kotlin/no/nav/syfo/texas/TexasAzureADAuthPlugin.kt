@@ -5,7 +5,6 @@ import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.auth.authentication
 import io.ktor.server.response.respondNullable
 import no.nav.syfo.application.auth.BrukerPrincipal
-import no.nav.syfo.application.texas.bearerToken
 import no.nav.syfo.util.logger
 
 private val logger = logger("no.nav.syfo.texas.TexasAzureAdAuthPlugin")

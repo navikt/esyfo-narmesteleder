@@ -1,4 +1,4 @@
-package no.nav.syfo.application.texas
+package no.nav.syfo.texas
 
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.authorization

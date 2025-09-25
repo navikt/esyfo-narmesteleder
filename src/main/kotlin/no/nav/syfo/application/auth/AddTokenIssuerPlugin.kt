@@ -1,11 +1,8 @@
 package no.nav.syfo.application.auth
 
-import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.createRouteScopedPlugin
-import io.ktor.server.response.respondNullable
 import io.ktor.util.AttributeKey
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.texas.bearerToken
 
 val TOKEN_ISSUER = AttributeKey<JwtIssuer>("tokenIssuer")
 

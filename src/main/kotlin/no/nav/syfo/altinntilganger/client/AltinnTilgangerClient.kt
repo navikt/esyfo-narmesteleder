@@ -25,13 +25,22 @@ class FakeAltinnTilgangerClient : IAltinnTilgangerClient {
         bruker: BrukerPrincipal,
     ): AltinnTilgangerResponse {
         val faker = Faker(Random(bruker.ident.toLong()))
-        val orgnummer = faker.number().digits(9).toString()
         val accessPair = usersWithAccess.find { it.first == bruker.ident }
+        val organisasjonsnummer = accessPair?.second ?: faker.numerify("#########")
         return AltinnTilgangerResponse(
             false,
-            listOf(AltinnTilgang(orgnummer, setOf(), setOf(), emptyList(), faker.ghostbusters().character(), "BEDR")),
-            if (accessPair != null) mapOf(accessPair.second to setOf(OPPRETT_NL_REALASJON_RESOURCE)) else emptyMap(),
-            if (accessPair != null) mapOf(OPPRETT_NL_REALASJON_RESOURCE to setOf(accessPair.second)) else emptyMap(),
+            listOf(
+                AltinnTilgang(
+                    organisasjonsnummer,
+                    setOf(),
+                    setOf(),
+                    emptyList(),
+                    faker.ghostbusters().character(),
+                    "BEDR"
+                )
+            ),
+            if (accessPair != null) mapOf(organisasjonsnummer to setOf(OPPRETT_NL_REALASJON_RESOURCE)) else emptyMap(),
+            if (accessPair != null) mapOf(OPPRETT_NL_REALASJON_RESOURCE to setOf(organisasjonsnummer)) else emptyMap(),
         )
     }
 

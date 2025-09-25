@@ -15,9 +15,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
-import no.nav.syfo.pdl.client.PdlClient
-import no.nav.syfo.pdl.exception.PdlRequestException
-import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault

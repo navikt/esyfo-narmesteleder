@@ -1,15 +1,8 @@
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.MockEngine.Companion.invoke
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.Headers
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.fullPath
-import io.ktor.http.isSuccess
+import io.ktor.client.engine.mock.*
+import io.ktor.http.*
 import io.mockk.coEvery
-import java.time.Instant
-import java.util.Random
 import net.datafaker.Faker
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -21,7 +14,8 @@ import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import no.nav.syfo.texas.client.TexasResponse
-import java.util.UUID
+import java.time.Instant
+import java.util.*
 
 val faker = Faker(Random(Instant.now().epochSecond))
 

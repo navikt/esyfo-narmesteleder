@@ -66,7 +66,7 @@ val MaskinportenTokenAuthPlugin = createRouteScopedPlugin(
 
             call.attributes.put(TOKEN_CONSUMER_KEY, introspectionResponse.consumer)
 
-            // TODO: Maskinporten har ikke ident (idp). Den gjelder kun idporten/tokenx. Går i beina på Bjørns kode
+            // Maskinporten har ikke ident (idp). Den gjelder kun idporten/tokenx.
             call.authentication.principal(
                 BrukerPrincipal(
                     ident = introspectionResponse.pid,

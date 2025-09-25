@@ -20,20 +20,6 @@ class NarmestelederKafkaService(
     suspend fun sendNarmesteLederRelation(
         narmesteLederRelasjonerWrite: NarmesteLederRelasjonerWrite,
         source: NlResponseSource
-    ) = try {
-        val sykmeldt = pdlService.getPersonFor(narmesteLederRelasjonerWrite.sykmeldtFnr)
-        val leder = pdlService.getPersonFor(narmesteLederRelasjonerWrite.leder.fnr)
-        kafkaSykemeldingProducer.sendSykemeldingNLRelasjon(
-            NlResponse(
-                sykmeldt = Sykmeldt.from(sykmeldt),
-                leder = narmesteLederRelasjonerWrite.leder.updateFromPerson(leder),
-                orgnummer = narmesteLederRelasjonerWrite.organisasjonsnummer
-            ),
-            source = source
-        )
-    } catch (e: Exception) {
-        throw BadRequestException("Error processing request: ${e.message}", e)
-        narmesteLederRelasjonerWrite: NarmesteLederRelasjonerWrite, source: NlResponseSource
     ) {
         try {
             val sykmeldt = pdlService.getPersonFor(narmesteLederRelasjonerWrite.sykmeldtFnr)
@@ -43,7 +29,8 @@ class NarmestelederKafkaService(
                     sykmeldt = Sykmeldt.from(sykmeldt),
                     leder = narmesteLederRelasjonerWrite.leder.updateFromPerson(leder),
                     orgnummer = narmesteLederRelasjonerWrite.organisasjonsnummer
-                ), source = source
+                ),
+                source = source
             )
         } catch (e: PdlResourceNotFoundException) {
             throw BadRequestException("Could not find one or both of the persons")
@@ -51,7 +38,6 @@ class NarmestelederKafkaService(
             throw InternalServerErrorException("Error when validating persons")
         }
     }
-
 
     suspend fun avbrytNarmesteLederRelation(
         narmestelederRelasjonAvkreft: NarmestelederRelasjonAvkreft, source: NlResponseSource

@@ -16,9 +16,8 @@ class AltinnTilgangerService(
     ) {
         try {
             val tilganger = altinnTilgangerClient.hentTilganger(brukerPrincipal)
-            logger.info("Hentet altinn-tilganger for bruker: $tilganger")
             if (tilganger?.orgNrTilTilganger[orgnummer]?.contains(OPPRETT_NL_REALASJON_RESOURCE) != true)
-                throw ForbiddenException("Bruker har ikke tilgang til organisasjon $orgnummer") // Replace with ForbiddenException
+                throw ForbiddenException("Bruker har ikke tilgang til organisasjon $orgnummer")
         } catch (e: UpstreamRequestException) {
             logger.error("Feil ved henting av tilgang til organisasjon $orgnummer", e)
             throw InternalServerErrorException("Feil ved henting av altinn-tilganger")

@@ -10,13 +10,12 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
-import io.ktor.server.plugins.NotFoundException
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.AaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH
+import no.nav.syfo.aareg.client.AaregClientException
 import no.nav.syfo.aareg.client.FakeAaregClient
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 
@@ -24,7 +23,6 @@ class AaregClientTest : DescribeSpec({
     val texasHttpClient = mockk<TexasHttpClient>(relaxed = true)
     val arbeidstakerEnhet = DefaultOrganization
     val personIdent = "12345"
-
 
     describe("Successfull responses from Aareg") {
         val arbeidsforhold = FakeAaregClient(
@@ -79,8 +77,8 @@ class AaregClientTest : DescribeSpec({
                 scope = "scope",
                 httpClient = client,
             )
-            shouldThrow<ApiErrorException.InternalServerErrorException> {
-                val res = arClient.getArbeidsforhold(personIdent)
+            shouldThrow<AaregClientException> {
+                arClient.getArbeidsforhold(personIdent)
             }
         }
 
@@ -100,8 +98,8 @@ class AaregClientTest : DescribeSpec({
                 scope = "scope",
                 httpClient = client,
             )
-            shouldThrow<NotFoundException> {
-                val res = arClient.getArbeidsforhold(personIdent)
+            shouldThrow<AaregClientException> {
+                arClient.getArbeidsforhold(personIdent)
             }
         }
     }

@@ -9,4 +9,3 @@ fun ApplicationCall.bearerToken(): String? =
         ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
         ?.removePrefix("Bearer ")
         ?.removePrefix("bearer ")
-

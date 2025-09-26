@@ -11,10 +11,9 @@ import no.nav.syfo.texas.client.TexasHttpClient
 fun Route.registerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     texasHttpClient: TexasHttpClient,
-    aaregService: AaregService,
 ) {
     route("/api/v1") {
         install(AddTokenIssuerPlugin)
-        registerNarmestelederApiV1(narmestelederKafkaService, texasHttpClient, aaregService)
+        registerNarmestelederApiV1(narmestelederKafkaService, texasHttpClient)
     }
 }

@@ -13,7 +13,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.mockk.*
 import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.aareg.client.AaregClient
+import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
@@ -29,11 +29,16 @@ import no.nav.syfo.texas.client.TexasHttpClient
 
 class NarmestelederApiV1Test : DescribeSpec({
     val pdlService = PdlService(FakePdlClient())
-    val narmestelederKafkaService = NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService)
-    val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
     val texasHttpClientMock = mockk<TexasHttpClient>()
-    val aaregClientMock = mockk<AaregClient>()
-    val aaregService = AaregService(aaregClientMock)
+    val narmesteLederRelasjon = narmesteLederRelasjon()
+    val fakeAaregClient = FakeAaregClient(
+        juridiskOrgnummer = narmesteLederRelasjon.organisasjonsnummer,
+        arbeidsstedOrgnummer = narmesteLederRelasjon.organisasjonsnummer,
+    )
+    val aaregService = AaregService(fakeAaregClient)
+    val narmestelederKafkaService =
+        NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService, aaregService)
+    val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
 
     beforeTest {
         clearAllMocks()
@@ -56,7 +61,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 installContentNegotiation()
                 installStatusPages()
                 routing {
-                    registerApiV1(narmestelederKafkaServiceSpy, texasHttpClientMock, aaregService)
+                    registerApiV1(narmestelederKafkaServiceSpy, texasHttpClientMock)
                 }
             }
             fn(this)
@@ -66,13 +71,11 @@ class NarmestelederApiV1Test : DescribeSpec({
         it("should return 202 Accepted for valid payload") {
             withTestApplication {
                 // Arrange
-                val narmesteLederRelasjon = narmesteLederRelasjon()
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
                         ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
                     )
                 )
-                aaregClientMock.defaultMocks(narmesteLederRelasjon.organisasjonsnummer)
                 // Act
                 val response = client.post("/api/v1/narmesteleder") {
                     contentType(ContentType.Application.Json)
@@ -84,9 +87,9 @@ class NarmestelederApiV1Test : DescribeSpec({
                 response.status shouldBe HttpStatusCode.Accepted
                 coVerify(exactly = 1) {
                     narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
-                        eq(narmesteLederRelasjon), eq(
-                            NlResponseSource.LPS
-                        )
+                        eq(narmesteLederRelasjon),
+                        eq(NlResponseSource.LPS),
+                        eq(narmesteLederRelasjon.organisasjonsnummer),
                     )
                 }
             }
@@ -94,10 +97,8 @@ class NarmestelederApiV1Test : DescribeSpec({
 
         it("should return 400 Bad Request for invalid payload") {
             withTestApplication {
-                texasHttpClientMock.defaultMocks()
-                aaregClientMock.defaultMocks()
-
                 // Arrange
+                texasHttpClientMock.defaultMocks()
                 // Act
                 val response = client.post("/api/v1/narmesteleder") {
                     contentType(ContentType.Application.Json)
@@ -114,10 +115,8 @@ class NarmestelederApiV1Test : DescribeSpec({
 
         it("should return 401 unauthorized for missing token") {
             withTestApplication {
-                texasHttpClientMock.defaultMocks()
-                aaregClientMock.defaultMocks()
-
                 // Arrange
+                texasHttpClientMock.defaultMocks()
                 // Act
                 val response = client.post("/api/v1/narmesteleder") {
                     contentType(ContentType.Application.Json)
@@ -133,10 +132,8 @@ class NarmestelederApiV1Test : DescribeSpec({
 
         it("should return 401 unauthorized for invalid token issuer") {
             withTestApplication {
-                texasHttpClientMock.defaultMocks()
-                aaregClientMock.defaultMocks()
-
                 // Arrange
+                texasHttpClientMock.defaultMocks()
                 // Act
                 val response = client.post("/api/v1/narmesteleder") {
                     contentType(ContentType.Application.Json)
@@ -155,10 +152,8 @@ class NarmestelederApiV1Test : DescribeSpec({
     describe("POST /narmesteleder/avkreft") {
         it("should return 202 Accepted for valid payload") {
             withTestApplication {
-                texasHttpClientMock.defaultMocks()
-                aaregClientMock.defaultMocks()
-
                 // Arrange
+                texasHttpClientMock.defaultMocks()
                 val narmesteLederAvkreft = narmesteLederAvkreft()
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {
@@ -181,10 +176,8 @@ class NarmestelederApiV1Test : DescribeSpec({
 
         it("should return 400 Bad Request for invalid payload") {
             withTestApplication {
-                texasHttpClientMock.defaultMocks()
-                aaregClientMock.defaultMocks()
-
                 // Arrange
+                texasHttpClientMock.defaultMocks()
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {
                     contentType(ContentType.Application.Json)

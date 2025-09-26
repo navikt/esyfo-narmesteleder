@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicReference
  * */
 class FakeAaregClient(
     private val juridiskOrgnummer: String? = null,
-    private val arbeidsstedOrgnummer: String? = null
+    private val arbeidsstedOrgnummer: String? = null,
 ) : IAaregClient {
     private val failureRef = AtomicReference<Throwable?>(null)
 

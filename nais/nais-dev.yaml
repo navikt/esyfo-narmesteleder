@@ -84,7 +84,7 @@ spec:
       value: https://pdl-api.dev-fss-pub.nais.io/graphql
     - name: PDL_SCOPE
       value: dev-fss.pdl.pdl-api
-    - name: AAREG_URL
+    - name: AAREG_BASE_URL
       value: https://aareg-services-q2.dev-fss-pub.nais.io
     - name: AAREG_SCOPE
       value: dev-fss.arbeidsforhold.aareg-services-nais

@@ -1,6 +1,6 @@
 
 [versions]
-datafaker= "2.5.0"
+datafaker= "2.5.1"
 flyway="11.12.0"
 hikaricp = "7.0.2"
 jackson-datatype-jsr = "2.20.0"

@@ -98,7 +98,7 @@ private fun servicesModule() = module {
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )
         ) else FakeSykemeldingNLKafkaProducer()
-        NarmestelederKafkaService(sykemeldingNLKafkaProducer, get())
+        NarmestelederKafkaService(sykemeldingNLKafkaProducer, get(), get())
     }
 }
 

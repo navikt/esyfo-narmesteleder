@@ -17,7 +17,6 @@ fun Application.configureRouting() {
     val database by inject<DatabaseInterface>()
     val narmestelederKafkaService by inject<NarmestelederKafkaService>()
     val texasHttpClient by inject<TexasHttpClient>()
-    val aaregService by inject<AaregService>()
 
     installCallId()
     installContentNegotiation()
@@ -27,7 +26,7 @@ fun Application.configureRouting() {
 
         registerPodApi(applicationState, database)
         registerMetricApi()
-        registerApiV1(narmestelederKafkaService, texasHttpClient, aaregService)
+        registerApiV1(narmestelederKafkaService, texasHttpClient)
         get("/") {
             call.respondText("Hello World!")
         }

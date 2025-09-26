@@ -1,12 +1,10 @@
 package no.nav.syfo.aareg.client
 
-import io.ktor.client.HttpClient
+import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.server.plugins.NotFoundException
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import org.slf4j.LoggerFactory
@@ -25,6 +23,8 @@ interface IAaregClient {
     ): AaregArbeidsforholdOversikt
 }
 
+class AaregClientException(message: String, cause: Exception) : RuntimeException(message, cause)
+
 class AaregClient(
     aaregBaseUrl: String,
     private val texasHttpClient: TexasHttpClient,
@@ -42,13 +42,9 @@ class AaregClient(
             TexasHttpClient.IDENTITY_PROVIDER_AZUREAD,
             TexasHttpClient.getTarget(scope)
         ).accessToken
-    }.getOrElse { ex ->
-        when (ex) {
-            is ClientRequestException ->
-                throw ApiErrorException.InternalServerErrorException("Noe gikk galt ved henting av system-token")
-
-            else -> throw ex
-        }
+    }.getOrElse {
+        if (it is Exception) throw AaregClientException("Noe gikk galt ved henting av system-token", it)
+        else throw it
     }
 
     private suspend fun getArbeidsforholdInAareg(
@@ -70,11 +66,11 @@ class AaregClient(
         return res.getOrElse { ex ->
             when (ex) {
                 is ClientRequestException if ex.response.status == HttpStatusCode.NotFound -> {
-                    throw NotFoundException("Fant ingen arbeidsforhold for bruker")
+                    throw AaregClientException("Error fetching arbeidsforhold oversikt for person $personIdent", ex)
                 }
 
                 is ClientRequestException -> {
-                    throw ApiErrorException.InternalServerErrorException(
+                    throw AaregClientException(
                         "Noe gikk galt ved henting av arbeidsforhold",
                         ex
                     )

@@ -4,91 +4,76 @@ import createRandomValidOrgNumbers
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
-import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.NarmesteLederValidator.nlvalidate
-
+import no.nav.syfo.narmesteleder.service.ValidateNarmesteLederException
+import no.nav.syfo.narmesteleder.service.validateNarmesteLeder
 
 class NarmesteLederValidatorTest : DescribeSpec({
     val randomOrgNumbers = createRandomValidOrgNumbers()
 
-    describe("checkArbeidsforhold matches") {
-        val nlOrgNumber = randomOrgNumbers.first()
-        val innsenderOrgNumber = nlOrgNumber
-        val sykemeldtOrgNumber = listOf(nlOrgNumber)
+    describe("organization number matches for sykemeldt, nl and innsender") {
+        val innsenderOrgNumber = randomOrgNumbers.first()
+        val nlOrgNumbers = setOf(innsenderOrgNumber)
 
-        it("It should accept when sykemeldt is only org number is within org") {
+        it("It should not throw when sykemeldt is only org number used for all parties") {
             shouldNotThrowAny {
-                nlvalidate {
-                    checkArbeidsforhold(
-                        validOrgNumbers = sykemeldtOrgNumber,
-                        innsenderEmployerOrgnr = innsenderOrgNumber,
-                        nlOrgNumber = nlOrgNumber
-                    )
-                }
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = nlOrgNumbers,
+                    innsenderOrgNumber = innsenderOrgNumber,
+                    narmesteLederOrgNumbers = nlOrgNumbers
+                )
             }
         }
-        it("Should accept when sykemeldt has at least one matching org number with the other parties") {
+
+        it("Should not throw when sykemeldt has at least one matching org number with the other parties") {
             shouldNotThrowAny {
-                nlvalidate {
-                    checkArbeidsforhold(
-                        validOrgNumbers = sykemeldtOrgNumber + randomOrgNumbers.last(),
-                        innsenderEmployerOrgnr = innsenderOrgNumber,
-                        nlOrgNumber = nlOrgNumber
-                    )
-                }
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = nlOrgNumbers + randomOrgNumbers[1],
+                    innsenderOrgNumber = innsenderOrgNumber,
+                    narmesteLederOrgNumbers = nlOrgNumbers
+                )
             }
         }
     }
 
-    describe("checkArbeidsforhold mismatch") {
-        it("Should throw Forbidden if NL is not within sykemeldt orgs") {
-            shouldThrow<ApiErrorException.ForbiddenException> {
-                nlvalidate {
-                    checkArbeidsforhold(
-                        validOrgNumbers = listOf(randomOrgNumbers.first(), randomOrgNumbers[1]),
-                        innsenderEmployerOrgnr = randomOrgNumbers[2],
-                        nlOrgNumber = randomOrgNumbers[2]
-                    )
-                }
+    describe("Mismatch in organization number between parties") {
+        it("Should throw ValidateNarmesteLederException if NL is not within sykemeldt orgs") {
+            shouldThrow<ValidateNarmesteLederException> {
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
+                    narmesteLederOrgNumbers = setOf(randomOrgNumbers[1]),
+                    innsenderOrgNumber = randomOrgNumbers.first(),
+                )
             }
         }
 
-        it("Should throw Forbidden if arbeidsgiver is not within sykemeldt org") {
-            shouldThrow<ApiErrorException.ForbiddenException> {
-                nlvalidate {
-                    checkArbeidsforhold(
-                        validOrgNumbers = listOf(randomOrgNumbers.first(), randomOrgNumbers[1]),
-                        innsenderEmployerOrgnr = randomOrgNumbers[2],
-                        nlOrgNumber = randomOrgNumbers[2]
-                    )
-                }
+        it("Should throw ValidateNarmesteLederException if innsender is not within sykemeldt org") {
+            shouldThrow<ValidateNarmesteLederException> {
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
+                    narmesteLederOrgNumbers = setOf(randomOrgNumbers[1]),
+                    innsenderOrgNumber = randomOrgNumbers.first(),
+                )
+            }
+        }
+
+        it("Should throw ValidateNarmesteLederException exception if no organizations are found for sykemeldt") {
+            shouldThrow<ValidateNarmesteLederException> {
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = emptySet(),
+                    narmesteLederOrgNumbers = setOf(randomOrgNumbers[1]),
+                    innsenderOrgNumber = randomOrgNumbers.first(),
+                )
+            }
+        }
+
+        it("Should throw ValidateNarmesteLederException exception if no organizations are found for nærmeste leder") {
+            shouldThrow<ValidateNarmesteLederException> {
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
+                    narmesteLederOrgNumbers = emptySet(),
+                    innsenderOrgNumber = randomOrgNumbers.first(),
+                )
             }
         }
     }
-
-    describe("matchOne") {
-        it("Should not throw when number is in list") {
-            shouldNotThrowAny {
-                nlvalidate {
-                    matchOne(
-                        validOrgNumbers = listOf(randomOrgNumbers.first(), randomOrgNumbers.last()),
-                        checkOrgNumber = randomOrgNumbers.first()
-                    )
-                }
-            }
-        }
-
-        it("Should BadRequest throw when number is not in list") {
-            shouldThrow<ApiErrorException.BadRequestException> {
-                nlvalidate {
-                    matchOne(
-                        validOrgNumbers = listOf(randomOrgNumbers.first(), randomOrgNumbers[1]),
-                        checkOrgNumber = randomOrgNumbers.last()
-                    )
-                }
-            }
-
-        }
-    }
-
 })

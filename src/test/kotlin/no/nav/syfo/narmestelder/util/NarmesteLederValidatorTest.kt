@@ -18,8 +18,9 @@ class NarmesteLederValidatorTest : DescribeSpec({
             shouldNotThrowAny {
                 validateNarmesteLeder(
                     sykemeldtOrgNumbers = nlOrgNumbers,
+                    narmesteLederOrgNumbers = nlOrgNumbers,
                     innsenderOrgNumber = innsenderOrgNumber,
-                    narmesteLederOrgNumbers = nlOrgNumbers
+                    orgNumberInRequest = innsenderOrgNumber
                 )
             }
         }
@@ -28,8 +29,9 @@ class NarmesteLederValidatorTest : DescribeSpec({
             shouldNotThrowAny {
                 validateNarmesteLeder(
                     sykemeldtOrgNumbers = nlOrgNumbers + randomOrgNumbers[1],
+                    narmesteLederOrgNumbers = nlOrgNumbers,
                     innsenderOrgNumber = innsenderOrgNumber,
-                    narmesteLederOrgNumbers = nlOrgNumbers
+                    orgNumberInRequest = innsenderOrgNumber
                 )
             }
         }
@@ -42,16 +44,51 @@ class NarmesteLederValidatorTest : DescribeSpec({
                     sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
                     narmesteLederOrgNumbers = setOf(randomOrgNumbers[1]),
                     innsenderOrgNumber = randomOrgNumbers.first(),
+                    orgNumberInRequest = randomOrgNumbers.first(),
                 )
             }
         }
 
-        it("Should throw ValidateNarmesteLederException if innsender is not within sykemeldt org") {
+        it("Should throw ValidateNarmesteLederException if payload org is not within sykemeldt orgs") {
             shouldThrow<ValidateNarmesteLederException> {
                 validateNarmesteLeder(
                     sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
                     narmesteLederOrgNumbers = setOf(randomOrgNumbers[1]),
                     innsenderOrgNumber = randomOrgNumbers.first(),
+                    orgNumberInRequest = randomOrgNumbers.last(),
+                )
+            }
+        }
+
+        it("Should throw ValidateNarmesteLederException if innsender is not within NL org") {
+            shouldThrow<ValidateNarmesteLederException> {
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
+                    narmesteLederOrgNumbers = setOf(randomOrgNumbers[1]),
+                    innsenderOrgNumber = randomOrgNumbers.first(),
+                    orgNumberInRequest = randomOrgNumbers.first(),
+                )
+            }
+        }
+
+        it("Should throw ValidateNarmesteLederException if innsender is not within anyones org") {
+            shouldThrow<ValidateNarmesteLederException> {
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
+                    narmesteLederOrgNumbers = setOf(randomOrgNumbers.first()),
+                    innsenderOrgNumber = randomOrgNumbers.last(),
+                    orgNumberInRequest = randomOrgNumbers.first(),
+                )
+            }
+        }
+
+        it("Should throw ValidateNarmesteLederException if no one is within the same org") {
+            shouldThrow<ValidateNarmesteLederException> {
+                validateNarmesteLeder(
+                    sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
+                    narmesteLederOrgNumbers = setOf(randomOrgNumbers[1]),
+                    innsenderOrgNumber = randomOrgNumbers[2],
+                    orgNumberInRequest = randomOrgNumbers[3],
                 )
             }
         }
@@ -62,6 +99,7 @@ class NarmesteLederValidatorTest : DescribeSpec({
                     sykemeldtOrgNumbers = emptySet(),
                     narmesteLederOrgNumbers = setOf(randomOrgNumbers[1]),
                     innsenderOrgNumber = randomOrgNumbers.first(),
+                    orgNumberInRequest = randomOrgNumbers.first(),
                 )
             }
         }
@@ -72,6 +110,7 @@ class NarmesteLederValidatorTest : DescribeSpec({
                     sykemeldtOrgNumbers = setOf(randomOrgNumbers.first()),
                     narmesteLederOrgNumbers = emptySet(),
                     innsenderOrgNumber = randomOrgNumbers.first(),
+                    orgNumberInRequest = randomOrgNumbers.first(),
                 )
             }
         }

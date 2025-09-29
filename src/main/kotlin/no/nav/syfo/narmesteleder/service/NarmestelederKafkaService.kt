@@ -35,6 +35,7 @@ class NarmestelederKafkaService(
             val leder = pdlService.getPersonFor(narmesteLederRelasjonerWrite.leder.fnr)
 
             validateNarmesteLeder(
+                orgNumberInRequest = narmesteLederRelasjonerWrite.organisasjonsnummer,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 narmesteLederOrgNumbers = nlArbeidsforhold,
                 innsenderOrgNumber = innsenderOrganizationNumber

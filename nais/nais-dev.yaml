@@ -54,7 +54,7 @@ spec:
   tokenx:
     enabled: true
   maskinporten:
-    enabled: false
+    enabled: true
     scopes:
       exposes:
         - accessibleForAll: true

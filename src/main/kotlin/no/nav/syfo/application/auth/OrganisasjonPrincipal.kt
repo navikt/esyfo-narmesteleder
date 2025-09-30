@@ -1,6 +1,6 @@
 package no.nav.syfo.application.auth
 
-data class BrukerPrincipal(
+data class OrganisasjonPrincipal(
     val ident: String,
     val token: String,
 )

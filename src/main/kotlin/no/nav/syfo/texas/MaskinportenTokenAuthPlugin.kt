@@ -5,6 +5,7 @@ import io.ktor.server.auth.*
 import io.ktor.util.AttributeKey
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
+import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.texas.client.OrganizationId
@@ -66,12 +67,10 @@ val MaskinportenTokenAuthPlugin = createRouteScopedPlugin(
 
             call.attributes.put(TOKEN_CONSUMER_KEY, introspectionResponse.consumer)
 
-            // Maskinporten har ikke ident (idp). Den gjelder kun idporten/tokenx.
             call.authentication.principal(
-                BrukerPrincipal(
-                    ident = introspectionResponse.pid,
+                OrganisasjonPrincipal(
+                    ident = introspectionResponse.consumer.ID,
                     token = bearerToken,
-                    consumer = introspectionResponse.consumer
                 )
             )
         }

@@ -21,6 +21,8 @@ import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.installContentNegotiation
@@ -37,8 +39,15 @@ import no.nav.syfo.texas.client.TexasHttpClient
 
 class IdportenNarmestelederApiV1Test : DescribeSpec({
     val texasClientMock = mockk<TexasHttpClient>()
+    val narmesteLederRelasjon = narmesteLederRelasjon()
+    val fakeAaregClient = FakeAaregClient(
+        juridiskOrgnummer = narmesteLederRelasjon.organisasjonsnummer,
+        arbeidsstedOrgnummer = narmesteLederRelasjon.organisasjonsnummer,
+    )
+    val aaregService = AaregService(fakeAaregClient)
     val pdlService = PdlService(FakePdlClient())
-    val narmestelederKafkaService = NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService)
+    val narmestelederKafkaService =
+        NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService, aaregService)
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
     val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
     val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
@@ -90,9 +99,11 @@ class IdportenNarmestelederApiV1Test : DescribeSpec({
                 response.status shouldBe HttpStatusCode.Accepted
                 coVerify(exactly = 1) {
                     narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
-                        eq(narmesteLederRelasjon), eq(
+                        eq(narmesteLederRelasjon),
+                        eq(
                             NlResponseSource.LPS
-                        )
+                        ),
+                        eq(narmesteLederRelasjon.organisasjonsnummer),
                     )
                 }
             }
@@ -114,9 +125,11 @@ class IdportenNarmestelederApiV1Test : DescribeSpec({
                 response.status shouldBe HttpStatusCode.Forbidden
                 coVerify(exactly = 0) {
                     narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
-                        eq(narmesteLederRelasjon), eq(
+                        eq(narmesteLederRelasjon),
+                        eq(
                             NlResponseSource.LPS
-                        )
+                        ),
+                        eq(narmesteLederRelasjon.organisasjonsnummer),
                     )
                 }
             }

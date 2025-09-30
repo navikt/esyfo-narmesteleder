@@ -6,6 +6,7 @@ import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 
 suspend inline fun <reified T : Any> RoutingCall.tryReceive() = runCatching { receive<T>() }.getOrElse {
@@ -15,6 +16,5 @@ suspend inline fun <reified T : Any> RoutingCall.tryReceive() = runCatching { re
     }
 }
 
-fun RoutingCall.consumerIdFromPrincipal() = principal<BrukerPrincipal>()
-    ?.let { it.consumer?.ID }
+fun RoutingCall.consumerIdFromPrincipal() = principal< OrganisasjonPrincipal>()?.ident
     ?: throw ApiErrorException.UnauthorizedException("No principal found for user")

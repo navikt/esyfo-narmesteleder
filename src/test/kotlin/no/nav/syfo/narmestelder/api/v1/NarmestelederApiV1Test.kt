@@ -39,7 +39,6 @@ import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 
 class NarmestelederApiV1Test : DescribeSpec({
-    val texasClientMock = mockk<TexasHttpClient>()
     val pdlService = PdlService(FakePdlClient())
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = narmesteLederRelasjon()

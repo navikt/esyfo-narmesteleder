@@ -28,7 +28,7 @@ fun Route.registerIdportenNarmestelederApiV1(
             }
             val bruker = call.attributes[BRUKER_PRINCIPAL]
             altinnTilgangerService.validateTilgangToOrganisasjon(bruker, nlRelasjon.organisasjonsnummer)
-            narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS)
+            narmestelederKafkaService.sendNarmesteLederRelation(nlRelasjon, NlResponseSource.LPS, nlRelasjon.organisasjonsnummer)
             call.respond(HttpStatusCode.Accepted)
         }
     }

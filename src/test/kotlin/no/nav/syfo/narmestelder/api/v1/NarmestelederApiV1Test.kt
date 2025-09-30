@@ -111,7 +111,11 @@ class NarmestelederApiV1Test : DescribeSpec({
         it("should return 400 Bad Request for invalid payload") {
             withTestApplication {
                 // Arrange
-                texasHttpClientMock.defaultMocks()
+                texasHttpClientMock.defaultMocks(
+                    consumer = DefaultOrganization.copy(
+                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                    )
+                )
                 // Act
                 val response = client.post("/api/v1/narmesteleder") {
                     contentType(ContentType.Application.Json)
@@ -166,7 +170,11 @@ class NarmestelederApiV1Test : DescribeSpec({
         it("should return 202 Accepted for valid payload") {
             withTestApplication {
                 // Arrange
-                texasHttpClientMock.defaultMocks()
+                texasHttpClientMock.defaultMocks(
+                    consumer = DefaultOrganization.copy(
+                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                    )
+                )
                 val narmesteLederAvkreft = narmesteLederAvkreft()
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {
@@ -190,7 +198,11 @@ class NarmestelederApiV1Test : DescribeSpec({
         it("should return 400 Bad Request for invalid payload") {
             withTestApplication {
                 // Arrange
-                texasHttpClientMock.defaultMocks()
+                texasHttpClientMock.defaultMocks(
+                    consumer = DefaultOrganization.copy(
+                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                    )
+                )
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {
                     contentType(ContentType.Application.Json)

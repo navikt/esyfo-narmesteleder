@@ -1,7 +1,5 @@
 package no.nav.syfo.application
 
-import kotlin.String
-
 data class ClientProperties(
     val pdlBaseUrl: String,
     val pdlScope: String,

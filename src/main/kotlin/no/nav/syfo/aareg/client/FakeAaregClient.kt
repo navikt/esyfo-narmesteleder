@@ -1,9 +1,9 @@
 package no.nav.syfo.aareg.client
 
+import java.util.*
+import java.util.concurrent.atomic.*
 import net.datafaker.Faker
 import no.nav.syfo.aareg.client.FakeAaregClient.Companion.ORG_NUMBER_PREFIX
-import java.util.*
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * @param juridiskOrgnummer org.number for `hovedenhet`. If none specified, a random number

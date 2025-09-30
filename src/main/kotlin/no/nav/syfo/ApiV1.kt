@@ -3,8 +3,8 @@ package no.nav.syfo
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
-import no.nav.syfo.narmesteleder.api.v1.registerIdportenNarmestelederApiV1
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
+import no.nav.syfo.narmesteleder.api.v1.registerIdportenNarmestelederApiV1
 import no.nav.syfo.narmesteleder.api.v1.registerNarmestelederApiV1
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.texas.TexasTokenXAuthPlugin

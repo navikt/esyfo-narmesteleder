@@ -1,7 +1,6 @@
 package no.nav.syfo.application.kafka
 
 import java.util.*
-import kotlin.collections.set
 import kotlin.reflect.KClass
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig

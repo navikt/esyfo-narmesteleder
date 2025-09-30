@@ -1,9 +1,8 @@
 package no.nav.syfo.texas
 
-import io.ktor.server.application.*
-import io.ktor.server.auth.*
+import io.ktor.server.application.createRouteScopedPlugin
+import io.ktor.server.auth.authentication
 import io.ktor.util.AttributeKey
-import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.TOKEN_ISSUER

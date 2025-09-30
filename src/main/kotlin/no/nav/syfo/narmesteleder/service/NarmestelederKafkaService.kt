@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
-import io.ktor.server.plugins.*
+import io.ktor.server.plugins.BadRequestException
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClientException
 import no.nav.syfo.application.exception.InternalServerErrorException

@@ -1,11 +1,10 @@
 package no.nav.syfo.narmesteleder.api.v1
 
-import io.ktor.serialization.*
-import io.ktor.server.auth.*
-import io.ktor.server.plugins.*
-import io.ktor.server.request.*
-import io.ktor.server.routing.*
-import no.nav.syfo.application.auth.BrukerPrincipal
+import io.ktor.serialization.JsonConvertException
+import io.ktor.server.auth.principal
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.request.receive
+import io.ktor.server.routing.RoutingCall
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 

@@ -4,8 +4,9 @@ import getMockEngine
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.ktor.client.*
-import io.ktor.http.*
+import io.ktor.client.HttpClient
+import io.ktor.http.Headers
+import io.ktor.http.HttpStatusCode
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk

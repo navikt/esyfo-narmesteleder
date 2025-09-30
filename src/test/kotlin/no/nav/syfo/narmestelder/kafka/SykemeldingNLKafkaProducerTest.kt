@@ -14,7 +14,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import narmesteLederAvkreft
 import narmesteLederRelasjon
-import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbruddResponseKafkaMessage

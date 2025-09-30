@@ -33,8 +33,7 @@ val TexasTokenXAuthPlugin = createRouteScopedPlugin(
 
             if (!introspectionResponse.active) {
                 call.application.environment.log.warn(
-                    "" +
-                        "Token is not active: ${introspectionResponse.error ?: "No error message"}"
+                    "Token is not active: ${introspectionResponse.error ?: "No error message"}"
                 )
                 call.respondNullable(HttpStatusCode.Unauthorized)
                 return@onCall

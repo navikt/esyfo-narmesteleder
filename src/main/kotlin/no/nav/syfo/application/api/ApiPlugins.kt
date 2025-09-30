@@ -20,6 +20,7 @@ import io.ktor.server.response.respond
 import java.util.*
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
+import no.nav.syfo.application.exception.ApiErrorException
 
 const val NAV_CALL_ID_HEADER = "Nav-Call-Id"
 
@@ -32,7 +33,9 @@ fun Application.installContentNegotiation() {
             configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
         }
     }
-}fun Application.installCallId() {
+}
+
+fun Application.installCallId() {
     install(CallId) {
         retrieve { it.request.headers[NAV_CALL_ID_HEADER] }
         generate { UUID.randomUUID().toString() }
@@ -50,6 +53,7 @@ fun determineApiError(cause: Throwable, path: String): ApiError {
     return when (cause) {
         is BadRequestException -> cause.toApiError(path)
         is NotFoundException -> cause.toApiError(path)
+        is ApiErrorException -> cause.toApiError(path)
         else -> ApiError(
             HttpStatusCode.InternalServerError,
             ErrorType.INTERNAL_SERVER_ERROR,

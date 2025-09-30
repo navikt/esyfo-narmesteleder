@@ -3,6 +3,7 @@ package no.nav.syfo.application.api
 import io.ktor.http.HttpStatusCode
 import java.time.Instant
 
+
 open class ApiError(
     val status: HttpStatusCode,
     val type: ErrorType,
@@ -10,6 +11,7 @@ open class ApiError(
     open val path: String? = null,
     val timestamp: Instant = Instant.now(),
 )
+
 enum class ErrorType {
     AUTHENTICATION_ERROR,
     AUTHORIZATION_ERROR,

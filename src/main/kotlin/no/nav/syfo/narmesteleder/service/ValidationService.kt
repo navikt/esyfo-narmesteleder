@@ -7,8 +7,7 @@ import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
-import no.nav.syfo.application.exception.InternalServerErrorException
-import no.nav.syfo.application.exceptions.UnauthorizedException
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
 import no.nav.syfo.pdl.PdlService
@@ -64,13 +63,13 @@ class ValidationService(
             throw BadRequestException("Could not find one or both of the persons")
         } catch (e: PdlRequestException) {
             logger.error("Validering av personer feilet {}", e.message)
-            throw InternalServerErrorException("Error when validating persons")
+            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
             throw BadRequestException("Error when validating persons")
         } catch (e: AaregClientException) {
             logger.error("Henting av arbeidsforhold feilet {}", e.message)
-            throw InternalServerErrorException("Error when validating persons")
+            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
         }
 
     }

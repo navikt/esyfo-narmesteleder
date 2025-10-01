@@ -1,9 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
 import io.ktor.server.plugins.BadRequestException
-import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.aareg.client.AaregClientException
-import no.nav.syfo.application.exception.InternalServerErrorException
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
 import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
@@ -13,7 +11,6 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import org.slf4j.LoggerFactory
@@ -45,7 +42,7 @@ class NarmestelederKafkaService(
         } catch (e: PdlResourceNotFoundException) {
             throw BadRequestException("Could not find sykmeldt for provided fnr")
         } catch (e: PdlRequestException) {
-            throw InternalServerErrorException("Error when validating fnr for sykmeldt")
+            throw ApiErrorException.InternalServerErrorException("Error when validating fnr for sykmeldt")
         }
         kafkaSykemeldingProducer.sendSykemeldingNLBrudd(
             NlAvbrutt(

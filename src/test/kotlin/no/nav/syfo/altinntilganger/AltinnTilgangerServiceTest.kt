@@ -8,8 +8,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.BrukerPrincipal
-import no.nav.syfo.application.exception.ForbiddenException
-import no.nav.syfo.application.exception.InternalServerErrorException
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 
 class AltinnTilgangerServiceTest : DescribeSpec({
@@ -25,7 +24,7 @@ class AltinnTilgangerServiceTest : DescribeSpec({
             val fnr = "12345678901"
             val orgnummer = "987654321"
             val brukerPrincipal = BrukerPrincipal(fnr, "token")
-            shouldThrow<ForbiddenException> {
+            shouldThrow<ApiErrorException.ForbiddenException> {
                 altinnTilgangerService.validateTilgangToOrganisasjon(brukerPrincipal, orgnummer)
             }
         }
@@ -44,7 +43,7 @@ class AltinnTilgangerServiceTest : DescribeSpec({
             val altinnTilgangerServiceWithMock = AltinnTilgangerService(mockAltinnTilgangerClient)
             val accessPair = altinnTilgangerClient.usersWithAccess.first()
             val brukerPrincipal = BrukerPrincipal(accessPair.first, "token")
-            shouldThrow<InternalServerErrorException> {
+            shouldThrow<ApiErrorException.InternalServerErrorException> {
                 altinnTilgangerServiceWithMock.validateTilgangToOrganisasjon(brukerPrincipal, accessPair.second)
             }
         }

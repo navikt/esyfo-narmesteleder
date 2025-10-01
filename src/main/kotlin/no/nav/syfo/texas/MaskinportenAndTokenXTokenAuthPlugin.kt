@@ -15,10 +15,10 @@ import no.nav.syfo.util.logger
 
 val TOKEN_CONSUMER_KEY = AttributeKey<OrganizationId>("tokenConsumer")
 private val VALID_ISSUERS = listOf(JwtIssuer.MASKINPORTEN, JwtIssuer.TOKEN_X)
-private val logger = logger("no.nav.syfo.texas.MaskinportenTokenAuthPlugin")
+private val logger = logger("no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin")
 
 val MaskinportenTokenAuthPlugin = createRouteScopedPlugin(
-    name = "MaskinportenTokenAuthPlugin",
+    name = "MaskinportenAndTokenXTokenAuthPlugin",
     createConfiguration = ::TexasAuthPluginConfiguration,
 ) {
     pluginConfig.apply {

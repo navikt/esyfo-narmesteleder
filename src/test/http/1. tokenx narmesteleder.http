@@ -4,18 +4,16 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "sykmeldtFnr": "1234567890",
-  "organisasjonsnummer": "879880760",
+  "sykmeldtFnr": "15436803416",
+  "organisasjonsnummer": "{{orgnummer}}",
   "leder": {
-    "fornavn": "Ola",
-    "etternavn": "Norman",
-    "fnr": "01010112345",
+    "fornavn": "Innesluttet",
+    "etternavn": "Bjelker",
+    "fnr": "13468329780",
     "mobil": "99999999",
-    "epost": "ola.norman@acme.com"
+    "epost": "inne.sluttet@acme.com"
   }
 }
-
-
 
 
 ### POST avkreft narmesteleder relasjon

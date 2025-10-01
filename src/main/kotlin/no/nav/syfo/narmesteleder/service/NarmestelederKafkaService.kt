@@ -6,12 +6,14 @@ import no.nav.syfo.aareg.client.AaregClientException
 import no.nav.syfo.application.exception.InternalServerErrorException
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
 import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
+import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
 import no.nav.syfo.narmesteleder.kafka.ISykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import org.slf4j.LoggerFactory
@@ -19,49 +21,20 @@ import org.slf4j.LoggerFactory
 class NarmestelederKafkaService(
     val kafkaSykemeldingProducer: ISykemeldingNLKafkaProducer,
     val pdlService: PdlService,
-    val aaregService: AaregService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    suspend fun sendNarmesteLederRelation(
+    fun sendNarmesteLederRelation(
         narmesteLederRelasjonerWrite: NarmesteLederRelasjonerWrite,
+        narmestelederAktorer: NarmestelederAktorer,
         source: NlResponseSource,
-        innsenderOrganizationNumber: String
     ) {
-        try {
-            val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(narmesteLederRelasjonerWrite.leder.fnr)
-            val sykemeldtArbeidsforhold =
-                aaregService.findOrgNumbersByPersonIdent(narmesteLederRelasjonerWrite.sykmeldtFnr)
-            val sykmeldt = pdlService.getPersonFor(narmesteLederRelasjonerWrite.sykmeldtFnr)
-            val leder = pdlService.getPersonFor(narmesteLederRelasjonerWrite.leder.fnr)
-
-            validateNarmesteLeder(
-                orgNumberInRequest = narmesteLederRelasjonerWrite.organisasjonsnummer,
-                sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
-                narmesteLederOrgNumbers = nlArbeidsforhold,
-                innsenderOrgNumber = innsenderOrganizationNumber
-            )
-
-            kafkaSykemeldingProducer.sendSykemeldingNLRelasjon(
-                NlResponse(
-                    sykmeldt = Sykmeldt.from(sykmeldt),
-                    leder = narmesteLederRelasjonerWrite.leder.updateFromPerson(leder),
-                    orgnummer = narmesteLederRelasjonerWrite.organisasjonsnummer
-                ),
-                source = source
-            )
-        } catch (e: PdlResourceNotFoundException) {
-            logger.error("Henting av person(er) feilet {}", e.message)
-            throw BadRequestException("Could not find one or both of the persons")
-        } catch (e: PdlRequestException) {
-            logger.error("Validering av personer feilet {}", e.message)
-            throw InternalServerErrorException("Error when validating persons")
-        } catch (e: ValidateNarmesteLederException) {
-            logger.error("Validering av arbeidsforhold feilet {}", e.message)
-            throw BadRequestException("Error when validating persons")
-        } catch (e: AaregClientException) {
-            logger.error("Henting av arbeidsforhold feilet {}", e.message)
-            throw InternalServerErrorException("Error when validating persons")
-        }
+        kafkaSykemeldingProducer.sendSykemeldingNLRelasjon(
+            NlResponse(
+                sykmeldt = Sykmeldt.from(narmestelederAktorer.sykmeldt),
+                leder = narmesteLederRelasjonerWrite.leder.updateFromPerson(narmestelederAktorer.leder),
+                orgnummer = narmesteLederRelasjonerWrite.organisasjonsnummer
+            ), source = source
+        )
     }
 
     suspend fun avbrytNarmesteLederRelation(

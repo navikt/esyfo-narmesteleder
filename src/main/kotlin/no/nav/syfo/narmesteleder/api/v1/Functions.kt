@@ -14,6 +14,3 @@ suspend inline fun <reified T : Any> RoutingCall.tryReceive() = runCatching { re
         else -> throw it
     }
 }
-
-fun RoutingCall.consumerIdFromPrincipal() = principal< OrganisasjonPrincipal>()?.ident
-    ?: throw ApiErrorException.UnauthorizedException("No principal found for user")

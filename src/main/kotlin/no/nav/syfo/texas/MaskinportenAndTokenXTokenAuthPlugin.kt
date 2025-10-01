@@ -23,11 +23,10 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
 ) {
     pluginConfig.apply {
         onCall { call ->
-            val tokenIssuer = call.attributes.getOrNull(TOKEN_ISSUER)
             val issuer = try {
-                tokenIssuer
+                call.attributes.getOrNull(TOKEN_ISSUER)
                     ?.takeIf { it in VALID_ISSUERS }
-                    ?: error("Missing or invalid token issuer: $tokenIssuer")
+                    ?: error("Missing or invalid token issuer")
             } catch (e: Exception) {
                 throw ApiErrorException.UnauthorizedException("Failed to find issuer in token: ${e.message}", e)
             }

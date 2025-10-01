@@ -30,10 +30,9 @@ class AaregClientTest : DescribeSpec({
     val personIdent = "12345"
 
     describe("Successfull responses from Aareg") {
-        val arbeidsforhold = FakeAaregClient(
-            arbeidsstedOrgnummer = arbeidstakerEnhet.ID,
-            juridiskOrgnummer = arbeidstakerEnhet.ID,
-        ).getArbeidsforhold(personIdent)
+        val fakeAaregClient = FakeAaregClient()
+        fakeAaregClient.arbeidsForholdForIdent.put(personIdent, arbeidstakerEnhet.ID to arbeidstakerEnhet.ID)
+        val arbeidsforhold = FakeAaregClient().getArbeidsforhold(personIdent)
 
         val mockEngine = MockEngine { req ->
             when (req.method) {

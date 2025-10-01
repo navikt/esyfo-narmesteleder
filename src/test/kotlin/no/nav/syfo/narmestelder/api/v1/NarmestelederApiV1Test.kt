@@ -44,10 +44,7 @@ class NarmestelederApiV1Test : DescribeSpec({
     val pdlService = PdlService(FakePdlClient())
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = narmesteLederRelasjon()
-    val fakeAaregClient = FakeAaregClient(
-        juridiskOrgnummer = narmesteLederRelasjon.organisasjonsnummer,
-        arbeidsstedOrgnummer = narmesteLederRelasjon.organisasjonsnummer,
-    )
+    val fakeAaregClient = FakeAaregClient()
     val aaregService = AaregService(fakeAaregClient)
     val narmestelederKafkaService =
         NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService)
@@ -60,6 +57,7 @@ class NarmestelederApiV1Test : DescribeSpec({
     beforeTest {
         clearAllMocks()
         fakeAltinnTilgangerClient.usersWithAccess.clear()
+        fakeAaregClient.arbeidsForholdForIdent.clear()
     }
     fun withTestApplication(
         fn: suspend ApplicationTestBuilder.() -> Unit
@@ -100,6 +98,14 @@ class NarmestelederApiV1Test : DescribeSpec({
                         ),
                         acr = "Level4",
                         pid = narmesteLederRelasjon.leder.fnr
+                    )
+                    fakeAaregClient.arbeidsForholdForIdent.put(
+                        narmesteLederRelasjon.sykmeldtFnr,
+                        narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
+                    )
+                    fakeAaregClient.arbeidsForholdForIdent.put(
+                        narmesteLederRelasjon.leder.fnr,
+                        narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
                     )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
@@ -187,13 +193,20 @@ class NarmestelederApiV1Test : DescribeSpec({
                         pid = callerPid
                     )
                     fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.organisasjonsnummer)
+                    fakeAaregClient.arbeidsForholdForIdent.put(
+                        narmesteLederRelasjon.sykmeldtFnr,
+                        narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
+                    )
+                    fakeAaregClient.arbeidsForholdForIdent.put(
+                        narmesteLederRelasjon.leder.fnr,
+                        narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
+                    )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
                     }
-
                     // Assert
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {

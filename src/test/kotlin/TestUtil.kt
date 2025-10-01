@@ -115,8 +115,8 @@ fun AaregClient.defaultMocks(
     arbeidstakerUnderenhet: String? = null,
 ) {
     val client = FakeAaregClient(
-        arbeidsstedOrgnummer = arbeidstakerUnderenhet ?: arbeidstakerHovedenhet,
-        juridiskOrgnummer = arbeidstakerHovedenhet,
+//        arbeidsstedOrgnummer = arbeidstakerUnderenhet ?: arbeidstakerHovedenhet,
+//        juridiskOrgnummer = arbeidstakerHovedenhet,
     )
 
     coEvery { getArbeidsforhold(any()) } coAnswers {

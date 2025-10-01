@@ -16,7 +16,7 @@ import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
-import no.nav.syfo.texas.MaskinportenTokenAuthPlugin
+import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
 fun Route.registerNarmestelederApiV1(
@@ -25,7 +25,7 @@ fun Route.registerNarmestelederApiV1(
     texasHttpClient: TexasHttpClient,
 ) {
     route("/narmesteleder") {
-        install(MaskinportenTokenAuthPlugin) {
+        install(MaskinportenAndTokenXTokenAuthPlugin) {
             client = texasHttpClient
         }
 

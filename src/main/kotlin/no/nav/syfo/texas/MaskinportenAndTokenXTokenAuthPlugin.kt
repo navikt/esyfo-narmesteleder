@@ -17,16 +17,17 @@ val TOKEN_CONSUMER_KEY = AttributeKey<OrganizationId>("tokenConsumer")
 private val VALID_ISSUERS = listOf(JwtIssuer.MASKINPORTEN, JwtIssuer.TOKEN_X)
 private val logger = logger("no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin")
 
-val MaskinportenTokenAuthPlugin = createRouteScopedPlugin(
+val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
     name = "MaskinportenAndTokenXTokenAuthPlugin",
     createConfiguration = ::TexasAuthPluginConfiguration,
 ) {
     pluginConfig.apply {
         onCall { call ->
+            val tokenIssuer = call.attributes.getOrNull(TOKEN_ISSUER)
             val issuer = try {
-                call.attributes.getOrNull(TOKEN_ISSUER)
+                tokenIssuer
                     ?.takeIf { it in VALID_ISSUERS }
-                    ?: error("Missing or invalid token issuer")
+                    ?: error("Missing or invalid token issuer: $tokenIssuer")
             } catch (e: Exception) {
                 throw ApiErrorException.UnauthorizedException("Failed to find issuer in token: ${e.message}", e)
             }

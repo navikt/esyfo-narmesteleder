@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT
 import io.ktor.server.application.ApplicationCall
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.texas.bearerToken
+import no.nav.syfo.util.logger
 
 /**
  *
@@ -16,11 +17,12 @@ import no.nav.syfo.texas.bearerToken
 fun ApplicationCall.jwtIssuer(): JwtIssuer {
     val token = bearerToken() ?: throw ApiErrorException.UnauthorizedException("Invalid token")
     val decodedToken = JWT.decode(token)
+    val issuer = decodedToken.issuer ?: throw ApiErrorException.UnauthorizedException("Invalid token")
 
+    logger().info("Issuer $issuer")
     val hasIdpClaim = !decodedToken.getClaim("idp").asString().isNullOrEmpty()
     if (hasIdpClaim) return JwtIssuer.TOKEN_X
 
-    val issuer = decodedToken.issuer ?: throw ApiErrorException.UnauthorizedException("Invalid token")
     return JwtIssuer.fromIssuerString(issuer)
 }
 

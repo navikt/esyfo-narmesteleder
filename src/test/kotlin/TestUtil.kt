@@ -1,11 +1,18 @@
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import io.ktor.client.engine.mock.*
-import io.ktor.http.*
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.Headers
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.fullPath
+import io.ktor.http.isSuccess
 import io.mockk.coEvery
+import java.time.Instant
+import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
 import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
@@ -14,8 +21,6 @@ import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import no.nav.syfo.texas.client.TexasResponse
-import java.time.Instant
-import java.util.*
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
@@ -37,7 +42,7 @@ fun narmesteLederAvkreft(): NarmestelederRelasjonAvkreft = NarmestelederRelasjon
 )
 
 fun createMockToken(
-    consumerId: String,
+    ident: String,
     supplierId: String? = null,
     issuer: String = "https://test.maskinporten.no"
 ): String {
@@ -47,10 +52,15 @@ fun createMockToken(
     val builder = JWT.create()
     builder
         .withKeyId("fake")
-        .withClaim("consumer", """{"authority": "some-authority", "ID": "$consumerId"}""")
         .withIssuer(issuer)
-    if (supplierId != null) {
-        builder.withClaim("supplier", """{"authority": "some-authority", "ID": "$supplierId"}""")
+    if (issuer.contains(JwtIssuer.MASKINPORTEN.value!!)) {
+        builder.withClaim("consumer", """{"authority": "some-authority", "ID": "$ident"}""")
+        if (supplierId != null) {
+            builder.withClaim("supplier", """{"authority": "some-authority", "ID": "$supplierId"}""")
+        }
+    }
+    if (issuer.contains(JwtIssuer.TOKEN_X.value!!)) {
+        builder.withClaim("pid", ident)
     }
 
     val signedToken = builder.sign(algorithm)
@@ -105,8 +115,8 @@ fun AaregClient.defaultMocks(
     arbeidstakerUnderenhet: String? = null,
 ) {
     val client = FakeAaregClient(
-        arbeidsstedOrgnummer = arbeidstakerUnderenhet ?: arbeidstakerHovedenhet,
-        juridiskOrgnummer = arbeidstakerHovedenhet,
+//        arbeidsstedOrgnummer = arbeidstakerUnderenhet ?: arbeidstakerHovedenhet,
+//        juridiskOrgnummer = arbeidstakerHovedenhet,
     )
 
     coEvery { getArbeidsforhold(any()) } coAnswers {
@@ -124,7 +134,7 @@ fun TexasHttpClient.defaultMocks(
 ) {
     coEvery { systemToken(any(), any()) } returns TexasResponse(
         accessToken = createMockToken(
-            consumerId = consumer.ID,
+            ident = consumer.ID,
             supplierId = supplier?.ID
         ),
         expiresIn = 3600L,
@@ -135,7 +145,8 @@ fun TexasHttpClient.defaultMocks(
         val identityProvider = firstArg<String>()
 
         when (identityProvider) {
-            "maskinporten" -> {
+            "maskinporten",
+            "tokenx" -> {
                 TexasIntrospectionResponse(
                     active = true,
                     pid = pid,
@@ -147,7 +158,18 @@ fun TexasHttpClient.defaultMocks(
                 )
             }
 
+
             else -> TODO("Legg til identityProvider i mock")
         }
     }
+}
+
+fun TexasHttpClient.defaultMocks(pid: String = "userIdentifier", acr: String = "Level4", navident: String? = null) {
+    coEvery { introspectToken(any(), any()) } returns TexasIntrospectionResponse(
+        active = true,
+        pid = pid,
+        acr = acr,
+        sub = UUID.randomUUID().toString(),
+        NAVident = navident
+    )
 }

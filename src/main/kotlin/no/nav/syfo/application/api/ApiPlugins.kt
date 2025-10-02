@@ -18,8 +18,6 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
 import java.util.*
-import no.nav.syfo.application.api.ApiError
-import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 
 const val NAV_CALL_ID_HEADER = "Nav-Call-Id"
@@ -51,6 +49,8 @@ private fun logException(call: ApplicationCall, cause: Throwable) {
 
 fun determineApiError(cause: Throwable, path: String): ApiError {
     return when (cause) {
+        is ApiErrorException.ForbiddenException -> cause.toApiError(path)
+        is ApiErrorException.InternalServerErrorException -> cause.toApiError(path)
         is BadRequestException -> cause.toApiError(path)
         is NotFoundException -> cause.toApiError(path)
         is ApiErrorException -> cause.toApiError(path)

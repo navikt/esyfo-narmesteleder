@@ -1,7 +1,6 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import no.nav.syfo.narmesteleder.kafka.model.Leder
-import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 

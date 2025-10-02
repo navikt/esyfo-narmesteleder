@@ -7,9 +7,14 @@ import getMockEngine
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.ktor.client.*
-import io.ktor.client.engine.mock.*
-import io.ktor.http.*
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.aareg.client.AaregClient
@@ -25,10 +30,9 @@ class AaregClientTest : DescribeSpec({
     val personIdent = "12345"
 
     describe("Successfull responses from Aareg") {
-        val arbeidsforhold = FakeAaregClient(
-            arbeidsstedOrgnummer = arbeidstakerEnhet.ID,
-            juridiskOrgnummer = arbeidstakerEnhet.ID,
-        ).getArbeidsforhold(personIdent)
+        val fakeAaregClient = FakeAaregClient()
+        fakeAaregClient.arbeidsForholdForIdent.put(personIdent, arbeidstakerEnhet.ID to arbeidstakerEnhet.ID)
+        val arbeidsforhold = FakeAaregClient().getArbeidsforhold(personIdent)
 
         val mockEngine = MockEngine { req ->
             when (req.method) {

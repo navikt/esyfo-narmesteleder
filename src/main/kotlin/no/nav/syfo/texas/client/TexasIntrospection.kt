@@ -32,4 +32,5 @@ data class TexasIntrospectionResponse(
     val NAVident: String? = null,
     val consumer: OrganizationId? = null,
     val supplier: OrganizationId? = null,
+    val scope: String? = null,
 )

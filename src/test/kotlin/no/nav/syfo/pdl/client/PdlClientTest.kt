@@ -1,15 +1,15 @@
-package no.nav.syfo.pdl
+package no.nav.syfo.pdl.client
 
 import getMockEngine
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.ktor.client.*
-import io.ktor.http.*
+import io.ktor.client.HttpClient
+import io.ktor.http.Headers
+import io.ktor.http.HttpStatusCode
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
-import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -50,8 +50,8 @@ class PdlClientTest : DescribeSpec({
                 }
                 """.trimIndent()
             val mockEngine = getMockEngine(
-                status = HttpStatusCode.OK,
-                headers = Headers.build {
+                status = HttpStatusCode.Companion.OK,
+                headers = Headers.Companion.build {
                     append("Content-Type", "application/json")
                 },
                 content = getPersonResponse,
@@ -82,8 +82,8 @@ class PdlClientTest : DescribeSpec({
                 }
                 """.trimIndent()
             val mockEngine = getMockEngine(
-                status = HttpStatusCode.OK,
-                headers = Headers.build {
+                status = HttpStatusCode.Companion.OK,
+                headers = Headers.Companion.build {
                     append("Content-Type", "application/json")
                 },
                 content = getPersonResponse,
@@ -95,14 +95,14 @@ class PdlClientTest : DescribeSpec({
             )
             val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
-            shouldThrow< PdlResourceNotFoundException> { client.getPerson(fnr) }
+            shouldThrow<PdlResourceNotFoundException> { client.getPerson(fnr) }
         }
         it("should throw exception when getPerson responds with non 4xx") {
             val fnr = "12345678901"
 
             val mockEngine = getMockEngine(
-                status = HttpStatusCode.BadRequest,
-                headers = Headers.build {
+                status = HttpStatusCode.Companion.BadRequest,
+                headers = Headers.Companion.build {
                     append("Content-Type", "application/json")
                 },
                 content = "invalid request",
@@ -121,8 +121,8 @@ class PdlClientTest : DescribeSpec({
             val fnr = "12345678901"
 
             val mockEngine = getMockEngine(
-                status = HttpStatusCode.ServiceUnavailable,
-                headers = Headers.build {
+                status = HttpStatusCode.Companion.ServiceUnavailable,
+                headers = Headers.Companion.build {
                     append("Content-Type", "application/json")
                 },
                 content = "invalid request",

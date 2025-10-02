@@ -1,23 +1,15 @@
 package no.nav.syfo.aareg.client
 
+import java.util.*
+import java.util.concurrent.atomic.*
 import net.datafaker.Faker
 import no.nav.syfo.aareg.client.FakeAaregClient.Companion.ORG_NUMBER_PREFIX
-import java.util.*
-import java.util.concurrent.atomic.AtomicReference
 
 /**
- * @param juridiskOrgnummer org.number for `hovedenhet`. If none specified, a random number
- *  with the pattern `ORG_NUMBER_PREFIX[0-9]{9}` will be generated.
- *
- * @param arbeidsstedOrgnummer org.number for `underenhet`. If none specified, a random number
- *  with the pattern `ORG_NUMBER_PREFIX[0-9]{9}` will be generated.
- *
  * @see ORG_NUMBER_PREFIX
  * */
-class FakeAaregClient(
-    private val juridiskOrgnummer: String? = null,
-    private val arbeidsstedOrgnummer: String? = null,
-) : IAaregClient {
+class FakeAaregClient() : IAaregClient {
+    val arbeidsForholdForIdent = defaultArbeidsforhold.toMutableMap()
     private val failureRef = AtomicReference<Throwable?>(null)
 
     /**
@@ -40,6 +32,7 @@ class FakeAaregClient(
     ): AaregArbeidsforholdOversikt {
         val personIdentSeed = Random(personIdent.toLong())
         val faker = Faker(personIdentSeed)
+        val arbeidsforhold = arbeidsForholdForIdent[personIdent]
 
         val aaregArbeidsforholdOversikt =
             AaregArbeidsforholdOversikt(
@@ -51,7 +44,7 @@ class FakeAaregClient(
                                 Ident(
                                     type = IdentType.ORGANISASJONSNUMMER,
                                     gjeldende = true,
-                                    ident = juridiskOrgnummer ?: faker.regexify("${ORG_NUMBER_PREFIX}[0-9]{9}")
+                                    ident = arbeidsforhold?.first ?: faker.regexify("${ORG_NUMBER_PREFIX}[0-9]{9}")
                                 )
                             )
                         ),
@@ -61,7 +54,7 @@ class FakeAaregClient(
                                 Ident(
                                     type = IdentType.ORGANISASJONSNUMMER,
                                     gjeldende = true,
-                                    ident = arbeidsstedOrgnummer ?: faker.regexify("${ORG_NUMBER_PREFIX}[0-9]{9}")
+                                    ident = arbeidsforhold?.second?: faker.regexify("${ORG_NUMBER_PREFIX}[0-9]{9}")
                                 )
                             )
                         )
@@ -73,6 +66,13 @@ class FakeAaregClient(
     }
 
     companion object {
-        const val ORG_NUMBER_PREFIX = "0192:"
+        val defaultArbeidsforhold = mapOf(
+            "15436803416" to Pair("310667633", "215649202"),
+            "13468329780" to Pair("310667633", "215649202"),
+            "01518721689" to Pair("310667633", "315649196")
+        )
+
+        const
+        val ORG_NUMBER_PREFIX = "0192:"
     }
 }

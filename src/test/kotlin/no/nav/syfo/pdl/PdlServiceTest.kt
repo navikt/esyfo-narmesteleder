@@ -7,15 +7,15 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.GetPersonResponse
+import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident
 import no.nav.syfo.pdl.client.IdentResponse
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.pdl.client.PersonResponse
 import no.nav.syfo.pdl.client.ResponseData
-import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 
 class PdlServiceTest : DescribeSpec({
 

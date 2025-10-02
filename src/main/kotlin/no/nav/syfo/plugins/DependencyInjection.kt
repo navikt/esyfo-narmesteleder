@@ -1,19 +1,29 @@
 package no.nav.syfo.plugins
 
-import io.ktor.server.application.*
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import kotlin.math.sin
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
-import no.nav.syfo.application.*
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
+import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
+import no.nav.syfo.application.ApplicationState
+import no.nav.syfo.application.Environment
+import no.nav.syfo.application.LocalEnvironment
+import no.nav.syfo.application.NaisEnvironment
 import no.nav.syfo.application.database.Database
 import no.nav.syfo.application.database.DatabaseConfig
 import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
@@ -93,12 +103,24 @@ private fun servicesModule() = module {
         PdlService(get())
     }
     single {
+        if (isLocalEnv()) FakeAltinnTilgangerClient() else AltinnTilgangerClient(
+            texasClient = get(),
+            httpClient = get(),
+            baseUrl = env().clientProperties.altinnTilgangerBaseUrl,
+        )
+    }
+
+    single { AltinnTilgangerService(get()) }
+    single {
         val sykemeldingNLKafkaProducer = if (isLocalEnv()) SykemeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )
         ) else FakeSykemeldingNLKafkaProducer()
-        NarmestelederKafkaService(sykemeldingNLKafkaProducer, get(), get())
+        NarmestelederKafkaService(sykemeldingNLKafkaProducer, get())
+    }
+    single {
+        ValidationService(get(), get(), get())
     }
 }
 

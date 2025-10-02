@@ -38,6 +38,7 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
+import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
 class NarmestelederApiV1Test : DescribeSpec({
@@ -96,8 +97,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                         consumer = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
                         ),
-                        acr = "Level4",
-                        pid = narmesteLederRelasjon.leder.fnr
+                        scope = MASKINPORTEN_NL_SCOPE,
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.sykmeldtFnr,
@@ -132,7 +132,8 @@ class NarmestelederApiV1Test : DescribeSpec({
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
-                        )
+                        ),
+                        scope = MASKINPORTEN_NL_SCOPE,
                     )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
@@ -152,6 +153,28 @@ class NarmestelederApiV1Test : DescribeSpec({
                 withTestApplication {
                     // Arrange
                     texasHttpClientMock.defaultMocks()
+                    // Act
+                    val response = client.post("/api/v1/narmesteleder") {
+                        contentType(ContentType.Application.Json)
+                        setBody(narmesteLederRelasjon())
+                    }
+
+                    // Assert
+                    response.status shouldBe HttpStatusCode.Unauthorized
+                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                    coVerify { narmestelederKafkaServiceSpy wasNot Called }
+                }
+            }
+
+            it("should return 401 unauthorized for missing valid maskinporten scope") {
+                withTestApplication {
+                    // Arrange
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                        ),
+                        scope = "invalid-scope",
+                    )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
                         contentType(ContentType.Application.Json)
@@ -269,7 +292,8 @@ class NarmestelederApiV1Test : DescribeSpec({
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
                         ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
-                    )
+                    ),
+                        scope = MASKINPORTEN_NL_SCOPE,
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft()
                 // Act
@@ -297,7 +321,8 @@ class NarmestelederApiV1Test : DescribeSpec({
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
                         ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
-                    )
+                    ),
+                    scope = MASKINPORTEN_NL_SCOPE,
                 )
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {

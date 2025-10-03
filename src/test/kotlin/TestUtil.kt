@@ -128,6 +128,7 @@ fun AaregClient.defaultMocks(
 fun TexasHttpClient.defaultMocks(
     pid: String? = null,
     acr: String? = null,
+    scope: String? = null,
     navident: String? = null,
     consumer: OrganizationId = DefaultOrganization,
     supplier: OrganizationId? = null
@@ -155,6 +156,7 @@ fun TexasHttpClient.defaultMocks(
                     NAVident = navident,
                     consumer = consumer,
                     supplier = supplier,
+                    scope = scope,
                 )
             }
 

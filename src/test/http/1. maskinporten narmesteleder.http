@@ -21,6 +21,6 @@ Content-Type: application/json
 Authorization: Bearer {{maskinportenToken}}
 
 {
-  "sykmeldtFnr": "1234567890",
-  "organisasjonsnummer": "123456789"
+  "sykmeldtFnr": "15436803416",
+  "organisasjonsnummer": "{{orgnummer}}"
 }

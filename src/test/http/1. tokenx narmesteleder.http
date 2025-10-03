@@ -22,6 +22,6 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "sykmeldtFnr": "1234567890",
-  "organisasjonsnummer": "879880760"
+  "sykmeldtFnr": "15436803416",
+  "organisasjonsnummer": "{{orgnummer}}"
 }

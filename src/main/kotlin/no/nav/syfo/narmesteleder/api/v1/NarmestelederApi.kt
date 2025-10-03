@@ -46,8 +46,8 @@ fun Route.registerNarmestelederApiV1(
     route("/narmesteleder/avkreft") {
         post() {
             val avkreft = call.tryReceive<NarmestelederRelasjonAvkreft>()
-
-            narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft, NlResponseSource.LPS)
+            val sykmeldt = validationService.validateNarmestelederAvkreft(avkreft, call.getMyPrincipal())
+            narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft.copy(sykmeldtFnr = sykmeldt.fnr), NlResponseSource.LPS)
 
             call.respond(HttpStatusCode.Accepted)
         }

@@ -75,7 +75,7 @@ class ValidationService(
         }
     }
 
-    suspend fun validdateNarmestelederAvkreft(
+    suspend fun validateNarmestelederAvkreft(
         narmestelederRelasjonAvkreft: NarmestelederRelasjonAvkreft,
         principal: Principal,
     ): Person {

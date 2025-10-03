@@ -48,7 +48,7 @@ class NarmestelederApiV1Test : DescribeSpec({
     val fakeAaregClient = FakeAaregClient()
     val aaregService = AaregService(fakeAaregClient)
     val narmestelederKafkaService =
-        NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService)
+        NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
     val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
     val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
@@ -293,9 +293,13 @@ class NarmestelederApiV1Test : DescribeSpec({
                     consumer = DefaultOrganization.copy(
                         ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
                     ),
-                        scope = MASKINPORTEN_NL_SCOPE,
+                    scope = MASKINPORTEN_NL_SCOPE,
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft()
+                fakeAaregClient.arbeidsForholdForIdent.put(
+                    narmesteLederAvkreft.sykmeldtFnr,
+                    narmesteLederAvkreft.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
+                )
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {
                     contentType(ContentType.Application.Json)
@@ -306,6 +310,35 @@ class NarmestelederApiV1Test : DescribeSpec({
                 // Assert
                 response.status shouldBe HttpStatusCode.Accepted
                 coVerify(exactly = 1) {
+                    narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
+                        eq(narmesteLederAvkreft), eq(
+                            NlResponseSource.LPS
+                        )
+                    )
+                }
+            }
+        }
+
+        it("should return 400 if sykmeldt lacks arbeidsforhold for orgnummer") {
+            withTestApplication {
+                // Arrange
+                texasHttpClientMock.defaultMocks(
+                    consumer = DefaultOrganization.copy(
+                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                    ),
+                    scope = MASKINPORTEN_NL_SCOPE,
+                )
+                val narmesteLederAvkreft = narmesteLederAvkreft()
+                // Act
+                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                    contentType(ContentType.Application.Json)
+                    setBody(narmesteLederAvkreft)
+                    bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
+                }
+
+                // Assert
+                response.status shouldBe HttpStatusCode.BadRequest
+                coVerify(exactly = 0) {
                     narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                         eq(narmesteLederAvkreft), eq(
                             NlResponseSource.LPS

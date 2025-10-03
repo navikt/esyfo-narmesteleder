@@ -9,8 +9,10 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
+import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.util.logger
@@ -29,12 +31,6 @@ class ValidationService(
         principal: Principal,
     ): NarmestelederAktorer {
         try {
-            val sykmeldt = pdlService.getPersonFor(narmesteLederRelasjonerWrite.sykmeldtFnr)
-            val leder = pdlService.getPersonFor(narmesteLederRelasjonerWrite.leder.fnr)
-            val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.fnr)
-            val sykemeldtArbeidsforhold =
-                aaregService.findOrgNumbersByPersonIdent(sykmeldt.fnr)
-
             val innsenderOrgNumber = when (principal) {
                 is BrukerPrincipal -> {
                     altinnTilgangerService.validateTilgangToOrganisasjon(
@@ -48,6 +44,12 @@ class ValidationService(
                     maskinportenIdToOrgnumber(principal.ident)
                 }
             }
+            val sykmeldt = pdlService.getPersonFor(narmesteLederRelasjonerWrite.sykmeldtFnr)
+            val leder = pdlService.getPersonFor(narmesteLederRelasjonerWrite.leder.fnr)
+            val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.fnr)
+            val sykemeldtArbeidsforhold =
+                aaregService.findOrgNumbersByPersonIdent(sykmeldt.fnr)
+
             validateNarmesteLeder(
                 orgNumberInRequest = narmesteLederRelasjonerWrite.organisasjonsnummer,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
@@ -71,6 +73,64 @@ class ValidationService(
             logger.error("Henting av arbeidsforhold feilet {}", e.message)
             throw ApiErrorException.InternalServerErrorException("Error when validating persons")
         }
-
     }
+
+    suspend fun validdateNarmestelederAvkreft(
+        narmestelederRelasjonAvkreft: NarmestelederRelasjonAvkreft,
+        principal: Principal,
+    ): Person {
+        try {
+            val innsenderOrgNumber = when (principal) {
+                is BrukerPrincipal -> {
+                    altinnTilgangerService.validateTilgangToOrganisasjon(
+                        principal,
+                        narmestelederRelasjonAvkreft.organisasjonsnummer
+                    )
+                    null
+                }
+
+                is OrganisasjonPrincipal -> {
+                    maskinportenIdToOrgnumber(principal.ident)
+                }
+            }
+            val sykmeldt = pdlService.getPersonFor(narmestelederRelasjonAvkreft.sykmeldtFnr)
+            val sykemeldtArbeidsforhold =
+                aaregService.findOrgNumbersByPersonIdent(sykmeldt.fnr)
+            validateNarmesteLederAvkreft(
+                orgNumberInRequest = narmestelederRelasjonAvkreft.organisasjonsnummer,
+                sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
+                innsenderOrgNumber = innsenderOrgNumber
+            )
+            return sykmeldt
+
+        } catch (e: PdlResourceNotFoundException) {
+            logger.error("Henting av person(er) feilet {}", e.message)
+            throw BadRequestException("Could not find one or both of the persons")
+        } catch (e: PdlRequestException) {
+            logger.error("Validering av personer feilet {}", e.message)
+            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
+        } catch (e: ValidateNarmesteLederException) {
+            logger.error("Validering av arbeidsforhold feilet {}", e.message)
+            throw BadRequestException("Error when validating persons")
+        } catch (e: AaregClientException) {
+            logger.error("Henting av arbeidsforhold feilet {}", e.message)
+            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
+        }
+    }
+
+//    suspend private fun validateAltTilgang(principal: Principal, orgNumber: String) {
+//        val innsenderOrgNumber = when (principal) {
+//            is BrukerPrincipal -> {
+//                altinnTilgangerService.validateTilgangToOrganisasjon(
+//                    principal,
+//                    orgNumber
+//                )
+//                null
+//            }
+//
+//            is OrganisasjonPrincipal -> {
+//                maskinportenIdToOrgnumber(principal.ident)
+//            }
+//        }
+//    }
 }

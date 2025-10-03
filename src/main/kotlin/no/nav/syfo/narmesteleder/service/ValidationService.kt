@@ -49,7 +49,7 @@ class ValidationService(
             val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.fnr)
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.fnr)
-
+            logger.info("Sykmeldt har arbeidsforhold i $sykemeldtArbeidsforhold")
             validateNarmesteLeder(
                 orgNumberInRequest = narmesteLederRelasjonerWrite.organisasjonsnummer,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
@@ -104,17 +104,17 @@ class ValidationService(
             return sykmeldt
 
         } catch (e: PdlResourceNotFoundException) {
-            logger.error("Henting av person(er) feilet {}", e.message)
-            throw BadRequestException("Could not find one or both of the persons")
+            logger.error("Henting av person feilet {}", e.message)
+            throw BadRequestException("Could not find sykmeldt")
         } catch (e: PdlRequestException) {
             logger.error("Validering av personer feilet {}", e.message)
-            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
+            throw ApiErrorException.InternalServerErrorException("Error when validating person")
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
-            throw BadRequestException("Error when validating persons")
+            throw BadRequestException("Error when validating person")
         } catch (e: AaregClientException) {
             logger.error("Henting av arbeidsforhold feilet {}", e.message)
-            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
+            throw ApiErrorException.InternalServerErrorException("Error when validating person")
         }
     }
 

@@ -1,9 +1,6 @@
 package no.nav.syfo.aareg
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.serialization.json.JsonDecoder
 import no.nav.syfo.aareg.client.IAaregClient
-import no.nav.syfo.util.logger
 
 class AaregService(private val arbeidsforholdOversiktClient: IAaregClient) {
     suspend fun findOrgNumbersByPersonIdent(
@@ -13,7 +10,6 @@ class AaregService(private val arbeidsforholdOversiktClient: IAaregClient) {
             arbeidsforholdOversiktClient.getArbeidsforhold(
                 personIdent = personIdent
             )
-        logger().info(ObjectMapper().writeValueAsString(arbeidsforholdOversikt))
 
         // Ansettelsforhold gitt ved organisasjonsnummer i over- og underenhet
         return buildSet {

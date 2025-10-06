@@ -32,7 +32,8 @@ fun validateNarmesteLederAvkreft(
     orgNumberInRequest: String,
     innsenderOrgNumber: String?,
 ) {
+    val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     nlrequire(sykemeldtOrgNumbers.isNotEmpty()) { "Ingen arbeidsforhold for sykemeldt" }
     nlrequire(sykemeldtOrgNumbers.contains(orgNumberInRequest)) { "Organisasjonsnummer i HTTP request body samsvarer ikke med sykemeldtes organisasjoner" }
-    innsenderOrgNumber?.let { nlrequire(sykemeldtOrgNumbers.contains(innsenderOrgNumber)) { "Innsender samsvarer ikke med sykemeldts organisasjonsenhet" } }
+    innsenderOrgNumber?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(innsenderOrgNumber)) { "Innsender samsvarer ikke virksomhet i request" } }
 }

@@ -1,6 +1,5 @@
 package no.nav.syfo.pdl
 
-import io.ktor.server.plugins.BadRequestException
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
@@ -26,7 +25,7 @@ class PdlService(private val pdlClient: IPdlClient) {
         return try {
             getPersonFor(fnr)
         } catch (e: PdlResourceNotFoundException) {
-            throw BadRequestException("Fant ikke person i PDL", e)
+            throw ApiErrorException.BadRequestException("Fant ikke person i PDL", e)
         } catch (e: PdlRequestException) {
             throw ApiErrorException.InternalServerErrorException("Kunne ikke hente person fra PDL", e)
         }

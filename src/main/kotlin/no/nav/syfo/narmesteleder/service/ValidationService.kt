@@ -1,8 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
-import io.ktor.server.plugins.BadRequestException
 import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.aareg.client.AaregClientException
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
@@ -13,8 +11,6 @@ import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
-import no.nav.syfo.pdl.exception.PdlRequestException
-import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.util.logger
 
 class ValidationService(
@@ -52,7 +48,7 @@ class ValidationService(
             )
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
-            throw BadRequestException("Error when validating persons")
+            throw ApiErrorException.BadRequestException("Error when validating persons")
         }
     }
 
@@ -62,7 +58,7 @@ class ValidationService(
     ): Person {
         try {
             val innsenderOrgNumber = validateAltTilgang(principal, narmestelederRelasjonAvkreft.organisasjonsnummer)
-            val sykmeldt = pdlService.getPersonFor(narmestelederRelasjonAvkreft.sykmeldtFnr)
+            val sykmeldt = pdlService.getPersonOrThrowApiError(narmestelederRelasjonAvkreft.sykmeldtFnr)
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.fnr)
             validateNarmesteLederAvkreft(
@@ -74,7 +70,7 @@ class ValidationService(
 
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
-            throw BadRequestException("Error when validating persons")
+            throw ApiErrorException.BadRequestException("Error when validating persons")
         }
     }
 

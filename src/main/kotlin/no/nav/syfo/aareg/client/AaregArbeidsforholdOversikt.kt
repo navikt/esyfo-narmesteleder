@@ -32,7 +32,7 @@ data class Opplysningspliktig(
 
 data class Arbeidssted(
     val type: ArbeidsstedType,
-    val identer: List<Ident>
+    val identer: List<Ident>,
 ) {
     fun getOrgnummer() =
         identer.firstOrNull {

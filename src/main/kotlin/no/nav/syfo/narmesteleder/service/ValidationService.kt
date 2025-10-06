@@ -26,29 +26,19 @@ class ValidationService(
         val logger = logger()
     }
 
-    suspend fun validdateNarmesteleder(
+    suspend fun validateNarmesteleder(
         narmesteLederRelasjonerWrite: NarmesteLederRelasjonerWrite,
         principal: Principal,
     ): NarmestelederAktorer {
         try {
-            val innsenderOrgNumber = when (principal) {
-                is BrukerPrincipal -> {
-                    altinnTilgangerService.validateTilgangToOrganisasjon(
-                        principal,
-                        narmesteLederRelasjonerWrite.organisasjonsnummer
-                    )
-                    null
-                }
-
-                is OrganisasjonPrincipal -> {
-                    maskinportenIdToOrgnumber(principal.ident)
-                }
-            }
-            val sykmeldt = pdlService.getPersonFor(narmesteLederRelasjonerWrite.sykmeldtFnr)
-            val leder = pdlService.getPersonFor(narmesteLederRelasjonerWrite.leder.fnr)
+            val innsenderOrgNumber = validateAltTilgang(principal, narmesteLederRelasjonerWrite.organisasjonsnummer)
+            val sykmeldt = pdlService.getPersonOrThrowApiError(narmesteLederRelasjonerWrite.sykmeldtFnr)
+            val leder = pdlService.getPersonOrThrowApiError(narmesteLederRelasjonerWrite.leder.fnr)
             val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.fnr)
+                .filter { it.key == narmesteLederRelasjonerWrite.organisasjonsnummer }
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.fnr)
+                    .filter { it.key == narmesteLederRelasjonerWrite.organisasjonsnummer }
 
             validateNarmesteLeder(
                 orgNumberInRequest = narmesteLederRelasjonerWrite.organisasjonsnummer,
@@ -60,18 +50,9 @@ class ValidationService(
                 sykmeldt = sykmeldt,
                 leder = leder,
             )
-        } catch (e: PdlResourceNotFoundException) {
-            logger.error("Henting av person(er) feilet {}", e.message)
-            throw BadRequestException("Could not find one or both of the persons")
-        } catch (e: PdlRequestException) {
-            logger.error("Validering av personer feilet {}", e.message)
-            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
             throw BadRequestException("Error when validating persons")
-        } catch (e: AaregClientException) {
-            logger.error("Henting av arbeidsforhold feilet {}", e.message)
-            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
         }
     }
 
@@ -80,19 +61,7 @@ class ValidationService(
         principal: Principal,
     ): Person {
         try {
-            val innsenderOrgNumber = when (principal) {
-                is BrukerPrincipal -> {
-                    altinnTilgangerService.validateTilgangToOrganisasjon(
-                        principal,
-                        narmestelederRelasjonAvkreft.organisasjonsnummer
-                    )
-                    null
-                }
-
-                is OrganisasjonPrincipal -> {
-                    maskinportenIdToOrgnumber(principal.ident)
-                }
-            }
+            val innsenderOrgNumber = validateAltTilgang(principal, narmestelederRelasjonAvkreft.organisasjonsnummer)
             val sykmeldt = pdlService.getPersonFor(narmestelederRelasjonAvkreft.sykmeldtFnr)
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.fnr)
@@ -103,34 +72,25 @@ class ValidationService(
             )
             return sykmeldt
 
-        } catch (e: PdlResourceNotFoundException) {
-            logger.error("Henting av person(er) feilet {}", e.message)
-            throw BadRequestException("Could not find one or both of the persons")
-        } catch (e: PdlRequestException) {
-            logger.error("Validering av personer feilet {}", e.message)
-            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
             throw BadRequestException("Error when validating persons")
-        } catch (e: AaregClientException) {
-            logger.error("Henting av arbeidsforhold feilet {}", e.message)
-            throw ApiErrorException.InternalServerErrorException("Error when validating persons")
         }
     }
 
-//    suspend private fun validateAltTilgang(principal: Principal, orgNumber: String) {
-//        val innsenderOrgNumber = when (principal) {
-//            is BrukerPrincipal -> {
-//                altinnTilgangerService.validateTilgangToOrganisasjon(
-//                    principal,
-//                    orgNumber
-//                )
-//                null
-//            }
-//
-//            is OrganisasjonPrincipal -> {
-//                maskinportenIdToOrgnumber(principal.ident)
-//            }
-//        }
-//    }
+    suspend private fun validateAltTilgang(principal: Principal, orgNumber: String): String? {
+        return when (principal) {
+            is BrukerPrincipal -> {
+                altinnTilgangerService.validateTilgangToOrganisasjon(
+                    principal,
+                    orgNumber
+                )
+                null
+            }
+
+            is OrganisasjonPrincipal -> {
+                maskinportenIdToOrgnumber(principal.ident)
+            }
+        }
+    }
 }

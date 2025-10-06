@@ -1,29 +1,34 @@
 package no.nav.syfo.narmesteleder.service
 
+import no.nav.syfo.application.exception.ApiErrorException
+
 class ValidateNarmesteLederException(message: String) : RuntimeException(message)
 
 private fun nlrequire(value: Boolean, lazyMessage: () -> String) {
     if (!value) throw ValidateNarmesteLederException(lazyMessage())
 }
 
+private fun nlrequireOrForbidden(value: Boolean, lazyMessage: () -> String) {
+    if (!value) throw ApiErrorException.ForbiddenException(lazyMessage())
+}
+
 fun validateNarmesteLeder(
-    sykemeldtOrgNumbers: Set<String>,
-    narmesteLederOrgNumbers: Set<String>,
+    sykemeldtOrgNumbers: Map<String, String>,
+    narmesteLederOrgNumbers: Map<String, String>,
     innsenderOrgNumber: String?,
     orgNumberInRequest: String
 ) {
-    nlrequire(sykemeldtOrgNumbers.isNotEmpty()) { "Ingen arbeidsforhold for sykemeldt" }
-    nlrequire(narmesteLederOrgNumbers.isNotEmpty()) { "Ingen arbeidsforhold for narmesteleder" }
-
-    with(sykemeldtOrgNumbers intersect narmesteLederOrgNumbers) {
-        nlrequire(isNotEmpty()) { "Ikke samsvar mellom sykemeldt og nærmeste leders organisasjonsenheter" }
-        nlrequire(contains(orgNumberInRequest)) { "Organisasjonsnummer i HTTP request body samsvarer ikke med nærmeste leder og sykemeldtes organisasjoner" }
-        innsenderOrgNumber?.let { nlrequire(contains(innsenderOrgNumber)) { "Innsender samsvarer ikke med nærmeste leder og sykemeldts organisasjonsenhet" } }
-    }
+    val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
+    nlrequire(sykemeldtOrgNumbers.keys.contains(orgNumberInRequest)) { "Ingen arbeidsforhold for sykemeldt for angitt virksomhet" }
+    nlrequire(narmesteLederOrgNumbers.keys.contains(orgNumberInRequest)) { "Ingen arbeidsforhold for narmesteleder for angitt virksomhet" }
+    nlrequire(
+        narmesteLederOrgNumbers.keys == sykemeldtOrgNumbers.keys,
+        { "Næremeste leder mangler arbeidsforl i samme virksomhet som sykmelt" })
+    innsenderOrgNumber?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(innsenderOrgNumber)) { "Innsender samsvarer ikke virksomhet i request" } }
 }
 
 fun validateNarmesteLederAvkreft(
-    sykemeldtOrgNumbers: Set<String>,
+    sykemeldtOrgNumbers: Map<String, String>,
     orgNumberInRequest: String,
     innsenderOrgNumber: String?,
 ) {

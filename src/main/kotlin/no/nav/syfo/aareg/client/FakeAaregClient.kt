@@ -1,8 +1,6 @@
 package no.nav.syfo.aareg.client
 
-import java.util.*
 import java.util.concurrent.atomic.*
-import net.datafaker.Faker
 import no.nav.syfo.aareg.client.FakeAaregClient.Companion.ORG_NUMBER_PREFIX
 
 /**
@@ -30,13 +28,14 @@ class FakeAaregClient() : IAaregClient {
     override suspend fun getArbeidsforhold(
         personIdent: String
     ): AaregArbeidsforholdOversikt {
-        val personIdentSeed = Random(personIdent.toLong())
-        val faker = Faker(personIdentSeed)
+        if (failureRef.get() != null) {
+            throw failureRef.get()!!
+        }
         val arbeidsforhold = arbeidsForholdForIdent[personIdent]
 
         val aaregArbeidsforholdOversikt =
             AaregArbeidsforholdOversikt(
-                arbeidsforholdoversikter = listOf(
+                arbeidsforholdoversikter = arbeidsforhold?.map { arbeidsforhold ->
                     Arbeidsforholdoversikt(
                         opplysningspliktig = Opplysningspliktig(
                             type = OpplysningspliktigType.Hovedenhet,
@@ -44,9 +43,9 @@ class FakeAaregClient() : IAaregClient {
                                 Ident(
                                     type = IdentType.ORGANISASJONSNUMMER,
                                     gjeldende = true,
-                                    ident = arbeidsforhold?.first ?: faker.regexify("${ORG_NUMBER_PREFIX}[0-9]{9}")
+                                    ident = arbeidsforhold.second
                                 )
-                            )
+                            ),
                         ),
                         arbeidssted = Arbeidssted(
                             type = ArbeidsstedType.Underenhet,
@@ -54,12 +53,12 @@ class FakeAaregClient() : IAaregClient {
                                 Ident(
                                     type = IdentType.ORGANISASJONSNUMMER,
                                     gjeldende = true,
-                                    ident = arbeidsforhold?.second?: faker.regexify("${ORG_NUMBER_PREFIX}[0-9]{9}")
+                                    ident = arbeidsforhold.first
                                 )
-                            )
+                            ),
                         )
                     )
-                )
+                } ?: emptyList()
             )
 
         return aaregArbeidsforholdOversikt
@@ -67,9 +66,9 @@ class FakeAaregClient() : IAaregClient {
 
     companion object {
         val defaultArbeidsforhold = mapOf(
-            "15436803416" to Pair("310667633", "215649202"),
-            "13468329780" to Pair("310667633", "215649202"),
-            "01518721689" to Pair("310667633", "315649196")
+            "15436803416" to listOf("310667633" to "215649202", "972674818" to "963743254"),
+            "13468329780" to listOf("310667633" to "215649202"),
+            "01518721689" to listOf("310667633" to "315649196")
         )
 
         const

@@ -31,7 +31,7 @@ fun Route.registerNarmestelederApiV1(
 
         post() {
             val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
-            val nlAktorer = validationService.validdateNarmesteleder(nlRelasjon, call.getMyPrincipal())
+            val nlAktorer = validationService.validateNarmesteleder(nlRelasjon, call.getMyPrincipal())
 
             narmestelederKafkaService.sendNarmesteLederRelation(
                 nlRelasjon,

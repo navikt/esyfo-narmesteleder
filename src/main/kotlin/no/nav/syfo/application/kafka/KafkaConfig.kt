@@ -1,7 +1,9 @@
 package no.nav.syfo.application.kafka
 
+import java.time.Duration
 import java.util.*
 import kotlin.reflect.KClass
+import no.nav.syfo.application.ApplicationState
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -13,6 +15,10 @@ import org.apache.kafka.common.serialization.StringSerializer
 const val JAVA_KEYSTORE = "JKS"
 const val PKCS12 = "PKCS12"
 const val SSL = "SSL"
+const val USER_INFO = "USER_INFO"
+const val ONE_SECOND_IN_MILLIS = 1000L
+
+val pollDurationInMillis: Duration = Duration.ofMillis(ONE_SECOND_IN_MILLIS)
 
 fun commonProperties(env: KafkaEnvironment): Properties {
     val sslConfig = env.sslConfig
@@ -48,4 +54,31 @@ fun producerProperties(
         put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, keySerializer.java)
         put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, valueSerializer.java)
     }
+}
+
+fun consumerProperties(
+    env: KafkaEnvironment,
+    valueSerializer: KClass<out Serializer<out Any>>,
+    keySerializer: KClass<out Serializer<out Any>> = StringSerializer::class
+): Properties {
+    val userinfoConfig = "${env.schemaRegistry.username}:${env.schemaRegistry.password}"
+    val consumerProperties = commonProperties(env)
+
+    return consumerProperties.apply {
+//        put(CommonClientConfigs.GROUP_ID_CONFIG, TODO())
+        put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
+        put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1")
+        put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
+
+//        put(BASIC_AUTH_CREDENTIALS_SOURCE, USER_INFO)
+//        put(SchemaRegistryClientConfig.USER_INFO_CONFIG, userinfoConfig)
+//        put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, env.schemaRegistry.url)
+        put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, valueSerializer)
+        put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, keySerializer)
+//        put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true")
+    }
+}
+
+interface KafkaListener {
+    suspend fun listen(applicationState: ApplicationState)
 }

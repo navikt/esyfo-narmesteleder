@@ -3,16 +3,16 @@ package no.nav.syfo.narmesteleder.service
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.syfo.narmesteleder.db.NarmesteLederAvbruttEntity
-import no.nav.syfo.narmesteleder.db.NarmesteLederDb
+import no.nav.syfo.narmesteleder.db.NarmesteLederBehovEntity
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 
 interface INarmestelederService {
-    suspend fun saveAvbrytNarmestelederRelation(nlAvbrutt: NarmesteLederAvbruttEntity): UUID
+    suspend fun saveAvbrytNarmestelederRelation(nlAvbrutt: NarmesteLederBehovEntity): UUID
 }
 
-class NarmestelederService(private val nlDb: NarmesteLederDb) : INarmestelederService {
-    override suspend fun saveAvbrytNarmestelederRelation(nlAvbrutt: NarmesteLederAvbruttEntity): UUID =
+class NarmestelederService(private val nlDb: NarmestelederDb) : INarmestelederService {
+    override suspend fun saveAvbrytNarmestelederRelation(nlBehov: NarmesteLederBehovEntity): UUID =
         withContext(Dispatchers.IO) {
-            nlDb.insertNlAvbrudd(nlAvbrutt)
+            nlDb.insertNlBehov(nlBehov)
         }
 }

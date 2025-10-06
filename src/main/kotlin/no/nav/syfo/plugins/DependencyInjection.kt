@@ -2,7 +2,6 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
-import kotlin.math.sin
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -19,10 +18,14 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
+import no.nav.syfo.narmesteleder.service.INarmestelederService
+import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
@@ -98,6 +101,13 @@ private fun servicesModule() = module {
             texasHttpClient = get(),
             scope = env().clientProperties.pdlScope
         )
+    }
+    // TODO: Vurder behov for fake service eller en fake consumer.
+    single<INarmestelederService> {
+        NarmestelederService(NarmestelederDb(get()))
+    }
+    single {
+        NarmesteLederLeesahService(get())
     }
     single {
         PdlService(get())

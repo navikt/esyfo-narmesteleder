@@ -1,8 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
-import no.nav.syfo.narmesteleder.db.NarmesteLederAvbruttEntity
+import no.nav.syfo.narmesteleder.db.NarmesteLederBehovEntity
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlStatus
 import org.slf4j.LoggerFactory
@@ -12,7 +10,7 @@ class NarmesteLederLeesahService(private val narmestelederService: INarmestelede
 
     suspend fun processNarmesteLederLeesahMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
         val status =
-            NlStatus.Companion.fromStatus(nlKafkaMessage.status)
+            NlStatus.fromStatus(nlKafkaMessage.status)
                 ?: throw RuntimeException("NL status incorrect or not set")
 
         logger.info("Processing NL message with status: $status")
@@ -37,22 +35,17 @@ class NarmesteLederLeesahService(private val narmestelederService: INarmestelede
     }
 
     private suspend fun handleNlAvbruttMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
-        narmestelederService.saveAvbrytNarmestelederRelation(
-            nlKafkaMessage.toDbEntity()
+        val id = narmestelederService.saveAvbrytNarmestelederRelation(
+            nlKafkaMessage.toNLBehovEntity()
         )
+        logger.info("Inserted nærmeste leder-behov with id: $id")
     }
 }
 
-private fun NarmestelederLeesahKafkaMessage.toDbEntity(): NarmesteLederAvbruttEntity =
-    NarmesteLederAvbruttEntity(
+private fun NarmestelederLeesahKafkaMessage.toNLBehovEntity(): NarmesteLederBehovEntity =
+    NarmesteLederBehovEntity(
         sykmeldtFnr = this.fnr,
         orgnummer = this.orgnummer,
         narmesteLederFnr = this.narmesteLederFnr,
-        status = requireNotNull(this.status) { "Status must be set for NL avbrutt" },
-        aktivFom = this.aktivFom.let {
-            OffsetDateTime.of(it.atStartOfDay(), ZoneOffset.UTC)
-        } ?: OffsetDateTime.now(ZoneOffset.UTC),
-        aktivTom = this.aktivTom?.let {
-            OffsetDateTime.of(it.atStartOfDay(), ZoneOffset.UTC)
-        } ?: OffsetDateTime.now(ZoneOffset.UTC)
+        status = requireNotNull(this.status) { "Status required for NL Behov" },
     )

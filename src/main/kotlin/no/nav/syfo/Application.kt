@@ -8,6 +8,7 @@ import java.util.concurrent.*
 import no.nav.syfo.application.api.configureRouting
 import no.nav.syfo.plugins.configureDependencies
 import no.nav.syfo.plugins.configureLifecycleHooks
+import no.nav.syfo.plugins.configureRunningTasks
 import org.koin.ktor.ext.get
 
 fun main() {
@@ -37,4 +38,5 @@ fun Application.module() {
     configureDependencies()
     configureLifecycleHooks(get())
     configureRouting()
+    configureRunningTasks(get())
 }

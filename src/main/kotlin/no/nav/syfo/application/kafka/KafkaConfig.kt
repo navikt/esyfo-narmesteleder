@@ -9,7 +9,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.config.SslConfigs
+import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 
 const val JAVA_KEYSTORE = "JKS"
@@ -58,14 +60,14 @@ fun producerProperties(
 
 fun consumerProperties(
     env: KafkaEnvironment,
-    valueSerializer: KClass<out Serializer<out Any>>,
-    keySerializer: KClass<out Serializer<out Any>> = StringSerializer::class
+    valueSerializer: KClass<out Deserializer<out Any>>,
+    keySerializer: KClass<out Deserializer<out Any>> = StringDeserializer::class
 ): Properties {
     val userinfoConfig = "${env.schemaRegistry.username}:${env.schemaRegistry.password}"
     val consumerProperties = commonProperties(env)
 
     return consumerProperties.apply {
-//        put(CommonClientConfigs.GROUP_ID_CONFIG, TODO())
+        put(CommonClientConfigs.GROUP_ID_CONFIG, "esyfo-narmesteleder")
         put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
         put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1")
         put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
@@ -73,8 +75,8 @@ fun consumerProperties(
 //        put(BASIC_AUTH_CREDENTIALS_SOURCE, USER_INFO)
 //        put(SchemaRegistryClientConfig.USER_INFO_CONFIG, userinfoConfig)
 //        put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, env.schemaRegistry.url)
-        put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, valueSerializer)
-        put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, keySerializer)
+        put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, valueSerializer.java)
+        put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, keySerializer.java)
 //        put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true")
     }
 }

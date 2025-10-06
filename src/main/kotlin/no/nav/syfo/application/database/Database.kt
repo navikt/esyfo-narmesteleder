@@ -12,6 +12,7 @@ data class DatabaseConfig(
     val password: String,
     val username: String,
     val poolSize: Int = 4,
+    val migrationsLocation: String = "db"
 )
 
 class Database(
@@ -44,6 +45,9 @@ class Database(
             config.username,
             config.password,
         )
+        locations(config.migrationsLocation)
+        cleanDisabled(false)
+        load().clean()
         load().migrate().migrationsExecuted
     }
 }

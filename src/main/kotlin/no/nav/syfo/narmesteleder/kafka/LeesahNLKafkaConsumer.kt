@@ -16,26 +16,32 @@ import org.slf4j.LoggerFactory
 const val SYKMELDING_NL_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
 
 class LeesahNLKafkaConsumer(
-    private val kafkaListener: KafkaConsumer<String, String>,
+    private val kafkaConsumer: KafkaConsumer<String, String>,
     private val jacksonMapper: ObjectMapper,
     private val nlLeesahService: NarmesteLederLeesahService
 ) : KafkaListener {
     override suspend fun listen(applicationState: ApplicationState) {
+        log.info("Starting leesah consumer")
         while (applicationState.ready) {
             try {
-                kafkaListener.subscribe(listOf(SYKMELDING_NL_TOPIC))
-                start()
+                kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
+                start(applicationState)
+                // TODO: proper error handling
             } catch (e: Exception) {
-                kafkaListener.unsubscribe()
+                log.error("Exception caught while consuming leesah", e)
+                kafkaConsumer.unsubscribe()
                 delay(DELAY_ON_ERROR_SECONDS.seconds)
             }
         }
+        log.info("Exited Leesah consumer loop")
     }
 
-    private suspend fun start() {
+    private suspend fun start(applicationState: ApplicationState) {
         log.info("Starting consuming topic $SYKMELDING_NL_TOPIC")
-        while (true) {
-            kafkaListener.poll(pollDurationInMillis).forEach { record: ConsumerRecord<String, String> ->
+        while (applicationState.ready) {
+            val messages = kafkaConsumer.poll(pollDurationInMillis)
+
+            messages.forEach { record: ConsumerRecord<String, String> ->
                 log.info("Received record with key: ${record.key()}")
                 processRecord(record)
             }
@@ -45,16 +51,18 @@ class LeesahNLKafkaConsumer(
 
     private suspend fun processRecord(record: ConsumerRecord<String, String>) {
         try {
-            val nlKafkaMessage: NarmestelederLeesahKafkaMessage? = jacksonMapper.readValue(record.value())
-
-            nlKafkaMessage?.let {
-                nlLeesahService.processNarmesteLederLeesahMessage(it)
-            }
+            val nlKafkaMessage =
+                jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(record.value())
+            log.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
+            nlLeesahService.processNarmesteLederLeesahMessage(nlKafkaMessage)
 
             log.info("Committing offset")
-            kafkaListener.commitSync()
+            // TODO: fjern commit på finally
+            // kafkaConsumer.commitSync()
         } catch (e: Exception) {
-            log.error("Error encountered while processing sykmelding: ${e.message}", e)
+            log.error("Error encountered while processing message: ${e.message}", e)
+        } finally {
+            kafkaConsumer.commitSync()
         }
     }
 

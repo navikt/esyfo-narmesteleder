@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelder.service
+package no.nav.syfo.aareg.client
 
 import DefaultOrganization
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -17,10 +17,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.mockk.coVerify
 import io.mockk.mockk
-import no.nav.syfo.aareg.client.AaregClient
-import no.nav.syfo.aareg.client.AaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH
-import no.nav.syfo.aareg.client.AaregClientException
-import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 
@@ -31,12 +27,12 @@ class AaregClientTest : DescribeSpec({
 
     describe("Successfull responses from Aareg") {
         val fakeAaregClient = FakeAaregClient()
-        fakeAaregClient.arbeidsForholdForIdent.put(personIdent, arbeidstakerEnhet.ID to arbeidstakerEnhet.ID)
+        fakeAaregClient.arbeidsForholdForIdent.put(personIdent, listOf(arbeidstakerEnhet.ID to arbeidstakerEnhet.ID))
         val arbeidsforhold = FakeAaregClient().getArbeidsforhold(personIdent)
 
-        val mockEngine = MockEngine { req ->
+        val mockEngine = MockEngine.Companion { req ->
             when (req.method) {
-                HttpMethod.Post -> respond(
+                HttpMethod.Companion.Post -> respond(
                     content = jacksonObjectMapper().writeValueAsString(arbeidsforhold),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
@@ -69,9 +65,9 @@ class AaregClientTest : DescribeSpec({
         it("It should re-throw with internal server error if 4xx error except 404") {
             texasHttpClient.defaultMocks()
             val mockEngine = getMockEngine(
-                path = ARBEIDSFORHOLD_OVERSIKT_PATH,
+                path = AaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                status = HttpStatusCode.BadRequest,
+                status = HttpStatusCode.Companion.BadRequest,
                 content = ""
             )
             val client = httpClientDefault(HttpClient(mockEngine))
@@ -90,9 +86,9 @@ class AaregClientTest : DescribeSpec({
         it("Should re-throw with internal server error if 4xx error") {
             texasHttpClient.defaultMocks()
             val mockEngine = getMockEngine(
-                path = ARBEIDSFORHOLD_OVERSIKT_PATH,
+                path = AaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                status = HttpStatusCode.NotFound,
+                status = HttpStatusCode.Companion.NotFound,
                 content = ""
             )
             val client = httpClientDefault(HttpClient(mockEngine))

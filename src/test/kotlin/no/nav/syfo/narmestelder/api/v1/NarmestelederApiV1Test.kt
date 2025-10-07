@@ -38,6 +38,7 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
+import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
 class NarmestelederApiV1Test : DescribeSpec({
@@ -47,12 +48,13 @@ class NarmestelederApiV1Test : DescribeSpec({
     val fakeAaregClient = FakeAaregClient()
     val aaregService = AaregService(fakeAaregClient)
     val narmestelederKafkaService =
-        NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer(), pdlService)
+        NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
     val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
     val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
     val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
     val validationService = ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy)
+    val validationServiceSpy = spyk(validationService)
     val tokenXIssuer = "https://tokenx.nav.no"
     beforeTest {
         clearAllMocks()
@@ -80,7 +82,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     registerApiV1(
                         narmestelederKafkaServiceSpy,
                         texasHttpClientMock,
-                        validationService,
+                        validationServiceSpy,
                     )
                 }
             }
@@ -96,16 +98,15 @@ class NarmestelederApiV1Test : DescribeSpec({
                         consumer = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
                         ),
-                        acr = "Level4",
-                        pid = narmesteLederRelasjon.leder.fnr
+                        scope = MASKINPORTEN_NL_SCOPE,
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.sykmeldtFnr,
-                        narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
+                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.leder.fnr,
-                        narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
+                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
                     )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
@@ -132,7 +133,8 @@ class NarmestelederApiV1Test : DescribeSpec({
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
-                        )
+                        ),
+                        scope = MASKINPORTEN_NL_SCOPE,
                     )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
@@ -152,6 +154,28 @@ class NarmestelederApiV1Test : DescribeSpec({
                 withTestApplication {
                     // Arrange
                     texasHttpClientMock.defaultMocks()
+                    // Act
+                    val response = client.post("/api/v1/narmesteleder") {
+                        contentType(ContentType.Application.Json)
+                        setBody(narmesteLederRelasjon())
+                    }
+
+                    // Assert
+                    response.status shouldBe HttpStatusCode.Unauthorized
+                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                    coVerify { narmestelederKafkaServiceSpy wasNot Called }
+                }
+            }
+
+            it("should return 401 unauthorized for missing valid maskinporten scope") {
+                withTestApplication {
+                    // Arrange
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                        ),
+                        scope = "invalid-scope",
+                    )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
                         contentType(ContentType.Application.Json)
@@ -195,11 +219,11 @@ class NarmestelederApiV1Test : DescribeSpec({
                     fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.organisasjonsnummer)
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.sykmeldtFnr,
-                        narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
+                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.leder.fnr,
-                        narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer
+                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
                     )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
@@ -214,6 +238,12 @@ class NarmestelederApiV1Test : DescribeSpec({
                             eq(narmesteLederRelasjon),
                             narmestelederAktorer = any<NarmestelederAktorer>(),
                             eq(NlResponseSource.LPS),
+                        )
+                    }
+                    coVerify(exactly = 1) {
+                        validationServiceSpy.validateNarmesteleder(
+                            eq(narmesteLederRelasjon),
+                            any()
                         )
                     }
                 }
@@ -264,14 +294,21 @@ class NarmestelederApiV1Test : DescribeSpec({
 
     describe("POST /narmesteleder/avkreft") {
         it("should return 202 Accepted for valid payload") {
+            val narmesteLederAvkreft = narmesteLederAvkreft()
             withTestApplication {
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
-                    )
+                        ID = "0192:${narmesteLederAvkreft.organisasjonsnummer}"
+                    ),
+                    scope = MASKINPORTEN_NL_SCOPE,
                 )
-                val narmesteLederAvkreft = narmesteLederAvkreft()
+                val narmesteLederAvkreft = narmesteLederAvkreft
+                fakeAaregClient.arbeidsForholdForIdent.clear()
+                fakeAaregClient.arbeidsForholdForIdent.put(
+                    narmesteLederAvkreft.sykmeldtFnr,
+                    listOf(narmesteLederAvkreft.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                )
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {
                     contentType(ContentType.Application.Json)
@@ -288,6 +325,42 @@ class NarmestelederApiV1Test : DescribeSpec({
                         )
                     )
                 }
+                coVerify(exactly = 1) {
+                    validationServiceSpy.validateNarmestelederAvkreft(
+                        eq(narmesteLederAvkreft),
+                        any()
+                    )
+                }
+            }
+        }
+
+        it("should return 400 if sykmeldt lacks arbeidsforhold for orgnummer") {
+
+            withTestApplication {
+                // Arrange
+                texasHttpClientMock.defaultMocks(
+                    consumer = DefaultOrganization.copy(
+                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                    ),
+                    scope = MASKINPORTEN_NL_SCOPE,
+                )
+                val narmesteLederAvkreft = narmesteLederAvkreft()
+                // Act
+                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                    contentType(ContentType.Application.Json)
+                    setBody(narmesteLederAvkreft)
+                    bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
+                }
+
+                // Assert
+                response.status shouldBe HttpStatusCode.BadRequest
+                coVerify(exactly = 0) {
+                    narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
+                        eq(narmesteLederAvkreft), eq(
+                            NlResponseSource.LPS
+                        )
+                    )
+                }
             }
         }
 
@@ -297,7 +370,8 @@ class NarmestelederApiV1Test : DescribeSpec({
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
                         ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
-                    )
+                    ),
+                    scope = MASKINPORTEN_NL_SCOPE,
                 )
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {

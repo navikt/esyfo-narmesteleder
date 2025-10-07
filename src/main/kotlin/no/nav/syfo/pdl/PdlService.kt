@@ -1,7 +1,9 @@
 package no.nav.syfo.pdl
 
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
+import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 
 class PdlService(private val pdlClient: IPdlClient) {
@@ -18,4 +20,15 @@ class PdlService(private val pdlClient: IPdlClient) {
             )
         }
     }
+
+    suspend fun getPersonOrThrowApiError(fnr: String): Person {
+        return try {
+            getPersonFor(fnr)
+        } catch (e: PdlResourceNotFoundException) {
+            throw ApiErrorException.BadRequestException("Fant ikke person i PDL", e)
+        } catch (e: PdlRequestException) {
+            throw ApiErrorException.InternalServerErrorException("Kunne ikke hente person fra PDL", e)
+        }
+    }
+
 }

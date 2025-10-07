@@ -15,12 +15,14 @@ import no.nav.syfo.util.logger
 
 val TOKEN_CONSUMER_KEY = AttributeKey<OrganizationId>("tokenConsumer")
 private val VALID_ISSUERS = listOf(JwtIssuer.MASKINPORTEN, JwtIssuer.TOKEN_X)
+val MASKINPORTEN_NL_SCOPE = "nav:syfo/narmesteleder/lps"
 private val logger = logger("no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin")
 
 val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
     name = "MaskinportenAndTokenXTokenAuthPlugin",
     createConfiguration = ::TexasAuthPluginConfiguration,
 ) {
+
     pluginConfig.apply {
         onCall { call ->
             val issuer = try {
@@ -53,6 +55,9 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
                 JwtIssuer.MASKINPORTEN -> {
                     if (introspectionResponse.consumer == null) {
                         throw ApiErrorException.UnauthorizedException("No consumer in token claims")
+                    }
+                    if (introspectionResponse.scope != MASKINPORTEN_NL_SCOPE) {
+                        throw ApiErrorException.UnauthorizedException("Invalid scope from maskinporten" )
                     }
                     call.authentication.principal(
                         OrganisasjonPrincipal(

@@ -1,12 +1,23 @@
 package no.nav.syfo.narmesteleder.service
 
+import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import no.nav.syfo.narmesteleder.db.NarmesteLederBehovEntity
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlStatus
 import org.slf4j.LoggerFactory
 
-class NarmesteLederLeesahService(private val narmestelederService: INarmestelederService) {
+class NarmesteLederLeesahService(
+    private val nlDb: NarmestelederDb
+) {
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    private suspend fun saveAvbrytNarmestelederRelation(nlBehov: NarmesteLederBehovEntity): UUID =
+        withContext(Dispatchers.IO) {
+            nlDb.insertNlBehov(nlBehov)
+        }
 
     suspend fun processNarmesteLederLeesahMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
         val status =
@@ -35,7 +46,7 @@ class NarmesteLederLeesahService(private val narmestelederService: INarmestelede
     }
 
     private suspend fun handleNlAvbruttMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
-        val id = narmestelederService.saveAvbrytNarmestelederRelation(
+        val id = saveAvbrytNarmestelederRelation(
             nlKafkaMessage.toNLBehovEntity()
         )
         logger.info("Inserted nærmeste leder-behov with id: $id")

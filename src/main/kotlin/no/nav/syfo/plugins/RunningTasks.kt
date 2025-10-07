@@ -44,7 +44,7 @@ fun Application.configureRunningTasks(applicationState: ApplicationState) {
     }
 }
 
-suspend fun launchKafkaListener(applicationState: ApplicationState, kafkaListener: KafkaListener) {
+private suspend fun launchKafkaListener(applicationState: ApplicationState, kafkaListener: KafkaListener) {
     try {
         kafkaListener.listen(applicationState)
     } finally {

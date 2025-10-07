@@ -22,10 +22,8 @@ import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
-import no.nav.syfo.narmesteleder.service.INarmestelederService
 import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
@@ -78,6 +76,9 @@ private fun databaseModule() = module {
             )
         )
     }
+    single {
+        NarmestelederDb(get())
+    }
 }
 
 private fun servicesModule() = module {
@@ -101,10 +102,6 @@ private fun servicesModule() = module {
             texasHttpClient = get(),
             scope = env().clientProperties.pdlScope
         )
-    }
-    // TODO: Vurder behov for fake service eller en fake consumer.
-    single<INarmestelederService> {
-        NarmestelederService(NarmestelederDb(get()))
     }
     single {
         NarmesteLederLeesahService(get())

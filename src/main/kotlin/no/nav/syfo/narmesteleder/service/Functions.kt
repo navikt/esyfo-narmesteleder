@@ -23,7 +23,7 @@ fun validateNarmesteLeder(
     nlrequire(narmesteLederOrgNumbers.keys.contains(orgNumberInRequest)) { "Ingen arbeidsforhold for narmesteleder for angitt virksomhet" }
     nlrequire(
         narmesteLederOrgNumbers.keys == sykemeldtOrgNumbers.keys,
-        { "Næremeste leder mangler arbeidsforl i samme virksomhet som sykmelt" })
+        { "Næremeste leder mangler arbeidsforhold i samme virksomhet som sykmeldt" })
     innsenderOrgNumber?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(innsenderOrgNumber)) { "Innsender samsvarer ikke virksomhet i request" } }
 }
 

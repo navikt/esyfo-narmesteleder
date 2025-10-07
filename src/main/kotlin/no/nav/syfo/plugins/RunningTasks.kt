@@ -11,14 +11,16 @@ import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
+import no.nav.syfo.util.logger
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
 
+private val logger = logger("io.ktor.server.application.Application.RunningTasks")
+
 fun Application.configureRunningTasks(applicationState: ApplicationState) {
     val nlLeesahService by inject<NarmesteLederLeesahService>()
     val environment by inject<Environment>()
-
 
     val leesahKafkaJob = launch(Dispatchers.IO) {
         val properties = consumerProperties(
@@ -30,24 +32,15 @@ fun Application.configureRunningTasks(applicationState: ApplicationState) {
             StringDeserializer(),
             StringDeserializer(),
         )
-        launchKafkaListener(
-            applicationState = applicationState,
-            kafkaListener = LeesahNLKafkaConsumer(
-                nlLeesahService = nlLeesahService,
-                jacksonMapper = jacksonMapper(),
-                kafkaConsumer = kafkaConsumer,
-            )
+        val leesahConsumer = LeesahNLKafkaConsumer(
+            nlLeesahService = nlLeesahService,
+            jacksonMapper = jacksonMapper(),
+            kafkaConsumer = kafkaConsumer,
         )
+        leesahConsumer.listen(applicationState)
     }
     monitor.subscribe(ApplicationStopping) {
+        logger.info("Application is stopping.")
         leesahKafkaJob.cancel()
-    }
-}
-
-private suspend fun launchKafkaListener(applicationState: ApplicationState, kafkaListener: KafkaListener) {
-    try {
-        kafkaListener.listen(applicationState)
-    } finally {
-        applicationState.ready = false
     }
 }

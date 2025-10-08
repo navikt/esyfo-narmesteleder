@@ -44,6 +44,9 @@ class Database(
             config.username,
             config.password,
         )
+            .callbacks("db/callbacks")
+            .locations("db/migrations")
+
         load().migrate().migrationsExecuted
     }
 }

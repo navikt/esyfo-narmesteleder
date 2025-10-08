@@ -44,8 +44,7 @@ class Database(
             config.username,
             config.password,
         )
-            .callbacks("classpath:db/callbacks")
-            .locations("classpath:db/migrations")
+            .failOnMissingLocations(false)
 
         load().migrate().migrationsExecuted
     }

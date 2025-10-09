@@ -17,10 +17,6 @@ import org.apache.kafka.common.serialization.StringSerializer
 const val JAVA_KEYSTORE = "JKS"
 const val PKCS12 = "PKCS12"
 const val SSL = "SSL"
-const val USER_INFO = "USER_INFO"
-const val ONE_SECOND_IN_MILLIS = 1000L
-
-val pollDurationInMillis: Duration = Duration.ofMillis(ONE_SECOND_IN_MILLIS)
 
 fun commonProperties(env: KafkaEnvironment): Properties {
     val sslConfig = env.sslConfig

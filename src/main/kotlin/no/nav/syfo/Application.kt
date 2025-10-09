@@ -4,7 +4,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import java.util.concurrent.*
+import java.util.concurrent.TimeUnit
 import no.nav.syfo.application.api.configureRouting
 import no.nav.syfo.plugins.configureDependencies
 import no.nav.syfo.plugins.configureLifecycleHooks

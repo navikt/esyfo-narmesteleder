@@ -46,8 +46,6 @@ class Database(
             config.password,
         )
         locations(config.migrationsLocation)
-        cleanDisabled(false)
-        load().clean()
         load().migrate().migrationsExecuted
     }
 }

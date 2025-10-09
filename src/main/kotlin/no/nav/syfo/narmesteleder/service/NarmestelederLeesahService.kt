@@ -1,6 +1,5 @@
 package no.nav.syfo.narmesteleder.service
 
-import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.narmesteleder.db.NarmesteLederBehovEntity
@@ -10,14 +9,10 @@ import no.nav.syfo.narmesteleder.kafka.model.NlStatus
 import org.slf4j.LoggerFactory
 
 class NarmesteLederLeesahService(
-    private val nlDb: NarmestelederDb
+    private val nlDb: NarmestelederDb,
+    private val persistLeesahNlBehov: Boolean,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    private suspend fun saveAvbrytNarmestelederRelation(nlBehov: NarmesteLederBehovEntity): UUID =
-        withContext(Dispatchers.IO) {
-            nlDb.insertNlBehov(nlBehov)
-        }
 
     suspend fun processNarmesteLederLeesahMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
         val status =
@@ -45,12 +40,17 @@ class NarmesteLederLeesahService(
         }
     }
 
-    private suspend fun handleNlAvbruttMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
-        val id = saveAvbrytNarmestelederRelation(
-            nlKafkaMessage.toNLBehovEntity()
-        )
-        logger.info("Inserted nærmeste leder-behov with id: $id")
-    }
+    private suspend fun handleNlAvbruttMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) =
+        withContext(Dispatchers.IO) {
+            if (!persistLeesahNlBehov) {
+                logger.info("Skipping persistence of NL Behov as configured.")
+                return@withContext
+            }
+            val id = nlDb.insertNlBehov(
+                nlKafkaMessage.toNLBehovEntity()
+            )
+            logger.info("Inserted nærmeste leder-behov with id: $id")
+        }
 }
 
 private fun NarmestelederLeesahKafkaMessage.toNLBehovEntity(): NarmesteLederBehovEntity =

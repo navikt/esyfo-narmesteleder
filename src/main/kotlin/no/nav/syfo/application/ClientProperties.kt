@@ -6,6 +6,7 @@ data class ClientProperties(
     val altinnTilgangerBaseUrl: String,
     val aaregBaseUrl: String,
     val aaregScope: String,
+    val persistLeesahNlBehov: Boolean,
 ) {
     companion object {
         fun createForLocal() = ClientProperties(
@@ -14,6 +15,7 @@ data class ClientProperties(
             altinnTilgangerBaseUrl = "https://altinn-tilganger-api.dev.intern.nav.no",
             aaregBaseUrl = "",
             aaregScope = "aareg",
+            persistLeesahNlBehov = true,
         )
 
         fun createFromEnvVars() =
@@ -23,6 +25,7 @@ data class ClientProperties(
                 aaregBaseUrl = getEnvVar("AAREG_BASE_URL"),
                 aaregScope = getEnvVar("AAREG_SCOPE"),
                 altinnTilgangerBaseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
+                persistLeesahNlBehov = false,
             )
     }
 }

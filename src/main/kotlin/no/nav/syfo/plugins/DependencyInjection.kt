@@ -104,7 +104,7 @@ private fun servicesModule() = module {
         )
     }
     single {
-        NarmesteLederLeesahService(get())
+        NarmesteLederLeesahService(get(), env().clientProperties.persistLeesahNlBehov)
     }
     single {
         PdlService(get())

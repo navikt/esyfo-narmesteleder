@@ -14,10 +14,6 @@ fun Application.configureLifecycleHooks(applicationState: ApplicationState = App
         applicationState.ready = true
         logger.info("Application is ready, running Java VM ${Runtime.version()}")
     }
-    monitor.subscribe(ApplicationStopPreparing) {
-        applicationState.ready = false
-        logger.info("Application is preparing to stop.")
-    }
     monitor.subscribe(ApplicationStopped) {
         applicationState.ready = false
         logger.info("Application is stopped")

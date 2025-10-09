@@ -3,6 +3,7 @@ package no.nav.syfo.narmesteleder.kafka
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -33,16 +34,14 @@ class LeesahNLKafkaConsumer(
 ) : KafkaListener {
     private lateinit var job: Job
     private val processed = mutableMapOf<TopicPartition, Long>()
-
-    @Volatile
-    private var running = false
+    private val running = AtomicBoolean(false)
 
     override fun listen(applicationState: ApplicationState) {
         log.info("Starting leesah consumer")
-        running = true
+        running.set(true)
         job = scope.launch(Dispatchers.IO + CoroutineName("leesah-consumer")) {
 
-            while (isActive && running) {
+            while (isActive && running.get()) {
                 try {
                     kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
                     start()
@@ -62,7 +61,7 @@ class LeesahNLKafkaConsumer(
     }
 
     private suspend fun start() {
-        while (running) {
+        while (running.get()) {
             try {
                 val messages = kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
                 if (messages.isEmpty) continue
@@ -91,7 +90,7 @@ class LeesahNLKafkaConsumer(
     override suspend fun stop() {
         if (!::job.isInitialized) error("Consumer not started!")
 
-        running = false
+        running.set(false)
         log.info("Preparing shutdown")
         log.info("Stopping consuming topic $SYKMELDING_NL_TOPIC")
 
@@ -111,6 +110,6 @@ class LeesahNLKafkaConsumer(
     companion object {
         private val log = LoggerFactory.getLogger(LeesahNLKafkaConsumer::class.java)
         private const val DELAY_ON_ERROR_SECONDS = 60L
-        private const val POLL_DURATION_SECONDS = 10L
+        private const val POLL_DURATION_SECONDS = 1L
     }
 }

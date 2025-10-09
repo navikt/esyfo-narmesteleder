@@ -38,7 +38,7 @@ fun Application.configureRunningTasks(applicationState: ApplicationState) {
         scope = this,
     )
     monitor.subscribe(ApplicationStarted) {
-        launch { leesahConsumer.listen(applicationState) }
+        leesahConsumer.listen(applicationState)
     }
 
     monitor.subscribe(ApplicationStopping) {

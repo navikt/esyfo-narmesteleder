@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.kafka.model
 
+import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -11,14 +12,10 @@ enum class NlStatus {
     DEAKTIVERT_LEDER,
     DEAKTIVERT_ARBEIDSFORHOLD,
     DEAKTIVERT_NY_LEDER,
-    IDENTENDRING;
+    IDENTENDRING,
 
-    companion object {
-        fun fromStatus(status: String?) =
-            entries.firstOrNull {
-                it.name.equals(status, ignoreCase = true)
-            }
-    }
+    @JsonEnumDefaultValue
+    UKJENT;
 }
 
 data class NarmestelederLeesahKafkaMessage(
@@ -32,5 +29,5 @@ data class NarmestelederLeesahKafkaMessage(
     val aktivTom: LocalDate?,
     val arbeidsgiverForskutterer: Boolean?,
     val timestamp: OffsetDateTime,
-    val status: String? = null,
+    val status: NlStatus,
 )

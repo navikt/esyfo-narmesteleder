@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.service
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import no.nav.syfo.narmesteleder.db.BehovStatus
 import no.nav.syfo.narmesteleder.db.NarmesteLederBehovEntity
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
@@ -14,14 +15,10 @@ class NarmesteLederLeesahService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun processNarmesteLederLeesahMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
-        val status =
-            NlStatus.fromStatus(nlKafkaMessage.status)
-                ?: throw RuntimeException("NL status incorrect or not set")
+    suspend fun handleNarmesteLederLeesahMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
+        logger.info("Processing NL message with status: ${nlKafkaMessage.status}")
 
-        logger.info("Processing NL message with status: $status")
-
-        when (status) {
+        when (nlKafkaMessage.status) {
             NlStatus.DEAKTIVERT_ARBEIDSTAKER,
             NlStatus.DEAKTIVERT_ARBEIDSTAKER_INNSENDT_SYKMELDING,
             NlStatus.DEAKTIVERT_LEDER,
@@ -37,26 +34,29 @@ class NarmesteLederLeesahService(
             NlStatus.IDENTENDRING -> {
                 logger.info("Identendring message received.")
             }
+
+            NlStatus.UKJENT -> {
+                logger.warn("Unknown status received in NL message!")
+            }
         }
     }
 
-    private suspend fun handleNlAvbruttMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) =
+    private suspend fun handleNlAvbruttMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
+        if (!persistLeesahNlBehov) {
+            logger.info("Skipping persistence of NL Behov as configured.")
+            return
+        }
+
         withContext(Dispatchers.IO) {
-            if (!persistLeesahNlBehov) {
-                logger.info("Skipping persistence of NL Behov as configured.")
-                return@withContext
-            }
             val id = nlDb.insertNlBehov(
-                nlKafkaMessage.toNLBehovEntity()
+                NarmesteLederBehovEntity(
+                    sykmeldtFnr = nlKafkaMessage.fnr,
+                    orgnummer = nlKafkaMessage.orgnummer,
+                    narmesteLederFnr = nlKafkaMessage.narmesteLederFnr,
+                    behovStatus = BehovStatus.RECEIVED
+                )
             )
             logger.info("Inserted nærmeste leder-behov with id: $id")
         }
+    }
 }
-
-private fun NarmestelederLeesahKafkaMessage.toNLBehovEntity(): NarmesteLederBehovEntity =
-    NarmesteLederBehovEntity(
-        sykmeldtFnr = this.fnr,
-        orgnummer = this.orgnummer,
-        narmesteLederFnr = this.narmesteLederFnr,
-        leesahStatus = requireNotNull(this.status) { "Status required for NL Behov" },
-    )

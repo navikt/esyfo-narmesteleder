@@ -55,6 +55,7 @@ fun producerProperties(
 }
 
 fun consumerProperties(
+    groupId: String,
     env: KafkaEnvironment,
     valueSerializer: KClass<out Deserializer<out Any>>,
     keySerializer: KClass<out Deserializer<out Any>> = StringDeserializer::class
@@ -62,24 +63,16 @@ fun consumerProperties(
     val consumerProperties = commonProperties(env)
 
     return consumerProperties.apply {
-        put(CommonClientConfigs.GROUP_ID_CONFIG, "esyfo-narmesteleder")
+        put(CommonClientConfigs.GROUP_ID_CONFIG, groupId)
         put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
         put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1")
         put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
         put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, valueSerializer.java)
         put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, keySerializer.java)
-
-        
-        // Div. 3.part-verdier benyttet i lps-oppfolgingsplan-mottak
-//        val userinfoConfig = "${env.schemaRegistry.username}:${env.schemaRegistry.password}"
-//        put(BASIC_AUTH_CREDENTIALS_SOURCE, USER_INFO)
-//        put(SchemaRegistryClientConfig.USER_INFO_CONFIG, userinfoConfig)
-//        put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, env.schemaRegistry.url)
-//        put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true")
     }
 }
 
 interface KafkaListener {
-    fun listen(applicationState: ApplicationState)
+    fun listen()
     suspend fun stop()
 }

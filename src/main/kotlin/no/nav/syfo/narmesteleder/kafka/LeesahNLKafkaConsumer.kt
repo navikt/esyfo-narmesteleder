@@ -1,6 +1,7 @@
 package no.nav.syfo.narmesteleder.kafka
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.RuntimeJsonMappingException
 import com.fasterxml.jackson.module.kotlin.readValue
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
@@ -36,7 +37,7 @@ class LeesahNLKafkaConsumer(
     private val processed = mutableMapOf<TopicPartition, Long>()
     private val running = AtomicBoolean(false)
 
-    override fun listen(applicationState: ApplicationState) {
+    override fun listen() {
         log.info("Starting leesah consumer")
         running.set(true)
         job = scope.launch(Dispatchers.IO + CoroutineName("leesah-consumer")) {
@@ -99,12 +100,16 @@ class LeesahNLKafkaConsumer(
     }
 
     private suspend fun processRecord(record: ConsumerRecord<String, String>) {
-        val nlKafkaMessage =
-            jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(record.value())
-        log.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
-
-        nlLeesahService.processNarmesteLederLeesahMessage(nlKafkaMessage)
-        processed[TopicPartition(record.topic(), record.partition())] = record.offset()
+        try {
+            val nlKafkaMessage =
+                jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(record.value())
+            log.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
+            nlLeesahService.handleNarmesteLederLeesahMessage(nlKafkaMessage)
+        } catch (e: RuntimeJsonMappingException) {
+            log.error("Error processing NL message with key ${record.key()} and offset ${record.offset()}", e)
+        } finally {
+            processed[TopicPartition(record.topic(), record.partition())] = record.offset()
+        }
     }
 
     companion object {

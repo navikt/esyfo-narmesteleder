@@ -53,6 +53,7 @@ class NarmesteLederLeesahService(
                     sykmeldtFnr = nlKafkaMessage.fnr,
                     orgnummer = nlKafkaMessage.orgnummer,
                     narmesteLederFnr = nlKafkaMessage.narmesteLederFnr,
+                    leesahStatus = nlKafkaMessage.status.name,
                     behovStatus = BehovStatus.RECEIVED
                 )
             )

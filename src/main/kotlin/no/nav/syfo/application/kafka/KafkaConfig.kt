@@ -1,13 +1,17 @@
 package no.nav.syfo.application.kafka
 
+import java.time.Duration
 import java.util.*
 import kotlin.reflect.KClass
+import no.nav.syfo.application.ApplicationState
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.config.SslConfigs
+import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 
 const val JAVA_KEYSTORE = "JKS"
@@ -48,4 +52,27 @@ fun producerProperties(
         put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, keySerializer.java)
         put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, valueSerializer.java)
     }
+}
+
+fun consumerProperties(
+    groupId: String,
+    env: KafkaEnvironment,
+    valueSerializer: KClass<out Deserializer<out Any>>,
+    keySerializer: KClass<out Deserializer<out Any>> = StringDeserializer::class
+): Properties {
+    val consumerProperties = commonProperties(env)
+
+    return consumerProperties.apply {
+        put(CommonClientConfigs.GROUP_ID_CONFIG, groupId)
+        put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
+        put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1")
+        put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
+        put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, valueSerializer.java)
+        put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, keySerializer.java)
+    }
+}
+
+interface KafkaListener {
+    fun listen()
+    suspend fun stop()
 }

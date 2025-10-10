@@ -5,13 +5,14 @@ import com.zaxxer.hikari.HikariDataSource
 import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import java.sql.Connection
+import no.nav.syfo.application.getEnvVar
 import org.flywaydb.core.Flyway
 
 data class DatabaseConfig(
     val jdbcUrl: String,
     val password: String,
     val username: String,
-    val poolSize: Int = 4,
+    val poolSize: Int = 4
 )
 
 class Database(
@@ -44,6 +45,9 @@ class Database(
             config.username,
             config.password,
         )
+
+//        cleanDisabled(false)
+//        load().clean()
         load().migrate().migrationsExecuted
     }
 }

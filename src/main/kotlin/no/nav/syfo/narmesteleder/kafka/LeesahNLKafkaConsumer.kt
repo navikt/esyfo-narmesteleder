@@ -1,28 +1,25 @@
 package no.nav.syfo.narmesteleder.kafka
 
+import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.RuntimeJsonMappingException
 import com.fasterxml.jackson.module.kotlin.readValue
-import java.time.Duration
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.suspendingPoll
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 
 const val SYKMELDING_NL_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
@@ -35,14 +32,12 @@ class LeesahNLKafkaConsumer(
 ) : KafkaListener {
     private lateinit var job: Job
     private val processed = mutableMapOf<TopicPartition, Long>()
-    private val running = AtomicBoolean(false)
 
     override fun listen() {
         log.info("Starting leesah consumer")
-        running.set(true)
         job = scope.launch(Dispatchers.IO + CoroutineName("leesah-consumer")) {
 
-            while (isActive && running.get()) {
+            while (job.isActive) {
                 try {
                     kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
                     start()
@@ -62,9 +57,9 @@ class LeesahNLKafkaConsumer(
     }
 
     private suspend fun start() {
-        while (running.get()) {
+        while (true) {
             try {
-                val messages = kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
+                val messages = kafkaConsumer.suspendingPoll(POLL_DURATION_SECONDS.seconds)
                 if (messages.isEmpty) continue
 
                 messages.forEach { record: ConsumerRecord<String, String> ->
@@ -72,8 +67,9 @@ class LeesahNLKafkaConsumer(
                     processRecord(record)
                 }
                 commitProcessedSync()
-            } catch (_: WakeupException) {
-                log.debug("Recieved shutdown signal. Exiting polling loop.")
+            } catch (_: CancellationException) {
+                log.debug("Received shutdown signal. Exiting polling loop.")
+                break
             }
         }
     }
@@ -91,11 +87,9 @@ class LeesahNLKafkaConsumer(
     override suspend fun stop() {
         if (!::job.isInitialized) error("Consumer not started!")
 
-        running.set(false)
         log.info("Preparing shutdown")
         log.info("Stopping consuming topic $SYKMELDING_NL_TOPIC")
 
-        kafkaConsumer.wakeup()
         job.cancelAndJoin()
     }
 
@@ -105,8 +99,12 @@ class LeesahNLKafkaConsumer(
                 jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(record.value())
             log.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
             nlLeesahService.handleNarmesteLederLeesahMessage(nlKafkaMessage)
-        } catch (e: RuntimeJsonMappingException) {
-            log.error("Error processing NL message with key ${record.key()} and offset ${record.offset()}", e)
+        } catch (e: JsonMappingException) {
+            log.error(
+                "Error while deserializing record with key ${record.key()} " +
+                        "and offset ${record.offset()}. Will ack + continue to next message.",
+                e
+            )
         } finally {
             processed[TopicPartition(record.topic(), record.partition())] = record.offset()
         }

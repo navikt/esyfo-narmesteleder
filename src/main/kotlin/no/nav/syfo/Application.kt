@@ -38,5 +38,5 @@ fun Application.module() {
     configureDependencies()
     configureLifecycleHooks(get())
     configureRouting()
-    configureRunningTasks(get())
+    configureRunningTasks()
 }

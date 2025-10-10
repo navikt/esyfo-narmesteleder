@@ -4,7 +4,6 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStarted
 import io.ktor.server.application.ApplicationStopping
 import kotlinx.coroutines.runBlocking
-import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.Environment
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
@@ -14,7 +13,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
 
-fun Application.configureRunningTasks(applicationState: ApplicationState) {
+fun Application.configureRunningTasks() {
     val nlLeesahService by inject<NarmesteLederLeesahService>()
     val environment by inject<Environment>()
 
@@ -35,7 +34,7 @@ fun Application.configureRunningTasks(applicationState: ApplicationState) {
         scope = this,
     )
     monitor.subscribe(ApplicationStarted) {
-        leesahConsumer.listen(applicationState)
+        leesahConsumer.listen()
     }
 
     monitor.subscribe(ApplicationStopping) {

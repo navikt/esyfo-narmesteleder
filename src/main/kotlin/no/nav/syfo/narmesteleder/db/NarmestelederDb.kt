@@ -12,15 +12,15 @@ class NarmestelederDb(private val database: DatabaseInterface) {
             connection
                 .prepareStatement(
                     """
-                       insert into nl_behov(orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status) 
-                       values (?, ?, ?, ?, ?) RETURNING id;
+                       INSERT INTO nl_behov(orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status) 
+                       VALUES (?, ?, ?, ?, ?) RETURNING id;
                     """
                 ).use { preparedStatement ->
                     preparedStatement.setString(1, nlAvbrutt.orgnummer)
                     preparedStatement.setString(2, nlAvbrutt.sykmeldtFnr)
                     preparedStatement.setString(3, nlAvbrutt.narmesteLederFnr)
                     preparedStatement.setString(4, nlAvbrutt.leesahStatus)
-                    preparedStatement.setString(5, nlAvbrutt.behovStatus)
+                    preparedStatement.setObject(5, NarmestelederStatus.RECEIVED, java.sql.Types.OTHER)
 
                     preparedStatement.execute()
 

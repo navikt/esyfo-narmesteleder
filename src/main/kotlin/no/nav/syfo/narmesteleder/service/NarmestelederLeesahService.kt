@@ -58,5 +58,5 @@ private fun NarmestelederLeesahKafkaMessage.toNLBehovEntity(): NarmesteLederBeho
         sykmeldtFnr = this.fnr,
         orgnummer = this.orgnummer,
         narmesteLederFnr = this.narmesteLederFnr,
-        status = requireNotNull(this.status) { "Status required for NL Behov" },
+        leesahStatus = requireNotNull(this.status) { "Status required for NL Behov" },
     )

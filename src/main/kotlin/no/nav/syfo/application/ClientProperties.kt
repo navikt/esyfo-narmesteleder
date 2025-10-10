@@ -25,7 +25,7 @@ data class ClientProperties(
                 aaregBaseUrl = getEnvVar("AAREG_BASE_URL"),
                 aaregScope = getEnvVar("AAREG_SCOPE"),
                 altinnTilgangerBaseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
-                persistLeesahNlBehov = false,
+                persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "false").toBoolean(),
             )
     }
 }

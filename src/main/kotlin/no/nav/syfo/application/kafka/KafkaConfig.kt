@@ -69,8 +69,9 @@ fun consumerProperties(
         put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, valueSerializer.java)
         put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, keySerializer.java)
 
+        
         // Div. 3.part-verdier benyttet i lps-oppfolgingsplan-mottak
-        val userinfoConfig = "${env.schemaRegistry.username}:${env.schemaRegistry.password}"
+//        val userinfoConfig = "${env.schemaRegistry.username}:${env.schemaRegistry.password}"
 //        put(BASIC_AUTH_CREDENTIALS_SOURCE, USER_INFO)
 //        put(SchemaRegistryClientConfig.USER_INFO_CONFIG, userinfoConfig)
 //        put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, env.schemaRegistry.url)

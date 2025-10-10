@@ -16,8 +16,6 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
 
-private val logger = logger("io.ktor.server.application.Application.RunningTasks")
-
 fun Application.configureRunningTasks(applicationState: ApplicationState) {
     val nlLeesahService by inject<NarmesteLederLeesahService>()
     val environment by inject<Environment>()

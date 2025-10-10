@@ -46,8 +46,8 @@ class Database(
             config.password,
         )
 
-        cleanDisabled(false)
-        load().clean()
+//        cleanDisabled(false)
+//        load().clean()
         load().migrate().migrationsExecuted
     }
 }

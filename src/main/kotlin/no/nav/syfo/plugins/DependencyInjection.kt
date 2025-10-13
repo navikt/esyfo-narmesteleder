@@ -2,7 +2,6 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
-import kotlin.math.sin
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -19,6 +18,8 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
+import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
+import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
@@ -87,6 +88,14 @@ private fun servicesModule() = module {
         )
     }
     single {
+        if (isLocalEnv()) FakeDinesykmeldteClient() else DinesykmeldteClient(
+            texasHttpClient = get(),
+            scope = env().clientProperties.dinesykmeldteBaseUrl,
+            httpClient = get(),
+            dinesykmeldteBaseUrl = env().clientProperties.dinesykmeldteBaseUrl,
+        )
+    }
+    single {
         AaregService(
             arbeidsforholdOversiktClient = get()
         )
@@ -120,7 +129,7 @@ private fun servicesModule() = module {
         NarmestelederKafkaService(sykemeldingNLKafkaProducer)
     }
     single {
-        ValidationService(get(), get(), get())
+        ValidationService(get(), get(), get(), get())
     }
 }
 

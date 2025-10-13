@@ -6,6 +6,7 @@ import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
 import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
@@ -17,6 +18,7 @@ class ValidationService(
     val pdlService: PdlService,
     val aaregService: AaregService,
     val altinnTilgangerService: no.nav.syfo.altinntilganger.AltinnTilgangerService,
+    val dinesykmeldteService: DinesykmeldteService,
 ) {
     companion object {
         val logger = logger()
@@ -35,7 +37,7 @@ class ValidationService(
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.fnr)
                     .filter { it.key == narmesteLederRelasjonerWrite.organisasjonsnummer }
-
+            validataActiveSykmelding(sykmeldt.fnr, narmesteLederRelasjonerWrite.organisasjonsnummer)
             validateNarmesteLeder(
                 orgNumberInRequest = narmesteLederRelasjonerWrite.organisasjonsnummer,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
@@ -49,8 +51,19 @@ class ValidationService(
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
             throw ApiErrorException.BadRequestException("Error when validating persons")
+        } catch (smExc: ValidateActiveSykmeldingException) {
+            logger.error(
+                "No active sykmelding in orgnummer ${narmesteLederRelasjonerWrite.organisasjonsnummer}",
+                smExc.message
+            )
+            throw ApiErrorException.BadRequestException("Error when validating active sykmelding")
         }
     }
+
+    suspend fun validataActiveSykmelding(fnr: String, orgnummer: String): Boolean =
+        if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
+            throw ValidateNarmesteLederException("Sykmelding er ikke aktiv")
+        } else true
 
     suspend fun validateNarmestelederAvkreft(
         narmestelederRelasjonAvkreft: NarmestelederRelasjonAvkreft,

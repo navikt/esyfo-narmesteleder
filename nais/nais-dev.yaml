@@ -94,5 +94,7 @@ spec:
       value: dev-fss.arbeidsforhold.aareg-services-nais
     - name: DINESYMELDTE_BASEURL
       value: http://dinesykmeldte-backend
+    - name: DINESYMELDTE_SCOPE
+      value: dev-gcp.team-esyfo.dinesykmeldte-backend
     - name: ALTINN_TILGANGER_BASE_URL
       value: http://arbeidsgiver-altinn-tilganger.fager

@@ -30,8 +30,8 @@ data class ClientProperties(
                 aaregScope = getEnvVar("AAREG_SCOPE"),
                 dinesykmeldteBaseUrl = getEnvVar("DINESYMELDTE_BASEURL"),
                 altinnTilgangerBaseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
+                dinesykmeldteScope = getEnvVar("DINESYMELDTE_SCOPE"),
                 persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "false").toBoolean(),
-                dinesykmeldteScope = getEnvVar("DINESYMELDTE_BASEURL")
             )
     }
 }

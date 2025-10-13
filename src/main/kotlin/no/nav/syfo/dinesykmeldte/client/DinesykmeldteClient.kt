@@ -52,7 +52,7 @@ class DinesykmeldteClient(
             TexasHttpClient.getTarget(scope)
         ).accessToken
     }.getOrElse {
-        if (it is Exception) throw AaregClientException("Noe gikk galt ved henting av system-token", it)
+        if (it is Exception) throw DinesykmeldteException("Noe gikk galt ved henting av system-token", it)
         else throw it
     }
 

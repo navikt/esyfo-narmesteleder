@@ -91,7 +91,7 @@ private fun servicesModule() = module {
     single {
         if (isLocalEnv()) FakeDinesykmeldteClient() else DinesykmeldteClient(
             texasHttpClient = get(),
-            scope = env().clientProperties.dinesykmeldteBaseUrl,
+            scope = env().clientProperties.dinesykmeldteScope,
             httpClient = get(),
             dinesykmeldteBaseUrl = env().clientProperties.dinesykmeldteBaseUrl,
         )

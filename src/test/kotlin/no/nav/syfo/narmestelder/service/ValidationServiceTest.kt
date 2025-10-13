@@ -14,12 +14,16 @@ import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.client.FakePdlClient
 
 class ValidationServiceTest : DescribeSpec({
     val altinnTilgangerClient = FakeAltinnTilgangerClient()
     val altinnTilgangerService = spyk(AltinnTilgangerService(altinnTilgangerClient))
+    val dinesykmeldteClient = FakeDinesykmeldteClient()
+    val dinesykmeldteService = spyk(DinesykmeldteService(dinesykmeldteClient))
 
     val aaregClient = FakeAaregClient()
     val aaregService = spyk(AaregService(aaregClient))
@@ -29,6 +33,7 @@ class ValidationServiceTest : DescribeSpec({
         pdlService = pdlService,
         aaregService = aaregService,
         altinnTilgangerService = altinnTilgangerService,
+        dinesykmeldteService = dinesykmeldteService
     )
     beforeTest {
         clearAllMocks()

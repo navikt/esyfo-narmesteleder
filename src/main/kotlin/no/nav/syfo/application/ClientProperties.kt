@@ -5,7 +5,9 @@ data class ClientProperties(
     val pdlScope: String,
     val altinnTilgangerBaseUrl: String,
     val aaregBaseUrl: String,
+    val dinesykmeldteBaseUrl: String,
     val aaregScope: String,
+    val dinesykmeldteScope: String,
     val persistLeesahNlBehov: Boolean,
 ) {
     companion object {
@@ -14,8 +16,10 @@ data class ClientProperties(
             pdlScope = "pdl",
             altinnTilgangerBaseUrl = "https://altinn-tilganger-api.dev.intern.nav.no",
             aaregBaseUrl = "",
+            dinesykmeldteBaseUrl = "",
             aaregScope = "aareg",
             persistLeesahNlBehov = true,
+            dinesykmeldteScope = "",
         )
 
         fun createFromEnvVars() =
@@ -24,8 +28,10 @@ data class ClientProperties(
                 pdlScope = getEnvVar("PDL_SCOPE"),
                 aaregBaseUrl = getEnvVar("AAREG_BASE_URL"),
                 aaregScope = getEnvVar("AAREG_SCOPE"),
+                dinesykmeldteBaseUrl = getEnvVar("DINESYMELDTE_BASEURL"),
                 altinnTilgangerBaseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
                 persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "false").toBoolean(),
+                dinesykmeldteScope = getEnvVar("DINESYMELDTE_BASEURL")
             )
     }
 }

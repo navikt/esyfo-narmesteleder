@@ -18,6 +18,7 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
@@ -98,6 +99,11 @@ private fun servicesModule() = module {
     single {
         AaregService(
             arbeidsforholdOversiktClient = get()
+        )
+    }
+    single {
+        DinesykmeldteService(
+            dinesykmeldteClient = get()
         )
     }
     single {

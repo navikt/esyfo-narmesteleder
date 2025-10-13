@@ -93,6 +93,6 @@ spec:
     - name: AAREG_SCOPE
       value: dev-fss.arbeidsforhold.aareg-services-nais
     - name: DINESYMELDTE_BASEURL
-      value: https://dinesykmeldte-backend
+      value: http://dinesykmeldte-backend
     - name: ALTINN_TILGANGER_BASE_URL
       value: http://arbeidsgiver-altinn-tilganger.fager

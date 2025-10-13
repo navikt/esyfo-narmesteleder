@@ -76,6 +76,7 @@ spec:
           namespace: nais
     outbound:
       rules:
+        - application: dinesykmeldte-backend
         - application: arbeidsgiver-altinn-tilganger
           namespace: fager
       external:

@@ -39,12 +39,6 @@ class DinesykmeldteClient(
             orgnummer,
             getSystemToken()
         )
-        val token = texasHttpClient.systemToken(
-            "azuread",
-            TexasHttpClient.getTarget(scope)
-        ).accessToken
-        // create body which contains fnr and orgnummer as Strings
-        return true
     }
     private suspend fun getSystemToken() = runCatching {
         texasHttpClient.systemToken(
@@ -61,6 +55,7 @@ class DinesykmeldteClient(
         orgnummer: String,
         token: String
     ): Boolean {
+        logger.info("Starter henting fra dinessykmeldte-backend")
         val res = runCatching<Boolean> {
             httpClient.post(arbeidsforholdOversiktPath) {
                 bearerAuth(token)
@@ -73,6 +68,7 @@ class DinesykmeldteClient(
                 )
             }.body()
         }
+        logger.info("Henting vellykket, res: ${res.getOrNull()}")
 
         return res.getOrElse { ex ->
             when (ex) {
@@ -93,7 +89,7 @@ class DinesykmeldteClient(
     }
 
     companion object {
-        const val DINESYKMELDTE_ACTIVE_SYKMELDING_PATH = "/api/v2/arbeidstaker/arbeidsforholdoversikt"
+        const val DINESYKMELDTE_ACTIVE_SYKMELDING_PATH = "/api/sykmelding/isActiveSykmelding"
         private val logger = LoggerFactory.getLogger(AaregClient::class.java)
     }
 }

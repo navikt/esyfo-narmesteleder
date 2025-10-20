@@ -9,13 +9,12 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.AaregClientException
 import no.nav.syfo.texas.client.TexasHttpClient
 import org.slf4j.LoggerFactory
 
 private data class GetIsActiveSykmeldingRequest(
-    val fnr: String,
+    val sykmeldtFnr: String,
     val orgnummer: String
 )
 
@@ -62,7 +61,7 @@ class DinesykmeldteClient(
                 contentType(ContentType.Application.Json)
                 setBody(
                     GetIsActiveSykmeldingRequest(
-                        fnr = personIdent,
+                        sykmeldtFnr = personIdent,
                         orgnummer = orgnummer
                     )
                 )
@@ -90,6 +89,6 @@ class DinesykmeldteClient(
 
     companion object {
         const val DINESYKMELDTE_ACTIVE_SYKMELDING_PATH = "/api/sykmelding/isActiveSykmelding"
-        private val logger = LoggerFactory.getLogger(AaregClient::class.java)
+        private val logger = LoggerFactory.getLogger(DinesykmeldteClient::class.java)
     }
 }

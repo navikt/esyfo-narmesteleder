@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.api.v1.domain
+package no.nav.syfo.narmesteleder.api.v1
 
 import java.util.UUID
 import no.nav.syfo.application.exception.ApiErrorException

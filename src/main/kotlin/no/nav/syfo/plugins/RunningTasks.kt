@@ -8,13 +8,13 @@ import no.nav.syfo.application.Environment
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
-import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
+import no.nav.syfo.narmesteleder.service.NarmesteLederService
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
 
 fun Application.configureRunningTasks() {
-    val nlLeesahService by inject<NarmesteLederLeesahService>()
+    val nlLeesahService by inject<NarmesteLederService>()
     val environment by inject<Environment>()
 
     val properties = consumerProperties(
@@ -28,7 +28,7 @@ fun Application.configureRunningTasks() {
         StringDeserializer(),
     )
     val leesahConsumer = LeesahNLKafkaConsumer(
-        nlLeesahService = nlLeesahService,
+        nlService = nlLeesahService,
         jacksonMapper = jacksonMapper(),
         kafkaConsumer = kafkaConsumer,
         scope = this,

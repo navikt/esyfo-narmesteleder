@@ -4,7 +4,7 @@ import java.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.narmesteleder.api.v1.domain.toNlBehovRead
+import no.nav.syfo.narmesteleder.api.v1.toNlBehovRead
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus

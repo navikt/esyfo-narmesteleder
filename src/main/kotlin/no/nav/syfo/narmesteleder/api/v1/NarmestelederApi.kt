@@ -5,7 +5,9 @@ import io.ktor.server.auth.authentication
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
@@ -14,6 +16,7 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import no.nav.syfo.narmesteleder.service.NarmesteLederService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
@@ -21,6 +24,7 @@ import no.nav.syfo.texas.client.TexasHttpClient
 
 fun Route.registerNarmestelederApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
+    narmesteLederService: NarmesteLederService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
 ) {
@@ -41,16 +45,62 @@ fun Route.registerNarmestelederApiV1(
 
             call.respond(HttpStatusCode.Accepted)
         }
+
+        route("/behov") {
+            registerBehovApi(
+                validationService = validationService,
+                narmestelederKafkaService = narmestelederKafkaService,
+                narmesteLederService = narmesteLederService,
+            )
+        }
     }
 
     route("/narmesteleder/avkreft") {
         post() {
             val avkreft = call.tryReceive<NarmestelederRelasjonAvkreft>()
             val sykmeldt = validationService.validateNarmestelederAvkreft(avkreft, call.getMyPrincipal())
-            narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft.copy(sykmeldtFnr = sykmeldt.fnr), NlResponseSource.LPS)
+            narmestelederKafkaService.avbrytNarmesteLederRelation(
+                avkreft.copy(sykmeldtFnr = sykmeldt.fnr),
+                NlResponseSource.LPS
+            )
 
             call.respond(HttpStatusCode.Accepted)
         }
+    }
+}
+
+private fun Route.registerBehovApi(
+    validationService: ValidationService,
+    narmesteLederService: NarmesteLederService,
+    narmestelederKafkaService: NarmestelederKafkaService,
+) {
+    put("/{id}") {
+        val id = call.getUUIDFromPathVariable(name = "id")
+        val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
+        val nlAktorer = validationService.validateNarmesteleder(
+            nlRelasjon,
+            call.getMyPrincipal()
+        )
+
+        narmestelederKafkaService.sendNarmesteLederRelation(
+            nlRelasjon,
+            nlAktorer,
+            NlResponseSource.LPS,
+        )
+        narmesteLederService.handleUpdatedNl(nlRelasjon.toNlbehovUpdate(id))
+
+        call.respond(HttpStatusCode.Accepted)
+    }
+
+    get("/{id}") {
+        val id = call.getUUIDFromPathVariable(name = "id")
+
+        val nlBehov = narmesteLederService.getNlBehovById(id)
+        call.respond(HttpStatusCode.OK, nlBehov!!)
+    }
+
+    get() {
+
     }
 }
 

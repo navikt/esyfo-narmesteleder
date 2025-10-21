@@ -15,7 +15,8 @@ import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.application.kafka.suspendingPoll
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
-import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
+import no.nav.syfo.narmesteleder.kafka.NarmesteLederLeesahHandler
+import no.nav.syfo.narmesteleder.service.NarmesteLederService
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -27,14 +28,14 @@ const val SYKMELDING_NL_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
 class LeesahNLKafkaConsumer(
     private val kafkaConsumer: KafkaConsumer<String, String>,
     private val jacksonMapper: ObjectMapper,
-    private val nlLeesahService: NarmesteLederLeesahService,
+    private val handler: NarmesteLederLeesahHandler,
     private val scope: CoroutineScope,
 ) : KafkaListener {
     private lateinit var job: Job
     private val processed = mutableMapOf<TopicPartition, Long>()
 
     override fun listen() {
-        log.info("Starting leesah consumer")
+        logger.info("Starting leesah consumer")
         job = scope.launch(Dispatchers.IO + CoroutineName("leesah-consumer")) {
 
             while (job.isActive) {
@@ -42,7 +43,7 @@ class LeesahNLKafkaConsumer(
                     kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
                     start()
                 } catch (e: Exception) {
-                    log.error(
+                    logger.error(
                         "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",
                         e
                     )
@@ -52,23 +53,21 @@ class LeesahNLKafkaConsumer(
                 }
             }
             kafkaConsumer.close()
-            log.info("Exited Leesah consumer loop")
+            logger.info("Exited Leesah consumer loop")
         }
     }
 
     private suspend fun start() {
         while (true) {
             try {
-                val messages = kafkaConsumer.suspendingPoll(POLL_DURATION_SECONDS.seconds)
-                if (messages.isEmpty) continue
-
-                messages.forEach { record: ConsumerRecord<String, String> ->
-                    log.info("Received record with key: ${record.key()}")
-                    processRecord(record)
-                }
+                kafkaConsumer.suspendingPoll(POLL_DURATION_SECONDS.seconds)
+                    .forEach { record: ConsumerRecord<String, String> ->
+                        logger.info("Received record with key: ${record.key()}")
+                        processRecord(record)
+                    }
                 commitProcessedSync()
             } catch (_: CancellationException) {
-                log.debug("Received shutdown signal. Exiting polling loop.")
+                logger.debug("Received shutdown signal. Exiting polling loop.")
                 break
             }
         }
@@ -81,14 +80,14 @@ class LeesahNLKafkaConsumer(
         if (toCommit.isNotEmpty()) kafkaConsumer.commitSync(toCommit)
 
         processed.clear()
-        log.info("Commited offsets for partitions")
+        logger.info("Commited offsets for partitions")
     }
 
     override suspend fun stop() {
         if (!::job.isInitialized) error("Consumer not started!")
 
-        log.info("Preparing shutdown")
-        log.info("Stopping consuming topic $SYKMELDING_NL_TOPIC")
+        logger.info("Preparing shutdown")
+        logger.info("Stopping consuming topic $SYKMELDING_NL_TOPIC")
 
         job.cancelAndJoin()
     }
@@ -97,10 +96,10 @@ class LeesahNLKafkaConsumer(
         try {
             val nlKafkaMessage =
                 jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(record.value())
-            log.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
-            nlLeesahService.handleNarmesteLederLeesahMessage(nlKafkaMessage)
+            logger.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
+            handler.handleByLeesahStatus(nlKafkaMessage.toNlBehovWrite(), nlKafkaMessage.status)
         } catch (e: JsonMappingException) {
-            log.error(
+            logger.error(
                 "Error while deserializing record with key ${record.key()} " +
                         "and offset ${record.offset()}. Will ack + continue to next message.",
                 e
@@ -111,7 +110,7 @@ class LeesahNLKafkaConsumer(
     }
 
     companion object {
-        private val log = LoggerFactory.getLogger(LeesahNLKafkaConsumer::class.java)
+        private val logger = LoggerFactory.getLogger(LeesahNLKafkaConsumer::class.java)
         private const val DELAY_ON_ERROR_SECONDS = 60L
         private const val POLL_DURATION_SECONDS = 1L
     }

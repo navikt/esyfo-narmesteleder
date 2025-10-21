@@ -20,9 +20,10 @@ import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.NarmesteLederLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
-import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
+import no.nav.syfo.narmesteleder.service.NarmesteLederService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
@@ -46,7 +47,8 @@ fun Application.configureDependencies() {
             environmentModule(isLocalEnv()),
             httpClient(),
             databaseModule(),
-            servicesModule()
+            servicesModule(),
+            handlerModule()
         )
     }
 }
@@ -81,6 +83,11 @@ private fun databaseModule() = module {
     }
 }
 
+private fun handlerModule() = module {
+    single { NarmesteLederLeesahHandler(get()) }
+    single { NarmesteLederLeesahHandler(get()) }
+}
+
 private fun servicesModule() = module {
     single { TexasHttpClient(client = get(), environment = env().texas) }
     single {
@@ -104,7 +111,11 @@ private fun servicesModule() = module {
         )
     }
     single {
-        NarmesteLederLeesahService(get(), env().clientProperties.persistLeesahNlBehov)
+        NarmesteLederService(
+            get(),
+            env().clientProperties.persistLeesahNlBehov,
+            get()
+        )
     }
     single {
         PdlService(get())

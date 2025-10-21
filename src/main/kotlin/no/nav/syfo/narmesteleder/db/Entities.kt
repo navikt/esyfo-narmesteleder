@@ -2,31 +2,27 @@ package no.nav.syfo.narmesteleder.db
 
 import java.sql.ResultSet
 import java.util.*
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 
-enum class BehovStatus {
-    RECEIVED,
-    PENDING,
-    COMPLETED,
-    ERROR
-}
-
-data class NarmesteLederBehovEntity(
+data class NarmestelederBehovEntity(
     val id: UUID? = null,
     val orgnummer: String,
+    val hovedenhetOrgnummer: String,
     val sykmeldtFnr: String,
-    val narmesteLederFnr: String,
+    val narmestelederFnr: String,
     val leesahStatus: String,
     val behovStatus: BehovStatus = BehovStatus.RECEIVED
 ) {
     companion object
 }
 
-fun ResultSet.toNarmesteLederBehovEntity(): NarmesteLederBehovEntity =
-    NarmesteLederBehovEntity(
-        id = this.getObject("id") as UUID,
+fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity =
+    NarmestelederBehovEntity(
+        id = this.getObject("id", UUID::class.java),
         orgnummer = this.getString("orgnummer"),
+        hovedenhetOrgnummer = this.getString("hovedenhet_orgnummer"),
         sykmeldtFnr = this.getString("sykmeldt_fnr"),
-        narmesteLederFnr = this.getString("narmeste_leder_fnr"),
+        narmestelederFnr = this.getString("narmeste_leder_fnr"),
         leesahStatus = this.getString("leesah_status"),
         behovStatus = this.getObject("behov_status", BehovStatus::class.java)
     )

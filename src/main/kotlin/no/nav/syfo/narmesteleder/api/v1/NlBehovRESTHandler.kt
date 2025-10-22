@@ -1,28 +1,37 @@
 package no.nav.syfo.narmesteleder.api.v1
 
-import java.util.UUID
+import java.util.*
+import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.NlBehovRead
-import no.nav.syfo.narmesteleder.domain.NlBehovUpdate
-import no.nav.syfo.narmesteleder.domain.NlBehovWrite
+import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.BehovNotFoundException
 import no.nav.syfo.narmesteleder.service.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.service.NarmesteLederService
+import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.ValidationService
 
-class NarmestelederRESTHandler(private val narmesteLederService: NarmesteLederService) {
-    suspend fun handleCreateNlBehov(nlBehovUpdate: NlBehovWrite) {
+class NarmestelederRESTHandler(
+    private val narmesteLederService: NarmesteLederService,
+    private val validationService: ValidationService,
+    private val narmestelederKafkaService: NarmestelederKafkaService
+) {
+    suspend fun handleUpdatedNl(nlRelasjonerWrite: NarmesteLederRelasjonerWrite, behovId: UUID, principal: Principal) {
         try {
-            narmesteLederService.createNewNlBehov(nlBehovUpdate)
-        } catch (e: HovedenhetNotFoundException) {
-            throw ApiErrorException.BadRequestException("Hovedenhet not found for sykemeldt", e)
-        }
-    }
+            val nlAktorer = validationService.validateNarmesteleder(
+                nlRelasjonerWrite,
+                principal
+            )
+            validationService.validateNarmesteleder(nlRelasjonerWrite, principal)
 
-    suspend fun handleUpdatedNl(nlBehovUpdate: NlBehovUpdate) {
-        try {
-            narmesteLederService.updateNlBehov(nlBehovUpdate, BehovStatus.PENDING)
+            narmestelederKafkaService.sendNarmesteLederRelation(
+                nlRelasjonerWrite,
+                nlAktorer,
+                NlResponseSource.LPS, // TODO: Hvordan bestemme source her?
+            )
+            narmesteLederService.updateNlBehov(nlRelasjonerWrite.toNlbehovUpdate(behovId), BehovStatus.PENDING)
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Hovedenhet not found", e)
         } catch (e: BehovNotFoundException) {
@@ -36,10 +45,6 @@ class NarmestelederRESTHandler(private val narmesteLederService: NarmesteLederSe
         } catch (e: BehovNotFoundException) {
             throw ApiErrorException.NotFoundException("Narmesteleder-behov not found", e)
         }
-    }
-
-    suspend fun handleGetAllNlBehov(personIdent: String, orgNummer: String) {
-        narmesteLederService.findAllNlBehov(personIdent, orgNummer)
     }
 }
 

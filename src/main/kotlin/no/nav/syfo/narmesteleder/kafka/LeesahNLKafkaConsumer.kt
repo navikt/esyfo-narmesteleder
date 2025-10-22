@@ -15,8 +15,6 @@ import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.application.kafka.suspendingPoll
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
-import no.nav.syfo.narmesteleder.kafka.NarmesteLederLeesahHandler
-import no.nav.syfo.narmesteleder.service.NarmesteLederService
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -58,17 +56,17 @@ class LeesahNLKafkaConsumer(
     }
 
     private suspend fun start() {
-        while (true) {
+        while (job.isActive) {
             try {
                 kafkaConsumer.suspendingPoll(POLL_DURATION_SECONDS.seconds)
                     .forEach { record: ConsumerRecord<String, String> ->
                         logger.info("Received record with key: ${record.key()}")
                         processRecord(record)
                     }
-                commitProcessedSync()
             } catch (_: CancellationException) {
                 logger.debug("Received shutdown signal. Exiting polling loop.")
-                break
+            } finally {
+                commitProcessedSync()
             }
         }
     }

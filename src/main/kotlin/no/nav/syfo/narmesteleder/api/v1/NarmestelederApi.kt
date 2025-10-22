@@ -16,7 +16,6 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
-import no.nav.syfo.narmesteleder.service.NarmesteLederService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
@@ -24,9 +23,9 @@ import no.nav.syfo.texas.client.TexasHttpClient
 
 fun Route.registerNarmestelederApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
-    narmesteLederService: NarmesteLederService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
+    nlRestHandler: NlBehovRESTHandler
 ) {
     route("/narmesteleder") {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -47,11 +46,7 @@ fun Route.registerNarmestelederApiV1(
         }
 
         route("/behov") {
-            registerBehovApi(
-                validationService = validationService,
-                narmestelederKafkaService = narmestelederKafkaService,
-                narmesteLederService = narmesteLederService,
-            )
+            registerBehovApi(handler = nlRestHandler)
         }
     }
 
@@ -70,37 +65,24 @@ fun Route.registerNarmestelederApiV1(
 }
 
 private fun Route.registerBehovApi(
-    validationService: ValidationService,
-    narmesteLederService: NarmesteLederService,
-    narmestelederKafkaService: NarmestelederKafkaService,
+    handler: NlBehovRESTHandler,
 ) {
-    put("/{id}") {
-        val id = call.getUUIDFromPathVariable(name = "id")
+    put("/{behovId}") {
+        val id = call.getUUIDFromPathVariable(name = "behovId")
         val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
-        val nlAktorer = validationService.validateNarmesteleder(
-            nlRelasjon,
-            call.getMyPrincipal()
-        )
 
-        narmestelederKafkaService.sendNarmesteLederRelation(
-            nlRelasjon,
-            nlAktorer,
-            NlResponseSource.LPS,
-        )
-        narmesteLederService.handleUpdatedNl(nlRelasjon.toNlbehovUpdate(id))
+        handler.handleUpdatedNl(nlRelasjon, id, principal = call.getMyPrincipal())
 
         call.respond(HttpStatusCode.Accepted)
     }
 
-    get("/{id}") {
-        val id = call.getUUIDFromPathVariable(name = "id")
-
-        val nlBehov = narmesteLederService.getNlBehovById(id)
-        call.respond(HttpStatusCode.OK, nlBehov!!)
-    }
-
-    get() {
-
+    get("/{behovId}") {
+        val behovId = call.getUUIDFromPathVariable(name = "behovId")
+        val nlBehov = handler.handleGetNlBehov(
+            nlBehovId = behovId,
+            principal = call.getMyPrincipal()
+        )
+        call.respond(HttpStatusCode.OK, nlBehov)
     }
 }
 

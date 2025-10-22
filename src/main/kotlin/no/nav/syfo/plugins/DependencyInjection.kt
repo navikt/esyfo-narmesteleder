@@ -2,6 +2,7 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -23,8 +24,8 @@ import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.NarmesteLederLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
-import no.nav.syfo.narmesteleder.service.NarmesteLederService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
@@ -85,7 +86,6 @@ private fun databaseModule() = module {
 
 private fun handlerModule() = module {
     single { NarmesteLederLeesahHandler(get()) }
-    single { NarmesteLederLeesahHandler(get()) }
 }
 
 private fun servicesModule() = module {
@@ -111,10 +111,12 @@ private fun servicesModule() = module {
         )
     }
     single {
-        NarmesteLederService(
+        NarmestelederService(
             get(),
             env().clientProperties.persistLeesahNlBehov,
-            get()
+            get(),
+            get(),
+            Dispatchers.IO,
         )
     }
     single {

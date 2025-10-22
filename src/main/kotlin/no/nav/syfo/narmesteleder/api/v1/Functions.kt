@@ -17,10 +17,14 @@ suspend inline fun <reified T : Any> RoutingCall.tryReceive() = runCatching { re
 }
 
 fun RoutingCall.getUUIDFromPathVariable(name: String): UUID {
-    val idString = this.parameters[name] ?: throw IllegalArgumentException("Missing $name parameter")
+    val idString = getPathVariable(name)
     return try {
         UUID.fromString(idString)
     } catch (_: IllegalArgumentException) {
-        throw IllegalArgumentException("Invalid UUID format for $name parameter")
+        throw ApiErrorException.BadRequestException("Invalid UUID format for $name parameter")
     }
+}
+
+fun RoutingCall.getPathVariable(name: String): String {
+    return this.parameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 }

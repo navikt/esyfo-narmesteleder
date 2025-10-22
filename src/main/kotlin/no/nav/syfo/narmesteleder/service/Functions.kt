@@ -4,7 +4,7 @@ import no.nav.syfo.application.exception.ApiErrorException
 
 class ValidateNarmesteLederException(message: String) : RuntimeException(message)
 
-private fun nlrequire(value: Boolean, lazyMessage: () -> String) {
+fun nlrequire(value: Boolean, lazyMessage: () -> String) {
     if (!value) throw ValidateNarmesteLederException(lazyMessage())
 }
 

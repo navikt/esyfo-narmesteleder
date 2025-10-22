@@ -9,7 +9,6 @@ interface INarmestelederDb {
     fun insertNlBehov(nlBehov: NarmestelederBehovEntity): UUID
     fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
     fun findBehovById(id: UUID): NarmestelederBehovEntity?
-    fun findAllBehovByHovedenhetOrgnummer(hovedenhetNummer: String): Set<NarmestelederBehovEntity>
 }
 
 class NarmestelederDb(private val database: DatabaseInterface) : INarmestelederDb {
@@ -18,15 +17,16 @@ class NarmestelederDb(private val database: DatabaseInterface) : INarmestelederD
             connection
                 .prepareStatement(
                     """
-                       INSERT INTO nl_behov(orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status) 
-                       VALUES (?, ?, ?, ?, ?) RETURNING id;
+                       INSERT INTO nl_behov(orgnummer, hovedenhet_orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status) 
+                       VALUES (?, ?, ?, ?, ?, ?) RETURNING id;
                     """
                 ).use { preparedStatement ->
                     preparedStatement.setString(1, nlBehov.orgnummer)
-                    preparedStatement.setString(2, nlBehov.sykmeldtFnr)
-                    preparedStatement.setString(3, nlBehov.narmestelederFnr)
-                    preparedStatement.setString(4, nlBehov.leesahStatus)
-                    preparedStatement.setObject(5, nlBehov.behovStatus, java.sql.Types.OTHER)
+                    preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
+                    preparedStatement.setString(3, nlBehov.sykmeldtFnr)
+                    preparedStatement.setString(4, nlBehov.narmestelederFnr)
+                    preparedStatement.setString(5, nlBehov.leesahStatus)
+                    preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
 
                     preparedStatement.execute()
 
@@ -46,15 +46,16 @@ class NarmestelederDb(private val database: DatabaseInterface) : INarmestelederD
                 .prepareStatement(
                     """
                        UPDATE nl_behov
-                       SET orgnummer = ?, sykemeldt_fnr = ?, narmeste_leder_fnr = ?, behov_status = ?
+                       SET orgnummer = ?, hovedenhet_orgnummer = ?, sykemeldt_fnr = ?, narmeste_leder_fnr = ?, behov_status = ?
                        WHERE id = ?;
                     """
                 ).use { preparedStatement ->
                     preparedStatement.setString(1, nlBehov.orgnummer)
-                    preparedStatement.setString(2, nlBehov.sykmeldtFnr)
-                    preparedStatement.setString(3, nlBehov.narmestelederFnr)
-                    preparedStatement.setObject(4, nlBehov.behovStatus, java.sql.Types.OTHER)
-                    preparedStatement.setObject(5, nlBehov.id)
+                    preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
+                    preparedStatement.setString(3, nlBehov.sykmeldtFnr)
+                    preparedStatement.setString(4, nlBehov.narmestelederFnr)
+                    preparedStatement.setObject(5, nlBehov.behovStatus, java.sql.Types.OTHER)
+                    preparedStatement.setObject(6, nlBehov.id)
 
                     preparedStatement.executeUpdate()
                 }.also {
@@ -68,7 +69,7 @@ class NarmestelederDb(private val database: DatabaseInterface) : INarmestelederD
             connection
                 .prepareStatement(
                     """
-                       SELECT id, orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status
+                       SELECT id, orgnummer, hovedenhet_orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status
                        FROM nl_behov
                        WHERE id = ?;
                     """
@@ -80,29 +81,6 @@ class NarmestelederDb(private val database: DatabaseInterface) : INarmestelederD
                             resultSet.toNarmestelederBehovEntity()
                         } else {
                             null
-                        }
-                    }
-                }
-        }
-    }
-
-    override fun findAllBehovByHovedenhetOrgnummer(hovedenhetNummer: String): Set<NarmestelederBehovEntity> {
-        return database.connection.use { connection ->
-            connection
-                .prepareStatement(
-                    """
-                       SELECT id, orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status
-                       FROM nl_behov
-                       WHERE hovedenhet_orgnummer = ?;
-                    """
-                ).use { preparedStatement ->
-                    preparedStatement.setString(1, hovedenhetNummer)
-
-                    preparedStatement.executeQuery().use { resultSet ->
-                        buildSet {
-                            while (resultSet.next()) {
-                                add(resultSet.toNarmestelederBehovEntity())
-                            }
                         }
                     }
                 }

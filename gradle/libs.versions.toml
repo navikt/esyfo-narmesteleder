@@ -1,36 +1,36 @@
-
 [versions]
-datafaker= "2.5.2"
-flyway="11.14.1"
+datafaker = "2.5.2"
+flyway = "11.14.1"
 hikaricp = "7.0.2"
 jackson-datatype-jsr = "2.20.0"
-kafka="4.1.0"
-koin="4.1.1"
-kotest-extensions="2.0.0"
-kotest="6.0.3"
+kafka = "4.1.0"
+koin = "4.1.1"
+kotest-extensions = "2.0.0"
+kotest = "6.0.3"
 kotlin-version = "2.2.20"
 ktor-version = "3.3.1"
 logback-version = "1.5.19"
 micrometer-prometheus = "1.15.5"
-mockk="1.14.6"
+mockk = "1.14.6"
 postgresql = "42.7.8"
 testcontainers = "1.21.3"
 logstashEncoder = "8.1"
+coroutines-test = "1.9.0"
 
 [libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 database-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
-datafaker = {module = "net.datafaker:datafaker", version.ref = "datafaker"}
+datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version = "jackson-datatype-jsr" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 kafka-twothirteen = { module = "org.apache.kafka:kafka_2.13", version.ref = "kafka" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }
 koin-logger = { module = "io.insert-koin:koin-logger-slf4j", version.ref = "koin" }
-kotest-assertions-core = {module = "io.kotest:kotest-assertions-core", version.ref = "kotest"}
-kotest-assertions-ktor = {module = "io.kotest.extensions:kotest-assertions-ktor", version.ref = "kotest-extensions"}
-kotest-junit = {module = "io.kotest:kotest-runner-junit5", version.ref = "kotest"}
-kotest-property = {module = "io.kotest:kotest-property", version.ref = "kotest"}
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-assertions-ktor = { module = "io.kotest.extensions:kotest-assertions-ktor", version.ref = "kotest-extensions" }
+kotest-junit = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.ref = "ktor-version" }
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor-version" }
 ktor-server-micrometer = { module = "io.ktor:ktor-server-metrics-micrometer", version.ref = "ktor-version" }
@@ -41,9 +41,10 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 logging-janino = { module = "org.codehaus.janino:janino", version = "3.1.12" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer-prometheus" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
-testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers"}
-testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers"}
-logstash = {module = "net.logstash.logback:logstash-logback-encoder",  version.ref = "logstashEncoder"}
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstashEncoder" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines-test" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }

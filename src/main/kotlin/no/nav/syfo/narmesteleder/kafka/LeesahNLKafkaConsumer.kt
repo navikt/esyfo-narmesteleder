@@ -59,7 +59,7 @@ class LeesahNLKafkaConsumer(
         while (job.isActive) {
             try {
                 kafkaConsumer.suspendingPoll(POLL_DURATION_SECONDS.seconds)
-                    .forEach { record: ConsumerRecord<String, String> ->
+                    .forEach { record: ConsumerRecord<String, String?> ->
                         logger.info("Received record with key: ${record.key()}")
                         processRecord(record)
                     }
@@ -90,12 +90,15 @@ class LeesahNLKafkaConsumer(
         job.cancelAndJoin()
     }
 
-    private suspend fun processRecord(record: ConsumerRecord<String, String>) {
+    private suspend fun processRecord(record: ConsumerRecord<String, String?>) {
         try {
-            val nlKafkaMessage =
-                jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(record.value())
-            logger.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
-            handler.handleByLeesahStatus(nlKafkaMessage.toNlBehovWrite(), nlKafkaMessage.status)
+            record.value()?.let {
+                val nlKafkaMessage =
+                    jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(it)
+
+                logger.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
+                handler.handleByLeesahStatus(nlKafkaMessage.toNlBehovWrite(), nlKafkaMessage.status)
+            } ?: logger.info("Received record with empty value: ${record.key()}")
         } catch (e: JsonMappingException) {
             logger.error(
                 "Error while deserializing record with key ${record.key()} " +

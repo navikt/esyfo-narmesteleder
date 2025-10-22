@@ -74,6 +74,7 @@ spec:
       rules:
         - application: tokenx-token-generator
           namespace: nais
+        - application: narmesteleder-frontend
     outbound:
       rules:
         - application: arbeidsgiver-altinn-tilganger

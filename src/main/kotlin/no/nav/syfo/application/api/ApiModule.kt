@@ -22,6 +22,7 @@ fun Application.configureRouting() {
     val texasHttpClient by inject<TexasHttpClient>()
     val validationService by inject<ValidationService>()
     val nlBehovRESTHandler by inject<NlBehovRESTHandler>()
+
     installCallId()
     installContentNegotiation()
     installStatusPages()

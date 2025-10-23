@@ -26,11 +26,12 @@ const val SYKMELDING_NL_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
 class LeesahNLKafkaConsumer(
     private val kafkaConsumer: KafkaConsumer<String, String>,
     private val jacksonMapper: ObjectMapper,
-    private val handler: NarmesteLederLeesahHandler,
+    private val handler: NlBehovLeesahHandler,
     private val scope: CoroutineScope,
 ) : KafkaListener {
     private lateinit var job: Job
     private val processed = mutableMapOf<TopicPartition, Long>()
+    var commitOnAllErrors = false
 
     override fun listen() {
         logger.info("Starting leesah consumer")
@@ -45,7 +46,6 @@ class LeesahNLKafkaConsumer(
                         "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",
                         e
                     )
-                    commitProcessedSync()
                     kafkaConsumer.unsubscribe()
                     delay(DELAY_ON_ERROR_SECONDS.seconds)
                 }
@@ -71,6 +71,21 @@ class LeesahNLKafkaConsumer(
         }
     }
 
+    private suspend fun processRecord(record: ConsumerRecord<String, String?>) {
+        runCatching {
+            record.value()?.let {
+                val nlKafkaMessage =
+                    jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(it)
+
+                logger.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
+                handler.handleByLeesahStatus(nlKafkaMessage.toNlBehovWrite(), nlKafkaMessage.status)
+            } ?: logger.info("Received record with empty value: ${record.key()}")
+            addToProcessed(record)
+        }.getOrElse {
+            handleProccessingError(record, it)
+        }
+    }
+
     private fun commitProcessedSync() {
         if (processed.isEmpty()) return
 
@@ -90,23 +105,36 @@ class LeesahNLKafkaConsumer(
         job.cancelAndJoin()
     }
 
-    private suspend fun processRecord(record: ConsumerRecord<String, String?>) {
-        try {
-            record.value()?.let {
-                val nlKafkaMessage =
-                    jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(it)
 
-                logger.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
-                handler.handleByLeesahStatus(nlKafkaMessage.toNlBehovWrite(), nlKafkaMessage.status)
-            } ?: logger.info("Received record with empty value: ${record.key()}")
-        } catch (e: JsonMappingException) {
-            logger.error(
-                "Error while deserializing record with key ${record.key()} " +
-                        "and offset ${record.offset()}. Will ack + continue to next message.",
-                e
-            )
-        } finally {
-            processed[TopicPartition(record.topic(), record.partition())] = record.offset()
+    private fun addToProcessed(record: ConsumerRecord<String, String?>) {
+        processed[TopicPartition(record.topic(), record.partition())] = record.offset()
+    }
+
+    private fun handleProccessingError(
+        record: ConsumerRecord<String, String?>,
+        error: Throwable
+    ) {
+        when (error) {
+            is JsonMappingException -> {
+                logger.error(
+                    "Error while deserializing record with key ${record.key()} " +
+                            "and offset ${record.offset()}. Will ack + continue to next message.",
+                    error
+                )
+                addToProcessed(record)
+            }
+
+            else -> {
+                logger.error(
+                    "Error while processing record with key ${record.key()} " +
+                            "and offset ${record.offset()}. Will NOT ack, message will be retried.",
+                    error
+                )
+                if (commitOnAllErrors) {
+                    addToProcessed(record)
+                }
+                throw error
+            }
         }
     }
 

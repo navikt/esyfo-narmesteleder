@@ -5,7 +5,7 @@ import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.util.logger
 
-class NarmesteLederLeesahHandler(private val narmesteLederService: NarmestelederService) {
+class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederService) {
     private val logger = logger()
 
     suspend fun handleByLeesahStatus(nlBehov: NlBehovWrite, status: LeesahStatus) {

@@ -19,9 +19,11 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
+import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
+import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
-import no.nav.syfo.narmesteleder.kafka.NarmesteLederLeesahHandler
+import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -79,13 +81,14 @@ private fun databaseModule() = module {
             )
         )
     }
-    single {
+    single<INarmestelederDb> {
         NarmestelederDb(get())
     }
 }
 
 private fun handlerModule() = module {
-    single { NarmesteLederLeesahHandler(get()) }
+    single { NlBehovLeesahHandler(get()) }
+    single { NlBehovRESTHandler(get(), get(), get()) }
 }
 
 private fun servicesModule() = module {

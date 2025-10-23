@@ -50,19 +50,23 @@ class ValidationService(
             )
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
-            throw ApiErrorException.BadRequestException("Error when validating persons")
+            throw ApiErrorException.BadRequestException(
+                "Error validating employment relationship for the given organization number"
+            )
         } catch (smExc: ValidateActiveSykmeldingException) {
             logger.error(
                 "No active sykmelding in orgnummer ${narmesteLederRelasjonerWrite.organisasjonsnummer}",
                 smExc.message
             )
-            throw ApiErrorException.BadRequestException("Error when validating active sykmelding")
+            throw ApiErrorException.BadRequestException(
+                "No active sick leave certificate found for the given organization number"
+            )
         }
     }
 
     suspend fun validataActiveSykmelding(fnr: String, orgnummer: String): Boolean =
         if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
-            throw ValidateNarmesteLederException("Sykmelding er ikke aktiv")
+            throw ValidateActiveSykmeldingException("Sykmelding er ikke aktiv")
         } else true
 
     suspend fun validateNarmestelederAvkreft(

@@ -44,10 +44,6 @@ fun Route.registerNarmestelederApiV1(
 
             call.respond(HttpStatusCode.Accepted)
         }
-
-        route("/behov") {
-            registerBehovApi(handler = nlRestHandler)
-        }
     }
 
     route("/narmesteleder/avkreft") {
@@ -62,27 +58,25 @@ fun Route.registerNarmestelederApiV1(
             call.respond(HttpStatusCode.Accepted)
         }
     }
-}
+    
+    route("narmesteleder/behov") {
+        put("/{behovId}") {
+            val id = call.getUUIDFromPathVariable(name = "behovId")
+            val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
 
-private fun Route.registerBehovApi(
-    handler: NlBehovRESTHandler,
-) {
-    put("/{behovId}") {
-        val id = call.getUUIDFromPathVariable(name = "behovId")
-        val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
+            nlRestHandler.handleUpdatedNl(nlRelasjon, id, principal = call.getMyPrincipal())
 
-        handler.handleUpdatedNl(nlRelasjon, id, principal = call.getMyPrincipal())
+            call.respond(HttpStatusCode.Accepted)
+        }
 
-        call.respond(HttpStatusCode.Accepted)
-    }
-
-    get("/{behovId}") {
-        val behovId = call.getUUIDFromPathVariable(name = "behovId")
-        val nlBehov = handler.handleGetNlBehov(
-            nlBehovId = behovId,
-            principal = call.getMyPrincipal()
-        )
-        call.respond(HttpStatusCode.OK, nlBehov)
+        get("/{behovId}") {
+            val behovId = call.getUUIDFromPathVariable(name = "behovId")
+            val nlBehov = nlRestHandler.handleGetNlBehov(
+                nlBehovId = behovId,
+                principal = call.getMyPrincipal()
+            )
+            call.respond(HttpStatusCode.OK, nlBehov)
+        }
     }
 }
 

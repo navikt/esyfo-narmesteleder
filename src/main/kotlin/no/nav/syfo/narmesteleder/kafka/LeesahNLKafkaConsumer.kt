@@ -43,8 +43,7 @@ class LeesahNLKafkaConsumer(
                     start()
                 } catch (e: Exception) {
                     logger.error(
-                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",
-                        e
+                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.", e
                     )
                     kafkaConsumer.unsubscribe()
                     delay(DELAY_ON_ERROR_SECONDS.seconds)
@@ -131,6 +130,7 @@ class LeesahNLKafkaConsumer(
                     error
                 )
                 if (commitOnAllErrors) {
+                    logger.info("commitOnAllErrors is enabled, committing offset despite the error.")
                     addToProcessed(record)
                 }
                 throw error

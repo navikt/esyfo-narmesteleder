@@ -1,6 +1,7 @@
 package no.nav.syfo.narmesteleder.db
 
 import java.sql.ResultSet
+import java.sql.SQLType
 import java.util.*
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 
@@ -21,8 +22,8 @@ fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity =
         id = this.getObject("id", UUID::class.java),
         orgnummer = this.getString("orgnummer"),
         hovedenhetOrgnummer = this.getString("hovedenhet_orgnummer"),
-        sykmeldtFnr = this.getString("sykmeldt_fnr"),
+        sykmeldtFnr = this.getString("sykemeldt_fnr"),
         narmestelederFnr = this.getString("narmeste_leder_fnr"),
         leesahStatus = this.getString("leesah_status"),
-        behovStatus = this.getObject("behov_status", BehovStatus::class.java)
+        behovStatus = BehovStatus.valueOf(this.getString("behov_status"))
     )

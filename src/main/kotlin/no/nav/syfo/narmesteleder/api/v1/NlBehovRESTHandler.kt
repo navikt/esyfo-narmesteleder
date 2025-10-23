@@ -26,7 +26,6 @@ class NlBehovRESTHandler(
                 principal
             )
 
-            validationService.validateNarmesteleder(nlRelasjonerWrite, principal)
             narmestelederKafkaService.sendNarmesteLederRelation(
                 nlRelasjonerWrite,
                 nlAktorer,

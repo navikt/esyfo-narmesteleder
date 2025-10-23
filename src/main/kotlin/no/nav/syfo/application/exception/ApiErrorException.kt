@@ -55,4 +55,16 @@ sealed class ApiErrorException(message: String, cause: Throwable?) : RuntimeExce
             message = errorMessage
         )
     }
+
+    class NotFoundException(
+        val errorMessage: String = "Not Found",
+        cause: Throwable? = null,
+    ) : ApiErrorException(errorMessage, cause) {
+        override fun toApiError(path: String): ApiError = ApiError(
+            path = path,
+            status = HttpStatusCode.NotFound,
+            type = ErrorType.NOT_FOUND,
+            message = errorMessage
+        )
+    }
 }

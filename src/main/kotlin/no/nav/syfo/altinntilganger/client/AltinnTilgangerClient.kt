@@ -45,7 +45,7 @@ class FakeAltinnTilgangerClient : IAltinnTilgangerClient {
     }
 
     companion object {
-        val hasAccess = listOf("72022183071" to "215649202")
+        val hasAccess = listOf("72022183071" to "215649202", "215649202" to "310667633", "15436803416" to "310667633")
     }
 }
 

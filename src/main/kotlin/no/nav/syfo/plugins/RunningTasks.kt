@@ -8,15 +8,14 @@ import no.nav.syfo.application.Environment
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
-import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
+import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
 
 fun Application.configureRunningTasks() {
-    val nlLeesahService by inject<NarmesteLederLeesahService>()
+    val nlLeesahHandler by inject<NlBehovLeesahHandler>()
     val environment by inject<Environment>()
-
     val properties = consumerProperties(
         env = environment.kafka,
         valueSerializer = StringDeserializer::class,
@@ -28,11 +27,14 @@ fun Application.configureRunningTasks() {
         StringDeserializer(),
     )
     val leesahConsumer = LeesahNLKafkaConsumer(
-        nlLeesahService = nlLeesahService,
+        handler = nlLeesahHandler,
         jacksonMapper = jacksonMapper(),
         kafkaConsumer = kafkaConsumer,
         scope = this,
-    )
+    ).apply {
+        commitOnAllErrors = environment.kafka.commitOnAllErrors
+    }
+
     monitor.subscribe(ApplicationStarted) {
         leesahConsumer.listen()
     }

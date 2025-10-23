@@ -8,6 +8,7 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.metric.registerMetricApi
+import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.registerApiV1
@@ -20,6 +21,7 @@ fun Application.configureRouting() {
     val narmestelederKafkaService by inject<NarmestelederKafkaService>()
     val texasHttpClient by inject<TexasHttpClient>()
     val validationService by inject<ValidationService>()
+    val nlBehovRESTHandler by inject<NlBehovRESTHandler>()
 
     installCallId()
     installContentNegotiation()
@@ -28,7 +30,7 @@ fun Application.configureRouting() {
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
-        registerApiV1(narmestelederKafkaService, texasHttpClient, validationService)
+        registerApiV1(narmestelederKafkaService, texasHttpClient, validationService, nlBehovRESTHandler)
         get("/") {
             call.respondText("Hello World!")
         }

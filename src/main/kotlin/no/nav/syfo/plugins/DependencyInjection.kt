@@ -2,6 +2,7 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -21,12 +22,15 @@ import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
+import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
-import no.nav.syfo.narmesteleder.service.NarmesteLederLeesahService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
@@ -49,7 +53,8 @@ fun Application.configureDependencies() {
             environmentModule(isLocalEnv()),
             httpClient(),
             databaseModule(),
-            servicesModule()
+            servicesModule(),
+            handlerModule()
         )
     }
 }
@@ -79,9 +84,14 @@ private fun databaseModule() = module {
             )
         )
     }
-    single {
+    single<INarmestelederDb> {
         NarmestelederDb(get())
     }
+}
+
+private fun handlerModule() = module {
+    single { NlBehovLeesahHandler(get()) }
+    single { NlBehovRESTHandler(get(), get(), get()) }
 }
 
 private fun servicesModule() = module {
@@ -120,7 +130,13 @@ private fun servicesModule() = module {
         )
     }
     single {
-        NarmesteLederLeesahService(get(), env().clientProperties.persistLeesahNlBehov)
+        NarmestelederService(
+            get(),
+            env().clientProperties.persistLeesahNlBehov,
+            get(),
+            get(),
+            Dispatchers.IO,
+        )
     }
     single {
         PdlService(get())

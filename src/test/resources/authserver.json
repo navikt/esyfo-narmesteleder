@@ -1,0 +1,23 @@
+{
+  "interactiveLogin": true,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "tokenx",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "code",
+          "match": "code1",
+          "claims": {
+            "pid": "215649202",
+            "acr": "Level4",
+            "aud": [
+              "esyfo-narmesteleder"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

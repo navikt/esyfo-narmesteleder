@@ -10,6 +10,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
 import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
+import no.nav.syfo.narmesteleder.domain.NlBehovRead
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.util.logger
@@ -91,7 +92,7 @@ class ValidationService(
         }
     }
 
-    suspend private fun validateAltTilgang(principal: Principal, orgNumber: String): String? {
+    private suspend fun validateAltTilgang(principal: Principal, orgNumber: String): String? {
         return when (principal) {
             is BrukerPrincipal -> {
                 altinnTilgangerService.validateTilgangToOrganisasjon(
@@ -104,6 +105,17 @@ class ValidationService(
             is OrganisasjonPrincipal -> {
                 maskinportenIdToOrgnumber(principal.ident)
             }
+        }
+    }
+
+    suspend fun validateGetNlBehov(principal: Principal, nlBehovRead: NlBehovRead) {
+        val sykemeldtOrgs = setOf(nlBehovRead.orgnummer, nlBehovRead.hovedenhetOrgnummer)
+        val innsenderOrgNumber = validateAltTilgang(principal, nlBehovRead.orgnummer)
+
+        if (principal is OrganisasjonPrincipal) {
+            nlrequire(
+                sykemeldtOrgs.contains(innsenderOrgNumber)
+            ) { "Innsender is not employed in the same organization as sykemeld" }
         }
     }
 }

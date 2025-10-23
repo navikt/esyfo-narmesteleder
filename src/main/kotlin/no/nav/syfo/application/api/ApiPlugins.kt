@@ -49,8 +49,6 @@ private fun logException(call: ApplicationCall, cause: Throwable) {
 
 fun determineApiError(cause: Throwable, path: String): ApiError {
     return when (cause) {
-        is ApiErrorException.ForbiddenException -> cause.toApiError(path)
-        is ApiErrorException.InternalServerErrorException -> cause.toApiError(path)
         is BadRequestException -> cause.toApiError(path)
         is NotFoundException -> cause.toApiError(path)
         is ApiErrorException -> cause.toApiError(path)

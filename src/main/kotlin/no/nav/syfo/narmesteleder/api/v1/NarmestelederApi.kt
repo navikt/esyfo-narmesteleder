@@ -5,7 +5,9 @@ import io.ktor.server.auth.authentication
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
@@ -23,6 +25,7 @@ fun Route.registerNarmestelederApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
+    nlRestHandler: NlBehovRESTHandler
 ) {
     route("/narmesteleder") {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -47,9 +50,32 @@ fun Route.registerNarmestelederApiV1(
         post() {
             val avkreft = call.tryReceive<NarmestelederRelasjonAvkreft>()
             val sykmeldt = validationService.validateNarmestelederAvkreft(avkreft, call.getMyPrincipal())
-            narmestelederKafkaService.avbrytNarmesteLederRelation(avkreft.copy(sykmeldtFnr = sykmeldt.fnr), NlResponseSource.LPS)
+            narmestelederKafkaService.avbrytNarmesteLederRelation(
+                avkreft.copy(sykmeldtFnr = sykmeldt.fnr),
+                NlResponseSource.LPS
+            )
 
             call.respond(HttpStatusCode.Accepted)
+        }
+    }
+    
+    route("narmesteleder/behov") {
+        put("/{behovId}") {
+            val id = call.getUUIDFromPathVariable(name = "behovId")
+            val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
+
+            nlRestHandler.handleUpdatedNl(nlRelasjon, id, principal = call.getMyPrincipal())
+
+            call.respond(HttpStatusCode.Accepted)
+        }
+
+        get("/{behovId}") {
+            val behovId = call.getUUIDFromPathVariable(name = "behovId")
+            val nlBehov = nlRestHandler.handleGetNlBehov(
+                nlBehovId = behovId,
+                principal = call.getMyPrincipal()
+            )
+            call.respond(HttpStatusCode.OK, nlBehov)
         }
     }
 }

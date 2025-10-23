@@ -7,7 +7,9 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -21,6 +23,9 @@ import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import java.util.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.StandardTestDispatcher
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
@@ -32,10 +37,16 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
+import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
+import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
+import no.nav.syfo.narmesteleder.domain.NlBehovRead
+import no.nav.syfo.narmesteleder.domain.NlBehovWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
@@ -60,10 +71,25 @@ class NarmestelederApiV1Test : DescribeSpec({
     val validationService = ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy, dineSykmelteService)
     val validationServiceSpy = spyk(validationService)
     val tokenXIssuer = "https://tokenx.nav.no"
+    val fakeRepo = FakeNarmestelederDb()
+
+    val narmesteLederService = NarmestelederService(
+        nlDb = fakeRepo,
+        persistLeesahNlBehov = true,
+        aaregService = aaregService,
+        pdlService = pdlService,
+        ioDispatcher = Dispatchers.Default,
+    )
+    val nlBehovHandler = NlBehovRESTHandler(
+        narmesteLederService = narmesteLederService,
+        validationService = validationServiceSpy,
+        narmestelederKafkaService = narmestelederKafkaServiceSpy
+    )
     beforeTest {
         clearAllMocks()
         fakeAltinnTilgangerClient.usersWithAccess.clear()
         fakeAaregClient.arbeidsForholdForIdent.clear()
+        fakeRepo.clear()
     }
     fun withTestApplication(
         fn: suspend ApplicationTestBuilder.() -> Unit
@@ -87,6 +113,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                         narmestelederKafkaServiceSpy,
                         texasHttpClientMock,
                         validationServiceSpy,
+                        nlBehovHandler
                     )
                 }
             }
@@ -388,6 +415,160 @@ class NarmestelederApiV1Test : DescribeSpec({
                 response.status shouldBe HttpStatusCode.BadRequest
                 response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
                 coVerify { narmestelederKafkaServiceSpy wasNot Called }
+            }
+        }
+
+
+        describe("/narmesteleder/behov endpoints") {
+            val sykmeldtFnr = narmesteLederRelasjon.sykmeldtFnr
+            val lederFnr = narmesteLederRelasjon.leder.fnr
+            val orgnummer = narmesteLederRelasjon.organisasjonsnummer
+
+            fun NarmesteLederRelasjonerWrite.toNlBehovWrite(): NlBehovWrite = NlBehovWrite(
+                sykmeldtFnr = sykmeldtFnr,
+                orgnummer = organisasjonsnummer,
+                narmesteLederFnr = leder.fnr,
+                leesahStatus = "ACTIVE"
+            )
+
+            suspend fun seedBehov(): UUID {
+                fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
+                fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
+                narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite())
+                return fakeRepo.lastId() ?: error("No behov seeded")
+            }
+
+            it("GET /behov/{id} 200 for Maskinporten token") {
+                withTestApplication {
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    val behovId = seedBehov()
+                    val response = client.get("/api/v1/narmesteleder/behov/$behovId") {
+                        bearerAuth(createMockToken(orgnummer))
+                    }
+                    response.status shouldBe HttpStatusCode.OK
+                    val body = response.body<NlBehovRead>()
+                    body.id shouldBe behovId
+                    body.orgnummer shouldBe orgnummer
+                    body.sykmeldtFnr shouldBe sykmeldtFnr
+                }
+            }
+
+            it("GET /behov/{id} 404 when behov not found") {
+                withTestApplication {
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    val randomId = UUID.randomUUID()
+                    val response = client.get("/api/v1/narmesteleder/behov/$randomId") {
+                        bearerAuth(createMockToken(orgnummer))
+                    }
+                    response.status shouldBe HttpStatusCode.NotFound
+                    response.body<ApiError>().type shouldBe ErrorType.NOT_FOUND
+                }
+            }
+
+            it("GET /behov/{id} 403 when Maskinporten principal org mismatch") {
+                withTestApplication {
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(ID = "0192:999999999"),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    val behovId = seedBehov()
+                    val response = client.get("/api/v1/narmesteleder/behov/$behovId") {
+                        bearerAuth(createMockToken("999999999"))
+                    }
+                    response.status shouldBe HttpStatusCode.Forbidden
+                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                }
+            }
+
+            it("PUT /behov/{id} 202 updates behov and sends kafka message") {
+                withTestApplication {
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    val behovId = seedBehov()
+                    val updatedRelasjon = narmesteLederRelasjon.copy(
+                        leder = narmesteLederRelasjon.leder.copy(fnr = narmesteLederRelasjon.leder.fnr.reversed())
+                    )
+                    fakeAaregClient.arbeidsForholdForIdent.put(
+                        updatedRelasjon.leder.fnr,
+                        listOf(orgnummer to orgnummer)
+                    )
+                    val response = client.put("/api/v1/narmesteleder/behov/$behovId") {
+                        contentType(ContentType.Application.Json)
+                        setBody(updatedRelasjon)
+                        bearerAuth(createMockToken(orgnummer))
+                    }
+                    response.status shouldBe HttpStatusCode.Accepted
+                    coVerify(exactly = 1) {
+                        narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                            eq(updatedRelasjon), any(), eq(NlResponseSource.leder)
+                        )
+                    }
+                    val stored = fakeRepo.findBehovById(behovId) ?: error("Stored behov missing")
+                    stored.behovStatus.name shouldBe "PENDING"
+                }
+            }
+
+            it("PUT /behov/{id} 404 when behov not found") {
+                withTestApplication {
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    val randomId = UUID.randomUUID()
+                    fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
+                    fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
+                    val response = client.put("/api/v1/narmesteleder/behov/$randomId") {
+                        contentType(ContentType.Application.Json)
+                        setBody(narmesteLederRelasjon)
+                        bearerAuth(createMockToken(orgnummer))
+                    }
+                    response.status shouldBe HttpStatusCode.NotFound
+                    response.body<ApiError>().type shouldBe ErrorType.NOT_FOUND
+                }
+            }
+
+            it("PUT /behov/{id} 400 invalid payload") {
+                withTestApplication {
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    val behovId = seedBehov()
+                    val response = client.put("/api/v1/narmesteleder/behov/$behovId") {
+                        contentType(ContentType.Application.Json)
+                        setBody("""{ "foo": "bar" }""")
+                        bearerAuth(createMockToken(orgnummer))
+                    }
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                }
+            }
+
+            it("PUT /behov/{id} 403 when principal lacks org access") {
+                withTestApplication {
+                    val behovId = seedBehov()
+                    texasHttpClientMock.defaultMocks(
+                        consumer = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
+                    fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
+                    val response = client.put("/api/v1/narmesteleder/behov/$behovId") {
+                        contentType(ContentType.Application.Json)
+                        setBody(narmesteLederRelasjon)
+                        bearerAuth(createMockToken("000000000"))
+                    }
+                    response.status shouldBe HttpStatusCode.Forbidden
+                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                }
             }
         }
     }

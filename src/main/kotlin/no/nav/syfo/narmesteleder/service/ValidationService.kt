@@ -59,14 +59,14 @@ class ValidationService(
                 smExc.message
             )
             throw ApiErrorException.BadRequestException(
-                "No active sick leave certificate found for the given organization number"
+                smExc.message ?: "No active sick leave found for the given organization number"
             )
         }
     }
 
-    suspend fun validataActiveSykmelding(fnr: String, orgnummer: String): Boolean =
+    internal suspend fun validataActiveSykmelding(fnr: String, orgnummer: String): Boolean =
         if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
-            throw ValidateActiveSykmeldingException("Sykmelding er ikke aktiv")
+            throw ValidateActiveSykmeldingException("No active sick leave found for the given organization number")
         } else true
 
     suspend fun validateNarmestelederAvkreft(

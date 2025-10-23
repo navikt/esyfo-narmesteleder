@@ -22,7 +22,7 @@ interface IDinesykmeldteClient {
     suspend fun getIsActiveSykmelding(fnr: String, orgnummer: String): Boolean
 }
 
-class DinesykmeldteException(message: String, cause: Exception) : RuntimeException(message, cause)
+class DinesykmeldteClientException(message: String, cause: Exception) : RuntimeException(message, cause)
 
 class DinesykmeldteClient(
     private val httpClient: HttpClient,
@@ -45,7 +45,7 @@ class DinesykmeldteClient(
             TexasHttpClient.getTarget(scope)
         ).accessToken
     }.getOrElse {
-        if (it is Exception) throw DinesykmeldteException("Noe gikk galt ved henting av system-token", it)
+        if (it is Exception) throw DinesykmeldteClientException("Noe gikk galt ved henting av system-token", it)
         else throw it
     }
 
@@ -76,7 +76,7 @@ class DinesykmeldteClient(
                 }
 
                 is ClientRequestException -> {
-                    throw AaregClientException(
+                    throw DinesykmeldteClientException(
                         "Noe gikk galt ved henting av arbeidsforhold",
                         ex
                     )

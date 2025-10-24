@@ -35,6 +35,8 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
 import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
@@ -64,7 +66,9 @@ class NarmestelederApiV1Test : DescribeSpec({
     val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
     val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
     val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
-    val validationService = ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy)
+    val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
+    val dineSykmelteService = DinesykmeldteService(fakeDinesykmeldteClient)
+    val validationService = ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy, dineSykmelteService)
     val validationServiceSpy = spyk(validationService)
     val tokenXIssuer = "https://tokenx.nav.no"
     val fakeRepo = FakeNarmestelederDb()

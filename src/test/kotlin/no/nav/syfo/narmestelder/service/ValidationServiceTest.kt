@@ -2,6 +2,7 @@ package no.nav.syfo.narmestelder.service
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.spyk
@@ -14,12 +15,17 @@ import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.narmesteleder.service.ValidateActiveSykmeldingException
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.client.FakePdlClient
 
 class ValidationServiceTest : DescribeSpec({
     val altinnTilgangerClient = FakeAltinnTilgangerClient()
     val altinnTilgangerService = spyk(AltinnTilgangerService(altinnTilgangerClient))
+    val dinesykmeldteClient = FakeDinesykmeldteClient()
+    val dinesykmeldteService = spyk(DinesykmeldteService(dinesykmeldteClient))
 
     val aaregClient = FakeAaregClient()
     val aaregService = spyk(AaregService(aaregClient))
@@ -29,6 +35,7 @@ class ValidationServiceTest : DescribeSpec({
         pdlService = pdlService,
         aaregService = aaregService,
         altinnTilgangerService = altinnTilgangerService,
+        dinesykmeldteService = dinesykmeldteService
     )
     beforeTest {
         clearAllMocks()
@@ -84,6 +91,10 @@ class ValidationServiceTest : DescribeSpec({
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.sykmeldtFnr))
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.leder.fnr))
             }
+        }
+
+        it("should return true when calling the validateActiveSykmelding") {
+            service.validataActiveSykmelding("12345678901", "FAKE_ORGNR") shouldBe true
         }
     }
 

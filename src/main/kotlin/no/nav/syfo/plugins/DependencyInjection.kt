@@ -19,6 +19,9 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
+import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
@@ -101,8 +104,21 @@ private fun servicesModule() = module {
         )
     }
     single {
+        if (isLocalEnv()) FakeDinesykmeldteClient() else DinesykmeldteClient(
+            texasHttpClient = get(),
+            scope = env().clientProperties.dinesykmeldteScope,
+            httpClient = get(),
+            dinesykmeldteBaseUrl = env().clientProperties.dinesykmeldteBaseUrl,
+        )
+    }
+    single {
         AaregService(
             arbeidsforholdOversiktClient = get()
+        )
+    }
+    single {
+        DinesykmeldteService(
+            dinesykmeldteClient = get()
         )
     }
     single {
@@ -143,7 +159,7 @@ private fun servicesModule() = module {
         NarmestelederKafkaService(sykemeldingNLKafkaProducer)
     }
     single {
-        ValidationService(get(), get(), get())
+        ValidationService(get(), get(), get(), get())
     }
 }
 

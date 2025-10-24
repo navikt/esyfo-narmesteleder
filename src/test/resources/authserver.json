@@ -10,11 +10,9 @@
           "requestParam": "code",
           "match": "code1",
           "claims": {
-            "pid": "215649202",
-            "acr": "Level4",
-            "aud": [
-              "esyfo-narmesteleder"
-            ]
+            "acr": "${acr}",
+            "pid": "${pid}",
+            "aud": "${aud}"
           }
         }
       ]

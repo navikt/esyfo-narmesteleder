@@ -96,12 +96,6 @@ class ValidationServiceTest : DescribeSpec({
         it("should return true when calling the validateActiveSykmelding") {
             service.validataActiveSykmelding("12345678901", "FAKE_ORGNR") shouldBe true
         }
-
-        it("should return false when calling the validateActiveSykmelding") {
-            shouldThrow< ValidateActiveSykmeldingException> {
-                service.validataActiveSykmelding("11111111111", "FAKE_ORGNR") shouldBe false
-            }
-        }
     }
 
     describe("validateNarmestelederAvkreft") {

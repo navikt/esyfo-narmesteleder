@@ -38,4 +38,6 @@ out/
 
 ### Test Http-client ###
 src/test/http/http-client.private.env.json
+
+### Mac ###
 .DS_Store

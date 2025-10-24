@@ -1,6 +1,6 @@
 [versions]
 datafaker = "2.5.2"
-flyway = "11.14.1"
+flyway = "11.15.0"
 hikaricp = "7.0.2"
 jackson-datatype-jsr = "2.20.0"
 kafka = "4.1.0"

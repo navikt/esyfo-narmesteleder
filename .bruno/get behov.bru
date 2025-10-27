@@ -11,7 +11,7 @@ get {
 }
 
 params:path {
-  id: 9d0f5ea1-1edc-43b6-9154-c05024f6b1ac
+  id: {{currentId}}
 }
 
 script:post-response {
@@ -25,4 +25,26 @@ script:post-response {
 settings {
   encodeUrl: true
   timeout: 0
+}
+
+docs {
+  In order to create the :id for behov in this GET and the following PUT reques:
+  1. Publish the following content in the kafka topic: ```teamsykmelding.syfo-narmesteleder-leesah```
+      ```json
+      {
+        "narmesteLederId": "0199b8f1-0cfe-7787-bab8-2fb1cf1b4767",
+        "fnr": "15436803416",
+        "orgnummer": "310667633",
+        "narmesteLederFnr": "215649202",
+        "narmesteLederTelefonnummer": "12346532",
+        "narmesteLederEpost": "e@post.no",
+        "arbeidsgiverForskutterer": "false",
+        "aktivFom": "2025-10-06",
+        "aktivTom": "2025-10-06",
+        "timestamp": "2025-10-06T11:50:52.433859Z",
+        "status": "DEAKTIVERT_ARBEIDSTAKER"
+      }
+      ```
+  1. Inspect the logs from the running ```esyfo-narmesteleder``` service and copy the UUID from the log line ```Inserted nærmeste leder-behov with id:```
+  1. Paste that into the variable ```currentId``` in the envronment ```nl_vars```
 }

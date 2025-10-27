@@ -116,11 +116,8 @@ class LeesahNLKafkaConsumer(
         when (error) {
             is JsonMappingException -> {
                 logger.error(
-                    "Error while deserializing record with key ${record.key()} " +
-                            "and offset ${record.offset()}. Will ack + continue to next message.",
-                    error
+                    "Error while deserializing record with key ${record.key()} and offset ${record.offset()}. "
                 )
-                addToProcessed(record)
             }
 
             else -> {

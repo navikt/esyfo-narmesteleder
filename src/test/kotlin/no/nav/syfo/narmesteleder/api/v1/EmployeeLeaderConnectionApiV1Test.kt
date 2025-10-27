@@ -38,7 +38,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
 import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.NlBehovRead
 import no.nav.syfo.narmesteleder.domain.NlBehovWrite
@@ -150,7 +150,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                     coVerify(exactly = 1) {
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
-                            narmestelederAktorer = any<NarmestelederAktorer>(),
+                            employeeLeaderActors = any<EmployeeLeaderActors>(),
                             eq(NlResponseSource.LPS),
                         )
                     }
@@ -266,7 +266,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                     coVerify(exactly = 1) {
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
-                            narmestelederAktorer = any<NarmestelederAktorer>(),
+                            employeeLeaderActors = any<EmployeeLeaderActors>(),
                             eq(NlResponseSource.LPS),
                         )
                     }

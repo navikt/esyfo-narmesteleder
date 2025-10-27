@@ -2,7 +2,7 @@ package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnectionDiscontinued
-import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderActors
 import no.nav.syfo.narmesteleder.kafka.ISykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
@@ -14,13 +14,13 @@ class NarmestelederKafkaService(
 ) {
     fun sendNarmesteLederRelasjon(
         employeeLeaderConnection: EmployeeLeaderConnection,
-        narmestelederAktorer: NarmestelederAktorer,
+        employeeLeaderActors: EmployeeLeaderActors,
         source: NlResponseSource,
     ) {
         kafkaSykemeldingProducer.sendSykemeldingNLRelasjon(
             NlResponse(
-                sykmeldt = Sykmeldt.from(narmestelederAktorer.employee),
-                leder = employeeLeaderConnection.leader.toLeder().updateFromPerson(narmestelederAktorer.leader),
+                sykmeldt = Sykmeldt.from(employeeLeaderActors.employee),
+                leder = employeeLeaderConnection.leader.toLeder().updateFromPerson(employeeLeaderActors.leader),
                 orgnummer = employeeLeaderConnection.orgnumber
             ), source = source
         )

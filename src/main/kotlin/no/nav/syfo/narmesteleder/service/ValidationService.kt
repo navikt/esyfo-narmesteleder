@@ -9,7 +9,7 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnectionDiscontinued
-import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderActors
 import no.nav.syfo.narmesteleder.domain.NlBehovRead
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
@@ -28,7 +28,7 @@ class ValidationService(
     suspend fun validateNarmesteleder(
         employeeLeaderConnection: EmployeeLeaderConnection,
         principal: Principal,
-    ): NarmestelederAktorer {
+    ): EmployeeLeaderActors {
         try {
             val innsenderOrgNumber = validateAltTilgang(principal, employeeLeaderConnection.orgnumber)
             val sykmeldt = pdlService.getPersonOrThrowApiError(employeeLeaderConnection.employeeIdentificationNumber)
@@ -45,7 +45,7 @@ class ValidationService(
                 narmesteLederOrgNumbers = nlArbeidsforhold,
                 innsenderOrgNumber = innsenderOrgNumber
             )
-            return NarmestelederAktorer(
+            return EmployeeLeaderActors(
                 employee = sykmeldt,
                 leader = leder,
             )

@@ -1,6 +1,5 @@
 package no.nav.syfo.narmesteleder.api.v1
 
-import io.micrometer.core.instrument.config.validate.ValidationException
 import java.util.*
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
@@ -11,15 +10,15 @@ import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
-import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.ValidateNarmesteLederException
+import no.nav.syfo.narmesteleder.service.ValidationService
 
 class NlBehovRESTHandler(
     private val narmesteLederService: NarmestelederService,
     private val validationService: ValidationService,
     private val narmestelederKafkaService: NarmestelederKafkaService
 ) {
-    suspend fun handleUpdatedNl(nlRelasjonerWrite: NarmesteLederRelasjonerWrite, behovId: UUID, principal: Principal) {
+    suspend fun handleUpdatedNl(nlRelasjonerWrite: EmployeeLeaderRelationWrite, behovId: UUID, principal: Principal) {
         try {
             val nlAktorer = validationService.validateNarmesteleder(
                 nlRelasjonerWrite,

@@ -15,9 +15,9 @@ data class Sykmeldt(
 ) {
     companion object {
         fun from(person: Person): Sykmeldt {
-            with(person.navn) {
+            with(person.name) {
                 return Sykmeldt(
-                    fnr = person.fnr,
+                    fnr = person.nationalIdentificationNumber,
                     navn = listOfNotNull(fornavn, mellomnavn, etternavn).joinToString(" "),
                 )
             }
@@ -33,9 +33,9 @@ data class Leder(
     val etternavn: String,
 ) {
     fun updateFromPerson(person: Person): Leder {
-        with(person.navn) {
+        with(person.name) {
             return Leder(
-                fnr = person.fnr,
+                fnr = person.nationalIdentificationNumber,
                 fornavn = listOfNotNull(fornavn, mellomnavn).joinToString(" "),
                 etternavn = etternavn,
                 mobil = mobil,

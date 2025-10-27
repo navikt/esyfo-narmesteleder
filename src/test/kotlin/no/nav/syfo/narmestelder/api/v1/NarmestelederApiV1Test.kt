@@ -25,7 +25,6 @@ import io.mockk.mockk
 import io.mockk.spyk
 import java.util.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.test.StandardTestDispatcher
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
@@ -37,7 +36,7 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderRelationWrite
 import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
@@ -127,23 +126,23 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.sykmeldtFnr,
-                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                        narmesteLederRelasjon.employeeIdentificationNumber,
+                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.leder.fnr,
-                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                        narmesteLederRelasjon.leader.nationalIdentificationNumber,
+                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
-                        bearerAuth(createMockToken(narmesteLederRelasjon.organisasjonsnummer))
+                        bearerAuth(createMockToken(narmesteLederRelasjon.orgnumber))
                     }
 
                     // Assert
@@ -163,7 +162,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
@@ -203,7 +202,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
                         ),
                         scope = "invalid-scope",
                     )
@@ -247,14 +246,14 @@ class NarmestelederApiV1Test : DescribeSpec({
                         acr = "Level4",
                         pid = callerPid
                     )
-                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.organisasjonsnummer)
+                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.sykmeldtFnr,
-                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                        narmesteLederRelasjon.employeeIdentificationNumber,
+                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.leder.fnr,
-                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                        narmesteLederRelasjon.leader.nationalIdentificationNumber,
+                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
@@ -308,7 +307,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                         acr = "Level3",
                         pid = callerPid
                     )
-                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.organisasjonsnummer)
+                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
                     // Act
                     val response = client.post("/api/v1/narmesteleder") {
                         contentType(ContentType.Application.Json)
@@ -330,15 +329,15 @@ class NarmestelederApiV1Test : DescribeSpec({
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederAvkreft.organisasjonsnummer}"
+                        ID = "0192:${narmesteLederAvkreft.orgnumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft
                 fakeAaregClient.arbeidsForholdForIdent.clear()
                 fakeAaregClient.arbeidsForholdForIdent.put(
-                    narmesteLederAvkreft.sykmeldtFnr,
-                    listOf(narmesteLederAvkreft.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                    narmesteLederAvkreft.employeeIdentificationNumber,
+                    listOf(narmesteLederAvkreft.orgnumber to narmesteLederRelasjon.orgnumber)
                 )
                 // Act
                 val response = client.post("/api/v1/narmesteleder/avkreft") {
@@ -371,7 +370,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                        ID = "0192:${narmesteLederRelasjon.orgnumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
@@ -400,7 +399,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                        ID = "0192:${narmesteLederRelasjon.orgnumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
@@ -420,14 +419,14 @@ class NarmestelederApiV1Test : DescribeSpec({
 
 
         describe("/narmesteleder/behov endpoints") {
-            val sykmeldtFnr = narmesteLederRelasjon.sykmeldtFnr
-            val lederFnr = narmesteLederRelasjon.leder.fnr
-            val orgnummer = narmesteLederRelasjon.organisasjonsnummer
+            val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
+            val lederFnr = narmesteLederRelasjon.leader.nationalIdentificationNumber
+            val orgnummer = narmesteLederRelasjon.orgnumber
 
-            fun NarmesteLederRelasjonerWrite.toNlBehovWrite(): NlBehovWrite = NlBehovWrite(
+            fun EmployeeLeaderRelationWrite.toNlBehovWrite(): NlBehovWrite = NlBehovWrite(
                 sykmeldtFnr = sykmeldtFnr,
-                orgnummer = organisasjonsnummer,
-                narmesteLederFnr = leder.fnr,
+                orgnummer = orgnumber,
+                narmesteLederFnr = leader.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE"
             )
 
@@ -494,10 +493,10 @@ class NarmestelederApiV1Test : DescribeSpec({
                     )
                     val behovId = seedBehov()
                     val updatedRelasjon = narmesteLederRelasjon.copy(
-                        leder = narmesteLederRelasjon.leder.copy(fnr = narmesteLederRelasjon.leder.fnr.reversed())
+                        leader = narmesteLederRelasjon.leader.copy(nationalIdentificationNumber = narmesteLederRelasjon.leader.nationalIdentificationNumber.reversed())
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        updatedRelasjon.leder.fnr,
+                        updatedRelasjon.leader.nationalIdentificationNumber,
                         listOf(orgnummer to orgnummer)
                     )
                     val response = client.put("/api/v1/narmesteleder/behov/$behovId") {

@@ -31,9 +31,9 @@ class NarmestelederService(
                 val details = pdlService.getPersonFor(it.sykmeldtFnr)
                 // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
                 val name = Name(
-                    firstName = details.navn.fornavn,
-                    lastName = details.navn.etternavn,
-                    middleName = details.navn.mellomnavn,
+                    firstName = details.name.fornavn,
+                    lastName = details.name.etternavn,
+                    middleName = details.name.mellomnavn,
                 )
                 it.toNlBehovRead(name)
             }

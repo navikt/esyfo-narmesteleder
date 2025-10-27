@@ -121,8 +121,8 @@ class NarmestelederServiceTest : FunSpec({
             val navn = Navn(fornavn = "Ola", mellomnavn = null, etternavn = "Nordmann")
             every { nlDb.findBehovById(id) } returns entity
             coEvery { pdlService.getPersonFor(entity.sykmeldtFnr) } returns Person(
-                navn = navn,
-                fnr = entity.sykmeldtFnr
+                name = navn,
+                nationalIdentificationNumber = entity.sykmeldtFnr
             )
 
             val read = service().getNlBehovById(id)

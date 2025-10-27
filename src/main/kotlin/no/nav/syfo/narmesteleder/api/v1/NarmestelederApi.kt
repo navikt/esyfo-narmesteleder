@@ -33,7 +33,7 @@ fun Route.registerNarmestelederApiV1(
         }
 
         post() {
-            val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
+            val nlRelasjon = call.tryReceive<EmployeeLeaderRelationWrite>()
             val nlAktorer = validationService.validateNarmesteleder(nlRelasjon, call.getMyPrincipal())
 
             narmestelederKafkaService.sendNarmesteLederRelation(
@@ -48,10 +48,10 @@ fun Route.registerNarmestelederApiV1(
 
     route("/narmesteleder/avkreft") {
         post() {
-            val avkreft = call.tryReceive<NarmestelederRelasjonAvkreft>()
+            val avkreft = call.tryReceive<EmployeeLeaderRelationDiscontinued>()
             val sykmeldt = validationService.validateNarmestelederAvkreft(avkreft, call.getMyPrincipal())
             narmestelederKafkaService.avbrytNarmesteLederRelation(
-                avkreft.copy(sykmeldtFnr = sykmeldt.fnr),
+                avkreft.copy(employeeIdentificationNumber = sykmeldt.nationalIdentificationNumber),
                 NlResponseSource.LPS
             )
 
@@ -62,7 +62,7 @@ fun Route.registerNarmestelederApiV1(
     route("narmesteleder/behov") {
         put("/{behovId}") {
             val id = call.getUUIDFromPathVariable(name = "behovId")
-            val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
+            val nlRelasjon = call.tryReceive<EmployeeLeaderRelationWrite>()
 
             nlRestHandler.handleUpdatedNl(nlRelasjon, id, principal = call.getMyPrincipal())
 

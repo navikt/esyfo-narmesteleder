@@ -51,9 +51,9 @@ class SykemeldingNLKafkaProducerTest : DescribeSpec({
                     it.shouldBeInstanceOf<ProducerRecord<String, NlRelationResponseKafkaMessage>>()
                     it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.name
                     it.value().nlResponse shouldNotBe null
-                    it.value().nlResponse.leder shouldBe relasjon.leder
-                    it.value().nlResponse.orgnummer shouldBe relasjon.organisasjonsnummer
-                    it.value().nlResponse.sykmeldt.fnr shouldBe relasjon.sykmeldtFnr
+                    it.value().nlResponse.leder shouldBe relasjon.leader.toLeder()
+                    it.value().nlResponse.orgnummer shouldBe relasjon.orgnumber
+                    it.value().nlResponse.sykmeldt.fnr shouldBe relasjon.employeeIdentificationNumber
                 })
             }
             verify(exactly = 1) { futureMock.get() }
@@ -79,8 +79,8 @@ class SykemeldingNLKafkaProducerTest : DescribeSpec({
                     it.shouldBeInstanceOf<ProducerRecord<String, NlAvbruddResponseKafkaMessage>>()
                     it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.name
                     it.value().nlAvbrutt shouldNotBe null
-                    it.value().nlAvbrutt.orgnummer shouldBe avbryt.organisasjonsnummer
-                    it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.sykmeldtFnr
+                    it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgnumber
+                    it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.employeeIdentificationNumber
                     it.value().nlAvbrutt.aktivTom shouldBeAfter now
                 })
             }

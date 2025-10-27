@@ -7,8 +7,8 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderRelationWrite
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderRelationDiscontinued
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnectionDiscontinued
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
 import no.nav.syfo.narmesteleder.domain.NlBehovRead
 import no.nav.syfo.pdl.PdlService
@@ -26,21 +26,21 @@ class ValidationService(
     }
 
     suspend fun validateNarmesteleder(
-        employeeLeaderRelationWrite: EmployeeLeaderRelationWrite,
+        employeeLeaderConnection: EmployeeLeaderConnection,
         principal: Principal,
     ): NarmestelederAktorer {
         try {
-            val innsenderOrgNumber = validateAltTilgang(principal, employeeLeaderRelationWrite.orgnumber)
-            val sykmeldt = pdlService.getPersonOrThrowApiError(employeeLeaderRelationWrite.employeeIdentificationNumber)
-            val leder = pdlService.getPersonOrThrowApiError(employeeLeaderRelationWrite.leader.nationalIdentificationNumber)
+            val innsenderOrgNumber = validateAltTilgang(principal, employeeLeaderConnection.orgnumber)
+            val sykmeldt = pdlService.getPersonOrThrowApiError(employeeLeaderConnection.employeeIdentificationNumber)
+            val leder = pdlService.getPersonOrThrowApiError(employeeLeaderConnection.leader.nationalIdentificationNumber)
             val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
-                .filter { it.key == employeeLeaderRelationWrite.orgnumber }
+                .filter { it.key == employeeLeaderConnection.orgnumber }
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
-                    .filter { it.key == employeeLeaderRelationWrite.orgnumber }
-            validataActiveSykmelding(sykmeldt.nationalIdentificationNumber, employeeLeaderRelationWrite.orgnumber)
+                    .filter { it.key == employeeLeaderConnection.orgnumber }
+            validataActiveSykmelding(sykmeldt.nationalIdentificationNumber, employeeLeaderConnection.orgnumber)
             validateNarmesteLeder(
-                orgNumberInRequest = employeeLeaderRelationWrite.orgnumber,
+                orgNumberInRequest = employeeLeaderConnection.orgnumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 narmesteLederOrgNumbers = nlArbeidsforhold,
                 innsenderOrgNumber = innsenderOrgNumber
@@ -52,11 +52,11 @@ class ValidationService(
         } catch (e: ValidateNarmesteLederException) {
             logger.error("Validering av arbeidsforhold feilet {}", e.message)
             throw ApiErrorException.BadRequestException(
-                "Error validating employment relationship for the given organization number"
+                "Error validating employment condition for the given organization number"
             )
         } catch (smExc: ValidateActiveSykmeldingException) {
             logger.error(
-                "No active sykmelding in orgnummer ${employeeLeaderRelationWrite.orgnumber}",
+                "No active sick leave in organization number ${employeeLeaderConnection.orgnumber}",
                 smExc.message
             )
             throw ApiErrorException.BadRequestException(
@@ -71,16 +71,16 @@ class ValidationService(
         } else true
 
     suspend fun validateNarmestelederAvkreft(
-        employeeLeaderRelationDiscontinued: EmployeeLeaderRelationDiscontinued,
+        employeeLeaderConnectionDiscontinued: EmployeeLeaderConnectionDiscontinued,
         principal: Principal,
     ): Person {
         try {
-            val innsenderOrgNumber = validateAltTilgang(principal, employeeLeaderRelationDiscontinued.orgnumber)
-            val sykmeldt = pdlService.getPersonOrThrowApiError(employeeLeaderRelationDiscontinued.employeeIdentificationNumber)
+            val innsenderOrgNumber = validateAltTilgang(principal, employeeLeaderConnectionDiscontinued.orgnumber)
+            val sykmeldt = pdlService.getPersonOrThrowApiError(employeeLeaderConnectionDiscontinued.employeeIdentificationNumber)
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
             validateNarmesteLederAvkreft(
-                orgNumberInRequest = employeeLeaderRelationDiscontinued.orgnumber,
+                orgNumberInRequest = employeeLeaderConnectionDiscontinued.orgnumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 innsenderOrgNumber = innsenderOrgNumber
             )

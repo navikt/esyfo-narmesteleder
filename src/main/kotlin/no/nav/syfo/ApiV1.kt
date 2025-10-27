@@ -4,7 +4,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.registerNarmestelederApiV1
+import no.nav.syfo.narmesteleder.api.v1.registerEmployeeLeaderConnectionApiV1
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -18,7 +18,7 @@ fun Route.registerApiV1(
 ) {
     route("/api/v1") {
         install(AddTokenIssuerPlugin)
-        registerNarmestelederApiV1(narmestelederKafkaService, validationService, texasHttpClient, nlBehovRESTHandler)
+        registerEmployeeLeaderConnectionApiV1(narmestelederKafkaService, validationService, texasHttpClient, nlBehovRESTHandler)
     }
 
 }

@@ -6,7 +6,7 @@ import no.nav.syfo.narmesteleder.kafka.model.Leder
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 
-data class EmployeeLeaderRelationWrite(
+data class EmployeeLeaderConnection(
     val employeeIdentificationNumber: String,
     val orgnumber: String,
     val leader: Leader,

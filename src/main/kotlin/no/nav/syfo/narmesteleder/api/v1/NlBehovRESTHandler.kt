@@ -18,14 +18,14 @@ class NlBehovRESTHandler(
     private val validationService: ValidationService,
     private val narmestelederKafkaService: NarmestelederKafkaService
 ) {
-    suspend fun handleUpdatedNl(nlRelasjonerWrite: EmployeeLeaderRelationWrite, behovId: UUID, principal: Principal) {
+    suspend fun handleUpdatedNl(nlRelasjonerWrite: EmployeeLeaderConnection, behovId: UUID, principal: Principal) {
         try {
             val nlAktorer = validationService.validateNarmesteleder(
                 nlRelasjonerWrite,
                 principal
             )
 
-            narmestelederKafkaService.sendNarmesteLederRelation(
+            narmestelederKafkaService.sendNarmesteLederRelasjon(
                 nlRelasjonerWrite,
                 nlAktorer,
                 NlResponseSource.leder, // TODO: Hva skal denne stå til?
@@ -34,7 +34,7 @@ class NlBehovRESTHandler(
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Hovedenhet not found", e)
         } catch (e: BehovNotFoundException) {
-            throw ApiErrorException.NotFoundException("Narmesteleder-behov not found", e)
+            throw ApiErrorException.NotFoundException("A need for EmployeeLeaderRelation was not found", e)
         } catch (e: ApiErrorException) {
             throw e
         } catch (e: Exception) {

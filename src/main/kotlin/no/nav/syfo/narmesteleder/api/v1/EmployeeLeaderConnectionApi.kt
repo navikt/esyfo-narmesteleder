@@ -21,22 +21,22 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
-fun Route.registerNarmestelederApiV1(
+fun Route.registerEmployeeLeaderConnectionApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
     nlRestHandler: NlBehovRESTHandler
 ) {
-    route("/narmesteleder") {
+    route("/employeeLeaderConnection") {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
             client = texasHttpClient
         }
 
         post() {
-            val nlRelasjon = call.tryReceive<EmployeeLeaderRelationWrite>()
+            val nlRelasjon = call.tryReceive<EmployeeLeaderConnection>()
             val nlAktorer = validationService.validateNarmesteleder(nlRelasjon, call.getMyPrincipal())
 
-            narmestelederKafkaService.sendNarmesteLederRelation(
+            narmestelederKafkaService.sendNarmesteLederRelasjon(
                 nlRelasjon,
                 nlAktorer,
                 NlResponseSource.LPS,
@@ -46,9 +46,9 @@ fun Route.registerNarmestelederApiV1(
         }
     }
 
-    route("/narmesteleder/avkreft") {
+    route("/employeeLeaderConnection/discontinue") {
         post() {
-            val avkreft = call.tryReceive<EmployeeLeaderRelationDiscontinued>()
+            val avkreft = call.tryReceive<EmployeeLeaderConnectionDiscontinued>()
             val sykmeldt = validationService.validateNarmestelederAvkreft(avkreft, call.getMyPrincipal())
             narmestelederKafkaService.avbrytNarmesteLederRelation(
                 avkreft.copy(employeeIdentificationNumber = sykmeldt.nationalIdentificationNumber),
@@ -59,20 +59,20 @@ fun Route.registerNarmestelederApiV1(
         }
     }
     
-    route("narmesteleder/behov") {
-        put("/{behovId}") {
-            val id = call.getUUIDFromPathVariable(name = "behovId")
-            val nlRelasjon = call.tryReceive<EmployeeLeaderRelationWrite>()
+    route("employeeLeaderConnection/requirement") {
+        put("/{id}") {
+            val id = call.getUUIDFromPathVariable(name = "id")
+            val nlRelasjon = call.tryReceive<EmployeeLeaderConnection>()
 
             nlRestHandler.handleUpdatedNl(nlRelasjon, id, principal = call.getMyPrincipal())
 
             call.respond(HttpStatusCode.Accepted)
         }
 
-        get("/{behovId}") {
-            val behovId = call.getUUIDFromPathVariable(name = "behovId")
+        get("/{id}") {
+            val id = call.getUUIDFromPathVariable(name = "id")
             val nlBehov = nlRestHandler.handleGetNlBehov(
-                nlBehovId = behovId,
+                nlBehovId = id,
                 principal = call.getMyPrincipal()
             )
             call.respond(HttpStatusCode.OK, nlBehov)

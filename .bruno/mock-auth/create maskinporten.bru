@@ -1,37 +1,32 @@
 meta {
-  name: create tokenx
+  name: create maskinporten
   type: http
-  seq: 2
+  seq: 3
 }
 
 post {
-  url: http://localhost:6969/tokenx/token
+  url: http://localhost:6969/maskinporten/token
   body: formUrlEncoded
   auth: inherit
 }
 
 body:form-urlencoded {
   grant_type: authorization_code
-  code: code1
+  code: code2
   client_id: esyfo-narmesteleder
-  acr: Level4
-  pid: 15823349332
+  consumerAuthority: 123456789
+  consumerId: consumerid
+  supplierAuthority: 123456789
+  supplierId: supplierId
+  scope: nav:syfo/narmesteleder/lps
   aud: esyfo-narmesteleder
-}
-
-body:multipart-form {
-  grant_type: client_credentials
-}
-
-assert {
-  res.status: eq 200
 }
 
 script:post-response {
   const token = res.getBody();
   
   if (token != null) {
-    bru.setEnvVar("token", token.id_token)
+    bru.setEnvVar("token", token.access_token)
   }
 }
 

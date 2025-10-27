@@ -14,8 +14,8 @@ import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderRelationWrite
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderRelationDiscontinued
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnectionDiscontinued
 import no.nav.syfo.narmesteleder.api.v1.Leader
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -24,7 +24,7 @@ import no.nav.syfo.texas.client.TexasResponse
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
-fun narmesteLederRelasjon(): EmployeeLeaderRelationWrite = EmployeeLeaderRelationWrite(
+fun narmesteLederRelasjon(): EmployeeLeaderConnection = EmployeeLeaderConnection(
     leader = Leader(
         nationalIdentificationNumber = faker.numerify("###########"),
         firstName = faker.name().firstName(),
@@ -36,7 +36,7 @@ fun narmesteLederRelasjon(): EmployeeLeaderRelationWrite = EmployeeLeaderRelatio
     orgnumber = faker.numerify("#########"),
 )
 
-fun narmesteLederAvkreft(): EmployeeLeaderRelationDiscontinued = EmployeeLeaderRelationDiscontinued(
+fun narmesteLederAvkreft(): EmployeeLeaderConnectionDiscontinued = EmployeeLeaderConnectionDiscontinued(
     employeeIdentificationNumber = faker.numerify("###########"),
     orgnumber = faker.numerify("#########"),
 )

@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelder.service
+package no.nav.syfo.narmesteleder.service
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
@@ -17,7 +17,6 @@ import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.client.FakePdlClient
 
 class ValidationServiceTest : DescribeSpec({

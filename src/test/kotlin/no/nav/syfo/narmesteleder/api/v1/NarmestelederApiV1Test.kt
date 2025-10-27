@@ -36,7 +36,7 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderRelationWrite
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
 import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
@@ -148,7 +148,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Assert
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
-                        narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                        narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
                             narmestelederAktorer = any<NarmestelederAktorer>(),
                             eq(NlResponseSource.LPS),
@@ -264,7 +264,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Assert
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
-                        narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                        narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
                             narmestelederAktorer = any<NarmestelederAktorer>(),
                             eq(NlResponseSource.LPS),
@@ -423,7 +423,7 @@ class NarmestelederApiV1Test : DescribeSpec({
             val lederFnr = narmesteLederRelasjon.leader.nationalIdentificationNumber
             val orgnummer = narmesteLederRelasjon.orgnumber
 
-            fun EmployeeLeaderRelationWrite.toNlBehovWrite(): NlBehovWrite = NlBehovWrite(
+            fun EmployeeLeaderConnection.toNlBehovWrite(): NlBehovWrite = NlBehovWrite(
                 sykmeldtFnr = sykmeldtFnr,
                 orgnummer = orgnumber,
                 narmesteLederFnr = leader.nationalIdentificationNumber,
@@ -506,7 +506,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     }
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
-                        narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                        narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(updatedRelasjon), any(), eq(NlResponseSource.leder)
                         )
                     }

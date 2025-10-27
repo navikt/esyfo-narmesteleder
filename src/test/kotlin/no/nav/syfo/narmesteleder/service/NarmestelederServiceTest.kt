@@ -175,11 +175,11 @@ class NarmestelederServiceTest : FunSpec({
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
                     updated.id == id &&
-                            updated.orgnummer == update.orgnummer &&
-                            updated.hovedenhetOrgnummer == newHovedenhet &&
-                            updated.sykmeldtFnr == update.sykmeldtFnr &&
-                            updated.narmestelederFnr == update.narmesteLederFnr &&
-                            updated.behovStatus == BehovStatus.COMPLETED
+                        updated.orgnummer == update.orgnummer &&
+                        updated.hovedenhetOrgnummer == newHovedenhet &&
+                        updated.sykmeldtFnr == update.sykmeldtFnr &&
+                        updated.narmestelederFnr == update.narmesteLederFnr &&
+                        updated.behovStatus == BehovStatus.COMPLETED
                 })
             }
         }
@@ -253,8 +253,8 @@ class NarmestelederServiceTest : FunSpec({
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
                     updated.id == id &&
-                            updated.leesahStatus == originalLeesahStatus &&
-                            updated.behovStatus == BehovStatus.PENDING
+                        updated.leesahStatus == originalLeesahStatus &&
+                        updated.behovStatus == BehovStatus.PENDING
                 })
             }
         }

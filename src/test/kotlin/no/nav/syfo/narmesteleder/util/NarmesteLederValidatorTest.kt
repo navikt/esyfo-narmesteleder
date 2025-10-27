@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelder.util
+package no.nav.syfo.narmesteleder.util
 
 import createRandomValidOrgNumbers
 import io.kotest.assertions.throwables.shouldNotThrowAny

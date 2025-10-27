@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelder.kafka
+package no.nav.syfo.narmesteleder.kafka
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.date.shouldBeAfter
@@ -14,7 +14,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import narmesteLederAvkreft
 import narmesteLederRelasjon
-import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbruddResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlRelationResponseKafkaMessage

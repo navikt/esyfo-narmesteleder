@@ -37,7 +37,6 @@ If the server starts successfully, you'll see the following output:
 2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
 ```
 
-
 ## Docker compose
 ### Size of container platform
 In order to run kafka++ you will probably need to extend the default size of your container platform. (Rancher Desktop, Colima etc.)
@@ -74,3 +73,8 @@ In order to get a token for annsatt that has access to update narmesteleder rela
 https://tokenx-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp:team-esyfo:esyfo-narmesteleder
 
 Select "på høyt nivå" and give the ident of a Daglig leder for the organisasjonsnummer you want to test with.
+
+## Runnig requests localy
+There is a [Bruno](https://www.usebruno.com/) collection in the folder [.bruno](./.bruno) that you can open and find request to run against your localy running instance.
+Look in the Docs tab of requests for further instructions, when needed.
+EG. How to create the row in db for value of the ```:id``` path parameter, is explained in the ```get behov``` request for narmesteleder.

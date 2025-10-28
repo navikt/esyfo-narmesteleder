@@ -14,7 +14,7 @@ class AltinnTilgangerService(
         orgnummer: String,
     ) {
         try {
-            val tilganger = altinnTilgangerClient.hentTilganger(userPrincipal)
+            val tilganger = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
             if (tilganger?.orgNrTilTilganger[orgnummer]?.contains(OPPGI_NARMESTELEDER_RESOURCE) != true)
                 throw ApiErrorException.ForbiddenException("User lacks access to requires altinn resource for organization: $orgnummer")
         } catch (e: UpstreamRequestException) {

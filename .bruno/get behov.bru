@@ -5,13 +5,17 @@ meta {
 }
 
 get {
-  url: localhost:8080/api/v1/narmesteleder/behov/:id
+  url: localhost:8080/api/v1/employeeLeaderConnection/requirement/:id
   body: none
   auth: inherit
 }
 
 params:path {
   id: {{currentId}}
+}
+
+assert {
+  res.status: eq 200
 }
 
 script:post-response {

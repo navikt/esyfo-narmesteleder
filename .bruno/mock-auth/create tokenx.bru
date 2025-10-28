@@ -23,6 +23,10 @@ body:multipart-form {
   grant_type: client_credentials
 }
 
+assert {
+  res.status: eq 200
+}
+
 script:post-response {
   const token = res.getBody();
   

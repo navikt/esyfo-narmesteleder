@@ -24,6 +24,9 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
+const val EMPLOYEE_LEEDER_CONNECTION_API_PATH = "/employeeLeaderConnection"
+const val DISCONTINUED_PATH = "$EMPLOYEE_LEEDER_CONNECTION_API_PATH/discontinue"
+const val RECUIREMENT_PATH = "$EMPLOYEE_LEEDER_CONNECTION_API_PATH/requirement"
 fun Route.registerLinemanagerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,

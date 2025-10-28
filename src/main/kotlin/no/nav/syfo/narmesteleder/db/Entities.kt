@@ -12,7 +12,8 @@ data class NarmestelederBehovEntity(
     val sykmeldtFnr: String,
     val narmestelederFnr: String,
     val leesahStatus: String,
-    val behovStatus: BehovStatus = BehovStatus.RECEIVED
+    val behovStatus: BehovStatus = BehovStatus.RECEIVED,
+    val dialogId: UUID? = null,
 ) {
     companion object
 }
@@ -25,5 +26,6 @@ fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity =
         sykmeldtFnr = this.getString("sykemeldt_fnr"),
         narmestelederFnr = this.getString("narmeste_leder_fnr"),
         leesahStatus = this.getString("leesah_status"),
-        behovStatus = BehovStatus.valueOf(this.getString("behov_status"))
+        behovStatus = BehovStatus.valueOf(this.getString("behov_status")),
+        dialogId = this.getObject("dialog_id") as? UUID,
     )

@@ -6,6 +6,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import java.util.concurrent.TimeUnit
 import no.nav.syfo.application.api.configureRouting
+import no.nav.syfo.plugins.configureBackgroundTasks
 import no.nav.syfo.plugins.configureDependencies
 import no.nav.syfo.plugins.configureLifecycleHooks
 import no.nav.syfo.plugins.configureRunningTasks
@@ -39,4 +40,5 @@ fun Application.module() {
     configureLifecycleHooks(get())
     configureRouting()
     configureRunningTasks()
+    configureBackgroundTasks()
 }

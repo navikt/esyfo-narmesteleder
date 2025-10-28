@@ -4,10 +4,18 @@ import io.ktor.server.application.Application
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import kotlin.getValue
+import kotlin.getValue
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.application.isProdEnv
+import no.nav.syfo.application.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
+import no.nav.syfo.dialogporten.client.IDialogportenClient
+import no.nav.syfo.dialogporten.registerDialogportenTokenApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
+import no.nav.syfo.dialogporten.client.IDialogportenClient
+import no.nav.syfo.dialogporten.registerDialogportenTokenApi
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.registerApiV1
@@ -21,6 +29,7 @@ fun Application.configureRouting() {
     val texasHttpClient by inject<TexasHttpClient>()
     val validationService by inject<ValidationService>()
     val linemanagerRequirementRESTHandler by inject<LinemanagerRequirementRESTHandler>()
+    val dialogportenClient by inject<IDialogportenClient>()
 
     installCallId()
     installContentNegotiation()
@@ -30,6 +39,10 @@ fun Application.configureRouting() {
         registerPodApi(applicationState, database)
         registerMetricApi()
         registerApiV1(narmestelederKafkaService, texasHttpClient, validationService, linemanagerRequirementRESTHandler)
+        if (!isProdEnv()) {
+            // TODO: Remove this endpoint later
+            registerDialogportenTokenApi(texasHttpClient, dialogportenClient)
+        }
         get("/") {
             call.respondText("Hello World!")
         }

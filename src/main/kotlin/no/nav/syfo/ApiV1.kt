@@ -9,6 +9,8 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.client.TexasHttpClient
 
+const val API_V1_PATH = "/api/v1"
+
 @Suppress("LongParameterList")
 fun Route.registerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
@@ -16,7 +18,7 @@ fun Route.registerApiV1(
     validationService: ValidationService,
     linemanagerRequirementRESTHandler: LinemanagerRequirementRESTHandler
 ) {
-    route("/api/v1") {
+    route(API_V1_PATH) {
         install(AddTokenIssuerPlugin)
         registerLinemanagerApiV1(narmestelederKafkaService, validationService, texasHttpClient, linemanagerRequirementRESTHandler)
     }

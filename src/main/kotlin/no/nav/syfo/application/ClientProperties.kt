@@ -9,29 +9,32 @@ data class ClientProperties(
     val aaregScope: String,
     val dinesykmeldteScope: String,
     val persistLeesahNlBehov: Boolean,
+    val dialogportenBasePath: String
 ) {
     companion object {
         fun createForLocal() = ClientProperties(
             pdlBaseUrl = "https://pdl-api.dev.intern.nav.no",
-            pdlScope = "pdl",
-            altinnTilgangerBaseUrl = "https://altinn-tilganger-api.dev.intern.nav.no",
             aaregBaseUrl = "",
-            dinesykmeldteBaseUrl = "",
             aaregScope = "aareg",
-            persistLeesahNlBehov = true,
+            altinnTilgangerBaseUrl = "https://altinn-tilganger-api.dev.intern.nav.no",
+            dinesykmeldteBaseUrl = "",
             dinesykmeldteScope = "",
+            pdlScope = "pdl",
+            persistLeesahNlBehov = true,
+            dialogportenBasePath = "http://localhost:8080/dialogporten"
         )
 
         fun createFromEnvVars() =
             ClientProperties(
-                pdlBaseUrl = getEnvVar("PDL_BASE_URL"),
-                pdlScope = getEnvVar("PDL_SCOPE"),
                 aaregBaseUrl = getEnvVar("AAREG_BASE_URL"),
                 aaregScope = getEnvVar("AAREG_SCOPE"),
-                dinesykmeldteBaseUrl = getEnvVar("DINESYMELDTE_BASEURL"),
                 altinnTilgangerBaseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
+                dinesykmeldteBaseUrl = getEnvVar("DINESYMELDTE_BASEURL"),
                 dinesykmeldteScope = getEnvVar("DINESYMELDTE_SCOPE"),
+                pdlBaseUrl = getEnvVar("PDL_BASE_URL"),
+                pdlScope = getEnvVar("PDL_SCOPE"),
                 persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "false").toBoolean(),
+                dialogportenBasePath = getEnvVar("DIALOGPORTEN_BASE_URL")
             )
     }
 }

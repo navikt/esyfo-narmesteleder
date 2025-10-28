@@ -69,6 +69,7 @@ spec:
   azure:
     application:
       enabled: true
+  leaderElection: true
   accessPolicy:
     inbound:
       rules:
@@ -94,9 +95,15 @@ spec:
       value: https://aareg-services-q2.dev-fss-pub.nais.io
     - name: AAREG_SCOPE
       value: dev-fss.arbeidsforhold.aareg-services-nais
+    - name: DIALOGPORTEN_SCOPE
+      value: "digdir:dialogporten.serviceprovider"
+    - name: DIALOGPORTEN_BASE_URL
+      value: "https://platform.tt02.altinn.no"
     - name: DINESYMELDTE_BASEURL
       value: http://dinesykmeldte-backend
     - name: DINESYMELDTE_SCOPE
       value: dev-gcp.team-esyfo.dinesykmeldte-backend
     - name: ALTINN_TILGANGER_BASE_URL
       value: http://arbeidsgiver-altinn-tilganger.fager
+    - name: NARMESTELEDER_FRONTEND_URL
+      value: https://narmesteleder-frontend.ekstern.dev.nav.no

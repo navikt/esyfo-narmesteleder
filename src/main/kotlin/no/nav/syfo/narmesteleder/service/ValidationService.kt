@@ -1,7 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
@@ -94,8 +94,8 @@ class ValidationService(
 
     private suspend fun validateAltTilgang(principal: Principal, orgNumber: String): String? {
         return when (principal) {
-            is BrukerPrincipal -> {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+            is UserPrincipal -> {
+                altinnTilgangerService.validateTilgangToOrganization(
                     principal,
                     orgNumber
                 )

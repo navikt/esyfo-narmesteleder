@@ -9,7 +9,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
@@ -87,7 +87,7 @@ fun RoutingCall.getMyPrincipal(): Principal =
         }
 
         JwtIssuer.TOKEN_X -> {
-            authentication.principal<BrukerPrincipal>() ?: throw UnauthorizedException()
+            authentication.principal<UserPrincipal>() ?: throw UnauthorizedException()
         }
 
         else -> throw UnauthorizedException()

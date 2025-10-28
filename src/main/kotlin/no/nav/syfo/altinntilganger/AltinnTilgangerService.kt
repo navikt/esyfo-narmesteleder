@@ -1,7 +1,7 @@
 package no.nav.syfo.altinntilganger
 
 import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
-import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.util.logger
@@ -9,12 +9,12 @@ import no.nav.syfo.util.logger
 class AltinnTilgangerService(
     val altinnTilgangerClient: IAltinnTilgangerClient,
 ) {
-    suspend fun validateTilgangToOrganisasjon(
-        brukerPrincipal: BrukerPrincipal,
+    suspend fun validateTilgangToOrganization(
+        userPrincipal: UserPrincipal,
         orgnummer: String,
     ) {
         try {
-            val tilganger = altinnTilgangerClient.hentTilganger(brukerPrincipal)
+            val tilganger = altinnTilgangerClient.hentTilganger(userPrincipal)
             if (tilganger?.orgNrTilTilganger[orgnummer]?.contains(OPPGI_NARMESTELEDER_RESOURCE) != true)
                 throw ApiErrorException.ForbiddenException("User lacks access to requires altinn resource for organization: $orgnummer")
         } catch (e: UpstreamRequestException) {

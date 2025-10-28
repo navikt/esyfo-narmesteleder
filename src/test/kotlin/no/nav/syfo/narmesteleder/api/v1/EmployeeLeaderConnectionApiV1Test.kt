@@ -169,7 +169,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                     // Act
                     val response = client.post("/api/v1/employeeLeaderConnection") {
                         contentType(ContentType.Application.Json)
-                        setBody("""{ "navn": "Ola Nordmann" }""")
+                        setBody("""{ "name": "Ola Nordmann" }""")
                         bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
                     }
 

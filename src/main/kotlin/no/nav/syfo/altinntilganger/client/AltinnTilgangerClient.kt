@@ -8,21 +8,21 @@ import io.ktor.client.request.post
 import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 
 interface IAltinnTilgangerClient {
-    suspend fun hentTilganger(
-        bruker: BrukerPrincipal,
+    suspend fun fetchAltinnTilganger(
+        bruker: UserPrincipal,
     ): AltinnTilgangerResponse?
 }
 
 class FakeAltinnTilgangerClient : IAltinnTilgangerClient {
     val usersWithAccess = hasAccess.toMutableList()
-    override suspend fun hentTilganger(
-        bruker: BrukerPrincipal,
+    override suspend fun fetchAltinnTilganger(
+        bruker: UserPrincipal,
     ): AltinnTilgangerResponse {
         val faker = Faker(Random(bruker.ident.toLong()))
         val accessPair = usersWithAccess.find { it.first == bruker.ident }
@@ -54,8 +54,8 @@ class AltinnTilgangerClient(
     private val httpClient: HttpClient,
     private val baseUrl: String,
 ) : IAltinnTilgangerClient {
-    override suspend fun hentTilganger(
-        bruker: BrukerPrincipal,
+    override suspend fun fetchAltinnTilganger(
+        bruker: UserPrincipal,
     ): AltinnTilgangerResponse? {
         val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token).accessToken
         try {

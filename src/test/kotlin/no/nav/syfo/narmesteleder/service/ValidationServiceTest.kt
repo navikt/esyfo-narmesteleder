@@ -12,7 +12,7 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
-import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -43,7 +43,7 @@ class ValidationServiceTest : DescribeSpec({
         it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
             // Arrange
             val fnr = altinnTilgangerClient.usersWithAccess.first().first
-            val principal = BrukerPrincipal(fnr, "token")
+            val principal = UserPrincipal(fnr, "token")
             val narmestelederRelasjonerWrite = narmesteLederRelasjon().copy(employeeIdentificationNumber = fnr)
 
             // Act
@@ -52,7 +52,7 @@ class ValidationServiceTest : DescribeSpec({
             }
             // Assert
             coVerify(exactly = 1) {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+                altinnTilgangerService.validateTilgangToOrganization(
                     eq(principal),
                     eq(narmestelederRelasjonerWrite.orgnumber)
                 )
@@ -78,7 +78,7 @@ class ValidationServiceTest : DescribeSpec({
             }
             // Assert
             coVerify(exactly = 0) {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+                altinnTilgangerService.validateTilgangToOrganization(
                     any(),
                     eq(narmestelederRelasjonerWrite.orgnumber)
                 )
@@ -100,7 +100,7 @@ class ValidationServiceTest : DescribeSpec({
         it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
             // Arrange
             val fnr = altinnTilgangerClient.usersWithAccess.first().first
-            val principal = BrukerPrincipal(fnr, "token")
+            val principal = UserPrincipal(fnr, "token")
             val narmesteLederAvkreft = narmesteLederAvkreft().copy(employeeIdentificationNumber = fnr)
 
             // Act
@@ -109,7 +109,7 @@ class ValidationServiceTest : DescribeSpec({
             }
             // Assert
             coVerify(exactly = 1) {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+                altinnTilgangerService.validateTilgangToOrganization(
                     eq(principal),
                     eq(narmesteLederAvkreft.orgnumber)
                 )
@@ -135,7 +135,7 @@ class ValidationServiceTest : DescribeSpec({
             }
             // Assert
             coVerify(exactly = 0) {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+                altinnTilgangerService.validateTilgangToOrganization(
                     any(),
                     eq(narmesteLederAvkreft.orgnumber)
                 )

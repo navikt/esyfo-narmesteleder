@@ -47,7 +47,7 @@ class AaregClient(
             TexasHttpClient.getTarget(scope)
         ).accessToken
     }.getOrElse {
-        if (it is Exception) throw AaregClientException("Noe gikk galt ved henting av system-token", it)
+        if (it is Exception) throw AaregClientException("An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}", it)
         else throw it
     }
 
@@ -75,7 +75,7 @@ class AaregClient(
 
                 is ClientRequestException -> {
                     throw AaregClientException(
-                        "Noe gikk galt ved henting av arbeidsforhold",
+                        "An error occurred when fetching arbeidsforhold",
                         ex
                     )
                 }

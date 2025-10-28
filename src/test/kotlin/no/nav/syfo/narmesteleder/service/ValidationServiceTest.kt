@@ -48,7 +48,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
-                service.validateNarmesteleder(narmestelederRelasjonerWrite, principal)
+                service.validateEmployeLeaderConnection(narmestelederRelasjonerWrite, principal)
             }
             // Assert
             coVerify(exactly = 1) {
@@ -74,7 +74,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
-                service.validateNarmesteleder(narmestelederRelasjonerWrite, principal)
+                service.validateEmployeLeaderConnection(narmestelederRelasjonerWrite, principal)
             }
             // Assert
             coVerify(exactly = 0) {
@@ -92,7 +92,7 @@ class ValidationServiceTest : DescribeSpec({
         }
 
         it("should return true when calling the validateActiveSykmelding") {
-            service.validataActiveSykmelding("12345678901", "FAKE_ORGNR") shouldBe true
+            service.validataActiveSickLeave("12345678901", "FAKE_ORGNR") shouldBe true
         }
     }
 
@@ -105,7 +105,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
-                service.validateNarmestelederAvkreft(narmesteLederAvkreft, principal)
+                service.validateEmployeeLeaderConnectionDiscontinue(narmesteLederAvkreft, principal)
             }
             // Assert
             coVerify(exactly = 1) {
@@ -131,7 +131,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
-                service.validateNarmestelederAvkreft(narmesteLederAvkreft, principal)
+                service.validateEmployeeLeaderConnectionDiscontinue(narmesteLederAvkreft, principal)
             }
             // Assert
             coVerify(exactly = 0) {

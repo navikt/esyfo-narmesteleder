@@ -1,0 +1,59 @@
+package no.nav.syfo.narmesteleder.api.v1
+
+import java.util.*
+import no.nav.syfo.application.auth.Principal
+import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionRead
+import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
+import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
+import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederService
+import no.nav.syfo.narmesteleder.service.ValidateNarmesteLederException
+import no.nav.syfo.narmesteleder.service.ValidationService
+
+class EmployeeLeaderConnectionRequirementRESTHandler(
+    private val narmesteLederService: NarmestelederService,
+    private val validationService: ValidationService,
+    private val narmestelederKafkaService: NarmestelederKafkaService
+) {
+    suspend fun handleUpdatedRequirement(employeeLeaderConnection: EmployeeLeaderConnection, requirementId: UUID, principal: Principal) {
+        try {
+            val employeeLeaderActors = validationService.validateEmployeLeaderConnection(
+                employeeLeaderConnection,
+                principal
+            )
+
+            narmestelederKafkaService.sendNarmesteLederRelasjon(
+                employeeLeaderConnection,
+                employeeLeaderActors,
+                NlResponseSource.leder, // TODO: Hva skal denne stå til?
+            )
+            narmesteLederService.updateNlBehov(employeeLeaderConnection.toNlbehovUpdate(requirementId), BehovStatus.PENDING)
+        } catch (e: HovedenhetNotFoundException) {
+            throw ApiErrorException.NotFoundException("Main entity not found", e)
+        } catch (e: EmployeeLeaderConnectionRequirementNotFoundException) {
+            throw ApiErrorException.NotFoundException("A EmployeeLeaderConnectionRequirement was not found", e)
+        } catch (e: ApiErrorException) {
+            throw e
+        } catch (e: Exception) {
+            throw ApiErrorException.InternalServerErrorException("Internal server error", e)
+        }
+    }
+
+    suspend fun handleGetEmployeeLeaderRequirement(requirementId: UUID, principal: Principal): EmployeeLeaderConnectionRead = try {
+        narmesteLederService.getNlBehovById(requirementId).also {
+            validationService.validateGetNlBehov(principal, it)
+        }
+    } catch (e: EmployeeLeaderConnectionRequirementNotFoundException) {
+        throw ApiErrorException.NotFoundException("EmployeeLeaderConnectionRequirement not found", e)
+    } catch (e: ValidateNarmesteLederException) {
+        throw ApiErrorException.ForbiddenException("You don't have access to this EmployeeLeaderConnectionRequirement", e)
+    } catch (e: Exception) {
+        throw ApiErrorException.InternalServerErrorException(
+            "Something went wrong while fetching EmployeeLeaderConnectionRequirement",
+            e
+        )
+    }
+}

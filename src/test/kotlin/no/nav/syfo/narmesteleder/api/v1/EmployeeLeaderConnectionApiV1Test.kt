@@ -37,11 +37,11 @@ import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
-import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
+import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnectionRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.domain.NlBehovRead
-import no.nav.syfo.narmesteleder.domain.NlBehovWrite
+import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionRead
+import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -79,7 +79,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
         pdlService = pdlService,
         ioDispatcher = Dispatchers.Default,
     )
-    val nlBehovHandler = NlBehovRESTHandler(
+    val nlBehovHandler = EmployeeLeaderConnectionRequirementRESTHandler(
         narmesteLederService = narmesteLederService,
         validationService = validationServiceSpy,
         narmestelederKafkaService = narmestelederKafkaServiceSpy
@@ -271,7 +271,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                         )
                     }
                     coVerify(exactly = 1) {
-                        validationServiceSpy.validateNarmesteleder(
+                        validationServiceSpy.validateEmployeLeaderConnection(
                             eq(narmesteLederRelasjon),
                             any()
                         )
@@ -356,7 +356,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                     )
                 }
                 coVerify(exactly = 1) {
-                    validationServiceSpy.validateNarmestelederAvkreft(
+                    validationServiceSpy.validateEmployeeLeaderConnectionDiscontinue(
                         eq(narmesteLederAvkreft),
                         any()
                     )
@@ -423,10 +423,10 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
             val lederFnr = narmesteLederRelasjon.leader.nationalIdentificationNumber
             val orgnummer = narmesteLederRelasjon.orgnumber
 
-            fun EmployeeLeaderConnection.toNlBehovWrite(): NlBehovWrite = NlBehovWrite(
-                sykmeldtFnr = sykmeldtFnr,
-                orgnummer = orgnumber,
-                narmesteLederFnr = leader.nationalIdentificationNumber,
+            fun EmployeeLeaderConnection.toNlBehovWrite(): EmployeeLeaderConnectionWrite = EmployeeLeaderConnectionWrite(
+                employeeIdentificationNumber = sykmeldtFnr,
+                orgnumber = orgnumber,
+                leaderIdentificationNumber = leader.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE"
             )
 
@@ -448,10 +448,10 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<NlBehovRead>()
+                    val body = response.body<EmployeeLeaderConnectionRead>()
                     body.id shouldBe requirementId
-                    body.orgnummer shouldBe orgnummer
-                    body.sykmeldtFnr shouldBe sykmeldtFnr
+                    body.orgnumber shouldBe orgnummer
+                    body.employeeIdentificationNumber shouldBe sykmeldtFnr
                 }
             }
 

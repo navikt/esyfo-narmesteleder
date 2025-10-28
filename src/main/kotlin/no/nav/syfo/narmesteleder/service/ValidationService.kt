@@ -10,7 +10,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnectionDiscontinued
 import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderActors
-import no.nav.syfo.narmesteleder.domain.NlBehovRead
+import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionRead
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.util.logger
@@ -25,7 +25,7 @@ class ValidationService(
         val logger = logger()
     }
 
-    suspend fun validateNarmesteleder(
+    suspend fun validateEmployeLeaderConnection(
         employeeLeaderConnection: EmployeeLeaderConnection,
         principal: Principal,
     ): EmployeeLeaderActors {
@@ -38,7 +38,7 @@ class ValidationService(
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
                     .filter { it.key == employeeLeaderConnection.orgnumber }
-            validataActiveSykmelding(sykmeldt.nationalIdentificationNumber, employeeLeaderConnection.orgnumber)
+            validataActiveSickLeave(sykmeldt.nationalIdentificationNumber, employeeLeaderConnection.orgnumber)
             validateNarmesteLeder(
                 orgNumberInRequest = employeeLeaderConnection.orgnumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
@@ -50,9 +50,9 @@ class ValidationService(
                 leader = leder,
             )
         } catch (e: ValidateNarmesteLederException) {
-            logger.error("Validering av arbeidsforhold feilet {}", e.message)
+            logger.error("Validation of active employment status failed {}", e.message)
             throw ApiErrorException.BadRequestException(
-                "Error validating employment condition for the given organization number"
+                "Error validating employment status for the given organization number"
             )
         } catch (smExc: ValidateActiveSykmeldingException) {
             logger.error(
@@ -65,12 +65,12 @@ class ValidationService(
         }
     }
 
-    internal suspend fun validataActiveSykmelding(fnr: String, orgnummer: String): Boolean =
+    internal suspend fun validataActiveSickLeave(fnr: String, orgnummer: String): Boolean =
         if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
             throw ValidateActiveSykmeldingException("No active sick leave found for the given organization number")
         } else true
 
-    suspend fun validateNarmestelederAvkreft(
+    suspend fun validateEmployeeLeaderConnectionDiscontinue(
         employeeLeaderConnectionDiscontinued: EmployeeLeaderConnectionDiscontinued,
         principal: Principal,
     ): Person {
@@ -87,7 +87,7 @@ class ValidationService(
             return sykmeldt
 
         } catch (e: ValidateNarmesteLederException) {
-            logger.error("Validering av arbeidsforhold feilet {}", e.message)
+            logger.error("Validation of employment situation failed {}", e.message)
             throw ApiErrorException.BadRequestException("Error when validating persons")
         }
     }
@@ -108,14 +108,14 @@ class ValidationService(
         }
     }
 
-    suspend fun validateGetNlBehov(principal: Principal, nlBehovRead: NlBehovRead) {
-        val sykemeldtOrgs = setOf(nlBehovRead.orgnummer, nlBehovRead.hovedenhetOrgnummer)
-        val innsenderOrgNumber = validateAltTilgang(principal, nlBehovRead.orgnummer)
+    suspend fun validateGetNlBehov(principal: Principal, employeeLeaderConnectionRead: EmployeeLeaderConnectionRead) {
+        val sykemeldtOrgs = setOf(employeeLeaderConnectionRead.orgnumber, employeeLeaderConnectionRead.mainOrgnumber)
+        val innsenderOrgNumber = validateAltTilgang(principal, employeeLeaderConnectionRead.orgnumber)
 
         if (principal is OrganisasjonPrincipal) {
             nlrequire(
                 sykemeldtOrgs.contains(innsenderOrgNumber)
-            ) { "Innsender is not employed in the same organization as sykemeld" }
+                ) { "Person making the request is not employed in the same organization as employee on sick leave" }
         }
     }
 }

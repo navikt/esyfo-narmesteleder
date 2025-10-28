@@ -14,7 +14,7 @@ class AaregService(private val arbeidsforholdOversiktClient: IAaregClient) {
             )
         } catch (e: AaregClientException) {
             throw ApiErrorException.InternalServerErrorException(
-                "Klarte ikke hente arbeidsforhold fra Aareg",
+                "Could not fetch employment status fra Aareg",
                 e
             )
         }

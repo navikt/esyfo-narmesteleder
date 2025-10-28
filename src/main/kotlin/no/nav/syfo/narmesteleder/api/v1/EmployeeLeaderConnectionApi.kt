@@ -25,7 +25,7 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
-    nlRestHandler: NlBehovRESTHandler
+    elcRequirementRestHandler: EmployeeLeaderConnectionRequirementRESTHandler
 ) {
     route("/employeeLeaderConnection") {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -34,7 +34,7 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
 
         post() {
             val nlRelasjon = call.tryReceive<EmployeeLeaderConnection>()
-            val nlAktorer = validationService.validateNarmesteleder(nlRelasjon, call.getMyPrincipal())
+            val nlAktorer = validationService.validateEmployeLeaderConnection(nlRelasjon, call.getMyPrincipal())
 
             narmestelederKafkaService.sendNarmesteLederRelasjon(
                 nlRelasjon,
@@ -49,7 +49,7 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
     route("/employeeLeaderConnection/discontinue") {
         post() {
             val avkreft = call.tryReceive<EmployeeLeaderConnectionDiscontinued>()
-            val sykmeldt = validationService.validateNarmestelederAvkreft(avkreft, call.getMyPrincipal())
+            val sykmeldt = validationService.validateEmployeeLeaderConnectionDiscontinue(avkreft, call.getMyPrincipal())
             narmestelederKafkaService.avbrytNarmesteLederRelation(
                 avkreft.copy(employeeIdentificationNumber = sykmeldt.nationalIdentificationNumber),
                 NlResponseSource.LPS
@@ -64,15 +64,15 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
             val id = call.getUUIDFromPathVariable(name = "id")
             val nlRelasjon = call.tryReceive<EmployeeLeaderConnection>()
 
-            nlRestHandler.handleUpdatedNl(nlRelasjon, id, principal = call.getMyPrincipal())
+            elcRequirementRestHandler.handleUpdatedRequirement(nlRelasjon, id, principal = call.getMyPrincipal())
 
             call.respond(HttpStatusCode.Accepted)
         }
 
         get("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")
-            val nlBehov = nlRestHandler.handleGetNlBehov(
-                nlBehovId = id,
+            val nlBehov = elcRequirementRestHandler.handleGetEmployeeLeaderRequirement(
+                requirementId = id,
                 principal = call.getMyPrincipal()
             )
             call.respond(HttpStatusCode.OK, nlBehov)

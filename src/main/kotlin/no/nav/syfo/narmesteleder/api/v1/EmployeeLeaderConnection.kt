@@ -1,7 +1,7 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import java.util.UUID
-import no.nav.syfo.narmesteleder.domain.NlBehovUpdate
+import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionUpdate
 import no.nav.syfo.narmesteleder.kafka.model.Leder
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
@@ -20,10 +20,10 @@ data class EmployeeLeaderConnection(
         )
     )
 
-    fun toNlbehovUpdate(id: UUID) = NlBehovUpdate(
-        sykmeldtFnr = employeeIdentificationNumber,
-        orgnummer = orgnumber,
-        narmesteLederFnr = leader.nationalIdentificationNumber,
+    fun toNlbehovUpdate(id: UUID) = EmployeeLeaderConnectionUpdate(
+        employeeIdentificationNumber = employeeIdentificationNumber,
+        orgnumber = orgnumber,
+        leaderIdentificationNumber = leader.nationalIdentificationNumber,
         id = id
     )
 }

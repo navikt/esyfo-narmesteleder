@@ -17,9 +17,9 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.NlBehovUpdate
-import no.nav.syfo.narmesteleder.domain.NlBehovWrite
-import no.nav.syfo.narmesteleder.exception.BehovNotFoundException
+import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionUpdate
+import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
+import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
@@ -48,10 +48,10 @@ class NarmestelederServiceTest : FunSpec({
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
             val hovedenhetOrg = "987654321"
-            val write = NlBehovWrite(
-                sykmeldtFnr = sykmeldtFnr,
-                orgnummer = underenhetOrg,
-                narmesteLederFnr = "01987654321",
+            val write = EmployeeLeaderConnectionWrite(
+                employeeIdentificationNumber = sykmeldtFnr,
+                orgnumber = underenhetOrg,
+                leaderIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
             )
             val captured: CapturingSlot<NarmestelederBehovEntity> = slot()
@@ -66,7 +66,7 @@ class NarmestelederServiceTest : FunSpec({
             entity.sykmeldtFnr shouldBe sykmeldtFnr
             entity.orgnummer shouldBe underenhetOrg
             entity.hovedenhetOrgnummer shouldBe hovedenhetOrg
-            entity.narmestelederFnr shouldBe write.narmesteLederFnr
+            entity.narmestelederFnr shouldBe write.leaderIdentificationNumber
             entity.leesahStatus shouldBe write.leesahStatus
             entity.behovStatus shouldBe BehovStatus.RECEIVED
         }
@@ -76,10 +76,10 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
-            val write = NlBehovWrite(
-                sykmeldtFnr = sykmeldtFnr,
-                orgnummer = underenhetOrg,
-                narmesteLederFnr = "01987654321",
+            val write = EmployeeLeaderConnectionWrite(
+                employeeIdentificationNumber = sykmeldtFnr,
+                orgnumber = underenhetOrg,
+                leaderIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
             )
 
@@ -94,10 +94,10 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
-            val write = NlBehovWrite(
-                sykmeldtFnr = sykmeldtFnr,
-                orgnummer = underenhetOrg,
-                narmesteLederFnr = "01987654321",
+            val write = EmployeeLeaderConnectionWrite(
+                employeeIdentificationNumber = sykmeldtFnr,
+                orgnumber = underenhetOrg,
+                leaderIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
             )
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns emptyMap()
@@ -127,10 +127,10 @@ class NarmestelederServiceTest : FunSpec({
 
             val read = service().getNlBehovById(id)
             read.id shouldBe id
-            read.orgnummer shouldBe entity.orgnummer
-            read.hovedenhetOrgnummer shouldBe entity.hovedenhetOrgnummer
-            read.sykmeldtFnr shouldBe entity.sykmeldtFnr
-            read.narmesteLederFnr shouldBe entity.narmestelederFnr
+            read.orgnumber shouldBe entity.orgnummer
+            read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer
+            read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
+            read.leaderIdentificationNumber shouldBe entity.narmestelederFnr
             read.name.firstName shouldBe navn.fornavn
             read.name.lastName shouldBe navn.etternavn
             read.name.middleName shouldBe navn.mellomnavn
@@ -141,7 +141,7 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val id = UUID.randomUUID()
             every { nlDb.findBehovById(id) } returns null
-            shouldThrow<BehovNotFoundException> { service().getNlBehovById(id) }
+            shouldThrow<EmployeeLeaderConnectionRequirementNotFoundException> { service().getNlBehovById(id) }
         }
     }
 
@@ -157,28 +157,28 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = NlBehovUpdate(
+            val update = EmployeeLeaderConnectionUpdate(
                 id = id,
-                sykmeldtFnr = "10987654321",
-                orgnummer = "333333333",
-                narmesteLederFnr = "01999999999",
+                employeeIdentificationNumber = "10987654321",
+                orgnumber = "333333333",
+                leaderIdentificationNumber = "01999999999",
             )
             val newHovedenhet = "444444444"
 
             every { nlDb.findBehovById(id) } returns original
-            coEvery { aaregService.findOrgNumbersByPersonIdent(update.sykmeldtFnr) } returns mapOf(update.orgnummer to newHovedenhet)
+            coEvery { aaregService.findOrgNumbersByPersonIdent(update.employeeIdentificationNumber) } returns mapOf(update.orgnumber to newHovedenhet)
             every { nlDb.updateNlBehov(any()) } returns Unit
 
             service().updateNlBehov(update, BehovStatus.COMPLETED)
 
-            coVerify { aaregService.findOrgNumbersByPersonIdent(update.sykmeldtFnr) }
+            coVerify { aaregService.findOrgNumbersByPersonIdent(update.employeeIdentificationNumber) }
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
                     updated.id == id &&
-                        updated.orgnummer == update.orgnummer &&
+                        updated.orgnummer == update.orgnumber &&
                         updated.hovedenhetOrgnummer == newHovedenhet &&
-                        updated.sykmeldtFnr == update.sykmeldtFnr &&
-                        updated.narmestelederFnr == update.narmesteLederFnr &&
+                        updated.sykmeldtFnr == update.employeeIdentificationNumber &&
+                        updated.narmestelederFnr == update.leaderIdentificationNumber &&
                         updated.behovStatus == BehovStatus.COMPLETED
                 })
             }
@@ -188,14 +188,14 @@ class NarmestelederServiceTest : FunSpec({
     test("updateNlBehov throws when behov not found") {
         runTest(dispatcher) {
             val id = UUID.randomUUID()
-            val update = NlBehovUpdate(
+            val update = EmployeeLeaderConnectionUpdate(
                 id = id,
-                sykmeldtFnr = "10987654321",
-                orgnummer = "333333333",
-                narmesteLederFnr = "01999999999",
+                employeeIdentificationNumber = "10987654321",
+                orgnumber = "333333333",
+                leaderIdentificationNumber = "01999999999",
             )
             every { nlDb.findBehovById(id) } returns null
-            shouldThrow<BehovNotFoundException> { service().updateNlBehov(update, BehovStatus.ERROR) }
+            shouldThrow<EmployeeLeaderConnectionRequirementNotFoundException> { service().updateNlBehov(update, BehovStatus.ERROR) }
         }
     }
 
@@ -211,14 +211,14 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = NlBehovUpdate(
+            val update = EmployeeLeaderConnectionUpdate(
                 id = id,
-                sykmeldtFnr = "10987654321",
-                orgnummer = "333333333",
-                narmesteLederFnr = "01999999999",
+                employeeIdentificationNumber = "10987654321",
+                orgnumber = "333333333",
+                leaderIdentificationNumber = "01999999999",
             )
             every { nlDb.findBehovById(id) } returns original
-            coEvery { aaregService.findOrgNumbersByPersonIdent(update.sykmeldtFnr) } returns emptyMap()
+            coEvery { aaregService.findOrgNumbersByPersonIdent(update.employeeIdentificationNumber) } returns emptyMap()
             shouldThrow<HovedenhetNotFoundException> { service().updateNlBehov(update, BehovStatus.PENDING) }
         }
     }
@@ -236,16 +236,16 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = originalLeesahStatus,
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = NlBehovUpdate(
+            val update = EmployeeLeaderConnectionUpdate(
                 id = id,
-                sykmeldtFnr = "10987654321",
-                orgnummer = "333333333",
-                narmesteLederFnr = "01999999999",
+                employeeIdentificationNumber = "10987654321",
+                orgnumber = "333333333",
+                leaderIdentificationNumber = "01999999999",
             )
             val newHovedenhet = "444444444"
 
             every { nlDb.findBehovById(id) } returns original
-            coEvery { aaregService.findOrgNumbersByPersonIdent(update.sykmeldtFnr) } returns mapOf(update.orgnummer to newHovedenhet)
+            coEvery { aaregService.findOrgNumbersByPersonIdent(update.employeeIdentificationNumber) } returns mapOf(update.orgnumber to newHovedenhet)
             every { nlDb.updateNlBehov(any()) } returns Unit
 
             service().updateNlBehov(update, BehovStatus.PENDING)

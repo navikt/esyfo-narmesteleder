@@ -15,7 +15,7 @@ class AltinnTilgangerService(
     ) {
         try {
             val tilganger = altinnTilgangerClient.hentTilganger(brukerPrincipal)
-            if (tilganger?.orgNrTilTilganger[orgnummer]?.contains(OPPRETT_NL_REALASJON_RESOURCE) != true)
+            if (tilganger?.orgNrTilTilganger[orgnummer]?.contains(OPPGI_NARMESTELEDER_RESOURCE) != true)
                 throw ApiErrorException.ForbiddenException("Bruker har ikke tilgang til organisasjon $orgnummer")
         } catch (e: UpstreamRequestException) {
             logger.error("Feil ved henting av tilgang til organisasjon $orgnummer", e)
@@ -24,7 +24,7 @@ class AltinnTilgangerService(
     }
 
     companion object {
-        const val OPPRETT_NL_REALASJON_RESOURCE = "4596:1" // Access resource in Altinn2 to access NL relasjon
+        const val OPPGI_NARMESTELEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn2 to access NL relasjon
         private val logger = logger()
     }
 }

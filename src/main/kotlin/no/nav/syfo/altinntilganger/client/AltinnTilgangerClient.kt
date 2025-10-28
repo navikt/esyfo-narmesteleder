@@ -7,7 +7,7 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import java.util.*
 import net.datafaker.Faker
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.BrukerPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -39,8 +39,8 @@ class FakeAltinnTilgangerClient : IAltinnTilgangerClient {
                     "BEDR"
                 )
             ),
-            if (accessPair != null) mapOf(organisasjonsnummer to setOf(OPPRETT_NL_REALASJON_RESOURCE)) else emptyMap(),
-            if (accessPair != null) mapOf(OPPRETT_NL_REALASJON_RESOURCE to setOf(organisasjonsnummer)) else emptyMap(),
+            if (accessPair != null) mapOf(organisasjonsnummer to setOf(OPPGI_NARMESTELEDER_RESOURCE)) else emptyMap(),
+            if (accessPair != null) mapOf(OPPGI_NARMESTELEDER_RESOURCE to setOf(organisasjonsnummer)) else emptyMap(),
         )
     }
 

@@ -53,7 +53,7 @@ import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
-class LinanamanagerApiV1Test : DescribeSpec({
+class LinenamanagerApiV1Test : DescribeSpec({
     val pdlService = PdlService(FakePdlClient())
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = narmesteLederRelasjon()
@@ -279,7 +279,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                 }
             }
 
-            it("should return 403 when caller lacks access to organization number for EmployeeLeaderConnection") {
+            it("should return 403 when caller lacks access to organization number for Linemanager") {
                 withTestApplication {
                     // Arrange
                     val callerPid = "11223344556"
@@ -430,7 +430,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                 leesahStatus = "ACTIVE"
             )
 
-            suspend fun seedEmployeeLeaderConnectionRequirement(): UUID {
+            suspend fun seedLinemanagerRequirement(): UUID {
                 fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                 fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
                 narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite())
@@ -443,7 +443,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val requirementId = seedEmployeeLeaderConnectionRequirement()
+                    val requirementId = seedLinemanagerRequirement()
                     val response = client.get("/api/v1/linemanager/requirement/$requirementId") {
                         bearerAuth(createMockToken(orgnummer))
                     }
@@ -476,7 +476,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         consumer = DefaultOrganization.copy(ID = "0192:999999999"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val requirementId = seedEmployeeLeaderConnectionRequirement()
+                    val requirementId = seedLinemanagerRequirement()
                     val response = client.get("/api/v1/linemanager/requirement/$requirementId") {
                         bearerAuth(createMockToken("999999999"))
                     }
@@ -491,7 +491,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val requirementId = seedEmployeeLeaderConnectionRequirement()
+                    val requirementId = seedLinemanagerRequirement()
                     val updatedRelasjon = narmesteLederRelasjon.copy(
                         manager = narmesteLederRelasjon.manager.copy(nationalIdentificationNumber = narmesteLederRelasjon.manager.nationalIdentificationNumber.reversed())
                     )
@@ -540,7 +540,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val requirementId = seedEmployeeLeaderConnectionRequirement()
+                    val requirementId = seedLinemanagerRequirement()
                     val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
                         setBody("""{ "foo": "bar" }""")
@@ -553,7 +553,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
 
             it("PUT /requirement/{id} 403 when principal lacks org access") {
                 withTestApplication {
-                    val requirementId = seedEmployeeLeaderConnectionRequirement()
+                    val requirementId = seedLinemanagerRequirement()
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
                         scope = MASKINPORTEN_NL_SCOPE,

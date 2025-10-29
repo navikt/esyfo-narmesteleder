@@ -19,7 +19,7 @@ import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
 import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
-import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
+import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
@@ -141,7 +141,7 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val id = UUID.randomUUID()
             every { nlDb.findBehovById(id) } returns null
-            shouldThrow<EmployeeLeaderConnectionRequirementNotFoundException> { service().getNlBehovById(id) }
+            shouldThrow<LinemanagerRequirementNotFoundException> { service().getNlBehovById(id) }
         }
     }
 
@@ -195,7 +195,7 @@ class NarmestelederServiceTest : FunSpec({
                 leaderIdentificationNumber = "01999999999",
             )
             every { nlDb.findBehovById(id) } returns null
-            shouldThrow<EmployeeLeaderConnectionRequirementNotFoundException> { service().updateNlBehov(update, BehovStatus.ERROR) }
+            shouldThrow<LinemanagerRequirementNotFoundException> { service().updateNlBehov(update, BehovStatus.ERROR) }
         }
     }
 

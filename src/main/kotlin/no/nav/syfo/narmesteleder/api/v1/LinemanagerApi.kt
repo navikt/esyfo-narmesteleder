@@ -21,7 +21,7 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
-fun Route.registerEmployeeLeaderConnectionApiV1(
+fun Route.registerLinemanagerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,

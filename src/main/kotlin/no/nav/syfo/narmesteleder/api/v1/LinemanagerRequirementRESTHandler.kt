@@ -5,7 +5,7 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRead
-import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
+import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -33,8 +33,8 @@ class LinemanagerRequirementRESTHandler(
             narmesteLederService.updateNlBehov(linemanager.toNlbehovUpdate(requirementId), BehovStatus.PENDING)
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Main entity not found", e)
-        } catch (e: EmployeeLeaderConnectionRequirementNotFoundException) {
-            throw ApiErrorException.NotFoundException("A EmployeeLeaderConnectionRequirement was not found", e)
+        } catch (e: LinemanagerRequirementNotFoundException) {
+            throw ApiErrorException.NotFoundException("A LinemanagerRequirement was not found", e)
         } catch (e: ApiErrorException) {
             throw e
         } catch (e: Exception) {
@@ -46,13 +46,13 @@ class LinemanagerRequirementRESTHandler(
         narmesteLederService.getNlBehovById(requirementId).also {
             validationService.validateGetNlBehov(principal, it)
         }
-    } catch (e: EmployeeLeaderConnectionRequirementNotFoundException) {
-        throw ApiErrorException.NotFoundException("EmployeeLeaderConnectionRequirement not found", e)
+    } catch (e: LinemanagerRequirementNotFoundException) {
+        throw ApiErrorException.NotFoundException("LinemanagerRequirement", e)
     } catch (e: ValidateNarmesteLederException) {
-        throw ApiErrorException.ForbiddenException("You don't have access to this EmployeeLeaderConnectionRequirement", e)
+        throw ApiErrorException.ForbiddenException("You don't have access to this LinemanagerRequirement", e)
     } catch (e: Exception) {
         throw ApiErrorException.InternalServerErrorException(
-            "Something went wrong while fetching EmployeeLeaderConnectionRequirement",
+            "Something went wrong while fetching LinemanagerRequirement",
             e
         )
     }

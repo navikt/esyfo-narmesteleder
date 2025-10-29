@@ -11,7 +11,7 @@ import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.LinemanagerRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
 import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
-import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
+import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.pdl.PdlService
@@ -37,14 +37,14 @@ class NarmestelederService(
                 )
                 it.toEmployeeLeaderConnctionRead(name)
             }
-        } ?: throw EmployeeLeaderConnectionRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
+        } ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
 
     suspend fun updateNlBehov(
         linemanagerUpdate: LinemanagerUpdate,
         behovStatus: BehovStatus
     ) = withContext(ioDispatcher) {
         val behov = nlDb.findBehovById(linemanagerUpdate.id)
-            ?: throw EmployeeLeaderConnectionRequirementNotFoundException("NarmestelederBehovEntity not found for id: ${linemanagerUpdate.id}")
+            ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: ${linemanagerUpdate.id}")
 
         val updatedBehov = behov.copy(
             orgnummer = linemanagerUpdate.orgnumber,
@@ -66,7 +66,7 @@ class NarmestelederService(
 
     suspend fun createNewNlBehov(nlBehov: LinemanagerWrite) {
         if (!persistLeesahNlBehov) {
-            logger.info("Skipping persistence of EmployeeLeaderConnectionRequirement as configured.")
+            logger.info("Skipping persistence of LinemanagerRequirement as configured.")
             return
         }
 

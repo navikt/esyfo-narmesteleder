@@ -26,6 +26,7 @@
           "match": "maskinporten",
           "claims": {
             "sub": "${clientId}",
+            "iss": "https://test.maskinporten.no/",
             "scope": "nav:syfo/narmesteleder/lps",
             "aud": "${aud}",
             "consumer": {

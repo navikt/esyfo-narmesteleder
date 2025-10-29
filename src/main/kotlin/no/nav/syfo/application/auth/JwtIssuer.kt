@@ -12,7 +12,7 @@ enum class JwtIssuer(val value: String? = null) {
         fun fromIssuerString(iss: String): JwtIssuer = when {
             // https://maskinporten.no/.well-known/oauth-authorization-server
             // https://test.maskinporten.no/.well-known/oauth-authorization-server
-            iss.contains("maskinporten") -> MASKINPORTEN
+            iss.matches(Regex("https://(test\\.)?maskinporten\\.no/?")) -> MASKINPORTEN
             // https://idporten.no/.well-known/openid-configuration
             // https://test.idporten.no/.well-known/openid-configuration
 //            iss.matches(Regex("https://(test\\.)?idporten\\.no/?")) -> IDPORTEN

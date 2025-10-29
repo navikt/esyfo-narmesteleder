@@ -78,7 +78,7 @@ services:
       "dq": "pKUijDDeWjHIjzvYcyDYIRpQ806yftbUuVbe2AUElnXFmfHjoKjC3p5oCZtEUuHAS3omIWJirp8W7LwMwYqv1M8aJUXyzCkC6VAraN-fyM6n7hGRH68z_QUka8rVmi0-C9cMrtbsNixU-K_hTD4XsC3VeJnniSiQ-k6MJQx6fk8",
       "n": "onZcB1ryWS1keTIcbgsLKJ1UBwL1Wbzse5P2HjkrNwbG3Jy2lefUEcTVJxN8bpLeW460Luz3ScZd3d9p8IoHjmhZ2cyO49E41aBRIlBRzWNpebK5xeC95rSKenYHpOPlLzPgybg2qxallzQUOcKCheiF0fsErlapaA9YmKwzP3DwvzYW4JqSrHhDGWPwUCcsR4dpetwKXP_9tRFso06ryr4um3qiq7giyZEyZVG3fHMplD-5e-2-RrzBiGFW_zvs-XVRGPIf9Y5YNjeQJRuS4vF82V8mNZxEZddtUY5plSz-vgX3GSvANLDH-LZJ76Zmx3a8dEZbI7VxgsBQAqcUlQ"
     }'
-      MASKINPORTEN_ISSUER: http://localhost:6969/maskinporten
+      MASKINPORTEN_ISSUER: https://test.maskinporten.no/
       MASKINPORTEN_TOKEN_ENDPOINT: http://host.docker.internal:6969/maskinporten/token
       MASKINPORTEN_JWKS_URI: http://host.docker.internal:6969/maskinporten/jwks
       MASKINPORTEN_WELL_KNOWN_URL: http://host.docker.internal:6969/maskinporten/.well-known/openid-configuration

@@ -105,3 +105,4 @@ class DialogportenService(
         )
     }
 }
+//https://www.ekstern.dev.nav.no/arbeidgsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5

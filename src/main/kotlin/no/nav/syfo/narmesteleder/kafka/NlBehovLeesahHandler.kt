@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.kafka
 
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.util.logger
@@ -8,7 +8,7 @@ import no.nav.syfo.util.logger
 class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederService) {
     private val logger = logger()
 
-    suspend fun handleByLeesahStatus(nlBehov: EmployeeLeaderConnectionWrite, status: LeesahStatus) {
+    suspend fun handleByLeesahStatus(nlBehov: LinemanagerWrite, status: LeesahStatus) {
         logger.info("Processing NL message with status: $status")
 
         when (status) {

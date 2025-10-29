@@ -4,7 +4,7 @@ import java.util.*
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LinemanaberRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerRead
 import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -42,7 +42,7 @@ class LinemanagerRequirementRESTHandler(
         }
     }
 
-    suspend fun handleGetEmployeeLeaderRequirement(requirementId: UUID, principal: Principal): LinemanaberRead = try {
+    suspend fun handleGetEmployeeLeaderRequirement(requirementId: UUID, principal: Principal): LinemanagerRead = try {
         narmesteLederService.getNlBehovById(requirementId).also {
             validationService.validateGetNlBehov(principal, it)
         }

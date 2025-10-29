@@ -18,7 +18,7 @@ import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
 import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.pdl.PdlService
@@ -48,10 +48,10 @@ class NarmestelederServiceTest : FunSpec({
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
             val hovedenhetOrg = "987654321"
-            val write = EmployeeLeaderConnectionWrite(
+            val write = LinemanagerWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = underenhetOrg,
-                leaderIdentificationNumber = "01987654321",
+                managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
             )
             val captured: CapturingSlot<NarmestelederBehovEntity> = slot()
@@ -66,7 +66,7 @@ class NarmestelederServiceTest : FunSpec({
             entity.sykmeldtFnr shouldBe sykmeldtFnr
             entity.orgnummer shouldBe underenhetOrg
             entity.hovedenhetOrgnummer shouldBe hovedenhetOrg
-            entity.narmestelederFnr shouldBe write.leaderIdentificationNumber
+            entity.narmestelederFnr shouldBe write.managerIdentificationNumber
             entity.leesahStatus shouldBe write.leesahStatus
             entity.behovStatus shouldBe BehovStatus.RECEIVED
         }
@@ -76,10 +76,10 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
-            val write = EmployeeLeaderConnectionWrite(
+            val write = LinemanagerWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = underenhetOrg,
-                leaderIdentificationNumber = "01987654321",
+                managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
             )
 
@@ -94,10 +94,10 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
-            val write = EmployeeLeaderConnectionWrite(
+            val write = LinemanagerWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = underenhetOrg,
-                leaderIdentificationNumber = "01987654321",
+                managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
             )
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns emptyMap()
@@ -130,7 +130,7 @@ class NarmestelederServiceTest : FunSpec({
             read.orgnumber shouldBe entity.orgnummer
             read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer
             read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
-            read.leaderIdentificationNumber shouldBe entity.narmestelederFnr
+            read.managerIdentificationNumber shouldBe entity.narmestelederFnr
             read.name.firstName shouldBe navn.fornavn
             read.name.lastName shouldBe navn.etternavn
             read.name.middleName shouldBe navn.mellomnavn

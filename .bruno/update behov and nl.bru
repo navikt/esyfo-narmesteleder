@@ -5,7 +5,7 @@ meta {
 }
 
 put {
-  url: localhost:8080/api/v1/employeeLeaderConnection/requirement/:id
+  url: localhost:8080/api/v1/linemanager/requirement/:id
   body: json
   auth: inherit
 }
@@ -17,8 +17,8 @@ params:path {
 body:json {
   {
     "employeeIdentificationNumber": "15436803416",
-    "orgnumber": "215649202",
-    "leader": {
+    "orgnumber": "310667633",
+    "manager": {
       "nationalIdentificationNumber": "215649202",
       "mobile": "12345678",
       "email": "e@post.no",

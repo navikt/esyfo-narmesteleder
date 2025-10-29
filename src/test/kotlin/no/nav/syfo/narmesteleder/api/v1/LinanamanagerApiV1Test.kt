@@ -40,8 +40,8 @@ import no.nav.syfo.narmesteleder.api.v1.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.domain.LinemanaberRead
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -119,7 +119,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
             fn(this)
         }
     }
-    describe("POST /employeeLeaderConnection") {
+    describe("POST /linemanager") {
         describe("Maskinporten token") {
             it("should return 202 Accepted for valid payload") {
                 withTestApplication {
@@ -139,7 +139,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     // Act
-                    val response = client.post("/api/v1/employeeLeaderConnection") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(narmesteLederRelasjon.orgnumber))
@@ -167,7 +167,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     // Act
-                    val response = client.post("/api/v1/employeeLeaderConnection") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody("""{ "name": "Ola Nordmann" }""")
                         bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -185,7 +185,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks()
                     // Act
-                    val response = client.post("/api/v1/employeeLeaderConnection") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon())
                     }
@@ -207,7 +207,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         scope = "invalid-scope",
                     )
                     // Act
-                    val response = client.post("/api/v1/employeeLeaderConnection") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon())
                     }
@@ -224,7 +224,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks()
                     // Act
-                    val response = client.post("/api/v1/employeeLeaderConnection") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon())
                         bearerAuth(createMockToken(ident = "", issuer = "invalid"))
@@ -256,7 +256,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     // Act
-                    val response = client.post("/api/v1/employeeLeaderConnection") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
@@ -288,7 +288,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         pid = callerPid
                     )
                     // Act
-                    val response = client.post("/api/v1/employeeLeaderConnection") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
@@ -309,7 +309,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                     )
                     fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
                     // Act
-                    val response = client.post("/api/v1/employeeLeaderConnection") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
@@ -322,7 +322,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
         }
     }
 
-    describe("POST /employeeLeaderConnection/discontinue") {
+    describe("POST /linemanager/discontinue") {
         it("should return 202 Accepted for valid payload") {
             val narmesteLederAvkreft = narmesteLederAvkreft()
             withTestApplication {
@@ -340,7 +340,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                     listOf(narmesteLederAvkreft.orgnumber to narmesteLederRelasjon.orgnumber)
                 )
                 // Act
-                val response = client.post("/api/v1/employeeLeaderConnection/discontinue") {
+                val response = client.post("/api/v1/linemanager/discontinue") {
                     contentType(ContentType.Application.Json)
                     setBody(narmesteLederAvkreft)
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -376,7 +376,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft()
                 // Act
-                val response = client.post("/api/v1/employeeLeaderConnection/discontinue") {
+                val response = client.post("/api/v1/linemanager/discontinue") {
                     contentType(ContentType.Application.Json)
                     setBody(narmesteLederAvkreft)
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -404,7 +404,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 // Act
-                val response = client.post("/api/v1/employeeLeaderConnection/discontinue") {
+                val response = client.post("/api/v1/linemanager/discontinue") {
                     contentType(ContentType.Application.Json)
                     setBody("""{ "navn": "Ola Nordmann" }""")
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -418,15 +418,15 @@ class LinanamanagerApiV1Test : DescribeSpec({
         }
 
 
-        describe("/employeeLeaderConnection/requirement endpoints") {
+        describe("/linemanager/requirement endpoints") {
             val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
             val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
             val orgnummer = narmesteLederRelasjon.orgnumber
 
-            fun Linemanager.toNlBehovWrite(): EmployeeLeaderConnectionWrite = EmployeeLeaderConnectionWrite(
+            fun Linemanager.toNlBehovWrite(): LinemanagerWrite = LinemanagerWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = orgnumber,
-                leaderIdentificationNumber = manager.nationalIdentificationNumber,
+                managerIdentificationNumber = manager.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE"
             )
 
@@ -444,11 +444,11 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedEmployeeLeaderConnectionRequirement()
-                    val response = client.get("/api/v1/employeeLeaderConnection/requirement/$requirementId") {
+                    val response = client.get("/api/v1/linemanager/requirement/$requirementId") {
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<LinemanaberRead>()
+                    val body = response.body<LinemanagerRead>()
                     body.id shouldBe requirementId
                     body.orgnumber shouldBe orgnummer
                     body.employeeIdentificationNumber shouldBe sykmeldtFnr
@@ -462,7 +462,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val randomId = UUID.randomUUID()
-                    val response = client.get("/api/v1/employeeLeaderConnection/requirement/$randomId") {
+                    val response = client.get("/api/v1/linemanager/requirement/$randomId") {
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.NotFound
@@ -477,7 +477,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedEmployeeLeaderConnectionRequirement()
-                    val response = client.get("/api/v1/employeeLeaderConnection/requirement/$requirementId") {
+                    val response = client.get("/api/v1/linemanager/requirement/$requirementId") {
                         bearerAuth(createMockToken("999999999"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
@@ -499,7 +499,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         updatedRelasjon.manager.nationalIdentificationNumber,
                         listOf(orgnummer to orgnummer)
                     )
-                    val response = client.put("/api/v1/employeeLeaderConnection/requirement/$requirementId") {
+                    val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
                         setBody(updatedRelasjon)
                         bearerAuth(createMockToken(orgnummer))
@@ -524,7 +524,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                     val randomId = UUID.randomUUID()
                     fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                     fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
-                    val response = client.put("/api/v1/employeeLeaderConnection/requirement/$randomId") {
+                    val response = client.put("/api/v1/linemanager/requirement/$randomId") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(orgnummer))
@@ -541,7 +541,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedEmployeeLeaderConnectionRequirement()
-                    val response = client.put("/api/v1/employeeLeaderConnection/requirement/$requirementId") {
+                    val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
                         setBody("""{ "foo": "bar" }""")
                         bearerAuth(createMockToken(orgnummer))
@@ -560,7 +560,7 @@ class LinanamanagerApiV1Test : DescribeSpec({
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                     fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
-                    val response = client.put("/api/v1/employeeLeaderConnection/requirement/$requirementId") {
+                    val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken("000000000"))

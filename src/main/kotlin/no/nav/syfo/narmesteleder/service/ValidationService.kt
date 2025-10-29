@@ -10,7 +10,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.api.v1.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerDiscontinued
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
-import no.nav.syfo.narmesteleder.domain.LinemanaberRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerRead
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.util.logger
@@ -108,9 +108,9 @@ class ValidationService(
         }
     }
 
-    suspend fun validateGetNlBehov(principal: Principal, linemanaberRead: LinemanaberRead) {
-        val sykemeldtOrgs = setOf(linemanaberRead.orgnumber, linemanaberRead.mainOrgnumber)
-        val innsenderOrgNumber = validateAltTilgang(principal, linemanaberRead.orgnumber)
+    suspend fun validateGetNlBehov(principal: Principal, linemanagerRead: LinemanagerRead) {
+        val sykemeldtOrgs = setOf(linemanagerRead.orgnumber, linemanagerRead.mainOrgnumber)
+        val innsenderOrgNumber = validateAltTilgang(principal, linemanagerRead.orgnumber)
 
         if (principal is OrganisasjonPrincipal) {
             nlrequire(

@@ -27,7 +27,7 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler
 ) {
-    route("/employeeLeaderConnection") {
+    route("/linemanager") {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
             client = texasHttpClient
         }
@@ -46,7 +46,7 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
         }
     }
 
-    route("/employeeLeaderConnection/discontinue") {
+    route("/linemanager/discontinue") {
         post() {
             val avkreft = call.tryReceive<LinemanagerDiscontinued>()
             val sykmeldt = validationService.validateLinemanagerDiscontinue(avkreft, call.getMyPrincipal())
@@ -59,7 +59,7 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
         }
     }
     
-    route("employeeLeaderConnection/requirement") {
+    route("/linemanager/requirement") {
         put("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")
             val nlRelasjon = call.tryReceive<Linemanager>()

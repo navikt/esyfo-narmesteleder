@@ -8,9 +8,9 @@ import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.LinemanaberRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
 import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
@@ -25,7 +25,7 @@ class NarmestelederService(
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    suspend fun getNlBehovById(id: UUID): LinemanaberRead =
+    suspend fun getNlBehovById(id: UUID): LinemanagerRead =
         withContext(ioDispatcher) {
             nlDb.findBehovById(id)?.let {
                 val details = pdlService.getPersonFor(it.sykmeldtFnr)
@@ -64,7 +64,7 @@ class NarmestelederService(
             ?: throw HovedenhetNotFoundException("Could not find main entity for employee on sick leave and orgnumber in aareg")
     }
 
-    suspend fun createNewNlBehov(nlBehov: EmployeeLeaderConnectionWrite) {
+    suspend fun createNewNlBehov(nlBehov: LinemanagerWrite) {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of EmployeeLeaderConnectionRequirement as configured.")
             return
@@ -76,7 +76,7 @@ class NarmestelederService(
                     sykmeldtFnr = nlBehov.employeeIdentificationNumber,
                     orgnummer = nlBehov.orgnumber,
                     hovedenhetOrgnummer = findHovedenhetOrgnummer(nlBehov.employeeIdentificationNumber, nlBehov.orgnumber),
-                    narmestelederFnr = nlBehov.leaderIdentificationNumber,
+                    narmestelederFnr = nlBehov.managerIdentificationNumber,
                     leesahStatus = nlBehov.leesahStatus,
                     behovStatus = BehovStatus.RECEIVED
                 )
@@ -86,11 +86,11 @@ class NarmestelederService(
     }
 }
 
-fun NarmestelederBehovEntity.toEmployeeLeaderConnctionRead(name: Name): LinemanaberRead = LinemanaberRead(
+fun NarmestelederBehovEntity.toEmployeeLeaderConnctionRead(name: Name): LinemanagerRead = LinemanagerRead(
     id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
     employeeIdentificationNumber = this.sykmeldtFnr,
     orgnumber = this.orgnummer,
     mainOrgnumber = this.hovedenhetOrgnummer,
-    leaderIdentificationNumber = this.narmestelederFnr,
+    managerIdentificationNumber = this.narmestelederFnr,
     name = name
 )

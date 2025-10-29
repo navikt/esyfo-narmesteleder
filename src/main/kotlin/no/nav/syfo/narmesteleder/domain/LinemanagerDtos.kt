@@ -2,10 +2,10 @@ package no.nav.syfo.narmesteleder.domain
 
 import java.util.UUID
 
-data class EmployeeLeaderConnectionWrite(
+data class LinemanagerWrite(
     val employeeIdentificationNumber: String,
     val orgnumber: String,
-    val leaderIdentificationNumber: String,
+    val managerIdentificationNumber: String,
     val leesahStatus: String,
 )
 
@@ -16,12 +16,12 @@ data class LinemanagerUpdate(
     val leaderIdentificationNumber: String,
 )
 
-data class LinemanaberRead(
+data class LinemanagerRead(
     val id: UUID,
     val employeeIdentificationNumber: String,
     val orgnumber: String,
     val mainOrgnumber: String,
-    val leaderIdentificationNumber: String,
+    val managerIdentificationNumber: String,
     val name: Name
 )
 

@@ -8,7 +8,7 @@ import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.api.v1.Linemanager
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerDiscontinued
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRead
 import no.nav.syfo.pdl.PdlService
@@ -70,17 +70,17 @@ class ValidationService(
             throw ValidateActiveSykmeldingException("No active sick leave found for the given organization number")
         } else true
 
-    suspend fun validateLinemanagerDiscontinue(
-        linemanagerDiscontinued: LinemanagerDiscontinued,
+    suspend fun validateLinemanagerRevoke(
+        linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
     ): Person {
         try {
-            val innsenderOrgNumber = validateAltTilgang(principal, linemanagerDiscontinued.orgnumber)
-            val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerDiscontinued.employeeIdentificationNumber)
+            val innsenderOrgNumber = validateAltTilgang(principal, linemanagerRevoke.orgnumber)
+            val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
             validateNarmesteLederAvkreft(
-                orgNumberInRequest = linemanagerDiscontinued.orgnumber,
+                orgNumberInRequest = linemanagerRevoke.orgnumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 innsenderOrgNumber = innsenderOrgNumber
             )

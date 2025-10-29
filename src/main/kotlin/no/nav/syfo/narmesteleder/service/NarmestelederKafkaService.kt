@@ -1,7 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.narmesteleder.api.v1.Linemanager
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerDiscontinued
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.kafka.ISykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
@@ -27,12 +27,12 @@ class NarmestelederKafkaService(
     }
 
     fun avbrytNarmesteLederRelation(
-        linemanagerDiscontinued: LinemanagerDiscontinued, source: NlResponseSource
+        linemanagerRevoke: LinemanagerRevoke, source: NlResponseSource
     ) {
         kafkaSykemeldingProducer.sendSykemeldingNLBrudd(
             NlAvbrutt(
-                linemanagerDiscontinued.employeeIdentificationNumber,
-                linemanagerDiscontinued.orgnumber,
+                linemanagerRevoke.employeeIdentificationNumber,
+                linemanagerRevoke.orgnumber,
             ), source = source
         )
     }

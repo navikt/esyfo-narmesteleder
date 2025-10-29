@@ -105,7 +105,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
-                service.validateLinemanagerDiscontinue(narmesteLederAvkreft, principal)
+                service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
             }
             // Assert
             coVerify(exactly = 1) {
@@ -131,7 +131,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
-                service.validateLinemanagerDiscontinue(narmesteLederAvkreft, principal)
+                service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
             }
             // Assert
             coVerify(exactly = 0) {

@@ -15,7 +15,7 @@ import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.narmesteleder.api.v1.Linemanager
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerDiscontinued
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.api.v1.Manager
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -36,7 +36,7 @@ fun narmesteLederRelasjon(): Linemanager = Linemanager(
     orgnumber = faker.numerify("#########"),
 )
 
-fun narmesteLederAvkreft(): LinemanagerDiscontinued = LinemanagerDiscontinued(
+fun narmesteLederAvkreft(): LinemanagerRevoke = LinemanagerRevoke(
     employeeIdentificationNumber = faker.numerify("###########"),
     orgnumber = faker.numerify("#########"),
 )

@@ -46,10 +46,10 @@ fun Route.registerLinemanagerApiV1(
         }
     }
 
-    route("/linemanager/discontinue") {
+    route("/linemanager/revoke") {
         post() {
-            val avkreft = call.tryReceive<LinemanagerDiscontinued>()
-            val sykmeldt = validationService.validateLinemanagerDiscontinue(avkreft, call.getMyPrincipal())
+            val avkreft = call.tryReceive<LinemanagerRevoke>()
+            val sykmeldt = validationService.validateLinemanagerRevoke(avkreft, call.getMyPrincipal())
             narmestelederKafkaService.avbrytNarmesteLederRelation(
                 avkreft.copy(employeeIdentificationNumber = sykmeldt.nationalIdentificationNumber),
                 NlResponseSource.LPS

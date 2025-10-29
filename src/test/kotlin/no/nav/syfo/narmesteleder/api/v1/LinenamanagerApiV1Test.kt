@@ -322,7 +322,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
         }
     }
 
-    describe("POST /linemanager/discontinue") {
+    describe("POST /linemanager/revoke") {
         it("should return 202 Accepted for valid payload") {
             val narmesteLederAvkreft = narmesteLederAvkreft()
             withTestApplication {
@@ -340,7 +340,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     listOf(narmesteLederAvkreft.orgnumber to narmesteLederRelasjon.orgnumber)
                 )
                 // Act
-                val response = client.post("/api/v1/linemanager/discontinue") {
+                val response = client.post("/api/v1/linemanager/revoke") {
                     contentType(ContentType.Application.Json)
                     setBody(narmesteLederAvkreft)
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -356,7 +356,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     )
                 }
                 coVerify(exactly = 1) {
-                    validationServiceSpy.validateLinemanagerDiscontinue(
+                    validationServiceSpy.validateLinemanagerRevoke(
                         eq(narmesteLederAvkreft),
                         any()
                     )
@@ -376,7 +376,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft()
                 // Act
-                val response = client.post("/api/v1/linemanager/discontinue") {
+                val response = client.post("/api/v1/linemanager/revoke") {
                     contentType(ContentType.Application.Json)
                     setBody(narmesteLederAvkreft)
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -404,7 +404,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 // Act
-                val response = client.post("/api/v1/linemanager/discontinue") {
+                val response = client.post("/api/v1/linemanager/revoke") {
                     contentType(ContentType.Application.Json)
                     setBody("""{ "navn": "Ola Nordmann" }""")
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))

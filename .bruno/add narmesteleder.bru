@@ -5,24 +5,28 @@ meta {
 }
 
 post {
-  url: http://localhost:8080/api/v1/narmesteleder
+  url: http://localhost:8080/api/v1/linemanager
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "sykmeldtFnr": "15436803416",
-    "organisasjonsnummer": "310667633",
-    "leder": {
-      "fnr": "215649202",
-      "mobil": "12345678",
-      "epost": "e@post.no",
-      "fornavn": "Kari",
-      "mellomnavn": "Placeholder",
-      "etternavn": "Nordmann"
+    "employeeIdentificationNumber": "15436803416",
+    "orgnumber": "215649202",
+    "manager": {
+      "nationalIdentificationNumber": "215649202",
+      "mobile": "12345678",
+      "email": "e@post.no",
+      "firstName": "Kari",
+      "middleName": "Anne",
+      "lastName": "Nordmann"
     }
   }
+}
+
+assert {
+  res.status: eq 200
 }
 
 settings {

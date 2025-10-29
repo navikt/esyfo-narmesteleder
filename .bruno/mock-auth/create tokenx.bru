@@ -15,12 +15,16 @@ body:form-urlencoded {
   code: code1
   client_id: 22f5660a-faa2-4490-9850-65d8aab9ef69
   acr: Level4
-  pid: 215649202
+  pid: 15823349332
   aud: esyfo-narmesteleder
 }
 
 body:multipart-form {
   grant_type: client_credentials
+}
+
+assert {
+  res.status: eq 200
 }
 
 script:post-response {

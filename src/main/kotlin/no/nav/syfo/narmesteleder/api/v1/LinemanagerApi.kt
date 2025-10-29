@@ -9,7 +9,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
@@ -21,22 +21,22 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
-fun Route.registerNarmestelederApiV1(
+fun Route.registerLinemanagerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
-    nlRestHandler: NlBehovRESTHandler
+    linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler
 ) {
-    route("/narmesteleder") {
+    route("/linemanager") {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
             client = texasHttpClient
         }
 
         post() {
-            val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
-            val nlAktorer = validationService.validateNarmesteleder(nlRelasjon, call.getMyPrincipal())
+            val nlRelasjon = call.tryReceive<Linemanager>()
+            val nlAktorer = validationService.validateLinemanager(nlRelasjon, call.getMyPrincipal())
 
-            narmestelederKafkaService.sendNarmesteLederRelation(
+            narmestelederKafkaService.sendNarmesteLederRelasjon(
                 nlRelasjon,
                 nlAktorer,
                 NlResponseSource.LPS,
@@ -46,12 +46,12 @@ fun Route.registerNarmestelederApiV1(
         }
     }
 
-    route("/narmesteleder/avkreft") {
+    route("/linemanager/revoke") {
         post() {
-            val avkreft = call.tryReceive<NarmestelederRelasjonAvkreft>()
-            val sykmeldt = validationService.validateNarmestelederAvkreft(avkreft, call.getMyPrincipal())
+            val avkreft = call.tryReceive<LinemanagerRevoke>()
+            val sykmeldt = validationService.validateLinemanagerRevoke(avkreft, call.getMyPrincipal())
             narmestelederKafkaService.avbrytNarmesteLederRelation(
-                avkreft.copy(sykmeldtFnr = sykmeldt.fnr),
+                avkreft.copy(employeeIdentificationNumber = sykmeldt.nationalIdentificationNumber),
                 NlResponseSource.LPS
             )
 
@@ -59,20 +59,20 @@ fun Route.registerNarmestelederApiV1(
         }
     }
     
-    route("narmesteleder/behov") {
-        put("/{behovId}") {
-            val id = call.getUUIDFromPathVariable(name = "behovId")
-            val nlRelasjon = call.tryReceive<NarmesteLederRelasjonerWrite>()
+    route("/linemanager/requirement") {
+        put("/{id}") {
+            val id = call.getUUIDFromPathVariable(name = "id")
+            val nlRelasjon = call.tryReceive<Linemanager>()
 
-            nlRestHandler.handleUpdatedNl(nlRelasjon, id, principal = call.getMyPrincipal())
+            linemanagerRequirementRestHandler.handleUpdatedRequirement(nlRelasjon, id, principal = call.getMyPrincipal())
 
             call.respond(HttpStatusCode.Accepted)
         }
 
-        get("/{behovId}") {
-            val behovId = call.getUUIDFromPathVariable(name = "behovId")
-            val nlBehov = nlRestHandler.handleGetNlBehov(
-                nlBehovId = behovId,
+        get("/{id}") {
+            val id = call.getUUIDFromPathVariable(name = "id")
+            val nlBehov = linemanagerRequirementRestHandler.handleGetLinemanagerRequirement(
+                requirementId = id,
                 principal = call.getMyPrincipal()
             )
             call.respond(HttpStatusCode.OK, nlBehov)
@@ -87,7 +87,7 @@ fun RoutingCall.getMyPrincipal(): Principal =
         }
 
         JwtIssuer.TOKEN_X -> {
-            authentication.principal<BrukerPrincipal>() ?: throw UnauthorizedException()
+            authentication.principal<UserPrincipal>() ?: throw UnauthorizedException()
         }
 
         else -> throw UnauthorizedException()

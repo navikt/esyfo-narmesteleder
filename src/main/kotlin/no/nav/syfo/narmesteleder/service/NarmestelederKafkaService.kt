@@ -1,8 +1,8 @@
 package no.nav.syfo.narmesteleder.service
 
-import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
-import no.nav.syfo.narmesteleder.api.v1.NarmestelederRelasjonAvkreft
-import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
+import no.nav.syfo.narmesteleder.api.v1.Linemanager
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.kafka.ISykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
@@ -12,27 +12,27 @@ import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 class NarmestelederKafkaService(
     val kafkaSykemeldingProducer: ISykemeldingNLKafkaProducer,
 ) {
-    fun sendNarmesteLederRelation(
-        narmesteLederRelasjonerWrite: NarmesteLederRelasjonerWrite,
-        narmestelederAktorer: NarmestelederAktorer,
+    fun sendNarmesteLederRelasjon(
+        linemanager: Linemanager,
+        linemanagerActors: LinemanagerActors,
         source: NlResponseSource,
     ) {
         kafkaSykemeldingProducer.sendSykemeldingNLRelasjon(
             NlResponse(
-                sykmeldt = Sykmeldt.from(narmestelederAktorer.sykmeldt),
-                leder = narmesteLederRelasjonerWrite.leder.updateFromPerson(narmestelederAktorer.leder),
-                orgnummer = narmesteLederRelasjonerWrite.organisasjonsnummer
+                sykmeldt = Sykmeldt.from(linemanagerActors.employee),
+                leder = linemanager.manager.toLeder().updateFromPerson(linemanagerActors.manager),
+                orgnummer = linemanager.orgnumber
             ), source = source
         )
     }
 
     fun avbrytNarmesteLederRelation(
-        narmestelederRelasjonAvkreft: NarmestelederRelasjonAvkreft, source: NlResponseSource
+        linemanagerRevoke: LinemanagerRevoke, source: NlResponseSource
     ) {
         kafkaSykemeldingProducer.sendSykemeldingNLBrudd(
             NlAvbrutt(
-                narmestelederRelasjonAvkreft.sykmeldtFnr,
-                narmestelederRelasjonAvkreft.organisasjonsnummer,
+                linemanagerRevoke.employeeIdentificationNumber,
+                linemanagerRevoke.orgnumber,
             ), source = source
         )
     }

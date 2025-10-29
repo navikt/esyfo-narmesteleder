@@ -45,7 +45,7 @@ class DinesykmeldteClient(
             TexasHttpClient.getTarget(scope)
         ).accessToken
     }.getOrElse {
-        if (it is Exception) throw DinesykmeldteClientException("Noe gikk galt ved henting av system-token", it)
+        if (it is Exception) throw DinesykmeldteClientException("An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}", it)
         else throw it
     }
 
@@ -54,7 +54,6 @@ class DinesykmeldteClient(
         orgnummer: String,
         token: String
     ): Boolean {
-        logger.info("Starter henting fra dinessykmeldte-backend")
         val res = runCatching<Boolean> {
             httpClient.post(arbeidsforholdOversiktPath) {
                 bearerAuth(token)
@@ -67,17 +66,16 @@ class DinesykmeldteClient(
                 )
             }.body()
         }
-        logger.info("Henting vellykket, res: ${res.getOrNull()}")
 
         return res.getOrElse { ex ->
             when (ex) {
                 is ClientRequestException if ex.response.status == HttpStatusCode.NotFound -> {
-                    throw AaregClientException("Error fetching arbeidsforhold oversikt for person $personIdent", ex)
+                    throw AaregClientException("Error when fetching sick leave status for person $personIdent", ex)
                 }
 
                 is ClientRequestException -> {
                     throw DinesykmeldteClientException(
-                        "Noe gikk galt ved henting av arbeidsforhold",
+                        "An error occurred when fetching sick leave status",
                         ex
                     )
                 }

@@ -16,7 +16,7 @@ class PdlService(private val pdlClient: IPdlClient) {
             val fnr = response.data.identer?.identer?.firstOrNull() { it.gruppe == GRUPPE_IDENT_FNR }?.ident
                 ?: throw PdlResourceNotFoundException("Fant ikke fnr")
             return Person(
-                navn = navn, fnr = fnr
+                name = navn, nationalIdentificationNumber = fnr
             )
         }
     }

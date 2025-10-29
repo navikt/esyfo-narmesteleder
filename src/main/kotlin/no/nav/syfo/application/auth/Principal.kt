@@ -4,7 +4,7 @@ sealed class Principal{
     abstract val ident: String
     abstract val token: String
 }
-data class BrukerPrincipal(
+data class UserPrincipal(
     override val ident: String,
     override val token: String,
 ) : Principal()

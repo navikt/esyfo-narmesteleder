@@ -13,7 +13,7 @@ import io.ktor.http.isSuccess
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
-import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
@@ -47,9 +47,9 @@ class AltinnTilgangerClientTest : DescribeSpec({
             else -> error("Unhandled request ${request.url.fullPath}")
         }
     }
-    describe("hentTilganger") {
-        it("should return AltinnTilgangerResponse when hentTilganger responds with 200") {
-            val brukerPrincipal = BrukerPrincipal("12345678901", "token")
+    describe("fetchAltinnTilganger") {
+        it("should return AltinnTilgangerResponse when fetchAltinnTilganger responds with 200") {
+            val userPrincipal = UserPrincipal("12345678901", "token")
             val getPersonResponse = """
 {
   "hierarki": [
@@ -108,19 +108,19 @@ class AltinnTilgangerClientTest : DescribeSpec({
                 content = getPersonResponse,
             )
             coEvery {
-                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(brukerPrincipal.token))
+                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
             } returns TexasResponse(
                 "token", 111, "tokenType"
             )
             val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
-            val result = client.hentTilganger(brukerPrincipal)
+            val result = client.fetchAltinnTilganger(userPrincipal)
 
             result?.hierarki?.firstOrNull()?.orgnr shouldBe "987654321"
         }
 
         it("should throw exception when getPerson responds with 4xx") {
-            val brukerPrincipal = BrukerPrincipal("12345678901", "token")
+            val userPrincipal = UserPrincipal("12345678901", "token")
 
             val mockEngine = getMockEngine(
                 status = HttpStatusCode.Companion.BadRequest,
@@ -130,17 +130,17 @@ class AltinnTilgangerClientTest : DescribeSpec({
                 content = "invalid request",
             )
             coEvery {
-                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(brukerPrincipal.token))
+                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
             } returns TexasResponse(
                 "token", 111, "tokenType"
             )
             val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
-            shouldThrow<UpstreamRequestException> { client.hentTilganger(brukerPrincipal) }
+            shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
         }
 
         it("should throw exception when getPerson responds with 5xx") {
-            val brukerPrincipal = BrukerPrincipal("12345678901", "token")
+            val userPrincipal = UserPrincipal("12345678901", "token")
 
             val mockEngine = getMockEngine(
                 status = HttpStatusCode.Companion.ServiceUnavailable,
@@ -150,13 +150,13 @@ class AltinnTilgangerClientTest : DescribeSpec({
                 content = "invalid request",
             )
             coEvery {
-                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(brukerPrincipal.token))
+                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
             } returns TexasResponse(
                 "token", 111, "tokenType"
             )
             val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
-            shouldThrow<UpstreamRequestException> { client.hentTilganger(brukerPrincipal) }
+            shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
         }
     }
 })

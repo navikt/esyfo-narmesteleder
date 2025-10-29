@@ -25,7 +25,6 @@ import io.mockk.mockk
 import io.mockk.spyk
 import java.util.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.test.StandardTestDispatcher
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
@@ -37,12 +36,12 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.api.v1.NarmesteLederRelasjonerWrite
-import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.domain.NarmestelederAktorer
+import no.nav.syfo.narmesteleder.api.v1.Linemanager
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.domain.NlBehovRead
-import no.nav.syfo.narmesteleder.domain.NlBehovWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -54,7 +53,7 @@ import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
-class NarmestelederApiV1Test : DescribeSpec({
+class LinenamanagerApiV1Test : DescribeSpec({
     val pdlService = PdlService(FakePdlClient())
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = narmesteLederRelasjon()
@@ -80,7 +79,7 @@ class NarmestelederApiV1Test : DescribeSpec({
         pdlService = pdlService,
         ioDispatcher = Dispatchers.Default,
     )
-    val nlBehovHandler = NlBehovRESTHandler(
+    val nlBehovHandler = LinemanagerRequirementRESTHandler(
         narmesteLederService = narmesteLederService,
         validationService = validationServiceSpy,
         narmestelederKafkaService = narmestelederKafkaServiceSpy
@@ -120,38 +119,38 @@ class NarmestelederApiV1Test : DescribeSpec({
             fn(this)
         }
     }
-    describe("POST /narmesteleder") {
+    describe("POST /linemanager") {
         describe("Maskinporten token") {
             it("should return 202 Accepted for valid payload") {
                 withTestApplication {
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.sykmeldtFnr,
-                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                        narmesteLederRelasjon.employeeIdentificationNumber,
+                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.leder.fnr,
-                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                        narmesteLederRelasjon.manager.nationalIdentificationNumber,
+                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     // Act
-                    val response = client.post("/api/v1/narmesteleder") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
-                        bearerAuth(createMockToken(narmesteLederRelasjon.organisasjonsnummer))
+                        bearerAuth(createMockToken(narmesteLederRelasjon.orgnumber))
                     }
 
                     // Assert
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
-                        narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                        narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
-                            narmestelederAktorer = any<NarmestelederAktorer>(),
+                            linemanagerActors = any<LinemanagerActors>(),
                             eq(NlResponseSource.LPS),
                         )
                     }
@@ -163,14 +162,14 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     // Act
-                    val response = client.post("/api/v1/narmesteleder") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
-                        setBody("""{ "navn": "Ola Nordmann" }""")
+                        setBody("""{ "name": "Ola Nordmann" }""")
                         bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
                     }
 
@@ -186,7 +185,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks()
                     // Act
-                    val response = client.post("/api/v1/narmesteleder") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon())
                     }
@@ -203,12 +202,12 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
                         ),
                         scope = "invalid-scope",
                     )
                     // Act
-                    val response = client.post("/api/v1/narmesteleder") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon())
                     }
@@ -225,7 +224,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks()
                     // Act
-                    val response = client.post("/api/v1/narmesteleder") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon())
                         bearerAuth(createMockToken(ident = "", issuer = "invalid"))
@@ -247,17 +246,17 @@ class NarmestelederApiV1Test : DescribeSpec({
                         acr = "Level4",
                         pid = callerPid
                     )
-                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.organisasjonsnummer)
+                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.sykmeldtFnr,
-                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                        narmesteLederRelasjon.employeeIdentificationNumber,
+                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.leder.fnr,
-                        listOf(narmesteLederRelasjon.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                        narmesteLederRelasjon.manager.nationalIdentificationNumber,
+                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     // Act
-                    val response = client.post("/api/v1/narmesteleder") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
@@ -265,14 +264,14 @@ class NarmestelederApiV1Test : DescribeSpec({
                     // Assert
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
-                        narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                        narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
-                            narmestelederAktorer = any<NarmestelederAktorer>(),
+                            linemanagerActors = any<LinemanagerActors>(),
                             eq(NlResponseSource.LPS),
                         )
                     }
                     coVerify(exactly = 1) {
-                        validationServiceSpy.validateNarmesteleder(
+                        validationServiceSpy.validateLinemanager(
                             eq(narmesteLederRelasjon),
                             any()
                         )
@@ -280,7 +279,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                 }
             }
 
-            it("should return 403 when caller lacks access to organisasjonsnummer for nl relasjon") {
+            it("should return 403 when caller lacks access to organization number for Linemanager") {
                 withTestApplication {
                     // Arrange
                     val callerPid = "11223344556"
@@ -289,7 +288,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                         pid = callerPid
                     )
                     // Act
-                    val response = client.post("/api/v1/narmesteleder") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
@@ -308,9 +307,9 @@ class NarmestelederApiV1Test : DescribeSpec({
                         acr = "Level3",
                         pid = callerPid
                     )
-                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.organisasjonsnummer)
+                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
                     // Act
-                    val response = client.post("/api/v1/narmesteleder") {
+                    val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
@@ -323,25 +322,25 @@ class NarmestelederApiV1Test : DescribeSpec({
         }
     }
 
-    describe("POST /narmesteleder/avkreft") {
+    describe("POST /linemanager/revoke") {
         it("should return 202 Accepted for valid payload") {
             val narmesteLederAvkreft = narmesteLederAvkreft()
             withTestApplication {
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederAvkreft.organisasjonsnummer}"
+                        ID = "0192:${narmesteLederAvkreft.orgnumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft
                 fakeAaregClient.arbeidsForholdForIdent.clear()
                 fakeAaregClient.arbeidsForholdForIdent.put(
-                    narmesteLederAvkreft.sykmeldtFnr,
-                    listOf(narmesteLederAvkreft.organisasjonsnummer to narmesteLederRelasjon.organisasjonsnummer)
+                    narmesteLederAvkreft.employeeIdentificationNumber,
+                    listOf(narmesteLederAvkreft.orgnumber to narmesteLederRelasjon.orgnumber)
                 )
                 // Act
-                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                val response = client.post("/api/v1/linemanager/revoke") {
                     contentType(ContentType.Application.Json)
                     setBody(narmesteLederAvkreft)
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -357,7 +356,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     )
                 }
                 coVerify(exactly = 1) {
-                    validationServiceSpy.validateNarmestelederAvkreft(
+                    validationServiceSpy.validateLinemanagerRevoke(
                         eq(narmesteLederAvkreft),
                         any()
                     )
@@ -365,19 +364,19 @@ class NarmestelederApiV1Test : DescribeSpec({
             }
         }
 
-        it("should return 400 if sykmeldt lacks arbeidsforhold for orgnummer") {
+        it("should return 400 if sykmeldt lacks arbeidsforhold for organization number") {
 
             withTestApplication {
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                        ID = "0192:${narmesteLederRelasjon.orgnumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft()
                 // Act
-                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                val response = client.post("/api/v1/linemanager/revoke") {
                     contentType(ContentType.Application.Json)
                     setBody(narmesteLederAvkreft)
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -400,12 +399,12 @@ class NarmestelederApiV1Test : DescribeSpec({
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederRelasjon.organisasjonsnummer}"
+                        ID = "0192:${narmesteLederRelasjon.orgnumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 // Act
-                val response = client.post("/api/v1/narmesteleder/avkreft") {
+                val response = client.post("/api/v1/linemanager/revoke") {
                     contentType(ContentType.Application.Json)
                     setBody("""{ "navn": "Ola Nordmann" }""")
                     bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
@@ -419,51 +418,51 @@ class NarmestelederApiV1Test : DescribeSpec({
         }
 
 
-        describe("/narmesteleder/behov endpoints") {
-            val sykmeldtFnr = narmesteLederRelasjon.sykmeldtFnr
-            val lederFnr = narmesteLederRelasjon.leder.fnr
-            val orgnummer = narmesteLederRelasjon.organisasjonsnummer
+        describe("/linemanager/requirement endpoints") {
+            val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
+            val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
+            val orgnummer = narmesteLederRelasjon.orgnumber
 
-            fun NarmesteLederRelasjonerWrite.toNlBehovWrite(): NlBehovWrite = NlBehovWrite(
-                sykmeldtFnr = sykmeldtFnr,
-                orgnummer = organisasjonsnummer,
-                narmesteLederFnr = leder.fnr,
+            fun Linemanager.toNlBehovWrite(): LinemanagerWrite = LinemanagerWrite(
+                employeeIdentificationNumber = sykmeldtFnr,
+                orgnumber = orgnumber,
+                managerIdentificationNumber = manager.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE"
             )
 
-            suspend fun seedBehov(): UUID {
+            suspend fun seedLinemanagerRequirement(): UUID {
                 fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                 fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
                 narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite())
-                return fakeRepo.lastId() ?: error("No behov seeded")
+                return fakeRepo.lastId() ?: error("No requirement seeded")
             }
 
-            it("GET /behov/{id} 200 for Maskinporten token") {
+            it("GET /requirement/{id} 200 with Maskinporten token") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val behovId = seedBehov()
-                    val response = client.get("/api/v1/narmesteleder/behov/$behovId") {
+                    val requirementId = seedLinemanagerRequirement()
+                    val response = client.get("/api/v1/linemanager/requirement/$requirementId") {
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<NlBehovRead>()
-                    body.id shouldBe behovId
-                    body.orgnummer shouldBe orgnummer
-                    body.sykmeldtFnr shouldBe sykmeldtFnr
+                    val body = response.body<LinemanagerRead>()
+                    body.id shouldBe requirementId
+                    body.orgnumber shouldBe orgnummer
+                    body.employeeIdentificationNumber shouldBe sykmeldtFnr
                 }
             }
 
-            it("GET /behov/{id} 404 when behov not found") {
+            it("GET /requirement/{id} 404 when requirement not found") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val randomId = UUID.randomUUID()
-                    val response = client.get("/api/v1/narmesteleder/behov/$randomId") {
+                    val response = client.get("/api/v1/linemanager/requirement/$randomId") {
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.NotFound
@@ -471,14 +470,14 @@ class NarmestelederApiV1Test : DescribeSpec({
                 }
             }
 
-            it("GET /behov/{id} 403 when Maskinporten principal org mismatch") {
+            it("GET /requirement/{id} 403 when Maskinporten principal org mismatch") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:999999999"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val behovId = seedBehov()
-                    val response = client.get("/api/v1/narmesteleder/behov/$behovId") {
+                    val requirementId = seedLinemanagerRequirement()
+                    val response = client.get("/api/v1/linemanager/requirement/$requirementId") {
                         bearerAuth(createMockToken("999999999"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
@@ -486,37 +485,37 @@ class NarmestelederApiV1Test : DescribeSpec({
                 }
             }
 
-            it("PUT /behov/{id} 202 updates behov and sends kafka message") {
+            it("PUT /requirement/{id} 202 updates behov and sends kafka message") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val behovId = seedBehov()
+                    val requirementId = seedLinemanagerRequirement()
                     val updatedRelasjon = narmesteLederRelasjon.copy(
-                        leder = narmesteLederRelasjon.leder.copy(fnr = narmesteLederRelasjon.leder.fnr.reversed())
+                        manager = narmesteLederRelasjon.manager.copy(nationalIdentificationNumber = narmesteLederRelasjon.manager.nationalIdentificationNumber.reversed())
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        updatedRelasjon.leder.fnr,
+                        updatedRelasjon.manager.nationalIdentificationNumber,
                         listOf(orgnummer to orgnummer)
                     )
-                    val response = client.put("/api/v1/narmesteleder/behov/$behovId") {
+                    val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
                         setBody(updatedRelasjon)
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
-                        narmestelederKafkaServiceSpy.sendNarmesteLederRelation(
+                        narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(updatedRelasjon), any(), eq(NlResponseSource.leder)
                         )
                     }
-                    val stored = fakeRepo.findBehovById(behovId) ?: error("Stored behov missing")
+                    val stored = fakeRepo.findBehovById(requirementId) ?: error("Stored requirement missing")
                     stored.behovStatus.name shouldBe "PENDING"
                 }
             }
 
-            it("PUT /behov/{id} 404 when behov not found") {
+            it("PUT /requirement/{id} 404 when behov not found") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
@@ -525,7 +524,7 @@ class NarmestelederApiV1Test : DescribeSpec({
                     val randomId = UUID.randomUUID()
                     fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                     fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
-                    val response = client.put("/api/v1/narmesteleder/behov/$randomId") {
+                    val response = client.put("/api/v1/linemanager/requirement/$randomId") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(orgnummer))
@@ -535,14 +534,14 @@ class NarmestelederApiV1Test : DescribeSpec({
                 }
             }
 
-            it("PUT /behov/{id} 400 invalid payload") {
+            it("PUT /requirement/{id} 400 invalid payload") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val behovId = seedBehov()
-                    val response = client.put("/api/v1/narmesteleder/behov/$behovId") {
+                    val requirementId = seedLinemanagerRequirement()
+                    val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
                         setBody("""{ "foo": "bar" }""")
                         bearerAuth(createMockToken(orgnummer))
@@ -552,16 +551,16 @@ class NarmestelederApiV1Test : DescribeSpec({
                 }
             }
 
-            it("PUT /behov/{id} 403 when principal lacks org access") {
+            it("PUT /requirement/{id} 403 when principal lacks org access") {
                 withTestApplication {
-                    val behovId = seedBehov()
+                    val requirementId = seedLinemanagerRequirement()
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                     fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
-                    val response = client.put("/api/v1/narmesteleder/behov/$behovId") {
+                    val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken("000000000"))

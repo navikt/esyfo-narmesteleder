@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelder.service
+package no.nav.syfo.narmesteleder.service
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
@@ -12,13 +12,11 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
-import no.nav.syfo.application.auth.BrukerPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.service.ValidateActiveSykmeldingException
-import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.client.FakePdlClient
 
 class ValidationServiceTest : DescribeSpec({
@@ -45,18 +43,18 @@ class ValidationServiceTest : DescribeSpec({
         it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
             // Arrange
             val fnr = altinnTilgangerClient.usersWithAccess.first().first
-            val principal = BrukerPrincipal(fnr, "token")
-            val narmestelederRelasjonerWrite = narmesteLederRelasjon().copy(sykmeldtFnr = fnr)
+            val principal = UserPrincipal(fnr, "token")
+            val narmestelederRelasjonerWrite = narmesteLederRelasjon().copy(employeeIdentificationNumber = fnr)
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
-                service.validateNarmesteleder(narmestelederRelasjonerWrite, principal)
+                service.validateLinemanager(narmestelederRelasjonerWrite, principal)
             }
             // Assert
             coVerify(exactly = 1) {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+                altinnTilgangerService.validateTilgangToOrganization(
                     eq(principal),
-                    eq(narmestelederRelasjonerWrite.organisasjonsnummer)
+                    eq(narmestelederRelasjonerWrite.orgnumber)
                 )
             }
             coVerify(exactly = 0) {
@@ -69,32 +67,32 @@ class ValidationServiceTest : DescribeSpec({
             // Arrange
             val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
             val narmestelederRelasjonerWrite = narmesteLederRelasjon().copy(
-                sykmeldtFnr = userWithAccess.first,
-                organisasjonsnummer = userWithAccess.second
+                employeeIdentificationNumber = userWithAccess.first,
+                orgnumber = userWithAccess.second
             )
             val principal = OrganisasjonPrincipal("0192:${userWithAccess.second}", "token")
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
-                service.validateNarmesteleder(narmestelederRelasjonerWrite, principal)
+                service.validateLinemanager(narmestelederRelasjonerWrite, principal)
             }
             // Assert
             coVerify(exactly = 0) {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+                altinnTilgangerService.validateTilgangToOrganization(
                     any(),
-                    eq(narmestelederRelasjonerWrite.organisasjonsnummer)
+                    eq(narmestelederRelasjonerWrite.orgnumber)
                 )
             }
             coVerify(exactly = 1) {
-                aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.sykmeldtFnr))
-                aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.leder.fnr))
-                pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.sykmeldtFnr))
-                pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.leder.fnr))
+                aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
+                aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
+                pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
+                pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
             }
         }
 
         it("should return true when calling the validateActiveSykmelding") {
-            service.validataActiveSykmelding("12345678901", "FAKE_ORGNR") shouldBe true
+            service.validataActiveSickLeave("12345678901", "FAKE_ORGNR") shouldBe true
         }
     }
 
@@ -102,18 +100,18 @@ class ValidationServiceTest : DescribeSpec({
         it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
             // Arrange
             val fnr = altinnTilgangerClient.usersWithAccess.first().first
-            val principal = BrukerPrincipal(fnr, "token")
-            val narmesteLederAvkreft = narmesteLederAvkreft().copy(sykmeldtFnr = fnr)
+            val principal = UserPrincipal(fnr, "token")
+            val narmesteLederAvkreft = narmesteLederAvkreft().copy(employeeIdentificationNumber = fnr)
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
-                service.validateNarmestelederAvkreft(narmesteLederAvkreft, principal)
+                service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
             }
             // Assert
             coVerify(exactly = 1) {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+                altinnTilgangerService.validateTilgangToOrganization(
                     eq(principal),
-                    eq(narmesteLederAvkreft.organisasjonsnummer)
+                    eq(narmesteLederAvkreft.orgnumber)
                 )
             }
             coVerify(exactly = 0) {
@@ -126,25 +124,25 @@ class ValidationServiceTest : DescribeSpec({
             // Arrange
             val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
             val narmesteLederAvkreft = narmesteLederAvkreft().copy(
-                sykmeldtFnr = userWithAccess.first,
-                organisasjonsnummer = userWithAccess.second
+                employeeIdentificationNumber = userWithAccess.first,
+                orgnumber = userWithAccess.second
             )
             val principal = OrganisasjonPrincipal("0192:${userWithAccess.second}", "token")
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
-                service.validateNarmestelederAvkreft(narmesteLederAvkreft, principal)
+                service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
             }
             // Assert
             coVerify(exactly = 0) {
-                altinnTilgangerService.validateTilgangToOrganisasjon(
+                altinnTilgangerService.validateTilgangToOrganization(
                     any(),
-                    eq(narmesteLederAvkreft.organisasjonsnummer)
+                    eq(narmesteLederAvkreft.orgnumber)
                 )
             }
             coVerify(exactly = 1) {
-                aaregService.findOrgNumbersByPersonIdent(eq(narmesteLederAvkreft.sykmeldtFnr))
-                pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.sykmeldtFnr))
+                aaregService.findOrgNumbersByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
+                pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
             }
         }
     }

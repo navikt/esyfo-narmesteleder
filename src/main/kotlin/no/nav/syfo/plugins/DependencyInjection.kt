@@ -22,7 +22,7 @@ import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.api.v1.NlBehovRESTHandler
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
@@ -91,7 +91,7 @@ private fun databaseModule() = module {
 
 private fun handlerModule() = module {
     single { NlBehovLeesahHandler(get()) }
-    single { NlBehovRESTHandler(get(), get(), get()) }
+    single { LinemanagerRequirementRESTHandler(get(), get(), get()) }
 }
 
 private fun servicesModule() = module {

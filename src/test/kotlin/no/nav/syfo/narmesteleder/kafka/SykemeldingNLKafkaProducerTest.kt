@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelder.kafka
+package no.nav.syfo.narmesteleder.kafka
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.date.shouldBeAfter
@@ -14,7 +14,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import narmesteLederAvkreft
 import narmesteLederRelasjon
-import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbruddResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlRelationResponseKafkaMessage
@@ -51,9 +50,9 @@ class SykemeldingNLKafkaProducerTest : DescribeSpec({
                     it.shouldBeInstanceOf<ProducerRecord<String, NlRelationResponseKafkaMessage>>()
                     it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.name
                     it.value().nlResponse shouldNotBe null
-                    it.value().nlResponse.leder shouldBe relasjon.leder
-                    it.value().nlResponse.orgnummer shouldBe relasjon.organisasjonsnummer
-                    it.value().nlResponse.sykmeldt.fnr shouldBe relasjon.sykmeldtFnr
+                    it.value().nlResponse.leder shouldBe relasjon.manager.toLeder()
+                    it.value().nlResponse.orgnummer shouldBe relasjon.orgnumber
+                    it.value().nlResponse.sykmeldt.fnr shouldBe relasjon.employeeIdentificationNumber
                 })
             }
             verify(exactly = 1) { futureMock.get() }
@@ -79,8 +78,8 @@ class SykemeldingNLKafkaProducerTest : DescribeSpec({
                     it.shouldBeInstanceOf<ProducerRecord<String, NlAvbruddResponseKafkaMessage>>()
                     it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.name
                     it.value().nlAvbrutt shouldNotBe null
-                    it.value().nlAvbrutt.orgnummer shouldBe avbryt.organisasjonsnummer
-                    it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.sykmeldtFnr
+                    it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgnumber
+                    it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.employeeIdentificationNumber
                     it.value().nlAvbrutt.aktivTom shouldBeAfter now
                 })
             }

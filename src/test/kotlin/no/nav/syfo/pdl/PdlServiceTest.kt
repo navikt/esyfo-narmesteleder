@@ -42,8 +42,8 @@ class PdlServiceTest : DescribeSpec({
 
             val result = pdlService.getPersonFor(fnr)
 
-            result.fnr shouldBe fnr
-            result.navn shouldBe navn
+            result.nationalIdentificationNumber shouldBe fnr
+            result.name shouldBe navn
             coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
         }
 
@@ -107,8 +107,8 @@ class PdlServiceTest : DescribeSpec({
 
             val result = pdlService.getPersonOrThrowApiError(fnr)
 
-            result.fnr shouldBe fnr
-            result.navn shouldBe navn
+            result.nationalIdentificationNumber shouldBe fnr
+            result.name shouldBe navn
             coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
         }
 

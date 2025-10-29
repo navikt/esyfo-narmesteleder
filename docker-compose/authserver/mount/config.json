@@ -8,7 +8,7 @@
       "requestMappings": [
         {
           "requestParam": "code",
-          "match": "code1",
+          "match": "tokenx",
           "claims": {
             "acr": "${acr}",
             "pid": "${pid}",
@@ -22,28 +22,9 @@
       "tokenExpiry": 3600,
       "requestMappings": [
         {
-          "requestParam": "grant_type",
-          "match": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-          "claims": {
-            "sub": "${clientId}",
-            "scope": "${scope}",
-            "aud": "${aud}",
-            "consumer": {
-              "authority": "${consumerAuthority}",
-              "id": "${consumerId}"
-            },
-            "supplier": {
-              "authority": "${supplierAuthority}",
-              "id": "${supplierId}"
-            }
-          }
-        },
-        {
           "requestParam": "code",
-          "match": "code2",
+          "match": "maskinporten",
           "claims": {
-            "iss": "http://localhost:8080/maskinporten",
-            "client_id": "${clientId}",
             "sub": "${clientId}",
             "scope": "nav:syfo/narmesteleder/lps",
             "aud": "${aud}",

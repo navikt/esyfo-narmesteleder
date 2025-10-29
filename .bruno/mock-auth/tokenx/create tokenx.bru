@@ -1,7 +1,7 @@
 meta {
   name: create tokenx
   type: http
-  seq: 2
+  seq: 1
 }
 
 post {
@@ -12,7 +12,7 @@ post {
 
 body:form-urlencoded {
   grant_type: authorization_code
-  code: code1
+  code: tokenx
   client_id: esyfo-narmesteleder
   acr: Level4
   pid: 15823349332
@@ -32,6 +32,7 @@ script:post-response {
   
   if (token != null) {
     bru.setEnvVar("token", token.id_token)
+    bru.setEnvVar("identityProvider", "tokenx")
   }
 }
 

@@ -1,7 +1,7 @@
 meta {
   name: create maskinporten
   type: http
-  seq: 3
+  seq: 1
 }
 
 post {
@@ -12,12 +12,12 @@ post {
 
 body:form-urlencoded {
   grant_type: authorization_code
-  code: code2
-  client_id: esyfo-narmesteleder
-  consumerAuthority: 123456789
-  consumerId: consumerid
-  supplierAuthority: 123456789
-  supplierId: supplierId
+  code: maskinporten
+  client_id: maskinporten
+  consumerAuthority: consumerAuthority
+  consumerId: 0192:215649202
+  supplierAuthority: supplierAuthority
+  supplierId: 0192:215649202
   scope: nav:syfo/narmesteleder/lps
   aud: esyfo-narmesteleder
 }
@@ -27,6 +27,7 @@ script:post-response {
   
   if (token != null) {
     bru.setEnvVar("token", token.access_token)
+    bru.setEnvVar("identityProvider", "maskinporten")
   }
 }
 

@@ -20,14 +20,14 @@ class LinemanagerRequirementRESTHandler(
 ) {
     suspend fun handleUpdatedRequirement(linemanager: Linemanager, requirementId: UUID, principal: Principal) {
         try {
-            val employeeLeaderActors = validationService.validateLinemanager(
+            val linemanagerActors = validationService.validateLinemanager(
                 linemanager,
                 principal
             )
 
             narmestelederKafkaService.sendNarmesteLederRelasjon(
                 linemanager,
-                employeeLeaderActors,
+                linemanagerActors,
                 NlResponseSource.leder, // TODO: Hva skal denne stå til?
             )
             narmesteLederService.updateNlBehov(linemanager.toNlbehovUpdate(requirementId), BehovStatus.PENDING)
@@ -42,7 +42,7 @@ class LinemanagerRequirementRESTHandler(
         }
     }
 
-    suspend fun handleGetEmployeeLeaderRequirement(requirementId: UUID, principal: Principal): LinemanagerRead = try {
+    suspend fun handleGetLinemanagerRequirement(requirementId: UUID, principal: Principal): LinemanagerRead = try {
         narmesteLederService.getNlBehovById(requirementId).also {
             validationService.validateGetNlBehov(principal, it)
         }

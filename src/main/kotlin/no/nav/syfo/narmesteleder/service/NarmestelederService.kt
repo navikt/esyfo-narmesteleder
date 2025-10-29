@@ -35,7 +35,7 @@ class NarmestelederService(
                     lastName = details.name.etternavn,
                     middleName = details.name.mellomnavn,
                 )
-                it.toEmployeeLeaderConnctionRead(name)
+                it.toEmployeeLinemanagerRead(name)
             }
         } ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
 
@@ -86,7 +86,7 @@ class NarmestelederService(
     }
 }
 
-fun NarmestelederBehovEntity.toEmployeeLeaderConnctionRead(name: Name): LinemanagerRead = LinemanagerRead(
+fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRead = LinemanagerRead(
     id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
     employeeIdentificationNumber = this.sykmeldtFnr,
     orgnumber = this.orgnummer,

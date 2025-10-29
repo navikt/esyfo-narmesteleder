@@ -71,7 +71,7 @@ fun Route.registerLinemanagerApiV1(
 
         get("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")
-            val nlBehov = linemanagerRequirementRestHandler.handleGetEmployeeLeaderRequirement(
+            val nlBehov = linemanagerRequirementRestHandler.handleGetLinemanagerRequirement(
                 requirementId = id,
                 principal = call.getMyPrincipal()
             )

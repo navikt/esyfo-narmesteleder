@@ -17,7 +17,7 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionUpdate
+import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
 import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
 import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
@@ -157,7 +157,7 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = EmployeeLeaderConnectionUpdate(
+            val update = LinemanagerUpdate(
                 id = id,
                 employeeIdentificationNumber = "10987654321",
                 orgnumber = "333333333",
@@ -188,7 +188,7 @@ class NarmestelederServiceTest : FunSpec({
     test("updateNlBehov throws when behov not found") {
         runTest(dispatcher) {
             val id = UUID.randomUUID()
-            val update = EmployeeLeaderConnectionUpdate(
+            val update = LinemanagerUpdate(
                 id = id,
                 employeeIdentificationNumber = "10987654321",
                 orgnumber = "333333333",
@@ -211,7 +211,7 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = EmployeeLeaderConnectionUpdate(
+            val update = LinemanagerUpdate(
                 id = id,
                 employeeIdentificationNumber = "10987654321",
                 orgnumber = "333333333",
@@ -236,7 +236,7 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = originalLeesahStatus,
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = EmployeeLeaderConnectionUpdate(
+            val update = LinemanagerUpdate(
                 id = id,
                 employeeIdentificationNumber = "10987654321",
                 orgnumber = "333333333",

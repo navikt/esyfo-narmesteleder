@@ -1,8 +1,8 @@
 package no.nav.syfo.narmesteleder.service
 
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnectionDiscontinued
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderActors
+import no.nav.syfo.narmesteleder.api.v1.Linemanager
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerDiscontinued
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.kafka.ISykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
@@ -13,26 +13,26 @@ class NarmestelederKafkaService(
     val kafkaSykemeldingProducer: ISykemeldingNLKafkaProducer,
 ) {
     fun sendNarmesteLederRelasjon(
-        employeeLeaderConnection: EmployeeLeaderConnection,
-        employeeLeaderActors: EmployeeLeaderActors,
+        linemanager: Linemanager,
+        linemanagerActors: LinemanagerActors,
         source: NlResponseSource,
     ) {
         kafkaSykemeldingProducer.sendSykemeldingNLRelasjon(
             NlResponse(
-                sykmeldt = Sykmeldt.from(employeeLeaderActors.employee),
-                leder = employeeLeaderConnection.leader.toLeder().updateFromPerson(employeeLeaderActors.leader),
-                orgnummer = employeeLeaderConnection.orgnumber
+                sykmeldt = Sykmeldt.from(linemanagerActors.employee),
+                leder = linemanager.manager.toLeder().updateFromPerson(linemanagerActors.manager),
+                orgnummer = linemanager.orgnumber
             ), source = source
         )
     }
 
     fun avbrytNarmesteLederRelation(
-        employeeLeaderConnectionDiscontinued: EmployeeLeaderConnectionDiscontinued, source: NlResponseSource
+        linemanagerDiscontinued: LinemanagerDiscontinued, source: NlResponseSource
     ) {
         kafkaSykemeldingProducer.sendSykemeldingNLBrudd(
             NlAvbrutt(
-                employeeLeaderConnectionDiscontinued.employeeIdentificationNumber,
-                employeeLeaderConnectionDiscontinued.orgnumber,
+                linemanagerDiscontinued.employeeIdentificationNumber,
+                linemanagerDiscontinued.orgnumber,
             ), source = source
         )
     }

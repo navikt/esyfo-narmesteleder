@@ -25,7 +25,7 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
-    elcRequirementRestHandler: EmployeeLeaderConnectionRequirementRESTHandler
+    linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler
 ) {
     route("/employeeLeaderConnection") {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -33,8 +33,8 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
         }
 
         post() {
-            val nlRelasjon = call.tryReceive<EmployeeLeaderConnection>()
-            val nlAktorer = validationService.validateEmployeLeaderConnection(nlRelasjon, call.getMyPrincipal())
+            val nlRelasjon = call.tryReceive<Linemanager>()
+            val nlAktorer = validationService.validateLinemanager(nlRelasjon, call.getMyPrincipal())
 
             narmestelederKafkaService.sendNarmesteLederRelasjon(
                 nlRelasjon,
@@ -48,8 +48,8 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
 
     route("/employeeLeaderConnection/discontinue") {
         post() {
-            val avkreft = call.tryReceive<EmployeeLeaderConnectionDiscontinued>()
-            val sykmeldt = validationService.validateEmployeeLeaderConnectionDiscontinue(avkreft, call.getMyPrincipal())
+            val avkreft = call.tryReceive<LinemanagerDiscontinued>()
+            val sykmeldt = validationService.validateLinemanagerDiscontinue(avkreft, call.getMyPrincipal())
             narmestelederKafkaService.avbrytNarmesteLederRelation(
                 avkreft.copy(employeeIdentificationNumber = sykmeldt.nationalIdentificationNumber),
                 NlResponseSource.LPS
@@ -62,16 +62,16 @@ fun Route.registerEmployeeLeaderConnectionApiV1(
     route("employeeLeaderConnection/requirement") {
         put("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")
-            val nlRelasjon = call.tryReceive<EmployeeLeaderConnection>()
+            val nlRelasjon = call.tryReceive<Linemanager>()
 
-            elcRequirementRestHandler.handleUpdatedRequirement(nlRelasjon, id, principal = call.getMyPrincipal())
+            linemanagerRequirementRestHandler.handleUpdatedRequirement(nlRelasjon, id, principal = call.getMyPrincipal())
 
             call.respond(HttpStatusCode.Accepted)
         }
 
         get("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")
-            val nlBehov = elcRequirementRestHandler.handleGetEmployeeLeaderRequirement(
+            val nlBehov = linemanagerRequirementRestHandler.handleGetEmployeeLeaderRequirement(
                 requirementId = id,
                 principal = call.getMyPrincipal()
             )

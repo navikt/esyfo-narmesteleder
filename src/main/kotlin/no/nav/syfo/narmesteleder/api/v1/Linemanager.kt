@@ -1,34 +1,34 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import java.util.UUID
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionUpdate
+import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
 import no.nav.syfo.narmesteleder.kafka.model.Leder
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 
-data class EmployeeLeaderConnection(
+data class Linemanager(
     val employeeIdentificationNumber: String,
     val orgnumber: String,
-    val leader: Leader,
+    val manager: Manager,
 ) {
     fun toNlResponse(): NlResponse = NlResponse(
         orgnummer = orgnumber,
-        leder = leader.toLeder(),
+        leder = manager.toLeder(),
         sykmeldt = Sykmeldt(
             fnr = employeeIdentificationNumber,
             navn = "PLACEHOLDER"
         )
     )
 
-    fun toNlbehovUpdate(id: UUID) = EmployeeLeaderConnectionUpdate(
+    fun toNlbehovUpdate(id: UUID) = LinemanagerUpdate(
         employeeIdentificationNumber = employeeIdentificationNumber,
         orgnumber = orgnumber,
-        leaderIdentificationNumber = leader.nationalIdentificationNumber,
+        leaderIdentificationNumber = manager.nationalIdentificationNumber,
         id = id
     )
 }
 
-data class Leader(
+data class Manager(
     val nationalIdentificationNumber: String,
     val mobile: String,
     val email: String,

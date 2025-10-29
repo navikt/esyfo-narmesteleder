@@ -8,8 +8,8 @@ import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionRead
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionUpdate
+import no.nav.syfo.narmesteleder.domain.LinemanaberRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
 import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
 import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
@@ -25,7 +25,7 @@ class NarmestelederService(
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    suspend fun getNlBehovById(id: UUID): EmployeeLeaderConnectionRead =
+    suspend fun getNlBehovById(id: UUID): LinemanaberRead =
         withContext(ioDispatcher) {
             nlDb.findBehovById(id)?.let {
                 val details = pdlService.getPersonFor(it.sykmeldtFnr)
@@ -40,22 +40,22 @@ class NarmestelederService(
         } ?: throw EmployeeLeaderConnectionRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
 
     suspend fun updateNlBehov(
-        employeeLeaderConnectionUpdate: EmployeeLeaderConnectionUpdate,
+        linemanagerUpdate: LinemanagerUpdate,
         behovStatus: BehovStatus
     ) = withContext(ioDispatcher) {
-        val behov = nlDb.findBehovById(employeeLeaderConnectionUpdate.id)
-            ?: throw EmployeeLeaderConnectionRequirementNotFoundException("NarmestelederBehovEntity not found for id: ${employeeLeaderConnectionUpdate.id}")
+        val behov = nlDb.findBehovById(linemanagerUpdate.id)
+            ?: throw EmployeeLeaderConnectionRequirementNotFoundException("NarmestelederBehovEntity not found for id: ${linemanagerUpdate.id}")
 
         val updatedBehov = behov.copy(
-            orgnummer = employeeLeaderConnectionUpdate.orgnumber,
-            hovedenhetOrgnummer = findHovedenhetOrgnummer(employeeLeaderConnectionUpdate.employeeIdentificationNumber, employeeLeaderConnectionUpdate.orgnumber),
-            sykmeldtFnr = employeeLeaderConnectionUpdate.employeeIdentificationNumber,
-            narmestelederFnr = employeeLeaderConnectionUpdate.leaderIdentificationNumber,
+            orgnummer = linemanagerUpdate.orgnumber,
+            hovedenhetOrgnummer = findHovedenhetOrgnummer(linemanagerUpdate.employeeIdentificationNumber, linemanagerUpdate.orgnumber),
+            sykmeldtFnr = linemanagerUpdate.employeeIdentificationNumber,
+            narmestelederFnr = linemanagerUpdate.leaderIdentificationNumber,
             behovStatus = behovStatus,
         )
 
         nlDb.updateNlBehov(updatedBehov)
-        logger.info("Updated NarmestelederBehovEntity with id: ${employeeLeaderConnectionUpdate.id} with status: $behovStatus")
+        logger.info("Updated NarmestelederBehovEntity with id: ${linemanagerUpdate.id} with status: $behovStatus")
     }
 
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {
@@ -86,7 +86,7 @@ class NarmestelederService(
     }
 }
 
-fun NarmestelederBehovEntity.toEmployeeLeaderConnctionRead(name: Name): EmployeeLeaderConnectionRead = EmployeeLeaderConnectionRead(
+fun NarmestelederBehovEntity.toEmployeeLeaderConnctionRead(name: Name): LinemanaberRead = LinemanaberRead(
     id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
     employeeIdentificationNumber = this.sykmeldtFnr,
     orgnumber = this.orgnummer,

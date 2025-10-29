@@ -48,7 +48,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
-                service.validateEmployeLeaderConnection(narmestelederRelasjonerWrite, principal)
+                service.validateLinemanager(narmestelederRelasjonerWrite, principal)
             }
             // Assert
             coVerify(exactly = 1) {
@@ -74,7 +74,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
-                service.validateEmployeLeaderConnection(narmestelederRelasjonerWrite, principal)
+                service.validateLinemanager(narmestelederRelasjonerWrite, principal)
             }
             // Assert
             coVerify(exactly = 0) {
@@ -85,9 +85,9 @@ class ValidationServiceTest : DescribeSpec({
             }
             coVerify(exactly = 1) {
                 aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.leader.nationalIdentificationNumber))
+                aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.leader.nationalIdentificationNumber))
+                pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
             }
         }
 
@@ -105,7 +105,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
-                service.validateEmployeeLeaderConnectionDiscontinue(narmesteLederAvkreft, principal)
+                service.validateLinemanagerDiscontinue(narmesteLederAvkreft, principal)
             }
             // Assert
             coVerify(exactly = 1) {
@@ -131,7 +131,7 @@ class ValidationServiceTest : DescribeSpec({
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
-                service.validateEmployeeLeaderConnectionDiscontinue(narmesteLederAvkreft, principal)
+                service.validateLinemanagerDiscontinue(narmesteLederAvkreft, principal)
             }
             // Assert
             coVerify(exactly = 0) {

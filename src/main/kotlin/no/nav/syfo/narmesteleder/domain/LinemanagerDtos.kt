@@ -9,14 +9,14 @@ data class EmployeeLeaderConnectionWrite(
     val leesahStatus: String,
 )
 
-data class EmployeeLeaderConnectionUpdate(
+data class LinemanagerUpdate(
     val id: UUID,
     val employeeIdentificationNumber: String,
     val orgnumber: String,
     val leaderIdentificationNumber: String,
 )
 
-data class EmployeeLeaderConnectionRead(
+data class LinemanaberRead(
     val id: UUID,
     val employeeIdentificationNumber: String,
     val orgnumber: String,

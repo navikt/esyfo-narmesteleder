@@ -50,7 +50,7 @@ class SykemeldingNLKafkaProducerTest : DescribeSpec({
                     it.shouldBeInstanceOf<ProducerRecord<String, NlRelationResponseKafkaMessage>>()
                     it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.name
                     it.value().nlResponse shouldNotBe null
-                    it.value().nlResponse.leder shouldBe relasjon.leader.toLeder()
+                    it.value().nlResponse.leder shouldBe relasjon.manager.toLeder()
                     it.value().nlResponse.orgnummer shouldBe relasjon.orgnumber
                     it.value().nlResponse.sykmeldt.fnr shouldBe relasjon.employeeIdentificationNumber
                 })

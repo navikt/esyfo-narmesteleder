@@ -36,11 +36,11 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnection
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderConnectionRequirementRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.EmployeeLeaderActors
+import no.nav.syfo.narmesteleder.api.v1.Linemanager
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionRead
+import no.nav.syfo.narmesteleder.domain.LinemanaberRead
 import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -53,7 +53,7 @@ import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
-class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
+class LinanamanagerApiV1Test : DescribeSpec({
     val pdlService = PdlService(FakePdlClient())
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = narmesteLederRelasjon()
@@ -79,7 +79,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
         pdlService = pdlService,
         ioDispatcher = Dispatchers.Default,
     )
-    val nlBehovHandler = EmployeeLeaderConnectionRequirementRESTHandler(
+    val nlBehovHandler = LinemanagerRequirementRESTHandler(
         narmesteLederService = narmesteLederService,
         validationService = validationServiceSpy,
         narmestelederKafkaService = narmestelederKafkaServiceSpy
@@ -135,7 +135,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                         listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.leader.nationalIdentificationNumber,
+                        narmesteLederRelasjon.manager.nationalIdentificationNumber,
                         listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     // Act
@@ -150,7 +150,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                     coVerify(exactly = 1) {
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
-                            employeeLeaderActors = any<EmployeeLeaderActors>(),
+                            linemanagerActors = any<LinemanagerActors>(),
                             eq(NlResponseSource.LPS),
                         )
                     }
@@ -252,7 +252,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                         listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.leader.nationalIdentificationNumber,
+                        narmesteLederRelasjon.manager.nationalIdentificationNumber,
                         listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
                     )
                     // Act
@@ -266,12 +266,12 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                     coVerify(exactly = 1) {
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
-                            employeeLeaderActors = any<EmployeeLeaderActors>(),
+                            linemanagerActors = any<LinemanagerActors>(),
                             eq(NlResponseSource.LPS),
                         )
                     }
                     coVerify(exactly = 1) {
-                        validationServiceSpy.validateEmployeLeaderConnection(
+                        validationServiceSpy.validateLinemanager(
                             eq(narmesteLederRelasjon),
                             any()
                         )
@@ -356,7 +356,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                     )
                 }
                 coVerify(exactly = 1) {
-                    validationServiceSpy.validateEmployeeLeaderConnectionDiscontinue(
+                    validationServiceSpy.validateLinemanagerDiscontinue(
                         eq(narmesteLederAvkreft),
                         any()
                     )
@@ -420,13 +420,13 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
 
         describe("/employeeLeaderConnection/requirement endpoints") {
             val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
-            val lederFnr = narmesteLederRelasjon.leader.nationalIdentificationNumber
+            val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
             val orgnummer = narmesteLederRelasjon.orgnumber
 
-            fun EmployeeLeaderConnection.toNlBehovWrite(): EmployeeLeaderConnectionWrite = EmployeeLeaderConnectionWrite(
+            fun Linemanager.toNlBehovWrite(): EmployeeLeaderConnectionWrite = EmployeeLeaderConnectionWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = orgnumber,
-                leaderIdentificationNumber = leader.nationalIdentificationNumber,
+                leaderIdentificationNumber = manager.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE"
             )
 
@@ -448,7 +448,7 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<EmployeeLeaderConnectionRead>()
+                    val body = response.body<LinemanaberRead>()
                     body.id shouldBe requirementId
                     body.orgnumber shouldBe orgnummer
                     body.employeeIdentificationNumber shouldBe sykmeldtFnr
@@ -493,10 +493,10 @@ class EmployeeLeaderConnectionApiV1Test : DescribeSpec({
                     )
                     val requirementId = seedEmployeeLeaderConnectionRequirement()
                     val updatedRelasjon = narmesteLederRelasjon.copy(
-                        leader = narmesteLederRelasjon.leader.copy(nationalIdentificationNumber = narmesteLederRelasjon.leader.nationalIdentificationNumber.reversed())
+                        manager = narmesteLederRelasjon.manager.copy(nationalIdentificationNumber = narmesteLederRelasjon.manager.nationalIdentificationNumber.reversed())
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
-                        updatedRelasjon.leader.nationalIdentificationNumber,
+                        updatedRelasjon.manager.nationalIdentificationNumber,
                         listOf(orgnummer to orgnummer)
                     )
                     val response = client.put("/api/v1/employeeLeaderConnection/requirement/$requirementId") {

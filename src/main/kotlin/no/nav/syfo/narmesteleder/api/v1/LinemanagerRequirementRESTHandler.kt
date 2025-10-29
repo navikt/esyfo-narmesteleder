@@ -4,7 +4,7 @@ import java.util.*
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.EmployeeLeaderConnectionRead
+import no.nav.syfo.narmesteleder.domain.LinemanaberRead
 import no.nav.syfo.narmesteleder.exception.EmployeeLeaderConnectionRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -13,24 +13,24 @@ import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidateNarmesteLederException
 import no.nav.syfo.narmesteleder.service.ValidationService
 
-class EmployeeLeaderConnectionRequirementRESTHandler(
+class LinemanagerRequirementRESTHandler(
     private val narmesteLederService: NarmestelederService,
     private val validationService: ValidationService,
     private val narmestelederKafkaService: NarmestelederKafkaService
 ) {
-    suspend fun handleUpdatedRequirement(employeeLeaderConnection: EmployeeLeaderConnection, requirementId: UUID, principal: Principal) {
+    suspend fun handleUpdatedRequirement(linemanager: Linemanager, requirementId: UUID, principal: Principal) {
         try {
-            val employeeLeaderActors = validationService.validateEmployeLeaderConnection(
-                employeeLeaderConnection,
+            val employeeLeaderActors = validationService.validateLinemanager(
+                linemanager,
                 principal
             )
 
             narmestelederKafkaService.sendNarmesteLederRelasjon(
-                employeeLeaderConnection,
+                linemanager,
                 employeeLeaderActors,
                 NlResponseSource.leder, // TODO: Hva skal denne stå til?
             )
-            narmesteLederService.updateNlBehov(employeeLeaderConnection.toNlbehovUpdate(requirementId), BehovStatus.PENDING)
+            narmesteLederService.updateNlBehov(linemanager.toNlbehovUpdate(requirementId), BehovStatus.PENDING)
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Main entity not found", e)
         } catch (e: EmployeeLeaderConnectionRequirementNotFoundException) {
@@ -42,7 +42,7 @@ class EmployeeLeaderConnectionRequirementRESTHandler(
         }
     }
 
-    suspend fun handleGetEmployeeLeaderRequirement(requirementId: UUID, principal: Principal): EmployeeLeaderConnectionRead = try {
+    suspend fun handleGetEmployeeLeaderRequirement(requirementId: UUID, principal: Principal): LinemanaberRead = try {
         narmesteLederService.getNlBehovById(requirementId).also {
             validationService.validateGetNlBehov(principal, it)
         }

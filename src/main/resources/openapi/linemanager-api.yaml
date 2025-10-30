@@ -4,10 +4,8 @@ info:
   version: v1
   description: Operations for managing linemanager relations and requirements.
 servers:
-  - url: https://esyfo-linemanager.ekstern.dev.nav.no
+  - url: https://esyfo-narmesteleder.intern.dev.nav.no
     description: Dev
-  - url: https://esyfo-linemanager.ekstern.nav.no
-    description: Prod
 paths:
   /linemanager:
     post:

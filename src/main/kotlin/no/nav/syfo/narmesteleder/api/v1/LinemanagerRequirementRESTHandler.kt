@@ -50,6 +50,8 @@ class LinemanagerRequirementRESTHandler(
         throw ApiErrorException.NotFoundException("LinemanagerRequirement", e)
     } catch (e: ValidateNarmesteLederException) {
         throw ApiErrorException.ForbiddenException("You don't have access to this LinemanagerRequirement", e)
+    } catch (e: ApiErrorException) {
+        throw e
     } catch (e: Exception) {
         throw ApiErrorException.InternalServerErrorException(
             "Something went wrong while fetching LinemanagerRequirement",

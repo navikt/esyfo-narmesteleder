@@ -105,5 +105,5 @@ spec:
       value: dev-gcp.team-esyfo.dinesykmeldte-backend
     - name: ALTINN_TILGANGER_BASE_URL
       value: http://arbeidsgiver-altinn-tilganger.fager
-    - name: NARMESTELEDER_FRONTEND_URL
-      value: https://narmesteleder-frontend.ekstern.dev.nav.no
+    - name: FRONTEND_BASE_URL
+      value: https://www.ekstern.dev.nav.no/arbeidgsgiver

@@ -8,6 +8,7 @@ metadata:
 spec:
   ingresses:
     - https://esyfo-narmesteleder.intern.dev.nav.no
+    - https://esyfo-narmesteleder.ekstern.dev.nav.no/api/v1/linemanager
   image: {{image}} #
   port: 8080
   liveness:
@@ -107,3 +108,5 @@ spec:
       value: http://arbeidsgiver-altinn-tilganger.fager
     - name: FRONTEND_BASE_URL
       value: https://www.ekstern.dev.nav.no/arbeidgsgiver
+    - name: PUBLIC_INGRESS_URL
+      value: https://esyfo-narmesteleder.ekstern.dev.nav.no

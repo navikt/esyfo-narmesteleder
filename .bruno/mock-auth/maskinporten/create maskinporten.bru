@@ -1,0 +1,37 @@
+meta {
+  name: create maskinporten
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:6969/maskinporten/token
+  body: formUrlEncoded
+  auth: inherit
+}
+
+body:form-urlencoded {
+  grant_type: authorization_code
+  code: maskinporten
+  client_id: maskinporten
+  consumerAuthority: consumerAuthority
+  consumerId: 0192:215649202
+  supplierAuthority: supplierAuthority
+  supplierId: 0192:215649202
+  scope: nav:syfo/narmesteleder/lps
+  aud: esyfo-narmesteleder
+}
+
+script:post-response {
+  const token = res.getBody();
+  
+  if (token != null) {
+    bru.setEnvVar("token", token.access_token)
+    bru.setEnvVar("identityProvider", "maskinporten")
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

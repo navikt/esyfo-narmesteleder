@@ -1,0 +1,25 @@
+meta {
+  name: introspect texas maskinporten
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:3000/api/v1/introspect
+  body: json
+  auth: inherit
+}
+
+body:json {
+  
+  {
+    "identity_provider": "{{identityProvider}}",
+    "token": "{{token}}"
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

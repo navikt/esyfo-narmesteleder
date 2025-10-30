@@ -14,7 +14,7 @@ fun Application.configureOpenApi() {
         }
         swaggerUI(
             path = "docs",
-            swaggerFile = "openapi/linemanager-api.yaml"
+            swaggerFile = "openapi/documentation.yaml"
         )
     }
 }

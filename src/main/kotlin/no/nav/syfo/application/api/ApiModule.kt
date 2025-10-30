@@ -28,7 +28,7 @@ fun Application.configureRouting() {
     installStatusPages()
 
     // Optional: log presence of the OpenAPI resource
-    val openApiRes = environment.classLoader.getResource("openapi/linemanager-api.yaml")
+    val openApiRes = environment.classLoader.getResource("openapi/documentation.yaml")
     val logger = logger()
     logger.info("OpenAPI spec found: ${openApiRes != null} url=$openApiRes")
 

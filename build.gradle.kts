@@ -5,7 +5,7 @@ plugins {
 
 group = "no.nav.syfo"
 version = "0.0.1"
-
+val ktorVersion = "3.3.0"
 application {
     mainClass = "io.ktor.server.netty.EngineMain"
 }
@@ -42,6 +42,8 @@ dependencies {
     implementation(libs.kafka.clients)
     implementation(libs.kafka.twothirteen) { exclude(group = "log4j") }
     implementation(libs.logging.janino)
+    implementation("io.ktor:ktor-server-openapi:$ktorVersion")
+    implementation("io.ktor:ktor-server-swagger:$ktorVersion")
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)

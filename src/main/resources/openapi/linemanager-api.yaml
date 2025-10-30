@@ -1,0 +1,149 @@
+openapi: 3.0.3
+info:
+  title: Linemanager API
+  version: v1
+  description: Operations for managing linemanager relations and requirements.
+servers:
+  - url: https://esyfo-linemanager.ekstern.dev.nav.no
+    description: Dev
+  - url: https://esyfo-linemanager.ekstern.nav.no
+    description: Prod
+paths:
+  /linemanager:
+    post:
+      summary: Create linemanager relation
+      operationId: createLinemanager
+      security:
+        - tokenX: []
+        - maskinporten: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Linemanager'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+  /linemanager/revoke:
+    post:
+      summary: Revoke linemanager relation
+      operationId: revokeLinemanager
+      security:
+        - tokenX: []
+        - maskinporten: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinemanagerRevoke'
+      responses:
+        '202':
+          description: Accepted
+  /linemanager/requirement/{id}:
+    put:
+      summary: Update requirement
+      operationId: updateRequirement
+      security:
+        - tokenX: []
+        - maskinporten: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Linemanager'
+      responses:
+        '202':
+          description: Accepted
+        '404':
+          description: Not found
+    get:
+      summary: Get requirement
+      operationId: getRequirement
+      security:
+        - tokenX: []
+        - maskinporten: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinemanagerRead'
+        '404':
+          description: Not found
+components:
+  securitySchemes:
+    tokenX:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: TokenX end-user JWT
+    maskinporten:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Machine-to-machine JWT
+  schemas:
+    Linemanager:
+      type: object
+      required: [orgnumber, employeeIdentificationNumber, manager]
+      properties:
+        orgnumber:
+          type: string
+        employeeIdentificationNumber:
+          type: string
+        manager:
+          $ref: '#/components/schemas/ManagerPerson'
+    ManagerPerson:
+      type: object
+      required: [nationalIdentificationNumber]
+      properties:
+        nationalIdentificationNumber:
+          type: string
+    LinemanagerRevoke:
+      type: object
+      required: [orgnumber, employeeIdentificationNumber]
+      properties:
+        orgnumber:
+          type: string
+        employeeIdentificationNumber:
+          type: string
+    LinemanagerRead:
+      type: object
+      required: [id, orgnumber, mainOrgnumber, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        orgnumber:
+          type: string
+        mainOrgnumber:
+          type: string
+        status:
+          type: string
+security:
+  - tokenX: []
+  - maskinporten: []

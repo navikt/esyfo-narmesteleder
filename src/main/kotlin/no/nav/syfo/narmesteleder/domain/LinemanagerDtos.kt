@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.domain
 
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
 data class LinemanagerWrite(
@@ -16,6 +17,7 @@ data class LinemanagerUpdate(
     val leaderIdentificationNumber: String,
 )
 
+@Serializable
 data class LinemanagerRead(
     val id: UUID,
     val employeeIdentificationNumber: String,

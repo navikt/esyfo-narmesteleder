@@ -1,11 +1,13 @@
 package no.nav.syfo.narmesteleder.api.v1
 
+import kotlinx.serialization.Serializable
 import java.util.UUID
 import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
 import no.nav.syfo.narmesteleder.kafka.model.Leder
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 
+@Serializable
 data class Linemanager(
     val employeeIdentificationNumber: String,
     val orgnumber: String,
@@ -28,6 +30,7 @@ data class Linemanager(
     )
 }
 
+@Serializable
 data class Manager(
     val nationalIdentificationNumber: String,
     val mobile: String,

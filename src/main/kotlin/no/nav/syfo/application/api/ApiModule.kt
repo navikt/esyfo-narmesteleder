@@ -12,6 +12,7 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {
@@ -26,6 +27,11 @@ fun Application.configureRouting() {
     installContentNegotiation()
     installStatusPages()
 
+    // Optional: log presence of the OpenAPI resource
+    val openApiRes = environment.classLoader.getResource("openapi/linemanager-api.yaml")
+    val logger = logger()
+    logger.info("OpenAPI spec found: ${openApiRes != null} url=$openApiRes")
+
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
@@ -34,4 +40,5 @@ fun Application.configureRouting() {
             call.respondText("Hello World!")
         }
     }
+    configureOpenApi()
 }

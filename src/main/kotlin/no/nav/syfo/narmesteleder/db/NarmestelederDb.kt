@@ -77,9 +77,7 @@ class NarmestelederDb(private val database: DatabaseInterface) : INarmestelederD
             connection
                 .prepareStatement(
                     """
-                       SELECT id, orgnummer, hovedenhet_orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status
-                       FROM nl_behov
-                       WHERE id = ?;
+                       SELECT * FROM nl_behov WHERE id = ?;
                     """
                 ).use { preparedStatement ->
                     preparedStatement.setObject(1, id)

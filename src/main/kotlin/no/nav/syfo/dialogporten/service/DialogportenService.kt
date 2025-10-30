@@ -1,5 +1,6 @@
 package no.nav.syfo.dialogporten.service
 
+import io.ktor.http.ContentType
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.application.OtherEnvironmentProperties
 import no.nav.syfo.dialogporten.client.IDialogportenClient
@@ -15,7 +16,6 @@ import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.util.logger
-import org.apache.http.entity.ContentType.APPLICATION_JSON
 
 class DialogportenService(
     private val dialogportenClient: IDialogportenClient,
@@ -28,7 +28,7 @@ class DialogportenService(
     val dialogTitle = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
     val dialogSummary = "Vennligst tildel nærmeste leder for sykmeldt"
     val guiUrlTitle = "Naviger til nærmeste leder skjema"
-    val apiUrlTitle = "Endpoint for EmployeLeaderConnectionRequirement"
+    val apiUrlTitle = "Endpoint for LinemanagerRequirement request"
 
     suspend fun sendDocumentsToDialogporten() {
         val behovToSend = getRequirementsToSend()
@@ -58,7 +58,8 @@ class DialogportenService(
         "${otherDialogportenClient.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
 
     private fun createGuiLink(id: String): String =
-        "${otherDialogportenClient.frontendUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
+        "${otherDialogportenClient.frontendBaseUrl}/ansatte/narmesteleder/$id"
+    //https://www.ekstern.dev.nav.no/arbeidgsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
 
     private fun NarmestelederBehovEntity.toDialog(): Dialog {
         return Dialog(
@@ -81,7 +82,7 @@ class DialogportenService(
                     urls = listOf(
                         Url(
                             url = createApiLink(id.toString()),
-                            mediaType = APPLICATION_JSON.toString(),
+                            mediaType = ContentType.Application.Json.toString(),
                             consumerType = AttachmentUrlConsumerType.Api,
                         ),
                     ),
@@ -96,7 +97,7 @@ class DialogportenService(
                     urls = listOf(
                         Url(
                             url = createGuiLink(id.toString()),
-                            mediaType = APPLICATION_JSON.toString(),
+                            mediaType = ContentType.Text.Html.toString(),
                             consumerType = AttachmentUrlConsumerType.Gui,
                         ),
                     ),
@@ -105,4 +106,3 @@ class DialogportenService(
         )
     }
 }
-//https://www.ekstern.dev.nav.no/arbeidgsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5

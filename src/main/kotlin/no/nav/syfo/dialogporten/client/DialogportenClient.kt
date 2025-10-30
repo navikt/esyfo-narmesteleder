@@ -1,5 +1,6 @@
 package no.nav.syfo.dialogporten.client
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
@@ -64,6 +65,7 @@ class DialogportenClient(
 
 class FakeDialogportenClient() : IDialogportenClient {
     override suspend fun createDialog(dialog: Dialog): UUID {
+        logger().info(ObjectMapper().writeValueAsString(dialog))
         return UUID.randomUUID()
     }
 

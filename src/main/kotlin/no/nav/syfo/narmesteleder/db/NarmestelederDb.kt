@@ -62,8 +62,8 @@ class NarmestelederDb(private val database: DatabaseInterface) : INarmestelederD
                     preparedStatement.setString(3, nlBehov.sykmeldtFnr)
                     preparedStatement.setString(4, nlBehov.narmestelederFnr)
                     preparedStatement.setObject(5, nlBehov.behovStatus, java.sql.Types.OTHER)
-                    preparedStatement.setObject(6, nlBehov.id)
-                    preparedStatement.setObject(7, nlBehov.dialogId)
+                    preparedStatement.setObject(6, nlBehov.dialogId)
+                    preparedStatement.setObject(7, nlBehov.id)
 
                     preparedStatement.executeUpdate()
                 }.also {

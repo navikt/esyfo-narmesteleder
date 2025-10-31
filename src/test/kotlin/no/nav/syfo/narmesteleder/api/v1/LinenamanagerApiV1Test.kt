@@ -40,6 +40,7 @@ import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
@@ -516,7 +517,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         )
                     }
                     val stored = fakeRepo.findBehovById(requirementId) ?: error("Stored requirement missing")
-                    stored.behovStatus.name shouldBe "PENDING"
+                    stored.behovStatus.name shouldBe BehovStatus.COMPLETED.name
                 }
             }
 

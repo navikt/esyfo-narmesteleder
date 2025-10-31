@@ -46,7 +46,7 @@ class LinemanagerRequirementRESTHandler(
             narmesteLederService.updateNlBehov(
                 manager = manager,
                 requirementId = requirementId,
-                behovStatus = BehovStatus.PENDING
+                behovStatus = BehovStatus.COMPLETED
             )
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Main entity not found", e)

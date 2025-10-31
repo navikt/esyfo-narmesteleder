@@ -9,13 +9,14 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exceptions.UnauthorizedException
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementUpdate
+import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -64,7 +65,7 @@ fun Route.registerLinemanagerApiV1(
     route("/linemanager/requirement") {
         put("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")
-            val linemanager = call.tryReceive<LinemanagerRequirementUpdate>()
+            val linemanager = call.tryReceive<Manager>()
 
             linemanagerRequirementRestHandler.handleUpdatedRequirement(
                 linemanager,

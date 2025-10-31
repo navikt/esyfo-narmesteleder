@@ -7,7 +7,7 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.narmesteleder.api.v1.Linemanager
+import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead

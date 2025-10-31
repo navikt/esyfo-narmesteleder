@@ -17,7 +17,6 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementUpdate
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
@@ -166,14 +165,11 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = LinemanagerRequirementUpdate(
-                manager = defaultManager
-            )
 
             every { nlDb.findBehovById(id) } returns original
             every { nlDb.updateNlBehov(any()) } returns Unit
 
-            service().updateNlBehov(update, original.id!!, BehovStatus.PENDING)
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.PENDING)
 
             coVerify(exactly = 1) {
                 nlDb.updateNlBehov(any())
@@ -193,14 +189,11 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = LinemanagerRequirementUpdate(
-                manager = defaultManager
-            )
 
             every { nlDb.findBehovById(id) } returns original
             every { nlDb.updateNlBehov(any()) } returns Unit
 
-            service().updateNlBehov(update, original.id!!, BehovStatus.PENDING)
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.PENDING)
 
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
@@ -208,7 +201,7 @@ class NarmestelederServiceTest : FunSpec({
                             updated.orgnummer == original.orgnummer &&
                             updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer &&
                             updated.sykmeldtFnr == original.sykmeldtFnr &&
-                            updated.narmestelederFnr == update.manager.nationalIdentificationNumber &&
+                            updated.narmestelederFnr == defaultManager.nationalIdentificationNumber &&
                             updated.behovStatus == BehovStatus.PENDING
                 })
             }
@@ -218,13 +211,11 @@ class NarmestelederServiceTest : FunSpec({
     test("updateNlBehov throws when behov not found") {
         runTest(dispatcher) {
             val id = UUID.randomUUID()
-            val update = LinemanagerRequirementUpdate(
-                manager = defaultManager
-            )
+
             every { nlDb.findBehovById(id) } returns null
             shouldThrow<LinemanagerRequirementNotFoundException> {
                 service().updateNlBehov(
-                    update,
+                    defaultManager,
                     id,
                     BehovStatus.ERROR
                 )

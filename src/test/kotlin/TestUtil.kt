@@ -14,7 +14,7 @@ import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
-import no.nav.syfo.narmesteleder.api.v1.Linemanager
+import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.texas.client.OrganizationId
@@ -24,14 +24,16 @@ import no.nav.syfo.texas.client.TexasResponse
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
+fun manager(): Manager = Manager(
+    nationalIdentificationNumber = faker.numerify("###########"),
+    firstName = faker.name().firstName(),
+    lastName = faker.name().lastName(),
+    mobile = faker.phoneNumber().cellPhone(),
+    email = faker.internet().emailAddress(),
+)
+
 fun narmesteLederRelasjon(): Linemanager = Linemanager(
-    manager = Manager(
-        nationalIdentificationNumber = faker.numerify("###########"),
-        firstName = faker.name().firstName(),
-        lastName = faker.name().lastName(),
-        mobile = faker.phoneNumber().cellPhone(),
-        email = faker.internet().emailAddress(),
-    ),
+    manager = manager(),
     employeeIdentificationNumber = faker.numerify("###########"),
     orgnumber = faker.numerify("#########"),
 )

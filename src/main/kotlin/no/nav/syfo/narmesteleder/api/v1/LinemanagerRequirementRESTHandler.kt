@@ -4,8 +4,9 @@ import java.util.*
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementUpdate
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -20,16 +21,16 @@ class LinemanagerRequirementRESTHandler(
     private val narmestelederKafkaService: NarmestelederKafkaService
 ) {
     suspend fun handleUpdatedRequirement(
-        linemanagerUpdate: LinemanagerRequirementUpdate,
+        manager: Manager,
         requirementId: UUID,
         principal: Principal
     ) {
         try {
-            val existingLm = narmesteLederService.getNlBehovById(requirementId)
+            val existingRequirement = narmesteLederService.getNlBehovById(requirementId)
             val linemanager = Linemanager(
-                employeeIdentificationNumber = existingLm.employeeIdentificationNumber,
-                orgnumber = existingLm.orgnumber,
-                manager = linemanagerUpdate.manager
+                employeeIdentificationNumber = existingRequirement.employeeIdentificationNumber,
+                orgnumber = existingRequirement.orgnumber,
+                manager = manager
             )
             val linemanagerActors = validationService.validateLinemanager(
                 linemanager,
@@ -43,7 +44,7 @@ class LinemanagerRequirementRESTHandler(
             )
 
             narmesteLederService.updateNlBehov(
-                linemanagerUpdate = linemanagerUpdate,
+                manager = manager,
                 requirementId = requirementId,
                 behovStatus = BehovStatus.PENDING
             )

@@ -9,8 +9,8 @@ import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementUpdate
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
@@ -46,13 +46,13 @@ class NarmestelederService(
         } ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
 
     suspend fun updateNlBehov(
-        linemanagerUpdate: LinemanagerRequirementUpdate,
+        manager: Manager,
         requirementId: UUID,
         behovStatus: BehovStatus
     ) = withContext(ioDispatcher) {
         with(findBehovEntityById(requirementId)) {
             val updatedBehov = copy(
-                narmestelederFnr = linemanagerUpdate.manager.nationalIdentificationNumber,
+                narmestelederFnr = manager.nationalIdentificationNumber,
                 behovStatus = behovStatus,
             )
             nlDb.updateNlBehov(updatedBehov)

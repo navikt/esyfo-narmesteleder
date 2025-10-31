@@ -19,7 +19,7 @@ import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 
 class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
-    val fakeNlReqDbSpyk = spyk(FakeNarmestelederDb())
+    val fakeDbSpyk = spyk(FakeNarmestelederDb())
     val fakeAaregClientSpyk = spyk(FakeAaregClient())
     val fakePdlClientSpyk = spyk(FakePdlClient())
     val fakeDinesykemeldteClientSpyk = spyk(FakeDinesykmeldteClient())
@@ -43,7 +43,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     )
     val narmestelederServiceSpyk = spyk(
         NarmestelederService(
-            nlDb = fakeNlReqDbSpyk,
+            nlDb = fakeDbSpyk,
             persistLeesahNlBehov = true,
             aaregService = aaregServiceSpyk,
             pdlService = pdlServiceSpyk,

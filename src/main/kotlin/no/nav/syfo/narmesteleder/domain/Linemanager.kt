@@ -1,6 +1,5 @@
-package no.nav.syfo.narmesteleder.api.v1
+package no.nav.syfo.narmesteleder.domain
 
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 

@@ -11,7 +11,6 @@ import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementUpdate
 import no.nav.syfo.narmesteleder.domain.Manager
 
 class LinemanagerRequirementRESTHandlerTest : FunSpec({
@@ -40,12 +39,12 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
 
     beforeTest {
         clearAllMocks()
-        servicesWrapper.fakeNlReqDbSpyk.clear()
+        servicesWrapper.fakeDbSpyk.clear()
     }
 
     test("Should update linemanager and keep other fields intact") {
         val handler = servicesWrapper.lnReqRESTHandlerSpyk
-        val db = servicesWrapper.fakeNlReqDbSpyk
+        val db = servicesWrapper.fakeDbSpyk
         db.insertNlBehov(defaultRequirement)
 
         val id = defaultRequirement.id!!
@@ -56,24 +55,20 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
             )
         )
 
-        val updatedLm = LinemanagerRequirementUpdate(
-            manager = defaultManager,
-        )
-
         handler.handleUpdatedRequirement(
             requirementId = id,
-            linemanagerUpdate = updatedLm,
+            manager = defaultManager,
             principal = principal,
         )
 
         coVerify(exactly = 1) {
             servicesWrapper.narmestelederServiceSpyk.updateNlBehov(match {
-                it.manager.nationalIdentificationNumber == defaultManager.nationalIdentificationNumber &&
-                        it.manager.nationalIdentificationNumber != defaultRequirement.narmestelederFnr
+                it.nationalIdentificationNumber == defaultManager.nationalIdentificationNumber &&
+                        it.nationalIdentificationNumber != defaultRequirement.narmestelederFnr
             }, match { it == id }, match { it == BehovStatus.PENDING })
         }
         coVerify(exactly = 1) {
-            servicesWrapper.fakeNlReqDbSpyk.updateNlBehov(match {
+            servicesWrapper.fakeDbSpyk.updateNlBehov(match {
                 it.narmestelederFnr == defaultManager.nationalIdentificationNumber &&
                         it.id == defaultRequirement.id &&
                         it.behovStatus == BehovStatus.PENDING &&

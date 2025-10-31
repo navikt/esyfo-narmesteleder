@@ -124,7 +124,7 @@ class NarmestelederServiceTest : FunSpec({
                 nationalIdentificationNumber = entity.sykmeldtFnr
             )
 
-            val read = service().getNlBehovById(id)
+            val read = service().getLinemanagerRequirementReadById(id)
             read.id shouldBe id
             read.orgnumber shouldBe entity.orgnummer
             read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer

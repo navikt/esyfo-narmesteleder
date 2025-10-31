@@ -60,7 +60,7 @@ class LinemanagerRequirementRESTHandler(
 
     suspend fun handleGetLinemanagerRequirement(requirementId: UUID, principal: Principal): LinemanagerRequirementRead =
         try {
-            narmesteLederService.getNlBehovById(requirementId).also {
+            narmesteLederService.getLinemanagerRequirementReadById(requirementId).also {
                 validationService.validateGetNlBehov(principal, it)
             }
         } catch (e: LinemanagerRequirementNotFoundException) {

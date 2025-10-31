@@ -14,9 +14,12 @@ import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
+import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
+import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
@@ -43,6 +46,15 @@ fun narmesteLederAvkreft(): LinemanagerRevoke = LinemanagerRevoke(
     orgnumber = faker.numerify("#########"),
 )
 
+fun nlBehovEntity() = NarmestelederBehovEntity(
+    id = UUID.randomUUID(),
+    orgnummer = faker.numerify("#########"),
+    hovedenhetOrgnummer = faker.numerify("#########"),
+    sykmeldtFnr =faker.numerify("###########"),
+    narmestelederFnr = faker.numerify("###########"),
+    leesahStatus = LeesahStatus.DEAKTIVERT_NY_LEDER.name,
+    behovStatus = BehovStatus.RECEIVED,
+)
 fun createMockToken(
     ident: String,
     supplierId: String? = null,

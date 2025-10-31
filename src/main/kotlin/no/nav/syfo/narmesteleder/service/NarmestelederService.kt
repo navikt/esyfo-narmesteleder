@@ -8,9 +8,9 @@ import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.LinemanagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
-import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
@@ -25,37 +25,39 @@ class NarmestelederService(
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    suspend fun getNlBehovById(id: UUID): LinemanagerRead =
+
+    suspend fun getNlBehovById(id: UUID): LinemanagerRequirementRead =
         withContext(ioDispatcher) {
-            nlDb.findBehovById(id)?.let {
-                val details = pdlService.getPersonFor(it.sykmeldtFnr)
+            with(findBehovEntityById(id)) {
+                val details = pdlService.getPersonFor(sykmeldtFnr)
                 // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
                 val name = Name(
                     firstName = details.name.fornavn,
                     lastName = details.name.etternavn,
                     middleName = details.name.mellomnavn,
                 )
-                it.toEmployeeLinemanagerRead(name)
+                toEmployeeLinemanagerRead(name)
             }
+        }
+
+    private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity =
+        withContext(ioDispatcher) {
+            nlDb.findBehovById(id)
         } ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
 
     suspend fun updateNlBehov(
-        linemanagerUpdate: LinemanagerUpdate,
+        manager: Manager,
+        requirementId: UUID,
         behovStatus: BehovStatus
     ) = withContext(ioDispatcher) {
-        val behov = nlDb.findBehovById(linemanagerUpdate.id)
-            ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: ${linemanagerUpdate.id}")
-
-        val updatedBehov = behov.copy(
-            orgnummer = linemanagerUpdate.orgnumber,
-            hovedenhetOrgnummer = findHovedenhetOrgnummer(linemanagerUpdate.employeeIdentificationNumber, linemanagerUpdate.orgnumber),
-            sykmeldtFnr = linemanagerUpdate.employeeIdentificationNumber,
-            narmestelederFnr = linemanagerUpdate.leaderIdentificationNumber,
-            behovStatus = behovStatus,
-        )
-
-        nlDb.updateNlBehov(updatedBehov)
-        logger.info("Updated NarmestelederBehovEntity with id: ${linemanagerUpdate.id} with status: $behovStatus")
+        with(findBehovEntityById(requirementId)) {
+            val updatedBehov = copy(
+                narmestelederFnr = manager.nationalIdentificationNumber,
+                behovStatus = behovStatus,
+            )
+            nlDb.updateNlBehov(updatedBehov)
+            logger.info("Updated NarmestelederBehovEntity with id: $id with status: $behovStatus")
+        }
     }
 
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {
@@ -64,7 +66,7 @@ class NarmestelederService(
             ?: throw HovedenhetNotFoundException("Could not find main entity for employee on sick leave and orgnumber in aareg")
     }
 
-    suspend fun createNewNlBehov(nlBehov: LinemanagerWrite) {
+    suspend fun createNewNlBehov(nlBehov: LinemanagerRequirementWrite) {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
             return
@@ -75,7 +77,10 @@ class NarmestelederService(
                 NarmestelederBehovEntity(
                     sykmeldtFnr = nlBehov.employeeIdentificationNumber,
                     orgnummer = nlBehov.orgnumber,
-                    hovedenhetOrgnummer = findHovedenhetOrgnummer(nlBehov.employeeIdentificationNumber, nlBehov.orgnumber),
+                    hovedenhetOrgnummer = findHovedenhetOrgnummer(
+                        nlBehov.employeeIdentificationNumber,
+                        nlBehov.orgnumber
+                    ),
                     narmestelederFnr = nlBehov.managerIdentificationNumber,
                     leesahStatus = nlBehov.leesahStatus,
                     behovStatus = BehovStatus.RECEIVED
@@ -86,11 +91,12 @@ class NarmestelederService(
     }
 }
 
-fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRead = LinemanagerRead(
-    id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
-    employeeIdentificationNumber = this.sykmeldtFnr,
-    orgnumber = this.orgnummer,
-    mainOrgnumber = this.hovedenhetOrgnummer,
-    managerIdentificationNumber = this.narmestelederFnr,
-    name = name
-)
+fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead =
+    LinemanagerRequirementRead(
+        id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
+        employeeIdentificationNumber = this.sykmeldtFnr,
+        orgnumber = this.orgnummer,
+        mainOrgnumber = this.hovedenhetOrgnummer,
+        managerIdentificationNumber = this.narmestelederFnr,
+        name = name
+    )

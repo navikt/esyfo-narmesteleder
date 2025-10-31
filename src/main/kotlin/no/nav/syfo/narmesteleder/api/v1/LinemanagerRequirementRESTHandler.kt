@@ -4,9 +4,11 @@ import java.util.*
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerRead
-import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
+import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
+import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
@@ -18,8 +20,18 @@ class LinemanagerRequirementRESTHandler(
     private val validationService: ValidationService,
     private val narmestelederKafkaService: NarmestelederKafkaService
 ) {
-    suspend fun handleUpdatedRequirement(linemanager: Linemanager, requirementId: UUID, principal: Principal) {
+    suspend fun handleUpdatedRequirement(
+        manager: Manager,
+        requirementId: UUID,
+        principal: Principal
+    ) {
         try {
+            val existingRequirement = narmesteLederService.getNlBehovById(requirementId)
+            val linemanager = Linemanager(
+                employeeIdentificationNumber = existingRequirement.employeeIdentificationNumber,
+                orgnumber = existingRequirement.orgnumber,
+                manager = manager
+            )
             val linemanagerActors = validationService.validateLinemanager(
                 linemanager,
                 principal
@@ -30,7 +42,12 @@ class LinemanagerRequirementRESTHandler(
                 linemanagerActors,
                 NlResponseSource.leder, // TODO: Hva skal denne stå til?
             )
-            narmesteLederService.updateNlBehov(linemanager.toNlbehovUpdate(requirementId), BehovStatus.PENDING)
+
+            narmesteLederService.updateNlBehov(
+                manager = manager,
+                requirementId = requirementId,
+                behovStatus = BehovStatus.COMPLETED
+            )
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Main entity not found", e)
         } catch (e: LinemanagerRequirementNotFoundException) {
@@ -42,20 +59,21 @@ class LinemanagerRequirementRESTHandler(
         }
     }
 
-    suspend fun handleGetLinemanagerRequirement(requirementId: UUID, principal: Principal): LinemanagerRead = try {
-        narmesteLederService.getNlBehovById(requirementId).also {
-            validationService.validateGetNlBehov(principal, it)
+    suspend fun handleGetLinemanagerRequirement(requirementId: UUID, principal: Principal): LinemanagerRequirementRead =
+        try {
+            narmesteLederService.getNlBehovById(requirementId).also {
+                validationService.validateGetNlBehov(principal, it)
+            }
+        } catch (e: LinemanagerRequirementNotFoundException) {
+            throw ApiErrorException.NotFoundException("LinemanagerRequirement", e)
+        } catch (e: ValidateNarmesteLederException) {
+            throw ApiErrorException.ForbiddenException("You don't have access to this LinemanagerRequirement", e)
+        } catch (e: ApiErrorException) {
+            throw e
+        } catch (e: Exception) {
+            throw ApiErrorException.InternalServerErrorException(
+                "Something went wrong while fetching LinemanagerRequirement",
+                e
+            )
         }
-    } catch (e: LinemanagerRequirementNotFoundException) {
-        throw ApiErrorException.NotFoundException("LinemanagerRequirement", e)
-    } catch (e: ValidateNarmesteLederException) {
-        throw ApiErrorException.ForbiddenException("You don't have access to this LinemanagerRequirement", e)
-    } catch (e: ApiErrorException) {
-        throw e
-    } catch (e: Exception) {
-        throw ApiErrorException.InternalServerErrorException(
-            "Something went wrong while fetching LinemanagerRequirement",
-            e
-        )
-    }
 }

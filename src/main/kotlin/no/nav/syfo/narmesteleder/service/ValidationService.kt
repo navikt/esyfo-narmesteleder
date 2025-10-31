@@ -1,16 +1,16 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.narmesteleder.api.v1.Linemanager
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
-import no.nav.syfo.narmesteleder.domain.LinemanagerRead
+import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.LinemanagerActors
+import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.util.logger
@@ -108,14 +108,14 @@ class ValidationService(
         }
     }
 
-    suspend fun validateGetNlBehov(principal: Principal, linemanagerRead: LinemanagerRead) {
+    suspend fun validateGetNlBehov(principal: Principal, linemanagerRead: LinemanagerRequirementRead) {
         val sykemeldtOrgs = setOf(linemanagerRead.orgnumber, linemanagerRead.mainOrgnumber)
         val innsenderOrgNumber = validateAltTilgang(principal, linemanagerRead.orgnumber)
 
         if (principal is OrganisasjonPrincipal) {
             nlrequire(
                 sykemeldtOrgs.contains(innsenderOrgNumber)
-                ) { "Person making the request is not employed in the same organization as employee on sick leave" }
+            ) { "Person making the request is not employed in the same organization as employee on sick leave" }
         }
     }
 }

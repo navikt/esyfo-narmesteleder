@@ -36,12 +36,13 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.api.v1.Linemanager
+import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
+import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.domain.LinemanagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
+import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -187,7 +188,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
-                        setBody(narmesteLederRelasjon())
+                        setBody(manager())
                     }
 
                     // Assert
@@ -209,7 +210,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
-                        setBody(narmesteLederRelasjon())
+                        setBody(manager())
                     }
 
                     // Assert
@@ -423,7 +424,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
             val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
             val orgnummer = narmesteLederRelasjon.orgnumber
 
-            fun Linemanager.toNlBehovWrite(): LinemanagerWrite = LinemanagerWrite(
+            fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = orgnumber,
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
@@ -448,7 +449,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<LinemanagerRead>()
+                    val body = response.body<LinemanagerRequirementRead>()
                     body.id shouldBe requirementId
                     body.orgnumber shouldBe orgnummer
                     body.employeeIdentificationNumber shouldBe sykmeldtFnr
@@ -492,26 +493,31 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedLinemanagerRequirement()
-                    val updatedRelasjon = narmesteLederRelasjon.copy(
-                        manager = narmesteLederRelasjon.manager.copy(nationalIdentificationNumber = narmesteLederRelasjon.manager.nationalIdentificationNumber.reversed())
+                    val manager = manager().copy(
+                        nationalIdentificationNumber = narmesteLederRelasjon
+                            .manager
+                            .nationalIdentificationNumber
+                            .reversed()
                     )
-                    fakeAaregClient.arbeidsForholdForIdent.put(
-                        updatedRelasjon.manager.nationalIdentificationNumber,
+                    fakeAaregClient.arbeidsForholdForIdent[manager.nationalIdentificationNumber] =
                         listOf(orgnummer to orgnummer)
-                    )
                     val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
-                        setBody(updatedRelasjon)
+                        setBody(manager)
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
-                            eq(updatedRelasjon), any(), eq(NlResponseSource.leder)
+                            match { linemanager ->
+                                linemanager.employeeIdentificationNumber == sykmeldtFnr &&
+                                        linemanager.orgnumber == orgnummer &&
+                                        linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
+                            }, any(), any()
                         )
                     }
                     val stored = fakeRepo.findBehovById(requirementId) ?: error("Stored requirement missing")
-                    stored.behovStatus.name shouldBe "PENDING"
+                    stored.behovStatus.name shouldBe BehovStatus.COMPLETED.name
                 }
             }
 
@@ -526,7 +532,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
                     val response = client.put("/api/v1/linemanager/requirement/$randomId") {
                         contentType(ContentType.Application.Json)
-                        setBody(narmesteLederRelasjon)
+                        setBody(manager())
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.NotFound
@@ -562,7 +568,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
                     val response = client.put("/api/v1/linemanager/requirement/$requirementId") {
                         contentType(ContentType.Application.Json)
-                        setBody(narmesteLederRelasjon)
+                        setBody(narmesteLederRelasjon.manager)
                         bearerAuth(createMockToken("000000000"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden

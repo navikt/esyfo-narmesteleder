@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.api.v1
+package no.nav.syfo.narmesteleder.domain
 
 import no.nav.syfo.pdl.Person
 

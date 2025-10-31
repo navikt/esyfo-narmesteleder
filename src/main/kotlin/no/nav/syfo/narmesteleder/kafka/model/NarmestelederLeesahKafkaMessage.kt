@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
-import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 
 enum class LeesahStatus {
     NY_LEDER,
@@ -33,7 +33,7 @@ data class NarmestelederLeesahKafkaMessage(
     val status: LeesahStatus,
 ) {
 
-    fun toNlBehovWrite() = LinemanagerWrite(
+    fun toNlBehovWrite() = LinemanagerRequirementWrite(
         employeeIdentificationNumber = fnr,
         orgnumber = orgnummer,
         managerIdentificationNumber = narmesteLederFnr,

@@ -1,6 +1,7 @@
 package no.nav.syfo.dialogporten.service
 
 import io.ktor.http.ContentType
+import java.util.UUID
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.application.OtherEnvironmentProperties
 import no.nav.syfo.dialogporten.client.IDialogportenClient
@@ -9,6 +10,7 @@ import no.nav.syfo.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.dialogporten.domain.Content
 import no.nav.syfo.dialogporten.domain.ContentValueItem
 import no.nav.syfo.dialogporten.domain.Dialog
+import no.nav.syfo.dialogporten.domain.DialogStatus
 import no.nav.syfo.dialogporten.domain.Url
 import no.nav.syfo.dialogporten.domain.create
 import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
@@ -35,9 +37,12 @@ class DialogportenService(
         logger.info("Found ${behovToSend.size} documents to send to dialogporten")
 
         for (behov in behovToSend) {
-            val fullDocumentLink = createApiLink(behov.id.toString())
+            require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
             try {
                 val dialog = behov.toDialog()
+                dialog.attachments?.firstOrNull()?.let {
+                    logger.info("Sent document ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
+                }
                 val dialogId = dialogportenClient.createDialog(dialog)
                 narmestelederDb.updateNlBehov(
                     behov.copy(
@@ -45,7 +50,6 @@ class DialogportenService(
                         behovStatus = BehovStatus.PENDING
                     )
                 )
-                logger.info("Sent document ${behov.id} to dialogporten, with link $fullDocumentLink")
             } catch (ex: Exception) {
                 logger.error("Failed to send document ${behov.id} to dialogporten", ex)
             }
@@ -54,16 +58,18 @@ class DialogportenService(
 
     private fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
 
-    private fun createApiLink(id: String): String =
+    private fun createApiLink(id: UUID): String =
         "${otherDialogportenClient.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
 
-    private fun createGuiLink(id: String): String =
+    private fun createGuiLink(id: UUID): String =
         "${otherDialogportenClient.frontendBaseUrl}/ansatte/narmesteleder/$id"
     //https://www.ekstern.dev.nav.no/arbeidgsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
 
     private fun NarmestelederBehovEntity.toDialog(): Dialog {
+        require(id != null) { "Cannot create Dialogporten Dialog without id" }
         return Dialog(
             serviceResource = "urn:altinn:resource:$dialogRessurs",
+            status = DialogStatus.RequiresAttention,
             party = "urn:altinn:organization:identifier-no:$orgnummer",
             externalReference = id.toString(),
             content = Content.create(
@@ -72,37 +78,34 @@ class DialogportenService(
             ),
             isApiOnly = false,
             attachments = listOf(
-                Attachment(
-                    displayName = listOf(
-                        ContentValueItem(
-                            apiUrlTitle,
-                            "en"
-                        ),
-                    ),
-                    urls = listOf(
-                        Url(
-                            url = createApiLink(id.toString()),
-                            mediaType = ContentType.Application.Json.toString(),
-                            consumerType = AttachmentUrlConsumerType.Api,
-                        ),
-                    ),
-                ),
-                Attachment(
-                    displayName = listOf(
-                        ContentValueItem(
-                            guiUrlTitle,
-                            "nb"
-                        ),
-                    ),
-                    urls = listOf(
-                        Url(
-                            url = createGuiLink(id.toString()),
-                            mediaType = ContentType.Text.Html.toString(),
-                            consumerType = AttachmentUrlConsumerType.Gui,
-                        ),
-                    ),
-                ),
+                createAttachement(AttachmentUrlConsumerType.Api, apiUrlTitle, id),
+                createAttachement(AttachmentUrlConsumerType.Gui, guiUrlTitle, id),
             ),
         )
     }
+
+    private fun createAttachement(type: AttachmentUrlConsumerType, name: String, id: UUID): Attachment =
+        Attachment(
+            displayName = listOf(
+                ContentValueItem(
+                    name, if (type == AttachmentUrlConsumerType.Api) "en" else "nb"
+                ),
+            ),
+            urls = listOf(createUrl(type, id)),
+        )
+
+    private fun createUrl(type: AttachmentUrlConsumerType, id: UUID): Url =
+        when (type) {
+            AttachmentUrlConsumerType.Gui -> Url(
+                url = createGuiLink(id),
+                mediaType = ContentType.Text.Html.toString(),
+                consumerType = type,
+            )
+
+            AttachmentUrlConsumerType.Api -> Url(
+                url = createApiLink(id),
+                mediaType = ContentType.Application.Json.toString(),
+                consumerType = type,
+            )
+        }
 }

@@ -22,7 +22,7 @@ import no.nav.syfo.util.logger
 class DialogportenService(
     private val dialogportenClient: IDialogportenClient,
     private val narmestelederDb: INarmestelederDb,
-    private val otherDialogportenClient: OtherEnvironmentProperties,
+    private val otherEnvironmentProperties: OtherEnvironmentProperties,
 ) {
     private val logger = logger()
     private val dialogRessurs = "nav_syfo_dialog"
@@ -59,10 +59,10 @@ class DialogportenService(
     private fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
 
     private fun createApiLink(id: UUID): String =
-        "${otherDialogportenClient.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
+        "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
 
     private fun createGuiLink(id: UUID): String =
-        "${otherDialogportenClient.frontendBaseUrl}/ansatte/narmesteleder/$id"
+        "${otherEnvironmentProperties.frontendBaseUrl}/ansatte/narmesteleder/$id"
     //https://www.ekstern.dev.nav.no/arbeidgsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
 
     private fun NarmestelederBehovEntity.toDialog(): Dialog {

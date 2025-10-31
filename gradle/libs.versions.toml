@@ -22,7 +22,7 @@ database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", ver
 database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 database-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
-jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version = "jackson-datatype-jsr" }
+2.20.1310 = { module = "com.fasterxml.jackson.datatype:2.20.1310", version = "2.20.1" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 kafka-twothirteen = { module = "org.apache.kafka:kafka_2.13", version.ref = "kafka" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }

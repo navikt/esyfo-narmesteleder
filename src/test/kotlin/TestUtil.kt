@@ -15,7 +15,7 @@ import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.narmesteleder.domain.Linemanager
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient

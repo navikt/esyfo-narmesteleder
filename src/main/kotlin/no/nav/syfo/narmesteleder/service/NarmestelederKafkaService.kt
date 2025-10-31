@@ -1,8 +1,8 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.narmesteleder.domain.Linemanager
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerRevoke
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
+import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.kafka.ISykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse

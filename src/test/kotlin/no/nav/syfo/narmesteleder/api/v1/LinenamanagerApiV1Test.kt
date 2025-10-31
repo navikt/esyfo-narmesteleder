@@ -38,7 +38,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
+import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite

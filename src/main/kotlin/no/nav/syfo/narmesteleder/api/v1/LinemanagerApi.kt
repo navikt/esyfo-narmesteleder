@@ -16,6 +16,7 @@ import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService

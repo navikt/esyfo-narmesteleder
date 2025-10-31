@@ -168,7 +168,10 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.findBehovById(id) } returns original
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.PENDING) { employee ->
+                employee.nationalIdentificationNumber shouldBe original.sykmeldtFnr
+                employee.orgnumber shouldBe original.orgnummer
+            }
 
             coVerify(exactly = 1) {
                 nlDb.updateNlBehov(any())
@@ -192,7 +195,10 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.findBehovById(id) } returns original
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.PENDING) { employee ->
+                employee.nationalIdentificationNumber shouldBe original.sykmeldtFnr
+                employee.orgnumber shouldBe original.orgnummer
+            }
 
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
@@ -201,7 +207,7 @@ class NarmestelederServiceTest : FunSpec({
                             updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer &&
                             updated.sykmeldtFnr == original.sykmeldtFnr &&
                             updated.narmestelederFnr == defaultManager.nationalIdentificationNumber &&
-                            updated.behovStatus == BehovStatus.COMPLETED
+                            updated.behovStatus == BehovStatus.PENDING
                 })
             }
         }
@@ -217,7 +223,7 @@ class NarmestelederServiceTest : FunSpec({
                     defaultManager,
                     id,
                     BehovStatus.ERROR
-                )
+                ) { /* no-op */ }
             }
         }
     }

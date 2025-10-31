@@ -34,7 +34,6 @@ class NarmestelederService(
         toEmployeeLinemanagerRead(name)
     }
 
-
     private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity =
         nlDb.findBehovById(id)
             ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
@@ -52,7 +51,6 @@ class NarmestelederService(
         logger.info("Updated NarmestelederBehovEntity with id: $id with status: $behovStatus")
     }
 
-
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {
         val arbeidsforholdMap = aaregService.findOrgNumbersByPersonIdent(personIdent)
         return arbeidsforholdMap[orgNumber]
@@ -64,7 +62,7 @@ class NarmestelederService(
     suspend fun createNewNlBehov(nlBehov: LinemanagerRequirementWrite): UUID? {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
-            return null
+            return null // TODO: Fjern nullable når vi begynner å lagre
         }
 
         return nlDb.insertNlBehov(
@@ -81,7 +79,6 @@ class NarmestelederService(
             )
         ).also {
             logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
-
         }
     }
 }

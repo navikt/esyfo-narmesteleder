@@ -26,28 +26,29 @@ class LinemanagerRequirementRESTHandler(
         principal: Principal
     ) {
         try {
-            val existingRequirement = narmesteLederService.getNlBehovById(requirementId)
-            val linemanager = Linemanager(
-                employeeIdentificationNumber = existingRequirement.employeeIdentificationNumber,
-                orgnumber = existingRequirement.orgnumber,
-                manager = manager
-            )
-            val linemanagerActors = validationService.validateLinemanager(
-                linemanager,
-                principal
-            )
 
-            narmestelederKafkaService.sendNarmesteLederRelasjon(
-                linemanager,
-                linemanagerActors,
-                NlResponseSource.leder, // TODO: Hva skal denne stå til?
-            )
 
             narmesteLederService.updateNlBehov(
                 manager = manager,
                 requirementId = requirementId,
-                behovStatus = BehovStatus.COMPLETED
-            )
+                behovStatus = BehovStatus.PENDING
+            ) { employee ->
+                val linemanager = Linemanager(
+                    employeeIdentificationNumber = employee.nationalIdentificationNumber,
+                    orgnumber = employee.orgnumber,
+                    manager = manager
+                )
+                val linemanagerActors = validationService.validateLinemanager(
+                    linemanager,
+                    principal
+                )
+
+                narmestelederKafkaService.sendNarmesteLederRelasjon(
+                    linemanager,
+                    linemanagerActors,
+                    NlResponseSource.leder, // TODO: Hva skal denne stå til?
+                )
+            }
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Main entity not found", e)
         } catch (e: LinemanagerRequirementNotFoundException) {

@@ -1,0 +1,6 @@
+package no.nav.syfo.narmesteleder.domain
+
+data class Employee(
+    val nationalIdentificationNumber: String,
+    val orgnumber: String,
+)

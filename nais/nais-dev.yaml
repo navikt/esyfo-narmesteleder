@@ -108,6 +108,6 @@ spec:
     - name: ALTINN_TILGANGER_BASE_URL
       value: http://arbeidsgiver-altinn-tilganger.fager
     - name: FRONTEND_BASE_URL
-      value: https://www.ekstern.dev.nav.no/arbeidgsgiver
+      value: https://www.ekstern.dev.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
       value: https://esyfo-narmesteleder.ekstern.dev.nav.no

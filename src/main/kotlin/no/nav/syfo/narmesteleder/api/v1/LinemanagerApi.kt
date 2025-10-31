@@ -15,6 +15,7 @@ import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.exceptions.UnauthorizedException
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementUpdate
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -33,12 +34,12 @@ fun Route.registerLinemanagerApiV1(
         }
 
         post() {
-            val nlRelasjon = call.tryReceive<Linemanager>()
-            val nlAktorer = validationService.validateLinemanager(nlRelasjon, call.getMyPrincipal())
+            val create = call.tryReceive<Linemanager>()
+            val actors = validationService.validateLinemanager(create, call.getMyPrincipal())
 
             narmestelederKafkaService.sendNarmesteLederRelasjon(
-                nlRelasjon,
-                nlAktorer,
+                create,
+                actors,
                 NlResponseSource.LPS,
             )
 
@@ -48,23 +49,28 @@ fun Route.registerLinemanagerApiV1(
 
     route("/linemanager/revoke") {
         post() {
-            val avkreft = call.tryReceive<LinemanagerRevoke>()
-            val sykmeldt = validationService.validateLinemanagerRevoke(avkreft, call.getMyPrincipal())
+            val revoke = call.tryReceive<LinemanagerRevoke>()
+            val employee = validationService.validateLinemanagerRevoke(revoke, call.getMyPrincipal())
+
             narmestelederKafkaService.avbrytNarmesteLederRelation(
-                avkreft.copy(employeeIdentificationNumber = sykmeldt.nationalIdentificationNumber),
+                revoke.copy(employeeIdentificationNumber = employee.nationalIdentificationNumber),
                 NlResponseSource.LPS
             )
 
             call.respond(HttpStatusCode.Accepted)
         }
     }
-    
+
     route("/linemanager/requirement") {
         put("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")
-            val nlRelasjon = call.tryReceive<Linemanager>()
+            val linemanager = call.tryReceive<LinemanagerRequirementUpdate>()
 
-            linemanagerRequirementRestHandler.handleUpdatedRequirement(nlRelasjon, id, principal = call.getMyPrincipal())
+            linemanagerRequirementRestHandler.handleUpdatedRequirement(
+                linemanager,
+                id,
+                principal = call.getMyPrincipal()
+            )
 
             call.respond(HttpStatusCode.Accepted)
         }

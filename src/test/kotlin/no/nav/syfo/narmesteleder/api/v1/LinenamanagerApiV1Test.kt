@@ -40,8 +40,8 @@ import no.nav.syfo.narmesteleder.api.v1.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.domain.LinemanagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -423,7 +423,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
             val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
             val orgnummer = narmesteLederRelasjon.orgnumber
 
-            fun Linemanager.toNlBehovWrite(): LinemanagerWrite = LinemanagerWrite(
+            fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = orgnumber,
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
@@ -448,7 +448,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<LinemanagerRead>()
+                    val body = response.body<LinemanagerRequirementRead>()
                     body.id shouldBe requirementId
                     body.orgnumber shouldBe orgnummer
                     body.employeeIdentificationNumber shouldBe sykmeldtFnr

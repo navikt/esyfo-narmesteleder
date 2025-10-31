@@ -10,17 +10,18 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import java.util.UUID
+import java.util.*
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerUpdate
-import no.nav.syfo.narmesteleder.domain.LinemanagerWrite
-import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementUpdate
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
+import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
@@ -48,7 +49,7 @@ class NarmestelederServiceTest : FunSpec({
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
             val hovedenhetOrg = "987654321"
-            val write = LinemanagerWrite(
+            val write = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
@@ -76,7 +77,7 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
-            val write = LinemanagerWrite(
+            val write = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
@@ -94,7 +95,7 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
-            val write = LinemanagerWrite(
+            val write = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
@@ -145,7 +146,15 @@ class NarmestelederServiceTest : FunSpec({
         }
     }
 
-    test("updateNlBehov updates entity with new values and status") {
+    val defaultManager = Manager(
+        nationalIdentificationNumber = "01999999999",
+        firstName = "Ola",
+        lastName = "Nordmann",
+        mobile = "99999999",
+        email = "manager@epost.no"
+    )
+
+    test("updateNlBehov updates entity") {
         runTest(dispatcher) {
             val id = UUID.randomUUID()
             val original = NarmestelederBehovEntity(
@@ -157,29 +166,50 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
             )
-            val update = LinemanagerUpdate(
-                id = id,
-                employeeIdentificationNumber = "10987654321",
-                orgnumber = "333333333",
-                leaderIdentificationNumber = "01999999999",
+            val update = LinemanagerRequirementUpdate(
+                manager = defaultManager
             )
-            val newHovedenhet = "444444444"
 
             every { nlDb.findBehovById(id) } returns original
-            coEvery { aaregService.findOrgNumbersByPersonIdent(update.employeeIdentificationNumber) } returns mapOf(update.orgnumber to newHovedenhet)
             every { nlDb.updateNlBehov(any()) } returns Unit
 
-            service().updateNlBehov(update, BehovStatus.COMPLETED)
+            service().updateNlBehov(update, original.id!!, BehovStatus.PENDING)
 
-            coVerify { aaregService.findOrgNumbersByPersonIdent(update.employeeIdentificationNumber) }
+            coVerify(exactly = 1) {
+                nlDb.updateNlBehov(any())
+            }
+        }
+    }
+
+    test("updateNlBehov retains everything except manager social security number and status") {
+        runTest(dispatcher) {
+            val id = UUID.randomUUID()
+            val original = NarmestelederBehovEntity(
+                id = id,
+                orgnummer = "111111111",
+                hovedenhetOrgnummer = "222222222",
+                sykmeldtFnr = "12345678910",
+                narmestelederFnr = "01987654321",
+                leesahStatus = "ACTIVE",
+                behovStatus = BehovStatus.RECEIVED,
+            )
+            val update = LinemanagerRequirementUpdate(
+                manager = defaultManager
+            )
+
+            every { nlDb.findBehovById(id) } returns original
+            every { nlDb.updateNlBehov(any()) } returns Unit
+
+            service().updateNlBehov(update, original.id!!, BehovStatus.PENDING)
+
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
                     updated.id == id &&
-                        updated.orgnummer == update.orgnumber &&
-                        updated.hovedenhetOrgnummer == newHovedenhet &&
-                        updated.sykmeldtFnr == update.employeeIdentificationNumber &&
-                        updated.narmestelederFnr == update.leaderIdentificationNumber &&
-                        updated.behovStatus == BehovStatus.COMPLETED
+                            updated.orgnummer == original.orgnummer &&
+                            updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer &&
+                            updated.sykmeldtFnr == original.sykmeldtFnr &&
+                            updated.narmestelederFnr == update.manager.nationalIdentificationNumber &&
+                            updated.behovStatus == BehovStatus.PENDING
                 })
             }
         }
@@ -188,74 +218,16 @@ class NarmestelederServiceTest : FunSpec({
     test("updateNlBehov throws when behov not found") {
         runTest(dispatcher) {
             val id = UUID.randomUUID()
-            val update = LinemanagerUpdate(
-                id = id,
-                employeeIdentificationNumber = "10987654321",
-                orgnumber = "333333333",
-                leaderIdentificationNumber = "01999999999",
+            val update = LinemanagerRequirementUpdate(
+                manager = defaultManager
             )
             every { nlDb.findBehovById(id) } returns null
-            shouldThrow<LinemanagerRequirementNotFoundException> { service().updateNlBehov(update, BehovStatus.ERROR) }
-        }
-    }
-
-    test("updateNlBehov throws when hovedenhet not found for new org") {
-        runTest(dispatcher) {
-            val id = UUID.randomUUID()
-            val original = NarmestelederBehovEntity(
-                id = id,
-                orgnummer = "111111111",
-                hovedenhetOrgnummer = "222222222",
-                sykmeldtFnr = "12345678910",
-                narmestelederFnr = "01987654321",
-                leesahStatus = "ACTIVE",
-                behovStatus = BehovStatus.RECEIVED,
-            )
-            val update = LinemanagerUpdate(
-                id = id,
-                employeeIdentificationNumber = "10987654321",
-                orgnumber = "333333333",
-                leaderIdentificationNumber = "01999999999",
-            )
-            every { nlDb.findBehovById(id) } returns original
-            coEvery { aaregService.findOrgNumbersByPersonIdent(update.employeeIdentificationNumber) } returns emptyMap()
-            shouldThrow<HovedenhetNotFoundException> { service().updateNlBehov(update, BehovStatus.PENDING) }
-        }
-    }
-
-    test("updateNlBehov retains existing leesahStatus") {
-        runTest(dispatcher) {
-            val id = UUID.randomUUID()
-            val originalLeesahStatus = "DEAKTIVERT_ARBEIDSTAKER"
-            val original = NarmestelederBehovEntity(
-                id = id,
-                orgnummer = "111111111",
-                hovedenhetOrgnummer = "222222222",
-                sykmeldtFnr = "12345678910",
-                narmestelederFnr = "01987654321",
-                leesahStatus = originalLeesahStatus,
-                behovStatus = BehovStatus.RECEIVED,
-            )
-            val update = LinemanagerUpdate(
-                id = id,
-                employeeIdentificationNumber = "10987654321",
-                orgnumber = "333333333",
-                leaderIdentificationNumber = "01999999999",
-            )
-            val newHovedenhet = "444444444"
-
-            every { nlDb.findBehovById(id) } returns original
-            coEvery { aaregService.findOrgNumbersByPersonIdent(update.employeeIdentificationNumber) } returns mapOf(update.orgnumber to newHovedenhet)
-            every { nlDb.updateNlBehov(any()) } returns Unit
-
-            service().updateNlBehov(update, BehovStatus.PENDING)
-
-            coVerify {
-                nlDb.updateNlBehov(match { updated ->
-                    updated.id == id &&
-                        updated.leesahStatus == originalLeesahStatus &&
-                        updated.behovStatus == BehovStatus.PENDING
-                })
+            shouldThrow<LinemanagerRequirementNotFoundException> {
+                service().updateNlBehov(
+                    update,
+                    id,
+                    BehovStatus.ERROR
+                )
             }
         }
     }

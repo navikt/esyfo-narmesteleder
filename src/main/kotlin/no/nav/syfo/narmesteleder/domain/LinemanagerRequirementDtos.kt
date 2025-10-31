@@ -2,21 +2,18 @@ package no.nav.syfo.narmesteleder.domain
 
 import java.util.UUID
 
-data class LinemanagerWrite(
+data class LinemanagerRequirementWrite(
     val employeeIdentificationNumber: String,
     val orgnumber: String,
     val managerIdentificationNumber: String,
     val leesahStatus: String,
 )
 
-data class LinemanagerUpdate(
-    val id: UUID,
-    val employeeIdentificationNumber: String,
-    val orgnumber: String,
-    val leaderIdentificationNumber: String,
+data class LinemanagerRequirementUpdate(
+    val manager: Manager,
 )
 
-data class LinemanagerRead(
+data class LinemanagerRequirementRead(
     val id: UUID,
     val employeeIdentificationNumber: String,
     val orgnumber: String,

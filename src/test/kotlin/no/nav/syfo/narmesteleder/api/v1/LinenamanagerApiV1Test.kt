@@ -43,6 +43,7 @@ import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.api.v1.REVOKE_PATH
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer

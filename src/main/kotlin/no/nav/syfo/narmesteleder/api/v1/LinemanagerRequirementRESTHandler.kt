@@ -26,12 +26,10 @@ class LinemanagerRequirementRESTHandler(
         principal: Principal
     ) {
         try {
-
-
             narmesteLederService.updateNlBehov(
                 manager = manager,
                 requirementId = requirementId,
-                behovStatus = BehovStatus.PENDING
+                behovStatus = BehovStatus.COMPLETED
             ) { employee ->
                 val linemanager = Linemanager(
                     employeeIdentificationNumber = employee.nationalIdentificationNumber,

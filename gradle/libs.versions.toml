@@ -15,7 +15,7 @@ mockk = "1.14.6"
 postgresql = "42.7.8"
 testcontainers = "1.21.3"
 logstashEncoder = "9.0"
-coroutines-test = "1.9.0"
+coroutines-test = "1.10.2"
 
 [libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }

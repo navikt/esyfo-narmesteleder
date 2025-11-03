@@ -9,6 +9,10 @@ import kotlinx.coroutines.withContext
 import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.util.logger
 
+/**
+ * Leader election implementation that queries endpoint in a sidecar
+ * to determine if the current instance/pod is the leader or not
+ */
 class LeaderElection(
     private val httpClient: HttpClient,
     private val electorPath: String,

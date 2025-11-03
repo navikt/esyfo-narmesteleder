@@ -56,7 +56,7 @@ class DialogportenService(
         }
     }
 
-    private fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
+    private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
 
     private fun createApiLink(id: UUID): String =
         "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"

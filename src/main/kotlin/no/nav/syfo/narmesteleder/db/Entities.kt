@@ -14,9 +14,7 @@ data class NarmestelederBehovEntity(
     val leesahStatus: String,
     val behovStatus: BehovStatus = BehovStatus.RECEIVED,
     val dialogId: UUID? = null,
-) {
-    companion object
-}
+)
 
 fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity =
     NarmestelederBehovEntity(

@@ -1,0 +1,141 @@
+openapi: 3.0.3
+info:
+  title: Line Manager API
+  version: 1.0.0
+  description: API for managing line manager relationships (nærmeste leder) and requirements.
+servers:
+  - url: https://esyfo-narmesteleder.intern.dev.nav.no
+paths:
+  /linemanager:
+    post:
+      summary: Create or update the line manager relationship
+      description: Sends a line manager relationship event to Kafka after validation.
+      tags: [Linemanager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Linemanager'
+      responses:
+        '202':
+          description: Accepted and will be processed asynchronously.
+        '400':
+          description: Validation failed.
+        '401':
+          description: Unauthorized.
+  /linemanager/revoke:
+    post:
+      summary: Revoke an existing line manager relationship
+      tags: [Linemanager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinemanagerRevoke'
+      responses:
+        '202':
+          description: Accepted revocation.
+        '400':
+          description: Validation failed.
+        '401':
+          description: Unauthorized.
+  /linemanager/requirement/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: Update a line manager requirement
+      tags: [Requirement]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Manager'
+      responses:
+        '202':
+          description: Accepted requirement update.
+        '400':
+          description: Validation failed.
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Requirement not found.
+    get:
+      summary: Get line manager requirement by id
+      tags: [Requirement]
+      responses:
+        '200':
+          description: Requirement found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinemanagerRequirement'
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Requirement not found.
+components:
+  schemas:
+    Linemanager:
+      type: object
+      description: Line manager relation creation payload.
+      properties:
+        employeeIdentificationNumber:
+          type: string
+          description: National identification number of the employee.
+        lineManagerIdentificationNumber:
+          type: string
+          description: National identification number of the line manager.
+        companyNumber:
+          type: string
+          description: Organization number of the company.
+      required:
+        - employeeIdentificationNumber
+        - lineManagerIdentificationNumber
+        - companyNumber
+    LinemanagerRevoke:
+      type: object
+      description: Revocation payload for an existing line manager relationship.
+      properties:
+        employeeIdentificationNumber:
+          type: string
+        companyNumber:
+          type: string
+      required:
+        - employeeIdentificationNumber
+        - companyNumber
+    Manager:
+      type: object
+      description: Line manager object used when updating a requirement.
+      properties:
+        identificationNumber:
+          type: string
+        companyNumber:
+          type: string
+      required:
+        - identificationNumber
+        - companyNumber
+    LinemanagerRequirement:
+      type: object
+      description: A requirement object for a line manager relationship.
+      properties:
+        id:
+          type: string
+          format: uuid
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - active
+        - createdAt
+

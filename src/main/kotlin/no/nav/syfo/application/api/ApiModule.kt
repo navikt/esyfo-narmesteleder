@@ -30,8 +30,12 @@ fun Application.configureRouting() {
         registerPodApi(applicationState, database)
         registerMetricApi()
         registerApiV1(narmestelederKafkaService, texasHttpClient, validationService, linemanagerRequirementRESTHandler)
-        get("/") {
-            call.respondText("Hello World!")
+        get("/") { call.respondText("Hello World!") }
+        // Serve static OpenAPI YAML
+        get("/openapi.yaml") {
+            val resource = this::class.java.classLoader.getResource("openapi/linemanager-v1.yaml")
+            val yaml = resource?.readText() ?: "openapi: 3.0.3" // fallback minimal
+            call.respondText(yaml)
         }
     }
 }

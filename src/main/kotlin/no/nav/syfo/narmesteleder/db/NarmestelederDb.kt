@@ -3,6 +3,7 @@ package no.nav.syfo.narmesteleder.db
 import java.sql.ResultSet
 import java.util.*
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
 
@@ -13,7 +14,10 @@ interface INarmestelederDb {
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
 }
 
-class NarmestelederDb(private val database: DatabaseInterface, private val dispatcher: CoroutineDispatcher) :
+class NarmestelederDb(
+    private val database: DatabaseInterface,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
+) :
     INarmestelederDb {
     override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): UUID = withContext(dispatcher) {
         return@withContext database.connection.use { connection ->
@@ -22,7 +26,7 @@ class NarmestelederDb(private val database: DatabaseInterface, private val dispa
                     """
                            INSERT INTO nl_behov(orgnummer, hovedenhet_orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status) 
                            VALUES (?, ?, ?, ?, ?, ?) RETURNING id;
-                        """
+                        """.trimIndent()
                 ).use { preparedStatement ->
                     preparedStatement.setString(1, nlBehov.orgnummer)
                     preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
@@ -51,7 +55,7 @@ class NarmestelederDb(private val database: DatabaseInterface, private val dispa
                        UPDATE nl_behov
                        SET orgnummer = ?, hovedenhet_orgnummer = ?, sykemeldt_fnr = ?, narmeste_leder_fnr = ?, behov_status = ?
                        WHERE id = ?;
-                    """
+                    """.trimIndent()
                 ).use { preparedStatement ->
                     preparedStatement.setString(1, nlBehov.orgnummer)
                     preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
@@ -75,7 +79,7 @@ class NarmestelederDb(private val database: DatabaseInterface, private val dispa
                            SELECT id, orgnummer, hovedenhet_orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status
                            FROM nl_behov
                            WHERE id = ?;
-                        """
+                        """.trimIndent()
                 ).use { preparedStatement ->
                     preparedStatement.setObject(1, id)
 

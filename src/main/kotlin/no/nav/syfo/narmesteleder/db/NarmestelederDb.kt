@@ -62,16 +62,17 @@ class NarmestelederDb(
                             behov_status         = ?,
                             dialog_id            = ?
                             WHERE id = ?;
-                    """
+                    """.trimIndent()
                 ).use { preparedStatement ->
-                    preparedStatement.setString(1, nlBehov.orgnummer)
-                    preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
-                    preparedStatement.setString(3, nlBehov.sykmeldtFnr)
-                    preparedStatement.setString(4, nlBehov.narmestelederFnr)
-                    preparedStatement.setObject(5, nlBehov.behovStatus, java.sql.Types.OTHER)
-                    preparedStatement.setObject(6, nlBehov.dialogId)
-                    preparedStatement.setObject(7, nlBehov.id)
-
+                    with(nlBehov) {
+                        preparedStatement.setString(1, orgnummer)
+                        preparedStatement.setString(2, hovedenhetOrgnummer)
+                        preparedStatement.setString(3, sykmeldtFnr)
+                        preparedStatement.setString(4, narmestelederFnr)
+                        preparedStatement.setObject(5, behovStatus, java.sql.Types.OTHER)
+                        preparedStatement.setObject(6, dialogId)
+                        preparedStatement.setObject(7, id)
+                    }
                     preparedStatement.executeUpdate()
                 }.also {
                     connection.commit()

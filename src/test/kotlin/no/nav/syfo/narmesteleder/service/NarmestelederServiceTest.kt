@@ -7,7 +7,6 @@ import io.mockk.CapturingSlot
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import java.util.*
@@ -140,7 +139,7 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val id = UUID.randomUUID()
             coEvery { nlDb.findBehovById(id) } returns null
-            shouldThrow<LinemanagerRequirementNotFoundException> { service().getNlBehovById(id) }
+            shouldThrow<LinemanagerRequirementNotFoundException> { service().getLinemanagerRequirementReadById(id) }
         }
     }
 

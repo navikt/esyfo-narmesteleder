@@ -47,7 +47,6 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             persistLeesahNlBehov = true,
             aaregService = aaregServiceSpyk,
             pdlService = pdlServiceSpyk,
-            ioDispatcher = dispatcher,
         )
     )
     val lnReqRESTHandlerSpyk = spyk(

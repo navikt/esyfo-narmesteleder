@@ -77,8 +77,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
         nlDb = fakeRepo,
         persistLeesahNlBehov = true,
         aaregService = aaregService,
-        pdlService = pdlService,
-        ioDispatcher = Dispatchers.Default,
+        pdlService = pdlService
     )
     val nlBehovHandler = LinemanagerRequirementRESTHandler(
         narmesteLederService = narmesteLederService,

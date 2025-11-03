@@ -39,8 +39,7 @@ class NarmestelederServiceTest : FunSpec({
         nlDb = nlDb,
         persistLeesahNlBehov = persist,
         aaregService = aaregService,
-        pdlService = pdlService,
-        ioDispatcher = dispatcher,
+        pdlService = pdlService
     )
 
     test("createNewNlBehov persists entity with resolved hovedenhet") {
@@ -57,7 +56,7 @@ class NarmestelederServiceTest : FunSpec({
             val captured: CapturingSlot<NarmestelederBehovEntity> = slot()
 
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns mapOf(underenhetOrg to hovedenhetOrg)
-            every { nlDb.insertNlBehov(capture(captured)) } answers { UUID.randomUUID() }
+            coEvery { nlDb.insertNlBehov(capture(captured)) } answers { UUID.randomUUID() }
 
             service().createNewNlBehov(write)
 
@@ -83,7 +82,7 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
             )
 
-            every { nlDb.insertNlBehov(any()) } throws AssertionError("insertNlBehov should not be called when persistLeesahNlBehov=false")
+            coEvery { nlDb.insertNlBehov(any()) } throws AssertionError("insertNlBehov should not be called when persistLeesahNlBehov=false")
             coEvery { aaregService.findOrgNumbersByPersonIdent(any()) } throws AssertionError("AaregService should not be called when persistLeesahNlBehov=false")
 
             service(persist = false).createNewNlBehov(write)
@@ -119,7 +118,7 @@ class NarmestelederServiceTest : FunSpec({
                 behovStatus = BehovStatus.RECEIVED,
             )
             val navn = Navn(fornavn = "Ola", mellomnavn = null, etternavn = "Nordmann")
-            every { nlDb.findBehovById(id) } returns entity
+            coEvery { nlDb.findBehovById(id) } returns entity
             coEvery { pdlService.getPersonFor(entity.sykmeldtFnr) } returns Person(
                 name = navn,
                 nationalIdentificationNumber = entity.sykmeldtFnr
@@ -140,7 +139,7 @@ class NarmestelederServiceTest : FunSpec({
     test("getNlBehovById throws when missing") {
         runTest(dispatcher) {
             val id = UUID.randomUUID()
-            every { nlDb.findBehovById(id) } returns null
+            coEvery { nlDb.findBehovById(id) } returns null
             shouldThrow<LinemanagerRequirementNotFoundException> { service().getNlBehovById(id) }
         }
     }
@@ -166,8 +165,8 @@ class NarmestelederServiceTest : FunSpec({
                 behovStatus = BehovStatus.RECEIVED,
             )
 
-            every { nlDb.findBehovById(id) } returns original
-            every { nlDb.updateNlBehov(any()) } returns Unit
+            coEvery { nlDb.findBehovById(id) } returns original
+            coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
             service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
 
@@ -190,8 +189,8 @@ class NarmestelederServiceTest : FunSpec({
                 behovStatus = BehovStatus.RECEIVED,
             )
 
-            every { nlDb.findBehovById(id) } returns original
-            every { nlDb.updateNlBehov(any()) } returns Unit
+            coEvery { nlDb.findBehovById(id) } returns original
+            coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
             service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
 
@@ -212,7 +211,7 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val id = UUID.randomUUID()
 
-            every { nlDb.findBehovById(id) } returns null
+            coEvery { nlDb.findBehovById(id) } returns null
             shouldThrow<LinemanagerRequirementNotFoundException> {
                 service().updateNlBehov(
                     defaultManager,

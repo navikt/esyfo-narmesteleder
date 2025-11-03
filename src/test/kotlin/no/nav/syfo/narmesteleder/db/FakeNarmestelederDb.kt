@@ -7,14 +7,14 @@ class FakeNarmestelederDb : INarmestelederDb {
     private val store = ConcurrentHashMap<UUID, NarmestelederBehovEntity>()
     private val order = mutableListOf<UUID>()
 
-    override fun insertNlBehov(nlBehov: NarmestelederBehovEntity): UUID {
+    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): UUID {
         val id = nlBehov.id ?: UUID.randomUUID()
         store[id] = nlBehov.copy(id = id)
         order += id
         return id
     }
 
-    override fun updateNlBehov(nlBehov: NarmestelederBehovEntity) {
+    override suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity) {
         val id = nlBehov.id ?: error("Cannot update entity without id")
         val existing = store[id] ?: return
         val toStore = existing.copy(
@@ -27,7 +27,7 @@ class FakeNarmestelederDb : INarmestelederDb {
         store[id] = toStore
     }
 
-    override fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
+    override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
 
     fun lastId(): UUID? = order.lastOrNull()
     fun findAll(): List<NarmestelederBehovEntity> = order.mapNotNull { store[it] }

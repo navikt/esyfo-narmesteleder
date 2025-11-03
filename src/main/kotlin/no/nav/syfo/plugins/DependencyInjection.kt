@@ -85,7 +85,7 @@ private fun databaseModule() = module {
         )
     }
     single<INarmestelederDb> {
-        NarmestelederDb(get())
+        NarmestelederDb(get(), Dispatchers.IO)
     }
 }
 
@@ -134,8 +134,7 @@ private fun servicesModule() = module {
             get(),
             env().clientProperties.persistLeesahNlBehov,
             get(),
-            get(),
-            Dispatchers.IO,
+            get()
         )
     }
     single {

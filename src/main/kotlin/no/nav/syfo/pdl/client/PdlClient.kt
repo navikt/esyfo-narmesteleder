@@ -16,7 +16,7 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
 
-private const val BEHANDLINGSNUMMER_DIGITAL_OPPFOLGINGSPLAN = "B506"
+private const val BEHANDLINGSNUMMER_NARMESTELEDER = "B506"
 private const val PDL_BEHANDLINGSNUMMER_HEADER = "behandlingsnummer"
 
 @Language("GraphQL")
@@ -70,7 +70,7 @@ class PdlClient(
                 .post(pdlBaseUrl) {
                     setBody(getPersonRequest)
                     header(HttpHeaders.Authorization, "Bearer $token")
-                    header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_DIGITAL_OPPFOLGINGSPLAN)
+                    header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_NARMESTELEDER)
                     header(HttpHeaders.ContentType, "application/json")
                 }
                 .body<GetPersonResponse>()

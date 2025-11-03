@@ -24,13 +24,16 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
+const val LINEMANAGER_API_PATH = "/linemanager"
+const val REVOKE_PATH = "$LINEMANAGER_API_PATH/revoke"
+const val RECUIREMENT_PATH = "$LINEMANAGER_API_PATH/requirement"
 fun Route.registerLinemanagerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler
 ) {
-    route("/linemanager") {
+    route(LINEMANAGER_API_PATH) {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
             client = texasHttpClient
         }
@@ -49,7 +52,7 @@ fun Route.registerLinemanagerApiV1(
         }
     }
 
-    route("/linemanager/revoke") {
+    route(REVOKE_PATH) {
         post() {
             val revoke = call.tryReceive<LinemanagerRevoke>()
             val employee = validationService.validateLinemanagerRevoke(revoke, call.getMyPrincipal())
@@ -62,8 +65,8 @@ fun Route.registerLinemanagerApiV1(
             call.respond(HttpStatusCode.Accepted)
         }
     }
-
-    route("/linemanager/requirement") {
+    
+    route(RECUIREMENT_PATH) {
         put("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")
             val linemanager = call.tryReceive<Manager>()

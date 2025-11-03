@@ -6,12 +6,14 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 
 class NarmestelederGeneratedIDException(message: String) : RuntimeException(message)
 interface INarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): UUID
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
+    suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity>
 }
 
 class NarmestelederDb(
@@ -52,18 +54,25 @@ class NarmestelederDb(
             connection
                 .prepareStatement(
                     """
-                       UPDATE nl_behov
-                       SET orgnummer = ?, hovedenhet_orgnummer = ?, sykemeldt_fnr = ?, narmeste_leder_fnr = ?, behov_status = ?
-                       WHERE id = ?;
+                        UPDATE nl_behov
+                        SET orgnummer            = ?,
+                            hovedenhet_orgnummer = ?,
+                            sykemeldt_fnr        = ?,
+                            narmeste_leder_fnr   = ?,
+                            behov_status         = ?,
+                            dialog_id            = ?
+                            WHERE id = ?;
                     """.trimIndent()
                 ).use { preparedStatement ->
-                    preparedStatement.setString(1, nlBehov.orgnummer)
-                    preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
-                    preparedStatement.setString(3, nlBehov.sykmeldtFnr)
-                    preparedStatement.setString(4, nlBehov.narmestelederFnr)
-                    preparedStatement.setObject(5, nlBehov.behovStatus, java.sql.Types.OTHER)
-                    preparedStatement.setObject(6, nlBehov.id)
-
+                    with(nlBehov) {
+                        preparedStatement.setString(1, orgnummer)
+                        preparedStatement.setString(2, hovedenhetOrgnummer)
+                        preparedStatement.setString(3, sykmeldtFnr)
+                        preparedStatement.setString(4, narmestelederFnr)
+                        preparedStatement.setObject(5, behovStatus, java.sql.Types.OTHER)
+                        preparedStatement.setObject(6, dialogId)
+                        preparedStatement.setObject(7, id)
+                    }
                     preparedStatement.executeUpdate()
                 }.also {
                     connection.commit()
@@ -76,10 +85,8 @@ class NarmestelederDb(
             connection
                 .prepareStatement(
                     """
-                           SELECT id, orgnummer, hovedenhet_orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status
-                           FROM nl_behov
-                           WHERE id = ?;
-                        """.trimIndent()
+                       SELECT * FROM nl_behov WHERE id = ?;
+                    """.trimIndent()
                 ).use { preparedStatement ->
                     preparedStatement.setObject(1, id)
 
@@ -90,6 +97,29 @@ class NarmestelederDb(
                             null
                         }
                     }
+                }
+        }
+    }
+    override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> = withContext(dispatcher) {
+        return@withContext database.connection.use { connection ->
+            connection
+                .prepareStatement(
+                    """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE behov_status = ?
+                        AND created < now() - interval '2 minutes'
+                        order by created
+                        LIMIT 100
+                        """.trimIndent()
+                ).use { preparedStatement ->
+                    preparedStatement.setObject(1, status, java.sql.Types.OTHER)
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                    }
+                    nlBehov
                 }
         }
     }

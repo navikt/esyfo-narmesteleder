@@ -19,6 +19,11 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
+import no.nav.syfo.application.leaderelection.LeaderElection
+import no.nav.syfo.dialogporten.client.DialogportenClient
+import no.nav.syfo.dialogporten.client.FakeDialogportenClient
+import no.nav.syfo.dialogporten.service.DialogportenService
+import no.nav.syfo.dialogporten.task.SendDialogTask
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -148,7 +153,15 @@ private fun servicesModule() = module {
         )
     }
 
+    single {
+        if (isLocalEnv()) FakeDialogportenClient() else DialogportenClient(
+            texasHttpClient = get(),
+            httpClient = get(),
+            baseUrl = env().clientProperties.dialogportenBasePath,
+        )
+    }
     single { AltinnTilgangerService(get()) }
+    single { LeaderElection(get(), env().otherEnvironment.electorPath) }
     single {
         val sykemeldingNLKafkaProducer = if (isLocalEnv()) SykemeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(
@@ -160,6 +173,8 @@ private fun servicesModule() = module {
     single {
         ValidationService(get(), get(), get(), get())
     }
+    single { DialogportenService(get(), get(), env().otherEnvironment) }
+    single { SendDialogTask(get(),get()) }
 }
 
 private fun Scope.env() = get<Environment>()

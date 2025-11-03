@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.db
 
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 
 class FakeNarmestelederDb : INarmestelederDb {
     private val store = ConcurrentHashMap<UUID, NarmestelederBehovEntity>()
@@ -25,6 +26,10 @@ class FakeNarmestelederDb : INarmestelederDb {
             behovStatus = nlBehov.behovStatus,
         )
         store[id] = toStore
+    }
+
+    override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> {
+        return store.values.filter { it.behovStatus == status }
     }
 
     override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]

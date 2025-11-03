@@ -24,7 +24,6 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
 import java.util.*
-import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -60,7 +59,7 @@ import no.nav.syfo.texas.client.TexasHttpClient
 class LinenamanagerApiV1Test : DescribeSpec({
     val pdlService = PdlService(FakePdlClient())
     val texasHttpClientMock = mockk<TexasHttpClient>()
-    val narmesteLederRelasjon = narmesteLederRelasjon()
+    val narmesteLederRelasjon = linemanager()
     val fakeAaregClient = FakeAaregClient()
     val aaregService = AaregService(fakeAaregClient)
     val narmestelederKafkaService =
@@ -229,7 +228,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
-                        setBody(narmesteLederRelasjon())
+                        setBody(linemanager())
                         bearerAuth(createMockToken(ident = "", issuer = "invalid"))
                     }
 
@@ -270,7 +269,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             eq(narmesteLederRelasjon),
                             linemanagerActors = any<LinemanagerActors>(),
-                            eq(NlResponseSource.LPS),
+                            eq(NlResponseSource.PERSONALLEDER),
                         )
                     }
                     coVerify(exactly = 1) {
@@ -327,7 +326,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
 
     describe("POST /linemanager/revoke") {
         it("should return 202 Accepted for valid payload") {
-            val narmesteLederAvkreft = narmesteLederAvkreft()
+            val narmesteLederAvkreft = linemanagerRevoke()
             withTestApplication {
                 // Arrange
                 texasHttpClientMock.defaultMocks(
@@ -377,7 +376,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
-                val narmesteLederAvkreft = narmesteLederAvkreft()
+                val narmesteLederAvkreft = linemanagerRevoke()
                 // Act
                 val response = client.post("$API_V1_PATH/$REVOKE_PATH") {
                     contentType(ContentType.Application.Json)

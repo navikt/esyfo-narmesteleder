@@ -503,7 +503,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     )
                     fakeAaregClient.arbeidsForholdForIdent[manager.nationalIdentificationNumber] =
                         listOf(orgnummer to orgnummer)
-                    )
+
                     val response = client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
                         contentType(ContentType.Application.Json)
                         setBody(manager)
@@ -514,8 +514,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             match { linemanager ->
                                 linemanager.employeeIdentificationNumber == sykmeldtFnr &&
-                                        linemanager.orgnumber == orgnummer &&
-                                        linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
+                                    linemanager.orgnumber == orgnummer &&
+                                    linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
                             }, any(), any()
                         )
                     }

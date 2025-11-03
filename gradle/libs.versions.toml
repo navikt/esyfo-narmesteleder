@@ -2,7 +2,7 @@
 datafaker = "2.5.3"
 flyway = "11.15.0"
 hikaricp = "7.0.2"
-jackson-datatype-jsr = "2.20.0"
+jackson-datatype-jsr = "2.20.1"
 kafka = "4.1.0"
 koin = "4.1.1"
 kotest-extensions = "2.0.0"
@@ -22,7 +22,7 @@ database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", ver
 database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 database-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
-jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version = "jackson-datatype-jsr" }
+jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson-datatype-jsr" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 kafka-twothirteen = { module = "org.apache.kafka:kafka_2.13", version.ref = "kafka" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }

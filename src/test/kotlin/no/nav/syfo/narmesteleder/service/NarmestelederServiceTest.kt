@@ -168,11 +168,7 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.findBehovById(id) } returns original
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED) { employee ->
-                employee.nationalIdentificationNumber shouldBe original.sykmeldtFnr
-                employee.orgnumber shouldBe original.orgnummer
-            }
-
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
             coVerify(exactly = 1) {
                 nlDb.updateNlBehov(any())
             }
@@ -195,10 +191,7 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.findBehovById(id) } returns original
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED) { employee ->
-                employee.nationalIdentificationNumber shouldBe original.sykmeldtFnr
-                employee.orgnumber shouldBe original.orgnummer
-            }
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
 
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
@@ -222,8 +215,8 @@ class NarmestelederServiceTest : FunSpec({
                 service().updateNlBehov(
                     defaultManager,
                     id,
-                    BehovStatus.ERROR
-                ) { /* no-op */ }
+                    BehovStatus.COMPLETED
+                )
             }
         }
     }

@@ -23,16 +23,18 @@ class NarmestelederService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun getNlBehovById(id: UUID): LinemanagerRequirementRead = with(findBehovEntityById(id)) {
-        val details = pdlService.getPersonFor(sykmeldtFnr)
-        // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
-        val name = Name(
-            firstName = details.name.fornavn,
-            lastName = details.name.etternavn,
-            middleName = details.name.mellomnavn,
-        )
-        toEmployeeLinemanagerRead(name)
-    }
+    suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead =
+            with(findBehovEntityById(id)) {
+                val details = pdlService.getPersonFor(sykmeldtFnr)
+                // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
+                val name = Name(
+                    firstName = details.name.fornavn,
+                    lastName = details.name.etternavn,
+                    middleName = details.name.mellomnavn,
+                )
+                toEmployeeLinemanagerRead(name)
+            }
+
 
     private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity =
         nlDb.findBehovById(id)
@@ -80,6 +82,14 @@ class NarmestelederService(
         ).also {
             logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
         }
+    }
+
+    suspend fun getEmployeeByRequirementId(id: UUID): Employee {
+        val behovEntity = findBehovEntityById(id)
+        return Employee(
+            nationalIdentificationNumber = behovEntity.sykmeldtFnr,
+            orgnumber = behovEntity.orgnummer
+        )
     }
 }
 

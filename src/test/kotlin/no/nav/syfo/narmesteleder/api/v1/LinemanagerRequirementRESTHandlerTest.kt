@@ -65,7 +65,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
             servicesWrapper.narmestelederServiceSpyk.updateNlBehov(match {
                 it.nationalIdentificationNumber == defaultManager.nationalIdentificationNumber &&
                         it.nationalIdentificationNumber != defaultRequirement.narmestelederFnr
-            }, match { it == id }, match { it == BehovStatus.COMPLETED }, any())
+            }, match { it == id }, match { it == BehovStatus.COMPLETED })
         }
         coVerify(exactly = 1) {
             servicesWrapper.fakeDbSpyk.updateNlBehov(match {

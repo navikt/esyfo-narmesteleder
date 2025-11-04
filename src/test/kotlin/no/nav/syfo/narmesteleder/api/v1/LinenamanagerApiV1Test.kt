@@ -248,6 +248,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         acr = "Level4",
                         pid = callerPid
                     )
+                    fakeAltinnTilgangerClient.usersWithAccess.clear()
                     fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.employeeIdentificationNumber,

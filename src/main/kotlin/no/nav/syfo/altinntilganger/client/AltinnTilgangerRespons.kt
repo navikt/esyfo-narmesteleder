@@ -1,10 +1,11 @@
 package no.nav.syfo.altinntilganger.client
 
 data class AltinnTilgangerResponse(
-    val isError: Boolean,
+    val isError: Boolean?,
     val hierarki: List<AltinnTilgang>,
     val orgNrTilTilganger: Map<String, Set<String>>,
     val tilgangTilOrgNr: Map<String, Set<String>>,
+    val error: Boolean? = null,
 )
 
 data class AltinnTilgang(

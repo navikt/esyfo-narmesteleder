@@ -56,6 +56,11 @@ class DialogportenService(
         }
     }
 
+    suspend fun updateDialogStatus(dialogId: String, status: DialogStatus) {
+        dialogportenClient.updateDialogStatus(dialogId, status)
+
+    }
+
     private fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
 
     private fun createApiLink(id: UUID): String =

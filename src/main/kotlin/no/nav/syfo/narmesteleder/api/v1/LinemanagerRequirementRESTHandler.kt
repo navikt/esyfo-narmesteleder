@@ -3,6 +3,7 @@ package no.nav.syfo.narmesteleder.api.v1
 import java.util.*
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.dialogporten.service.DialogportenService
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
@@ -18,7 +19,8 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 class LinemanagerRequirementRESTHandler(
     private val narmesteLederService: NarmestelederService,
     private val validationService: ValidationService,
-    private val narmestelederKafkaService: NarmestelederKafkaService
+    private val narmestelederKafkaService: NarmestelederKafkaService,
+    private val dialogportenService: DialogportenService,
 ) {
     suspend fun handleUpdatedRequirement(
         manager: Manager,
@@ -48,6 +50,7 @@ class LinemanagerRequirementRESTHandler(
                 requirementId = requirementId,
                 behovStatus = BehovStatus.COMPLETED
             )
+
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Main entity not found", e)
         } catch (e: LinemanagerRequirementNotFoundException) {

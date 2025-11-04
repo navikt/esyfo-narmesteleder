@@ -1,5 +1,6 @@
 package no.nav.syfo.altinntilganger.client
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
@@ -62,6 +63,8 @@ class AltinnTilgangerClient(
             val response = httpClient.post("$baseUrl/altinn-tilganger") {
                 bearerAuth(oboToken)
             }.body<AltinnTilgangerResponse>()
+            // TODO: Remove logging of full response after inspection
+            logger.info(ObjectMapper().writeValueAsString(response))
             return response
         } catch (e: ResponseException) {
             logger.error("Feil ved henting av altinn-tilganger, status: ${e.response.status}", e)

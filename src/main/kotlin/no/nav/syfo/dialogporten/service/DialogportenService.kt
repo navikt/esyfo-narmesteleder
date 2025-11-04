@@ -63,7 +63,7 @@ class DialogportenService(
 
     private fun createGuiLink(id: UUID): String =
         "${otherEnvironmentProperties.frontendBaseUrl}/ansatte/narmesteleder/$id"
-    //https://www.ekstern.dev.nav.no/arbeidgsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
+    //https://www.ekstern.dev.nav.no/arbeidsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
 
     private fun NarmestelederBehovEntity.toDialog(): Dialog {
         require(id != null) { "Cannot create Dialogporten Dialog without id" }

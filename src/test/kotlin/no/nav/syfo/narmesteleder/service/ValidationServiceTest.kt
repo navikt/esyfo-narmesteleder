@@ -6,8 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.spyk
-import narmesteLederAvkreft
-import narmesteLederRelasjon
+import linemanagerRevoke
+import linemanager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
@@ -44,7 +44,7 @@ class ValidationServiceTest : DescribeSpec({
             // Arrange
             val fnr = altinnTilgangerClient.usersWithAccess.first().first
             val principal = UserPrincipal(fnr, "token")
-            val narmestelederRelasjonerWrite = narmesteLederRelasjon().copy(employeeIdentificationNumber = fnr)
+            val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
@@ -66,7 +66,7 @@ class ValidationServiceTest : DescribeSpec({
         it("should not call AltinnTilgangerService when principal is OrganizationPrincipal") {
             // Arrange
             val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
-            val narmestelederRelasjonerWrite = narmesteLederRelasjon().copy(
+            val narmestelederRelasjonerWrite = linemanager().copy(
                 employeeIdentificationNumber = userWithAccess.first,
                 orgnumber = userWithAccess.second
             )
@@ -101,7 +101,7 @@ class ValidationServiceTest : DescribeSpec({
             // Arrange
             val fnr = altinnTilgangerClient.usersWithAccess.first().first
             val principal = UserPrincipal(fnr, "token")
-            val narmesteLederAvkreft = narmesteLederAvkreft().copy(employeeIdentificationNumber = fnr)
+            val narmesteLederAvkreft = linemanagerRevoke().copy(employeeIdentificationNumber = fnr)
 
             // Act
             shouldThrow<ApiErrorException.ForbiddenException> {
@@ -123,7 +123,7 @@ class ValidationServiceTest : DescribeSpec({
         it("should not call AltinnTilgangerService when principal is OrganizationPrincipal") {
             // Arrange
             val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
-            val narmesteLederAvkreft = narmesteLederAvkreft().copy(
+            val narmesteLederAvkreft = linemanagerRevoke().copy(
                 employeeIdentificationNumber = userWithAccess.first,
                 orgnumber = userWithAccess.second
             )

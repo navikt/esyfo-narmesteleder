@@ -35,13 +35,13 @@ fun manager(): Manager = Manager(
     email = faker.internet().emailAddress(),
 )
 
-fun narmesteLederRelasjon(): Linemanager = Linemanager(
+fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
     employeeIdentificationNumber = faker.numerify("###########"),
     orgnumber = faker.numerify("#########"),
 )
 
-fun narmesteLederAvkreft(): LinemanagerRevoke = LinemanagerRevoke(
+fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
     employeeIdentificationNumber = faker.numerify("###########"),
     orgnumber = faker.numerify("#########"),
 )

@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.api.v1
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authentication
+import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
@@ -45,7 +46,7 @@ fun Route.registerLinemanagerApiV1(
             narmestelederKafkaService.sendNarmesteLederRelasjon(
                 create,
                 actors,
-                NlResponseSource.LPS,
+                NlResponseSource.getSourceFrom(call.getMyPrincipal(), create)
             )
 
             call.respond(HttpStatusCode.Accepted)
@@ -54,18 +55,20 @@ fun Route.registerLinemanagerApiV1(
 
     route(REVOKE_PATH) {
         post() {
+            val principal = call.getMyPrincipal()
             val revoke = call.tryReceive<LinemanagerRevoke>()
-            val employee = validationService.validateLinemanagerRevoke(revoke, call.getMyPrincipal())
+            val employee = validationService.validateLinemanagerRevoke(revoke, principal)
 
+            val tweakedRevoke = revoke.copy(employeeIdentificationNumber = employee.nationalIdentificationNumber)
             narmestelederKafkaService.avbrytNarmesteLederRelation(
-                revoke.copy(employeeIdentificationNumber = employee.nationalIdentificationNumber),
-                NlResponseSource.LPS
+                tweakedRevoke,
+                NlResponseSource.getSourceFrom(principal, tweakedRevoke)
             )
 
             call.respond(HttpStatusCode.Accepted)
         }
     }
-    
+
     route(RECUIREMENT_PATH) {
         put("/{id}") {
             val id = call.getUUIDFromPathVariable(name = "id")

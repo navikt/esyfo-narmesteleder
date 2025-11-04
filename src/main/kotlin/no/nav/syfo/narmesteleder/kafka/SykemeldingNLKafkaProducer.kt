@@ -23,7 +23,7 @@ class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INl
     override fun sendSykemeldingNLRelasjon(sykemeldingNL: NlResponse, source: NlResponseSource) {
         val kafkaMessage =
             NlRelationResponseKafkaMessage(
-                kafkaMetadata = KafkaMetadata(OffsetDateTime.now(ZoneOffset.UTC), source.name),
+                kafkaMetadata = KafkaMetadata(OffsetDateTime.now(ZoneOffset.UTC), source.source),
                 nlResponse = sykemeldingNL,
             )
         try {
@@ -37,7 +37,7 @@ class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INl
     override fun sendSykemeldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource) {
         val kafkaMessage =
             NlAvbruddResponseKafkaMessage(
-                kafkaMetadata = KafkaMetadata(OffsetDateTime.now(ZoneOffset.UTC), source.name),
+                kafkaMetadata = KafkaMetadata(OffsetDateTime.now(ZoneOffset.UTC), source.source),
                 nlAvbrutt = nlAvbrutt,
             )
         try {

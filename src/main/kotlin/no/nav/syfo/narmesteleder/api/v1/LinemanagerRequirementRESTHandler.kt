@@ -40,7 +40,7 @@ class LinemanagerRequirementRESTHandler(
             narmestelederKafkaService.sendNarmesteLederRelasjon(
                 linemanager,
                 linemanagerActors,
-                NlResponseSource.leder, // TODO: Hva skal denne stå til?
+                NlResponseSource.getSourceFrom(principal, linemanager)
             )
             narmesteLederService.updateNlBehov(
                 manager = manager,

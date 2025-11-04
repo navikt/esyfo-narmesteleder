@@ -5,6 +5,7 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmesteleder.domain.Employee
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.Manager
@@ -23,16 +24,17 @@ class NarmestelederService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun getNlBehovById(id: UUID): LinemanagerRequirementRead = with(findBehovEntityById(id)) {
-        val details = pdlService.getPersonFor(sykmeldtFnr)
-        // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
-        val name = Name(
-            firstName = details.name.fornavn,
-            lastName = details.name.etternavn,
-            middleName = details.name.mellomnavn,
-        )
-        toEmployeeLinemanagerRead(name)
-    }
+    suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead =
+            with(findBehovEntityById(id)) {
+                val details = pdlService.getPersonFor(sykmeldtFnr)
+                // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
+                val name = Name(
+                    firstName = details.name.fornavn,
+                    lastName = details.name.etternavn,
+                    middleName = details.name.mellomnavn,
+                )
+                toEmployeeLinemanagerRead(name)
+            }
 
 
     private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity =
@@ -52,7 +54,6 @@ class NarmestelederService(
         logger.info("Updated NarmestelederBehovEntity with id: $id with status: $behovStatus")
     }
 
-
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {
         val arbeidsforholdMap = aaregService.findOrgNumbersByPersonIdent(personIdent)
         return arbeidsforholdMap[orgNumber]
@@ -64,7 +65,7 @@ class NarmestelederService(
     suspend fun createNewNlBehov(nlBehov: LinemanagerRequirementWrite): UUID? {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
-            return null
+            return null // TODO: Fjern nullable når vi begynner å lagre
         }
 
         return nlDb.insertNlBehov(
@@ -81,8 +82,15 @@ class NarmestelederService(
             )
         ).also {
             logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
-
         }
+    }
+
+    suspend fun getEmployeeByRequirementId(id: UUID): Employee {
+        val behovEntity = findBehovEntityById(id)
+        return Employee(
+            nationalIdentificationNumber = behovEntity.sykmeldtFnr,
+            orgnumber = behovEntity.orgnummer
+        )
     }
 }
 

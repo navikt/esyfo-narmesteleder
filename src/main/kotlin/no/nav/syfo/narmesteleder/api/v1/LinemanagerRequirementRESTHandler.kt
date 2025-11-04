@@ -26,10 +26,10 @@ class LinemanagerRequirementRESTHandler(
         principal: Principal
     ) {
         try {
-            val existingRequirement = narmesteLederService.getNlBehovById(requirementId)
+            val employee = narmesteLederService.getEmployeeByRequirementId(requirementId)
             val linemanager = Linemanager(
-                employeeIdentificationNumber = existingRequirement.employeeIdentificationNumber,
-                orgnumber = existingRequirement.orgnumber,
+                employeeIdentificationNumber = employee.nationalIdentificationNumber,
+                orgnumber = employee.orgnumber,
                 manager = manager
             )
             val linemanagerActors = validationService.validateLinemanager(
@@ -42,7 +42,6 @@ class LinemanagerRequirementRESTHandler(
                 linemanagerActors,
                 NlResponseSource.leder, // TODO: Hva skal denne stå til?
             )
-
             narmesteLederService.updateNlBehov(
                 manager = manager,
                 requirementId = requirementId,
@@ -61,7 +60,7 @@ class LinemanagerRequirementRESTHandler(
 
     suspend fun handleGetLinemanagerRequirement(requirementId: UUID, principal: Principal): LinemanagerRequirementRead =
         try {
-            narmesteLederService.getNlBehovById(requirementId).also {
+            narmesteLederService.getLinemanagerRequirementReadById(requirementId).also {
                 validationService.validateGetNlBehov(principal, it)
             }
         } catch (e: LinemanagerRequirementNotFoundException) {

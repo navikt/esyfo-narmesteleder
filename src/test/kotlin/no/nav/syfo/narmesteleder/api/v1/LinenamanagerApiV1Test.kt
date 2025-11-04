@@ -190,7 +190,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
-                        setBody(manager())
+                        setBody(narmesteLederRelasjon())
                     }
 
                     // Assert
@@ -212,7 +212,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
-                        setBody(manager())
+                        setBody(narmesteLederRelasjon())
                     }
 
                     // Assert

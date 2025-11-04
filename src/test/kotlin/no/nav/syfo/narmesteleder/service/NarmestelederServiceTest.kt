@@ -7,7 +7,6 @@ import io.mockk.CapturingSlot
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import java.util.*
@@ -124,7 +123,7 @@ class NarmestelederServiceTest : FunSpec({
                 nationalIdentificationNumber = entity.sykmeldtFnr
             )
 
-            val read = service().getNlBehovById(id)
+            val read = service().getLinemanagerRequirementReadById(id)
             read.id shouldBe id
             read.orgnumber shouldBe entity.orgnummer
             read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer
@@ -140,7 +139,7 @@ class NarmestelederServiceTest : FunSpec({
         runTest(dispatcher) {
             val id = UUID.randomUUID()
             coEvery { nlDb.findBehovById(id) } returns null
-            shouldThrow<LinemanagerRequirementNotFoundException> { service().getNlBehovById(id) }
+            shouldThrow<LinemanagerRequirementNotFoundException> { service().getLinemanagerRequirementReadById(id) }
         }
     }
 
@@ -169,7 +168,6 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
             service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
-
             coVerify(exactly = 1) {
                 nlDb.updateNlBehov(any())
             }
@@ -216,7 +214,7 @@ class NarmestelederServiceTest : FunSpec({
                 service().updateNlBehov(
                     defaultManager,
                     id,
-                    BehovStatus.ERROR
+                    BehovStatus.COMPLETED
                 )
             }
         }

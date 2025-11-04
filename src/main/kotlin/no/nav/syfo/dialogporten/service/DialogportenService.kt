@@ -1,7 +1,7 @@
 package no.nav.syfo.dialogporten.service
 
 import io.ktor.http.ContentType
-import java.util.UUID
+import java.util.*
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.application.OtherEnvironmentProperties
 import no.nav.syfo.dialogporten.client.IDialogportenClient

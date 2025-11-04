@@ -5,6 +5,7 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.dialogporten.service.DialogportenService
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
@@ -22,6 +23,7 @@ class LinemanagerRequirementRESTHandler(
     private val validationService: ValidationService,
     private val narmestelederKafkaService: NarmestelederKafkaService,
     private val altinnTilgangerService: AltinnTilgangerService,
+    private val dialogportenService: DialogportenService,
 ) {
     suspend fun handleUpdatedRequirement(
         manager: Manager,

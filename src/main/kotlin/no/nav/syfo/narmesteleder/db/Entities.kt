@@ -14,7 +14,7 @@ data class NarmestelederBehovEntity(
     val leesahStatus: String,
     val behovStatus: BehovStatus = BehovStatus.RECEIVED,
     val dialogId: UUID? = null,
-    val avbruttNarmesteLederId: UUID? = null,
+    val avbruttNarmesteLederId: UUID,
 ) {
     companion object {
         fun fromLinemanagerRequirementWrite(

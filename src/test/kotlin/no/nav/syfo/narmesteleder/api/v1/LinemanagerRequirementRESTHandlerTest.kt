@@ -35,6 +35,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         sykmeldtFnr = defaultEmployeeFnr,
         narmestelederFnr = "123456789",
         leesahStatus = "DISABLED",
+        avbruttNarmesteLederId = UUID.randomUUID(),
     )
 
     beforeTest {

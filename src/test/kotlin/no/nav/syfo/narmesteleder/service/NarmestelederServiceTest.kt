@@ -177,6 +177,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 narmestelederFnr = "01987654321",
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
+                avbruttNarmesteLederId = UUID.randomUUID(),
             )
             val navn = Navn(fornavn = "Ola", mellomnavn = null, etternavn = "Nordmann")
             coEvery { nlDb.findBehovById(id) } returns entity
@@ -217,6 +218,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 narmestelederFnr = "01987654321",
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
+                avbruttNarmesteLederId = UUID.randomUUID(),
             )
 
             coEvery { nlDb.findBehovById(id) } returns original
@@ -240,6 +242,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 narmestelederFnr = "01987654321",
                 leesahStatus = "ACTIVE",
                 behovStatus = BehovStatus.RECEIVED,
+                avbruttNarmesteLederId = UUID.randomUUID(),
             )
 
             coEvery { nlDb.findBehovById(id) } returns original

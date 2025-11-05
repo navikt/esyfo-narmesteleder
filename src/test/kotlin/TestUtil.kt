@@ -54,6 +54,7 @@ fun nlBehovEntity() = NarmestelederBehovEntity(
     narmestelederFnr = faker.numerify("###########"),
     leesahStatus = LeesahStatus.DEAKTIVERT_NY_LEDER.name,
     behovStatus = BehovStatus.RECEIVED,
+    avbruttNarmesteLederId = UUID.randomUUID(),
 )
 fun createMockToken(
     ident: String,

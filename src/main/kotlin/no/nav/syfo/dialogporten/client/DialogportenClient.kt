@@ -18,6 +18,7 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 import java.util.UUID
 import no.nav.syfo.dialogporten.domain.DialogStatus
+import no.nav.syfo.dialogporten.domain.ExtendedDialog
 
 const val DIALOG_ID_PARAM_NAME = "externalReference"
 private const val JSON_PATCH_CONTENT_TYPE = "application/json-patch+json"
@@ -28,6 +29,8 @@ interface IDialogportenClient {
     suspend fun updateDialogStatus(dialogId: String, dialogStatus: DialogStatus)
 }
 
+private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
+
 class DialogportenClient(
     private val baseUrl: String,
     private val httpClient: HttpClient,
@@ -37,7 +40,7 @@ class DialogportenClient(
     private val logger = logger()
 
     override suspend fun createDialog(dialog: Dialog): UUID {
-        val texasResponse = texasHttpClient.systemToken("maskinporten", "digdir:dialogporten.serviceprovider")
+        val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
         val token = altinnExchange(texasResponse.accessToken)
 
         return runCatching<DialogportenClient, UUID> {
@@ -65,7 +68,7 @@ class DialogportenClient(
             .replace("\"", "")
 
     override suspend fun getDialogportenToken(): String {
-        val texasResponse = texasHttpClient.systemToken("maskinporten", "digdir:dialogporten.serviceprovider")
+        val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
         return altinnExchange(texasResponse.accessToken)
     }
 
@@ -73,7 +76,7 @@ class DialogportenClient(
         dialogId: String,
         dialogStatus: DialogStatus
     ) {
-        val texasResponse = texasHttpClient.systemToken("maskinporten", "digdir:dialogporten.serviceprovider")
+        val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
         val token = altinnExchange(texasResponse.accessToken)
 
         runCatching {
@@ -98,10 +101,11 @@ class DialogportenClient(
         }
     }
 
+    // dialogId here is "externalReference" in Dialogporten
     suspend fun getDialogById(
         dialogId: String
-    ): Dialog {
-        val texasResponse = texasHttpClient.systemToken("maskinporten", "digdir:dialogporten.serviceprovider")
+    ): ExtendedDialog {
+        val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
         val token = altinnExchange(texasResponse.accessToken)
 
         val dialog = runCatching {
@@ -113,7 +117,7 @@ class DialogportenClient(
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
                     header(HttpHeaders.Accept, ContentType.Application.Json)
                     bearerAuth(token)
-                }.body<List<Dialog>>()
+                }.body<List<ExtendedDialog>>()
         }.getOrElse { e ->
             logger.error("Feil ved kall til Dialogporten for å hente dialog med id: $dialogId", e)
             throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten")
@@ -137,5 +141,12 @@ class FakeDialogportenClient() : IDialogportenClient {
 
     override suspend fun getDialogportenToken(): String {
         throw NotImplementedError("Not implemented for local application")
+    }
+
+    override suspend fun updateDialogStatus(
+        dialogId: String,
+        dialogStatus: DialogStatus
+    ) {
+        TODO("Not yet implemented")
     }
 }

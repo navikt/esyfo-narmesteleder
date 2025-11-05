@@ -1,7 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FunSpec
+import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.CapturingSlot
 import io.mockk.clearMocks
@@ -10,8 +10,6 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import java.util.*
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.runTest
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
@@ -25,8 +23,7 @@ import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
 
-class NarmestelederServiceTest : FunSpec({
-    val dispatcher = StandardTestDispatcher()
+class NarmestelederServiceTest : DescribeSpec({
     val nlDb = mockk<INarmestelederDb>(relaxed = true)
     val aaregService = mockk<AaregService>()
     val pdlService = mockk<PdlService>()
@@ -44,8 +41,17 @@ class NarmestelederServiceTest : FunSpec({
         dinesykmeldteService = dinesykmeldteService,
     )
 
-    test("createNewNlBehov persists entity with resolved hovedenhet") {
-        runTest(dispatcher) {
+    val defaultManager = Manager(
+        nationalIdentificationNumber = "01999999999",
+        firstName = "Ola",
+        lastName = "Nordmann",
+        mobile = "99999999",
+        email = "manager@epost.no"
+    )
+
+    describe("createNewNlBehov") {
+        it("persists entity with resolved hovedenhet") {
+            // Arrange
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
             val hovedenhetOrg = "987654321"
@@ -61,12 +67,14 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.insertNlBehov(capture(captured)) } answers { UUID.randomUUID() }
             coEvery {
                 dinesykmeldteService.getIsActiveSykmelding(
-                    eq(write.employeeIdentificationNumber),
-                    eq(write.orgnumber)
+                    eq(write.employeeIdentificationNumber), eq(write.orgnumber)
                 )
             } returns true
+
+            // Act
             service().createNewNlBehov(write)
 
+            // Assert
             coVerify(exactly = 1) { nlDb.insertNlBehov(any()) }
             coVerify(exactly = 1) { aaregService.findOrgNumbersByPersonIdent(eq(write.employeeIdentificationNumber)) }
 
@@ -79,10 +87,9 @@ class NarmestelederServiceTest : FunSpec({
             entity.leesahStatus shouldBe write.leesahStatus
             entity.behovStatus shouldBe BehovStatus.RECEIVED
         }
-    }
 
-    test("createNewNlBehov skips persistence when flag is false") {
-        runTest(dispatcher) {
+        it("skips persistence when flag is false") {
+            // Arrange
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
             val write = LinemanagerRequirementWrite(
@@ -95,14 +102,16 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.insertNlBehov(any()) } throws AssertionError("insertNlBehov should not be called when persistLeesahNlBehov=false")
             coEvery { aaregService.findOrgNumbersByPersonIdent(any()) } throws AssertionError("AaregService should not be called when persistLeesahNlBehov=false")
 
+            // Act
             service(persist = false).createNewNlBehov(write)
+
+            // Assert
             coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
             coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
         }
-    }
 
-    test("createNewNlBehov throws when hovedenhet missing for underenhet") {
-        runTest(dispatcher) {
+        it("throws when hovedenhet missing for underenhet") {
+            // Arrange
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
             val write = LinemanagerRequirementWrite(
@@ -114,18 +123,20 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns emptyMap()
             coEvery {
                 dinesykmeldteService.getIsActiveSykmelding(
-                    eq(write.employeeIdentificationNumber),
-                    eq(write.orgnumber)
+                    eq(write.employeeIdentificationNumber), eq(write.orgnumber)
                 )
             } returns true
 
+            // Act
             shouldThrow<HovedenhetNotFoundException> { service().createNewNlBehov(write) }
+
+            // Assert
             coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
             coVerify(exactly = 1) { aaregService.findOrgNumbersByPersonIdent(eq(write.employeeIdentificationNumber)) }
         }
-    }
-    test("createNewNlBehov should skip persists if active sykmelding is missing") {
-        runTest(dispatcher) {
+
+        it("should skip persists if active sykmelding is missing") {
+            // Arrange
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
             val write = LinemanagerRequirementWrite(
@@ -137,20 +148,22 @@ class NarmestelederServiceTest : FunSpec({
 
             coEvery {
                 dinesykmeldteService.getIsActiveSykmelding(
-                    eq(write.employeeIdentificationNumber),
-                    eq(write.orgnumber)
+                    eq(write.employeeIdentificationNumber), eq(write.orgnumber)
                 )
             } returns false
+
+            // Act
             service().createNewNlBehov(write)
 
+            // Assert
             coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
             coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
-
         }
     }
 
-    test("getNlBehovById returns mapped read DTO with name") {
-        runTest(dispatcher) {
+    describe("getLinemanagerRequirementReadById") {
+        it("returns mapped read DTO with name") {
+            // Arrange
             val id = UUID.randomUUID()
             val entity = NarmestelederBehovEntity(
                 id = id,
@@ -164,8 +177,7 @@ class NarmestelederServiceTest : FunSpec({
             val navn = Navn(fornavn = "Ola", mellomnavn = null, etternavn = "Nordmann")
             coEvery { nlDb.findBehovById(id) } returns entity
             coEvery { pdlService.getPersonFor(entity.sykmeldtFnr) } returns Person(
-                name = navn,
-                nationalIdentificationNumber = entity.sykmeldtFnr
+                name = navn, nationalIdentificationNumber = entity.sykmeldtFnr
             )
 
             val read = service().getLinemanagerRequirementReadById(id)
@@ -178,26 +190,20 @@ class NarmestelederServiceTest : FunSpec({
             read.name.lastName shouldBe navn.etternavn
             read.name.middleName shouldBe navn.mellomnavn
         }
-    }
 
-    test("getNlBehovById throws when missing") {
-        runTest(dispatcher) {
+        it("throws when missing") {
+            // Arrange
             val id = UUID.randomUUID()
             coEvery { nlDb.findBehovById(id) } returns null
+
+            // Act + Assert
             shouldThrow<LinemanagerRequirementNotFoundException> { service().getLinemanagerRequirementReadById(id) }
         }
     }
 
-    val defaultManager = Manager(
-        nationalIdentificationNumber = "01999999999",
-        firstName = "Ola",
-        lastName = "Nordmann",
-        mobile = "99999999",
-        email = "manager@epost.no"
-    )
-
-    test("updateNlBehov updates entity") {
-        runTest(dispatcher) {
+    describe("updateNlBehov") {
+        it("updates entity") {
+            // Arrange
             val id = UUID.randomUUID()
             val original = NarmestelederBehovEntity(
                 id = id,
@@ -212,15 +218,15 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.findBehovById(id) } returns original
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
+            // Act
             service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
             coVerify(exactly = 1) {
                 nlDb.updateNlBehov(any())
             }
         }
-    }
 
-    test("updateNlBehov retains everything except manager social security number and status") {
-        runTest(dispatcher) {
+        it("retains everything except manager social security number and status") {
+            // Arrange
             val id = UUID.randomUUID()
             val original = NarmestelederBehovEntity(
                 id = id,
@@ -235,31 +241,26 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { nlDb.findBehovById(id) } returns original
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
+            // Act
             service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
 
+            // Assert
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
-                    updated.id == id &&
-                        updated.orgnummer == original.orgnummer &&
-                        updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer &&
-                        updated.sykmeldtFnr == original.sykmeldtFnr &&
-                        updated.narmestelederFnr == defaultManager.nationalIdentificationNumber &&
-                        updated.behovStatus == BehovStatus.COMPLETED
+                    updated.id == id && updated.orgnummer == original.orgnummer && updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer && updated.sykmeldtFnr == original.sykmeldtFnr && updated.narmestelederFnr == defaultManager.nationalIdentificationNumber && updated.behovStatus == BehovStatus.COMPLETED
                 })
             }
         }
-    }
 
-    test("updateNlBehov throws when behov not found") {
-        runTest(dispatcher) {
+        it("throws when behov not found") {
+            // Arrange
             val id = UUID.randomUUID()
 
             coEvery { nlDb.findBehovById(id) } returns null
+            // Act + Assert
             shouldThrow<LinemanagerRequirementNotFoundException> {
                 service().updateNlBehov(
-                    defaultManager,
-                    id,
-                    BehovStatus.COMPLETED
+                    defaultManager, id, BehovStatus.COMPLETED
                 )
             }
         }

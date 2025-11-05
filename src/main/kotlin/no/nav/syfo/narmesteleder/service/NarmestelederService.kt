@@ -88,6 +88,7 @@ class NarmestelederService(
                 logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
             }
         } else null
+
     }
 
     suspend fun getEmployeeByRequirementId(id: UUID): Employee {

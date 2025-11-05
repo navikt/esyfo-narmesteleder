@@ -60,7 +60,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 orgnumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
-                linemanagerId = UUID.randomUUID(),
+                revokedLinemanagerId = UUID.randomUUID(),
             )
             val captured: CapturingSlot<NarmestelederBehovEntity> = slot()
 
@@ -98,7 +98,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 orgnumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
-                linemanagerId = UUID.randomUUID(),
+                revokedLinemanagerId = UUID.randomUUID(),
             )
 
             coEvery { nlDb.insertNlBehov(any()) } throws AssertionError("insertNlBehov should not be called when persistLeesahNlBehov=false")
@@ -121,7 +121,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 orgnumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
-                linemanagerId = UUID.randomUUID(),
+                revokedLinemanagerId = UUID.randomUUID(),
             )
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns emptyMap()
             coEvery {
@@ -147,7 +147,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 orgnumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
-                linemanagerId = UUID.randomUUID(),
+                revokedLinemanagerId = UUID.randomUUID(),
             )
 
             coEvery {

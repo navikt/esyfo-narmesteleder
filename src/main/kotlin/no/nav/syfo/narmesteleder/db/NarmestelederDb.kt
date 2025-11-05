@@ -32,7 +32,7 @@ class NarmestelederDb(
                                          narmeste_leder_fnr,
                                          leesah_status,
                                          behov_status,
-                                         narmesteleder_fnr)
+                                         avbrutt_narmesteleder_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                     RETURNING id;
                     """.trimIndent()
@@ -43,7 +43,7 @@ class NarmestelederDb(
                     preparedStatement.setString(4, nlBehov.narmestelederFnr)
                     preparedStatement.setString(5, nlBehov.leesahStatus)
                     preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
-                    preparedStatement.setObject(7, nlBehov.narmesteLederId)
+                    preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
 
                     preparedStatement.execute()
 

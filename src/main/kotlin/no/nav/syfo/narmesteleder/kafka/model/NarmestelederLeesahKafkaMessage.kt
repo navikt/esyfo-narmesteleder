@@ -38,6 +38,6 @@ data class NarmestelederLeesahKafkaMessage(
         orgnumber = orgnummer,
         managerIdentificationNumber = narmesteLederFnr,
         leesahStatus = status.name,
-        linemanagerId = narmesteLederId,
+        revokedLinemanagerId = narmesteLederId,
     )
 }

@@ -73,21 +73,19 @@ class NarmestelederService(
             dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgnumber)
         return if (hasActiveSykmelding) {
             nlDb.insertNlBehov(
-                NarmestelederBehovEntity(
-                    sykmeldtFnr = nlBehov.employeeIdentificationNumber,
-                    orgnummer = nlBehov.orgnumber,
-                    hovedenhetOrgnummer = findHovedenhetOrgnummer(
+                NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+                    nlBehov, findHovedenhetOrgnummer(
                         nlBehov.employeeIdentificationNumber,
                         nlBehov.orgnumber
-                    ),
-                    narmestelederFnr = nlBehov.managerIdentificationNumber,
-                    leesahStatus = nlBehov.leesahStatus,
-                    behovStatus = BehovStatus.RECEIVED
+                    ), BehovStatus.RECEIVED
                 )
             ).also {
                 logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
             }
-        } else null
+        } else {
+            logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.narmesteLederId} in org ${nlBehov.orgnumber}")
+            null
+        }
 
     }
 

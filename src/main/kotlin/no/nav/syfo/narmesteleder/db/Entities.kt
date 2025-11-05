@@ -1,9 +1,9 @@
 package no.nav.syfo.narmesteleder.db
 
 import java.sql.ResultSet
-import java.sql.SQLType
 import java.util.*
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 
 data class NarmestelederBehovEntity(
     val id: UUID? = null,
@@ -14,7 +14,28 @@ data class NarmestelederBehovEntity(
     val leesahStatus: String,
     val behovStatus: BehovStatus = BehovStatus.RECEIVED,
     val dialogId: UUID? = null,
-)
+    val narmesteLederId: UUID? = null,
+) {
+    companion object {
+        fun fromLinemanagerRequirementWrite(
+            linemanagerRequirementWrite: LinemanagerRequirementWrite,
+            hovedenhetOrgnummer: String,
+            behovStatus: BehovStatus
+        ): NarmestelederBehovEntity {
+            with(linemanagerRequirementWrite) {
+                return NarmestelederBehovEntity(
+                    orgnummer = orgnumber,
+                    hovedenhetOrgnummer = hovedenhetOrgnummer,
+                    sykmeldtFnr = employeeIdentificationNumber,
+                    narmestelederFnr = managerIdentificationNumber,
+                    leesahStatus = leesahStatus,
+                    narmesteLederId = narmesteLederId,
+                    behovStatus = behovStatus,
+                )
+            }
+        }
+    }
+}
 
 fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity =
     NarmestelederBehovEntity(
@@ -26,4 +47,5 @@ fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity =
         leesahStatus = this.getString("leesah_status"),
         behovStatus = BehovStatus.valueOf(this.getString("behov_status")),
         dialogId = this.getObject("dialog_id") as? UUID,
+        narmesteLederId = this.getObject("narmesteleder_id", UUID::class.java),
     )

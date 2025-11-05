@@ -14,18 +14,9 @@ class AltinnTilgangerService(
         userPrincipal: UserPrincipal,
         orgnummer: String,
     ): AltinnTilgang {
-        try {
-            val altinnTilgang = getAltinnTilgangForOrgnr(userPrincipal, orgnummer)
-            if (altinnTilgang == null)
-                throw ApiErrorException.ForbiddenException("User lacks access to organization: $orgnummer")
-            if (!altinnTilgang.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)) {
-                throw ApiErrorException.ForbiddenException("User lacks access to required altinn3 resource for organization: $orgnummer")
-            }
-            return altinnTilgang
-        } catch (e: UpstreamRequestException) {
-            logger.error("Error when fetching altinn resources available to owner to authorization token", e)
-            throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn resources for users authorization token")
-        }
+        val altinnTilgang = getAltinnTilgangForOrgnr(userPrincipal, orgnummer)
+        validateTilgangToOrganization(altinnTilgang, orgnummer)
+        return altinnTilgang!!
     }
 
     fun validateTilgangToOrganization(

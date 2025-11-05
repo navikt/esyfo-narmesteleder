@@ -1,38 +1,44 @@
 package no.nav.syfo.narmesteleder.util
 
+import addMaskinportenOrgPrefix
 import createRandomValidOrgNumbers
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
+import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.service.ValidateNarmesteLederException
 import no.nav.syfo.narmesteleder.service.validateNarmesteLeder
 import no.nav.syfo.narmesteleder.service.validateNarmesteLederAvkreft
 
 class NarmesteLederValidatorTest : DescribeSpec({
-    val randomOrgNumbers = createRandomValidOrgNumbers()
+    lateinit var randomOrgNumbers: List<String>
+    lateinit var nlOrgNumbers: Map<String, String>
+    lateinit var organizationPrincipal: OrganisasjonPrincipal
+    beforeTest {
+        randomOrgNumbers = createRandomValidOrgNumbers(prefix = "")
+        nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
+        organizationPrincipal = OrganisasjonPrincipal(addMaskinportenOrgPrefix(nlOrgNumbers.keys.first()), "token")
+    }
     describe("validateNarmesteLeder") {
         describe("organization number matches for sykemeldt, nl and innsender") {
-            val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
-
-            it("It should not throw when sykemeldt is only org number used for all parties") {
+            it("It should not throw when sykmeldt is only org number used for all parties") {
                 shouldNotThrowAny {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = nlOrgNumbers.keys.first(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )
                 }
             }
 
-            it("Should not throw when sykemeldt has at least one matching org number with the other parties") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
+            it("Should not throw when sykmeldt has at least one matching org number with the other parties") {
                 shouldNotThrowAny {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = randomOrgNumbers.last(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first()
                     )
                 }
@@ -40,73 +46,72 @@ class NarmesteLederValidatorTest : DescribeSpec({
         }
 
         describe("Mismatch in organization number between parties") {
-            it("Should throw ValidateNarmesteLederException if NL is not within sykemeldt orgs") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
+            it("Should throw ValidateNarmesteLederException if NL is not within sykmeldt orgs") {
+                val organizationPrincipal = OrganisasjonPrincipal("0192:${nlOrgNumbers.keys.first()}", "token")
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
-                        innsenderOrgNumber = randomOrgNumbers.first(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = randomOrgNumbers.first(),
                     )
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException if payload org is not within sykemeldt orgs") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
+            it("Should throw ValidateNarmesteLederException if payload org is not within sykemldt orgs") {
+                val organizationPrincipal = OrganisasjonPrincipal("0192:${nlOrgNumbers.keys.first()}", "token")
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = randomOrgNumbers.first(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = randomOrgNumbers[2],
                     )
                 }
             }
 
             it("Should throw ValidateNarmesteLederException if innsender is not within NL org") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
                 shouldThrow<ApiErrorException.ForbiddenException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = randomOrgNumbers[2],
+                        organisasjonPrincipal = OrganisasjonPrincipal(
+                            addMaskinportenOrgPrefix(randomOrgNumbers[2]),
+                            "token"
+                        ),
                         orgNumberInRequest = nlOrgNumbers.keys.first()
                     )
                 }
             }
 
             it("Should throw ValidateNarmesteLederException if no one is within the same org") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
-                        innsenderOrgNumber = randomOrgNumbers[2],
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = randomOrgNumbers[3],
                     )
                 }
             }
 
             it("Should throw ValidateNarmesteLederException exception if no organizations are found for sykemeldt") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = emptyMap(),
                         narmesteLederOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = nlOrgNumbers.keys.first(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )
                 }
             }
 
             it("Should throw ValidateNarmesteLederException exception if no organizations are found for nærmeste leder") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = emptyMap(),
-                        innsenderOrgNumber = nlOrgNumbers.keys.first(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )
                 }
@@ -116,24 +121,21 @@ class NarmesteLederValidatorTest : DescribeSpec({
 
     describe("validateNarmesteLederAvkreft") {
         describe("organization number matches for sykemeldt and innsender") {
-            val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
-
             it("It should not throw when sykemeldt is only org number used for all parties") {
                 shouldNotThrowAny {
                     validateNarmesteLederAvkreft(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = nlOrgNumbers.keys.first(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )
                 }
             }
 
             it("Should not throw when sykemeldt has at least one matching org number with the other parties") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
                 shouldNotThrowAny {
                     validateNarmesteLederAvkreft(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = randomOrgNumbers.last(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first()
                     )
                 }
@@ -142,33 +144,33 @@ class NarmesteLederValidatorTest : DescribeSpec({
 
         describe("Mismatch in organization number between parties") {
             it("Should throw ValidateNarmesteLederException if payload org is not within sykemeldt orgs") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLederAvkreft(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = randomOrgNumbers.first(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = randomOrgNumbers[2],
                     )
                 }
             }
 
             it("Should throw ValidateNarmesteLederException if innsender is not within sykmeldt org") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
                 shouldThrow<ApiErrorException.ForbiddenException> {
                     validateNarmesteLederAvkreft(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        innsenderOrgNumber = randomOrgNumbers[2],
+                        organisasjonPrincipal = OrganisasjonPrincipal(
+                            addMaskinportenOrgPrefix(randomOrgNumbers[2]),
+                            "token"
+                        ),
                         orgNumberInRequest = nlOrgNumbers.keys.first()
                     )
                 }
             }
 
             it("Should throw ValidateNarmesteLederException exception if no organizations are found for sykemeldt") {
-                val nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLederAvkreft(
                         sykemeldtOrgNumbers = emptyMap(),
-                        innsenderOrgNumber = nlOrgNumbers.keys.first(),
+                        organisasjonPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )
                 }

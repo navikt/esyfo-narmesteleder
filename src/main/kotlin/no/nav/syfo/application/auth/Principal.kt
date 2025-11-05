@@ -12,4 +12,6 @@ data class UserPrincipal(
 data class OrganisasjonPrincipal(
     override val ident: String,
     override val token: String,
-) : Principal()
+): Principal() {
+    fun getOrgNumber(): String = maskinportenIdToOrgnumber(ident)
+}

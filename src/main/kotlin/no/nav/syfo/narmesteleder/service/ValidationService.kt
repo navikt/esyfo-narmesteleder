@@ -5,14 +5,12 @@ import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
-import no.nav.syfo.narmesteleder.domain.Organization
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.util.logger
@@ -32,12 +30,7 @@ class ValidationService(
         principal: Principal,
     ): LinemanagerActors {
         try {
-            val innsenderOrgNumber = if (principal is UserPrincipal) {
-                validateAltinnTilgang(principal, linemanager.orgnumber)
-                null
-            } else {
-                maskinportenIdToOrgnumber(principal.ident)
-            }
+            validateAltinnTilgang(principal, linemanager.orgnumber)
             val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
             val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
             val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
@@ -50,7 +43,7 @@ class ValidationService(
                 orgNumberInRequest = linemanager.orgnumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 narmesteLederOrgNumbers = nlArbeidsforhold,
-                innsenderOrgNumber = innsenderOrgNumber
+                organisasjonPrincipal = principal as? OrganisasjonPrincipal,
             )
             return LinemanagerActors(
                 employee = sykmeldt,
@@ -85,31 +78,25 @@ class ValidationService(
 
             is OrganisasjonPrincipal -> {
                 nlrequire(
-                    sykemeldtOrgs.contains(maskinportenIdToOrgnumber(principal.ident))
+                    sykemeldtOrgs.contains(principal.getOrgNumber())
                 ) { "Person making the request is not employed in the same organization as employee on sick leave" }
             }
         }
     }
-
 
     suspend fun validateLinemanagerRevoke(
         linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
     ): Person {
         try {
-            val innsenderOrgNumber = if (principal is UserPrincipal) {
-                validateAltinnTilgang(principal, linemanagerRevoke.orgnumber)
-                null
-            } else {
-                maskinportenIdToOrgnumber(principal.ident)
-            }
+            validateAltinnTilgang(principal, linemanagerRevoke.orgnumber)
             val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
             validateNarmesteLederAvkreft(
                 orgNumberInRequest = linemanagerRevoke.orgnumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
-                innsenderOrgNumber = innsenderOrgNumber
+                organisasjonPrincipal = principal as? OrganisasjonPrincipal,
             )
             return sykmeldt
 
@@ -125,15 +112,12 @@ class ValidationService(
         }
     }
 
-    private suspend fun validateAltinnTilgang(principal: UserPrincipal, orgNumber: String): Organization? {
-        val altinnTilgang = altinnTilgangerService.validateTilgangToOrganization(
-            principal,
-            orgNumber
-        )
-        return Organization(
-            altinnTilgang.orgnr,
-            altinnTilgang.navn
-        )
+    private suspend fun validateAltinnTilgang(principal: Principal, orgNumber: String) {
+        if (principal is UserPrincipal) {
+            altinnTilgangerService.validateTilgangToOrganization(
+                principal,
+                orgNumber
+            )
+        }
     }
-
 }

@@ -139,7 +139,8 @@ private fun servicesModule() = module {
             get(),
             env().clientProperties.persistLeesahNlBehov,
             get(),
-            get()
+            get(),
+            get(),
         )
     }
     single {

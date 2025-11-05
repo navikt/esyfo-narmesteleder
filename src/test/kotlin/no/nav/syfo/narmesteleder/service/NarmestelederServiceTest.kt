@@ -13,6 +13,7 @@ import java.util.*
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -29,6 +30,7 @@ class NarmestelederServiceTest : FunSpec({
     val nlDb = mockk<INarmestelederDb>(relaxed = true)
     val aaregService = mockk<AaregService>()
     val pdlService = mockk<PdlService>()
+    val dinesykmeldteService = mockk<DinesykmeldteService>()
 
     beforeTest {
         clearMocks(nlDb, aaregService, pdlService)
@@ -38,7 +40,8 @@ class NarmestelederServiceTest : FunSpec({
         nlDb = nlDb,
         persistLeesahNlBehov = persist,
         aaregService = aaregService,
-        pdlService = pdlService
+        pdlService = pdlService,
+        dinesykmeldteService = dinesykmeldteService,
     )
 
     test("createNewNlBehov persists entity with resolved hovedenhet") {
@@ -56,8 +59,16 @@ class NarmestelederServiceTest : FunSpec({
 
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns mapOf(underenhetOrg to hovedenhetOrg)
             coEvery { nlDb.insertNlBehov(capture(captured)) } answers { UUID.randomUUID() }
-
+            coEvery {
+                dinesykmeldteService.getIsActiveSykmelding(
+                    eq(write.employeeIdentificationNumber),
+                    eq(write.orgnumber)
+                )
+            } returns true
             service().createNewNlBehov(write)
+
+            coVerify(exactly = 1) { nlDb.insertNlBehov(any()) }
+            coVerify(exactly = 1) { aaregService.findOrgNumbersByPersonIdent(eq(write.employeeIdentificationNumber)) }
 
             captured.isCaptured shouldBe true
             val entity = captured.captured
@@ -85,6 +96,8 @@ class NarmestelederServiceTest : FunSpec({
             coEvery { aaregService.findOrgNumbersByPersonIdent(any()) } throws AssertionError("AaregService should not be called when persistLeesahNlBehov=false")
 
             service(persist = false).createNewNlBehov(write)
+            coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
+            coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
         }
     }
 
@@ -99,8 +112,40 @@ class NarmestelederServiceTest : FunSpec({
                 leesahStatus = "ACTIVE",
             )
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns emptyMap()
+            coEvery {
+                dinesykmeldteService.getIsActiveSykmelding(
+                    eq(write.employeeIdentificationNumber),
+                    eq(write.orgnumber)
+                )
+            } returns true
 
             shouldThrow<HovedenhetNotFoundException> { service().createNewNlBehov(write) }
+            coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
+            coVerify(exactly = 1) { aaregService.findOrgNumbersByPersonIdent(eq(write.employeeIdentificationNumber)) }
+        }
+    }
+    test("createNewNlBehov should skip persists if active sykmelding is missing") {
+        runTest(dispatcher) {
+            val sykmeldtFnr = "12345678910"
+            val underenhetOrg = "123456789"
+            val write = LinemanagerRequirementWrite(
+                employeeIdentificationNumber = sykmeldtFnr,
+                orgnumber = underenhetOrg,
+                managerIdentificationNumber = "01987654321",
+                leesahStatus = "ACTIVE",
+            )
+
+            coEvery {
+                dinesykmeldteService.getIsActiveSykmelding(
+                    eq(write.employeeIdentificationNumber),
+                    eq(write.orgnumber)
+                )
+            } returns false
+            service().createNewNlBehov(write)
+
+            coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
+            coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
+
         }
     }
 
@@ -195,11 +240,11 @@ class NarmestelederServiceTest : FunSpec({
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
                     updated.id == id &&
-                            updated.orgnummer == original.orgnummer &&
-                            updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer &&
-                            updated.sykmeldtFnr == original.sykmeldtFnr &&
-                            updated.narmestelederFnr == defaultManager.nationalIdentificationNumber &&
-                            updated.behovStatus == BehovStatus.COMPLETED
+                        updated.orgnummer == original.orgnummer &&
+                        updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer &&
+                        updated.sykmeldtFnr == original.sykmeldtFnr &&
+                        updated.narmestelederFnr == defaultManager.nationalIdentificationNumber &&
+                        updated.behovStatus == BehovStatus.COMPLETED
                 })
             }
         }

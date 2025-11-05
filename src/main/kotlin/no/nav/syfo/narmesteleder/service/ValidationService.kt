@@ -1,6 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
@@ -11,6 +12,7 @@ import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
+import no.nav.syfo.narmesteleder.domain.Organization
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.util.logger
@@ -30,7 +32,12 @@ class ValidationService(
         principal: Principal,
     ): LinemanagerActors {
         try {
-            val innsenderOrgNumber = validateAltTilgang(principal, linemanager.orgnumber)
+            val innsenderOrgNumber = if (principal is UserPrincipal) {
+                validateAltinnTilgang(principal, linemanager.orgnumber)
+                null
+            } else {
+                maskinportenIdToOrgnumber(principal.ident)
+            }
             val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
             val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
             val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
@@ -65,17 +72,37 @@ class ValidationService(
         }
     }
 
-    internal suspend fun validataActiveSickLeave(fnr: String, orgnummer: String): Boolean =
-        if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
-            throw ValidateActiveSykmeldingException("No active sick leave found for the given organization number")
-        } else true
+    fun validateGetNlBehov(
+        principal: Principal,
+        linemanagerRead: LinemanagerRequirementRead,
+        altinnTilgang: AltinnTilgang?
+    ) {
+        val sykemeldtOrgs = setOf(linemanagerRead.orgnumber, linemanagerRead.mainOrgnumber)
+        when (principal) {
+            is UserPrincipal -> {
+                altinnTilgangerService.validateTilgangToOrganization(altinnTilgang, linemanagerRead.orgnumber)
+            }
+
+            is OrganisasjonPrincipal -> {
+                nlrequire(
+                    sykemeldtOrgs.contains(maskinportenIdToOrgnumber(principal.ident))
+                ) { "Person making the request is not employed in the same organization as employee on sick leave" }
+            }
+        }
+    }
+
 
     suspend fun validateLinemanagerRevoke(
         linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
     ): Person {
         try {
-            val innsenderOrgNumber = validateAltTilgang(principal, linemanagerRevoke.orgnumber)
+            val innsenderOrgNumber = if (principal is UserPrincipal) {
+                validateAltinnTilgang(principal, linemanagerRevoke.orgnumber)
+                null
+            } else {
+                maskinportenIdToOrgnumber(principal.ident)
+            }
             val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
@@ -92,30 +119,21 @@ class ValidationService(
         }
     }
 
-    private suspend fun validateAltTilgang(principal: Principal, orgNumber: String): String? {
-        return when (principal) {
-            is UserPrincipal -> {
-                altinnTilgangerService.validateTilgangToOrganization(
-                    principal,
-                    orgNumber
-                )
-                null
-            }
-
-            is OrganisasjonPrincipal -> {
-                maskinportenIdToOrgnumber(principal.ident)
-            }
+    private suspend fun validataActiveSickLeave(fnr: String, orgnummer: String) {
+        if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
+            throw ValidateActiveSykmeldingException("No active sick leave found for the given organization number")
         }
     }
 
-    suspend fun validateGetNlBehov(principal: Principal, linemanagerRead: LinemanagerRequirementRead) {
-        val sykemeldtOrgs = setOf(linemanagerRead.orgnumber, linemanagerRead.mainOrgnumber)
-        val innsenderOrgNumber = validateAltTilgang(principal, linemanagerRead.orgnumber)
-
-        if (principal is OrganisasjonPrincipal) {
-            nlrequire(
-                sykemeldtOrgs.contains(innsenderOrgNumber)
-            ) { "Person making the request is not employed in the same organization as employee on sick leave" }
-        }
+    private suspend fun validateAltinnTilgang(principal: UserPrincipal, orgNumber: String): Organization? {
+        val altinnTilgang = altinnTilgangerService.validateTilgangToOrganization(
+            principal,
+            orgNumber
+        )
+        return Organization(
+            altinnTilgang.orgnr,
+            altinnTilgang.navn
+        )
     }
+
 }

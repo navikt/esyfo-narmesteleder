@@ -6,6 +6,7 @@ data class LinemanagerRequirementRead(
     val id: UUID,
     val employeeIdentificationNumber: String,
     val orgnumber: String,
+    val orgName: String? = null,
     val mainOrgnumber: String,
     val managerIdentificationNumber: String,
     val name: Name

@@ -84,7 +84,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
     val nlBehovHandler = LinemanagerRequirementRESTHandler(
         narmesteLederService = narmesteLederService,
         validationService = validationServiceSpy,
-        narmestelederKafkaService = narmestelederKafkaServiceSpy
+        narmestelederKafkaService = narmestelederKafkaServiceSpy,
+        altinnTilgangerService = altinnTilgangerServiceSpy,
     )
     beforeTest {
         clearAllMocks()

@@ -33,16 +33,22 @@ class FakeAltinnTilgangerClient : IAltinnTilgangerClient {
             listOf(
                 AltinnTilgang(
                     organisasjonsnummer,
-                    setOf(),
+                    if (accessPair != null) setOf(OPPGI_NARMESTELEDER_RESOURCE) else emptySet(),
                     setOf(),
                     emptyList(),
                     faker.ghostbusters().character(),
-                    "BEDR"
+                    "BEDR",
+
                 )
             ),
             if (accessPair != null) mapOf(organisasjonsnummer to setOf(OPPGI_NARMESTELEDER_RESOURCE)) else emptyMap(),
             if (accessPair != null) mapOf(OPPGI_NARMESTELEDER_RESOURCE to setOf(organisasjonsnummer)) else emptyMap(),
         )
+    }
+
+    fun reset() {
+        usersWithAccess.clear()
+        usersWithAccess.addAll(hasAccess)
     }
 
     companion object {

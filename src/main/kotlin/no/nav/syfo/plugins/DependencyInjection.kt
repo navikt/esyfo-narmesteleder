@@ -96,7 +96,7 @@ private fun databaseModule() = module {
 
 private fun handlerModule() = module {
     single { NlBehovLeesahHandler(get()) }
-    single { LinemanagerRequirementRESTHandler(get(), get(), get()) }
+    single { LinemanagerRequirementRESTHandler(get(), get(), get(), get()) }
 }
 
 private fun servicesModule() = module {

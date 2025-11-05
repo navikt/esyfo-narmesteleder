@@ -13,16 +13,38 @@ class AltinnTilgangerService(
     suspend fun validateTilgangToOrganization(
         userPrincipal: UserPrincipal,
         orgnummer: String,
-    ): AltinnTilgang? {
+    ): AltinnTilgang {
         try {
-            val tilganger = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
-            val org = tilganger?.hierarki?.findByOrgnr(orgnummer)
-            if (org == null)
+            val altinnTilgang = getAltinnTilgangForOrgnr(userPrincipal, orgnummer)
+            if (altinnTilgang == null)
                 throw ApiErrorException.ForbiddenException("User lacks access to organization: $orgnummer")
-            if (org.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE) != true) {
+            if (!altinnTilgang.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)) {
                 throw ApiErrorException.ForbiddenException("User lacks access to required altinn3 resource for organization: $orgnummer")
             }
-            return org
+            return altinnTilgang
+        } catch (e: UpstreamRequestException) {
+            logger.error("Error when fetching altinn resources available to owner to authorization token", e)
+            throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn resources for users authorization token")
+        }
+    }
+
+    fun validateTilgangToOrganization(
+        altinnTilgang: AltinnTilgang?,
+        orgnummer: String
+    ) {
+        altinnTilgang?.let {
+            if (!it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)) {
+                throw ApiErrorException.ForbiddenException("User lacks access to required altinn3 resource for organization: $orgnummer")
+            }
+        } ?: throw ApiErrorException.ForbiddenException("User lacks access to organization: $orgnummer")
+    }
+
+    suspend fun getAltinnTilgangForOrgnr(
+        userPrincipal: UserPrincipal,
+        orgnummer: String,
+    ): AltinnTilgang? {
+        try {
+            return altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)?.hierarki?.findByOrgnr(orgnummer)
         } catch (e: UpstreamRequestException) {
             logger.error("Error when fetching altinn resources available to owner to authorization token", e)
             throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn resources for users authorization token")
@@ -40,7 +62,8 @@ class AltinnTilgangerService(
     }
 
     companion object {
-        const val OPPGI_NARMESTELEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn2 to access NL relasjon
+        const val OPPGI_NARMESTELEDER_RESOURCE =
+            "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn2 to access NL relasjon
         private val logger = logger()
     }
 }

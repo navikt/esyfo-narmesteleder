@@ -1,7 +1,9 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import java.util.*
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.application.auth.Principal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
@@ -18,7 +20,8 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 class LinemanagerRequirementRESTHandler(
     private val narmesteLederService: NarmestelederService,
     private val validationService: ValidationService,
-    private val narmestelederKafkaService: NarmestelederKafkaService
+    private val narmestelederKafkaService: NarmestelederKafkaService,
+    private val altinnTilgangerService: AltinnTilgangerService,
 ) {
     suspend fun handleUpdatedRequirement(
         manager: Manager,
@@ -60,8 +63,14 @@ class LinemanagerRequirementRESTHandler(
 
     suspend fun handleGetLinemanagerRequirement(requirementId: UUID, principal: Principal): LinemanagerRequirementRead =
         try {
-            narmesteLederService.getLinemanagerRequirementReadById(requirementId).also {
-                validationService.validateGetNlBehov(principal, it)
+            narmesteLederService.getLinemanagerRequirementReadById(requirementId).let {
+                val altinnTilgang = if (principal is UserPrincipal) altinnTilgangerService.getAltinnTilgangForOrgnr(
+                    principal,
+                    it.orgnumber
+                ) else null
+
+                validationService.validateGetNlBehov(principal, it, altinnTilgang)
+                it.copy(orgName = altinnTilgang?.navn)
             }
         } catch (e: LinemanagerRequirementNotFoundException) {
             throw ApiErrorException.NotFoundException("LinemanagerRequirement", e)

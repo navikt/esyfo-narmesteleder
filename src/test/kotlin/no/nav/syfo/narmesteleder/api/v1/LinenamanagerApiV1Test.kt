@@ -431,7 +431,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 orgnumber = orgnumber,
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE",
-                narmesteLederId = UUID.randomUUID(),
+                linemanagerId = UUID.randomUUID(),
             )
 
             suspend fun seedLinemanagerRequirement(): UUID {

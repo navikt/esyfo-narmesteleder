@@ -83,7 +83,7 @@ class NarmestelederService(
                 logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
             }
         } else {
-            logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.narmesteLederId} in org ${nlBehov.orgnumber}")
+            logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.linemanagerId} in org ${nlBehov.orgnumber}")
             null
         }
 

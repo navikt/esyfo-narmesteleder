@@ -7,5 +7,5 @@ data class LinemanagerRequirementWrite(
     val orgnumber: String,
     val managerIdentificationNumber: String,
     val leesahStatus: String,
-    val narmesteLederId: UUID,
+    val linemanagerId: UUID,
 )

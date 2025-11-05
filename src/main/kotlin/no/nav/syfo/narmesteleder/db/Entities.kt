@@ -29,7 +29,7 @@ data class NarmestelederBehovEntity(
                     sykmeldtFnr = employeeIdentificationNumber,
                     narmestelederFnr = managerIdentificationNumber,
                     leesahStatus = leesahStatus,
-                    narmesteLederId = narmesteLederId,
+                    narmesteLederId = linemanagerId,
                     behovStatus = behovStatus,
                 )
             }

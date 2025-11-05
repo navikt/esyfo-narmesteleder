@@ -1,6 +1,5 @@
 package no.nav.syfo.altinntilganger
 
-import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.mockk.clearAllMocks
@@ -17,6 +16,7 @@ class AltinnTilgangerServiceTest : DescribeSpec({
 
     beforeTest {
         clearAllMocks()
+        altinnTilgangerClient.reset()
     }
 
     describe("validateTilgangToOrganization") {
@@ -29,15 +29,16 @@ class AltinnTilgangerServiceTest : DescribeSpec({
             }
         }
 
-        it("should not throw when user has access to org") {
+        it("should throw Forbidden when user lacks access to org") {
             val accessPair = altinnTilgangerClient.usersWithAccess.first()
             val userPrincipal = UserPrincipal(accessPair.first, "token")
-            shouldNotThrow<Exception> {
+            altinnTilgangerClient.usersWithAccess.clear()
+            shouldThrow<ApiErrorException.ForbiddenException> {
                 altinnTilgangerService.validateTilgangToOrganization(userPrincipal, accessPair.second)
             }
         }
 
-        it("should throw =Internal Server Error when client fails to make request") {
+        it("should throw Internal Server Error when client fails to make request") {
             val mockAltinnTilgangerClient = mockk<FakeAltinnTilgangerClient>()
             coEvery { mockAltinnTilgangerClient.fetchAltinnTilganger(any())} throws UpstreamRequestException("Forced failure")
             val altinnTilgangerServiceWithMock = AltinnTilgangerService(mockAltinnTilgangerClient)

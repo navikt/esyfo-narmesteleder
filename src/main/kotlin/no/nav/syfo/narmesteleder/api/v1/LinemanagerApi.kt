@@ -32,7 +32,7 @@ fun Route.registerLinemanagerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
-    linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler
+    linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler,
 ) {
     route(LINEMANAGER_API_PATH) {
         install(MaskinportenAndTokenXTokenAuthPlugin) {

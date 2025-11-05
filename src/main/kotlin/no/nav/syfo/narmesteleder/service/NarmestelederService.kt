@@ -101,5 +101,5 @@ fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerR
         orgnumber = this.orgnummer,
         mainOrgnumber = this.hovedenhetOrgnummer,
         managerIdentificationNumber = this.narmestelederFnr,
-        name = name
+        name = name,
     )

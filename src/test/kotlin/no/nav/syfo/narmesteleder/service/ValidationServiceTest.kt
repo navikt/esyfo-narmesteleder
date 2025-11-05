@@ -11,6 +11,7 @@ import linemanager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.OrganisasjonPrincipal
@@ -79,7 +80,7 @@ class ValidationServiceTest : DescribeSpec({
             // Assert
             coVerify(exactly = 0) {
                 altinnTilgangerService.validateTilgangToOrganization(
-                    any(),
+                    any<AltinnTilgang>(),
                     eq(narmestelederRelasjonerWrite.orgnumber)
                 )
             }
@@ -89,10 +90,6 @@ class ValidationServiceTest : DescribeSpec({
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
             }
-        }
-
-        it("should return true when calling the validateActiveSykmelding") {
-            service.validataActiveSickLeave("12345678901", "FAKE_ORGNR") shouldBe true
         }
     }
 
@@ -136,7 +133,7 @@ class ValidationServiceTest : DescribeSpec({
             // Assert
             coVerify(exactly = 0) {
                 altinnTilgangerService.validateTilgangToOrganization(
-                    any(),
+                    any<AltinnTilgang>(),
                     eq(narmesteLederAvkreft.orgnumber)
                 )
             }

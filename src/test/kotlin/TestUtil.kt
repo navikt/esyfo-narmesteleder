@@ -97,9 +97,11 @@ fun createRandomValidOrgNumbers(
     orgNumLength: Int = 9
 ): List<String> =
     buildList {
-        repeat(count) { add(faker.regexify("$prefix:[0-9]{$orgNumLength}")) }
+        repeat(count) { add(faker.regexify("$prefix[0-9]{$orgNumLength}")) }
     }
 
+fun addMaskinportenOrgPrefix(orgNumber: String): String =
+    "0192:$orgNumber"
 
 fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, content: String) =
     MockEngine.Companion { request ->
@@ -123,21 +125,6 @@ fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, c
             else -> error("Unhandled request ${request.url.fullPath}")
         }
     }
-
-fun AaregClient.defaultMocks(
-    arbeidstakerHovedenhet: String = maskinportenIdToOrgnumber(DefaultOrganization.ID),
-    arbeidstakerUnderenhet: String? = null,
-) {
-    val client = FakeAaregClient(
-//        arbeidsstedOrgnummer = arbeidstakerUnderenhet ?: arbeidstakerHovedenhet,
-//        juridiskOrgnummer = arbeidstakerHovedenhet,
-    )
-
-    coEvery { getArbeidsforhold(any()) } coAnswers {
-        val persIdent = firstArg<String>()
-        client.getArbeidsforhold(persIdent)
-    }
-}
 
 fun TexasHttpClient.defaultMocks(
     pid: String? = null,

@@ -84,7 +84,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
     val nlBehovHandler = LinemanagerRequirementRESTHandler(
         narmesteLederService = narmesteLederService,
         validationService = validationServiceSpy,
-        narmestelederKafkaService = narmestelederKafkaServiceSpy
+        narmestelederKafkaService = narmestelederKafkaServiceSpy,
+        altinnTilgangerService = altinnTilgangerServiceSpy,
     )
     beforeTest {
         clearAllMocks()
@@ -248,6 +249,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         acr = "Level4",
                         pid = callerPid
                     )
+                    fakeAltinnTilgangerClient.usersWithAccess.clear()
                     fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.employeeIdentificationNumber,

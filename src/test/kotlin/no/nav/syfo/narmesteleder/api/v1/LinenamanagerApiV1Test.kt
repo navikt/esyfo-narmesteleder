@@ -517,13 +517,13 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             match { linemanager ->
                                 linemanager.employeeIdentificationNumber == sykmeldtFnr &&
-                                    linemanager.orgnumber == orgnummer &&
-                                    linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
+                                        linemanager.orgnumber == orgnummer &&
+                                        linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
                             }, any(), any()
                         )
                     }
                     val stored = fakeRepo.findBehovById(requirementId) ?: error("Stored requirement missing")
-                    stored.behovStatus.name shouldBe BehovStatus.COMPLETED.name
+                    stored.behovStatus.name shouldBe BehovStatus.BEHOV_FULFILLED.name
                 }
             }
 

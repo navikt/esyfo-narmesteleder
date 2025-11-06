@@ -26,9 +26,16 @@ class NarmestelederDb(
             connection
                 .prepareStatement(
                     """
-                           INSERT INTO nl_behov(orgnummer, hovedenhet_orgnummer, sykemeldt_fnr, narmeste_leder_fnr, leesah_status, behov_status) 
-                           VALUES (?, ?, ?, ?, ?, ?) RETURNING id;
-                        """.trimIndent()
+                    INSERT INTO nl_behov(orgnummer,
+                                         hovedenhet_orgnummer,
+                                         sykemeldt_fnr,
+                                         narmeste_leder_fnr,
+                                         leesah_status,
+                                         behov_status,
+                                         avbrutt_narmesteleder_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    RETURNING id;
+                    """.trimIndent()
                 ).use { preparedStatement ->
                     preparedStatement.setString(1, nlBehov.orgnummer)
                     preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
@@ -36,6 +43,7 @@ class NarmestelederDb(
                     preparedStatement.setString(4, nlBehov.narmestelederFnr)
                     preparedStatement.setString(5, nlBehov.leesahStatus)
                     preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
+                    preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
 
                     preparedStatement.execute()
 
@@ -54,14 +62,14 @@ class NarmestelederDb(
             connection
                 .prepareStatement(
                     """
-                        UPDATE nl_behov
-                        SET orgnummer            = ?,
-                            hovedenhet_orgnummer = ?,
-                            sykemeldt_fnr        = ?,
-                            narmeste_leder_fnr   = ?,
-                            behov_status         = ?,
-                            dialog_id            = ?
-                            WHERE id = ?;
+                    UPDATE nl_behov
+                    SET orgnummer            = ?,
+                        hovedenhet_orgnummer = ?,
+                        sykemeldt_fnr        = ?,
+                        narmeste_leder_fnr   = ?,
+                        behov_status         = ?,
+                        dialog_id            = ?
+                        WHERE id = ?;
                     """.trimIndent()
                 ).use { preparedStatement ->
                     with(nlBehov) {
@@ -100,11 +108,13 @@ class NarmestelederDb(
                 }
         }
     }
-    override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> = withContext(dispatcher) {
-        return@withContext database.connection.use { connection ->
-            connection
-                .prepareStatement(
-                    """
+
+    override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> =
+        withContext(dispatcher) {
+            return@withContext database.connection.use { connection ->
+                connection
+                    .prepareStatement(
+                        """
                         SELECT *
                         FROM nl_behov
                         WHERE behov_status = ?
@@ -112,17 +122,17 @@ class NarmestelederDb(
                         order by created
                         LIMIT 100
                         """.trimIndent()
-                ).use { preparedStatement ->
-                    preparedStatement.setObject(1, status, java.sql.Types.OTHER)
-                    val resultSet = preparedStatement.executeQuery()
-                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                    while (resultSet.next()) {
-                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                    ).use { preparedStatement ->
+                        preparedStatement.setObject(1, status, java.sql.Types.OTHER)
+                        val resultSet = preparedStatement.executeQuery()
+                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                        while (resultSet.next()) {
+                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                        }
+                        nlBehov
                     }
-                    nlBehov
-                }
+            }
         }
-    }
 }
 
 private fun ResultSet.getGeneratedUUID(idColumnLabel: String): UUID = this.use {

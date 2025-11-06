@@ -79,7 +79,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
         nlDb = fakeRepo,
         persistLeesahNlBehov = true,
         aaregService = aaregService,
-        pdlService = pdlService
+        pdlService = pdlService,
+        dinesykmeldteService = dineSykmelteService,
     )
     val nlBehovHandler = LinemanagerRequirementRESTHandler(
         narmesteLederService = narmesteLederService,
@@ -431,7 +432,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgnumber = orgnumber,
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
-                leesahStatus = "ACTIVE"
+                leesahStatus = "ACTIVE",
+                revokedLinemanagerId = UUID.randomUUID(),
             )
 
             suspend fun seedLinemanagerRequirement(): UUID {

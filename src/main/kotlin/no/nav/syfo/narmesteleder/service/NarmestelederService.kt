@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.service
 
 import java.util.*
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -21,20 +22,21 @@ class NarmestelederService(
     private val persistLeesahNlBehov: Boolean,
     private val aaregService: AaregService,
     private val pdlService: PdlService,
+    private val dinesykmeldteService: DinesykmeldteService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead =
-            with(findBehovEntityById(id)) {
-                val details = pdlService.getPersonFor(sykmeldtFnr)
-                // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
-                val name = Name(
-                    firstName = details.name.fornavn,
-                    lastName = details.name.etternavn,
-                    middleName = details.name.mellomnavn,
-                )
-                toEmployeeLinemanagerRead(name)
-            }
+        with(findBehovEntityById(id)) {
+            val details = pdlService.getPersonFor(sykmeldtFnr)
+            // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
+            val name = Name(
+                firstName = details.name.fornavn,
+                lastName = details.name.etternavn,
+                middleName = details.name.mellomnavn,
+            )
+            toEmployeeLinemanagerRead(name)
+        }
 
 
     private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity =
@@ -67,22 +69,24 @@ class NarmestelederService(
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
-
-        return nlDb.insertNlBehov(
-            NarmestelederBehovEntity(
-                sykmeldtFnr = nlBehov.employeeIdentificationNumber,
-                orgnummer = nlBehov.orgnumber,
-                hovedenhetOrgnummer = findHovedenhetOrgnummer(
-                    nlBehov.employeeIdentificationNumber,
-                    nlBehov.orgnumber
-                ),
-                narmestelederFnr = nlBehov.managerIdentificationNumber,
-                leesahStatus = nlBehov.leesahStatus,
-                behovStatus = BehovStatus.RECEIVED
-            )
-        ).also {
-            logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
+        val hasActiveSykmelding =
+            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgnumber)
+        return if (hasActiveSykmelding) {
+            nlDb.insertNlBehov(
+                NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+                    nlBehov, findHovedenhetOrgnummer(
+                        nlBehov.employeeIdentificationNumber,
+                        nlBehov.orgnumber
+                    ), BehovStatus.RECEIVED
+                )
+            ).also {
+                logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
+            }
+        } else {
+            logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgnumber}")
+            null
         }
+
     }
 
     suspend fun getEmployeeByRequirementId(id: UUID): Employee {

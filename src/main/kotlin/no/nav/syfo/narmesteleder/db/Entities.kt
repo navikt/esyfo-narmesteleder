@@ -15,6 +15,9 @@ data class NarmestelederBehovEntity(
     val behovStatus: BehovStatus = BehovStatus.RECEIVED,
     val dialogId: UUID? = null,
     val avbruttNarmesteLederId: UUID,
+    val fornavn: String? = null,
+    val mellomnavn: String? = null,
+    val etternavn: String? = null,
 ) {
     companion object {
         fun fromLinemanagerRequirementWrite(
@@ -48,4 +51,7 @@ fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity =
         behovStatus = BehovStatus.valueOf(this.getString("behov_status")),
         dialogId = this.getObject("dialog_id") as? UUID,
         avbruttNarmesteLederId = this.getObject("avbrutt_narmesteleder_id", UUID::class.java),
+        fornavn = this.getString("fornavn"),
+        mellomnavn = this.getString("mellomnavn"),
+        etternavn = this.getString("etternavn"),
     )

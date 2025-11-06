@@ -28,13 +28,26 @@ class NarmestelederService(
 
     suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead =
         with(findBehovEntityById(id)) {
-            val details = pdlService.getPersonFor(sykmeldtFnr)
-            // TODO: Kan vurdere valkey her eller å lagre siste kjente navndetaljer ved insert/update av behov
-            val name = Name(
-                firstName = details.name.fornavn,
-                lastName = details.name.etternavn,
-                middleName = details.name.mellomnavn,
-            )
+            val name = if (fornavn != null && etternavn != null) {
+                Name(
+                    firstName = fornavn,
+                    lastName = etternavn,
+                    middleName = mellomnavn,
+                )
+            } else {
+                val details = pdlService.getPersonFor(sykmeldtFnr)
+                val updated = this.copy(
+                    fornavn = details.name.fornavn,
+                    mellomnavn = details.name.mellomnavn,
+                    etternavn = details.name.etternavn,
+                )
+                nlDb.updateNlBehov(updated)
+                Name(
+                    firstName = details.name.fornavn,
+                    lastName = details.name.etternavn,
+                    middleName = details.name.mellomnavn,
+                )
+            }
             toEmployeeLinemanagerRead(name)
         }
 

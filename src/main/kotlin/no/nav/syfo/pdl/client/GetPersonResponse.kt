@@ -31,7 +31,10 @@ data class Navn(
     val fornavn: String,
     val mellomnavn: String?,
     val etternavn: String,
-)
+) {
+    fun navnFullt() =
+        listOfNotNull(fornavn, mellomnavn, etternavn).joinToString(" ")
+}
 
 data class ResponseError(
     val message: String?,

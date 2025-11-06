@@ -32,8 +32,11 @@ class NarmestelederDb(
                                          narmeste_leder_fnr,
                                          leesah_status,
                                          behov_status,
-                                         avbrutt_narmesteleder_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                         avbrutt_narmesteleder_id,
+                                         fornavn,
+                                         mellomnavn,
+                                         etternavn)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     RETURNING id;
                     """.trimIndent()
                 ).use { preparedStatement ->
@@ -44,7 +47,9 @@ class NarmestelederDb(
                     preparedStatement.setString(5, nlBehov.leesahStatus)
                     preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
                     preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
-
+                    preparedStatement.setString(8, nlBehov.fornavn)
+                    preparedStatement.setString(9, nlBehov.mellomnavn)
+                    preparedStatement.setString(10, nlBehov.etternavn)
                     preparedStatement.execute()
 
                     runCatching { preparedStatement.resultSet.getGeneratedUUID("id") }.getOrElse {
@@ -68,7 +73,10 @@ class NarmestelederDb(
                         sykemeldt_fnr        = ?,
                         narmeste_leder_fnr   = ?,
                         behov_status         = ?,
-                        dialog_id            = ?
+                        dialog_id            = ?,
+                        fornavn              = ?,
+                        mellomnavn           = ?,
+                        etternavn            = ?
                         WHERE id = ?;
                     """.trimIndent()
                 ).use { preparedStatement ->
@@ -79,7 +87,10 @@ class NarmestelederDb(
                         preparedStatement.setString(4, narmestelederFnr)
                         preparedStatement.setObject(5, behovStatus, java.sql.Types.OTHER)
                         preparedStatement.setObject(6, dialogId)
-                        preparedStatement.setObject(7, id)
+                        preparedStatement.setString(7, fornavn)
+                        preparedStatement.setString(8, mellomnavn)
+                        preparedStatement.setString(9, etternavn)
+                        preparedStatement.setObject(10, id)
                     }
                     preparedStatement.executeUpdate()
                 }.also {
@@ -113,13 +124,13 @@ class NarmestelederDb(
         withContext(dispatcher) {
             return@withContext database.connection.use { connection ->
                 connection
+                    // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
                     .prepareStatement(
                         """
                         SELECT *
                         FROM nl_behov
                         WHERE behov_status = ?
-                        AND created < now() - interval '2 minutes'
-                        order by created
+                        ORDER BY created
                         LIMIT 100
                         """.trimIndent()
                     ).use { preparedStatement ->

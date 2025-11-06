@@ -166,7 +166,45 @@ class NarmestelederServiceTest : DescribeSpec({
     }
 
     describe("getLinemanagerRequirementReadById") {
-        it("returns mapped read DTO with name") {
+        it("returns mapped read DTO with name from database") {
+            // Arrange
+            val id = UUID.randomUUID()
+            val entity = NarmestelederBehovEntity(
+                id = id,
+                orgnummer = "123456789",
+                hovedenhetOrgnummer = "987654321",
+                sykmeldtFnr = "12345678910",
+                narmestelederFnr = "01987654321",
+                leesahStatus = "ACTIVE",
+                behovStatus = BehovStatus.RECEIVED,
+                avbruttNarmesteLederId = UUID.randomUUID(),
+                fornavn = "Kari",
+                mellomnavn = null,
+                etternavn = "Nordmann",
+            )
+            coEvery { nlDb.findBehovById(id) } returns entity
+            coVerify(exactly = 0) { pdlService.getPersonFor(any()) }
+            val read = service().getLinemanagerRequirementReadById(id)
+            read.id shouldBe id
+            read.orgnumber shouldBe entity.orgnummer
+            read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer
+            read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
+            read.managerIdentificationNumber shouldBe entity.narmestelederFnr
+            read.name.firstName shouldBe entity.fornavn
+            read.name.middleName shouldBe entity.mellomnavn
+            read.name.lastName shouldBe entity.etternavn
+        }
+
+        it("throws when missing") {
+            // Arrange
+            val id = UUID.randomUUID()
+            coEvery { nlDb.findBehovById(id) } returns null
+
+            // Act + Assert
+            shouldThrow<LinemanagerRequirementNotFoundException> { service().getLinemanagerRequirementReadById(id) }
+        }
+
+        it("returns mapped read DTO with name from PDL when empty name in entity") {
             // Arrange
             val id = UUID.randomUUID()
             val entity = NarmestelederBehovEntity(
@@ -184,8 +222,12 @@ class NarmestelederServiceTest : DescribeSpec({
             coEvery { pdlService.getPersonFor(entity.sykmeldtFnr) } returns Person(
                 name = navn, nationalIdentificationNumber = entity.sykmeldtFnr
             )
-
+            // Act
             val read = service().getLinemanagerRequirementReadById(id)
+
+            // Assert
+            coVerify(exactly = 1) { pdlService.getPersonFor(eq(entity.sykmeldtFnr)) }
+            coVerify(exactly = 1) { nlDb.updateNlBehov(any()) }
             read.id shouldBe id
             read.orgnumber shouldBe entity.orgnummer
             read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer

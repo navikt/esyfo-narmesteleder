@@ -53,3 +53,4 @@ ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }
 [bundles]
 kotest = ["kotest-assertions-core", "kotest-junit", "kotest-property", "kotest-assertions-ktor"]
 database = ["database-flyway-core", "database-hikaricp", "database-postgresql"]
+testcontainers = ["testcontainers", "testcontainers-postgres"]

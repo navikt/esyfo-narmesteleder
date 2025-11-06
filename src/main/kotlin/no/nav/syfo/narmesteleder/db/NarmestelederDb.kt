@@ -75,7 +75,7 @@ class NarmestelederDb(
                         behov_status         = ?,
                         dialog_id            = ?,
                         fornavn              = ?,
-                        mellomnavn          = ?,
+                        mellomnavn           = ?,
                         etternavn            = ?
                         WHERE id = ?;
                     """.trimIndent()
@@ -87,10 +87,10 @@ class NarmestelederDb(
                         preparedStatement.setString(4, narmestelederFnr)
                         preparedStatement.setObject(5, behovStatus, java.sql.Types.OTHER)
                         preparedStatement.setObject(6, dialogId)
-                        preparedStatement.setObject(7, id)
-                        preparedStatement.setString(8, fornavn)
-                        preparedStatement.setString(9, mellomnavn)
-                        preparedStatement.setString(10, etternavn)
+                        preparedStatement.setString(7, fornavn)
+                        preparedStatement.setString(8, mellomnavn)
+                        preparedStatement.setString(9, etternavn)
+                        preparedStatement.setObject(10, id)
                     }
                     preparedStatement.executeUpdate()
                 }.also {

@@ -17,18 +17,24 @@ import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.client.Navn
+import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.util.logger
 
 class DialogportenService(
     private val dialogportenClient: IDialogportenClient,
     private val narmestelederDb: INarmestelederDb,
     private val otherEnvironmentProperties: OtherEnvironmentProperties,
+    private val pdlService: PdlService,
 ) {
     private val logger = logger()
     private val dialogRessurs = "nav_syfo_dialog"
 
-    val dialogTitle = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
-    val dialogSummary = "Vennligst tildel nærmeste leder for sykmeldt"
+    val dialogTitleNoName = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
+    val dialogTitleWithName = "er sykmeldt og har behov for å bli tildelt nærmeste leder"
+    val dialogSummary = "Vennligst tildel nærmeste leder for"
+
     val guiUrlTitle = "Naviger til nærmeste leder skjema"
     val apiUrlTitle = "Endpoint for LinemanagerRequirement request"
 
@@ -39,15 +45,25 @@ class DialogportenService(
         for (behov in behovToSend) {
             require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
             try {
-                val dialog = behov.toDialog()
-                dialog.attachments?.firstOrNull()?.let {
-                    logger.info("Sent document ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
+                val personInfo = try {
+                    pdlService.getPersonFor(behov.sykmeldtFnr)
+                } catch (ex: Exception) {
+                    logger.error("Failed to get person info for behov ${behov.id}", ex)
+                    null
                 }
+                val dialog = behov.toDialog(personInfo?.name)
+                dialog.attachments?.firstOrNull()?.let {
+                    logger.info("Sening document ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
+                }
+
                 val dialogId = dialogportenClient.createDialog(dialog)
                 narmestelederDb.updateNlBehov(
                     behov.copy(
                         dialogId = dialogId,
-                        behovStatus = BehovStatus.PENDING
+                        behovStatus = BehovStatus.PENDING,
+                        fornavn = personInfo?.name?.fornavn,
+                        mellomnavn = personInfo?.name?.mellomnavn,
+                        etternavn = personInfo?.name?.etternavn,
                     )
                 )
             } catch (ex: Exception) {
@@ -55,6 +71,16 @@ class DialogportenService(
             }
         }
     }
+
+    private fun getDialogTitle(name: Navn?): String =
+        name?.let {
+            "${it.navnFullt()} $dialogTitleWithName"
+        } ?: dialogTitleNoName
+
+    private fun getSummary(name: Navn?): String =
+        name?.let {
+            "$dialogSummary ${it.navnFullt()}"
+        } ?: "$dialogSummary ansatt som er sykmeldt"
 
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
 
@@ -65,7 +91,7 @@ class DialogportenService(
         "${otherEnvironmentProperties.frontendBaseUrl}/ansatte/narmesteleder/$id"
     //https://www.ekstern.dev.nav.no/arbeidsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
 
-    private fun NarmestelederBehovEntity.toDialog(): Dialog {
+    private fun NarmestelederBehovEntity.toDialog(name: Navn?): Dialog {
         require(id != null) { "Cannot create Dialogporten Dialog without id" }
         return Dialog(
             serviceResource = "urn:altinn:resource:$dialogRessurs",
@@ -73,8 +99,8 @@ class DialogportenService(
             party = "urn:altinn:organization:identifier-no:$orgnummer",
             externalReference = id.toString(),
             content = Content.create(
-                title = dialogTitle,
-                summary = dialogSummary,
+                title = getDialogTitle(name),
+                summary = getSummary(name),
             ),
             isApiOnly = false,
             attachments = listOf(

@@ -2,6 +2,7 @@ package no.nav.syfo.dialogporten.service
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldEndWith
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -17,6 +18,8 @@ import no.nav.syfo.dialogporten.domain.Dialog
 import no.nav.syfo.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.client.FakePdlClient
 
 class DialogportenServiceTest : DescribeSpec({
     val dialogportenClient = mockk<IDialogportenClient>()
@@ -24,6 +27,8 @@ class DialogportenServiceTest : DescribeSpec({
     val spyNarmestelederDb = spyk(fakeNarmestelederDb)
     val publicIngressUrl = "https://test.nav.no"
     val frontendBaseUrl = "https://frontend.test.nav.no"
+    val fakePdsClient = FakePdlClient()
+    val pdlService = spyk(PdlService(fakePdsClient))
 
     val dialogportenService = DialogportenService(
         dialogportenClient = dialogportenClient,
@@ -32,7 +37,8 @@ class DialogportenServiceTest : DescribeSpec({
             electorPath = "elector",
             publicIngressUrl = publicIngressUrl,
             frontendBaseUrl = frontendBaseUrl,
-        )
+        ),
+        pdlService = pdlService,
     )
 
     beforeTest {
@@ -76,6 +82,7 @@ class DialogportenServiceTest : DescribeSpec({
                         it.behovStatus == BehovStatus.PENDING
                 })
             }
+            coVerify(exactly = 1) { pdlService.getPersonFor(eq(behovEntity.sykmeldtFnr)) }
 
             val capturedDialog = dialogSlot.captured
             capturedDialog.party shouldBe "urn:altinn:organization:identifier-no:${behovEntity.orgnummer}"
@@ -85,6 +92,7 @@ class DialogportenServiceTest : DescribeSpec({
             capturedDialog.attachments?.size shouldBe 2
             capturedDialog.attachments?.first()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Api
             capturedDialog.attachments?.last()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Gui
+            capturedDialog.content.title.value.first().value shouldEndWith "er sykmeldt og har behov for å bli tildelt nærmeste leder"
         }
     }
     context("when there are multiple documents to send") {

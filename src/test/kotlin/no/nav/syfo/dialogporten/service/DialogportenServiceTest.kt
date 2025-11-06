@@ -16,6 +16,7 @@ import no.nav.syfo.dialogporten.client.IDialogportenClient
 import no.nav.syfo.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.dialogporten.domain.Dialog
 import no.nav.syfo.dialogporten.domain.DialogStatus
+import no.nav.syfo.dialogporten.service.DialogportenService.Companion.DIALOG_TITLE_WITH_NAME
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
@@ -92,7 +93,7 @@ class DialogportenServiceTest : DescribeSpec({
             capturedDialog.attachments?.size shouldBe 2
             capturedDialog.attachments?.first()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Api
             capturedDialog.attachments?.last()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Gui
-            capturedDialog.content.title.value.first().value shouldEndWith "er sykmeldt og har behov for å bli tildelt nærmeste leder"
+            capturedDialog.content.title.value.first().value shouldEndWith DIALOG_TITLE_WITH_NAME
         }
     }
     context("when there are multiple documents to send") {

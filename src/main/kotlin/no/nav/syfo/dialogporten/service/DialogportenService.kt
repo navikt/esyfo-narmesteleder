@@ -19,7 +19,6 @@ import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.Navn
-import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.util.logger
 
 class DialogportenService(
@@ -31,12 +30,6 @@ class DialogportenService(
     private val logger = logger()
     private val dialogRessurs = "nav_syfo_dialog"
 
-    val dialogTitleNoName = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
-    val dialogTitleWithName = "er sykmeldt og har behov for å bli tildelt nærmeste leder"
-    val dialogSummary = "Vennligst tildel nærmeste leder for"
-
-    val guiUrlTitle = "Naviger til nærmeste leder skjema"
-    val apiUrlTitle = "Endpoint for LinemanagerRequirement request"
 
     suspend fun sendDocumentsToDialogporten() {
         val behovToSend = getRequirementsToSend()
@@ -53,7 +46,7 @@ class DialogportenService(
                 }
                 val dialog = behov.toDialog(personInfo?.name)
                 dialog.attachments?.firstOrNull()?.let {
-                    logger.info("Sening document ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
+                    logger.info("Sending document ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
                 }
 
                 val dialogId = dialogportenClient.createDialog(dialog)
@@ -74,13 +67,13 @@ class DialogportenService(
 
     private fun getDialogTitle(name: Navn?): String =
         name?.let {
-            "${it.navnFullt()} $dialogTitleWithName"
-        } ?: dialogTitleNoName
+            "${it.navnFullt()} $DIALOG_TITLE_WITH_NAME"
+        } ?: DIALOG_TITLE_NO_NAME
 
     private fun getSummary(name: Navn?): String =
         name?.let {
-            "$dialogSummary ${it.navnFullt()}"
-        } ?: "$dialogSummary ansatt som er sykmeldt"
+            "$DIALOG_SUMMARY ${it.navnFullt()}"
+        } ?: "$DIALOG_SUMMARY ansatt som er sykmeldt"
 
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
 
@@ -104,8 +97,8 @@ class DialogportenService(
             ),
             isApiOnly = false,
             attachments = listOf(
-                createAttachement(AttachmentUrlConsumerType.Api, apiUrlTitle, id),
-                createAttachement(AttachmentUrlConsumerType.Gui, guiUrlTitle, id),
+                createAttachement(AttachmentUrlConsumerType.Api, URL_TITLE_API, id),
+                createAttachement(AttachmentUrlConsumerType.Gui, URL_TITLE_GUI, id),
             ),
         )
     }
@@ -134,4 +127,12 @@ class DialogportenService(
                 consumerType = type,
             )
         }
+    companion object {
+        const val DIALOG_TITLE_NO_NAME = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
+        const val DIALOG_TITLE_WITH_NAME = "er sykmeldt og har behov for å bli tildelt nærmeste leder"
+        const val DIALOG_SUMMARY = "Vennligst tildel nærmeste leder for"
+
+        const val URL_TITLE_GUI = "Naviger til nærmeste leder skjema"
+        const val URL_TITLE_API = "Endpoint for LinemanagerRequirement request"
+    }
 }

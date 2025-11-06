@@ -48,7 +48,7 @@ dependencies {
     testImplementation(libs.testcontainers)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlinx.coroutines.test)
-//    testImplementation(libs.testcontainers.postgres) // Will want this eventually
+    testImplementation(libs.bundles.testcontainers) // Will want this eventually
 }
 application {
     mainClass.set("no.nav.syfo.ApplicationKt")

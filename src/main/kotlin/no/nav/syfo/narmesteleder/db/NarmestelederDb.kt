@@ -124,13 +124,13 @@ class NarmestelederDb(
         withContext(dispatcher) {
             return@withContext database.connection.use { connection ->
                 connection
+                    // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
                     .prepareStatement(
                         """
                         SELECT *
                         FROM nl_behov
                         WHERE behov_status = ?
-                        AND created < now() - interval '2 minutes'
-                        order by created
+                        ORDER BY created
                         LIMIT 100
                         """.trimIndent()
                     ).use { preparedStatement ->

@@ -291,12 +291,17 @@ class NarmestelederServiceTest : DescribeSpec({
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
             // Act
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.BEHOV_FULFILLED)
 
             // Assert
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
-                    updated.id == id && updated.orgnummer == original.orgnummer && updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer && updated.sykmeldtFnr == original.sykmeldtFnr && updated.narmestelederFnr == defaultManager.nationalIdentificationNumber && updated.behovStatus == BehovStatus.BEHOV_FULFILLED
+                    updated.id == id
+                            && updated.orgnummer == original.orgnummer
+                            && updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer
+                            && updated.sykmeldtFnr == original.sykmeldtFnr
+                            && updated.narmestelederFnr == defaultManager.nationalIdentificationNumber
+                            && updated.behovStatus == BehovStatus.BEHOV_FULFILLED
                 })
             }
         }

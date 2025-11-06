@@ -90,7 +90,7 @@ class NarmestelederService(
                     nlBehov, findHovedenhetOrgnummer(
                         nlBehov.employeeIdentificationNumber,
                         nlBehov.orgnumber
-                    ), BehovStatus.RECEIVED
+                    ), BehovStatus.BEHOV_CREATED
                 )
             ).also {
                 logger.info("Inserted NarmestelederBehovEntity with id: $it.id")

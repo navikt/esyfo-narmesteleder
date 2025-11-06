@@ -23,7 +23,6 @@ class LinemanagerRequirementRESTHandler(
     private val validationService: ValidationService,
     private val narmestelederKafkaService: NarmestelederKafkaService,
     private val altinnTilgangerService: AltinnTilgangerService,
-    private val dialogportenService: DialogportenService,
 ) {
     suspend fun handleUpdatedRequirement(
         manager: Manager,

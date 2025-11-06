@@ -66,26 +66,30 @@ class DialogportenService(
     }
 
     suspend fun setAllFulfilledBehovsAsCompletedInDialogporten() {
-        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED).forEach { behov ->
-            behov.dialogId?.let { dialogId ->
-                try {
-                    dialogportenClient.getDialogById(dialogId).let { existingDialog ->
-                        dialogportenClient.updateDialogStatus(
-                            dialogId = dialogId,
-                            revisionNumber = existingDialog.revision,
-                            dialogStatus = DialogStatus.Completed
+        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED)
+            .also {
+                logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
+            }
+            .forEach { behov ->
+                behov.dialogId?.let { dialogId ->
+                    try {
+                        dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+                            dialogportenClient.updateDialogStatus(
+                                dialogId = dialogId,
+                                revisionNumber = existingDialog.revision,
+                                dialogStatus = DialogStatus.Completed
+                            )
+                        }
+                        narmestelederDb.updateNlBehov(
+                            behov.copy(
+                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                            )
                         )
+                    } catch (ex: Exception) {
+                        logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
                     }
-                    narmestelederDb.updateNlBehov(
-                        behov.copy(
-                            behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-                        )
-                    )
-                } catch (ex: Exception) {
-                    logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
                 }
             }
-        }
     }
     private fun getDialogTitle(name: Navn?): String =
         name?.let {

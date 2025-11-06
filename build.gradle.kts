@@ -30,6 +30,8 @@ dependencies {
     implementation("io.ktor:ktor-server-call-id")
     implementation("io.ktor:ktor-server-content-negotiation")
     implementation("io.ktor:ktor-server-status-pages")
+    implementation("io.ktor:ktor-server-openapi:3.3.1")
+    implementation("io.ktor:ktor-server-swagger:3.3.1")
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger)
     implementation(libs.logstash)

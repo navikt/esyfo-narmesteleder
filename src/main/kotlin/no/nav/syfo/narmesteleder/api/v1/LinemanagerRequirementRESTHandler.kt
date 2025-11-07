@@ -5,7 +5,6 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.dialogporten.service.DialogportenService
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
@@ -33,7 +32,7 @@ class LinemanagerRequirementRESTHandler(
             val employee = narmesteLederService.getEmployeeByRequirementId(requirementId)
             val linemanager = Linemanager(
                 employeeIdentificationNumber = employee.nationalIdentificationNumber,
-                orgnumber = employee.orgnumber,
+                orgNumber = employee.orgNumber,
                 manager = manager
             )
             val linemanagerActors = validationService.validateLinemanager(
@@ -67,7 +66,7 @@ class LinemanagerRequirementRESTHandler(
             narmesteLederService.getLinemanagerRequirementReadById(requirementId).let {
                 val altinnTilgang = if (principal is UserPrincipal) altinnTilgangerService.getAltinnTilgangForOrgnr(
                     principal,
-                    it.orgnumber
+                    it.orgNumber
                 ) else null
 
                 validationService.validateGetNlBehov(principal, it, altinnTilgang)

@@ -106,7 +106,7 @@ class NarmestelederService(
         val behovEntity = findBehovEntityById(id)
         return Employee(
             nationalIdentificationNumber = behovEntity.sykmeldtFnr,
-            orgnumber = behovEntity.orgnummer
+            orgNumber = behovEntity.orgnummer
         )
     }
 }
@@ -115,8 +115,8 @@ fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerR
     LinemanagerRequirementRead(
         id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
         employeeIdentificationNumber = this.sykmeldtFnr,
-        orgnumber = this.orgnummer,
-        mainOrgnumber = this.hovedenhetOrgnummer,
+        orgNumber = this.orgnummer,
+        mainOrgNumber = this.hovedenhetOrgnummer,
         managerIdentificationNumber = this.narmestelederFnr,
         name = name,
     )

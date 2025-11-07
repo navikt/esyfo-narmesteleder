@@ -229,8 +229,8 @@ class NarmestelederServiceTest : DescribeSpec({
             coVerify(exactly = 1) { pdlService.getPersonFor(eq(entity.sykmeldtFnr)) }
             coVerify(exactly = 1) { nlDb.updateNlBehov(any()) }
             read.id shouldBe id
-            read.orgnumber shouldBe entity.orgnummer
-            read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer
+            read.orgNumber shouldBe entity.orgnummer
+            read.mainOrgNumber shouldBe entity.hovedenhetOrgnummer
             read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
             read.managerIdentificationNumber shouldBe entity.narmestelederFnr
             read.name.firstName shouldBe navn.fornavn

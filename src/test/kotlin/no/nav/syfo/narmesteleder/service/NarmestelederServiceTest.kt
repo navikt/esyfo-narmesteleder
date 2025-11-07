@@ -176,7 +176,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
                 leesahStatus = "ACTIVE",
-                behovStatus = BehovStatus.RECEIVED,
+                behovStatus = BehovStatus.BEHOV_CREATED,
                 avbruttNarmesteLederId = UUID.randomUUID(),
                 fornavn = "Kari",
                 mellomnavn = null,
@@ -186,8 +186,8 @@ class NarmestelederServiceTest : DescribeSpec({
             coVerify(exactly = 0) { pdlService.getPersonFor(any()) }
             val read = service().getLinemanagerRequirementReadById(id)
             read.id shouldBe id
-            read.orgnumber shouldBe entity.orgnummer
-            read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer
+            read.orgNumber shouldBe entity.orgnummer
+            read.mainOrgNumber shouldBe entity.hovedenhetOrgnummer
             read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
             read.managerIdentificationNumber shouldBe entity.narmestelederFnr
             read.name.firstName shouldBe entity.fornavn

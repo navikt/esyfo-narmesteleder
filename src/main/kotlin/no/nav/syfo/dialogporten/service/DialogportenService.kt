@@ -53,7 +53,7 @@ class DialogportenService(
                 narmestelederDb.updateNlBehov(
                     behov.copy(
                         dialogId = dialogId,
-                        behovStatus = BehovStatus.PENDING,
+                        behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
                         fornavn = personInfo?.name?.fornavn,
                         mellomnavn = personInfo?.name?.mellomnavn,
                         etternavn = personInfo?.name?.etternavn,
@@ -91,6 +91,7 @@ class DialogportenService(
                 }
             }
     }
+
     private fun getDialogTitle(name: Navn?): String =
         name?.let {
             "${it.navnFullt()} $DIALOG_TITLE_WITH_NAME"
@@ -101,7 +102,7 @@ class DialogportenService(
             "$DIALOG_SUMMARY ${it.navnFullt()}"
         } ?: "$DIALOG_SUMMARY ansatt som er sykmeldt"
 
-    private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
+    private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
 
     private fun createApiLink(id: UUID): String =
         "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
@@ -153,6 +154,7 @@ class DialogportenService(
                 consumerType = type,
             )
         }
+
     companion object {
         const val DIALOG_TITLE_NO_NAME = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
         const val DIALOG_TITLE_WITH_NAME = "er sykmeldt og har behov for å bli tildelt nærmeste leder"

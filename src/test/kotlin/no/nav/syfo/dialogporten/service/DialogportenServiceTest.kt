@@ -66,7 +66,7 @@ class DialogportenServiceTest : DescribeSpec({
                 coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
             }
         }
-    }
+
 
         context("when there is one behov to send") {
             it("should send document to dialogporten and update status to DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION") {
@@ -81,36 +81,36 @@ class DialogportenServiceTest : DescribeSpec({
                 // Act
                 dialogportenService.sendDocumentsToDialogporten()
 
-            // Assert
-            coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED) }
-            coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
-            coVerify(exactly = 1) {
-                spyNarmestelederDb.updateNlBehov(match {
-                    it.id == it.id &&
-                        it.dialogId == dialogId &&
-                        it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-                })
-            }
-            coVerify(exactly = 1) { pdlService.getPersonFor(eq(behovEntity.sykmeldtFnr)) }
+                // Assert
+                coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
+                coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
+                coVerify(exactly = 1) {
+                    spyNarmestelederDb.updateNlBehov(match {
+                        it.id == it.id &&
+                                it.dialogId == dialogId &&
+                                it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                    })
+                }
+                coVerify(exactly = 1) { pdlService.getPersonFor(eq(behovEntity.sykmeldtFnr)) }
 
-            val capturedDialog = dialogSlot.captured
-            capturedDialog.party shouldBe "urn:altinn:organization:identifier-no:${behovEntity.orgnummer}"
-            capturedDialog.externalReference shouldBe behovEntity.id.toString()
-            capturedDialog.isApiOnly shouldBe false
-            capturedDialog.status shouldBe DialogStatus.RequiresAttention
-            capturedDialog.attachments?.size shouldBe 2
-            capturedDialog.attachments?.first()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Api
-            capturedDialog.attachments?.last()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Gui
-            capturedDialog.content.title.value.first().value shouldEndWith DIALOG_TITLE_WITH_NAME
+                val capturedDialog = dialogSlot.captured
+                capturedDialog.party shouldBe "urn:altinn:organization:identifier-no:${behovEntity.orgnummer}"
+                capturedDialog.externalReference shouldBe behovEntity.id.toString()
+                capturedDialog.isApiOnly shouldBe false
+                capturedDialog.status shouldBe DialogStatus.RequiresAttention
+                capturedDialog.attachments?.size shouldBe 2
+                capturedDialog.attachments?.first()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Api
+                capturedDialog.attachments?.last()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Gui
+                capturedDialog.content.title.value.first().value shouldEndWith DIALOG_TITLE_WITH_NAME
+            }
         }
-    }
-    context("when there are multiple documents to send") {
-        it("should send all documents to dialogporten") {
-            // Arrange
-            val behovEntity1 = nlBehovEntity()
-            val behovEntity2 = nlBehovEntity()
-            val dialogId1 = UUID.randomUUID()
-            val dialogId2 = UUID.randomUUID()
+        context("when there are multiple documents to send") {
+            it("should send all documents to dialogporten") {
+                // Arrange
+                val behovEntity1 = nlBehovEntity()
+                val behovEntity2 = nlBehovEntity()
+                val dialogId1 = UUID.randomUUID()
+                val dialogId2 = UUID.randomUUID()
 
                 coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
                     behovEntity1,
@@ -136,8 +136,8 @@ class DialogportenServiceTest : DescribeSpec({
                 coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                 coEvery { dialogportenClient.createDialog(any()) } throws RuntimeException("Dialogporten error")
 
-            // Act
-            dialogportenService.sendDocumentsToDialogporten()
+                // Act
+                dialogportenService.sendDocumentsToDialogporten()
 
                 // Assert
                 coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
@@ -146,14 +146,14 @@ class DialogportenServiceTest : DescribeSpec({
             }
         }
 
-    context("when one dialog fails but others succeed") {
-        it("should continue processing remaining documents") {
-            // Arrange
-            val behovEntity1 = nlBehovEntity()
-            val behovEntity2 = nlBehovEntity()
-            val behovEntity3 = nlBehovEntity()
-            val dialogId2 = UUID.randomUUID()
-            val dialogId3 = UUID.randomUUID()
+        context("when one dialog fails but others succeed") {
+            it("should continue processing remaining documents") {
+                // Arrange
+                val behovEntity1 = nlBehovEntity()
+                val behovEntity2 = nlBehovEntity()
+                val behovEntity3 = nlBehovEntity()
+                val dialogId2 = UUID.randomUUID()
+                val dialogId3 = UUID.randomUUID()
 
                 coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
                     behovEntity1,
@@ -162,20 +162,20 @@ class DialogportenServiceTest : DescribeSpec({
                 )
                 coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
-            // First call succeeds, second fails, third succeeds
-            var callCount = 0
-            coEvery { dialogportenClient.createDialog(any()) } answers {
-                callCount++
-                when (callCount) {
-                    1 -> dialogId2
-                    2 -> throw RuntimeException("Error")
-                    3 -> dialogId3
-                    else -> throw RuntimeException("Unexpected call")
+                // First call succeeds, second fails, third succeeds
+                var callCount = 0
+                coEvery { dialogportenClient.createDialog(any()) } answers {
+                    callCount++
+                    when (callCount) {
+                        1 -> dialogId2
+                        2 -> throw RuntimeException("Error")
+                        3 -> dialogId3
+                        else -> throw RuntimeException("Unexpected call")
+                    }
                 }
-            }
 
-            // Act
-            dialogportenService.sendDocumentsToDialogporten()
+                // Act
+                dialogportenService.sendDocumentsToDialogporten()
 
                 // Assert
                 coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
@@ -184,39 +184,39 @@ class DialogportenServiceTest : DescribeSpec({
             }
         }
 
-    context("when dialog content includes correct resource URN") {
-        it("should use nav_syfo_dialog resource") {
-            // Arrange
-            val behovEntity1 = nlBehovEntity()
-            val dialogId = UUID.randomUUID()
-            val dialogSlot = slot<Dialog>()
+        context("when dialog content includes correct resource URN") {
+            it("should use nav_syfo_dialog resource") {
+                // Arrange
+                val behovEntity1 = nlBehovEntity()
+                val dialogId = UUID.randomUUID()
+                val dialogSlot = slot<Dialog>()
 
                 coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                 coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                 coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
-            // Act
-            dialogportenService.sendDocumentsToDialogporten()
+                // Act
+                dialogportenService.sendDocumentsToDialogporten()
 
-            // Assert
-            val capturedDialog = dialogSlot.captured
-            capturedDialog.serviceResource shouldBe "urn:altinn:resource:nav_syfo_dialog"
+                // Assert
+                val capturedDialog = dialogSlot.captured
+                capturedDialog.serviceResource shouldBe "urn:altinn:resource:nav_syfo_dialog"
+            }
         }
-    }
 
-    context("when dialog has attachment URLs") {
-        it("should create correct document link with linkId") {
-            // Arrange
-            val behovEntity1 = nlBehovEntity()
-            val dialogId = UUID.randomUUID()
-            val dialogSlot = slot<Dialog>()
+        context("when dialog has attachment URLs") {
+            it("should create correct document link with linkId") {
+                // Arrange
+                val behovEntity1 = nlBehovEntity()
+                val dialogId = UUID.randomUUID()
+                val dialogSlot = slot<Dialog>()
 
                 coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                 coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                 coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
-            // Act
-            dialogportenService.sendDocumentsToDialogporten()
+                // Act
+                dialogportenService.sendDocumentsToDialogporten()
 
                 // Assert
                 val capturedDialog = dialogSlot.captured

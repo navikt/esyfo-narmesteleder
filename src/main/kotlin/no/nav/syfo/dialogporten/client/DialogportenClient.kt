@@ -2,7 +2,6 @@ package no.nav.syfo.dialogporten.client
 
 import com.fasterxml.jackson.annotation.JsonValue
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
@@ -14,10 +13,9 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.content.TextContent
 import io.ktor.http.contentType
 import io.ktor.http.parameters
-import java.util.*
+import java.util.UUID
 import no.nav.syfo.dialogporten.domain.Content
 import no.nav.syfo.dialogporten.domain.ContentValue
 import no.nav.syfo.dialogporten.domain.ContentValueItem

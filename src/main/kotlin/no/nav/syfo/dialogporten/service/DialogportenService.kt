@@ -1,7 +1,7 @@
 package no.nav.syfo.dialogporten.service
 
 import io.ktor.http.ContentType
-import java.util.*
+import java.util.UUID
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.application.OtherEnvironmentProperties
 import no.nav.syfo.dialogporten.client.IDialogportenClient
@@ -159,7 +159,6 @@ class DialogportenService(
         const val DIALOG_TITLE_NO_NAME = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
         const val DIALOG_TITLE_WITH_NAME = "er sykmeldt og har behov for å bli tildelt nærmeste leder"
         const val DIALOG_SUMMARY = "Vennligst tildel nærmeste leder for"
-
         const val URL_TITLE_GUI = "Naviger til nærmeste leder skjema"
         const val URL_TITLE_API = "Endpoint for LinemanagerRequirement request"
     }

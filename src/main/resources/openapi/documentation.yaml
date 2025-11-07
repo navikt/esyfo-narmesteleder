@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Esyfo Oppfolgingsansvarlig API
+  title: Esyfo Narmesteleder API
   version: 1.0.0
   description: API v1 for linemanager creation, revoke, requirement, and metrics.
 servers:

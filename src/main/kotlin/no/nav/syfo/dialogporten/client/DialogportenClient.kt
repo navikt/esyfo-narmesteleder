@@ -36,6 +36,7 @@ interface IDialogportenClient {
     suspend fun getDialogById(dialogId: UUID): ExtendedDialog
 }
 
+private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
 private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
 private const val DIALOG_ID_PARAM_NAME = "externalReference"
 
@@ -63,8 +64,8 @@ class DialogportenClient(
                     }.body<String>()
             UUID.fromString(response.removeSurrounding("\""))
         }.getOrElse { e ->
-            logger.error("Feil ved kall til Dialogporten for å opprette dialog", e)
-            throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten")
+            logger.error("Error in create dialog request", e)
+            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
         }
     }
 
@@ -94,8 +95,8 @@ class DialogportenClient(
                     )
                 }
         }.onFailure { e ->
-            logger.error("Feil ved kall til Dialogporten for å oppdatere dialog", e)
-            throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten")
+            logger.error("Error on update request to Dialogporten on dialogId: $dialogId", e)
+            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
         }
     }
 
@@ -117,14 +118,14 @@ class DialogportenClient(
                     bearerAuth(token)
                 }.body<List<ExtendedDialog>>()
         }.getOrElse { e ->
-            logger.error("Feil ved kall til Dialogporten for å hente dialog med id: $dialogId", e)
-            throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten")
+            logger.error("Error on request to Dialogporten on dialog id: $dialogId", e)
+            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
         }
 
         if (dialog.isEmpty()) {
-            throw DialogportenClientException("Fant ingen dialog med id: $dialogId")
+            throw DialogportenClientException("Could not find dialog with id: $dialogId")
         } else if (dialog.size > 1) {
-            throw DialogportenClientException("Flere enn en dialog funnet med id: $dialogId")
+            throw DialogportenClientException("Found more than one dialog with id: $dialogId")
         }
 
         return dialog.first()
@@ -142,6 +143,7 @@ class DialogportenClient(
         return altinnExchange(texasResponse.accessToken)
     }
 
+    // internal for access in tests
     internal class DialogportenPatch(
         val op: OPERATION,
         val path: String,

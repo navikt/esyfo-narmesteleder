@@ -99,7 +99,7 @@ class FakePdlClient : IPdlClient {
                     navn = listOf(
                         Navn(
                             fornavn = navn.firstName(),
-                            mellomnavn = faker.name().firstName(),
+                            mellomnavn = navn.nameWithMiddle().split(" ").getOrNull(1),
                             etternavn = navn.lastName(),
                         ),
                     ),

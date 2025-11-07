@@ -56,8 +56,8 @@ fun Application.configureDependencies() {
         modules(
             applicationStateModule(),
             environmentModule(isLocalEnv()),
-            httpClient(),
             databaseModule(),
+            clientsModule(),
             servicesModule(),
             handlerModule()
         )
@@ -70,12 +70,6 @@ private fun environmentModule(isLocalEnv: Boolean) = module {
     single {
         if (isLocalEnv) LocalEnvironment()
         else NaisEnvironment()
-    }
-}
-
-private fun httpClient() = module {
-    single {
-        httpClientDefault()
     }
 }
 
@@ -99,7 +93,8 @@ private fun handlerModule() = module {
     single { LinemanagerRequirementRESTHandler(get(), get(), get(), get()) }
 }
 
-private fun servicesModule() = module {
+private fun clientsModule() = module {
+    single { httpClientDefault() }
     single { TexasHttpClient(client = get(), environment = env().texas) }
     single {
         if (isLocalEnv()) FakeAaregClient() else AaregClient(
@@ -117,33 +112,12 @@ private fun servicesModule() = module {
         )
     }
     single {
-        AaregService(
-            arbeidsforholdOversiktClient = get()
-        )
-    }
-    single {
-        DinesykmeldteService(
-            dinesykmeldteClient = get()
-        )
-    }
-    single {
         if (isLocalEnv()) FakePdlClient() else PdlClient(
             httpClient = get(),
             pdlBaseUrl = env().clientProperties.pdlBaseUrl,
             texasHttpClient = get(),
             scope = env().clientProperties.pdlScope
         )
-    }
-    single {
-        NarmestelederService(
-            get(),
-            env().clientProperties.persistLeesahNlBehov,
-            get(),
-            get()
-        )
-    }
-    single {
-        PdlService(get())
     }
     single {
         if (isLocalEnv()) FakeAltinnTilgangerClient() else AltinnTilgangerClient(
@@ -160,6 +134,21 @@ private fun servicesModule() = module {
             baseUrl = env().clientProperties.dialogportenBasePath,
         )
     }
+}
+
+private fun servicesModule() = module {
+    single { AaregService(arbeidsforholdOversiktClient = get()) }
+    single { DinesykmeldteService(dinesykmeldteClient = get()) }
+    single {
+        NarmestelederService(
+            get(),
+            env().clientProperties.persistLeesahNlBehov,
+            get(),
+            get(),
+            get(),
+        )
+    }
+    single { PdlService(get()) }
     single { AltinnTilgangerService(get()) }
     single { LeaderElection(get(), env().otherEnvironment.electorPath) }
     single {
@@ -173,8 +162,15 @@ private fun servicesModule() = module {
     single {
         ValidationService(get(), get(), get(), get())
     }
-    single { DialogportenService(get(), get(), env().otherEnvironment) }
-    single { SendDialogTask(get(),get()) }
+    single {
+        DialogportenService(
+            dialogportenClient = get(),
+            narmestelederDb = get(),
+            otherEnvironmentProperties = env().otherEnvironment,
+            pdlService = get()
+        )
+    }
+    single { SendDialogTask(get(), get()) }
 }
 
 private fun Scope.env() = get<Environment>()

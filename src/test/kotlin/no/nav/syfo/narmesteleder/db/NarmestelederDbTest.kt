@@ -1,0 +1,95 @@
+package no.nav.syfo.narmesteleder.db
+
+import faker
+import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.equality.shouldBeEqualUsingFields
+import io.kotest.matchers.equality.shouldNotBeEqualUsingFields
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import java.time.Instant
+import java.util.*
+import nlBehovEntity
+import no.nav.syfo.TestDB
+import no.nav.syfo.TestDB.Companion.updateCreated
+import no.nav.syfo.narmesteleder.domain.BehovStatus
+
+class NarmestelederDbTest : DescribeSpec({
+    val testDb = TestDB.database
+    val db = NarmestelederDb(testDb)
+
+    beforeTest {
+        TestDB.clearAllData()
+    }
+    suspend fun insertAndGetBehovWithId(entity: NarmestelederBehovEntity): NarmestelederBehovEntity? {
+        val id = db.insertNlBehov(entity)
+        return db.findBehovById(id)
+    }
+
+    describe("insertNlBehov") {
+        it("should return a generated id") {
+            // Arrange
+            val nlBehovEntity = nlBehovEntity()
+            // Act
+            val id = db.insertNlBehov(nlBehovEntity)
+            // Assert
+            id shouldNotBe null
+        }
+
+        it("should persist the document with the correct fields") {
+            // Arrange
+            val nlBehovEntity = nlBehovEntity()
+            // Act
+            val id = db.insertNlBehov(nlBehovEntity)
+            // Assert
+            id shouldNotBe null
+
+            val retrievedEntity = db.findBehovById(id)
+            retrievedEntity?.shouldBeEqualUsingFields(nlBehovEntity.copy(id = id))
+        }
+    }
+    describe("updateNlBehov") {
+        it("should update mutated fields") {
+            // Arrange
+            val nlBehovEntity = nlBehovEntity()
+            val id = db.insertNlBehov(nlBehovEntity)
+            val retrievedEntity = db.findBehovById(id)
+            val mutatedEntity = retrievedEntity!!.copy(
+                orgnummer = faker.numerify("#########"),
+                behovStatus = BehovStatus.COMPLETED,
+                dialogId = UUID.randomUUID(),
+                fornavn = faker.name().firstName(),
+                mellomnavn = faker.name().nameWithMiddle().split(" ")[1],
+                etternavn = faker.name().lastName(),
+            )
+            // Act
+            db.updateNlBehov(mutatedEntity)
+
+            // Assert
+            val retrievedUpdatedEntity = db.findBehovById(id)
+            retrievedUpdatedEntity?.shouldBeEqualUsingFields(mutatedEntity)
+            retrievedUpdatedEntity?.shouldNotBeEqualUsingFields(retrievedEntity)
+        }
+    }
+
+    describe("getNlBehovByStatus") {
+        it("should retrieve only entities with the matching status and created in the past") {
+            // Arrange
+            val nlBehovEntity1 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.RECEIVED))
+            val nlBehovEntity2 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.RECEIVED))
+            val nlBehovEntity3 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.PENDING))
+            val earlier = Instant.now().minusSeconds(3 * 60L)
+            updateCreated(nlBehovEntity1?.id!!, earlier)
+            updateCreated(nlBehovEntity2?.id!!, earlier)
+            updateCreated(nlBehovEntity3?.id!!, earlier)
+
+            // Act
+            val retrievedEntities = db.getNlBehovByStatus(BehovStatus.RECEIVED)
+
+            // Assert
+            retrievedEntities.size shouldBe 2
+            retrievedEntities shouldContain nlBehovEntity1
+            retrievedEntities shouldContain nlBehovEntity2
+        }
+    }
+})

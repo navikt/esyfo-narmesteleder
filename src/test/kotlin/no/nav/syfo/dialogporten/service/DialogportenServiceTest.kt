@@ -248,7 +248,7 @@ class DialogportenServiceTest : DescribeSpec({
 
 
         context("when there is one fulfilled behov") {
-            it("should update dialogporten status to COMPLETED and update status in database to DIALOGPORTEN_STATUS_SET_COMPLETED") {
+            it("should update dialogporten status to Completed and update status in database to DIALOGPORTEN_STATUS_SET_COMPLETED") {
                 // Arrange
                 val behovEntity = nlBehovEntity().copy(
                     behovStatus = BehovStatus.BEHOV_FULFILLED,
@@ -277,9 +277,13 @@ class DialogportenServiceTest : DescribeSpec({
 
                 // Assert
                 coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
+                coVerify(exactly = 1) { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) }
+                coVerify(exactly = 1) {
+                    dialogportenClient.updateDialogStatus(eq(behovEntity.dialogId!!), any(), DialogStatus.Completed)
+                }
                 coVerify(exactly = 1) {
                     spyNarmestelederDb.updateNlBehov(match {
-                        it.id == it.id &&
+                        it.id == behovEntity.id &&
                                 it.dialogId == behovEntity.dialogId &&
                                 it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
                     })
@@ -288,7 +292,7 @@ class DialogportenServiceTest : DescribeSpec({
         }
 
         context("when there are multiple fulfilled behovs") {
-            it("should update all Dialogporten messages to COMPLETED") {
+            it("should update all Dialogporten messages to Completed") {
                 // Arrange
                 val behovs = listOf(
                     nlBehovEntity().copy(
@@ -360,7 +364,7 @@ class DialogportenServiceTest : DescribeSpec({
 
                 // Assert
                 coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
-                coVerify(exactly = 1) { dialogportenClient.updateDialogStatus(any(), any(), any()) }
+                coVerify(exactly = 1) { dialogportenClient.updateDialogStatus(behovEntity1.dialogId!!, any(), any()) }
                 coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
             }
         }
@@ -369,8 +373,8 @@ class DialogportenServiceTest : DescribeSpec({
             it("should continue processing remaining behovs") {
                 // Arrange
                 val numOfBehovs = 20
+                val numOfSuccesses = 10
                 val failsEveryNth = 2
-                val numOfErrors = numOfBehovs / failsEveryNth
 
                 val behovs = buildList {
                     repeat(numOfBehovs) {
@@ -393,12 +397,15 @@ class DialogportenServiceTest : DescribeSpec({
                 }
                 coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
+                val successfulUpdateIds = mutableSetOf<UUID>()
                 var callCount = 0
                 coEvery { dialogportenClient.updateDialogStatus(any(), any(), any()) } answers {
                     callCount++
                     if (callCount % failsEveryNth == 0) {
-                        throw RuntimeException("Unexpected call")
+                        throw RuntimeException("Something went wrong")
                     }
+                    val idArg = firstArg<UUID>()
+                    successfulUpdateIds.add(idArg)
                 }
 
                 // Act
@@ -406,9 +413,24 @@ class DialogportenServiceTest : DescribeSpec({
 
                 // Assert
                 coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
-                coVerify(exactly = numOfBehovs) { dialogportenClient.getDialogById(any()) }
-                coVerify(exactly = numOfBehovs) { dialogportenClient.updateDialogStatus(any(), any(), any()) }
-                coVerify(exactly = numOfErrors) { spyNarmestelederDb.updateNlBehov(any()) }
+
+                coVerify(exactly = numOfBehovs) {
+                    dialogportenClient.getDialogById(match { dialogId ->
+                        behovs.any { it.dialogId == dialogId }
+                    })
+                }
+
+                coVerify(exactly = numOfBehovs) {
+                    dialogportenClient.updateDialogStatus(match {
+                        behovs.any { behov -> behov.dialogId == it }
+                    }, any(), DialogStatus.Completed)
+                }
+
+                coVerify(exactly = numOfSuccesses) {
+                    spyNarmestelederDb.updateNlBehov(match {
+                        successfulUpdateIds.contains(it.dialogId!!)
+                    })
+                }
             }
         }
     }

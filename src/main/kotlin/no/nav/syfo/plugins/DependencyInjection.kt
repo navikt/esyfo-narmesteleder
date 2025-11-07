@@ -142,7 +142,7 @@ private fun servicesModule() = module {
     single {
         NarmestelederService(
             get(),
-            env().clientProperties.persistLeesahNlBehov,
+            env().otherEnvironment.persistLeesahNlBehov,
             get(),
             get(),
             get(),

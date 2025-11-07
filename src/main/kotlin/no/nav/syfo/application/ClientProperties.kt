@@ -8,7 +8,6 @@ data class ClientProperties(
     val dinesykmeldteBaseUrl: String,
     val aaregScope: String,
     val dinesykmeldteScope: String,
-    val persistLeesahNlBehov: Boolean,
     val dialogportenBasePath: String
 ) {
     companion object {
@@ -20,7 +19,6 @@ data class ClientProperties(
             dinesykmeldteBaseUrl = "",
             dinesykmeldteScope = "",
             pdlScope = "pdl",
-            persistLeesahNlBehov = true,
             dialogportenBasePath = "http://localhost:8080/dialogporten"
         )
 
@@ -33,7 +31,6 @@ data class ClientProperties(
                 dinesykmeldteScope = getEnvVar("DINESYMELDTE_SCOPE"),
                 pdlBaseUrl = getEnvVar("PDL_BASE_URL"),
                 pdlScope = getEnvVar("PDL_SCOPE"),
-                persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "false").toBoolean(),
                 dialogportenBasePath = getEnvVar("DIALOGPORTEN_BASE_URL")
             )
     }

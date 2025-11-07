@@ -38,6 +38,7 @@ class DialogportenServiceTest : DescribeSpec({
             electorPath = "elector",
             publicIngressUrl = publicIngressUrl,
             frontendBaseUrl = frontendBaseUrl,
+            persistLeesahNlBehov = true,
         ),
         pdlService = pdlService,
     )

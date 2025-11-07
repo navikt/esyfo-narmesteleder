@@ -5,6 +5,7 @@ info:
   description: API v1 for linemanager creation, revoke, requirement, and metrics.
 servers:
   - url: https://esyfo-narmesteleder.ekstern.dev.nav.no
+    description: Test server for esyfo-narmesteleder application line manager
 paths:
   /api/v1/linemanager:
     post:
@@ -100,7 +101,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LinemanagerRequirement'
+                $ref: '#/components/schemas/LinemanagerRequirementRead'
         '401':
           description: Unauthorized
         '404':
@@ -132,20 +133,147 @@ components:
   schemas:
     Linemanager:
       type: object
+      properties:
+        employeeIdentificationNumber:
+          type: string
+          description: "A Norwegian national identity number or D number."
+          example: "12345678901"
+        orgnumber:
+          type: string
+          description: Organisation number where the employee works
+          example: "123456789"
+        manager:
+          type: object
+          properties:
+            identificationNumber:
+              type: string
+              description: "A Norwegian national identity number or D number of the manager."
+              example: "10987654321"
+            mobile:
+              type: string
+              description: Mobile phone number of the manager.
+              example: "+4790000000"
+            email:
+              type: string
+              format: email
+              description: Email address of the manager.
+              example: "leder@example.com"
+            firstName:
+              type: string
+              description: Manager first name.
+              example: "Ola"
+            lastName:
+              type: string
+              description: Manager last name.
+              example: "Nordmann"
+          required:
+            - nationalIdentificationNumber
+            - mobile
+            - email
+            - firstName
+            - lastName
+          additionalProperties: false
       description: Linemanager relation payload.
       additionalProperties: true
     LinemanagerRevoke:
       type: object
+      properties:
+        employeeIdentificationNumber:
+          type: string
+          description: "A Norwegian national identity number or D number."
+          example: "12345678901"
+        orgnumber:
+          type: string
+          description: Organisation number where the employee works
+          example: "123456789"
       description: Linemanager revoke payload.
       additionalProperties: true
     Manager:
       type: object
-      description: Updated requirement payload.
-      additionalProperties: true
-    LinemanagerRequirement:
+      description: Manager details payload.
+      properties:
+        nationalIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the manager.
+          example: "10987654321"
+        mobile:
+          type: string
+          description: Mobile phone number of the manager.
+          example: "+4790000000"
+        email:
+          type: string
+          format: email
+          description: Email address of the manager.
+          example: "leder@example.com"
+        firstName:
+          type: string
+          description: Manager first name.
+          example: "Ola"
+        lastName:
+          type: string
+          description: Manager last name.
+          example: "Nordmann"
+      required:
+        - nationalIdentificationNumber
+        - mobile
+        - email
+        - firstName
+        - lastName
+      additionalProperties: false
+    LinemanagerRequirementRead:
       type: object
       description: Requirement details payload.
-      additionalProperties: true
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Requirement UUID.
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        employeeIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the employee.
+          example: "12345678901"
+        orgnumber:
+          type: string
+          description: Organisation number where the employee works.
+          example: "123456789"
+        orgName:
+          type: string
+          nullable: true
+          description: Organisation name (if available).
+          example: "Eksempel AS"
+        mainOrgnumber:
+          type: string
+          description: Main (parent) organisation number.
+          example: "987654321"
+        managerIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the manager.
+          example: "10987654321"
+        name:
+          type: object
+          description: Manager name.
+          properties:
+            firstName:
+              type: string
+              description: Manager first name.
+              example: "Ola"
+            lastName:
+              type: string
+              description: Manager last name.
+              example: "Nordmann"
+          required:
+            - firstName
+            - lastName
+          additionalProperties: false
+      required:
+        - id
+        - employeeIdentificationNumber
+        - orgnumber
+        - mainOrgnumber
+        - managerIdentificationNumber
+        - name
+      additionalProperties: false
 tags:
   - name: linemanager
     description: Linemanager relation operations.

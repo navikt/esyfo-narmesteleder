@@ -1,9 +1,3 @@
----
-layout: default
-title: Nærmesteleder
-parent: architecture
----
-
 # Assign line manager (Nærmeste leder) from LPS viewpoint
 The Nav api will share the need to assign a line manager (nærmeste leder) for an employee with the organization through Dialogporten.
 It can be viewed in the Alinn innboks, or fetched by other systems through Dialogporten api.

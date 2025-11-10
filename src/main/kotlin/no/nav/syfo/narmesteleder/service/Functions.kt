@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 
 class ValidateNarmesteLederException(message: String) : RuntimeException(message)
@@ -17,7 +17,7 @@ private fun nlrequireOrForbidden(value: Boolean, lazyMessage: () -> String) {
 fun validateNarmesteLeder(
     sykemeldtOrgNumbers: Map<String, String>,
     narmesteLederOrgNumbers: Map<String, String>,
-    organisasjonPrincipal: OrganisasjonPrincipal?,
+    systemPrincipal: SystemPrincipal?,
     orgNumberInRequest: String
 ) {
     val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
@@ -26,16 +26,16 @@ fun validateNarmesteLeder(
     nlrequire(
         narmesteLederOrgNumbers.keys == sykemeldtOrgNumbers.keys,
         { "Næremeste leder mangler arbeidsforhold i samme virksomhet som sykmeldt" })
-    organisasjonPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(organisasjonPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
+    systemPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(systemPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
 }
 
 fun validateNarmesteLederAvkreft(
     sykemeldtOrgNumbers: Map<String, String>,
     orgNumberInRequest: String,
-    organisasjonPrincipal: OrganisasjonPrincipal?,
+    systemPrincipal: SystemPrincipal?,
 ) {
     val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     nlrequire(sykemeldtOrgNumbers.isNotEmpty()) { "Ingen arbeidsforhold for sykemeldt" }
     nlrequire(sykemeldtOrgNumbers.contains(orgNumberInRequest)) { "Organisasjonsnummer i HTTP request body samsvarer ikke med sykemeldtes organisasjoner" }
-    organisasjonPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(organisasjonPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
+    systemPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(systemPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
 }

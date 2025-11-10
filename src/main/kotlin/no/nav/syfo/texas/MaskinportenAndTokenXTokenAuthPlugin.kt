@@ -6,7 +6,7 @@ import io.ktor.server.auth.authentication
 import io.ktor.server.response.respondNullable
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.texas.client.getSystemUserId
@@ -64,7 +64,7 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
                         ?: throw ApiErrorException.UnauthorizedException("No system user id in token claims")
 
                     call.authentication.principal(
-                        OrganisasjonPrincipal(
+                        SystemPrincipal(
                             ident = systemUserOrganization,
                             token = bearerToken,
                             systemOwner = introspectionResponse.consumer.ID,

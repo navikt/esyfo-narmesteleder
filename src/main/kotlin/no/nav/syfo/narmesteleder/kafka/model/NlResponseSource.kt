@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.kafka.model
 
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.narmesteleder.domain.Linemanager
@@ -15,7 +15,7 @@ enum class NlResponseSource(val source: String) {
     companion object {
         fun getSourceFrom(principal: Principal, linemanager: Linemanager): NlResponseSource {
             return when(principal) {
-                is OrganisasjonPrincipal -> LPS
+                is SystemPrincipal -> LPS
                 is UserPrincipal -> {
                     when (principal.ident) {
                         linemanager.employeeIdentificationNumber -> ARBEIDSTAGER
@@ -27,7 +27,7 @@ enum class NlResponseSource(val source: String) {
         }
         fun getSourceFrom(principal: Principal, linemanagerRevoke: LinemanagerRevoke): NlResponseSource {
             return when(principal) {
-                is OrganisasjonPrincipal -> LPS
+                is SystemPrincipal -> LPS
                 is UserPrincipal -> {
                     when (principal.ident) { // Can add option for NARMESTELEDER if we accept requests from them and can identity the caller as such
                         linemanagerRevoke.employeeIdentificationNumber -> ARBEIDSTAGER

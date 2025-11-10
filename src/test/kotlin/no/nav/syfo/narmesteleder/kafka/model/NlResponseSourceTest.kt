@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import linemanager
 import linemanagerRevoke
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 
 class NlResponseSourceTest : DescribeSpec({
@@ -13,7 +13,7 @@ class NlResponseSourceTest : DescribeSpec({
         it("Returns LPS when principal is OrganizationPrincipal") {
             // Arrange
             val linemanager = linemanager()
-            val principal = OrganisasjonPrincipal("orgnummer", "token", "owner", "userId")
+            val principal = SystemPrincipal("orgnummer", "token", "owner", "userId")
 
             // Act
             val source = NlResponseSource.getSourceFrom(principal, linemanager)
@@ -65,7 +65,7 @@ class NlResponseSourceTest : DescribeSpec({
         it("Returns LPS when principal is OrganizationPrincipal") {
             // Arrange
             val linemanager = linemanagerRevoke()
-            val principal = OrganisasjonPrincipal("orgnummer", "token", "owner", "userId")
+            val principal = SystemPrincipal("orgnummer", "token", "owner", "userId")
 
             // Act
             val source = NlResponseSource.getSourceFrom(principal, linemanager)

@@ -9,7 +9,7 @@ data class UserPrincipal(
     override val token: String,
 ) : Principal()
 
-data class OrganisasjonPrincipal(
+data class SystemPrincipal(
     override val ident: String,
     override val token: String,
     val systemOwner: String,

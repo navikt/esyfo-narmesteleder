@@ -6,7 +6,7 @@ import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
@@ -48,7 +48,7 @@ class ValidationService(
                 orgNumberInRequest = linemanager.orgnumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 narmesteLederOrgNumbers = nlArbeidsforhold,
-                organisasjonPrincipal = principal as? OrganisasjonPrincipal,
+                systemPrincipal = principal as? SystemPrincipal,
             )
             return LinemanagerActors(
                 employee = sykmeldt,
@@ -81,7 +81,7 @@ class ValidationService(
                 altinnTilgangerService.validateTilgangToOrganization(altinnTilgang, linemanagerRead.orgnumber)
             }
 
-            is OrganisasjonPrincipal -> {
+            is SystemPrincipal -> {
                 val hasAccess = pdpService.hasAccessToResource(
                     System(principal.systemUserId),
                     setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
@@ -112,7 +112,7 @@ class ValidationService(
             validateNarmesteLederAvkreft(
                 orgNumberInRequest = linemanagerRevoke.orgnumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
-                organisasjonPrincipal = principal as? OrganisasjonPrincipal,
+                systemPrincipal = principal as? SystemPrincipal,
             )
             return sykmeldt
 
@@ -134,7 +134,7 @@ class ValidationService(
                 principal,
                 orgNumber
             )
-            is OrganisasjonPrincipal -> {
+            is SystemPrincipal -> {
                 val hasAccess = pdpService.hasAccessToResource(
                     System(principal.systemUserId),
                     setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),

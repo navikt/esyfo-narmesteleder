@@ -16,7 +16,7 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -78,7 +78,7 @@ class ValidationServiceTest : DescribeSpec({
                 employeeIdentificationNumber = userWithAccess.first,
                 orgnumber = userWithAccess.second
             )
-            val principal = OrganisasjonPrincipal(
+            val principal = SystemPrincipal(
                 "0192:${userWithAccess.second}",
                 "token",
                 "0192:systemowner",
@@ -142,7 +142,7 @@ class ValidationServiceTest : DescribeSpec({
                 employeeIdentificationNumber = userWithAccess.first,
                 orgnumber = userWithAccess.second
             )
-            val principal = OrganisasjonPrincipal(
+            val principal = SystemPrincipal(
                 "0192:${userWithAccess.second}",
                 "token",
                 "0192:systemowner",

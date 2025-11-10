@@ -8,7 +8,7 @@ import java.util.*
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.FakesWrapper
 import no.nav.syfo.aareg.client.FakeAaregClient
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
@@ -49,7 +49,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         db.insertNlBehov(defaultRequirement)
 
         val id = defaultRequirement.id!!
-        val principal = OrganisasjonPrincipal(
+        val principal = SystemPrincipal(
             ident = "0192:${arbeidsforholdManagerAareg.first}",
             token = createMockToken(
                 ident = "0192:${arbeidsforholdManagerAareg.first}",

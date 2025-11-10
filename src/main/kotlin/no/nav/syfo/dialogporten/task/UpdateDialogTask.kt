@@ -28,7 +28,6 @@ class UpdateDialogTask(
                         logger.error("Could not update dialogs in dialogporten", ex)
                     }
                 }
-                // delay for  5 minutes before checking again
                 delay(pollingInterval)
             }
         } catch (ex: CancellationException) {

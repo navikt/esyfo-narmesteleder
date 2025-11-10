@@ -17,6 +17,7 @@ import no.nav.syfo.application.database.Database
 import no.nav.syfo.application.database.DatabaseConfig
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isLocalEnv
+import no.nav.syfo.application.isProdEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
@@ -153,7 +154,7 @@ private fun servicesModule() = module {
     single {
         NarmestelederService(
             get(),
-            env().clientProperties.persistLeesahNlBehov,
+            env().otherEnvironment.persistLeesahNlBehov,
             get(),
             get(),
             get(),
@@ -163,7 +164,7 @@ private fun servicesModule() = module {
     single { AltinnTilgangerService(get()) }
     single { LeaderElection(get(), env().otherEnvironment.electorPath) }
     single {
-        val sykemeldingNLKafkaProducer = if (isLocalEnv()) SykemeldingNLKafkaProducer(
+        val sykemeldingNLKafkaProducer = if (!isProdEnv()) SykemeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )

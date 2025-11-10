@@ -10,6 +10,7 @@ import linemanager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
+import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
@@ -64,6 +65,7 @@ class ValidationServiceTest : DescribeSpec({
                 )
             }
             coVerify(exactly = 0) {
+                pdpService.hasAccessToResource(any(), any(), any())
                 aaregService.findOrgNumbersByPersonIdent(any())
                 pdlService.getPersonOrThrowApiError(any())
             }
@@ -95,6 +97,11 @@ class ValidationServiceTest : DescribeSpec({
                 )
             }
             coVerify(exactly = 1) {
+                pdpService.hasAccessToResource(
+                    match<System> { it.id == "systemId" },
+                    eq(setOf(userWithAccess.second, "systemowner")),
+                    eq("nav_syfo_oppgi-narmesteleder")
+                )
                 aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
                 aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
@@ -122,6 +129,7 @@ class ValidationServiceTest : DescribeSpec({
                 )
             }
             coVerify(exactly = 0) {
+                pdpService.hasAccessToResource(any(), any(), any())
                 aaregService.findOrgNumbersByPersonIdent(any())
                 pdlService.getPersonOrThrowApiError(any())
             }
@@ -153,6 +161,11 @@ class ValidationServiceTest : DescribeSpec({
                 )
             }
             coVerify(exactly = 1) {
+                pdpService.hasAccessToResource(
+                    match<System> { it.id == "systemId" },
+                    eq(setOf(userWithAccess.second, "systemowner")),
+                    eq("nav_syfo_oppgi-narmesteleder")
+                )
                 aaregService.findOrgNumbersByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
             }

@@ -220,7 +220,7 @@ components:
           type: string
           description: "A Norwegian national identity number or D number."
           example: "12345678901"
-        orgnumber:
+        orgNumber:
           type: string
           description: Organisation number where the employee works
           example: "123456789"
@@ -244,6 +244,10 @@ components:
               type: string
               description: Manager first name.
               example: "Ola"
+            middleName:
+              type: string
+              description: Manager middle name.
+              example: "Ola"
             lastName:
               type: string
               description: Manager last name.
@@ -264,7 +268,7 @@ components:
           type: string
           description: "A Norwegian national identity number or D number."
           example: "12345678901"
-        orgnumber:
+        orgNumber:
           type: string
           description: Organisation number where the employee works
           example: "123456789"
@@ -291,6 +295,10 @@ components:
           type: string
           description: Manager first name.
           example: "Ola"
+        middleName:
+          type: string
+          description: Manager middle name.
+          example: "Ola"
         lastName:
           type: string
           description: Manager last name.
@@ -315,7 +323,7 @@ components:
           type: string
           description: Norwegian national identity number or D number of the employee.
           example: "12345678901"
-        orgnumber:
+        orgNumber:
           type: string
           description: Organisation number where the employee works.
           example: "123456789"
@@ -340,6 +348,10 @@ components:
               type: string
               description: Manager first name.
               example: "Ola"
+            middleName:
+              type: string
+              description: Manager middle name.
+              example: "Ola"
             lastName:
               type: string
               description: Manager last name.
@@ -351,7 +363,7 @@ components:
       required:
         - id
         - employeeIdentificationNumber
-        - orgnumber
+        - orgNumber
         - mainOrgnumber
         - managerIdentificationNumber
         - name
@@ -381,7 +393,7 @@ components:
         message:
           type: string
           description: Human readable error message.
-          example: Validation failed for field orgnumber
+          example: Validation failed for field orgNumber
         path:
           type: string
           nullable: true

@@ -8,10 +8,14 @@ skinparam backgroundColor white
 
 participant "narmesteleder-api" as api
 participant "Maskinporten" as maskinporten
+participant "Alitinn auth" as altinn
 participant "Dialogpporten" as dialogporten
 participant "LPS" as lps
 api -> maskinporten : Request access token
+api -> altinn : Exchange token for Altinn token
 api -> dialogporten : Post dialog with missing linemanger for employee (on sick leave)
+lps -> maskinporten : Get System user token
+lps -> altinn : Exchange token for Altinn token
 lps -> dialogporten : GET /api/v1/enduser/dialogs
 lps -> dialogporten : GET /api/v1/enduser/dialogs/{dialogId}
 lps -> api : GET /api/v1/linemanager/requirement/{id}

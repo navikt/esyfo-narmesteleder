@@ -2,8 +2,8 @@ package no.nav.syfo.dialogporten.service
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.Runs
 import io.kotest.matchers.string.shouldEndWith
+import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -14,6 +14,7 @@ import io.mockk.spyk
 import java.util.*
 import nlBehovEntity
 import no.nav.syfo.application.OtherEnvironmentProperties
+import no.nav.syfo.application.UpdateDialogportenTaskProperties
 import no.nav.syfo.dialogporten.client.IDialogportenClient
 import no.nav.syfo.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.dialogporten.domain.Content
@@ -21,8 +22,8 @@ import no.nav.syfo.dialogporten.domain.ContentValue
 import no.nav.syfo.dialogporten.domain.ContentValueItem
 import no.nav.syfo.dialogporten.domain.Dialog
 import no.nav.syfo.dialogporten.domain.DialogStatus
-import no.nav.syfo.dialogporten.service.DialogportenService.Companion.DIALOG_TITLE_WITH_NAME
 import no.nav.syfo.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.dialogporten.service.DialogportenService.Companion.DIALOG_TITLE_WITH_NAME
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -46,6 +47,7 @@ class DialogportenServiceTest : DescribeSpec({
             publicIngressUrl = publicIngressUrl,
             frontendBaseUrl = frontendBaseUrl,
             persistLeesahNlBehov = true,
+            updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal()
         ),
         pdlService = pdlService,
     )

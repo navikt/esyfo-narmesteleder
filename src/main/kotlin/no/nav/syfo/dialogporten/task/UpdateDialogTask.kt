@@ -1,5 +1,6 @@
 package no.nav.syfo.dialogporten.task
 
+import kotlin.time.Duration
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -11,7 +12,8 @@ import no.nav.syfo.util.logger
 
 class UpdateDialogTask(
     private val leaderElection: LeaderElection,
-    private val dialogportenService: DialogportenService
+    private val dialogportenService: DialogportenService,
+    private val pollingInterval: Duration
 ) {
     private val logger = logger()
 
@@ -27,7 +29,7 @@ class UpdateDialogTask(
                     }
                 }
                 // delay for  5 minutes before checking again
-                delay(5 * 60 * 1000)
+                delay(pollingInterval)
             }
         } catch (ex: CancellationException) {
             logger.info("Cancelled SendDialogTask", ex)

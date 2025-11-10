@@ -2,6 +2,7 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import kotlin.time.Duration
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
@@ -25,6 +26,7 @@ import no.nav.syfo.dialogporten.client.DialogportenClient
 import no.nav.syfo.dialogporten.client.FakeDialogportenClient
 import no.nav.syfo.dialogporten.service.DialogportenService
 import no.nav.syfo.dialogporten.task.SendDialogTask
+import no.nav.syfo.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -172,6 +174,10 @@ private fun servicesModule() = module {
         )
     }
     single { SendDialogTask(get(), get()) }
+    single {
+        val pollingInterval = Duration.parse(env().otherEnvironment.updateDialogportenTaskProperties.pollingDelay)
+        UpdateDialogTask(get(), get(), pollingInterval)
+    }
 }
 
 private fun Scope.env() = get<Environment>()

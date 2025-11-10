@@ -1,0 +1,19 @@
+@startuml
+!include <cloudinsight/kafka>
+!include <cloudinsight/postgresql>
+!theme cerulean
+
+skinparam defaultTextAlignment center
+skinparam backgroundColor white
+
+participant "narmesteleder-api" as api
+participant "Maskinporten" as maskinporten
+participant "Dialogpporten" as dialogporten
+participant "LPS" as lps
+api -> maskinporten : Request access token
+api -> dialogporten : Post dialog with missing linemanger for employee (on sick leave)
+lps -> dialogporten : GET /api/v1/enduser/dialogs
+lps -> dialogporten : GET /api/v1/enduser/dialogs/{dialogId}
+lps -> api : GET /api/v1/linemanager/requirement/{id}
+lps -> api : PUT /api/v1/linemanager/requirement/{id}
+@enduml

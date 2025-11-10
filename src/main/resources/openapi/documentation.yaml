@@ -26,8 +26,28 @@ paths:
           description: Request accepted for processing
         '400':
           description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/linemanager/revoke:
     post:
       summary: Revoke linemanager relation
@@ -47,8 +67,28 @@ paths:
           description: Revocation accepted
         '400':
           description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/linemanager/requirement/{id}:
     put:
       summary: Update linemanager requirement
@@ -76,10 +116,30 @@ paths:
           description: Update accepted
         '400':
           description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '404':
           description: Requirement not found
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     get:
       summary: Get linemanager requirement
       description: Returns requirement details by UUID.
@@ -102,10 +162,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LinemanagerRequirementRead'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '404':
-          description: Not found
+          description: Requirement not found
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /internal/metrics:
     get:
       summary: Scrape application metrics
@@ -145,7 +227,7 @@ components:
         manager:
           type: object
           properties:
-            identificationNumber:
+            nationalIdentificationNumber:
               type: string
               description: "A Norwegian national identity number or D number of the manager."
               example: "10987654321"
@@ -273,6 +355,48 @@ components:
         - mainOrgnumber
         - managerIdentificationNumber
         - name
+      additionalProperties: false
+    ErrorType:
+      type: string
+      description: Application error type.
+      enum:
+        - AUTHENTICATION_ERROR
+        - AUTHORIZATION_ERROR
+        - NOT_FOUND
+        - INTERNAL_SERVER_ERROR
+        - ILLEGAL_ARGUMENT
+        - BAD_REQUEST
+        - CONFLICT
+    ApiError:
+      type: object
+      description: Standard error payload.
+      properties:
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+          example: 400
+        type:
+          $ref: '#/components/schemas/ErrorType'
+        message:
+          type: string
+          description: Human readable error message.
+          example: Validation failed for field orgnumber
+        path:
+          type: string
+          nullable: true
+          description: Request path.
+          example: /api/v1/linemanager
+        timestamp:
+          type: string
+          format: date-time
+          description: Error creation time (UTC).
+          example: 2024-05-01T12:34:56Z
+      required:
+        - status
+        - type
+        - message
+        - timestamp
       additionalProperties: false
 tags:
   - name: linemanager

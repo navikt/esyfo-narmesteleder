@@ -10,16 +10,14 @@ import io.mockk.coEvery
 import java.time.Instant
 import java.util.*
 import net.datafaker.Faker
-import no.nav.syfo.aareg.client.AaregClient
-import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
+import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
@@ -132,6 +130,7 @@ fun TexasHttpClient.defaultMocks(
     acr: String? = null,
     scope: String? = null,
     navident: String? = null,
+    systemBrukerOrganisasjon: OrganizationId? = DefaultOrganization,
     consumer: OrganizationId = DefaultOrganization,
     supplier: OrganizationId? = null
 ) {
@@ -159,6 +158,16 @@ fun TexasHttpClient.defaultMocks(
                     consumer = consumer,
                     supplier = supplier,
                     scope = scope,
+                    authorizationDetails = systemBrukerOrganisasjon?.let {
+                        listOf(
+                            AuthorizationDetail(
+                                type = "urn:altinn:systemuser",
+                                systemuserOrg = systemBrukerOrganisasjon,
+                                systemuserId = listOf("some-user-id"),
+                                systemId = "some-system-id"
+                            )
+                        )
+                    }
                 )
             }
 

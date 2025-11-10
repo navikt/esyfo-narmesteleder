@@ -12,11 +12,12 @@ import io.mockk.spyk
 import java.util.*
 import nlBehovEntity
 import no.nav.syfo.application.OtherEnvironmentProperties
-import no.nav.syfo.dialogporten.client.IDialogportenClient
-import no.nav.syfo.dialogporten.domain.AttachmentUrlConsumerType
-import no.nav.syfo.dialogporten.domain.Dialog
-import no.nav.syfo.dialogporten.domain.DialogStatus
-import no.nav.syfo.dialogporten.service.DialogportenService.Companion.DIALOG_TITLE_WITH_NAME
+import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
+import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
+import no.nav.syfo.altinn.dialogporten.domain.Dialog
+import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService.Companion.DIALOG_TITLE_WITH_NAME
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService

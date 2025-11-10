@@ -27,6 +27,8 @@ import java.util.*
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.pdp.client.FakePdpClient
+import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.ApiError
@@ -70,7 +72,9 @@ class LinenamanagerApiV1Test : DescribeSpec({
     val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
     val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
     val dineSykmelteService = DinesykmeldteService(fakeDinesykmeldteClient)
-    val validationService = ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy, dineSykmelteService)
+    val fakePdpClient = FakePdpClient()
+    val pdpService = PdpService(fakePdpClient)
+    val validationService = ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy, dineSykmelteService, pdpService)
     val validationServiceSpy = spyk(validationService)
     val tokenXIssuer = "https://tokenx.nav.no"
     val fakeRepo = FakeNarmestelederDb()
@@ -129,19 +133,14 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 withTestApplication {
                     // Arrange
                     texasHttpClientMock.defaultMocks(
-                        consumer = DefaultOrganization.copy(
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.orgnumber}"
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.employeeIdentificationNumber,
+                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.employeeIdentificationNumber] = listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
+                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.manager.nationalIdentificationNumber] =
                         listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
-                    )
-                    fakeAaregClient.arbeidsForholdForIdent.put(
-                        narmesteLederRelasjon.manager.nationalIdentificationNumber,
-                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
-                    )
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
@@ -333,17 +332,14 @@ class LinenamanagerApiV1Test : DescribeSpec({
             withTestApplication {
                 // Arrange
                 texasHttpClientMock.defaultMocks(
-                    consumer = DefaultOrganization.copy(
+                    systemBrukerOrganisasjon = DefaultOrganization.copy(
                         ID = "0192:${narmesteLederAvkreft.orgnumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft
                 fakeAaregClient.arbeidsForholdForIdent.clear()
-                fakeAaregClient.arbeidsForholdForIdent.put(
-                    narmesteLederAvkreft.employeeIdentificationNumber,
-                    listOf(narmesteLederAvkreft.orgnumber to narmesteLederRelasjon.orgnumber)
-                )
+                fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] = listOf(narmesteLederAvkreft.orgnumber to narmesteLederRelasjon.orgnumber)
                 // Act
                 val response = client.post("$API_V1_PATH/$REVOKE_PATH") {
                     contentType(ContentType.Application.Json)
@@ -446,7 +442,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("GET /requirement/{id} 200 with Maskinporten token") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
-                        consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedLinemanagerRequirement()
@@ -494,7 +490,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("PUT /requirement/{id} 202 updates behov and sends kafka message") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
-                        consumer = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgnummer"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedLinemanagerRequirement()

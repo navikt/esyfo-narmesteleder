@@ -20,10 +20,10 @@ import no.nav.syfo.application.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
-import no.nav.syfo.dialogporten.client.DialogportenClient
-import no.nav.syfo.dialogporten.client.FakeDialogportenClient
-import no.nav.syfo.dialogporten.service.DialogportenService
-import no.nav.syfo.dialogporten.task.SendDialogTask
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService
+import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -40,6 +40,9 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
+import no.nav.syfo.altinn.pdp.client.FakePdpClient
+import no.nav.syfo.altinn.pdp.client.PdpClient
+import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -131,7 +134,15 @@ private fun clientsModule() = module {
         if (isLocalEnv()) FakeDialogportenClient() else DialogportenClient(
             texasHttpClient = get(),
             httpClient = get(),
-            baseUrl = env().clientProperties.dialogportenBasePath,
+            baseUrl = env().clientProperties.altinn3BaseUrl,
+        )
+    }
+    single {
+        if (isLocalEnv()) FakePdpClient() else PdpClient(
+            httpClient = get(),
+            baseUrl = env().clientProperties.altinn3BaseUrl,
+            subscriptionKey = env().clientProperties.pdpSubscriptionKey,
+            texasHttpClient = get(),
         )
     }
 }
@@ -159,8 +170,9 @@ private fun servicesModule() = module {
         ) else FakeSykemeldingNLKafkaProducer()
         NarmestelederKafkaService(sykemeldingNLKafkaProducer)
     }
+    single { PdpService(get()) }
     single {
-        ValidationService(get(), get(), get(), get())
+        ValidationService(get(), get(), get(), get(), get())
     }
     single {
         DialogportenService(

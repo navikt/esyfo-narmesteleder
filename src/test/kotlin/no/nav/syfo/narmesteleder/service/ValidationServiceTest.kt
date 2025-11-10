@@ -2,7 +2,6 @@ package no.nav.syfo.narmesteleder.service
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.spyk
@@ -10,6 +9,8 @@ import linemanagerRevoke
 import linemanager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.pdp.client.FakePdpClient
+import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -18,6 +19,7 @@ import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 
 class ValidationServiceTest : DescribeSpec({
@@ -29,12 +31,15 @@ class ValidationServiceTest : DescribeSpec({
     val aaregClient = FakeAaregClient()
     val aaregService = spyk(AaregService(aaregClient))
     val pdlClient = FakePdlClient()
-    val pdlService = spyk(no.nav.syfo.pdl.PdlService(pdlClient))
+    val pdlService = spyk(PdlService(pdlClient))
+    val pdpClient = FakePdpClient()
+    val pdpService = spyk(PdpService(pdpClient))
     val service = ValidationService(
         pdlService = pdlService,
         aaregService = aaregService,
         altinnTilgangerService = altinnTilgangerService,
-        dinesykmeldteService = dinesykmeldteService
+        dinesykmeldteService = dinesykmeldteService,
+        pdpService = pdpService
     )
     beforeTest {
         clearAllMocks()
@@ -71,7 +76,12 @@ class ValidationServiceTest : DescribeSpec({
                 employeeIdentificationNumber = userWithAccess.first,
                 orgnumber = userWithAccess.second
             )
-            val principal = OrganisasjonPrincipal("0192:${userWithAccess.second}", "token")
+            val principal = OrganisasjonPrincipal(
+                "0192:${userWithAccess.second}",
+                "token",
+                "0192:systemowner",
+                "systemId"
+            )
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
@@ -124,7 +134,12 @@ class ValidationServiceTest : DescribeSpec({
                 employeeIdentificationNumber = userWithAccess.first,
                 orgnumber = userWithAccess.second
             )
-            val principal = OrganisasjonPrincipal("0192:${userWithAccess.second}", "token")
+            val principal = OrganisasjonPrincipal(
+                "0192:${userWithAccess.second}",
+                "token",
+                "0192:systemowner",
+                "systemId"
+            )
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {

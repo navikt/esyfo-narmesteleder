@@ -13,7 +13,7 @@ class NlResponseSourceTest : DescribeSpec({
         it("Returns LPS when principal is OrganizationPrincipal") {
             // Arrange
             val linemanager = linemanager()
-            val principal = OrganisasjonPrincipal("orgnummer", "token")
+            val principal = OrganisasjonPrincipal("orgnummer", "token", "owner", "userId")
 
             // Act
             val source = NlResponseSource.getSourceFrom(principal, linemanager)
@@ -65,7 +65,7 @@ class NlResponseSourceTest : DescribeSpec({
         it("Returns LPS when principal is OrganizationPrincipal") {
             // Arrange
             val linemanager = linemanagerRevoke()
-            val principal = OrganisasjonPrincipal("orgnummer", "token")
+            val principal = OrganisasjonPrincipal("orgnummer", "token", "owner", "userId")
 
             // Act
             val source = NlResponseSource.getSourceFrom(principal, linemanager)

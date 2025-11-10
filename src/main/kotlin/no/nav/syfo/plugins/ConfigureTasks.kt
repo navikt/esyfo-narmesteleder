@@ -4,7 +4,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
 import kotlin.getValue
 import kotlinx.coroutines.launch
-import no.nav.syfo.dialogporten.task.SendDialogTask
+import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
 import org.koin.ktor.ext.inject
 
 fun Application.configureBackgroundTasks() {

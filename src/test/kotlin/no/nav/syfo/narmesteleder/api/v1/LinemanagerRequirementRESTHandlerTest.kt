@@ -53,7 +53,9 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
             ident = "0192:${arbeidsforholdManagerAareg.first}",
             token = createMockToken(
                 ident = "0192:${arbeidsforholdManagerAareg.first}",
-            )
+            ),
+            systemOwner = "0192:systemOwner",
+            systemUserId = "systemUserId",
         )
 
         handler.handleUpdatedRequirement(

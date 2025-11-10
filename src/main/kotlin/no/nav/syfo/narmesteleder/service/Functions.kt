@@ -26,7 +26,7 @@ fun validateNarmesteLeder(
     nlrequire(
         narmesteLederOrgNumbers.keys == sykemeldtOrgNumbers.keys,
         { "Næremeste leder mangler arbeidsforhold i samme virksomhet som sykmeldt" })
-    organisasjonPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(organisasjonPrincipal.getOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
+    organisasjonPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(organisasjonPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
 }
 
 fun validateNarmesteLederAvkreft(
@@ -37,5 +37,5 @@ fun validateNarmesteLederAvkreft(
     val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     nlrequire(sykemeldtOrgNumbers.isNotEmpty()) { "Ingen arbeidsforhold for sykemeldt" }
     nlrequire(sykemeldtOrgNumbers.contains(orgNumberInRequest)) { "Organisasjonsnummer i HTTP request body samsvarer ikke med sykemeldtes organisasjoner" }
-    organisasjonPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(organisasjonPrincipal.getOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
+    organisasjonPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(organisasjonPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
 }

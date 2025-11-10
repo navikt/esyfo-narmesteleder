@@ -1,4 +1,4 @@
-package no.nav.syfo.dialogporten.domain
+package no.nav.syfo.altinn.dialogporten.domain
 
 
 data class Transmission(

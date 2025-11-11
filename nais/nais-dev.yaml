@@ -9,7 +9,7 @@ spec:
   ingresses:
     - https://esyfo-narmesteleder.intern.dev.nav.no
     - https://esyfo-narmesteleder.ekstern.dev.nav.no/api/v1/linemanager
-    - https://esyfo-narmesteleder.ekstern.dev.nav.no
+    - https://esyfo-narmesteleder.ekstern.dev.nav.no/swagger
   image: {{image}} #
   port: 8080
   liveness:

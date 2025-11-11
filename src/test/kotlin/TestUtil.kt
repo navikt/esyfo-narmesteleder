@@ -37,7 +37,7 @@ fun manager(): Manager = Manager(
 fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
     employeeIdentificationNumber = faker.numerify("###########"),
-    orgnumber = faker.numerify("#########"),
+    orgNumber = faker.numerify("#########"),
 )
 
 fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
@@ -49,12 +49,13 @@ fun nlBehovEntity() = NarmestelederBehovEntity(
     id = UUID.randomUUID(),
     orgnummer = faker.numerify("#########"),
     hovedenhetOrgnummer = faker.numerify("#########"),
-    sykmeldtFnr =faker.numerify("###########"),
+    sykmeldtFnr = faker.numerify("###########"),
     narmestelederFnr = faker.numerify("###########"),
     leesahStatus = LeesahStatus.DEAKTIVERT_NY_LEDER.name,
-    behovStatus = BehovStatus.RECEIVED,
+    behovStatus = BehovStatus.BEHOV_CREATED,
     avbruttNarmesteLederId = UUID.randomUUID(),
 )
+
 fun createMockToken(
     ident: String,
     supplierId: String? = null,

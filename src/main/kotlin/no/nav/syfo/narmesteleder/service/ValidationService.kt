@@ -35,17 +35,17 @@ class ValidationService(
         principal: Principal,
     ): LinemanagerActors {
         try {
-            validateAltinnTilgang(principal, linemanager.orgnumber)
+            validateAltinnTilgang(principal, linemanager.orgNumber)
             val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
             val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
             val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
-                .filter { it.key == linemanager.orgnumber }
+                .filter { it.key == linemanager.orgNumber }
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
-                    .filter { it.key == linemanager.orgnumber }
-            validataActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgnumber)
+                    .filter { it.key == linemanager.orgNumber }
+            validataActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgNumber)
             validateNarmesteLeder(
-                orgNumberInRequest = linemanager.orgnumber,
+                orgNumberInRequest = linemanager.orgNumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 narmesteLederOrgNumbers = nlArbeidsforhold,
                 systemPrincipal = principal as? SystemPrincipal,
@@ -61,7 +61,7 @@ class ValidationService(
             )
         } catch (smExc: ValidateActiveSykmeldingException) {
             logger.error(
-                "No active sick leave in organization number ${linemanager.orgnumber}",
+                "No active sick leave in organization number ${linemanager.orgNumber}",
                 smExc.message
             )
             throw ApiErrorException.BadRequestException(
@@ -75,10 +75,10 @@ class ValidationService(
         linemanagerRead: LinemanagerRequirementRead,
         altinnTilgang: AltinnTilgang?
     ) {
-        val sykemeldtOrgs = setOf(linemanagerRead.orgnumber, linemanagerRead.mainOrgnumber)
+        val sykemeldtOrgs = setOf(linemanagerRead.orgNumber, linemanagerRead.mainOrgNumber)
         when (principal) {
             is UserPrincipal -> {
-                altinnTilgangerService.validateTilgangToOrganization(altinnTilgang, linemanagerRead.orgnumber)
+                altinnTilgangerService.validateTilgangToOrganization(altinnTilgang, linemanagerRead.orgNumber)
             }
 
             is SystemPrincipal -> {

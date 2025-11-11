@@ -134,18 +134,18 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
+                            ID = "0192:${narmesteLederRelasjon.orgNumber}"
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.employeeIdentificationNumber] = listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
+                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.employeeIdentificationNumber] = listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
                     fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.manager.nationalIdentificationNumber] =
-                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
+                        listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         setBody(narmesteLederRelasjon)
-                        bearerAuth(createMockToken(narmesteLederRelasjon.orgnumber))
+                        bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber))
                     }
 
                     // Assert
@@ -165,7 +165,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
+                            ID = "0192:${narmesteLederRelasjon.orgNumber}"
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
@@ -205,7 +205,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.orgnumber}"
+                            ID = "0192:${narmesteLederRelasjon.orgNumber}"
                         ),
                         scope = "invalid-scope",
                     )
@@ -250,14 +250,14 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         pid = callerPid
                     )
                     fakeAltinnTilgangerClient.usersWithAccess.clear()
-                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
+                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgNumber)
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.employeeIdentificationNumber,
-                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
+                        listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
                     )
                     fakeAaregClient.arbeidsForholdForIdent.put(
                         narmesteLederRelasjon.manager.nationalIdentificationNumber,
-                        listOf(narmesteLederRelasjon.orgnumber to narmesteLederRelasjon.orgnumber)
+                        listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
                     )
                     // Act
                     val response = client.post("/api/v1/linemanager") {
@@ -311,7 +311,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         acr = "Level3",
                         pid = callerPid
                     )
-                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgnumber)
+                    fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgNumber)
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
@@ -339,7 +339,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft
                 fakeAaregClient.arbeidsForholdForIdent.clear()
-                fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] = listOf(narmesteLederAvkreft.orgnumber to narmesteLederRelasjon.orgnumber)
+                fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] = listOf(narmesteLederAvkreft.orgNumber to narmesteLederRelasjon.orgNumber)
                 // Act
                 val response = client.post("$API_V1_PATH/$REVOKE_PATH") {
                     contentType(ContentType.Application.Json)
@@ -371,7 +371,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederRelasjon.orgnumber}"
+                        ID = "0192:${narmesteLederRelasjon.orgNumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
@@ -400,7 +400,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederRelasjon.orgnumber}"
+                        ID = "0192:${narmesteLederRelasjon.orgNumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
@@ -422,11 +422,11 @@ class LinenamanagerApiV1Test : DescribeSpec({
         describe("/linemanager/requirement endpoints") {
             val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
             val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
-            val orgnummer = narmesteLederRelasjon.orgnumber
+            val orgnummer = narmesteLederRelasjon.orgNumber
 
             fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
-                orgnumber = orgnumber,
+                orgnumber = orgNumber,
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE",
                 revokedLinemanagerId = UUID.randomUUID(),
@@ -452,7 +452,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     response.status shouldBe HttpStatusCode.OK
                     val body = response.body<LinemanagerRequirementRead>()
                     body.id shouldBe requirementId
-                    body.orgnumber shouldBe orgnummer
+                    body.orgNumber shouldBe orgnummer
                     body.employeeIdentificationNumber shouldBe sykmeldtFnr
                 }
             }
@@ -513,13 +513,13 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             match { linemanager ->
                                 linemanager.employeeIdentificationNumber == sykmeldtFnr &&
-                                    linemanager.orgnumber == orgnummer &&
-                                    linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
+                                        linemanager.orgNumber == orgnummer &&
+                                        linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
                             }, any(), any()
                         )
                     }
                     val stored = fakeRepo.findBehovById(requirementId) ?: error("Stored requirement missing")
-                    stored.behovStatus.name shouldBe BehovStatus.COMPLETED.name
+                    stored.behovStatus.name shouldBe BehovStatus.BEHOV_FULFILLED.name
                 }
             }
 

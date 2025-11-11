@@ -32,7 +32,7 @@ class LinemanagerRequirementRESTHandler(
             val employee = narmesteLederService.getEmployeeByRequirementId(requirementId)
             val linemanager = Linemanager(
                 employeeIdentificationNumber = employee.nationalIdentificationNumber,
-                orgnumber = employee.orgnumber,
+                orgNumber = employee.orgNumber,
                 manager = manager
             )
             val linemanagerActors = validationService.validateLinemanager(
@@ -48,7 +48,7 @@ class LinemanagerRequirementRESTHandler(
             narmesteLederService.updateNlBehov(
                 manager = manager,
                 requirementId = requirementId,
-                behovStatus = BehovStatus.COMPLETED
+                behovStatus = BehovStatus.BEHOV_FULFILLED
             )
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Main entity not found", e)
@@ -66,7 +66,7 @@ class LinemanagerRequirementRESTHandler(
             narmesteLederService.getLinemanagerRequirementReadById(requirementId).let {
                 val altinnTilgang = if (principal is UserPrincipal) altinnTilgangerService.getAltinnTilgangForOrgnr(
                     principal,
-                    it.orgnumber
+                    it.orgNumber
                 ) else null
 
                 validationService.validateGetNlBehov(principal, it, altinnTilgang)

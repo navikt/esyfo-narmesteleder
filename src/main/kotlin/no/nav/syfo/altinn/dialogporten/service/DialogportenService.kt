@@ -53,7 +53,7 @@ class DialogportenService(
                 narmestelederDb.updateNlBehov(
                     behov.copy(
                         dialogId = dialogId,
-                        behovStatus = BehovStatus.PENDING,
+                        behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
                         fornavn = personInfo?.name?.fornavn,
                         mellomnavn = personInfo?.name?.mellomnavn,
                         etternavn = personInfo?.name?.etternavn,
@@ -63,6 +63,33 @@ class DialogportenService(
                 logger.error("Failed to send document ${behov.id} to dialogporten", ex)
             }
         }
+    }
+
+    suspend fun setAllFulfilledBehovsAsCompletedInDialogporten() {
+        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED)
+            .also {
+                logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
+            }
+            .forEach { behov ->
+                behov.dialogId?.let { dialogId ->
+                    try {
+                        dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+                            dialogportenClient.updateDialogStatus(
+                                dialogId = dialogId,
+                                revisionNumber = existingDialog.revision,
+                                dialogStatus = DialogStatus.Completed
+                            )
+                        }
+                        narmestelederDb.updateNlBehov(
+                            behov.copy(
+                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                            )
+                        )
+                    } catch (ex: Exception) {
+                        logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
+                    }
+                }
+            }
     }
 
     private fun getDialogTitle(name: Navn?): String =
@@ -75,7 +102,7 @@ class DialogportenService(
             "$DIALOG_SUMMARY ${it.navnFullt()}"
         } ?: "$DIALOG_SUMMARY ansatt som er sykmeldt"
 
-    private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.RECEIVED)
+    private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
 
     private fun createApiLink(id: UUID): String =
         "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
@@ -127,11 +154,11 @@ class DialogportenService(
                 consumerType = type,
             )
         }
+
     companion object {
         const val DIALOG_TITLE_NO_NAME = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
         const val DIALOG_TITLE_WITH_NAME = "er sykmeldt og har behov for å bli tildelt nærmeste leder"
         const val DIALOG_SUMMARY = "Vennligst tildel nærmeste leder for"
-
         const val URL_TITLE_GUI = "Naviger til nærmeste leder skjema"
         const val URL_TITLE_API = "Endpoint for LinemanagerRequirement request"
     }

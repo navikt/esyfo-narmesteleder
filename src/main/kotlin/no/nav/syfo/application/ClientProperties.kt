@@ -8,7 +8,6 @@ data class ClientProperties(
     val dinesykmeldteBaseUrl: String,
     val aaregScope: String,
     val dinesykmeldteScope: String,
-    val persistLeesahNlBehov: Boolean,
     val altinn3BaseUrl: String,
     val pdpSubscriptionKey: String
 ) {
@@ -21,7 +20,6 @@ data class ClientProperties(
             dinesykmeldteBaseUrl = "",
             dinesykmeldteScope = "",
             pdlScope = "pdl",
-            persistLeesahNlBehov = true,
             altinn3BaseUrl = "http://localhost:8080/dialogporten",
             pdpSubscriptionKey = "secret-key"
         )
@@ -35,7 +33,6 @@ data class ClientProperties(
                 dinesykmeldteScope = getEnvVar("DINESYMELDTE_SCOPE"),
                 pdlBaseUrl = getEnvVar("PDL_BASE_URL"),
                 pdlScope = getEnvVar("PDL_SCOPE"),
-                persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "false").toBoolean(),
                 altinn3BaseUrl = getEnvVar("ALTINN_3_BASE_URL"),
                 pdpSubscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY")
             )

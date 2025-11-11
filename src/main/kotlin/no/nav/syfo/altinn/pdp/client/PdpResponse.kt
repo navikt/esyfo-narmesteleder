@@ -15,6 +15,6 @@ enum class Decision {
     Deny,
 }
 
-fun PdpResponse.resultat() = response.first().decision
+fun PdpResponse.result() = response.first().decision
 
-fun PdpResponse.harTilgang(): Boolean = resultat() == Decision.Permit
+fun PdpResponse.hasAccess(): Boolean = result() == Decision.Permit

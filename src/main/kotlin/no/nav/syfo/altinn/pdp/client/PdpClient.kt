@@ -14,9 +14,9 @@ import no.nav.syfo.texas.client.TexasHttpClient
 
 interface IPdpClient {
     suspend fun authorize(
-        bruker: Bruker,
-        orgnrSet: Set<String>,
-        ressurs: String
+        user: User,
+        orgNumberSet: Set<String>,
+        resource: String
     ): PdpResponse
 }
 
@@ -27,11 +27,11 @@ class PdpClient(
     private val subscriptionKey: String,
 ): IPdpClient {
     override suspend fun authorize(
-        bruker: Bruker,
-        orgnrSet: Set<String>,
-        ressurs: String
+        user: User,
+        orgNumberSet: Set<String>,
+        resource: String
     ): PdpResponse {
-        val request = lagPdpRequest(bruker, orgnrSet, ressurs)
+        val request = createPdpRequest(user, orgNumberSet, resource)
         val response = try {
             val texasResponse = texasHttpClient.systemToken("maskinporten", "altinn:authorization/authorize")
             val token = altinnExchange(texasResponse.accessToken)

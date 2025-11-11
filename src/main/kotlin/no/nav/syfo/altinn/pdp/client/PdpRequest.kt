@@ -25,23 +25,23 @@ data class PdpRequest(
     override fun toString(): String = Json.encodeToString(this)
 }
 
-sealed class Bruker(
+sealed class User(
     val id: String,
     val attributeId: String,
 )
 
 class Person(
     id: String,
-) : Bruker(id, "urn:altinn:person:identifier-no")
+) : User(id, "urn:altinn:person:identifier-no")
 
 class System(
     id: String,
-) : Bruker(id, "urn:altinn:systemuser:uuid")
+) : User(id, "urn:altinn:systemuser:uuid")
 
-fun lagPdpRequest(
-    bruker: Bruker,
-    orgnrSet: Set<String>,
-    ressurs: String,
+fun createPdpRequest(
+    user: User,
+    orgNumberSet: Set<String>,
+    resource: String,
 ) = PdpRequest(
     request =
         PdpRequest.XacmlJsonRequestExternal(
@@ -52,8 +52,8 @@ fun lagPdpRequest(
                         attribute =
                             listOf(
                                 PdpRequest.XacmlJsonAttributeExternal(
-                                    attributeId = bruker.attributeId,
-                                    value = bruker.id,
+                                    attributeId = user.attributeId,
+                                    value = user.id,
                                 ),
                             ),
                     ),
@@ -72,13 +72,13 @@ fun lagPdpRequest(
                     ),
                 ),
             resource =
-                orgnrSet.map { orgnr ->
+                orgNumberSet.map { orgnr ->
                     PdpRequest.XacmlJsonCategoryExternal(
                         attribute =
                             listOf(
                                 PdpRequest.XacmlJsonAttributeExternal(
                                     attributeId = "urn:altinn:resource",
-                                    value = ressurs,
+                                    value = resource,
                                 ),
                                 PdpRequest.XacmlJsonAttributeExternal(
                                     attributeId = "urn:altinn:organization:identifier-no",

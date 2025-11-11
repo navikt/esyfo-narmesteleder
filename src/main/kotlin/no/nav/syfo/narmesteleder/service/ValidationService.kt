@@ -90,7 +90,7 @@ class ValidationService(
                 if (hasAccess) {
                     nlrequire(
                         sykemeldtOrgs.contains(principal.getSystemUserOrgNumber())
-                    ) { "Person making the request is not employed in the same organization as employee on sick leave" }
+                    ) { "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave" }
                 } else {
                     throw ApiErrorException.ForbiddenException(
                         "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource"

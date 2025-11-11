@@ -112,3 +112,5 @@ spec:
       value: https://www.ekstern.dev.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
       value: https://esyfo-narmesteleder.ekstern.dev.nav.no
+    - name: PERSIST_LEESAH_NL_BEHOV
+      value: "true"

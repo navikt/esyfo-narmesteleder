@@ -2,7 +2,6 @@ package no.nav.syfo.narmesteleder.service
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.spyk
@@ -55,7 +54,7 @@ class ValidationServiceTest : DescribeSpec({
             coVerify(exactly = 1) {
                 altinnTilgangerService.validateTilgangToOrganization(
                     eq(principal),
-                    eq(narmestelederRelasjonerWrite.orgnumber)
+                    eq(narmestelederRelasjonerWrite.orgNumber)
                 )
             }
             coVerify(exactly = 0) {
@@ -69,7 +68,7 @@ class ValidationServiceTest : DescribeSpec({
             val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
             val narmestelederRelasjonerWrite = linemanager().copy(
                 employeeIdentificationNumber = userWithAccess.first,
-                orgnumber = userWithAccess.second
+                orgNumber = userWithAccess.second
             )
             val principal = OrganisasjonPrincipal("0192:${userWithAccess.second}", "token")
 
@@ -81,7 +80,7 @@ class ValidationServiceTest : DescribeSpec({
             coVerify(exactly = 0) {
                 altinnTilgangerService.validateTilgangToOrganization(
                     any<AltinnTilgang>(),
-                    eq(narmestelederRelasjonerWrite.orgnumber)
+                    eq(narmestelederRelasjonerWrite.orgNumber)
                 )
             }
             coVerify(exactly = 1) {

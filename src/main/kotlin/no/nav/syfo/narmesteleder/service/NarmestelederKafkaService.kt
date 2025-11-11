@@ -21,7 +21,7 @@ class NarmestelederKafkaService(
             NlResponse(
                 sykmeldt = Sykmeldt.from(linemanagerActors.employee),
                 leder = linemanager.manager.toLeder().updateFromPerson(linemanagerActors.manager),
-                orgnummer = linemanager.orgnumber
+                orgnummer = linemanager.orgNumber
             ), source = source
         )
     }

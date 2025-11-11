@@ -10,10 +10,7 @@ import io.mockk.coEvery
 import java.time.Instant
 import java.util.*
 import net.datafaker.Faker
-import no.nav.syfo.aareg.client.AaregClient
-import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
@@ -38,7 +35,7 @@ fun manager(): Manager = Manager(
 fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
     employeeIdentificationNumber = faker.numerify("###########"),
-    orgnumber = faker.numerify("#########"),
+    orgNumber = faker.numerify("#########"),
 )
 
 fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
@@ -50,12 +47,13 @@ fun nlBehovEntity() = NarmestelederBehovEntity(
     id = UUID.randomUUID(),
     orgnummer = faker.numerify("#########"),
     hovedenhetOrgnummer = faker.numerify("#########"),
-    sykmeldtFnr =faker.numerify("###########"),
+    sykmeldtFnr = faker.numerify("###########"),
     narmestelederFnr = faker.numerify("###########"),
     leesahStatus = LeesahStatus.DEAKTIVERT_NY_LEDER.name,
-    behovStatus = BehovStatus.RECEIVED,
+    behovStatus = BehovStatus.BEHOV_CREATED,
     avbruttNarmesteLederId = UUID.randomUUID(),
 )
+
 fun createMockToken(
     ident: String,
     supplierId: String? = null,

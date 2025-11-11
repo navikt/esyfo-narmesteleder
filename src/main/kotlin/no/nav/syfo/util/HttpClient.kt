@@ -3,13 +3,16 @@ package no.nav.syfo.util
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.apache.Apache
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.jackson.JacksonConverter
 import io.ktor.serialization.jackson.jackson
+import no.nav.syfo.dialogporten.client.DialogportenClient
 
 fun httpClientDefault(httpClient: HttpClient = HttpClient(Apache)): HttpClient {
     return httpClient.config {
@@ -21,6 +24,8 @@ fun httpClientDefault(httpClient: HttpClient = HttpClient(Apache)): HttpClient {
                 configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
                 configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             }
+            // Register custom converter for application/json-patch+json needed in Dialogporten
+            register(JSON_PATCH_CONTENT_TYPE, JacksonConverter(jacksonObjectMapper()))
         }
         install(HttpRequestRetry) {
             retryOnExceptionIf(2) { _, cause ->

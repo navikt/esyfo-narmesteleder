@@ -56,7 +56,7 @@ class NarmestelederDbTest : DescribeSpec({
             val retrievedEntity = db.findBehovById(id)
             val mutatedEntity = retrievedEntity!!.copy(
                 orgnummer = faker.numerify("#########"),
-                behovStatus = BehovStatus.COMPLETED,
+                behovStatus = BehovStatus.BEHOV_FULFILLED,
                 dialogId = UUID.randomUUID(),
                 fornavn = faker.name().firstName(),
                 mellomnavn = faker.name().nameWithMiddle().split(" ")[1],
@@ -75,16 +75,17 @@ class NarmestelederDbTest : DescribeSpec({
     describe("getNlBehovByStatus") {
         it("should retrieve only entities with the matching status and created in the past") {
             // Arrange
-            val nlBehovEntity1 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.RECEIVED))
-            val nlBehovEntity2 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.RECEIVED))
-            val nlBehovEntity3 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.PENDING))
+            val nlBehovEntity1 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_CREATED))
+            val nlBehovEntity2 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_CREATED))
+            val nlBehovEntity3 =
+                insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION))
             val earlier = Instant.now().minusSeconds(3 * 60L)
             updateCreated(nlBehovEntity1?.id!!, earlier)
             updateCreated(nlBehovEntity2?.id!!, earlier)
             updateCreated(nlBehovEntity3?.id!!, earlier)
 
             // Act
-            val retrievedEntities = db.getNlBehovByStatus(BehovStatus.RECEIVED)
+            val retrievedEntities = db.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
 
             // Assert
             retrievedEntities.size shouldBe 2

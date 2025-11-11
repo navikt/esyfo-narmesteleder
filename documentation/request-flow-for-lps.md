@@ -14,7 +14,7 @@ The response from ```GET /api/v1/linemanager/requirement/{id}``` will look like 
   "employeeIdentificationNumber": "15436803416",
   "orgNumber": "215649202",
   "orgName": "The Ghostbusters",
-  "mainOrgnumber": "310667633",
+  "mainOrgNumber": "310667633",
   "managerIdentificationNumber": null,
   "name": {
     "firstName": "Egon",

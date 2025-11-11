@@ -188,18 +188,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /internal/metrics:
-    get:
-      summary: Scrape application metrics
-      description: Returns Prometheus metrics.
-      tags: [metrics]
-      responses:
-        '200':
-          description: Prometheus exposition format
-          content:
-            text/plain:
-              schema:
-                type: string
 components:
   securitySchemes:
     maskinporten_jwt:

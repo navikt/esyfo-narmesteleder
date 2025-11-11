@@ -23,7 +23,7 @@ data class OtherEnvironmentProperties(
                 frontendBaseUrl = "http://localhost:3000",
                 publicIngressUrl = "http://localhost:8080",
                 updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
-                persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "false").toBoolean(),
+                persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
             )
     }
 }

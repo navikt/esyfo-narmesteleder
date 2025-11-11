@@ -57,7 +57,7 @@ class NarmestelederServiceTest : DescribeSpec({
             val hovedenhetOrg = "987654321"
             val write = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
-                orgnumber = underenhetOrg,
+                orgNumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
                 revokedLinemanagerId = UUID.randomUUID(),
@@ -68,7 +68,7 @@ class NarmestelederServiceTest : DescribeSpec({
             coEvery { nlDb.insertNlBehov(capture(captured)) } answers { UUID.randomUUID() }
             coEvery {
                 dinesykmeldteService.getIsActiveSykmelding(
-                    eq(write.employeeIdentificationNumber), eq(write.orgnumber)
+                    eq(write.employeeIdentificationNumber), eq(write.orgNumber)
                 )
             } returns true
 
@@ -95,7 +95,7 @@ class NarmestelederServiceTest : DescribeSpec({
             val underenhetOrg = "123456789"
             val write = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
-                orgnumber = underenhetOrg,
+                orgNumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
                 revokedLinemanagerId = UUID.randomUUID(),
@@ -118,7 +118,7 @@ class NarmestelederServiceTest : DescribeSpec({
             val underenhetOrg = "123456789"
             val write = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
-                orgnumber = underenhetOrg,
+                orgNumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
                 revokedLinemanagerId = UUID.randomUUID(),
@@ -126,7 +126,7 @@ class NarmestelederServiceTest : DescribeSpec({
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns emptyMap()
             coEvery {
                 dinesykmeldteService.getIsActiveSykmelding(
-                    eq(write.employeeIdentificationNumber), eq(write.orgnumber)
+                    eq(write.employeeIdentificationNumber), eq(write.orgNumber)
                 )
             } returns true
 
@@ -144,7 +144,7 @@ class NarmestelederServiceTest : DescribeSpec({
             val underenhetOrg = "123456789"
             val write = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
-                orgnumber = underenhetOrg,
+                orgNumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
                 leesahStatus = "ACTIVE",
                 revokedLinemanagerId = UUID.randomUUID(),
@@ -152,7 +152,7 @@ class NarmestelederServiceTest : DescribeSpec({
 
             coEvery {
                 dinesykmeldteService.getIsActiveSykmelding(
-                    eq(write.employeeIdentificationNumber), eq(write.orgnumber)
+                    eq(write.employeeIdentificationNumber), eq(write.orgNumber)
                 )
             } returns false
 

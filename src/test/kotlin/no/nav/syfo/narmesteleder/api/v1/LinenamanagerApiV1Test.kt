@@ -334,7 +334,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     consumer = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederAvkreft.orgnumber}"
+                        ID = "0192:${narmesteLederAvkreft.orgNumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
@@ -342,7 +342,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 fakeAaregClient.arbeidsForholdForIdent.clear()
                 fakeAaregClient.arbeidsForholdForIdent.put(
                     narmesteLederAvkreft.employeeIdentificationNumber,
-                    listOf(narmesteLederAvkreft.orgnumber to narmesteLederRelasjon.orgNumber)
+                    listOf(narmesteLederAvkreft.orgNumber to narmesteLederRelasjon.orgNumber)
                 )
                 // Act
                 val response = client.post("$API_V1_PATH/$REVOKE_PATH") {
@@ -430,7 +430,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
 
             fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
-                orgnumber = orgNumber,
+                orgNumber = orgNumber,
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE",
                 revokedLinemanagerId = UUID.randomUUID(),

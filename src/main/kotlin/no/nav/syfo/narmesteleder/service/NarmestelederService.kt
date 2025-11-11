@@ -83,20 +83,20 @@ class NarmestelederService(
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
         val hasActiveSykmelding =
-            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgnumber)
+            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
         return if (hasActiveSykmelding) {
             nlDb.insertNlBehov(
                 NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
                     nlBehov, findHovedenhetOrgnummer(
                         nlBehov.employeeIdentificationNumber,
-                        nlBehov.orgnumber
+                        nlBehov.orgNumber
                     ), BehovStatus.BEHOV_CREATED
                 )
             ).also {
                 logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
             }
         } else {
-            logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgnumber}")
+            logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}")
             null
         }
 

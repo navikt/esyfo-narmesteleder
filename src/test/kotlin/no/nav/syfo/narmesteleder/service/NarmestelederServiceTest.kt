@@ -86,7 +86,7 @@ class NarmestelederServiceTest : DescribeSpec({
             entity.hovedenhetOrgnummer shouldBe hovedenhetOrg
             entity.narmestelederFnr shouldBe write.managerIdentificationNumber
             entity.leesahStatus shouldBe write.leesahStatus
-            entity.behovStatus shouldBe BehovStatus.RECEIVED
+            entity.behovStatus shouldBe BehovStatus.BEHOV_CREATED
         }
 
         it("skips persistence when flag is false") {
@@ -176,7 +176,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
                 leesahStatus = "ACTIVE",
-                behovStatus = BehovStatus.RECEIVED,
+                behovStatus = BehovStatus.BEHOV_CREATED,
                 avbruttNarmesteLederId = UUID.randomUUID(),
                 fornavn = "Kari",
                 mellomnavn = null,
@@ -186,8 +186,8 @@ class NarmestelederServiceTest : DescribeSpec({
             coVerify(exactly = 0) { pdlService.getPersonFor(any()) }
             val read = service().getLinemanagerRequirementReadById(id)
             read.id shouldBe id
-            read.orgnumber shouldBe entity.orgnummer
-            read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer
+            read.orgNumber shouldBe entity.orgnummer
+            read.mainOrgNumber shouldBe entity.hovedenhetOrgnummer
             read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
             read.managerIdentificationNumber shouldBe entity.narmestelederFnr
             read.name.firstName shouldBe entity.fornavn
@@ -214,7 +214,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
                 leesahStatus = "ACTIVE",
-                behovStatus = BehovStatus.RECEIVED,
+                behovStatus = BehovStatus.BEHOV_CREATED,
                 avbruttNarmesteLederId = UUID.randomUUID(),
             )
             val navn = Navn(fornavn = "Ola", mellomnavn = null, etternavn = "Nordmann")
@@ -229,8 +229,8 @@ class NarmestelederServiceTest : DescribeSpec({
             coVerify(exactly = 1) { pdlService.getPersonFor(eq(entity.sykmeldtFnr)) }
             coVerify(exactly = 1) { nlDb.updateNlBehov(any()) }
             read.id shouldBe id
-            read.orgnumber shouldBe entity.orgnummer
-            read.mainOrgnumber shouldBe entity.hovedenhetOrgnummer
+            read.orgNumber shouldBe entity.orgnummer
+            read.mainOrgNumber shouldBe entity.hovedenhetOrgnummer
             read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
             read.managerIdentificationNumber shouldBe entity.narmestelederFnr
             read.name.firstName shouldBe navn.fornavn
@@ -259,15 +259,15 @@ class NarmestelederServiceTest : DescribeSpec({
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
                 leesahStatus = "ACTIVE",
-                behovStatus = BehovStatus.RECEIVED,
                 avbruttNarmesteLederId = UUID.randomUUID(),
+                behovStatus = BehovStatus.BEHOV_CREATED,
             )
 
             coEvery { nlDb.findBehovById(id) } returns original
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
             // Act
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.BEHOV_FULFILLED)
             coVerify(exactly = 1) {
                 nlDb.updateNlBehov(any())
             }
@@ -283,7 +283,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
                 leesahStatus = "ACTIVE",
-                behovStatus = BehovStatus.RECEIVED,
+                behovStatus = BehovStatus.BEHOV_CREATED,
                 avbruttNarmesteLederId = UUID.randomUUID(),
             )
 
@@ -291,12 +291,17 @@ class NarmestelederServiceTest : DescribeSpec({
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
             // Act
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.COMPLETED)
+            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.BEHOV_FULFILLED)
 
             // Assert
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
-                    updated.id == id && updated.orgnummer == original.orgnummer && updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer && updated.sykmeldtFnr == original.sykmeldtFnr && updated.narmestelederFnr == defaultManager.nationalIdentificationNumber && updated.behovStatus == BehovStatus.COMPLETED
+                    updated.id == id
+                            && updated.orgnummer == original.orgnummer
+                            && updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer
+                            && updated.sykmeldtFnr == original.sykmeldtFnr
+                            && updated.narmestelederFnr == defaultManager.nationalIdentificationNumber
+                            && updated.behovStatus == BehovStatus.BEHOV_FULFILLED
                 })
             }
         }
@@ -309,7 +314,7 @@ class NarmestelederServiceTest : DescribeSpec({
             // Act + Assert
             shouldThrow<LinemanagerRequirementNotFoundException> {
                 service().updateNlBehov(
-                    defaultManager, id, BehovStatus.COMPLETED
+                    defaultManager, id, BehovStatus.BEHOV_FULFILLED
                 )
             }
         }

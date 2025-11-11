@@ -15,8 +15,12 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
             LeesahStatus.DEAKTIVERT_ARBEIDSTAKER,
             LeesahStatus.DEAKTIVERT_ARBEIDSTAKER_INNSENDT_SYKMELDING,
             LeesahStatus.DEAKTIVERT_LEDER,
-            LeesahStatus.DEAKTIVERT_NY_LEDER
                 -> narmesteLederService.createNewNlBehov(nlBehov)
+
+            LeesahStatus.DEAKTIVERT_NY_LEDER -> {
+                // Denne sendes fra `Narmesteleder` når de mottar en melding om ny leder
+                logger.info("New leader deactivation message received. Expecting new leader assignment.")
+            }
 
             LeesahStatus.DEAKTIVERT_ARBEIDSFORHOLD -> {
                 logger.info("Arbeidsforhold deactivated message received.")

@@ -12,7 +12,7 @@ data class NarmestelederBehovEntity(
     val sykmeldtFnr: String,
     val narmestelederFnr: String,
     val leesahStatus: String,
-    val behovStatus: BehovStatus = BehovStatus.RECEIVED,
+    val behovStatus: BehovStatus = BehovStatus.BEHOV_CREATED,
     val dialogId: UUID? = null,
     val avbruttNarmesteLederId: UUID,
     val fornavn: String? = null,

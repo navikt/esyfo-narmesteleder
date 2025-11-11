@@ -4,10 +4,10 @@ import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 
 data class LinemanagerRevoke(
     val employeeIdentificationNumber: String,
-    val orgnumber: String,
+    val orgNumber: String,
 ) {
     fun toNlAvbrutt(): NlAvbrutt = NlAvbrutt(
-        orgnummer = orgnumber,
+        orgnummer = orgNumber,
         sykmeldtFnr = employeeIdentificationNumber,
     )
 }

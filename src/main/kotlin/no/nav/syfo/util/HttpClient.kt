@@ -12,7 +12,6 @@ import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.jackson.JacksonConverter
 import io.ktor.serialization.jackson.jackson
-import no.nav.syfo.dialogporten.client.DialogportenClient
 
 fun httpClientDefault(httpClient: HttpClient = HttpClient(Apache)): HttpClient {
     return httpClient.config {

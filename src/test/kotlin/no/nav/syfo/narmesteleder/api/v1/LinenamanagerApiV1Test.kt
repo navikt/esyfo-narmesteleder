@@ -333,7 +333,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 // Arrange
                 texasHttpClientMock.defaultMocks(
                     systemBrukerOrganisasjon = DefaultOrganization.copy(
-                        ID = "0192:${narmesteLederAvkreft.orgnumber}"
+                        ID = "0192:${narmesteLederAvkreft.orgNumber}"
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )

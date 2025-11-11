@@ -122,7 +122,7 @@ class ValidationServiceTest : DescribeSpec({
             coVerify(exactly = 1) {
                 altinnTilgangerService.validateTilgangToOrganization(
                     eq(principal),
-                    eq(narmesteLederAvkreft.orgnumber)
+                    eq(narmesteLederAvkreft.orgNumber)
                 )
             }
             coVerify(exactly = 0) {
@@ -137,7 +137,7 @@ class ValidationServiceTest : DescribeSpec({
             val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
             val narmesteLederAvkreft = linemanagerRevoke().copy(
                 employeeIdentificationNumber = userWithAccess.first,
-                orgnumber = userWithAccess.second
+                orgNumber = userWithAccess.second
             )
             val principal = DefaultSystemPrincipal.copy(
                 ident = "0192:${userWithAccess.second}",
@@ -151,7 +151,7 @@ class ValidationServiceTest : DescribeSpec({
             coVerify(exactly = 0) {
                 altinnTilgangerService.validateTilgangToOrganization(
                     any<AltinnTilgang>(),
-                    eq(narmesteLederAvkreft.orgnumber)
+                    eq(narmesteLederAvkreft.orgNumber)
                 )
             }
             coVerify(exactly = 1) {

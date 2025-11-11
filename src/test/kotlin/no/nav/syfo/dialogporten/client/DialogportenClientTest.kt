@@ -5,12 +5,10 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import createMockToken
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.property.arbitrary.TypeReference
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.fullPath
@@ -18,12 +16,13 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
-import java.util.*
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
-import no.nav.syfo.dialogporten.domain.DialogStatus
+import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
+import java.util.UUID
 
 
 class DialogportenClientTest : DescribeSpec({

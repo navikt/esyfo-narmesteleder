@@ -11,6 +11,7 @@ import java.time.Instant
 import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
@@ -83,6 +84,13 @@ fun createMockToken(
 val DefaultOrganization = OrganizationId(
     ID = "0192:123456789",
     authority = "some-authority",
+)
+
+val DefaultSystemPrincipal = SystemPrincipal(
+    "0192:123456789",
+    "token",
+    "0192:systemowner",
+    "systemId"
 )
 
 /**

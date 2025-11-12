@@ -9,6 +9,7 @@ import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
+import no.nav.syfo.narmesteleder.kafka.SendtSykmeldingKafkaConsumer
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
@@ -34,14 +35,21 @@ fun Application.configureRunningTasks() {
     ).apply {
         commitOnAllErrors = environment.kafka.commitOnAllErrors
     }
+    // TODO: configure this consumer properly with separate group id etc.
+    val sendtSykmeldingConsumer = SendtSykmeldingKafkaConsumer(
+        kafkaConsumer = kafkaConsumer,
+        scope = this
+    )
 
     monitor.subscribe(ApplicationStarted) {
         leesahConsumer.listen()
+        sendtSykmeldingConsumer.listen()
     }
 
     monitor.subscribe(ApplicationStopping) {
         runBlocking {
             leesahConsumer.stop()
+            sendtSykmeldingConsumer.stop()
         }
     }
 }

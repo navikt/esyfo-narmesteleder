@@ -1,6 +1,8 @@
 package no.nav.syfo.application.api
 
 import io.ktor.server.application.Application
+import io.ktor.server.http.content.staticResources
+import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -34,6 +36,9 @@ fun Application.configureRouting() {
         registerPodApi(applicationState, database)
         registerMetricApi()
         registerApiV1(narmestelederKafkaService, texasHttpClient, validationService, linemanagerRequirementRESTHandler)
+        // Static openAPI spec + swagger
+        staticResources("/openapi", "openapi")
+        swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
             registerDialogportenTokenApi(texasHttpClient, dialogportenClient)

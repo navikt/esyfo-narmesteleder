@@ -426,7 +426,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
 
             fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
                 employeeIdentificationNumber = sykmeldtFnr,
-                orgnumber = orgNumber,
+                orgNumber = orgNumber,
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
                 leesahStatus = "ACTIVE",
                 revokedLinemanagerId = UUID.randomUUID(),

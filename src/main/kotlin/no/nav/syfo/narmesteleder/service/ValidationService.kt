@@ -89,12 +89,12 @@ class ValidationService(
         principal: Principal,
     ): Person {
         try {
-            validateAltinnTilgang(principal, linemanagerRevoke.orgnumber)
+            validateAltinnTilgang(principal, linemanagerRevoke.orgNumber)
             val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
             validateNarmesteLederAvkreft(
-                orgNumberInRequest = linemanagerRevoke.orgnumber,
+                orgNumberInRequest = linemanagerRevoke.orgNumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 organisasjonPrincipal = principal as? OrganisasjonPrincipal,
             )

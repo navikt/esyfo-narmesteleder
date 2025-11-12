@@ -35,7 +35,7 @@ data class NarmestelederLeesahKafkaMessage(
 
     fun toNlBehovWrite() = LinemanagerRequirementWrite(
         employeeIdentificationNumber = fnr,
-        orgnumber = orgnummer,
+        orgNumber = orgnummer,
         managerIdentificationNumber = narmesteLederFnr,
         leesahStatus = status.name,
         revokedLinemanagerId = narmesteLederId,

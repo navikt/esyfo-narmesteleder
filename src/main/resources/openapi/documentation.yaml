@@ -1,0 +1,407 @@
+openapi: 3.0.3
+info:
+  title: Esyfo Narmesteleder API
+  version: 1.0.0
+  description: API v1 for linemanager creation, revoke, requirement, and metrics.
+servers:
+  - url: https://esyfo-narmesteleder.ekstern.dev.nav.no
+    description: Test server for esyfo-narmesteleder application line manager
+paths:
+  /api/v1/linemanager:
+    post:
+      summary: Create or update linemanager relation
+      description: Publishes a linemanager relation to Kafka.
+      tags: [linemanager]
+      security:
+        - maskinporten_jwt: []
+        - tokenx_jwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Linemanager'
+      responses:
+        '202':
+          description: Request accepted for processing
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/linemanager/revoke:
+    post:
+      summary: Revoke linemanager relation
+      description: Publishes a revoke event to Kafka.
+      tags: [linemanager]
+      security:
+        - maskinporten_jwt: []
+        - tokenx_jwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinemanagerRevoke'
+      responses:
+        '202':
+          description: Revocation accepted
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/linemanager/requirement/{id}:
+    put:
+      summary: Update linemanager requirement
+      description: Updates requirement by UUID.
+      tags: [requirement]
+      security:
+        - maskinporten_jwt: []
+        - tokenx_jwt: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Requirement UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Manager'
+      responses:
+        '202':
+          description: Update accepted
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Requirement not found
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    get:
+      summary: Get linemanager requirement
+      description: Returns requirement details by UUID.
+      tags: [requirement]
+      security:
+        - maskinporten_jwt: []
+        - tokenx_jwt: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Requirement UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Requirement details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinemanagerRequirementRead'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Requirement not found
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+components:
+  securitySchemes:
+    maskinporten_jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Maskinporten issued JWT.
+    tokenx_jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: TokenX issued JWT.
+  schemas:
+    Linemanager:
+      type: object
+      properties:
+        employeeIdentificationNumber:
+          type: string
+          description: "A Norwegian national identity number or D number."
+          example: "12345678901"
+        orgNumber:
+          type: string
+          description: Organisation number where the employee works
+          example: "123456789"
+        manager:
+          type: object
+          properties:
+            nationalIdentificationNumber:
+              type: string
+              description: "A Norwegian national identity number or D number of the manager."
+              example: "10987654321"
+            mobile:
+              type: string
+              description: Mobile phone number of the manager.
+              example: "+4790000000"
+            email:
+              type: string
+              format: email
+              description: Email address of the manager.
+              example: "leder@example.com"
+            firstName:
+              type: string
+              description: Manager first name.
+              example: "Ola"
+            middleName:
+              type: string
+              description: Manager middle name.
+              example: "Ola"
+            lastName:
+              type: string
+              description: Manager last name.
+              example: "Nordmann"
+          required:
+            - nationalIdentificationNumber
+            - mobile
+            - email
+            - firstName
+            - lastName
+          additionalProperties: false
+      description: Linemanager relation payload.
+      additionalProperties: true
+    LinemanagerRevoke:
+      type: object
+      properties:
+        employeeIdentificationNumber:
+          type: string
+          description: "A Norwegian national identity number or D number."
+          example: "12345678901"
+        orgNumber:
+          type: string
+          description: Organisation number where the employee works
+          example: "123456789"
+      description: Linemanager revoke payload.
+      additionalProperties: true
+    Manager:
+      type: object
+      description: Manager details payload.
+      properties:
+        nationalIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the manager.
+          example: "10987654321"
+        mobile:
+          type: string
+          description: Mobile phone number of the manager.
+          example: "+4790000000"
+        email:
+          type: string
+          format: email
+          description: Email address of the manager.
+          example: "leder@example.com"
+        firstName:
+          type: string
+          description: Manager first name.
+          example: "Ola"
+        middleName:
+          type: string
+          description: Manager middle name.
+          example: "Ola"
+        lastName:
+          type: string
+          description: Manager last name.
+          example: "Nordmann"
+      required:
+        - nationalIdentificationNumber
+        - mobile
+        - email
+        - firstName
+        - lastName
+      additionalProperties: false
+    LinemanagerRequirementRead:
+      type: object
+      description: Requirement details payload.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Requirement UUID.
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        employeeIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the employee.
+          example: "12345678901"
+        orgNumber:
+          type: string
+          description: Organisation number where the employee works.
+          example: "123456789"
+        orgName:
+          type: string
+          nullable: true
+          description: Organisation name (if available).
+          example: "Eksempel AS"
+        mainOrgnumber:
+          type: string
+          description: Main (parent) organisation number.
+          example: "987654321"
+        managerIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the manager.
+          example: "10987654321"
+        name:
+          type: object
+          description: Manager name.
+          properties:
+            firstName:
+              type: string
+              description: Manager first name.
+              example: "Ola"
+            middleName:
+              type: string
+              description: Manager middle name.
+              example: "Ola"
+            lastName:
+              type: string
+              description: Manager last name.
+              example: "Nordmann"
+          required:
+            - firstName
+            - lastName
+          additionalProperties: false
+      required:
+        - id
+        - employeeIdentificationNumber
+        - orgNumber
+        - mainOrgnumber
+        - managerIdentificationNumber
+        - name
+      additionalProperties: false
+    ErrorType:
+      type: string
+      description: Application error type.
+      enum:
+        - AUTHENTICATION_ERROR
+        - AUTHORIZATION_ERROR
+        - NOT_FOUND
+        - INTERNAL_SERVER_ERROR
+        - ILLEGAL_ARGUMENT
+        - BAD_REQUEST
+        - CONFLICT
+    ApiError:
+      type: object
+      description: Standard error payload.
+      properties:
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+          example: 400
+        type:
+          $ref: '#/components/schemas/ErrorType'
+        message:
+          type: string
+          description: Human readable error message.
+          example: Validation failed for field orgNumber
+        path:
+          type: string
+          nullable: true
+          description: Request path.
+          example: /api/v1/linemanager
+        timestamp:
+          type: string
+          format: date-time
+          description: Error creation time (UTC).
+          example: 2024-05-01T12:34:56Z
+      required:
+        - status
+        - type
+        - message
+        - timestamp
+      additionalProperties: false
+tags:
+  - name: linemanager
+    description: Linemanager relation operations.
+  - name: requirement
+    description: Linemanager requirement operations.
+  - name: metrics
+    description: Operational metrics.

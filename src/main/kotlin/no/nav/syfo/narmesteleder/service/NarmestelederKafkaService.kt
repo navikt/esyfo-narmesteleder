@@ -32,7 +32,7 @@ class NarmestelederKafkaService(
         kafkaSykemeldingProducer.sendSykemeldingNLBrudd(
             NlAvbrutt(
                 linemanagerRevoke.employeeIdentificationNumber,
-                linemanagerRevoke.orgnumber,
+                linemanagerRevoke.orgNumber,
             ), source = source
         )
     }

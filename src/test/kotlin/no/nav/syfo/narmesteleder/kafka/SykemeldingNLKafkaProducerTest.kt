@@ -78,7 +78,7 @@ class SykemeldingNLKafkaProducerTest : DescribeSpec({
                     it.shouldBeInstanceOf<ProducerRecord<String, NlAvbruddResponseKafkaMessage>>()
                     it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.source
                     it.value().nlAvbrutt shouldNotBe null
-                    it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgnumber
+                    it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgNumber
                     it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.employeeIdentificationNumber
                     it.value().nlAvbrutt.aktivTom shouldBeAfter now
                 })

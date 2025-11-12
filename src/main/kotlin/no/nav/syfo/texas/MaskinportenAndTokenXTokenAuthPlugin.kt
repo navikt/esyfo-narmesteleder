@@ -4,18 +4,17 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.auth.authentication
 import io.ktor.server.response.respondNullable
-import io.ktor.util.AttributeKey
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.texas.client.OrganizationId
+import no.nav.syfo.texas.client.getSystemUserId
+import no.nav.syfo.texas.client.getSystemUserOrganization
 import no.nav.syfo.util.logger
 
-val TOKEN_CONSUMER_KEY = AttributeKey<OrganizationId>("tokenConsumer")
 private val VALID_ISSUERS = listOf(JwtIssuer.MASKINPORTEN, JwtIssuer.TOKEN_X)
-val MASKINPORTEN_NL_SCOPE = "nav:syfo/narmesteleder/lps"
+const val MASKINPORTEN_NL_SCOPE = "nav:syfo/narmesteleder/lps"
 private val logger = logger("no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin")
 
 val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
@@ -59,13 +58,19 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
                     if (introspectionResponse.scope != MASKINPORTEN_NL_SCOPE) {
                         throw ApiErrorException.UnauthorizedException("Invalid scope from maskinporten" )
                     }
+                    val systemUserOrganization = introspectionResponse.getSystemUserOrganization()
+                        ?: throw ApiErrorException.UnauthorizedException("No system user organization number in token claims")
+                    val systemUserId = introspectionResponse.getSystemUserId()
+                        ?: throw ApiErrorException.UnauthorizedException("No system user id in token claims")
+
                     call.authentication.principal(
-                        OrganisasjonPrincipal(
-                            ident = introspectionResponse.consumer.ID,
+                        SystemPrincipal(
+                            ident = systemUserOrganization,
                             token = bearerToken,
+                            systemOwner = introspectionResponse.consumer.ID,
+                            systemUserId = systemUserId,
                         )
                     )
-                    call.attributes.put(TOKEN_CONSUMER_KEY, introspectionResponse.consumer)
                 }
 
                 JwtIssuer.TOKEN_X -> {

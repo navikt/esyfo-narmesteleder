@@ -69,6 +69,7 @@ spec:
           atMaxAge: 680
       consumes:
         - name: "digdir:dialogporten.serviceprovider"
+        - name: "altinn:authorization/authorize"
   azure:
     application:
       enabled: true
@@ -101,7 +102,7 @@ spec:
       value: dev-fss.arbeidsforhold.aareg-services-nais
     - name: DIALOGPORTEN_SCOPE
       value: "digdir:dialogporten.serviceprovider"
-    - name: DIALOGPORTEN_BASE_URL
+    - name: ALTINN_3_BASE_URL
       value: "https://platform.tt02.altinn.no"
     - name: DINESYMELDTE_BASEURL
       value: http://dinesykmeldte-backend
@@ -115,3 +116,5 @@ spec:
       value: https://esyfo-narmesteleder.ekstern.dev.nav.no
     - name: PERSIST_LEESAH_NL_BEHOV
       value: "true"
+  envFrom:
+    - secret: altinn-subscription-key

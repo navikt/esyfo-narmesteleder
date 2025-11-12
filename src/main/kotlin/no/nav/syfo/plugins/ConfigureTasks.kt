@@ -4,8 +4,8 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
 import kotlin.getValue
 import kotlinx.coroutines.launch
-import no.nav.syfo.dialogporten.task.SendDialogTask
-import no.nav.syfo.dialogporten.task.UpdateDialogTask
+import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
+import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import org.koin.ktor.ext.inject
 
 fun Application.configureBackgroundTasks() {
@@ -16,7 +16,7 @@ fun Application.configureBackgroundTasks() {
     monitor.subscribe(ApplicationStopping) {
         sendDialogTaskJob.cancel()
     }
-    
+
     val updateDialogTaskJob = launch { updateDialogTast.runSetCompletedTask() }
     monitor.subscribe(ApplicationStopping) {
         updateDialogTaskJob.cancel()

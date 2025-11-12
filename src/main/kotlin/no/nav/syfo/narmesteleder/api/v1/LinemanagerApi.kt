@@ -2,7 +2,6 @@ package no.nav.syfo.narmesteleder.api.v1
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authentication
-import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
@@ -11,7 +10,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.auth.UserPrincipal
@@ -97,7 +96,7 @@ fun Route.registerLinemanagerApiV1(
 fun RoutingCall.getMyPrincipal(): Principal =
     when (attributes[TOKEN_ISSUER]) {
         JwtIssuer.MASKINPORTEN -> {
-            authentication.principal<OrganisasjonPrincipal>() ?: throw UnauthorizedException()
+            authentication.principal<SystemPrincipal>() ?: throw UnauthorizedException()
         }
 
         JwtIssuer.TOKEN_X -> {

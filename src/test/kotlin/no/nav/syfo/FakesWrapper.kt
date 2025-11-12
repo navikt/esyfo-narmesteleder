@@ -5,6 +5,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.pdp.client.FakePdpClient
+import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -25,11 +27,13 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeDinesykemeldteClientSpyk = spyk(FakeDinesykmeldteClient())
     val fakeKafkaProducerSpyk = spyk(FakeSykemeldingNLKafkaProducer())
     val fakeAltinnTilgangerClientSpyk = spyk(FakeAltinnTilgangerClient())
+    val fakePdpClientSpyk = spyk(FakePdpClient())
 
     val aaregServiceSpyk = spyk(AaregService(fakeAaregClientSpyk))
     val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk))
     val dinesykemeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykemeldteClientSpyk))
     val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
+    val pdpServiceSpyk = spyk(PdpService(fakePdpClientSpyk))
     val narmestelederKafkaServiceSpyk = spyk(
         NarmestelederKafkaService(kafkaSykemeldingProducer = fakeKafkaProducerSpyk),
     )
@@ -38,7 +42,8 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             pdlServiceSpyk,
             aaregServiceSpyk,
             altinnTilgangerServiceSpyk,
-            dinesykemeldteServiceSpyk
+            dinesykemeldteServiceSpyk,
+            pdpServiceSpyk
         )
     )
     val narmestelederServiceSpyk = spyk(

@@ -8,7 +8,8 @@ data class ClientProperties(
     val dinesykmeldteBaseUrl: String,
     val aaregScope: String,
     val dinesykmeldteScope: String,
-    val dialogportenBasePath: String
+    val altinn3BaseUrl: String,
+    val pdpSubscriptionKey: String
 ) {
     companion object {
         fun createForLocal() = ClientProperties(
@@ -19,7 +20,8 @@ data class ClientProperties(
             dinesykmeldteBaseUrl = "",
             dinesykmeldteScope = "",
             pdlScope = "pdl",
-            dialogportenBasePath = "http://localhost:8080/dialogporten"
+            altinn3BaseUrl = "http://localhost:8080/dialogporten",
+            pdpSubscriptionKey = "secret-key"
         )
 
         fun createFromEnvVars() =
@@ -31,7 +33,8 @@ data class ClientProperties(
                 dinesykmeldteScope = getEnvVar("DINESYMELDTE_SCOPE"),
                 pdlBaseUrl = getEnvVar("PDL_BASE_URL"),
                 pdlScope = getEnvVar("PDL_SCOPE"),
-                dialogportenBasePath = getEnvVar("DIALOGPORTEN_BASE_URL")
+                altinn3BaseUrl = getEnvVar("ALTINN_3_BASE_URL"),
+                pdpSubscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY")
             )
     }
 }

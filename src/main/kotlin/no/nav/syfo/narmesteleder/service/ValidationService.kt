@@ -1,8 +1,12 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.altinn.pdp.client.System
+import no.nav.syfo.altinn.pdp.service.PdpService
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
@@ -18,8 +22,9 @@ import no.nav.syfo.util.logger
 class ValidationService(
     val pdlService: PdlService,
     val aaregService: AaregService,
-    val altinnTilgangerService: no.nav.syfo.altinntilganger.AltinnTilgangerService,
+    val altinnTilgangerService: AltinnTilgangerService,
     val dinesykmeldteService: DinesykmeldteService,
+    val pdpService: PdpService
 ) {
     companion object {
         val logger = logger()
@@ -43,7 +48,7 @@ class ValidationService(
                 orgNumberInRequest = linemanager.orgNumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 narmesteLederOrgNumbers = nlArbeidsforhold,
-                organisasjonPrincipal = principal as? OrganisasjonPrincipal,
+                systemPrincipal = principal as? SystemPrincipal,
             )
             return LinemanagerActors(
                 employee = sykmeldt,
@@ -65,7 +70,7 @@ class ValidationService(
         }
     }
 
-    fun validateGetNlBehov(
+    suspend fun validateGetNlBehov(
         principal: Principal,
         linemanagerRead: LinemanagerRequirementRead,
         altinnTilgang: AltinnTilgang?
@@ -76,10 +81,21 @@ class ValidationService(
                 altinnTilgangerService.validateTilgangToOrganization(altinnTilgang, linemanagerRead.orgNumber)
             }
 
-            is OrganisasjonPrincipal -> {
-                nlrequire(
-                    sykemeldtOrgs.contains(principal.getOrgNumber())
-                ) { "Person making the request is not employed in the same organization as employee on sick leave" }
+            is SystemPrincipal -> {
+                val hasAccess = pdpService.hasAccessToResource(
+                    System(principal.systemUserId),
+                    setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
+                    OPPGI_NARMESTELEDER_RESOURCE
+                )
+                if (hasAccess) {
+                    nlrequire(
+                        sykemeldtOrgs.contains(principal.getSystemUserOrgNumber())
+                    ) { "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave" }
+                } else {
+                    throw ApiErrorException.ForbiddenException(
+                        "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource"
+                    )
+                }
             }
         }
     }
@@ -96,7 +112,7 @@ class ValidationService(
             validateNarmesteLederAvkreft(
                 orgNumberInRequest = linemanagerRevoke.orgNumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
-                organisasjonPrincipal = principal as? OrganisasjonPrincipal,
+                systemPrincipal = principal as? SystemPrincipal,
             )
             return sykmeldt
 
@@ -113,11 +129,23 @@ class ValidationService(
     }
 
     private suspend fun validateAltinnTilgang(principal: Principal, orgNumber: String) {
-        if (principal is UserPrincipal) {
-            altinnTilgangerService.validateTilgangToOrganization(
+        when (principal) {
+            is UserPrincipal -> altinnTilgangerService.validateTilgangToOrganization(
                 principal,
                 orgNumber
             )
+            is SystemPrincipal -> {
+                val hasAccess = pdpService.hasAccessToResource(
+                    System(principal.systemUserId),
+                    setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
+                    OPPGI_NARMESTELEDER_RESOURCE
+                )
+                if (!hasAccess) {
+                    throw ApiErrorException.ForbiddenException(
+                        "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource"
+                    )
+                }
+            }
         }
     }
 }

@@ -11,12 +11,14 @@ import java.time.Instant
 import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
+import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
+import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
@@ -85,6 +87,13 @@ val DefaultOrganization = OrganizationId(
     authority = "some-authority",
 )
 
+val DefaultSystemPrincipal = SystemPrincipal(
+    "0192:123456789",
+    "token",
+    "0192:systemowner",
+    "systemId"
+)
+
 /**
  * @param prefix prefix the org.num with this. Default `0192:`
  * @param count how many org numbers should be generated. Default `20`
@@ -130,6 +139,7 @@ fun TexasHttpClient.defaultMocks(
     acr: String? = null,
     scope: String? = null,
     navident: String? = null,
+    systemBrukerOrganisasjon: OrganizationId? = DefaultOrganization,
     consumer: OrganizationId = DefaultOrganization,
     supplier: OrganizationId? = null
 ) {
@@ -157,6 +167,16 @@ fun TexasHttpClient.defaultMocks(
                     consumer = consumer,
                     supplier = supplier,
                     scope = scope,
+                    authorizationDetails = systemBrukerOrganisasjon?.let {
+                        listOf(
+                            AuthorizationDetail(
+                                type = "urn:altinn:systemuser",
+                                systemuserOrg = systemBrukerOrganisasjon,
+                                systemuserId = listOf("some-user-id"),
+                                systemId = "some-system-id"
+                            )
+                        )
+                    }
                 )
             }
 

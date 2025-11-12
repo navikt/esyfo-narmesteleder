@@ -9,9 +9,12 @@ data class UserPrincipal(
     override val token: String,
 ) : Principal()
 
-data class OrganisasjonPrincipal(
+data class SystemPrincipal(
     override val ident: String,
     override val token: String,
+    val systemOwner: String,
+    val systemUserId: String,
 ): Principal() {
-    fun getOrgNumber(): String = maskinportenIdToOrgnumber(ident)
+    fun getSystemUserOrgNumber(): String = maskinportenIdToOrgnumber(ident)
+    fun getSystemOwnerOrgNumber(): String = maskinportenIdToOrgnumber(systemOwner)
 }

@@ -10,8 +10,8 @@ import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
-import no.nav.syfo.dialogporten.client.IDialogportenClient
-import no.nav.syfo.dialogporten.registerDialogportenTokenApi
+import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
+import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService

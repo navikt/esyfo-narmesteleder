@@ -1,4 +1,4 @@
-package no.nav.syfo.dialogporten.client
+package no.nav.syfo.altinn.dialogporten.client
 
 class DialogportenClientException(
     message: String,

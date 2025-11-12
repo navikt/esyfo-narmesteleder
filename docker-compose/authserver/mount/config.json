@@ -25,17 +25,24 @@
           "requestParam": "code",
           "match": "maskinporten",
           "claims": {
-            "sub": "${clientId}",
+            "authorization_details": [
+              {
+                "type": "urn:altinn:systemuser",
+                "systemuser_org": {
+                  "authority": "iso6523-actorid-upis",
+                  "ID": "${systemUserOrg}"
+                },
+                "systemuser_id": [
+                  "c068399e-8d82-4dfa-937f-92d77ec0881d"
+                ],
+                "system_id": "215649202_kpfSys"
+              }
+            ],
             "iss": "https://test.maskinporten.no/",
             "scope": "nav:syfo/narmesteleder/lps",
-            "aud": "${aud}",
             "consumer": {
               "authority": "${consumerAuthority}",
               "ID": "${consumerId}"
-            },
-            "supplier": {
-              "authority": "${supplierAuthority}",
-              "ID": "${supplierId}"
             }
           }
         }

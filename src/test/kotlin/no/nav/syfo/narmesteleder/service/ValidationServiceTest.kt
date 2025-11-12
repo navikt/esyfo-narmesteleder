@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
+import DefaultSystemPrincipal
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.mockk.clearAllMocks
@@ -9,14 +10,17 @@ import linemanagerRevoke
 import linemanager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.pdp.client.FakePdpClient
+import no.nav.syfo.altinn.pdp.client.System
+import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.auth.OrganisasjonPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 
 class ValidationServiceTest : DescribeSpec({
@@ -28,12 +32,15 @@ class ValidationServiceTest : DescribeSpec({
     val aaregClient = FakeAaregClient()
     val aaregService = spyk(AaregService(aaregClient))
     val pdlClient = FakePdlClient()
-    val pdlService = spyk(no.nav.syfo.pdl.PdlService(pdlClient))
+    val pdlService = spyk(PdlService(pdlClient))
+    val pdpClient = FakePdpClient()
+    val pdpService = spyk(PdpService(pdpClient))
     val service = ValidationService(
         pdlService = pdlService,
         aaregService = aaregService,
         altinnTilgangerService = altinnTilgangerService,
-        dinesykmeldteService = dinesykmeldteService
+        dinesykmeldteService = dinesykmeldteService,
+        pdpService = pdpService
     )
     beforeTest {
         clearAllMocks()
@@ -58,6 +65,7 @@ class ValidationServiceTest : DescribeSpec({
                 )
             }
             coVerify(exactly = 0) {
+                pdpService.hasAccessToResource(any(), any(), any())
                 aaregService.findOrgNumbersByPersonIdent(any())
                 pdlService.getPersonOrThrowApiError(any())
             }
@@ -70,7 +78,9 @@ class ValidationServiceTest : DescribeSpec({
                 employeeIdentificationNumber = userWithAccess.first,
                 orgNumber = userWithAccess.second
             )
-            val principal = OrganisasjonPrincipal("0192:${userWithAccess.second}", "token")
+            val principal = DefaultSystemPrincipal.copy(
+                ident = "0192:${userWithAccess.second}",
+            )
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
@@ -84,6 +94,11 @@ class ValidationServiceTest : DescribeSpec({
                 )
             }
             coVerify(exactly = 1) {
+                pdpService.hasAccessToResource(
+                    match<System> { it.id == "systemId" },
+                    eq(setOf(userWithAccess.second, "systemowner")),
+                    eq("nav_syfo_oppgi-narmesteleder")
+                )
                 aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
                 aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
@@ -111,6 +126,7 @@ class ValidationServiceTest : DescribeSpec({
                 )
             }
             coVerify(exactly = 0) {
+                pdpService.hasAccessToResource(any(), any(), any())
                 aaregService.findOrgNumbersByPersonIdent(any())
                 pdlService.getPersonOrThrowApiError(any())
             }
@@ -123,7 +139,9 @@ class ValidationServiceTest : DescribeSpec({
                 employeeIdentificationNumber = userWithAccess.first,
                 orgNumber = userWithAccess.second
             )
-            val principal = OrganisasjonPrincipal("0192:${userWithAccess.second}", "token")
+            val principal = DefaultSystemPrincipal.copy(
+                ident = "0192:${userWithAccess.second}",
+            )
 
             // Act
             shouldThrow<ApiErrorException.BadRequestException> {
@@ -137,6 +155,11 @@ class ValidationServiceTest : DescribeSpec({
                 )
             }
             coVerify(exactly = 1) {
+                pdpService.hasAccessToResource(
+                    match<System> { it.id == "systemId" },
+                    eq(setOf(userWithAccess.second, "systemowner")),
+                    eq("nav_syfo_oppgi-narmesteleder")
+                )
                 aaregService.findOrgNumbersByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
             }

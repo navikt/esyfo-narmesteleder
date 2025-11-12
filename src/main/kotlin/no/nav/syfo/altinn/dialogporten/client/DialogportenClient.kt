@@ -1,4 +1,4 @@
-package no.nav.syfo.dialogporten.client
+package no.nav.syfo.altinn.dialogporten.client
 
 import com.fasterxml.jackson.annotation.JsonValue
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -16,12 +16,12 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.parameters
 import java.util.UUID
-import no.nav.syfo.dialogporten.domain.Content
-import no.nav.syfo.dialogporten.domain.ContentValue
-import no.nav.syfo.dialogporten.domain.ContentValueItem
-import no.nav.syfo.dialogporten.domain.Dialog
-import no.nav.syfo.dialogporten.domain.DialogStatus
-import no.nav.syfo.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.altinn.dialogporten.domain.Content
+import no.nav.syfo.altinn.dialogporten.domain.ContentValue
+import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
+import no.nav.syfo.altinn.dialogporten.domain.Dialog
+import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
+import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger

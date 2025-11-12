@@ -35,9 +35,17 @@ fun Application.configureRunningTasks() {
     ).apply {
         commitOnAllErrors = environment.kafka.commitOnAllErrors
     }
-    // TODO: configure this consumer properly with separate group id etc.
+
     val sendtSykmeldingConsumer = SendtSykmeldingKafkaConsumer(
-        kafkaConsumer = kafkaConsumer,
+        kafkaConsumer = KafkaConsumer(
+            consumerProperties(
+                env = environment.kafka,
+                valueSerializer = StringDeserializer::class,
+                groupId = "esyfo-narmesteleder-sendt-sykmelding-consumer"
+            ),
+            StringDeserializer(),
+            StringDeserializer(),
+        ),
         scope = this
     )
 

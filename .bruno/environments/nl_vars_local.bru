@@ -2,8 +2,8 @@ vars {
   baseUrlEkstern: http://localhost:8080
   currentId: {{process.env.BEHOV_ID}}
   identityProvider:
-  systemKundeOrgnr: 311131788
-  systemEierOrgnr: 215649202
+  systemKundeOrgnr: {{process.env.SYSTEM_KUNDE_ORGNR}}
+  systemEierOrgnr: {{process.env.SYSTEM_EIER_ORGNR}}
 }
 vars:secret [
   token

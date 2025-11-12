@@ -12,9 +12,9 @@ The response from ```GET /api/v1/linemanager/requirement/{id}``` will look like 
 {
   "id": "3ba48bb7-a967-4185-a0e7-c044011be683",
   "employeeIdentificationNumber": "15436803416",
-  "orgnumber": "215649202",
+  "orgNumber": "215649202",
   "orgName": "The Ghostbusters",
-  "mainOrgnumber": "310667633",
+  "mainOrgNumber": "310667633",
   "managerIdentificationNumber": null,
   "name": {
     "firstName": "Egon",

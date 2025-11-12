@@ -38,7 +38,7 @@ script:pre-request {
     }
   } else {
     const systembrukerOrgnr = bru.getEnvVar("systemKundeOrgnr");
-    const tokenrespons = await http.get("https://esyfo-token.intern.dev.nav.no/systembruker/" + systembrukerOrgnr);
+    const tokenrespons = await http.get("https://esyfo-token.intern.dev.nav.no/systembruker/" + systembrukerOrgnr + "?scope=nav%3Asyfo%2Fnarmesteleder%2Flps");
     req.setHeader("Authorization", "Bearer "+ tokenrespons.data);
   }
 }

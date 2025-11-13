@@ -1,5 +1,7 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.sykmelding.kafka
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.application.kafka.suspendingPoll
+import no.nav.syfo.sykmelding.kafka.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.slf4j.LoggerFactory
@@ -18,6 +21,8 @@ import kotlin.time.Duration.Companion.seconds
 const val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
 
 class SendtSykmeldingKafkaConsumer(
+    private val handler: SendtSykmeldingHandler,
+    private val jacksonMapper: ObjectMapper,
     private val kafkaConsumer: KafkaConsumer<String, String>,
     private val scope: CoroutineScope,
 ) : KafkaListener {
@@ -32,7 +37,13 @@ class SendtSykmeldingKafkaConsumer(
                     kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
                     kafkaConsumer.suspendingPoll(POLL_DURATION_SECONDS.seconds)
                         .forEach { record: ConsumerRecord<String, String?> ->
-                            logger.info("Received record with key: ${record.key()}\nand value ${record.value()}")
+                            logger.info("Received record with key: ${record.key()}")
+                            record.value()?.let { value ->
+                                val sendtSykmeldingKafkaMessage =
+                                    jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(value)
+                                handler.handleSendtSykmelding(sendtSykmeldingKafkaMessage)
+                                kafkaConsumer.commitSync()
+                            }
                         }
                 } catch (e: Exception) {
                     logger.error(
@@ -48,7 +59,7 @@ class SendtSykmeldingKafkaConsumer(
     }
 
     override suspend fun stop() {
-        if (!::job.isInitialized) error("Consumer not started!")
+        if (!::job.isInitialized) error("$SENDT_SYKMELDING_TOPIC consumer not started!")
 
         logger.info("Preparing shutdown")
         logger.info("Stopping consuming topic $SENDT_SYKMELDING_TOPIC")

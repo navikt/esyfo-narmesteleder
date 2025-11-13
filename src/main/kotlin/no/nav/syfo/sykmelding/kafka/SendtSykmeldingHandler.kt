@@ -31,7 +31,7 @@ class SendtSykmeldingHandler(
                     .any { LocalDate.now() in it.fom..it.tom },
             )
         } else {
-            logger.info("Bruker has already answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")
+            logger.info("Employee has answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")
         }
     }
 }

@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.kafka
 
+import faker
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.date.shouldBeAfter
 import io.kotest.matchers.shouldBe
@@ -17,7 +18,11 @@ import linemanager
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbruddResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlRelationResponseKafkaMessage
+import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
+import no.nav.syfo.pdl.Person
+import no.nav.syfo.pdl.client.Navn
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.RecordMetadata
@@ -35,24 +40,36 @@ class SykemeldingNLKafkaProducerTest : DescribeSpec({
         it("Calls send on Producer with ProducerRecord containing NlResponse") {
             // Arrange
             val relasjon = linemanager()
+            val linemanagerPerson = Person(
+                nationalIdentificationNumber = faker.numerify("###########"), name =
+                    Navn(faker.name().firstName(), null, faker.name().lastName())
+            )
+            val sykmeldtPerson = Person(
+                nationalIdentificationNumber = relasjon.employeeIdentificationNumber,
+                name = Navn(faker.name().firstName(), null, faker.name().lastName())
+            )
             val recordMetadata = createRecordMetadata()
 
             val futureMock = mockk<SettableFuture<RecordMetadata>>()
             coEvery { futureMock.get() } returns recordMetadata
             coEvery { kafkaProducerMock.send(any<ProducerRecord<String, INlResponseKafkaMessage>>()) } returns futureMock
 
+            val sykmeldingNL = NlResponse(
+                orgnummer = relasjon.orgNumber,
+                leder = relasjon.manager.toLeder(linemanagerPerson),
+                sykmeldt = Sykmeldt.from(sykmeldtPerson),
+                utbetalesLonn = null,
+            )
+
             // Act
-            producer.sendSykemeldingNLRelasjon(relasjon.toNlResponse(), NlResponseSource.LPS)
+            producer.sendSykmeldingNLRelasjon(sykmeldingNL, NlResponseSource.LPS)
 
             // Assert
             verify(exactly = 1) {
                 kafkaProducerMock.send(withArg {
                     it.shouldBeInstanceOf<ProducerRecord<String, NlRelationResponseKafkaMessage>>()
                     it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.source
-                    it.value().nlResponse shouldNotBe null
-                    it.value().nlResponse.leder shouldBe relasjon.manager.toLeder()
-                    it.value().nlResponse.orgnummer shouldBe relasjon.orgNumber
-                    it.value().nlResponse.sykmeldt.fnr shouldBe relasjon.employeeIdentificationNumber
+                    it.value().nlResponse shouldBe sykmeldingNL
                 })
             }
             verify(exactly = 1) { futureMock.get() }
@@ -70,7 +87,7 @@ class SykemeldingNLKafkaProducerTest : DescribeSpec({
             coEvery { kafkaProducerMock.send(any<ProducerRecord<String, INlResponseKafkaMessage>>()) } returns futureMock
 
             // Act
-            producer.sendSykemeldingNLBrudd(avbryt.toNlAvbrutt(), NlResponseSource.LPS)
+            producer.sendSykmldingNLBrudd(avbryt.toNlAvbrutt(), NlResponseSource.LPS)
 
             // Assert
             verify(exactly = 1) {

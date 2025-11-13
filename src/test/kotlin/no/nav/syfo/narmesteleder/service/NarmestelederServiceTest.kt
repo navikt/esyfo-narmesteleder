@@ -43,8 +43,6 @@ class NarmestelederServiceTest : DescribeSpec({
 
     val defaultManager = Manager(
         nationalIdentificationNumber = "01999999999",
-        firstName = "Ola",
-        lastName = "Nordmann",
         mobile = "99999999",
         email = "manager@epost.no"
     )

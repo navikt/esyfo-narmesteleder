@@ -38,8 +38,6 @@ val faker = Faker(Random(Instant.now().epochSecond))
 
 fun manager(): Manager = Manager(
     nationalIdentificationNumber = faker.numerify("###########"),
-    firstName = faker.name().firstName(),
-    lastName = faker.name().lastName(),
     mobile = faker.phoneNumber().cellPhone(),
     email = faker.internet().emailAddress(),
 )

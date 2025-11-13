@@ -85,6 +85,7 @@ class DialogportenService(
                                 behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
                             )
                         )
+                        logger.info("Successfully updated Dialogporten for dialog $dialogId")
                     } catch (ex: Exception) {
                         logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
                     }

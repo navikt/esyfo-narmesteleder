@@ -36,7 +36,6 @@ interface IDialogportenClient {
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
 private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
-private const val DIALOG_ID_PARAM_NAME = "externalReference"
 
 class DialogportenClient(
     private val baseUrl: String,
@@ -99,7 +98,6 @@ class DialogportenClient(
     }
 
     override suspend fun getDialogById(
-        // our dialogId here is "externalReference" in Dialogporten
         dialogId: UUID
     ): ExtendedDialog {
         val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
@@ -107,26 +105,17 @@ class DialogportenClient(
 
         val dialog = runCatching {
             httpClient
-                .get(dialogportenUrl) {
-                    parameters {
-                        append(DIALOG_ID_PARAM_NAME, dialogId.toString())
-                    }
+                .get("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
                     header(HttpHeaders.Accept, ContentType.Application.Json)
                     bearerAuth(token)
-                }.body<List<ExtendedDialog>>()
+                }.body<ExtendedDialog>()
         }.getOrElse { e ->
             logger.error("Error on request to Dialogporten on dialog id: $dialogId", e)
             throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
         }
 
-        if (dialog.isEmpty()) {
-            throw DialogportenClientException("Could not find dialog with id: $dialogId")
-        } else if (dialog.size > 1) {
-            throw DialogportenClientException("Found more than one dialog with id: $dialogId")
-        }
-
-        return dialog.first()
+        return dialog
     }
 
     private suspend fun altinnExchange(token: String): String =
@@ -142,7 +131,7 @@ class DialogportenClient(
     }
 
     // internal for access in tests
-    internal class DialogportenPatch(
+    internal data class DialogportenPatch(
         val op: OPERATION,
         val path: String,
         val value: String,

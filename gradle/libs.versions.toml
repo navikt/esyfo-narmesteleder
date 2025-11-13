@@ -38,7 +38,6 @@ ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor-
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor-version" }
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor-version" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-version" }
-logging-janino = { module = "org.codehaus.janino:janino", version = "3.1.12" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer-prometheus" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }

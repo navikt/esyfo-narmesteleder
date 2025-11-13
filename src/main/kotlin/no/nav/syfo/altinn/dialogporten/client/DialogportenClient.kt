@@ -109,19 +109,13 @@ class DialogportenClient(
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
                     header(HttpHeaders.Accept, ContentType.Application.Json)
                     bearerAuth(token)
-                }.body<List<ExtendedDialog>>()
+                }.body<ExtendedDialog>()
         }.getOrElse { e ->
             logger.error("Error on request to Dialogporten on dialog id: $dialogId", e)
             throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
         }
 
-        if (dialog.isEmpty()) {
-            throw DialogportenClientException("Could not find dialog with id: $dialogId")
-        } else if (dialog.size > 1) {
-            throw DialogportenClientException("Found more than one dialog with id: $dialogId")
-        }
-
-        return dialog.first()
+        return dialog
     }
 
     private suspend fun altinnExchange(token: String): String =

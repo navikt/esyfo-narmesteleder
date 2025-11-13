@@ -36,7 +36,6 @@ interface IDialogportenClient {
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
 private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
-private const val DIALOG_ID_PARAM_NAME = "externalReference"
 
 class DialogportenClient(
     private val baseUrl: String,
@@ -99,7 +98,6 @@ class DialogportenClient(
     }
 
     override suspend fun getDialogById(
-        // our dialogId here is "externalReference" in Dialogporten
         dialogId: UUID
     ): ExtendedDialog {
         val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
@@ -107,10 +105,7 @@ class DialogportenClient(
 
         val dialog = runCatching {
             httpClient
-                .get(dialogportenUrl) {
-                    parameters {
-                        append(DIALOG_ID_PARAM_NAME, dialogId.toString())
-                    }
+                .get("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
                     header(HttpHeaders.Accept, ContentType.Application.Json)
                     bearerAuth(token)

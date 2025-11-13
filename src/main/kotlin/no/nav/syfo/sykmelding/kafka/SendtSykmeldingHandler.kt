@@ -18,7 +18,7 @@ class SendtSykmeldingHandler(
             logger.info("No riktigNarmesteLeder answer for sykmeldingId: ${message.event.sykmeldingId}. Creating NL behov...")
             val arbeidsgiver = message.event.arbeidsgiver
                 ?: run {
-                    logger.info("No arbeidsgiver information for sykmeldingId: ${message.event.sykmeldingId}. Skipping NL behov creation.")
+                    logger.error("No arbeidsgiver information for sykmeldingId: ${message.event.sykmeldingId}. Skipping NL behov creation.")
                     return
             }
             narmesteLederService.createNewNlBehov(
@@ -31,7 +31,7 @@ class SendtSykmeldingHandler(
                     .any { LocalDate.now() in it.fom..it.tom },
             )
         } else {
-            logger.info("bruker has already answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")
+            logger.info("Bruker has already answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")
         }
     }
 }

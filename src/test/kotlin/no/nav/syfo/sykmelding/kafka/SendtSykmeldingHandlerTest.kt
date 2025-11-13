@@ -251,9 +251,9 @@ class SendtSykmeldingHandlerTest : DescribeSpec({
             assert(skipCheckSlot.captured)
         }
 
-        it("should not create NL behov when brukerSvar is null") {
+        it("should not create NL behov when arbeidsgiver is null") {
             val message = defaultSendtSykmeldingMessage()
-                .copy(event = defaultSendtSykmeldingMessage().event.copy(brukerSvar = null))
+                .copy(event = defaultSendtSykmeldingMessage().event.copy(arbeidsgiver = null))
 
             handler.handleSendtSykmelding(message)
 

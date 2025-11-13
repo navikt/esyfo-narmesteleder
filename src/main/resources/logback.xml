@@ -8,7 +8,6 @@
             </pattern>
         </encoder>
     </appender>
-    <logger name="org.apache.kafka" level="WARN"/>
     <if condition='isNull("NAIS_CLUSTER_NAME")'>
         <then>
             <root level="info">

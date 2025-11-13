@@ -16,8 +16,9 @@ class SendtSykmeldingHandler(
         logger.info("Handling sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}")
         message.event.brukerSvar?.let { brukerSvar ->
             if (brukerSvar.riktigNarmesteLeder == null) {
+                logger.info("No riktigNarmesteLeder answer for sykmeldingId: ${message.event.sykmeldingId}. Creating NL behov...")
                 val arbeidsgiver = message.event.arbeidsgiver
-                    ?: throw RuntimeException("asdf")
+                    ?: throw IllegalStateException("Arbeidsgiver is required to create NL behov for sykmeldingId: ${message.event.sykmeldingId}")
 
                 narmesteLederService.createNewNlBehov(
                     nlBehov = LinemanagerRequirementWrite(

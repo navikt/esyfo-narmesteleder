@@ -18,11 +18,21 @@ import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
+import no.nav.syfo.sykmelding.kafka.model.Arbeidsgiver
+import no.nav.syfo.sykmelding.kafka.model.ArbeidsgiverSykmelding
+import no.nav.syfo.sykmelding.kafka.model.BrukerSvar
+import no.nav.syfo.sykmelding.kafka.model.Event
+import no.nav.syfo.sykmelding.kafka.model.KafkaMetadata
+import no.nav.syfo.sykmelding.kafka.model.RiktigNarmesteLeder
+import no.nav.syfo.sykmelding.kafka.model.SendtSykmeldingKafkaMessage
+import no.nav.syfo.sykmelding.kafka.model.SykmeldingsperiodeAGDTO
 import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import no.nav.syfo.texas.client.TexasResponse
+import java.time.LocalDate
+import java.time.OffsetDateTime
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
@@ -184,6 +194,36 @@ fun TexasHttpClient.defaultMocks(
             else -> TODO("Legg til identityProvider i mock")
         }
     }
+}
+
+fun defaultSendtSykmeldingMessage(
+    fnr: String = "12345678901",
+    orgnummer: String = "123456789",
+    juridiskOrgnummer: String? = "987654321",
+    sykmeldingsperioder: List<SykmeldingsperiodeAGDTO> = listOf(
+        SykmeldingsperiodeAGDTO(fom = LocalDate.now().minusDays(5), tom = LocalDate.now().plusDays(5))
+    ),
+    riktigNarmesteLeder: RiktigNarmesteLeder? = null
+): SendtSykmeldingKafkaMessage {
+    return SendtSykmeldingKafkaMessage(
+        kafkaMetadata = KafkaMetadata(
+            sykmeldingId = "sykmelding-123",
+            timestamp = OffsetDateTime.now(),
+            fnr = fnr,
+            source = "test"
+        ),
+        event = Event(
+            sykmeldingId = "sykmelding-123",
+            timestamp = OffsetDateTime.now(),
+            brukerSvar = BrukerSvar(riktigNarmesteLeder = riktigNarmesteLeder),
+            arbeidsgiver = Arbeidsgiver(
+                orgnummer = orgnummer,
+                juridiskOrgnummer = juridiskOrgnummer,
+                orgNavn = "Test Bedrift AS"
+            )
+        ),
+        sykmelding = ArbeidsgiverSykmelding(sykmeldingsperioder = sykmeldingsperioder)
+    )
 }
 
 fun TexasHttpClient.defaultMocks(pid: String = "userIdentifier", acr: String = "Level4", navident: String? = null) {

@@ -116,5 +116,7 @@ spec:
       value: https://esyfo-narmesteleder.ekstern.dev.nav.no
     - name: PERSIST_LEESAH_NL_BEHOV
       value: "true"
+    - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
+      value: "1m"
   envFrom:
     - secret: altinn-subscription-key

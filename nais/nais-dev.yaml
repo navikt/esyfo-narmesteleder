@@ -117,6 +117,6 @@ spec:
     - name: PERSIST_LEESAH_NL_BEHOV
       value: "true"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
-      value: "1m"
+      value: "10m"
   envFrom:
     - secret: altinn-subscription-key

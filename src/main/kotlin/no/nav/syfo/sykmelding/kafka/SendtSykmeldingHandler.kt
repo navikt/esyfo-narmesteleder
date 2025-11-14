@@ -1,5 +1,6 @@
 package no.nav.syfo.sykmelding.kafka
 
+import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.kafka.model.SendtSykmeldingKafkaMessage
@@ -25,6 +26,7 @@ class SendtSykmeldingHandler(
                 nlBehov = LinemanagerRequirementWrite(
                     employeeIdentificationNumber = message.kafkaMetadata.fnr,
                     orgNumber = arbeidsgiver.orgnummer,
+                    behovReason = BehovReason.INGEN_LEDER_REGISTRERT,
                 ),
                 hovedenhetOrgnummer = arbeidsgiver.juridiskOrgnummer,
                 skipSykmeldingCheck = message.sykmelding.sykmeldingsperioder

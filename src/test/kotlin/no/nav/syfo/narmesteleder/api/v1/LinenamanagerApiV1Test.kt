@@ -44,6 +44,7 @@ import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.api.v1.REVOKE_PATH
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
+import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
@@ -428,7 +429,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgNumber = orgNumber,
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 revokedLinemanagerId = UUID.randomUUID(),
             )
 

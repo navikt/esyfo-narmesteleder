@@ -14,6 +14,7 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.Manager
@@ -57,7 +58,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgNumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 revokedLinemanagerId = UUID.randomUUID(),
             )
             val captured: CapturingSlot<NarmestelederBehovEntity> = slot()
@@ -83,7 +84,7 @@ class NarmestelederServiceTest : DescribeSpec({
             entity.orgnummer shouldBe underenhetOrg
             entity.hovedenhetOrgnummer shouldBe hovedenhetOrg
             entity.narmestelederFnr shouldBe write.managerIdentificationNumber
-            entity.leesahStatus shouldBe write.leesahStatus
+            entity.behovReason shouldBe write.behovReason
             entity.behovStatus shouldBe BehovStatus.BEHOV_CREATED
         }
 
@@ -95,7 +96,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgNumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 revokedLinemanagerId = UUID.randomUUID(),
             )
 
@@ -118,7 +119,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgNumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 revokedLinemanagerId = UUID.randomUUID(),
             )
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns emptyMap()
@@ -144,7 +145,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 employeeIdentificationNumber = sykmeldtFnr,
                 orgNumber = underenhetOrg,
                 managerIdentificationNumber = "01987654321",
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 revokedLinemanagerId = UUID.randomUUID(),
             )
 
@@ -173,7 +174,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 hovedenhetOrgnummer = "987654321",
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 behovStatus = BehovStatus.BEHOV_CREATED,
                 avbruttNarmesteLederId = UUID.randomUUID(),
                 fornavn = "Kari",
@@ -211,7 +212,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 hovedenhetOrgnummer = "987654321",
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 behovStatus = BehovStatus.BEHOV_CREATED,
                 avbruttNarmesteLederId = UUID.randomUUID(),
             )
@@ -256,7 +257,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 hovedenhetOrgnummer = "222222222",
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 avbruttNarmesteLederId = UUID.randomUUID(),
                 behovStatus = BehovStatus.BEHOV_CREATED,
             )
@@ -280,7 +281,7 @@ class NarmestelederServiceTest : DescribeSpec({
                 hovedenhetOrgnummer = "222222222",
                 sykmeldtFnr = "12345678910",
                 narmestelederFnr = "01987654321",
-                leesahStatus = "ACTIVE",
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
                 behovStatus = BehovStatus.BEHOV_CREATED,
                 avbruttNarmesteLederId = UUID.randomUUID(),
             )

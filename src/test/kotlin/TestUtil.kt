@@ -13,6 +13,7 @@ import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
@@ -59,7 +60,7 @@ fun nlBehovEntity() = NarmestelederBehovEntity(
     hovedenhetOrgnummer = faker.numerify("#########"),
     sykmeldtFnr = faker.numerify("###########"),
     narmestelederFnr = faker.numerify("###########"),
-    leesahStatus = LeesahStatus.DEAKTIVERT_NY_LEDER.name,
+    behovReason = BehovReason.valueOf(LeesahStatus.DEAKTIVERT_NY_LEDER.name),
     behovStatus = BehovStatus.BEHOV_CREATED,
     avbruttNarmesteLederId = UUID.randomUUID(),
 )

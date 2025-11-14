@@ -19,7 +19,7 @@ import io.mockk.spyk
 import java.util.*
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
-import no.nav.syfo.texas.TokenProvider
+import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.httpClientDefault
 
@@ -55,18 +55,18 @@ class DialogportenClientTest : DescribeSpec({
                     else -> error("Unhandled request ${request.url.fullPath}")
                 }
             }))
-            val mockTokenProvider = mockk<TokenProvider>(relaxed = true)
+            val mockAltinnTokenProvider = mockk<AltinnTokenProvider>(relaxed = true)
             val dialogportenClient = spyk(
                 DialogportenClient(
                     baseUrl = "http://localhost:8080",
                     httpClient = httpClientWithAssertions,
-                    tokenProvider = mockTokenProvider
+                    altinnTokenProvider = mockAltinnTokenProvider
                 )
             )
             it("Should send a patch to Dialogporten with correct headers and body") {
                 val dialogId = UUID.randomUUID()
                 coEvery {
-                    mockTokenProvider.maskinportenSystemToken(any())
+                    mockAltinnTokenProvider.token()
                 } returns "mockedToken"
 
                 dialogportenClient.updateDialogStatus(

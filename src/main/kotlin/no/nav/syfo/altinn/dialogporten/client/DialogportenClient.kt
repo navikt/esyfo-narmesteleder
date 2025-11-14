@@ -10,18 +10,17 @@ import io.ktor.client.request.header
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import java.util.UUID
+import java.util.*
 import no.nav.syfo.altinn.dialogporten.domain.Content
 import no.nav.syfo.altinn.dialogporten.domain.ContentValue
 import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
-import no.nav.syfo.texas.TokenProvider
+import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger
 
@@ -33,26 +32,23 @@ interface IDialogportenClient {
 }
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
-private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
 
 class DialogportenClient(
     private val baseUrl: String,
     private val httpClient: HttpClient,
-    private val tokenProvider: TokenProvider
+    private val altinnTokenProvider: AltinnTokenProvider
 ) : IDialogportenClient {
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
     private val logger = logger()
 
     override suspend fun createDialog(dialog: Dialog): UUID {
-        val token = tokenProvider.altinnToken(baseUrl, DIGDIR_TARGET_SCOPE)
-
         return runCatching<DialogportenClient, UUID> {
             val response =
                 httpClient
                     .post(dialogportenUrl) {
                         header(HttpHeaders.ContentType, ContentType.Application.Json)
                         header(HttpHeaders.Accept, ContentType.Application.Json)
-                        bearerAuth(token)
+                        bearerAuth(altinnTokenProvider.token())
 
                         setBody(dialog)
                     }.body<String>()
@@ -68,15 +64,13 @@ class DialogportenClient(
         revisionNumber: UUID,
         dialogStatus: DialogStatus
     ) {
-        val token = tokenProvider.altinnToken(baseUrl, DIGDIR_TARGET_SCOPE)
-
         runCatching {
             httpClient
                 .patch("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.Accept, ContentType.Application.Json)
                     header(HttpHeaders.IfMatch, revisionNumber.toString())
                     contentType(JSON_PATCH_CONTENT_TYPE)
-                    bearerAuth(token)
+                    bearerAuth(altinnTokenProvider.token())
                     setBody(
                         listOf(
                             DialogportenPatch(
@@ -96,14 +90,12 @@ class DialogportenClient(
     override suspend fun getDialogById(
         dialogId: UUID
     ): ExtendedDialog {
-        val token = tokenProvider.altinnToken(baseUrl, DIGDIR_TARGET_SCOPE)
-
         val dialog = runCatching {
             httpClient
                 .get("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
                     header(HttpHeaders.Accept, ContentType.Application.Json)
-                    bearerAuth(token)
+                    bearerAuth(altinnTokenProvider.token())
                 }.body<ExtendedDialog>()
         }.getOrElse { e ->
             logger.error("Error on request to Dialogporten on dialog id: $dialogId", e)
@@ -114,7 +106,7 @@ class DialogportenClient(
     }
 
     override suspend fun getDialogportenToken(): String {
-        return tokenProvider.altinnToken(baseUrl, "maskinporten")
+        return altinnTokenProvider.token()
     }
 
     // internal for access in tests

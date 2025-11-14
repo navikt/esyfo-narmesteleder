@@ -2,15 +2,15 @@ openapi: 3.0.3
 info:
   title: Esyfo Narmesteleder API
   version: 1.0.0
-  description: API v1 for linemanager creation, revoke, requirement, and metrics.
+  description: API v1 for assigning or revoking line managers for empoloyees on sick leave.
 servers:
   - url: https://esyfo-narmesteleder.ekstern.dev.nav.no
-    description: Test server for esyfo-narmesteleder application line manager
+    description: Test server for assigning line manager to employees on sick leave.
 paths:
   /api/v1/linemanager:
     post:
-      summary: Create or update linemanager relation
-      description: Publishes a linemanager relation to Kafka.
+      summary: Assign linemanager to employee on sick leave
+      description: Assigns a linemanager to an employee on sick leave. Will override any existing linemanger.
       tags: [linemanager]
       security:
         - maskinporten_jwt: []
@@ -50,7 +50,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
   /api/v1/linemanager/revoke:
     post:
-      summary: Revoke linemanager relation
+      summary: Revoke existing linemanager for employee on sick leave
       description: Publishes a revoke event to Kafka.
       tags: [linemanager]
       security:
@@ -91,8 +91,8 @@ paths:
                 $ref: '#/components/schemas/ApiError'
   /api/v1/linemanager/requirement/{id}:
     put:
-      summary: Update linemanager requirement
-      description: Updates requirement by UUID.
+      summary: Assigns a linemanager for employee with requirement
+      description: Assigns a linemanager to the employee with requirement idenified by the id parameter
       tags: [requirement]
       security:
         - maskinporten_jwt: []
@@ -142,7 +142,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
     get:
       summary: Get linemanager requirement
-      description: Returns requirement details by UUID.
+      description: Returns details about the requirement for linemanager for an employee.
       tags: [requirement]
       security:
         - maskinporten_jwt: []
@@ -213,40 +213,8 @@ components:
           description: Organisation number where the employee works
           example: "123456789"
         manager:
-          type: object
-          properties:
-            nationalIdentificationNumber:
-              type: string
-              description: "A Norwegian national identity number or D number of the manager."
-              example: "10987654321"
-            mobile:
-              type: string
-              description: Mobile phone number of the manager.
-              example: "+4790000000"
-            email:
-              type: string
-              format: email
-              description: Email address of the manager.
-              example: "leder@example.com"
-            firstName:
-              type: string
-              description: Manager first name.
-              example: "Ola"
-            middleName:
-              type: string
-              description: Manager middle name.
-              example: "Ola"
-            lastName:
-              type: string
-              description: Manager last name.
-              example: "Nordmann"
-          required:
-            - nationalIdentificationNumber
-            - mobile
-            - email
-            - firstName
-            - lastName
-          additionalProperties: false
+          $ref: '#/components/schemas/Manager'
+
       description: Linemanager relation payload.
       additionalProperties: true
     LinemanagerRevoke:
@@ -279,28 +247,14 @@ components:
           format: email
           description: Email address of the manager.
           example: "leder@example.com"
-        firstName:
-          type: string
-          description: Manager first name.
-          example: "Ola"
-        middleName:
-          type: string
-          description: Manager middle name.
-          example: "Ola"
-        lastName:
-          type: string
-          description: Manager last name.
-          example: "Nordmann"
       required:
         - nationalIdentificationNumber
         - mobile
         - email
-        - firstName
-        - lastName
       additionalProperties: false
     LinemanagerRequirementRead:
       type: object
-      description: Requirement details payload.
+      description: Details related to the requirement an employee has for linemanager.
       properties:
         id:
           type: string
@@ -326,23 +280,24 @@ components:
           example: "987654321"
         managerIdentificationNumber:
           type: string
-          description: Norwegian national identity number or D number of the manager.
+          nullable: true
+          description: Norwegian national identity number or D number of the manager, for the previous linemanager the employee had, if any.
           example: "10987654321"
         name:
           type: object
-          description: Manager name.
+          description: Name of the employee on sick leave.
           properties:
             firstName:
               type: string
-              description: Manager first name.
+              description: First name.
               example: "Ola"
             middleName:
               type: string
-              description: Manager middle name.
+              description: Middle name.
               example: "Ola"
             lastName:
               type: string
-              description: Manager last name.
+              description: Fast name.
               example: "Nordmann"
           required:
             - firstName
@@ -353,7 +308,6 @@ components:
         - employeeIdentificationNumber
         - orgNumber
         - mainOrgnumber
-        - managerIdentificationNumber
         - name
       additionalProperties: false
     ErrorType:

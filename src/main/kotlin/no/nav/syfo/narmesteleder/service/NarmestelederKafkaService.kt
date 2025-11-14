@@ -17,10 +17,10 @@ class NarmestelederKafkaService(
         linemanagerActors: LinemanagerActors,
         source: NlResponseSource,
     ) {
-        kafkaSykemeldingProducer.sendSykemeldingNLRelasjon(
+        kafkaSykemeldingProducer.sendSykmeldingNLRelasjon(
             NlResponse(
                 sykmeldt = Sykmeldt.from(linemanagerActors.employee),
-                leder = linemanager.manager.toLeder().updateFromPerson(linemanagerActors.manager),
+                leder = linemanager.manager.toLeder(linemanagerActors.manager),
                 orgnummer = linemanager.orgNumber
             ), source = source
         )
@@ -29,7 +29,7 @@ class NarmestelederKafkaService(
     fun avbrytNarmesteLederRelation(
         linemanagerRevoke: LinemanagerRevoke, source: NlResponseSource
     ) {
-        kafkaSykemeldingProducer.sendSykemeldingNLBrudd(
+        kafkaSykemeldingProducer.sendSykmldingNLBrudd(
             NlAvbrutt(
                 linemanagerRevoke.employeeIdentificationNumber,
                 linemanagerRevoke.orgNumber,

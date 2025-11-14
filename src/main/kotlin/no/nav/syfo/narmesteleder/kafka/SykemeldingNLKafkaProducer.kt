@@ -14,27 +14,27 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 
 interface ISykemeldingNLKafkaProducer {
-    fun sendSykemeldingNLRelasjon(sykemeldingNL: NlResponse, source: NlResponseSource)
-    fun sendSykemeldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource)
+    fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource)
+    fun sendSykmldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource)
 }
 
 class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INlResponseKafkaMessage>) :
     ISykemeldingNLKafkaProducer {
-    override fun sendSykemeldingNLRelasjon(sykemeldingNL: NlResponse, source: NlResponseSource) {
+    override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) {
         val kafkaMessage =
             NlRelationResponseKafkaMessage(
                 kafkaMetadata = KafkaMetadata(OffsetDateTime.now(ZoneOffset.UTC), source.source),
-                nlResponse = sykemeldingNL,
+                nlResponse = sykmeldingNL,
             )
         try {
-            producer.send(ProducerRecord(SYKEMELDING_NL_TOPIC, sykemeldingNL.orgnummer, kafkaMessage)).get()
+            producer.send(ProducerRecord(SYKEMELDING_NL_TOPIC, sykmeldingNL.orgnummer, kafkaMessage)).get()
         } catch (ex: Exception) {
             logger.error("Exception was thrown when attempting to send NlRelasjon: ${ex.message}")
             throw ex
         }
     }
 
-    override fun sendSykemeldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource) {
+    override fun sendSykmldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource) {
         val kafkaMessage =
             NlAvbruddResponseKafkaMessage(
                 kafkaMetadata = KafkaMetadata(OffsetDateTime.now(ZoneOffset.UTC), source.source),

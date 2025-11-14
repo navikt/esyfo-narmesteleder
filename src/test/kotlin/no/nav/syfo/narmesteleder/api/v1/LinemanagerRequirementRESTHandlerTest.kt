@@ -25,8 +25,6 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         nationalIdentificationNumber = defaultManagerFnr,
         mobile = "99999999",
         email = "mail@manager.no",
-        firstName = "FirstName",
-        lastName = "LastName",
     )
     val defaultRequirement = NarmestelederBehovEntity(
         id = UUID.randomUUID(),

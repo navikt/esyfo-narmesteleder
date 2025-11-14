@@ -1,19 +1,18 @@
 package no.nav.syfo.narmesteleder.domain
 
 import no.nav.syfo.narmesteleder.kafka.model.Leder
+import no.nav.syfo.pdl.Person
 
 data class Manager(
     val nationalIdentificationNumber: String,
     val mobile: String,
     val email: String,
-    val firstName: String,
-    val lastName: String,
 ) {
-    fun toLeder() = Leder(
+    fun toLeder(person: Person) = Leder(
         fnr = nationalIdentificationNumber,
         mobil = mobile,
         epost = email,
-        fornavn = firstName,
-        etternavn = lastName,
+        fornavn = person.name.fornavn,
+        etternavn = person.name.etternavn,
     )
 }

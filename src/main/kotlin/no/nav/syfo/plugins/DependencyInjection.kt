@@ -47,6 +47,7 @@ import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.PdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
+import no.nav.syfo.texas.TokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -137,9 +138,9 @@ private fun clientsModule() = module {
 
     single {
         if (isLocalEnv()) FakeDialogportenClient() else DialogportenClient(
-            texasHttpClient = get(),
             httpClient = get(),
             baseUrl = env().clientProperties.altinn3BaseUrl,
+            tokenProvider = get()
         )
     }
     single {
@@ -164,6 +165,7 @@ private fun servicesModule() = module {
             get(),
         )
     }
+    single { TokenProvider(get(), get()) }
     single { PdlService(get()) }
     single { AltinnTilgangerService(get()) }
     single { LeaderElection(get(), env().otherEnvironment.electorPath) }

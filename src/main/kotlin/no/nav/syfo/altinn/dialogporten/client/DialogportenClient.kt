@@ -14,7 +14,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import io.ktor.http.parameters
 import java.util.UUID
 import no.nav.syfo.altinn.dialogporten.domain.Content
 import no.nav.syfo.altinn.dialogporten.domain.ContentValue
@@ -22,10 +21,9 @@ import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.texas.TokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger
-
 
 interface IDialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
@@ -40,14 +38,13 @@ private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
 class DialogportenClient(
     private val baseUrl: String,
     private val httpClient: HttpClient,
-    private val texasHttpClient: TexasHttpClient,
+    private val tokenProvider: TokenProvider
 ) : IDialogportenClient {
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
     private val logger = logger()
 
     override suspend fun createDialog(dialog: Dialog): UUID {
-        val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
-        val token = altinnExchange(texasResponse.accessToken)
+        val token = tokenProvider.altinnToken(baseUrl, DIGDIR_TARGET_SCOPE)
 
         return runCatching<DialogportenClient, UUID> {
             val response =
@@ -71,8 +68,7 @@ class DialogportenClient(
         revisionNumber: UUID,
         dialogStatus: DialogStatus
     ) {
-        val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
-        val token = altinnExchange(texasResponse.accessToken)
+        val token = tokenProvider.altinnToken(baseUrl, DIGDIR_TARGET_SCOPE)
 
         runCatching {
             httpClient
@@ -100,8 +96,7 @@ class DialogportenClient(
     override suspend fun getDialogById(
         dialogId: UUID
     ): ExtendedDialog {
-        val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
-        val token = altinnExchange(texasResponse.accessToken)
+        val token = tokenProvider.altinnToken(baseUrl, DIGDIR_TARGET_SCOPE)
 
         val dialog = runCatching {
             httpClient
@@ -118,16 +113,8 @@ class DialogportenClient(
         return dialog
     }
 
-    private suspend fun altinnExchange(token: String): String =
-        httpClient
-            .get("$baseUrl/authentication/api/v1/exchange/maskinporten") {
-                bearerAuth(token)
-            }.bodyAsText()
-            .replace("\"", "")
-
     override suspend fun getDialogportenToken(): String {
-        val texasResponse = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
-        return altinnExchange(texasResponse.accessToken)
+        return tokenProvider.altinnToken(baseUrl, "maskinporten")
     }
 
     // internal for access in tests

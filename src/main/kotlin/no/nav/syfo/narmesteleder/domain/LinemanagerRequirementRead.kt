@@ -8,6 +8,6 @@ data class LinemanagerRequirementRead(
     val orgNumber: String,
     val orgName: String? = null,
     val mainOrgNumber: String,
-    val managerIdentificationNumber: String,
+    val managerIdentificationNumber: String? = null,
     val name: Name
 )

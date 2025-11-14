@@ -77,29 +77,35 @@ class NarmestelederService(
             )
     }
 
-    suspend fun createNewNlBehov(nlBehov: LinemanagerRequirementWrite): UUID? {
+    suspend fun createNewNlBehov(
+        nlBehov: LinemanagerRequirementWrite,
+        hovedenhetOrgnummer: String? = null,
+        skipSykmeldingCheck: Boolean = false
+    ): UUID? {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
-        val hasActiveSykmelding =
-            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
-        return if (hasActiveSykmelding) {
-            nlDb.insertNlBehov(
-                NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
-                    nlBehov, findHovedenhetOrgnummer(
-                        nlBehov.employeeIdentificationNumber,
-                        nlBehov.orgNumber
-                    ), BehovStatus.BEHOV_CREATED
-                )
-            ).also {
+        val isActiveSykmelding = skipSykmeldingCheck ||
+                dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+
+        return if (isActiveSykmelding) {
+            val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
+                nlBehov.employeeIdentificationNumber,
+                nlBehov.orgNumber
+            )
+            val entity = NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+                nlBehov,
+                hovedenhetOrgnummer = hovededenhet,
+                behovStatus = BehovStatus.BEHOV_CREATED,
+            )
+            nlDb.insertNlBehov(entity).also {
                 logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
             }
         } else {
             logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}")
             null
         }
-
     }
 
     suspend fun getEmployeeByRequirementId(id: UUID): Employee {

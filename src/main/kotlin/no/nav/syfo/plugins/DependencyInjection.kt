@@ -46,6 +46,7 @@ import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.PdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
+import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -96,6 +97,7 @@ private fun databaseModule() = module {
 
 private fun handlerModule() = module {
     single { NlBehovLeesahHandler(get()) }
+    single { SendtSykmeldingHandler(get()) }
     single { LinemanagerRequirementRESTHandler(get(), get(), get(), get()) }
 }
 

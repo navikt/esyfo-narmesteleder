@@ -16,13 +16,12 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import java.util.*
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
-import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasResponse
+import no.nav.syfo.texas.TokenProvider
+import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.httpClientDefault
-import java.util.UUID
 
 
 class DialogportenClientTest : DescribeSpec({
@@ -56,21 +55,20 @@ class DialogportenClientTest : DescribeSpec({
                     else -> error("Unhandled request ${request.url.fullPath}")
                 }
             }))
-            val mockTexasHttpClient = mockk<TexasHttpClient>(relaxed = true)
+            val mockTokenProvider = mockk<TokenProvider>(relaxed = true)
             val dialogportenClient = spyk(
                 DialogportenClient(
                     baseUrl = "http://localhost:8080",
                     httpClient = httpClientWithAssertions,
-                    texasHttpClient = mockTexasHttpClient
+                    tokenProvider = mockTokenProvider
                 )
             )
             it("Should send a patch to Dialogporten with correct headers and body") {
                 val dialogId = UUID.randomUUID()
                 coEvery {
-                    mockTexasHttpClient.systemToken(any(), any())
-                } returns TexasResponse(
-                    "token", 111, "tokenType"
-                )
+                    mockTokenProvider.maskinportenSystemToken(any())
+                } returns "mockedToken"
+
                 dialogportenClient.updateDialogStatus(
                     dialogId = dialogId,
                     revisionNumber = UUID.randomUUID(),

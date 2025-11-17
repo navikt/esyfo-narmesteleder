@@ -31,14 +31,15 @@ data class NarmestelederLeesahKafkaMessage(
     val aktivTom: LocalDate?,
     val arbeidsgiverForskutterer: Boolean?,
     val timestamp: OffsetDateTime,
-    val status: LeesahStatus,
+    val status: LeesahStatus?,
 ) {
 
     fun toNlBehovWrite() = LinemanagerRequirementWrite(
         employeeIdentificationNumber = fnr,
         orgNumber = orgnummer,
         managerIdentificationNumber = narmesteLederFnr,
-        behovReason = BehovReason.valueOf(status.name),
+        behovReason = status?.name?.let { BehovReason.valueOf(it) }
+            ?: BehovReason.UKJENT,
         revokedLinemanagerId = narmesteLederId,
     )
 }

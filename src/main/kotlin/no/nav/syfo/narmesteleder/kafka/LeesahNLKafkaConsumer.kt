@@ -59,6 +59,7 @@ class LeesahNLKafkaConsumer(
         while (job.isActive) {
             try {
                 kafkaConsumer.suspendingPoll(POLL_DURATION_SECONDS.seconds)
+                    .also { logger.info("Got ${it.count()} records") }
                     .forEach { record: ConsumerRecord<String, String?> ->
                         logger.info("Received record with key: ${record.key()}")
                         processRecord(record)

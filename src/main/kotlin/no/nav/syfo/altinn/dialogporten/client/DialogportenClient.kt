@@ -32,6 +32,7 @@ interface IDialogportenClient {
 }
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
+private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
 
 class DialogportenClient(
     private val baseUrl: String,

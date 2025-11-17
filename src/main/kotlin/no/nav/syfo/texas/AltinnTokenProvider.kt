@@ -21,7 +21,7 @@ class AltinnTokenProvider(
     private val httpClient: HttpClient,
     private val altinnBaseUrl: String,
 ) {
-    private var altinnToken: AltinnToken? = null
+    private val tokens: MutableMap<String, AltinnToken> = mutableMapOf()
     private val mutex = Mutex()
 
     private data class AltinnToken(
@@ -29,9 +29,9 @@ class AltinnTokenProvider(
         val altinnExpiryTime: Duration,
     )
 
-    suspend fun token(): String {
+    suspend fun token(target: String): String {
         mutex.withLock {
-            val token = altinnToken
+            val token = tokens[target]
             if (token != null) {
                 val now = TimeSource.Monotonic.markNow()
                 val timeLeft = token.altinnExpiryTime - now.elapsedNow()
@@ -40,16 +40,15 @@ class AltinnTokenProvider(
                     return requireNotNull(token.accessToken) { "Access token is null" }
                 }
 
-                // There's also a fallback to exchange in the refresh method
-                if (timeLeft < 120.seconds && timeLeft > 0.seconds) {
-                    altinnToken = token.refresh()
-                    return requireNotNull(altinnToken?.accessToken) { "Access token is null" }
+                if (timeLeft < 120.seconds && timeLeft > 1.seconds) {
+                    tokens[target] = token.refresh()
+                    return requireNotNull(tokens[target]?.accessToken) { "Access token is null" }
                 }
             }
-            val maskinportenToken = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
+            val maskinportenToken = texasHttpClient.systemToken("maskinporten", target)
             val newToken = altinnExchange(maskinportenToken.accessToken).toAltinnToken()
 
-            altinnToken = newToken
+            tokens[target] = newToken
             return newToken.accessToken
         }
     }

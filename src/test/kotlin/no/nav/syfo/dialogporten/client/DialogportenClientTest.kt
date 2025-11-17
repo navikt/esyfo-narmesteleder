@@ -66,7 +66,7 @@ class DialogportenClientTest : DescribeSpec({
             it("Should send a patch to Dialogporten with correct headers and body") {
                 val dialogId = UUID.randomUUID()
                 coEvery {
-                    mockAltinnTokenProvider.token()
+                    mockAltinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)
                 } returns "mockedToken"
 
                 dialogportenClient.updateDialogStatus(

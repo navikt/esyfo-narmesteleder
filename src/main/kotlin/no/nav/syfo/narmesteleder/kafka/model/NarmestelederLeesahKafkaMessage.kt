@@ -32,7 +32,6 @@ data class NarmestelederLeesahKafkaMessage(
     val timestamp: OffsetDateTime,
     val status: LeesahStatus?,
 ) {
-
     fun toNlBehovWrite() = LinemanagerRequirementWrite(
         employeeIdentificationNumber = fnr,
         orgNumber = orgnummer,

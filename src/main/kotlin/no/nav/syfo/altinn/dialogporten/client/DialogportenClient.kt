@@ -42,13 +42,13 @@ class DialogportenClient(
 
     override suspend fun createDialog(dialog: Dialog): UUID {
         return runCatching<DialogportenClient, UUID> {
+            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
             val response =
                 httpClient
                     .post(dialogportenUrl) {
                         header(HttpHeaders.ContentType, ContentType.Application.Json)
                         header(HttpHeaders.Accept, ContentType.Application.Json)
-                        bearerAuth(altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE))
-
+                        bearerAuth(token)
                         setBody(dialog)
                     }.body<String>()
             UUID.fromString(response.removeSurrounding("\""))
@@ -64,12 +64,13 @@ class DialogportenClient(
         dialogStatus: DialogStatus
     ) {
         runCatching {
+            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
             httpClient
                 .patch("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.Accept, ContentType.Application.Json)
                     header(HttpHeaders.IfMatch, revisionNumber.toString())
                     contentType(JSON_PATCH_CONTENT_TYPE)
-                    bearerAuth(altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE))
+                    bearerAuth(token)
                     setBody(
                         listOf(
                             DialogportenPatch(
@@ -90,11 +91,12 @@ class DialogportenClient(
         dialogId: UUID
     ): ExtendedDialog {
         val dialog = runCatching {
+            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
             httpClient
                 .get("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
                     header(HttpHeaders.Accept, ContentType.Application.Json)
-                    bearerAuth(altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE))
+                    bearerAuth(token)
                 }.body<ExtendedDialog>()
         }.getOrElse { e ->
             logger.error("Error on request to Dialogporten on dialog id: $dialogId", e)

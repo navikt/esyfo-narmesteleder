@@ -19,7 +19,12 @@ fun Route.registerDialogportenTokenApi(
             client = texasHttpClient
         }
         get {
-            call.respondText(altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE))
+            val token = with(altinnTokenProvider) {
+                token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)
+                    .refresh()
+                    .accessToken
+            }
+            call.respondText(token)
         }
     }
 }

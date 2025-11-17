@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.util
 
 import addMaskinportenOrgPrefix
 import createRandomValidOrgNumbers
+import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
@@ -31,7 +32,6 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 shouldNotThrowAny {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        narmesteLederOrgNumbers = nlOrgNumbers,
                         systemPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )
@@ -42,7 +42,6 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 shouldNotThrowAny {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        narmesteLederOrgNumbers = nlOrgNumbers,
                         systemPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first()
                     )
@@ -51,17 +50,16 @@ class NarmesteLederValidatorTest : DescribeSpec({
         }
 
         describe("Mismatch in organization number between parties") {
-            it("Should throw ValidateNarmesteLederException if NL is not within sykmeldt orgs") {
+            it("Should not throw ValidateNarmesteLederException if NL is not within sykmeldt orgs") {
                 val organizationPrincipal = SystemPrincipal(
                     "0192:${nlOrgNumbers.keys.first()}",
                     "token",
                     "0192:systemOwner",
                     "systemUserId"
                 )
-                shouldThrow<ValidateNarmesteLederException> {
+                shouldNotThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
                         systemPrincipal = organizationPrincipal,
                         orgNumberInRequest = randomOrgNumbers.first(),
                     )
@@ -78,7 +76,6 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        narmesteLederOrgNumbers = nlOrgNumbers,
                         systemPrincipal = organizationPrincipal,
                         orgNumberInRequest = randomOrgNumbers[2],
                     )
@@ -89,7 +86,6 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 shouldThrow<ApiErrorException.ForbiddenException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        narmesteLederOrgNumbers = nlOrgNumbers,
                         systemPrincipal = SystemPrincipal(
                             addMaskinportenOrgPrefix(randomOrgNumbers[2]),
                             "token",
@@ -105,7 +101,6 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
                         systemPrincipal = organizationPrincipal,
                         orgNumberInRequest = randomOrgNumbers[3],
                     )
@@ -116,18 +111,16 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 shouldThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = emptyMap(),
-                        narmesteLederOrgNumbers = nlOrgNumbers,
                         systemPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException exception if no organizations are found for nærmeste leder") {
-                shouldThrow<ValidateNarmesteLederException> {
+            it("Should not throw ValidateNarmesteLederException exception if no organizations are found for nærmeste leder") {
+                shouldNotThrow<ValidateNarmesteLederException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
-                        narmesteLederOrgNumbers = emptyMap(),
                         systemPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )

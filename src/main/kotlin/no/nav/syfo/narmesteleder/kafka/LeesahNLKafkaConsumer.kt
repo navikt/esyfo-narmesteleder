@@ -42,6 +42,7 @@ class LeesahNLKafkaConsumer(
                 try {
                     kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
                     start()
+                } catch (_: WakeupException) {
                 } catch (e: Exception) {
                     logger.error(
                         "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.", e
@@ -57,16 +58,12 @@ class LeesahNLKafkaConsumer(
 
     private suspend fun start() = coroutineScope {
         while (isActive) {
-            try {
-                kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
-                    .forEach { record: ConsumerRecord<String, String?> ->
-                        logger.info("Received record with key: ${record.key()}")
-                        processRecord(record)
-                    }
-            } catch (_: WakeupException) {
-            } finally {
-                commitProcessedSync()
-            }
+            kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
+                .forEach { record: ConsumerRecord<String, String?> ->
+                    logger.info("Received record with key: ${record.key()}")
+                    processRecord(record)
+                }
+            commitProcessedSync()
         }
     }
 

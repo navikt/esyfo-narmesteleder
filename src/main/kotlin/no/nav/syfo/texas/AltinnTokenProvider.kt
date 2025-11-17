@@ -69,7 +69,7 @@ class AltinnTokenProvider(
             }
 
         return if (!res.status.isSuccess()) {
-            val maskinportenToken = texasHttpClient.systemToken("maskinporten", DIGDIR_TARGET_SCOPE)
+            val maskinportenToken = texasHttpClient.systemToken("maskinporten", DIALOGPORTEN_TARGET_SCOPE)
             altinnExchange(maskinportenToken.accessToken).toAltinnToken()
         } else {
             res.bodyAsText()
@@ -84,4 +84,8 @@ class AltinnTokenProvider(
                 bearerAuth(token)
             }.bodyAsText()
             .replace("\"", "")
+
+    companion object {
+        const val DIALOGPORTEN_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
+    }
 }

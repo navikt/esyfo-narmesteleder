@@ -26,13 +26,11 @@ import no.nav.syfo.util.logger
 
 interface IDialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
-    suspend fun getDialogportenToken(): String
     suspend fun updateDialogStatus(dialogId: UUID, revisionNumber: UUID, dialogStatus: DialogStatus)
     suspend fun getDialogById(dialogId: UUID): ExtendedDialog
 }
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
-private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
 
 class DialogportenClient(
     private val baseUrl: String,
@@ -49,7 +47,7 @@ class DialogportenClient(
                     .post(dialogportenUrl) {
                         header(HttpHeaders.ContentType, ContentType.Application.Json)
                         header(HttpHeaders.Accept, ContentType.Application.Json)
-                        bearerAuth(altinnTokenProvider.token())
+                        bearerAuth(altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE))
 
                         setBody(dialog)
                     }.body<String>()
@@ -71,7 +69,7 @@ class DialogportenClient(
                     header(HttpHeaders.Accept, ContentType.Application.Json)
                     header(HttpHeaders.IfMatch, revisionNumber.toString())
                     contentType(JSON_PATCH_CONTENT_TYPE)
-                    bearerAuth(altinnTokenProvider.token())
+                    bearerAuth(altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE))
                     setBody(
                         listOf(
                             DialogportenPatch(
@@ -96,7 +94,7 @@ class DialogportenClient(
                 .get("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
                     header(HttpHeaders.Accept, ContentType.Application.Json)
-                    bearerAuth(altinnTokenProvider.token())
+                    bearerAuth(altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE))
                 }.body<ExtendedDialog>()
         }.getOrElse { e ->
             logger.error("Error on request to Dialogporten on dialog id: $dialogId", e)
@@ -104,10 +102,6 @@ class DialogportenClient(
         }
 
         return dialog
-    }
-
-    override suspend fun getDialogportenToken(): String {
-        return altinnTokenProvider.token()
     }
 
     // internal for access in tests
@@ -131,10 +125,6 @@ class FakeDialogportenClient : IDialogportenClient {
     override suspend fun createDialog(dialog: Dialog): UUID {
         logger().info(ObjectMapper().writeValueAsString(dialog))
         return UUID.randomUUID()
-    }
-
-    override suspend fun getDialogportenToken(): String {
-        throw NotImplementedError("Not implemented for local application")
     }
 
     override suspend fun updateDialogStatus(

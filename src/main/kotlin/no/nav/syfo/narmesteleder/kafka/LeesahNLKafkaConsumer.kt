@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
@@ -62,8 +63,6 @@ class LeesahNLKafkaConsumer(
                         logger.info("Received record with key: ${record.key()}")
                         processRecord(record)
                     }
-            } catch (_: CancellationException) {
-                logger.debug("Received shutdown signal. Exiting polling loop.")
             } finally {
                 commitProcessedSync()
             }
@@ -116,22 +115,23 @@ class LeesahNLKafkaConsumer(
         when (error) {
             is JsonMappingException -> {
                 logger.error(
-                    "Error while deserializing record with key ${record.key()} and offset ${record.offset()}. "
+                    "Error while deserializing record with key ${record.key()} and offset ${record.offset()}. ", error
                 )
             }
 
             else -> {
                 logger.error(
-                    "Error while processing record with key ${record.key()} " +
-                            "and offset ${record.offset()}. Will NOT ack, message will be retried.",
+                    "Error while processing record with key ${record.key()} and offset ${record.offset()}.",
                     error
                 )
-                if (commitOnAllErrors) {
-                    logger.info("commitOnAllErrors is enabled, committing offset despite the error.")
-                    addToProcessed(record)
-                }
-                throw error
             }
+        }
+
+        if (commitOnAllErrors) {
+            logger.info("commitOnAllErrors is enabled, committing offset despite the error.")
+            addToProcessed(record)
+        } else {
+            throw error
         }
     }
 

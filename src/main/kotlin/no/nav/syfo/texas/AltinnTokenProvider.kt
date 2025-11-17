@@ -14,8 +14,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import no.nav.syfo.texas.client.TexasHttpClient
 
-private const val DIGDIR_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"
-
 class AltinnTokenProvider(
     private val texasHttpClient: TexasHttpClient,
     private val httpClient: HttpClient,
@@ -27,6 +25,7 @@ class AltinnTokenProvider(
     data class AltinnToken(
         val accessToken: String,
         val altinnExpiryTime: Duration,
+        val scope: String,
     )
 
     suspend fun token(target: String): AltinnToken {
@@ -37,7 +36,7 @@ class AltinnTokenProvider(
                 val timeLeft = token.altinnExpiryTime - now.elapsedNow()
 
                 if (timeLeft > 300.seconds) {
-                    return requireNotNull(token) { "Access token is null" }
+                    return token
                 }
 
                 if (timeLeft < 120.seconds && timeLeft > 1.seconds) {
@@ -55,10 +54,13 @@ class AltinnTokenProvider(
 
     private fun String.toAltinnToken(): AltinnToken {
         val decodedAltinnToken = JWT.decode(this)
+        val scope = decodedAltinnToken.claims["scope"]?.asString()
+            ?: throw IllegalStateException("Altinn token is missing scope claim")
 
         return AltinnToken(
             accessToken = this,
             altinnExpiryTime = decodedAltinnToken.expiresAt.time.milliseconds,
+            scope = scope,
         )
     }
 
@@ -69,7 +71,7 @@ class AltinnTokenProvider(
             }
 
         return if (!res.status.isSuccess()) {
-            val maskinportenToken = texasHttpClient.systemToken("maskinporten", DIALOGPORTEN_TARGET_SCOPE)
+            val maskinportenToken = texasHttpClient.systemToken("maskinporten", scope)
             altinnExchange(maskinportenToken.accessToken).toAltinnToken()
         } else {
             res.bodyAsText()

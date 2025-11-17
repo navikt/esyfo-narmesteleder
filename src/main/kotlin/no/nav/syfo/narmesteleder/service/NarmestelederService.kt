@@ -100,7 +100,7 @@ class NarmestelederService(
                 behovStatus = BehovStatus.BEHOV_CREATED,
             )
             nlDb.insertNlBehov(entity).also {
-                logger.info("Inserted NarmestelederBehovEntity with id: $it.id")
+                logger.info("Inserted NarmestelederBehovEntity with id: $it")
             }
         } else {
             logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}")

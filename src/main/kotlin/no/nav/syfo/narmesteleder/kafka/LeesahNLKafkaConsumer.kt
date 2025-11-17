@@ -3,22 +3,23 @@ package no.nav.syfo.narmesteleder.kafka
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import java.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
-import no.nav.syfo.application.kafka.suspendingPoll
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 
 const val SYKMELDING_NL_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
@@ -37,10 +38,11 @@ class LeesahNLKafkaConsumer(
         logger.info("Starting leesah consumer")
         job = scope.launch(Dispatchers.IO + CoroutineName("leesah-consumer")) {
 
-            while (job.isActive) {
+            while (isActive) {
                 try {
                     kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
                     start()
+                } catch (_: WakeupException) {
                 } catch (e: Exception) {
                     logger.error(
                         "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.", e
@@ -54,19 +56,14 @@ class LeesahNLKafkaConsumer(
         }
     }
 
-    private suspend fun start() {
-        while (job.isActive) {
-            try {
-                kafkaConsumer.suspendingPoll(POLL_DURATION_SECONDS.seconds)
-                    .forEach { record: ConsumerRecord<String, String?> ->
-                        logger.info("Received record with key: ${record.key()}")
-                        processRecord(record)
-                    }
-            } catch (_: CancellationException) {
-                logger.debug("Received shutdown signal. Exiting polling loop.")
-            } finally {
-                commitProcessedSync()
-            }
+    private suspend fun start() = coroutineScope {
+        while (isActive) {
+            kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
+                .forEach { record: ConsumerRecord<String, String?> ->
+                    logger.info("Received record with key: ${record.key()}")
+                    processRecord(record)
+                }
+            commitProcessedSync()
         }
     }
 
@@ -101,7 +98,8 @@ class LeesahNLKafkaConsumer(
         logger.info("Preparing shutdown")
         logger.info("Stopping consuming topic $SYKMELDING_NL_TOPIC")
 
-        job.cancelAndJoin()
+        job.cancel()
+        kafkaConsumer.wakeup()
     }
 
 
@@ -126,13 +124,13 @@ class LeesahNLKafkaConsumer(
                             "and offset ${record.offset()}. Will NOT ack, message will be retried.",
                     error
                 )
-                if (commitOnAllErrors) {
-                    logger.info("commitOnAllErrors is enabled, committing offset despite the error.")
-                    addToProcessed(record)
-                }
-                throw error
             }
         }
+        if (commitOnAllErrors) {
+            logger.info("commitOnAllErrors is enabled, committing offset despite the error.")
+            addToProcessed(record)
+        }
+        throw error
     }
 
     companion object {

@@ -6,6 +6,6 @@ data class LinemanagerRequirementWrite(
     val employeeIdentificationNumber: String,
     val orgNumber: String,
     val managerIdentificationNumber: String? = null,
-    val leesahStatus: String? = null,
+    val behovReason: BehovReason,
     val revokedLinemanagerId: UUID? = null,
 )

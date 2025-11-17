@@ -8,7 +8,7 @@ import no.nav.syfo.util.logger
 class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederService) {
     private val logger = logger()
 
-    suspend fun handleByLeesahStatus(nlBehov: LinemanagerRequirementWrite, status: LeesahStatus) {
+    suspend fun handleByLeesahStatus(nlBehov: LinemanagerRequirementWrite, status: LeesahStatus?) {
         logger.info("Processing NL message with status: $status")
 
         when (status) {
@@ -36,6 +36,10 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
 
             LeesahStatus.UKJENT -> {
                 logger.warn("Unknown status received in NL message!")
+            }
+
+            null -> {
+                logger.warn("Received NL message with null status!")
             }
         }
     }

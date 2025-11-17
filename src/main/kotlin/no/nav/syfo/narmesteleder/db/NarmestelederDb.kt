@@ -30,7 +30,7 @@ class NarmestelederDb(
                                          hovedenhet_orgnummer,
                                          sykemeldt_fnr,
                                          narmeste_leder_fnr,
-                                         leesah_status,
+                                         behov_reason,
                                          behov_status,
                                          avbrutt_narmesteleder_id,
                                          fornavn,
@@ -44,7 +44,7 @@ class NarmestelederDb(
                     preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
                     preparedStatement.setString(3, nlBehov.sykmeldtFnr)
                     preparedStatement.setString(4, nlBehov.narmestelederFnr)
-                    preparedStatement.setString(5, nlBehov.leesahStatus)
+                    preparedStatement.setString(5, nlBehov.behovReason.name)
                     preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
                     preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
                     preparedStatement.setString(8, nlBehov.fornavn)

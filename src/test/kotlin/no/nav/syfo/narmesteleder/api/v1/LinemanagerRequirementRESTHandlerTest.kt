@@ -10,6 +10,7 @@ import no.nav.syfo.FakesWrapper
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
 
@@ -32,7 +33,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         hovedenhetOrgnummer = arbeidsforholdEmployeeAareg.second,
         sykmeldtFnr = defaultEmployeeFnr,
         narmestelederFnr = "123456789",
-        leesahStatus = "DISABLED",
+        behovReason = BehovReason.DEAKTIVERT_LEDER,
         avbruttNarmesteLederId = UUID.randomUUID(),
     )
 
@@ -76,7 +77,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
                         it.orgnummer == defaultRequirement.orgnummer &&
                         it.hovedenhetOrgnummer == defaultRequirement.hovedenhetOrgnummer &&
                         it.sykmeldtFnr == defaultRequirement.sykmeldtFnr &&
-                        it.leesahStatus == defaultRequirement.leesahStatus
+                        it.behovReason == defaultRequirement.behovReason
             })
         }
     }

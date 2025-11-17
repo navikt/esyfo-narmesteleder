@@ -1,7 +1,6 @@
 package no.nav.syfo.narmesteleder.kafka.model
 
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
-import no.nav.syfo.narmesteleder.domain.BehovReason
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -38,8 +37,7 @@ data class NarmestelederLeesahKafkaMessage(
         employeeIdentificationNumber = fnr,
         orgNumber = orgnummer,
         managerIdentificationNumber = narmesteLederFnr,
-        behovReason = status?.name?.let { BehovReason.valueOf(it) }
-            ?: BehovReason.UKJENT,
+        behovReason = status?.name ?: LeesahStatus.UKJENT.name,
         revokedLinemanagerId = narmesteLederId,
     )
 }

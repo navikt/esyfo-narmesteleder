@@ -17,6 +17,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
 import java.util.*
+import kotlin.time.Duration
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.texas.AltinnTokenProvider
@@ -67,7 +68,11 @@ class DialogportenClientTest : DescribeSpec({
                 val dialogId = UUID.randomUUID()
                 coEvery {
                     mockAltinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)
-                } returns "mockedToken"
+                } returns AltinnTokenProvider.AltinnToken(
+                    "token",
+                    Duration.ZERO,
+                    "scope"
+                )
 
                 dialogportenClient.updateDialogStatus(
                     dialogId = dialogId,

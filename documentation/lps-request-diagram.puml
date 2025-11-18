@@ -9,7 +9,7 @@ skinparam backgroundColor white
 participant "narmesteleder-api" as api
 participant "Maskinporten" as maskinporten
 participant "Alitinn auth" as altinn
-participant "Dialogpporten" as dialogporten
+participant "Dialogporten" as dialogporten
 participant "LPS" as lps
 api -> maskinporten : Request access token
 api -> altinn : Exchange token for Altinn token

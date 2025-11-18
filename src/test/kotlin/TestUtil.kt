@@ -34,6 +34,7 @@ import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import no.nav.syfo.texas.client.TexasResponse
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import kotlinx.coroutines.withContext
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
@@ -68,7 +69,9 @@ fun nlBehovEntity() = NarmestelederBehovEntity(
 fun createMockToken(
     ident: String,
     supplierId: String? = null,
-    issuer: String = "https://test.maskinporten.no"
+    issuer: String = "https://test.maskinporten.no",
+    expiresAt: Instant = Instant.now(),
+    scope: String = "testscope",
 ): String {
     val hmacSecet = "not_for_prod!"
     val algorithm = Algorithm.HMAC256(hmacSecet)
@@ -77,6 +80,8 @@ fun createMockToken(
     builder
         .withKeyId("fake")
         .withIssuer(issuer)
+        .withExpiresAt(expiresAt)
+        .withClaim("scope", scope)
     if (issuer.contains(JwtIssuer.MASKINPORTEN.value!!)) {
         builder.withClaim("consumer", """{"authority": "some-authority", "ID": "$ident"}""")
         if (supplierId != null) {

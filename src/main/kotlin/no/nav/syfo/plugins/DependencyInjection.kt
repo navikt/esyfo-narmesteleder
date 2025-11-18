@@ -148,7 +148,7 @@ private fun clientsModule() = module {
             httpClient = get(),
             baseUrl = env().clientProperties.altinn3BaseUrl,
             subscriptionKey = env().clientProperties.pdpSubscriptionKey,
-            texasHttpClient = get(),
+            altinnTokenProvider = get(),
         )
     }
 }

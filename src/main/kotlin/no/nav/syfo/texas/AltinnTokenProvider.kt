@@ -32,8 +32,8 @@ class AltinnTokenProvider(
         mutex.withLock {
             val token = tokens[target]
             if (token != null) {
-                val now = TimeSource.Monotonic.markNow()
-                val timeLeft = token.altinnExpiryTime - now.elapsedNow()
+                val now = System.currentTimeMillis().milliseconds
+                val timeLeft = token.altinnExpiryTime - now
 
                 if (timeLeft > 300.seconds) {
                     return token
@@ -70,7 +70,7 @@ class AltinnTokenProvider(
                 bearerAuth(accessToken)
             }
 
-        return if (!res.status.isSuccess()) {
+        val token = if (!res.status.isSuccess()) {
             val maskinportenToken = texasHttpClient.systemToken("maskinporten", scope)
             altinnExchange(maskinportenToken.accessToken).toAltinnToken()
         } else {
@@ -78,6 +78,9 @@ class AltinnTokenProvider(
                 .replace("\"", "")
                 .toAltinnToken()
         }
+        
+        tokens[scope] = token
+        return token
     }
 
     private suspend fun altinnExchange(token: String): String =

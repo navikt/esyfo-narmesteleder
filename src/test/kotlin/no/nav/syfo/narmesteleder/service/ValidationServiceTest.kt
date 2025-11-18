@@ -100,7 +100,6 @@ class ValidationServiceTest : DescribeSpec({
                     eq("nav_syfo_oppgi-narmesteleder")
                 )
                 aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
             }

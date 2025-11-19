@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.domain
 
+import java.time.Instant
 import java.util.UUID
 
 data class LinemanagerRequirementRead(
@@ -9,5 +10,8 @@ data class LinemanagerRequirementRead(
     val orgName: String? = null,
     val mainOrgNumber: String,
     val managerIdentificationNumber: String? = null,
-    val name: Name
+    val name: Name,
+    val created: Instant,
+    val updated: Instant,
+    val status: BehovStatus,
 )

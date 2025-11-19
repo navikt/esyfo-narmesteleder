@@ -87,7 +87,7 @@ class NarmestelederService(
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
         val isActiveSykmelding = skipSykmeldingCheck ||
-                dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
 
         return if (isActiveSykmelding) {
             val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
@@ -125,4 +125,7 @@ fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerR
         mainOrgNumber = this.hovedenhetOrgnummer,
         managerIdentificationNumber = this.narmestelederFnr,
         name = name,
+        created = this.created,
+        updated = this.updated,
+        status = this.behovStatus
     )

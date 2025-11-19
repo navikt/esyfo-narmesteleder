@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.db
 
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import java.sql.ResultSet
+import java.time.Instant
 import java.util.*
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
@@ -19,6 +20,8 @@ data class NarmestelederBehovEntity(
     val fornavn: String? = null,
     val mellomnavn: String? = null,
     val etternavn: String? = null,
+    val created: Instant = Instant.now(),
+    val updated: Instant = Instant.now(),
 ) {
     companion object {
         fun fromLinemanagerRequirementWrite(
@@ -55,4 +58,6 @@ fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity =
         fornavn = this.getString("fornavn"),
         mellomnavn = this.getString("mellomnavn"),
         etternavn = this.getString("etternavn"),
+        created = getTimestamp("created").toInstant(),
+        updated = getTimestamp("updated").toInstant(),
     )

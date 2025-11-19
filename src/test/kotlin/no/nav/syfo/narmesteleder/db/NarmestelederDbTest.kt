@@ -3,6 +3,7 @@ package no.nav.syfo.narmesteleder.db
 import faker
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldContainAllIgnoringFields
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.equality.shouldNotBeEqualUsingFields
 import io.kotest.matchers.shouldBe
@@ -45,7 +46,14 @@ class NarmestelederDbTest : DescribeSpec({
             id shouldNotBe null
 
             val retrievedEntity = db.findBehovById(id)
-            retrievedEntity?.shouldBeEqualUsingFields(nlBehovEntity.copy(id = id))
+            retrievedEntity?.shouldBeEqualUsingFields({
+                excludedProperties = setOf(
+                    NarmestelederBehovEntity::id,
+                    NarmestelederBehovEntity::created,
+                    NarmestelederBehovEntity::updated
+                )
+                nlBehovEntity
+            })
         }
     }
     describe("updateNlBehov") {
@@ -67,16 +75,24 @@ class NarmestelederDbTest : DescribeSpec({
 
             // Assert
             val retrievedUpdatedEntity = db.findBehovById(id)
-            retrievedUpdatedEntity?.shouldBeEqualUsingFields(mutatedEntity)
-            retrievedUpdatedEntity?.shouldNotBeEqualUsingFields(retrievedEntity)
+            retrievedUpdatedEntity?.shouldBeEqualUsingFields({
+                excludedProperties = setOf(
+                    NarmestelederBehovEntity::id,
+                    NarmestelederBehovEntity::created,
+                    NarmestelederBehovEntity::updated
+                )
+                mutatedEntity
+            })
         }
     }
 
     describe("getNlBehovByStatus") {
         it("should retrieve only entities with the matching status and created in the past") {
             // Arrange
-            val nlBehovEntity1 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_CREATED))
-            val nlBehovEntity2 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_CREATED))
+            val nlBehovEntity1 =
+                insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_CREATED))!!
+            val nlBehovEntity2 =
+                insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_CREATED))!!
             val nlBehovEntity3 =
                 insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION))
             val earlier = Instant.now().minusSeconds(3 * 60L)
@@ -89,8 +105,12 @@ class NarmestelederDbTest : DescribeSpec({
 
             // Assert
             retrievedEntities.size shouldBe 2
-            retrievedEntities shouldContain nlBehovEntity1
-            retrievedEntities shouldContain nlBehovEntity2
+
+            retrievedEntities.shouldContainAllIgnoringFields(
+                setOf(nlBehovEntity1, nlBehovEntity2),
+                NarmestelederBehovEntity::created,
+                NarmestelederBehovEntity::updated
+            )
         }
     }
 })

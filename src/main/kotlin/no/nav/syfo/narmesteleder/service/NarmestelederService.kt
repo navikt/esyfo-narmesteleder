@@ -11,6 +11,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.Name
+import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
@@ -127,5 +128,6 @@ fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerR
         name = name,
         created = this.created,
         updated = this.updated,
-        status = this.behovStatus
+        status = this.behovStatus,
+        revokedBy = RevokedBy.from(this.behovReason),
     )

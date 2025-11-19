@@ -17,10 +17,10 @@ paths:
     post:
       summary: Assign linemanager to employee on sick leave
       description: Assigns a linemanager to an employee on sick leave. Will override any existing linemanger.
-      tags: [linemanager]
+      tags: [ linemanager ]
       security:
-        - maskinporten_jwt: []
-        - tokenx_jwt: []
+        - maskinporten_jwt: [ ]
+        - tokenx_jwt: [ ]
       requestBody:
         required: true
         content:
@@ -58,10 +58,10 @@ paths:
     post:
       summary: Revoke existing linemanager for employee on sick leave
       description: Publishes a revoke event to Kafka.
-      tags: [linemanager]
+      tags: [ linemanager ]
       security:
-        - maskinporten_jwt: []
-        - tokenx_jwt: []
+        - maskinporten_jwt: [ ]
+        - tokenx_jwt: [ ]
       requestBody:
         required: true
         content:
@@ -99,10 +99,10 @@ paths:
     put:
       summary: Assigns a linemanager for employee with requirement
       description: Assigns a linemanager to the employee with requirement idenified by the id parameter
-      tags: [requirement]
+      tags: [ requirement ]
       security:
-        - maskinporten_jwt: []
-        - tokenx_jwt: []
+        - maskinporten_jwt: [ ]
+        - tokenx_jwt: [ ]
       parameters:
         - name: id
           in: path
@@ -149,10 +149,10 @@ paths:
     get:
       summary: Get linemanager requirement
       description: Returns details about the requirement for linemanager for an employee.
-      tags: [requirement]
+      tags: [ requirement ]
       security:
-        - maskinporten_jwt: []
-        - tokenx_jwt: []
+        - maskinporten_jwt: [ ]
+        - tokenx_jwt: [ ]
       parameters:
         - name: id
           in: path
@@ -309,12 +309,40 @@ components:
             - firstName
             - lastName
           additionalProperties: false
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the requirement was created
+        updated:
+          type: string
+          format: date-time
+          description: Timestamp when the requirement was last updated
+        status:
+          type: string
+          description: Status of the requirement
+          enum:
+            - BEHOV_CREATED
+            - DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+            - BEHOV_FULFILLED
+            - DIALOGPORTEN_STATUS_SET_COMPLETED
+            - ERROR
+        revokedBy:
+          type: string
+          nullable: true
+          description: If a previous linemanager was revoked, this field reveals if employee, linemanager or lps triggered the revoke.
+          enum:
+            - LINEMANAGER
+            - EMPLOYEE
+            - LPS
       required:
         - id
         - employeeIdentificationNumber
         - orgNumber
         - mainOrgnumber
         - name
+        - created
+        - updated
+        - status
       additionalProperties: false
     ErrorType:
       type: string

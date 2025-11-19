@@ -14,4 +14,5 @@ data class LinemanagerRequirementRead(
     val created: Instant,
     val updated: Instant,
     val status: BehovStatus,
+    val revokedBy: RevokedBy?
 )

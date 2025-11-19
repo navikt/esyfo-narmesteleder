@@ -1,7 +1,7 @@
 # esyfo-narmesteleder
 
 Documentation for interacting with the esyfo-narmesteleder service as an LPS, is available in the [request-flow-for-lps.md](./documentation/request-flow-for-lps.md) file.
-Api documentation is available [here](https://esyfo-narmesteleder.ekstern.dev.nav.no/swagger)
+Api documentation is available on [swagger](https://esyfo-narmesteleder.ekstern.dev.nav.no/swagger)
 
 Here are some useful links to get you started:
 

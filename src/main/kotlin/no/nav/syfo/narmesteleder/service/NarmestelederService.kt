@@ -7,10 +7,12 @@ import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Employee
+import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.Name
+import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
@@ -87,7 +89,7 @@ class NarmestelederService(
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
         val isActiveSykmelding = skipSykmeldingCheck ||
-                dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
 
         return if (isActiveSykmelding) {
             val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
@@ -125,4 +127,8 @@ fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerR
         mainOrgNumber = this.hovedenhetOrgnummer,
         managerIdentificationNumber = this.narmestelederFnr,
         name = name,
+        created = this.created,
+        updated = this.updated,
+        status = LineManagerRequirementStatus.from(this.behovStatus),
+        revokedBy = RevokedBy.from(this.behovReason),
     )

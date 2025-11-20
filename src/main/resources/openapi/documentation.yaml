@@ -321,10 +321,9 @@ components:
           type: string
           description: Status of the requirement
           enum:
-            - BEHOV_CREATED
-            - DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-            - BEHOV_FULFILLED
-            - DIALOGPORTEN_STATUS_SET_COMPLETED
+            - CREATED
+            - REQUIRES_ATTENTION
+            - COMPLETED
             - ERROR
         revokedBy:
           type: string

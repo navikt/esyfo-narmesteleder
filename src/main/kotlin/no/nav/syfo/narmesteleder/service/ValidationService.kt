@@ -38,6 +38,8 @@ class ValidationService(
             validateAltinnTilgang(principal, linemanager.orgNumber)
             val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
             val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
+            val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
+                .filter { it.key == linemanager.orgNumber }
             val sykemeldtArbeidsforhold =
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
                     .filter { it.key == linemanager.orgNumber }
@@ -45,6 +47,7 @@ class ValidationService(
             validateNarmesteLeder(
                 orgNumberInRequest = linemanager.orgNumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
+                narmesteLederOrgNumbers = nlArbeidsforhold,
                 systemPrincipal = principal as? SystemPrincipal,
             )
             return LinemanagerActors(

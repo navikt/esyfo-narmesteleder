@@ -8,11 +8,11 @@ class FakeNarmestelederDb : INarmestelederDb {
     private val store = ConcurrentHashMap<UUID, NarmestelederBehovEntity>()
     private val order = mutableListOf<UUID>()
 
-    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): UUID {
-        val id = nlBehov.id ?: UUID.randomUUID()
-        store[id] = nlBehov.copy(id = id)
-        order += id
-        return id
+    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity {
+        val persist = nlBehov.copy(id = UUID.randomUUID())
+        store[persist.id!!] = persist
+        order += persist.id
+        return persist
     }
 
     override suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity) {

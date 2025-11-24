@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.service
 
 import java.util.*
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
@@ -25,6 +26,7 @@ class NarmestelederService(
     private val aaregService: AaregService,
     private val pdlService: PdlService,
     private val dinesykmeldteService: DinesykmeldteService,
+    private val dialogportenService: DialogportenService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -62,13 +64,17 @@ class NarmestelederService(
         manager: Manager,
         requirementId: UUID,
         behovStatus: BehovStatus
-    ) = with(findBehovEntityById(requirementId)) {
-        val updatedBehov = copy(
-            narmestelederFnr = manager.nationalIdentificationNumber,
-            behovStatus = behovStatus,
-        )
-        nlDb.updateNlBehov(updatedBehov)
-        logger.info("Updated NarmestelederBehovEntity with id: $id with status: $behovStatus")
+    ) {
+        val narmestelederBehovEntity = findBehovEntityById(requirementId)
+        if (!setOf(behovStatus, BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED).contains(narmestelederBehovEntity.behovStatus)) {
+            val updatedBehov = narmestelederBehovEntity.copy(
+                narmestelederFnr = manager.nationalIdentificationNumber,
+                behovStatus = behovStatus,
+            )
+            nlDb.updateNlBehov(updatedBehov)
+            logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
+            dialogportenService.setToCompletedInDialogportenUsingCoroutine(updatedBehov)
+        }
     }
 
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {
@@ -101,9 +107,11 @@ class NarmestelederService(
                 hovedenhetOrgnummer = hovededenhet,
                 behovStatus = BehovStatus.BEHOV_CREATED,
             )
-            nlDb.insertNlBehov(entity).also {
+            val insertedEntity = nlDb.insertNlBehov(entity).also {
                 logger.info("Inserted NarmestelederBehovEntity with id: $it")
             }
+            dialogportenService.sendToDialogportenUsingCoroutine(insertedEntity)
+            return insertedEntity.id
         } else {
             logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}")
             null

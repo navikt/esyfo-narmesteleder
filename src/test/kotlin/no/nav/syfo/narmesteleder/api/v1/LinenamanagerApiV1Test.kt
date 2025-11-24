@@ -27,6 +27,7 @@ import java.util.*
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
@@ -75,7 +76,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
     val dineSykmelteService = DinesykmeldteService(fakeDinesykmeldteClient)
     val fakePdpClient = FakePdpClient()
     val pdpService = PdpService(fakePdpClient)
-    val validationService = ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy, dineSykmelteService, pdpService)
+    val validationService =
+        ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy, dineSykmelteService, pdpService)
     val validationServiceSpy = spyk(validationService)
     val tokenXIssuer = "https://tokenx.nav.no"
     val fakeRepo = FakeNarmestelederDb()
@@ -86,6 +88,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
         aaregService = aaregService,
         pdlService = pdlService,
         dinesykmeldteService = dineSykmelteService,
+        dialogportenService = mockk<DialogportenService>(relaxed = true)
     )
     val nlBehovHandler = LinemanagerRequirementRESTHandler(
         narmesteLederService = narmesteLederService,
@@ -139,7 +142,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.employeeIdentificationNumber] = listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
+                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.employeeIdentificationNumber] =
+                        listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
                     fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.manager.nationalIdentificationNumber] =
                         listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
                     // Act
@@ -340,7 +344,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 )
                 val narmesteLederAvkreft = narmesteLederAvkreft
                 fakeAaregClient.arbeidsForholdForIdent.clear()
-                fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] = listOf(narmesteLederAvkreft.orgNumber to narmesteLederRelasjon.orgNumber)
+                fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
+                    listOf(narmesteLederAvkreft.orgNumber to narmesteLederRelasjon.orgNumber)
                 // Act
                 val response = client.post("$API_V1_PATH/$REVOKE_PATH") {
                     contentType(ContentType.Application.Json)
@@ -514,8 +519,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                             match { linemanager ->
                                 linemanager.employeeIdentificationNumber == sykmeldtFnr &&
-                                        linemanager.orgNumber == orgnummer &&
-                                        linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
+                                    linemanager.orgNumber == orgnummer &&
+                                    linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
                             }, any(), any()
                         )
                     }

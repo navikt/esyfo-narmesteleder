@@ -3,7 +3,9 @@ package no.nav.syfo.plugins
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import kotlin.time.Duration
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -99,7 +101,9 @@ private fun databaseModule() = module {
 private fun handlerModule() = module {
     single { NlBehovLeesahHandler(get()) }
     single { SendtSykmeldingHandler(get()) }
-    single { LinemanagerRequirementRESTHandler(get(), get(), get(), get()) }
+    single {
+        LinemanagerRequirementRESTHandler(get(), get(), get(), get())
+    }
 }
 
 private fun clientsModule() = module {
@@ -158,11 +162,12 @@ private fun servicesModule() = module {
     single { DinesykmeldteService(dinesykmeldteClient = get()) }
     single {
         NarmestelederService(
-            get(),
-            env().otherEnvironment.persistLeesahNlBehov,
-            get(),
-            get(),
-            get(),
+            nlDb = get(),
+            persistLeesahNlBehov = env().otherEnvironment.persistLeesahNlBehov,
+            aaregService = get(),
+            pdlService = get(),
+            dinesykmeldteService = get(),
+            dialogportenService = get(),
         )
     }
     single {
@@ -187,12 +192,14 @@ private fun servicesModule() = module {
     single {
         ValidationService(get(), get(), get(), get(), get())
     }
+    single { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     single {
         DialogportenService(
             dialogportenClient = get(),
             narmestelederDb = get(),
             otherEnvironmentProperties = env().otherEnvironment,
-            pdlService = get()
+            pdlService = get(),
+            coroutineScope = get()
         )
     }
     single { SendDialogTask(get(), get()) }

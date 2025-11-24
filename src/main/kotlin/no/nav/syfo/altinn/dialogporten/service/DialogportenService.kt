@@ -5,6 +5,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.application.OtherEnvironmentProperties
 import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
@@ -31,6 +33,7 @@ class DialogportenService(
     private val narmestelederDb: INarmestelederDb,
     private val otherEnvironmentProperties: OtherEnvironmentProperties,
     private val pdlService: PdlService,
+    private val coroutineScope: CoroutineScope
 ) {
     private val logger = logger()
 
@@ -39,32 +42,36 @@ class DialogportenService(
         logger.info("Found ${behovToSend.size} documents to send to dialogporten")
 
         for (behov in behovToSend) {
-            require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
-            try {
-                val personInfo = try {
-                    pdlService.getPersonFor(behov.sykmeldtFnr)
-                } catch (ex: Exception) {
-                    logger.error("Failed to get person info for behov ${behov.id}", ex)
-                    null
-                }
-                val dialog = behov.toDialog(personInfo?.name)
-                dialog.attachments?.firstOrNull()?.let {
-                    logger.info("Sending document ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
-                }
-
-                val dialogId = dialogportenClient.createDialog(dialog)
-                narmestelederDb.updateNlBehov(
-                    behov.copy(
-                        dialogId = dialogId,
-                        behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
-                        fornavn = personInfo?.name?.fornavn,
-                        mellomnavn = personInfo?.name?.mellomnavn,
-                        etternavn = personInfo?.name?.etternavn,
-                    )
-                )
+            sendToDialogporten(behov)
+        }
+    }
+    private suspend fun sendToDialogporten(behov: NarmestelederBehovEntity) {
+        require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
+        try {
+            val personInfo = try {
+                pdlService.getPersonFor(behov.sykmeldtFnr)
             } catch (ex: Exception) {
-                logger.error("Failed to send document ${behov.id} to dialogporten", ex)
+                logger.error("Failed to get person info for behov ${behov.id}", ex)
+                null
             }
+            val dialog = behov.toDialog(personInfo?.name)
+            dialog.attachments?.firstOrNull()?.let {
+                logger.info("Sending document ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
+            }
+
+            val dialogId = dialogportenClient.createDialog(dialog)
+            narmestelederDb.updateNlBehov(
+                behov.copy(
+                    dialogId = dialogId,
+                    behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                    fornavn = personInfo?.name?.fornavn,
+                    mellomnavn = personInfo?.name?.mellomnavn,
+
+                    etternavn = personInfo?.name?.etternavn,
+                )
+            )
+        } catch (ex: Exception) {
+            logger.error("Failed to send document ${behov.id} to dialogporten", ex)
         }
     }
 
@@ -75,25 +82,44 @@ class DialogportenService(
             }
             .forEach { behov ->
                 behov.dialogId?.let { dialogId ->
-                    try {
-                        dialogportenClient.getDialogById(dialogId).let { existingDialog ->
-                            dialogportenClient.updateDialogStatus(
-                                dialogId = dialogId,
-                                revisionNumber = existingDialog.revision,
-                                dialogStatus = DialogStatus.Completed
-                            )
-                        }
-                        narmestelederDb.updateNlBehov(
-                            behov.copy(
-                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-                            )
-                        )
-                        logger.info("Successfully updated Dialogporten for dialog $dialogId")
-                    } catch (ex: Exception) {
-                        logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
-                    }
+                    setToCompletedInDialogporten(behov)
                 }
             }
+    }
+
+    fun setToCompletedInDialogportenUsingCoroutine(behov: NarmestelederBehovEntity) {
+        coroutineScope.launch {
+            setToCompletedInDialogporten(behov)
+        }
+    }
+
+    fun sendToDialogportenUsingCoroutine(behov: NarmestelederBehovEntity) {
+        coroutineScope.launch {
+            sendToDialogporten(behov)
+        }
+    }
+
+    private suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
+        behov.dialogId?.let { dialogId ->
+            try {
+                dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+                    dialogportenClient.updateDialogStatus(
+                        dialogId = dialogId,
+                        revisionNumber = existingDialog.revision,
+                        dialogStatus = DialogStatus.Completed
+                    )
+                }
+                narmestelederDb.updateNlBehov(
+                    behov.copy(
+                        behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                    )
+                )
+                logger.info("Successfully updated Dialogporten for dialog $dialogId")
+            } catch (ex: Exception) {
+                logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
+            }
+        }
+        logger.info("Completed set ${behov.dialogId} to complete in dialogporten")
     }
 
     private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String): String =

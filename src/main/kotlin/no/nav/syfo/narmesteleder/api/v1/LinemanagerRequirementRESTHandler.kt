@@ -1,6 +1,7 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import java.util.*
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal

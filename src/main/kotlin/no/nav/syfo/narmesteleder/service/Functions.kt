@@ -20,13 +20,18 @@ fun validateNarmesteLeder(
     systemPrincipal: SystemPrincipal?,
     orgNumberInRequest: String
 ) {
-    val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
+
     nlrequire(sykemeldtOrgNumbers.keys.contains(orgNumberInRequest)) { "Ingen arbeidsforhold for sykemeldt for angitt virksomhet" }
-    nlrequire(narmesteLederOrgNumbers.keys.contains(orgNumberInRequest)) { "Ingen arbeidsforhold for narmesteleder for angitt virksomhet" }
+    val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
+    val allNlOrgNumbers = narmesteLederOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     nlrequire(
-        narmesteLederOrgNumbers.keys == sykemeldtOrgNumbers.keys,
-        { "Næremeste leder mangler arbeidsforhold i samme virksomhet som sykmeldt" })
-    systemPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(systemPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
+        allNlOrgNumbers.any { it in allSykmeldtOrgNumbers }
+    ) { "Næremeste leder mangler arbeidsforhold i samme organisasjonsstruktur som sykmeldt" }
+    systemPrincipal?.let {
+        nlrequireOrForbidden(
+            allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber()))
+        { "Systembruker har ikke tilgang til virksomhet" }
+    }
 }
 
 fun validateNarmesteLederAvkreft(

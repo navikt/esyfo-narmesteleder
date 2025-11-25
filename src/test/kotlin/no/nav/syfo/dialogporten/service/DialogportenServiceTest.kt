@@ -203,7 +203,7 @@ class DialogportenServiceTest : DescribeSpec({
 
                 // Assert
                 val capturedDialog = dialogSlot.captured
-                capturedDialog.serviceResource shouldBe "urn:altinn:resource:nav_syfo_dialog"
+                capturedDialog.serviceResource shouldBe "urn:altinn:resource:nav_syfo_oppgi-narmesteleder"
             }
         }
 

@@ -41,7 +41,8 @@ class NarmesteLederValidatorTest : DescribeSpec({
             it("Should not throw when sykmeldt has at least one matching org number with the other parties") {
                 shouldNotThrowAny {
                     validateNarmesteLeder(
-                        sykemeldtOrgNumbers = nlOrgNumbers,
+                        sykemeldtOrgNumbers = mapOf(randomOrgNumbers.first() to createRandomValidOrgNumbers(prefix = "").first()),
+                        // nlOrgNumbers also contains randomOrgNumbers.first()
                         narmesteLederOrgNumbers = nlOrgNumbers,
                         systemPrincipal = organizationPrincipal,
                         orgNumberInRequest = nlOrgNumbers.keys.first()

@@ -110,7 +110,7 @@ class NarmestelederService(
             val insertedEntity = nlDb.insertNlBehov(entity).also {
                 logger.info("Inserted NarmestelederBehovEntity with id: $it")
             }
-            dialogportenService.sendToDialogportenUsingCoroutine(insertedEntity)
+            dialogportenService.sendToDialogporten(insertedEntity)
             return insertedEntity.id
         } else {
             logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}")

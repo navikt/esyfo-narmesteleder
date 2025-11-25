@@ -13,7 +13,9 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import java.util.UUID
+import java.util.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import no.nav.syfo.altinn.dialogporten.domain.Content
 import no.nav.syfo.altinn.dialogporten.domain.ContentValue
 import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
@@ -33,15 +35,16 @@ interface IDialogportenClient {
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
 
 class DialogportenClient(
-    private val baseUrl: String,
+    baseUrl: String,
     private val httpClient: HttpClient,
-    private val altinnTokenProvider: AltinnTokenProvider
+    private val altinnTokenProvider: AltinnTokenProvider,
+    private val dispatcher: CoroutineDispatcher
 ) : IDialogportenClient {
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
     private val logger = logger()
 
-    override suspend fun createDialog(dialog: Dialog): UUID {
-        return runCatching<DialogportenClient, UUID> {
+    override suspend fun createDialog(dialog: Dialog): UUID = withContext(dispatcher) {
+        return@withContext runCatching<DialogportenClient, UUID> {
             val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
             val response =
                 httpClient
@@ -63,27 +66,29 @@ class DialogportenClient(
         revisionNumber: UUID,
         dialogStatus: DialogStatus
     ) {
-        runCatching {
-            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
-            httpClient
-                .patch("$dialogportenUrl/$dialogId") {
-                    header(HttpHeaders.Accept, ContentType.Application.Json)
-                    header(HttpHeaders.IfMatch, revisionNumber.toString())
-                    contentType(JSON_PATCH_CONTENT_TYPE)
-                    bearerAuth(token)
-                    setBody(
-                        listOf(
-                            DialogportenPatch(
-                                DialogportenPatch.OPERATION.REPLACE,
-                                "/status",
-                                dialogStatus.name
+        withContext(dispatcher) {
+            runCatching {
+                val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+                httpClient
+                    .patch("$dialogportenUrl/$dialogId") {
+                        header(HttpHeaders.Accept, ContentType.Application.Json)
+                        header(HttpHeaders.IfMatch, revisionNumber.toString())
+                        contentType(JSON_PATCH_CONTENT_TYPE)
+                        bearerAuth(token)
+                        setBody(
+                            listOf(
+                                DialogportenPatch(
+                                    DialogportenPatch.OPERATION.REPLACE,
+                                    "/status",
+                                    dialogStatus.name
+                                )
                             )
                         )
-                    )
-                }
-        }.onFailure { e ->
-            logger.error("Error on update request to Dialogporten on dialogId: $dialogId", e)
-            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
+                    }
+            }.onFailure { e ->
+                logger.error("Error on update request to Dialogporten on dialogId: $dialogId", e)
+                throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
+            }
         }
     }
 

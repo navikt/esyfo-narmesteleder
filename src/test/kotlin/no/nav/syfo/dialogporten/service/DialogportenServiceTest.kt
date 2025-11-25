@@ -443,20 +443,21 @@ class DialogportenServiceTest : DescribeSpec({
         }
     }
 
-    describe("Functions using CoroutineScope") {
-        describe("sendToDialogportenUsingCoroutine") {
-            it("should call sendToDialogporten in a coroutine") {
-                // Arrange
-                val behovEntity = nlBehovEntity()
+    describe("sendToDialogportenUsingCoroutine") {
+        it("sendToDialogporten should call createDialog") {
+            // Arrange
+            val behovEntity = nlBehovEntity()
 
-                // Act
-                dialogportenService.sendToDialogportenUsingCoroutine(behovEntity)
-                testScope.testScheduler.advanceUntilIdle()
+            // Act
+            dialogportenService.sendToDialogporten(behovEntity)
 
-                // Assert
-                coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
-            }
+            // Assert
+            coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
         }
+    }
+
+    describe("Functions using CoroutineScope") {
+
         describe("setToCompletedInDialogportenUsingCoroutine") {
             it("should call sendEntityToDialogporten in a coroutine") {
                 // Arrange

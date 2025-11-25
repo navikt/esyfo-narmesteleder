@@ -48,6 +48,8 @@ import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.PdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
+import no.nav.syfo.application.defaultDispacher
+import no.nav.syfo.application.superviserDispacherIO
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -144,7 +146,8 @@ private fun clientsModule() = module {
         if (isLocalEnv()) FakeDialogportenClient() else DialogportenClient(
             httpClient = get(),
             baseUrl = env().clientProperties.altinn3BaseUrl,
-            altinnTokenProvider = get()
+            altinnTokenProvider = get(),
+            dispatcher = defaultDispacher
         )
     }
     single {
@@ -192,14 +195,13 @@ private fun servicesModule() = module {
     single {
         ValidationService(get(), get(), get(), get(), get())
     }
-    single { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     single {
         DialogportenService(
             dialogportenClient = get(),
             narmestelederDb = get(),
             otherEnvironmentProperties = env().otherEnvironment,
             pdlService = get(),
-            coroutineScope = get()
+            coroutineScope = superviserDispacherIO
         )
     }
     single { SendDialogTask(get(), get()) }

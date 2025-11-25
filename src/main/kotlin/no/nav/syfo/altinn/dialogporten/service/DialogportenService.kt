@@ -45,9 +45,9 @@ class DialogportenService(
             sendToDialogporten(behov)
         }
     }
-    private suspend fun sendToDialogporten(behov: NarmestelederBehovEntity) {
-        require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
+    suspend fun sendToDialogporten(behov: NarmestelederBehovEntity) {
         try {
+            require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
             val personInfo = try {
                 pdlService.getPersonFor(behov.sykmeldtFnr)
             } catch (ex: Exception) {
@@ -90,12 +90,6 @@ class DialogportenService(
     fun setToCompletedInDialogportenUsingCoroutine(behov: NarmestelederBehovEntity) {
         coroutineScope.launch {
             setToCompletedInDialogporten(behov)
-        }
-    }
-
-    fun sendToDialogportenUsingCoroutine(behov: NarmestelederBehovEntity) {
-        coroutineScope.launch {
-            sendToDialogporten(behov)
         }
     }
 

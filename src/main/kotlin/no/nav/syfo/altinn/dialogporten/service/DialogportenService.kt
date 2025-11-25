@@ -21,6 +21,8 @@ import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.util.logger
 
+const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
+
 class DialogportenService(
     private val dialogportenClient: IDialogportenClient,
     private val narmestelederDb: INarmestelederDb,
@@ -28,8 +30,6 @@ class DialogportenService(
     private val pdlService: PdlService,
 ) {
     private val logger = logger()
-    private val dialogRessurs = "nav_syfo_dialog"
-
 
     suspend fun sendDocumentsToDialogporten() {
         val behovToSend = getRequirementsToSend()
@@ -115,7 +115,7 @@ class DialogportenService(
     private fun NarmestelederBehovEntity.toDialog(name: Navn?): Dialog {
         require(id != null) { "Cannot create Dialogporten Dialog without id" }
         return Dialog(
-            serviceResource = "urn:altinn:resource:$dialogRessurs",
+            serviceResource = "urn:altinn:resource:$NARMESTE_LEDER_RESOURCE",
             status = DialogStatus.RequiresAttention,
             party = "urn:altinn:organization:identifier-no:$orgnummer",
             externalReference = id.toString(),

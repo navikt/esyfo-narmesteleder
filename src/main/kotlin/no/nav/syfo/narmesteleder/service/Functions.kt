@@ -16,12 +16,22 @@ private fun nlrequireOrForbidden(value: Boolean, lazyMessage: () -> String) {
 
 fun validateNarmesteLeder(
     sykemeldtOrgNumbers: Map<String, String>,
+    narmesteLederOrgNumbers: Map<String, String>,
     systemPrincipal: SystemPrincipal?,
     orgNumberInRequest: String
 ) {
-    val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
-    nlrequire(sykemeldtOrgNumbers.contains(orgNumberInRequest)) { "No arbeidsforhold for sykemeldt in provided organization" }
-    systemPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(systemPrincipal.getSystemUserOrgNumber())) { "Consumer in token does not match organization in request payload, or its parent" } }
+
+    nlrequire(sykemeldtOrgNumbers.keys.contains(orgNumberInRequest)) { "Ingen arbeidsforhold for sykemeldt for angitt virksomhet" }
+    val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
+    val allNlOrgNumbers = narmesteLederOrgNumbers.map { listOf(it.key, it.value) }.flatten()
+    nlrequire(
+        allNlOrgNumbers.any { it in allSykmeldtOrgNumbers }
+    ) { "Næremeste leder mangler arbeidsforhold i samme organisasjonsstruktur som sykmeldt" }
+    systemPrincipal?.let {
+        nlrequireOrForbidden(
+            allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber()))
+        { "Systembruker har ikke tilgang til virksomhet" }
+    }
 }
 
 fun validateNarmesteLederAvkreft(
@@ -30,7 +40,7 @@ fun validateNarmesteLederAvkreft(
     systemPrincipal: SystemPrincipal?,
 ) {
     val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
-    nlrequire(sykemeldtOrgNumbers.isNotEmpty()) { "No arbeidsforhold for sykemeldt" }
-    nlrequire(sykemeldtOrgNumbers.contains(orgNumberInRequest)) { "No arbeidsforhold for sykemeldt in provided organization" }
-    systemPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(systemPrincipal.getSystemUserOrgNumber())) { "Consumer in token does not match organization in request payload, or its parent" } }
+    nlrequire(sykemeldtOrgNumbers.isNotEmpty()) { "Ingen arbeidsforhold for sykemeldt" }
+    nlrequire(sykemeldtOrgNumbers.contains(orgNumberInRequest)) { "Organisasjonsnummer i HTTP request body samsvarer ikke med sykemeldtes organisasjoner" }
+    systemPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(systemPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
 }

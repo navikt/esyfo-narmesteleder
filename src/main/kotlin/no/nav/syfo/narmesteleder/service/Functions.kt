@@ -26,7 +26,7 @@ fun validateNarmesteLeder(
     val allNlOrgNumbers = narmesteLederOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     nlrequire(
         allNlOrgNumbers.any { it in allSykmeldtOrgNumbers }
-    ) { "Næremeste leder mangler arbeidsforhold i samme organisasjonsstruktur som sykmeldt\nallSykmeldtOrgNumbers: $allSykmeldtOrgNumbers\nallNlOrgNumbers: $allNlOrgNumbers" }
+    ) { "Næremeste leder mangler arbeidsforhold i samme organisasjonsstruktur som sykmeldt" }
     systemPrincipal?.let {
         nlrequireOrForbidden(
             allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber()))

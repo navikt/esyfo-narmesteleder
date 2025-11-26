@@ -3,6 +3,7 @@ package no.nav.syfo.dialogporten.service
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldEndWith
+import io.kotest.matchers.string.shouldStartWith
 import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -104,7 +105,8 @@ class DialogportenServiceTest : DescribeSpec({
                 capturedDialog.attachments?.size shouldBe 2
                 capturedDialog.attachments?.first()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Api
                 capturedDialog.attachments?.last()?.urls?.first()?.consumerType shouldBe AttachmentUrlConsumerType.Gui
-                capturedDialog.content.title.value.first().value shouldEndWith DIALOG_TITLE_WITH_NAME
+                capturedDialog.content.title.value.first().value shouldStartWith "Oppgi nærmeste leder for"
+                capturedDialog.content.title.value.first().value shouldEndWith " (d-nummer: ${behovEntity.sykmeldtFnr})"
             }
         }
         context("when there are multiple documents to send") {

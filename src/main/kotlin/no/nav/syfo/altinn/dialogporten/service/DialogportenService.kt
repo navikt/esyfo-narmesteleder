@@ -1,6 +1,9 @@
 package no.nav.syfo.altinn.dialogporten.service
 
 import io.ktor.http.ContentType
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.UUID
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.application.OtherEnvironmentProperties
@@ -93,15 +96,15 @@ class DialogportenService(
             }
     }
 
-    private fun getDialogTitle(name: Navn?): String =
+    private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String): String =
         name?.let {
-            "${it.navnFullt()} $DIALOG_TITLE_WITH_NAME"
+            "Oppgi nærmeste leder for ${it.navnFullt()} ${ninToInfoString(nationalIdentityNumber)}"
         } ?: DIALOG_TITLE_NO_NAME
 
     private fun getSummary(name: Navn?): String =
         name?.let {
-            "$DIALOG_SUMMARY ${it.navnFullt()}"
-        } ?: "$DIALOG_SUMMARY ansatt som er sykmeldt"
+            "${it.navnFullt()} $DIALOG_SUMMARY"
+        } ?: "En ansatt $DIALOG_SUMMARY"
 
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
 
@@ -120,7 +123,7 @@ class DialogportenService(
             party = "urn:altinn:organization:identifier-no:$orgnummer",
             externalReference = id.toString(),
             content = Content.create(
-                title = getDialogTitle(name),
+                title = getDialogTitle(name, sykmeldtFnr),
                 summary = getSummary(name),
             ),
             isApiOnly = false,
@@ -156,11 +159,33 @@ class DialogportenService(
             )
         }
 
+    private fun ninToInfoString(nationalIdentityNumber: String): String {
+        val birthDate = ninToBirthDate(nationalIdentityNumber)
+        return if (birthDate != null) {
+            "(f. ${birthDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))})"
+        } else {
+            "(d-nummer: $nationalIdentityNumber)"
+        }
+    }
+
+    private fun ninToBirthDate(nationalIdentityNumber: String): LocalDate? {
+        try {
+            val day = nationalIdentityNumber.take(2)
+            val month = nationalIdentityNumber.substring(2, 4)
+            val year = nationalIdentityNumber.substring(4, 8)
+            return LocalDate.parse("$year-$month-$day")
+        } catch (e: DateTimeParseException) {
+            return null
+        }
+    }
+
     companion object {
         const val DIALOG_TITLE_NO_NAME = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
         const val DIALOG_TITLE_WITH_NAME = "er sykmeldt og har behov for å bli tildelt nærmeste leder"
-        const val DIALOG_SUMMARY = "Vennligst tildel nærmeste leder for"
+        const val DIALOG_SUMMARY =
+            "er sykmeldt. Nav trenger informasjon om hvem som er nærmeste leder for å kunne gi tilgang til oppfølginstjenestene på \"Dine sykmeldte\" hos Nav"
         const val URL_TITLE_GUI = "Naviger til nærmeste leder skjema"
         const val URL_TITLE_API = "Endpoint for LinemanagerRequirement request"
+
     }
 }

@@ -3,12 +3,18 @@ package no.nav.syfo.plugins
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import kotlin.time.Duration
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService
+import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
+import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
+import no.nav.syfo.altinn.pdp.client.FakePdpClient
+import no.nav.syfo.altinn.pdp.client.PdpClient
+import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -24,11 +30,7 @@ import no.nav.syfo.application.isProdEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
-import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
-import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
+import no.nav.syfo.application.superviserDispacherIO
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -45,11 +47,6 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
-import no.nav.syfo.altinn.pdp.client.FakePdpClient
-import no.nav.syfo.altinn.pdp.client.PdpClient
-import no.nav.syfo.altinn.pdp.service.PdpService
-import no.nav.syfo.application.defaultDispacher
-import no.nav.syfo.application.superviserDispacherIO
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -147,7 +144,6 @@ private fun clientsModule() = module {
             httpClient = get(),
             baseUrl = env().clientProperties.altinn3BaseUrl,
             altinnTokenProvider = get(),
-            dispatcher = defaultDispacher
         )
     }
     single {

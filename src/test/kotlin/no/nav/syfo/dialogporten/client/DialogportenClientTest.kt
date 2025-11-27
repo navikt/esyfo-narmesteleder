@@ -64,7 +64,6 @@ class DialogportenClientTest : DescribeSpec({
                     baseUrl = "http://localhost:8080",
                     httpClient = httpClientWithAssertions,
                     altinnTokenProvider = mockAltinnTokenProvider,
-                    dispatcher = Dispatchers.Default
                 )
             )
             it("Should send a patch to Dialogporten with correct headers and body") {

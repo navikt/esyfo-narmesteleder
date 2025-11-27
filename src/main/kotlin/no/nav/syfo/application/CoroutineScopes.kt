@@ -5,4 +5,3 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
 val superviserDispacherIO = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-val defaultDispacher = Dispatchers.Default

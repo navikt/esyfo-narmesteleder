@@ -81,7 +81,7 @@ class DialogportenService(
                 logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
             }
             .forEach { behov ->
-                behov.dialogId?.let { dialogId ->
+                behov.dialogId?.let {
                     setToCompletedInDialogporten(behov)
                 }
             }
@@ -94,6 +94,10 @@ class DialogportenService(
     }
 
     private suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
+        if (behov.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED) {
+            logger.info("Skipping setting dialog to completed for behov ${behov.id} with status ${behov.behovStatus}")
+            return
+        }
         behov.dialogId?.let { dialogId ->
             try {
                 dialogportenClient.getDialogById(dialogId).let { existingDialog ->

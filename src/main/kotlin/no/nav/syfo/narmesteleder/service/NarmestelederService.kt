@@ -78,7 +78,7 @@ class NarmestelederService(
             nlDb.updateNlBehov(updatedBehov)
             logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
             if (behovStatus == BehovStatus.BEHOV_FULFILLED)
-                dialogportenService.setToCompletedInDialogportenUsingCoroutine(updatedBehov)
+                dialogportenService.setToCompletedInDialogporten(updatedBehov)
         }
     }
 

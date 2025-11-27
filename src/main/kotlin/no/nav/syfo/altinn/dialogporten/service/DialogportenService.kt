@@ -33,7 +33,6 @@ class DialogportenService(
     private val narmestelederDb: INarmestelederDb,
     private val otherEnvironmentProperties: OtherEnvironmentProperties,
     private val pdlService: PdlService,
-    private val coroutineScope: CoroutineScope
 ) {
     private val logger = logger()
 
@@ -87,13 +86,7 @@ class DialogportenService(
             }
     }
 
-    fun setToCompletedInDialogportenUsingCoroutine(behov: NarmestelederBehovEntity) {
-        coroutineScope.launch {
-            setToCompletedInDialogporten(behov)
-        }
-    }
-
-    private suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
+    suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
         if (behov.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED) {
             logger.info("Skipping setting dialog to completed for behov ${behov.id} with status ${behov.behovStatus}")
             return

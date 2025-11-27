@@ -13,7 +13,6 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.spyk
 import java.util.*
-import kotlinx.coroutines.test.TestScope
 import nlBehovEntity
 import no.nav.syfo.application.OtherEnvironmentProperties
 import no.nav.syfo.application.UpdateDialogportenTaskProperties
@@ -41,7 +40,6 @@ class DialogportenServiceTest : DescribeSpec({
     val frontendBaseUrl = "https://frontend.test.nav.no"
     val fakePdsClient = FakePdlClient()
     val pdlService = spyk(PdlService(fakePdsClient))
-    val testScope = TestScope()
 
     val dialogportenService = DialogportenService(
         dialogportenClient = dialogportenClient,
@@ -54,7 +52,6 @@ class DialogportenServiceTest : DescribeSpec({
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal()
         ),
         pdlService = pdlService,
-        coroutineScope = testScope,
     )
 
     beforeTest {
@@ -469,8 +466,7 @@ class DialogportenServiceTest : DescribeSpec({
                 coEvery { dialogportenClient.getDialogById(any()) } returns extendedDialg
 
                 // Act
-                dialogportenService.setToCompletedInDialogportenUsingCoroutine(behovEntity)
-                testScope.testScheduler.advanceUntilIdle()
+                dialogportenService.setToCompletedInDialogporten(behovEntity)
 
                 // Assert
                 coVerify(exactly = 1) { dialogportenClient.getDialogById(behovEntity.dialogId!!) }

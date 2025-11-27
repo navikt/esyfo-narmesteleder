@@ -30,7 +30,6 @@ import no.nav.syfo.application.isProdEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
-import no.nav.syfo.application.superviserDispacherIO
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -197,7 +196,6 @@ private fun servicesModule() = module {
             narmestelederDb = get(),
             otherEnvironmentProperties = env().otherEnvironment,
             pdlService = get(),
-            coroutineScope = superviserDispacherIO
         )
     }
     single { SendDialogTask(get(), get()) }

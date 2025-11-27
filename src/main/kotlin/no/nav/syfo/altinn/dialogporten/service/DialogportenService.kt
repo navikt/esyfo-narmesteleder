@@ -114,7 +114,7 @@ class DialogportenService(
 
     private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String): String =
         name?.let {
-            "Oppgi nærmeste leder for ${it.navnFullt()} ${ninToInfoString(nationalIdentityNumber)}"
+            "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${ninToInfoString(nationalIdentityNumber)}"
         } ?: DIALOG_TITLE_NO_NAME
 
     private fun getSummary(name: Navn?): String =
@@ -197,7 +197,7 @@ class DialogportenService(
 
     companion object {
         const val DIALOG_TITLE_NO_NAME = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
-        const val DIALOG_TITLE_WITH_NAME = "er sykmeldt og har behov for å bli tildelt nærmeste leder"
+        const val DIALOG_TITLE_WITH_NAME = "Oppgi nærmeste leder for"
         const val DIALOG_SUMMARY =
             "er sykmeldt. Nav trenger informasjon om hvem som er nærmeste leder for å kunne gi tilgang til oppfølginstjenestene på \"Dine sykmeldte\" hos Nav"
         const val URL_TITLE_GUI = "Naviger til nærmeste leder skjema"

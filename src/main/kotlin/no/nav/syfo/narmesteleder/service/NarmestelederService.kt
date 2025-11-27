@@ -66,20 +66,13 @@ class NarmestelederService(
         behovStatus: BehovStatus
     ) {
         val narmestelederBehovEntity = findBehovEntityById(requirementId)
-        if (!setOf(
-                behovStatus,
-                BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-            ).contains(narmestelederBehovEntity.behovStatus)
-        ) {
-            val updatedBehov = narmestelederBehovEntity.copy(
-                narmestelederFnr = manager.nationalIdentificationNumber,
-                behovStatus = behovStatus,
-            )
-            nlDb.updateNlBehov(updatedBehov)
-            logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
-            if (behovStatus == BehovStatus.BEHOV_FULFILLED)
-                dialogportenService.setToCompletedInDialogporten(updatedBehov)
-        }
+        val updatedBehov = narmestelederBehovEntity.copy(
+            narmestelederFnr = manager.nationalIdentificationNumber,
+            behovStatus = behovStatus,
+        )
+        nlDb.updateNlBehov(updatedBehov)
+        logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
+        dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
     }
 
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {

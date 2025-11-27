@@ -42,6 +42,7 @@ class DialogportenService(
             sendToDialogporten(behov)
         }
     }
+
     suspend fun sendToDialogporten(behov: NarmestelederBehovEntity) {
         try {
             require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
@@ -79,13 +80,13 @@ class DialogportenService(
             }
             .forEach { behov ->
                 behov.dialogId?.let {
-                    setToCompletedInDialogporten(behov)
+                    setToCompletedInDialogportenIfFulfilled(behov)
                 }
             }
     }
 
-    suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
-        if (behov.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED) {
+    suspend fun setToCompletedInDialogportenIfFulfilled(behov: NarmestelederBehovEntity) {
+        if (behov.behovStatus != BehovStatus.BEHOV_FULFILLED) {
             logger.info("Skipping setting dialog to completed for behov ${behov.id} with status ${behov.behovStatus}")
             return
         }

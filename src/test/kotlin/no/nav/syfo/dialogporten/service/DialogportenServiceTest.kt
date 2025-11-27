@@ -25,7 +25,6 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.altinn.dialogporten.service.DialogportenService.Companion.DIALOG_TITLE_WITH_NAME
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -466,7 +465,7 @@ class DialogportenServiceTest : DescribeSpec({
                 coEvery { dialogportenClient.getDialogById(any()) } returns extendedDialg
 
                 // Act
-                dialogportenService.setToCompletedInDialogporten(behovEntity)
+                dialogportenService.setToCompletedInDialogportenIfFulfilled(behovEntity)
 
                 // Assert
                 coVerify(exactly = 1) { dialogportenClient.getDialogById(behovEntity.dialogId!!) }

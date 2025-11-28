@@ -54,7 +54,7 @@ class DialogportenService(
             }
             val dialog = behov.toDialog(personInfo?.name)
             dialog.attachments?.firstOrNull()?.let {
-                logger.info("Sending document ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
+                logger.info("Sending behov ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
             }
 
             val dialogId = dialogportenClient.createDialog(dialog)

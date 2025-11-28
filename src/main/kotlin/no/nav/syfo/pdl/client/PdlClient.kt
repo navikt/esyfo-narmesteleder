@@ -78,8 +78,7 @@ class PdlClient(
                 logger.error("Error when requesting person from PDL. Got errors: ${pdlReponse.errors}")
             }
             if (pdlReponse.data?.person == null || pdlReponse.data.identer == null) {
-                logger.error("Did not find person in PDL for fnr $fnr")
-                throw PdlResourceNotFoundException("Did not find person in PDL for fnr $fnr")
+                throw PdlResourceNotFoundException("Did not find person in PDL for given fnr")
             }
             return pdlReponse
         } catch (e: ResponseException) {

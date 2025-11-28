@@ -69,7 +69,7 @@ class DialogportenService(
                 )
             )
         } catch (ex: Exception) {
-            logger.error("Failed to send document ${behov.id} to dialogporten", ex)
+            logger.error("Failed to send behov ${behov.id} to dialogporten", ex)
         }
     }
 

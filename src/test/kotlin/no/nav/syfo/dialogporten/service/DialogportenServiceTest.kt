@@ -439,7 +439,7 @@ class DialogportenServiceTest : DescribeSpec({
         }
     }
 
-    describe("sendToDialogportenUsingCoroutine") {
+    describe("sendToDialogporten") {
         it("sendToDialogporten should call createDialog") {
             // Arrange
             val behovEntity = nlBehovEntity()
@@ -452,29 +452,26 @@ class DialogportenServiceTest : DescribeSpec({
         }
     }
 
-    describe("Functions using CoroutineScope") {
+    describe("setToCompletedInDialogportenIfFulfilled") {
+        it("should call sendEntityToDialogporten in a coroutine") {
+            // Arrange
+            val behovEntity = nlBehovEntity().copy(
+                behovStatus = BehovStatus.BEHOV_FULFILLED,
+                dialogId = UUID.randomUUID()
+            )
+            val extendedDialg = behovEntity.toExtendedDialog()
+            coEvery { dialogportenClient.getDialogById(any()) } returns extendedDialg
 
-        describe("setToCompletedInDialogportenUsingCoroutine") {
-            it("should call sendEntityToDialogporten in a coroutine") {
-                // Arrange
-                val behovEntity = nlBehovEntity().copy(
-                    behovStatus = BehovStatus.BEHOV_FULFILLED,
-                    dialogId = UUID.randomUUID()
+            // Act
+            dialogportenService.setToCompletedInDialogportenIfFulfilled(behovEntity)
+
+            // Assert
+            coVerify(exactly = 1) { dialogportenClient.getDialogById(behovEntity.dialogId!!) }
+            coVerify(exactly = 1) {
+                dialogportenClient.updateDialogStatus(
+                    behovEntity.dialogId!!, extendedDialg.revision,
+                    DialogStatus.Completed
                 )
-                val extendedDialg = behovEntity.toExtendedDialog()
-                coEvery { dialogportenClient.getDialogById(any()) } returns extendedDialg
-
-                // Act
-                dialogportenService.setToCompletedInDialogportenIfFulfilled(behovEntity)
-
-                // Assert
-                coVerify(exactly = 1) { dialogportenClient.getDialogById(behovEntity.dialogId!!) }
-                coVerify(exactly = 1) {
-                    dialogportenClient.updateDialogStatus(
-                        behovEntity.dialogId!!, extendedDialg.revision,
-                        DialogStatus.Completed
-                    )
-                }
             }
         }
     }

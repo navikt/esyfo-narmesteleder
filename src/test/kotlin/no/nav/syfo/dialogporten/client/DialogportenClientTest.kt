@@ -18,6 +18,8 @@ import io.mockk.mockk
 import io.mockk.spyk
 import java.util.*
 import kotlin.time.Duration
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.TestDispatcher
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.texas.AltinnTokenProvider
@@ -61,7 +63,7 @@ class DialogportenClientTest : DescribeSpec({
                 DialogportenClient(
                     baseUrl = "http://localhost:8080",
                     httpClient = httpClientWithAssertions,
-                    altinnTokenProvider = mockAltinnTokenProvider
+                    altinnTokenProvider = mockAltinnTokenProvider,
                 )
             )
             it("Should send a patch to Dialogporten with correct headers and body") {

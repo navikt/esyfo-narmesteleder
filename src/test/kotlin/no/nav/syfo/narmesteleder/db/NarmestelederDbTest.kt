@@ -23,8 +23,9 @@ class NarmestelederDbTest : DescribeSpec({
         TestDB.clearAllData()
     }
     suspend fun insertAndGetBehovWithId(entity: NarmestelederBehovEntity): NarmestelederBehovEntity? {
-        val id = db.insertNlBehov(entity)
-        return db.findBehovById(id)
+        val entity = db.insertNlBehov(entity)
+        requireNotNull(entity.id)
+        return db.findBehovById(entity.id)
     }
 
     describe("insertNlBehov") {
@@ -41,11 +42,11 @@ class NarmestelederDbTest : DescribeSpec({
             // Arrange
             val nlBehovEntity = nlBehovEntity()
             // Act
-            val id = db.insertNlBehov(nlBehovEntity)
+            val entity = db.insertNlBehov(nlBehovEntity)
             // Assert
-            id shouldNotBe null
+            entity.id shouldNotBe null
 
-            val retrievedEntity = db.findBehovById(id)
+            val retrievedEntity = db.findBehovById(entity.id!!)
             retrievedEntity?.shouldBeEqualUsingFields({
                 excludedProperties = setOf(
                     NarmestelederBehovEntity::id,
@@ -60,7 +61,7 @@ class NarmestelederDbTest : DescribeSpec({
         it("should update mutated fields") {
             // Arrange
             val nlBehovEntity = nlBehovEntity()
-            val id = db.insertNlBehov(nlBehovEntity)
+            val id = db.insertNlBehov(nlBehovEntity).id!!
             val retrievedEntity = db.findBehovById(id)
             val mutatedEntity = retrievedEntity!!.copy(
                 orgnummer = faker.numerify("#########"),

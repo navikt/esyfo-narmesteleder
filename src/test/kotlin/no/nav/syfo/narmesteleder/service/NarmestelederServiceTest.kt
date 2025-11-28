@@ -40,6 +40,7 @@ class NarmestelederServiceTest : DescribeSpec({
         aaregService = aaregService,
         pdlService = pdlService,
         dinesykmeldteService = dinesykmeldteService,
+        dialogportenService = mockk(relaxed = true)
     )
 
     val defaultManager = Manager(
@@ -64,7 +65,14 @@ class NarmestelederServiceTest : DescribeSpec({
             val captured: CapturingSlot<NarmestelederBehovEntity> = slot()
 
             coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns mapOf(underenhetOrg to hovedenhetOrg)
-            coEvery { nlDb.insertNlBehov(capture(captured)) } answers { UUID.randomUUID() }
+            coEvery { nlDb.insertNlBehov(capture(captured)) } answers {
+                NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+                    write,
+                    hovedenhetOrg,
+                    BehovStatus.BEHOV_CREATED
+                )
+                    .copy(id = UUID.randomUUID())
+            }
             coEvery {
                 dinesykmeldteService.getIsActiveSykmelding(
                     eq(write.employeeIdentificationNumber), eq(write.orgNumber)
@@ -296,11 +304,11 @@ class NarmestelederServiceTest : DescribeSpec({
             coVerify {
                 nlDb.updateNlBehov(match { updated ->
                     updated.id == id
-                            && updated.orgnummer == original.orgnummer
-                            && updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer
-                            && updated.sykmeldtFnr == original.sykmeldtFnr
-                            && updated.narmestelederFnr == defaultManager.nationalIdentificationNumber
-                            && updated.behovStatus == BehovStatus.BEHOV_FULFILLED
+                        && updated.orgnummer == original.orgnummer
+                        && updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer
+                        && updated.sykmeldtFnr == original.sykmeldtFnr
+                        && updated.narmestelederFnr == defaultManager.nationalIdentificationNumber
+                        && updated.behovStatus == BehovStatus.BEHOV_FULFILLED
                 })
             }
         }

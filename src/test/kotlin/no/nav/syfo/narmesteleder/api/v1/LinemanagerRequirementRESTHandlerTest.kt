@@ -45,9 +45,8 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
     test("Should update linemanager and keep other fields intact") {
         val handler = servicesWrapper.lnReqRESTHandlerSpyk
         val db = servicesWrapper.fakeDbSpyk
-        db.insertNlBehov(defaultRequirement)
+        val fixtureEntity = db.insertNlBehov(defaultRequirement)
 
-        val id = defaultRequirement.id!!
         val principal = SystemPrincipal(
             ident = "0192:${arbeidsforholdManagerAareg.first}",
             token = createMockToken(
@@ -58,7 +57,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         )
 
         handler.handleUpdatedRequirement(
-            requirementId = id,
+            requirementId = fixtureEntity.id!!,
             manager = defaultManager,
             principal = principal,
         )
@@ -67,12 +66,12 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
             servicesWrapper.narmestelederServiceSpyk.updateNlBehov(match {
                 it.nationalIdentificationNumber == defaultManager.nationalIdentificationNumber &&
                         it.nationalIdentificationNumber != defaultRequirement.narmestelederFnr
-            }, match { it == id }, match { it == BehovStatus.BEHOV_FULFILLED })
+            }, match { it == fixtureEntity.id }, match { it == BehovStatus.BEHOV_FULFILLED })
         }
         coVerify(exactly = 1) {
             servicesWrapper.fakeDbSpyk.updateNlBehov(match {
                 it.narmestelederFnr == defaultManager.nationalIdentificationNumber &&
-                        it.id == defaultRequirement.id &&
+                        it.id == fixtureEntity.id &&
                         it.behovStatus == BehovStatus.BEHOV_FULFILLED &&
                         it.orgnummer == defaultRequirement.orgnummer &&
                         it.hovedenhetOrgnummer == defaultRequirement.hovedenhetOrgnummer &&

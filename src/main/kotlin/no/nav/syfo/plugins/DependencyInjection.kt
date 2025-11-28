@@ -7,6 +7,14 @@ import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService
+import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
+import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
+import no.nav.syfo.altinn.pdp.client.FakePdpClient
+import no.nav.syfo.altinn.pdp.client.PdpClient
+import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -22,11 +30,6 @@ import no.nav.syfo.application.isProdEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
-import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
-import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -43,9 +46,6 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
-import no.nav.syfo.altinn.pdp.client.FakePdpClient
-import no.nav.syfo.altinn.pdp.client.PdpClient
-import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -99,7 +99,9 @@ private fun databaseModule() = module {
 private fun handlerModule() = module {
     single { NlBehovLeesahHandler(get()) }
     single { SendtSykmeldingHandler(get()) }
-    single { LinemanagerRequirementRESTHandler(get(), get(), get(), get()) }
+    single {
+        LinemanagerRequirementRESTHandler(get(), get(), get(), get())
+    }
 }
 
 private fun clientsModule() = module {
@@ -140,7 +142,7 @@ private fun clientsModule() = module {
         if (isLocalEnv()) FakeDialogportenClient() else DialogportenClient(
             httpClient = get(),
             baseUrl = env().clientProperties.altinn3BaseUrl,
-            altinnTokenProvider = get()
+            altinnTokenProvider = get(),
         )
     }
     single {
@@ -158,11 +160,12 @@ private fun servicesModule() = module {
     single { DinesykmeldteService(dinesykmeldteClient = get()) }
     single {
         NarmestelederService(
-            get(),
-            env().otherEnvironment.persistLeesahNlBehov,
-            get(),
-            get(),
-            get(),
+            nlDb = get(),
+            persistLeesahNlBehov = env().otherEnvironment.persistLeesahNlBehov,
+            aaregService = get(),
+            pdlService = get(),
+            dinesykmeldteService = get(),
+            dialogportenService = get(),
         )
     }
     single {
@@ -192,7 +195,7 @@ private fun servicesModule() = module {
             dialogportenClient = get(),
             narmestelederDb = get(),
             otherEnvironmentProperties = env().otherEnvironment,
-            pdlService = get()
+            pdlService = get(),
         )
     }
     single { SendDialogTask(get(), get()) }

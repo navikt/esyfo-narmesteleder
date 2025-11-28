@@ -13,7 +13,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import java.util.UUID
+import java.util.*
 import no.nav.syfo.altinn.dialogporten.domain.Content
 import no.nav.syfo.altinn.dialogporten.domain.ContentValue
 import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
@@ -33,9 +33,9 @@ interface IDialogportenClient {
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
 
 class DialogportenClient(
-    private val baseUrl: String,
+    baseUrl: String,
     private val httpClient: HttpClient,
-    private val altinnTokenProvider: AltinnTokenProvider
+    private val altinnTokenProvider: AltinnTokenProvider,
 ) : IDialogportenClient {
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
     private val logger = logger()

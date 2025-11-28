@@ -1,14 +1,18 @@
 package no.nav.syfo
 
+import io.mockk.mockk
 import io.mockk.spyk
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
+import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
+import no.nav.syfo.application.OtherEnvironmentProperties
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
@@ -28,7 +32,8 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeKafkaProducerSpyk = spyk(FakeSykemeldingNLKafkaProducer())
     val fakeAltinnTilgangerClientSpyk = spyk(FakeAltinnTilgangerClient())
     val fakePdpClientSpyk = spyk(FakePdpClient())
-
+    val fakeDialogportenClient = FakeDialogportenClient()
+    val dialogportenService = mockk<DialogportenService>(relaxed = true)
     val aaregServiceSpyk = spyk(AaregService(fakeAaregClientSpyk))
     val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk))
     val dinesykemeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykemeldteClientSpyk))
@@ -53,6 +58,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             aaregService = aaregServiceSpyk,
             pdlService = pdlServiceSpyk,
             dinesykmeldteService = dinesykemeldteServiceSpyk,
+            dialogportenService = dialogportenService
         )
     )
     val lnReqRESTHandlerSpyk = spyk(

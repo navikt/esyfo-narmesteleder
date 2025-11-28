@@ -10,7 +10,7 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 
 class NarmestelederGeneratedIDException(message: String) : RuntimeException(message)
 interface INarmestelederDb {
-    suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): UUID
+    suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
     suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity>
@@ -21,7 +21,7 @@ class NarmestelederDb(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) :
     INarmestelederDb {
-    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): UUID = withContext(dispatcher) {
+    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity = withContext(dispatcher) {
         return@withContext database.connection.use { connection ->
             connection
                 .prepareStatement(
@@ -37,7 +37,7 @@ class NarmestelederDb(
                                          mellomnavn,
                                          etternavn)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    RETURNING id;
+                    RETURNING *;
                     """.trimIndent()
                 ).use { preparedStatement ->
                     preparedStatement.setString(1, nlBehov.orgnummer)
@@ -52,7 +52,11 @@ class NarmestelederDb(
                     preparedStatement.setString(10, nlBehov.etternavn)
                     preparedStatement.execute()
 
-                    runCatching { preparedStatement.resultSet.getGeneratedUUID("id") }.getOrElse {
+                    runCatching {
+                        if (preparedStatement.resultSet.next()) {
+                            preparedStatement.resultSet.toNarmestelederBehovEntity()
+                        } else throw NarmestelederBehovEntityInsertException("Could not get the inserted document.")
+                    }.getOrElse {
                         connection.rollback()
                         throw it
                     }
@@ -130,6 +134,7 @@ class NarmestelederDb(
                         SELECT *
                         FROM nl_behov
                         WHERE behov_status = ?
+                        AND created < NOW() - INTERVAL '10 second'
                         ORDER BY created
                         LIMIT 100
                         """.trimIndent()
@@ -157,3 +162,4 @@ private fun ResultSet.getGeneratedUUID(idColumnLabel: String): UUID = this.use {
         "Could not get the generated id."
     )
 }
+class NarmestelederBehovEntityInsertException(message: String) : RuntimeException(message)

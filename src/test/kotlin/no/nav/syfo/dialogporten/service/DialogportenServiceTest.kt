@@ -25,7 +25,6 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.altinn.dialogporten.service.DialogportenService.Companion.DIALOG_TITLE_WITH_NAME
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -75,8 +74,7 @@ class DialogportenServiceTest : DescribeSpec({
         context("when there is one behov to send") {
             it("should send document to dialogporten and update status to DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION") {
                 // Arrange
-                val behovEntity = nlBehovEntity()
-                spyNarmestelederDb.insertNlBehov(behovEntity)
+                val behovEntity = spyNarmestelederDb.insertNlBehov(nlBehovEntity())
                 val dialogId = UUID.randomUUID()
                 val dialogSlot = slot<Dialog>()
 
@@ -91,8 +89,8 @@ class DialogportenServiceTest : DescribeSpec({
                 coVerify(exactly = 1) {
                     spyNarmestelederDb.updateNlBehov(match {
                         it.id == it.id &&
-                                it.dialogId == dialogId &&
-                                it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                            it.dialogId == dialogId &&
+                            it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                     })
                 }
                 coVerify(exactly = 1) { pdlService.getPersonFor(eq(behovEntity.sykmeldtFnr)) }
@@ -255,11 +253,12 @@ class DialogportenServiceTest : DescribeSpec({
         context("when there is one fulfilled behov") {
             it("should update dialogporten status to Completed and update status in database to DIALOGPORTEN_STATUS_SET_COMPLETED") {
                 // Arrange
-                val behovEntity = nlBehovEntity().copy(
-                    behovStatus = BehovStatus.BEHOV_FULFILLED,
-                    dialogId = UUID.randomUUID()
+                val behovEntity = spyNarmestelederDb.insertNlBehov(
+                    nlBehovEntity().copy(
+                        behovStatus = BehovStatus.BEHOV_FULFILLED,
+                        dialogId = UUID.randomUUID()
+                    )
                 )
-                spyNarmestelederDb.insertNlBehov(behovEntity)
                 coEvery { dialogportenClient.updateDialogStatus(any(), any(), any()) } just Runs
                 coEvery { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) } returns ExtendedDialog(
                     id = UUID.randomUUID(),
@@ -289,8 +288,8 @@ class DialogportenServiceTest : DescribeSpec({
                 coVerify(exactly = 1) {
                     spyNarmestelederDb.updateNlBehov(match {
                         it.id == behovEntity.id &&
-                                it.dialogId == behovEntity.dialogId &&
-                                it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                            it.dialogId == behovEntity.dialogId &&
+                            it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
                     })
                 }
             }
@@ -436,6 +435,43 @@ class DialogportenServiceTest : DescribeSpec({
                         successfulUpdateIds.contains(it.dialogId!!)
                     })
                 }
+            }
+        }
+    }
+
+    describe("sendToDialogporten") {
+        it("sendToDialogporten should call createDialog") {
+            // Arrange
+            val behovEntity = nlBehovEntity()
+
+            // Act
+            dialogportenService.sendToDialogporten(behovEntity)
+
+            // Assert
+            coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
+        }
+    }
+
+    describe("setToCompletedInDialogportenIfFulfilled") {
+        it("should call sendEntityToDialogporten in a coroutine") {
+            // Arrange
+            val behovEntity = nlBehovEntity().copy(
+                behovStatus = BehovStatus.BEHOV_FULFILLED,
+                dialogId = UUID.randomUUID()
+            )
+            val extendedDialg = behovEntity.toExtendedDialog()
+            coEvery { dialogportenClient.getDialogById(any()) } returns extendedDialg
+
+            // Act
+            dialogportenService.setToCompletedInDialogportenIfFulfilled(behovEntity)
+
+            // Assert
+            coVerify(exactly = 1) { dialogportenClient.getDialogById(behovEntity.dialogId!!) }
+            coVerify(exactly = 1) {
+                dialogportenClient.updateDialogStatus(
+                    behovEntity.dialogId!!, extendedDialg.revision,
+                    DialogStatus.Completed
+                )
             }
         }
     }

@@ -46,7 +46,6 @@ class LinemanagerRequirementRESTHandler(
                 NlResponseSource.getSourceFrom(principal, linemanager)
             )
             narmesteLederService.updateNlBehov(
-                manager = manager,
                 requirementId = requirementId,
                 behovStatus = BehovStatus.BEHOV_FULFILLED
             )

@@ -61,13 +61,11 @@ class NarmestelederService(
             ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
 
     suspend fun updateNlBehov(
-        manager: Manager,
         requirementId: UUID,
         behovStatus: BehovStatus
     ) {
         val narmestelederBehovEntity = findBehovEntityById(requirementId)
         val updatedBehov = narmestelederBehovEntity.copy(
-            narmestelederFnr = manager.nationalIdentificationNumber,
             behovStatus = behovStatus,
         )
         nlDb.updateNlBehov(updatedBehov)

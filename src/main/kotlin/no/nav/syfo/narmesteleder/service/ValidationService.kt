@@ -43,6 +43,7 @@ class ValidationService(
                 aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
                     .filter { it.key == linemanager.orgNumber }
             validataActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgNumber)
+            validateLinemanagerLastName(leder, linemanager)
             validateNarmesteLeder(
                 orgNumberInRequest = linemanager.orgNumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,

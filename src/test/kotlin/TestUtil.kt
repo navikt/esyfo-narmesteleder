@@ -38,10 +38,12 @@ import kotlinx.coroutines.withContext
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
+fun faker() = faker
 fun manager(): Manager = Manager(
     nationalIdentificationNumber = faker.numerify("###########"),
     mobile = faker.phoneNumber().cellPhone(),
     email = faker.internet().emailAddress(),
+    lastName = faker.name().lastName(),
 )
 
 fun linemanager(): Linemanager = Linemanager(

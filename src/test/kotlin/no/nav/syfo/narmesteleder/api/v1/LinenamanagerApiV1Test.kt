@@ -24,6 +24,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
 import java.util.*
+import net.datafaker.Faker
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -136,6 +137,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("should return 202 Accepted for valid payload") {
                 withTestApplication {
                     // Arrange
+                    val faker = Faker(Random(narmesteLederRelasjon.manager.nationalIdentificationNumber.toLong()))
+                    val manager = narmesteLederRelasjon.manager.copy(lastName = faker.name().lastName())
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.orgNumber}"
@@ -149,7 +152,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
-                        setBody(narmesteLederRelasjon)
+                        setBody(narmesteLederRelasjon.copy(manager = manager))
                         bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber))
                     }
 

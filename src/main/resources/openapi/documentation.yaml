@@ -253,10 +253,15 @@ components:
           format: email
           description: Email address of the manager.
           example: "leder@example.com"
+        lastName:
+          type: string
+          description: The last name of the manager.
+          example: "Jensen"
       required:
         - nationalIdentificationNumber
         - mobile
         - email
+        - lastName
       additionalProperties: false
     LinemanagerRequirementRead:
       type: object

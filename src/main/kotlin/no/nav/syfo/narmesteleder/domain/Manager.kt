@@ -7,6 +7,7 @@ data class Manager(
     val nationalIdentificationNumber: String,
     val mobile: String,
     val email: String,
+    val lastName: String,
 ) {
     fun toLeder(person: Person) = Leder(
         fnr = nationalIdentificationNumber,

@@ -14,8 +14,8 @@ import io.mockk.slot
 import io.mockk.spyk
 import java.util.*
 import nlBehovEntity
-import no.nav.syfo.application.OtherEnvironmentProperties
-import no.nav.syfo.application.UpdateDialogportenTaskProperties
+import no.nav.syfo.application.environment.OtherEnvironmentProperties
+import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
 import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.altinn.dialogporten.domain.Content
@@ -48,7 +48,8 @@ class DialogportenServiceTest : DescribeSpec({
             publicIngressUrl = publicIngressUrl,
             frontendBaseUrl = frontendBaseUrl,
             persistLeesahNlBehov = true,
-            updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal()
+            updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
+            isDialogporteBackgroundTaskEnabled = true
         ),
         pdlService = pdlService,
     )

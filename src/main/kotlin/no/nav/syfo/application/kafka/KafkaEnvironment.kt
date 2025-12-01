@@ -1,12 +1,13 @@
 package no.nav.syfo.application.kafka
 
-import no.nav.syfo.application.getEnvVar
+import no.nav.syfo.application.environment.getEnvVar
 
 data class KafkaEnvironment(
     val brokerUrl: String,
     val schemaRegistry: KafkaSchemaRegistryEnv,
     val sslConfig: KafkaSslEnv?,
     val commitOnAllErrors: Boolean = false,
+    val shouldConsumeTopics: Boolean,
 ) {
     companion object {
         fun createFromEnvVars(): KafkaEnvironment =
@@ -21,7 +22,8 @@ data class KafkaEnvironment(
                     truststoreLocation = getEnvVar("KAFKA_TRUSTSTORE_PATH"),
                     keystoreLocation = getEnvVar("KAFKA_KEYSTORE_PATH"),
                     credstorePassword = getEnvVar("KAFKA_CREDSTORE_PASSWORD"),
-                )
+                ),
+                shouldConsumeTopics = getEnvVar("CONSUME_KAFKA_TOPICS").toBoolean()
             )
 
         fun createForLocal(): KafkaEnvironment =
@@ -37,6 +39,7 @@ data class KafkaEnvironment(
                 // som feiler, og man ønsker å acknowledge den for å gå videre,
                 // kan denne settes til true her eller med en env `KAFKA_COMMIT_ON_ERROR=true`
                 commitOnAllErrors = getEnvVar("KAFKA_COMMIT_ON_ERROR", "false").toBoolean(),
+                shouldConsumeTopics = true,
             )
     }
 }

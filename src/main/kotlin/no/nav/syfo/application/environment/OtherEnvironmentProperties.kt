@@ -1,4 +1,4 @@
-package no.nav.syfo.application
+package no.nav.syfo.application.environment
 
 data class OtherEnvironmentProperties(
     val electorPath: String,
@@ -6,6 +6,7 @@ data class OtherEnvironmentProperties(
     val publicIngressUrl: String,
     val updateDialogportenTaskProperties: UpdateDialogportenTaskProperties,
     val persistLeesahNlBehov: Boolean,
+    val isDialogporteBackgroundTaskEnabled: Boolean,
 ) {
     companion object {
         fun createFromEnvVars() =
@@ -13,7 +14,8 @@ data class OtherEnvironmentProperties(
                 electorPath = getEnvVar("ELECTOR_PATH"),
                 frontendBaseUrl = getEnvVar("FRONTEND_BASE_URL"),
                 publicIngressUrl = getEnvVar("PUBLIC_INGRESS_URL"),
-                persistLeesahNlBehov = true,
+                persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
+                isDialogporteBackgroundTaskEnabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
                 updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars()
             )
 
@@ -23,7 +25,8 @@ data class OtherEnvironmentProperties(
                 frontendBaseUrl = "http://localhost:3000",
                 publicIngressUrl = "http://localhost:8080",
                 updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
-                persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
+                persistLeesahNlBehov = true,
+                isDialogporteBackgroundTaskEnabled = true,
             )
     }
 }

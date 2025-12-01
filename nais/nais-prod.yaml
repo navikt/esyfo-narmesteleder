@@ -7,10 +7,10 @@ metadata:
     texas.nais.io/enabled: "true"
 spec:
   ingresses:
-    - https://esyfo-narmesteleder.intern.dev.nav.no
-    - https://esyfo-narmesteleder.ekstern.dev.nav.no/api/v1/linemanager
-    - https://esyfo-narmesteleder.ekstern.dev.nav.no/swagger
-    - https://esyfo-narmesteleder.ekstern.dev.nav.no/openapi
+    - https://esyfo-narmesteleder.intern.nav.no
+    - https://esyfo-narmesteleder.ekstern.nav.no/api/v1/linemanager
+    - https://esyfo-narmesteleder.ekstern.nav.no/swagger
+    - https://esyfo-narmesteleder.ekstern.nav.no/openapi
   image: {{image}} #
   port: 8080
   liveness:
@@ -77,8 +77,6 @@ spec:
   accessPolicy:
     inbound:
       rules:
-        - application: tokenx-token-generator
-          namespace: nais
         - application: narmesteleder-frontend
     outbound:
       rules:
@@ -86,40 +84,40 @@ spec:
         - application: arbeidsgiver-altinn-tilganger
           namespace: fager
       external:
-        - host: aareg-services-q2.dev-fss-pub.nais.io
-        - host: pdl-api.dev-fss-pub.nais.io
-        - host: "platform.tt02.altinn.no"
+        - host: aareg-services.prod-fss-pub.nais.io
+        - host: pdl-api.prod-fss-pub.nais.io
+        - host: "platform.altinn.no"
   kafka:
     pool: nav-dev
   env:
     - name: PDL_BASE_URL
-      value: https://pdl-api.dev-fss-pub.nais.io/graphql
+      value: https://pdl-api.prod-fss-pub.nais.io/graphql
     - name: PDL_SCOPE
-      value: dev-fss.pdl.pdl-api
+      value: prod-fss.pdl.pdl-api
     - name: AAREG_BASE_URL
-      value: https://aareg-services-q2.dev-fss-pub.nais.io
+      value: https://aareg-services.prod-fss-pub.nais.io
     - name: AAREG_SCOPE
-      value: dev-fss.arbeidsforhold.aareg-services-nais
+      value: prod-fss.arbeidsforhold.aareg-services-nais
     - name: DIALOGPORTEN_SCOPE
       value: "digdir:dialogporten.serviceprovider"
     - name: ALTINN_3_BASE_URL
-      value: "https://platform.tt02.altinn.no"
+      value: "https://platform.altinn.no"
     - name: DINESYMELDTE_BASEURL
       value: http://dinesykmeldte-backend
     - name: DINESYMELDTE_SCOPE
-      value: dev-gcp.team-esyfo.dinesykmeldte-backend
+      value: prod-gcp.team-esyfo.dinesykmeldte-backend
     - name: ALTINN_TILGANGER_BASE_URL
       value: http://arbeidsgiver-altinn-tilganger.fager
     - name: FRONTEND_BASE_URL
-      value: https://www.ekstern.dev.nav.no/arbeidsgiver
+      value: https://www.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
-      value: https://esyfo-narmesteleder.ekstern.dev.nav.no
+      value: https://esyfo-narmesteleder.ekstern.nav.no
     - name: PERSIST_LEESAH_NL_BEHOV
-      value: "true"
+      value: "false"
     - name: CONSUME_KAFKA_TOPICS
-      value: "true"
+      value: "false"
     - name: DIALOGPORTEN_TASK_ENABLED
-      value: "true"
+      value: "false"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
   envFrom:

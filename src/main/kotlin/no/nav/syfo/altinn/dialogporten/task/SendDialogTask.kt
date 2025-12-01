@@ -4,7 +4,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import no.nav.syfo.application.isProdEnv
 import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.util.logger
@@ -18,7 +17,7 @@ class SendDialogTask(
     suspend fun runTask() = coroutineScope {
         try {
             while (isActive) {
-                if (leaderElection.isLeader() && !isProdEnv()) {
+                if (leaderElection.isLeader()) {
                     try {
                         logger.info("Starting task for sending documents to dialogporten")
                         dialogportenService.sendDocumentsToDialogporten()

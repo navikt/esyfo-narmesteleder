@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.service
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.shouldBe
 import io.mockk.CapturingSlot
 import io.mockk.clearMocks
@@ -274,13 +275,13 @@ class NarmestelederServiceTest : DescribeSpec({
             coEvery { nlDb.updateNlBehov(any()) } returns Unit
 
             // Act
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.BEHOV_FULFILLED)
+            service().updateNlBehov(original.id!!, BehovStatus.BEHOV_FULFILLED)
             coVerify(exactly = 1) {
                 nlDb.updateNlBehov(any())
             }
         }
 
-        it("retains everything except manager social security number and status") {
+        it("retains everything except status") {
             // Arrange
             val id = UUID.randomUUID()
             val original = NarmestelederBehovEntity(
@@ -294,23 +295,19 @@ class NarmestelederServiceTest : DescribeSpec({
                 avbruttNarmesteLederId = UUID.randomUUID(),
             )
 
+            val narmestelederBehovEntitSlot: CapturingSlot<NarmestelederBehovEntity> = slot()
             coEvery { nlDb.findBehovById(id) } returns original
-            coEvery { nlDb.updateNlBehov(any()) } returns Unit
+            coEvery { nlDb.updateNlBehov(capture(narmestelederBehovEntitSlot)) } returns Unit
 
             // Act
-            service().updateNlBehov(defaultManager, original.id!!, BehovStatus.BEHOV_FULFILLED)
+            service().updateNlBehov(original.id!!, BehovStatus.BEHOV_FULFILLED)
 
             // Assert
-            coVerify {
-                nlDb.updateNlBehov(match { updated ->
-                    updated.id == id
-                        && updated.orgnummer == original.orgnummer
-                        && updated.hovedenhetOrgnummer == original.hovedenhetOrgnummer
-                        && updated.sykmeldtFnr == original.sykmeldtFnr
-                        && updated.narmestelederFnr == defaultManager.nationalIdentificationNumber
-                        && updated.behovStatus == BehovStatus.BEHOV_FULFILLED
-                })
-            }
+            narmestelederBehovEntitSlot.captured.shouldBeEqualUsingFields({
+                excludedProperties = setOf(NarmestelederBehovEntity::behovStatus)
+                original
+            })
+            narmestelederBehovEntitSlot.captured.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
         }
 
         it("throws when behov not found") {
@@ -320,9 +317,7 @@ class NarmestelederServiceTest : DescribeSpec({
             coEvery { nlDb.findBehovById(id) } returns null
             // Act + Assert
             shouldThrow<LinemanagerRequirementNotFoundException> {
-                service().updateNlBehov(
-                    defaultManager, id, BehovStatus.BEHOV_FULFILLED
-                )
+                service().updateNlBehov(id, BehovStatus.BEHOV_FULFILLED)
             }
         }
     }

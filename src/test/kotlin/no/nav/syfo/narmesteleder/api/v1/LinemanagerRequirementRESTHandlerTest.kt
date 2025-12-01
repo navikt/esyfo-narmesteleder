@@ -2,8 +2,10 @@ package no.nav.syfo.narmesteleder.api.v1
 
 import createMockToken
 import io.kotest.core.spec.style.FunSpec
+import io.mockk.CapturingSlot
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
+import io.mockk.slot
 import java.util.*
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.FakesWrapper
@@ -13,6 +15,7 @@ import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
+import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 
 class LinemanagerRequirementRESTHandlerTest : FunSpec({
     val servicesWrapper = FakesWrapper(Dispatchers.Default)
@@ -42,7 +45,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         servicesWrapper.fakeDbSpyk.clear()
     }
 
-    test("Should update linemanager and keep other fields intact") {
+    test("Should update status on NlBehov through NarmestelederService") {
         val handler = servicesWrapper.lnReqRESTHandlerSpyk
         val db = servicesWrapper.fakeDbSpyk
         val fixtureEntity = db.insertNlBehov(defaultRequirement)
@@ -61,23 +64,41 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
             manager = defaultManager,
             principal = principal,
         )
-
         coVerify(exactly = 1) {
-            servicesWrapper.narmestelederServiceSpyk.updateNlBehov(match {
-                it.nationalIdentificationNumber == defaultManager.nationalIdentificationNumber &&
-                        it.nationalIdentificationNumber != defaultRequirement.narmestelederFnr
-            }, match { it == fixtureEntity.id }, match { it == BehovStatus.BEHOV_FULFILLED })
+            servicesWrapper.narmestelederServiceSpyk.updateNlBehov(
+                match { it == fixtureEntity.id },
+                match { it == BehovStatus.BEHOV_FULFILLED })
         }
+    }
+
+    test("Should distribute new linemanager using NarmestelederKafkaService") {
+        val handler = servicesWrapper.lnReqRESTHandlerSpyk
+        val db = servicesWrapper.fakeDbSpyk
+        val fixtureEntity = db.insertNlBehov(defaultRequirement)
+
+        val principal = SystemPrincipal(
+            ident = "0192:${arbeidsforholdManagerAareg.first}",
+            token = createMockToken(
+                ident = "0192:${arbeidsforholdManagerAareg.first}",
+            ),
+            systemOwner = "0192:systemOwner",
+            systemUserId = "systemUserId",
+        )
+
+        handler.handleUpdatedRequirement(
+            requirementId = fixtureEntity.id!!,
+            manager = defaultManager,
+            principal = principal,
+        )
         coVerify(exactly = 1) {
-            servicesWrapper.fakeDbSpyk.updateNlBehov(match {
-                it.narmestelederFnr == defaultManager.nationalIdentificationNumber &&
-                        it.id == fixtureEntity.id &&
-                        it.behovStatus == BehovStatus.BEHOV_FULFILLED &&
-                        it.orgnummer == defaultRequirement.orgnummer &&
-                        it.hovedenhetOrgnummer == defaultRequirement.hovedenhetOrgnummer &&
-                        it.sykmeldtFnr == defaultRequirement.sykmeldtFnr &&
-                        it.behovReason == defaultRequirement.behovReason
-            })
+            servicesWrapper.narmestelederKafkaServiceSpyk.sendNarmesteLederRelasjon(
+                match {
+                    it.employeeIdentificationNumber == fixtureEntity.sykmeldtFnr &&
+                    it.orgNumber == fixtureEntity.orgnummer
+                },
+                any(),
+                match { it == NlResponseSource.LPS }
+            )
         }
     }
 })

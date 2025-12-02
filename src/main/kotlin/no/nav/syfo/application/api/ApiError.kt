@@ -3,7 +3,6 @@ package no.nav.syfo.application.api
 import io.ktor.http.HttpStatusCode
 import java.time.Instant
 
-
 open class ApiError(
     val status: HttpStatusCode,
     val type: ErrorType,

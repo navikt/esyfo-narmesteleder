@@ -1,8 +1,10 @@
 package no.nav.syfo.narmesteleder.service
 
 import DefaultSystemPrincipal
+import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.spyk
@@ -22,6 +24,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
+import prepareGetPersonResponse
 
 class ValidationServiceTest : DescribeSpec({
     val altinnTilgangerClient = FakeAltinnTilgangerClient()
@@ -47,6 +50,70 @@ class ValidationServiceTest : DescribeSpec({
     }
 
     describe("validateNarmesteleder") {
+        it("should not thrown when all validation passes and principal is BrukerPrincipal") {
+            // Arrange
+            val fnr = altinnTilgangerClient.usersWithAccess.first().first
+            val principal = UserPrincipal(fnr, "token")
+            val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
+
+            aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.manager.nationalIdentificationNumber] =
+                listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
+            aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.employeeIdentificationNumber] =
+                listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
+
+            pdlService.prepareGetPersonResponse(narmestelederRelasjonerWrite.manager)
+            altinnTilgangerClient.usersWithAccess.clear()
+            altinnTilgangerClient.usersWithAccess.add(principal.ident to narmestelederRelasjonerWrite.orgNumber)
+            // Act
+            shouldNotThrow<Exception> {
+                service.validateLinemanager(narmestelederRelasjonerWrite, principal)
+            }
+            // Assert
+            coVerify(exactly = 1) {
+                altinnTilgangerService.validateTilgangToOrganization(
+                    eq(principal),
+                    eq(narmestelederRelasjonerWrite.orgNumber)
+                )
+                pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
+                pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
+            }
+            coVerify(exactly = 0) {
+                pdpService.hasAccessToResource(any(), any(), any())
+            }
+}
+
+        it("should throw BadRequestException when lastName of manager does mot match value in PDL") {
+            // Arrange
+            val fnr = altinnTilgangerClient.usersWithAccess.first().first
+            val principal = UserPrincipal(fnr, "token")
+            val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
+
+            altinnTilgangerClient.usersWithAccess.clear()
+            altinnTilgangerClient.usersWithAccess.add(principal.ident to narmestelederRelasjonerWrite.orgNumber)
+            // Act
+            val exception = shouldThrow<ApiErrorException.BadRequestException> {
+                service.validateLinemanager(narmestelederRelasjonerWrite, principal)
+            }
+            // Assert
+            coVerify(exactly = 1) {
+                altinnTilgangerService.validateTilgangToOrganization(
+                    eq(principal),
+                    eq(narmestelederRelasjonerWrite.orgNumber)
+                )
+                pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
+                pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
+            }
+            coVerify(exactly = 0) {
+                pdpService.hasAccessToResource(any(), any(), any())
+            }
+
+            exception.message shouldBe "Last name for linemanager does not correspond with registered value for the given national identification number"
+        }
+
         it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
             // Arrange
             val fnr = altinnTilgangerClient.usersWithAccess.first().first

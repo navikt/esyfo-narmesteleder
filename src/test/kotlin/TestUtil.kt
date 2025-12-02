@@ -35,6 +35,9 @@ import no.nav.syfo.texas.client.TexasResponse
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import kotlinx.coroutines.withContext
+import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.Person
+import no.nav.syfo.pdl.client.Navn
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
@@ -149,6 +152,20 @@ fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, c
             else -> error("Unhandled request ${request.url.fullPath}")
         }
     }
+
+fun PdlService.prepareGetPersonResponse(manager: Manager,) {
+    val name = faker().name()
+    coEvery {
+        getPersonFor(manager.nationalIdentificationNumber)
+    } returns Person(
+        name = Navn(
+            fornavn = name.firstName(),
+            mellomnavn = "",
+            etternavn = manager.lastName,
+        ),
+        nationalIdentificationNumber = manager.nationalIdentificationNumber,
+    )
+}
 
 fun TexasHttpClient.defaultMocks(
     pid: String? = null,

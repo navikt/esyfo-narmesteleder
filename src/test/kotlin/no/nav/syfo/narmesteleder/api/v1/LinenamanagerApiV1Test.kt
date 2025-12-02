@@ -20,11 +20,11 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import io.mockk.Called
 import io.mockk.clearAllMocks
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
 import java.util.*
-import net.datafaker.Faker
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -50,19 +50,22 @@ import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.FakePdlClient
+import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
 class LinenamanagerApiV1Test : DescribeSpec({
-    val pdlService = PdlService(FakePdlClient())
+    val pdlService = spyk(PdlService(FakePdlClient()))
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = linemanager()
     val fakeAaregClient = FakeAaregClient()
@@ -103,6 +106,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
         fakeAaregClient.arbeidsForholdForIdent.clear()
         fakeRepo.clear()
     }
+
     fun withTestApplication(
         fn: suspend ApplicationTestBuilder.() -> Unit
     ) {
@@ -137,8 +141,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("should return 202 Accepted for valid payload") {
                 withTestApplication {
                     // Arrange
-                    val faker = Faker(Random(narmesteLederRelasjon.manager.nationalIdentificationNumber.toLong()))
-                    val manager = narmesteLederRelasjon.manager.copy(lastName = faker.name().lastName())
+                    pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.orgNumber}"
@@ -152,7 +155,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     // Act
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
-                        setBody(narmesteLederRelasjon.copy(manager = manager))
+                        setBody(narmesteLederRelasjon)
                         bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber))
                     }
 
@@ -252,6 +255,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("should return 202 Accepted for valid payload") {
                 withTestApplication {
                     // Arrange
+                    pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                     val callerPid = "11223344556"
                     texasHttpClientMock.defaultMocks(
                         acr = "Level4",
@@ -509,6 +513,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                             .nationalIdentificationNumber
                             .reversed()
                     )
+                    pdlService.prepareGetPersonResponse(manager)
                     fakeAaregClient.arbeidsForholdForIdent[manager.nationalIdentificationNumber] =
                         listOf(orgnummer to orgnummer)
 
@@ -570,6 +575,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
 
             it("PUT /requirement/{id} 403 when principal lacks org access") {
                 withTestApplication {
+                    pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                     val requirementId = seedLinemanagerRequirement()
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org

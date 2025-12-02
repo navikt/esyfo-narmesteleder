@@ -2,14 +2,20 @@ package no.nav.syfo.narmesteleder.util
 
 import addMaskinportenOrgPrefix
 import createRandomValidOrgNumbers
+import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
+import linemanager
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.service.ValidateNarmesteLederException
+import no.nav.syfo.narmesteleder.service.validateLinemanagerLastName
 import no.nav.syfo.narmesteleder.service.validateNarmesteLeder
 import no.nav.syfo.narmesteleder.service.validateNarmesteLederAvkreft
+import no.nav.syfo.pdl.Person
+import no.nav.syfo.pdl.client.Navn
 
 class NarmesteLederValidatorTest : DescribeSpec({
     lateinit var randomOrgNumbers: List<String>
@@ -194,6 +200,43 @@ class NarmesteLederValidatorTest : DescribeSpec({
                         orgNumberInRequest = nlOrgNumbers.keys.first(),
                     )
                 }
+            }
+        }
+    }
+
+    describe("validateLinemanagerLastName") {
+        it("Should throw BadRequestException if lastname of PdlPerson and manager does not match") {
+            val linemanager = linemanager()
+            val person = Person(
+                name = Navn(
+                    fornavn = "Firsname",
+                    mellomnavn = null,
+                    etternavn = linemanager.manager.lastName.reversed(),
+                ),
+                nationalIdentificationNumber = linemanager.manager.nationalIdentificationNumber,
+            )
+            val exception = shouldThrow<ApiErrorException.BadRequestException> {
+                validateLinemanagerLastName(
+                    person, linemanager
+                )
+            }
+            exception.message shouldBe "Last name for linemanager does not correspond with registered value for the given national identification number"
+        }
+
+        it("Should not throw BadRequestException if lastname of PdlPerson and manager matches case insensitively") {
+            val linemanager = linemanager()
+            val person = Person(
+                name = Navn(
+                    fornavn = "Firsname",
+                    mellomnavn = null,
+                    etternavn = linemanager.manager.lastName.lowercase(),
+                ),
+                nationalIdentificationNumber = linemanager.manager.nationalIdentificationNumber,
+            )
+            shouldNotThrow<ApiErrorException.BadRequestException> {
+                validateLinemanagerLastName(
+                    person, linemanager
+                )
             }
         }
     }

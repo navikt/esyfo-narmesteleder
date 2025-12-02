@@ -1,14 +1,11 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import createMockToken
-import faker
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
-import io.mockk.coEvery
 import io.mockk.coVerify
 import java.util.*
 import kotlinx.coroutines.Dispatchers
-import net.datafaker.providers.base.Name
 import no.nav.syfo.FakesWrapper
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.SystemPrincipal
@@ -17,8 +14,7 @@ import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
-import no.nav.syfo.pdl.Person
-import no.nav.syfo.pdl.client.Navn
+import prepareGetPersonResponse
 
 class LinemanagerRequirementRESTHandlerTest : FunSpec({
     val servicesWrapper = FakesWrapper(Dispatchers.Default)
@@ -49,21 +45,8 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         servicesWrapper.fakeDbSpyk.clear()
     }
 
-    fun prepareGetPersonResponse(name: Name) {
-        coEvery {
-            servicesWrapper.pdlServiceSpyk.getPersonFor(eq(defaultManager.nationalIdentificationNumber))
-        } returns Person(
-            name = Navn(
-                fornavn = name.firstName(),
-                mellomnavn = "",
-                etternavn = defaultManager.lastName,
-            ),
-            nationalIdentificationNumber = defaultManager.nationalIdentificationNumber,
-        )
-    }
-
     test("Should update status on NlBehov through NarmestelederService") {
-        prepareGetPersonResponse(faker.name())
+        servicesWrapper.pdlServiceSpyk.prepareGetPersonResponse(defaultManager)
         val handler = servicesWrapper.lnReqRESTHandlerSpyk
         val db = servicesWrapper.fakeDbSpyk
         val fixtureEntity = db.insertNlBehov(defaultRequirement)
@@ -90,7 +73,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
     }
 
     test("Should distribute new linemanager using NarmestelederKafkaService") {
-        prepareGetPersonResponse(faker.name())
+        servicesWrapper.pdlServiceSpyk.prepareGetPersonResponse(defaultManager)
         val handler = servicesWrapper.lnReqRESTHandlerSpyk
         val db = servicesWrapper.fakeDbSpyk
         val fixtureEntity = db.insertNlBehov(defaultRequirement)

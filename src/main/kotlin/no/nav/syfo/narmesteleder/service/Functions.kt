@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.Linemanager
@@ -21,7 +22,8 @@ fun validateLinemanagerLastName(
     linemanager: Linemanager,
 ) {
     if (managerPdlPerson.name.etternavn.uppercase() != linemanager.manager.lastName.uppercase()) throw ApiErrorException.BadRequestException(
-        "Last name for linemanager does not correspond with registerd value for the given national identification number",
+        "Last name for linemanager does not correspond with registered value for the given national identification number",
+        type = ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH
     )
 }
 

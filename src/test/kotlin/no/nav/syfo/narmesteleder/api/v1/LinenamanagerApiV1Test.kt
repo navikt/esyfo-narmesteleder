@@ -20,7 +20,6 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import io.mockk.Called
 import io.mockk.clearAllMocks
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
@@ -40,26 +39,23 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.api.v1.REVOKE_PATH
-import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.FakePdlClient
-import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -488,7 +484,8 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("GET /requirement/{id} 403 when Maskinporten principal org mismatch") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
-                        consumer = DefaultOrganization.copy(ID = "0192:999999999"),
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
+//                        consumer = DefaultOrganization.copy(ID = "0192:999999999"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedLinemanagerRequirement()
@@ -496,7 +493,9 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("999999999"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS
+//                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+//                    response.body<String>() shouldBe "fdafa"
                 }
             }
 
@@ -589,7 +588,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("000000000"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS
                 }
             }
         }

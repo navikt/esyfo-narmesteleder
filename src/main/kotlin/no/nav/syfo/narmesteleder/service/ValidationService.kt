@@ -6,6 +6,7 @@ import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
@@ -59,13 +60,14 @@ class ValidationService(
             throw ApiErrorException.BadRequestException(
                 "Error validating employment status for the given organization number"
             )
-        } catch (smExc: ValidateActiveSykmeldingException) {
+        } catch (e: ValidateActiveSykmeldingException) {
             logger.error(
                 "No active sick leave in organization number ${linemanager.orgNumber}",
-                smExc.message
+                e.message
             )
             throw ApiErrorException.BadRequestException(
-                smExc.message ?: "No active sick leave found for the given organization number"
+                errorMessage = e.message ?: "No active sick leave found for the given organization number",
+                type = ErrorType.BAD_REQUEST_NO_ACTIVE_SICK_LEAVE
             )
         }
     }
@@ -88,12 +90,14 @@ class ValidationService(
                     OPPGI_NARMESTELEDER_RESOURCE
                 )
                 if (hasAccess) {
-                    nlrequire(
-                        sykemeldtOrgs.contains(principal.getSystemUserOrgNumber())
-                    ) { "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave" }
+                    if (!sykemeldtOrgs.contains(principal.getSystemUserOrgNumber())) throw ApiErrorException.ForbiddenException(
+                        errorMessage = "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave",
+                        type = ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS
+                    )
                 } else {
                     throw ApiErrorException.ForbiddenException(
-                        "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource"
+                        errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+                        type = ErrorType.FORBIDDEN_SYSTEM_LACKS_ALITINN_RESOURCE_ACCESS
                     )
                 }
             }
@@ -134,6 +138,7 @@ class ValidationService(
                 principal,
                 orgNumber
             )
+
             is SystemPrincipal -> {
                 val hasAccess = pdpService.hasAccessToResource(
                     System(principal.systemUserId),

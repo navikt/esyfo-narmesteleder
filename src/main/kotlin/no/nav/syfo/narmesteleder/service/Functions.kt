@@ -13,8 +13,8 @@ fun nlrequire(value: Boolean, lazyMessage: () -> String) {
     if (!value) throw ValidateNarmesteLederException(lazyMessage())
 }
 
-private fun nlrequireOrForbidden(value: Boolean, lazyMessage: () -> String) {
-    if (!value) throw ApiErrorException.ForbiddenException(lazyMessage())
+private fun nlrequireOrForbidden(value: Boolean, type: ErrorType, lazyMessage: () -> String) {
+    if (!value) throw ApiErrorException.ForbiddenException(lazyMessage(), type = type)
 }
 
 fun validateLinemanagerLastName(
@@ -37,12 +37,14 @@ fun validateNarmesteLeder(
     nlrequire(sykemeldtOrgNumbers.keys.contains(orgNumberInRequest)) { "Ingen arbeidsforhold for sykemeldt for angitt virksomhet" }
     val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     val allNlOrgNumbers = narmesteLederOrgNumbers.map { listOf(it.key, it.value) }.flatten()
+
     nlrequire(
         allNlOrgNumbers.any { it in allSykmeldtOrgNumbers }
     ) { "Næremeste leder mangler arbeidsforhold i samme organisasjonsstruktur som sykmeldt" }
     systemPrincipal?.let {
         nlrequireOrForbidden(
-            allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
+            type = ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS,
+            value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
         )
         { "Systembruker har ikke tilgang til virksomhet" }
     }
@@ -53,8 +55,13 @@ fun validateNarmesteLederAvkreft(
     orgNumberInRequest: String,
     systemPrincipal: SystemPrincipal?,
 ) {
-    val validMaskinportenOrgnumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     nlrequire(sykemeldtOrgNumbers.isNotEmpty()) { "Ingen arbeidsforhold for sykemeldt" }
     nlrequire(sykemeldtOrgNumbers.contains(orgNumberInRequest)) { "Organisasjonsnummer i HTTP request body samsvarer ikke med sykemeldtes organisasjoner" }
-    systemPrincipal?.let { nlrequireOrForbidden(validMaskinportenOrgnumbers.contains(systemPrincipal.getSystemUserOrgNumber())) { "Innsender samsvarer ikke virksomhet i request" } }
+    val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
+    systemPrincipal?.let {
+        nlrequireOrForbidden(
+            type = ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS,
+            value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
+        ) { "Innsender samsvarer ikke virksomhet i request" }
+    }
 }

@@ -23,7 +23,7 @@ fun validateLinemanagerLastName(
 ) {
     if (managerPdlPerson.name.etternavn.uppercase() != linemanager.manager.lastName.uppercase()) throw ApiErrorException.BadRequestException(
         "Last name for linemanager does not correspond with registered value for the given national identification number",
-        type = ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH
+        type = ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH_LINEMANAGER
     )
 }
 
@@ -43,7 +43,7 @@ fun validateNarmesteLeder(
     ) { "Næremeste leder mangler arbeidsforhold i samme organisasjonsstruktur som sykmeldt" }
     systemPrincipal?.let {
         nlrequireOrForbidden(
-            type = ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS,
+            type = ErrorType.FORBIDDEN_LACKS_ORG_ACCESS,
             value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
         )
         { "Systembruker har ikke tilgang til virksomhet" }
@@ -60,7 +60,7 @@ fun validateNarmesteLederAvkreft(
     val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     systemPrincipal?.let {
         nlrequireOrForbidden(
-            type = ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS,
+            type = ErrorType.FORBIDDEN_LACKS_ORG_ACCESS,
             value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
         ) { "Innsender samsvarer ikke virksomhet i request" }
     }

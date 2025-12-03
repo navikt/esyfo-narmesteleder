@@ -92,12 +92,12 @@ class ValidationService(
                 if (hasAccess) {
                     if (!sykemeldtOrgs.contains(principal.getSystemUserOrgNumber())) throw ApiErrorException.ForbiddenException(
                         errorMessage = "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave",
-                        type = ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS
+                        type = ErrorType.FORBIDDEN_LACKS_ORG_ACCESS
                     )
                 } else {
                     throw ApiErrorException.ForbiddenException(
                         errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                        type = ErrorType.FORBIDDEN_SYSTEM_LACKS_ALITINN_RESOURCE_ACCESS
+                        type = ErrorType.FORBIDDEN_LACKS_ALITINN_RESOURCE_ACCESS
                     )
                 }
             }

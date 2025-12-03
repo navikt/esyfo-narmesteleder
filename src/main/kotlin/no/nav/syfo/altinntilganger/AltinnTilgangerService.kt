@@ -2,6 +2,7 @@ package no.nav.syfo.altinntilganger
 
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
@@ -25,9 +26,15 @@ class AltinnTilgangerService(
     ) {
         altinnTilgang?.let {
             if (!it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)) {
-                throw ApiErrorException.ForbiddenException("User lacks access to required altinn3 resource for organization: $orgnummer")
+                throw ApiErrorException.ForbiddenException(
+                    errorMessage = "User lacks access to required altinn3 resource for organization: $orgnummer",
+                    type = ErrorType.FORBIDDEN_LACKS_ALITINN_RESOURCE_ACCESS
+                )
             }
-        } ?: throw ApiErrorException.ForbiddenException("User lacks access to organization: $orgnummer")
+        } ?: throw ApiErrorException.ForbiddenException(
+            errorMessage = "User lacks access to organization: $orgnummer",
+            type = ErrorType.FORBIDDEN_LACKS_ORG_ACCESS
+        )
     }
 
     suspend fun getAltinnTilgangForOrgnr(

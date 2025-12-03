@@ -493,7 +493,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("999999999"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS
+                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_LACKS_ORG_ACCESS
 //                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
 //                    response.body<String>() shouldBe "fdafa"
                 }
@@ -588,7 +588,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("000000000"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_SYSTEM_LACKS_ORG_ACCESS
+                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_LACKS_ORG_ACCESS
                 }
             }
         }

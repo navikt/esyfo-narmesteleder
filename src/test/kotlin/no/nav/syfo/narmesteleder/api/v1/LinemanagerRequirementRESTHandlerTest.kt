@@ -2,10 +2,8 @@ package no.nav.syfo.narmesteleder.api.v1
 
 import createMockToken
 import io.kotest.core.spec.style.FunSpec
-import io.mockk.CapturingSlot
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
-import io.mockk.slot
 import java.util.*
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.FakesWrapper

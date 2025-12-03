@@ -25,9 +25,9 @@ spec:
     periodSeconds: 5
     timeout: 5
   replicas:
-    max: 2
-    min: 1
-    cpuThresholdPercentage: 90
+    max: 5
+    min: 2
+    cpuThresholdPercentage: 60
   prometheus:
     enabled: true
     path: /internal/metrics
@@ -47,7 +47,7 @@ spec:
   gcp:
     sqlInstances:
       - type: POSTGRES_17
-        tier: db-f1-micro
+        tier: db-custom-1-5120
         name: esyfo-narmesteleder-instance
         collation: nb_NO.UTF8
         databases:

@@ -214,6 +214,10 @@ components:
           type: string
           description: "A Norwegian national identity number or D number."
           example: "12345678901"
+        lastName:
+          type: string
+          description: The last name of the employee.
+          example: "Hansen"
         orgNumber:
           type: string
           description: Organisation number where the employee works

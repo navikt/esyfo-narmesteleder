@@ -60,7 +60,10 @@ class ValidationServiceTest : DescribeSpec({
                 listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
             aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.employeeIdentificationNumber] =
                 listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
-
+            pdlService.prepareGetPersonResponse(
+                narmestelederRelasjonerWrite.employeeIdentificationNumber,
+                narmestelederRelasjonerWrite.lastName
+            )
             pdlService.prepareGetPersonResponse(narmestelederRelasjonerWrite.manager)
             altinnTilgangerClient.usersWithAccess.clear()
             altinnTilgangerClient.usersWithAccess.add(principal.ident to narmestelederRelasjonerWrite.orgNumber)
@@ -82,7 +85,7 @@ class ValidationServiceTest : DescribeSpec({
             coVerify(exactly = 0) {
                 pdpService.hasAccessToResource(any(), any(), any())
             }
-}
+        }
 
         it("should throw BadRequestException when lastName of manager does mot match value in PDL") {
             // Arrange

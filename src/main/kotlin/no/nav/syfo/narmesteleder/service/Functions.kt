@@ -27,6 +27,15 @@ fun validateLinemanagerLastName(
     )
 }
 
+fun validateEmployeeLastName(
+    managerPdlPerson: Person,
+    linemanager: Linemanager,
+) {
+    if (managerPdlPerson.name.etternavn.uppercase() != linemanager.lastName.uppercase()) throw ApiErrorException.BadRequestException(
+        "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
+        type = ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH_EMPLOYEE
+    )
+}
 fun validateNarmesteLeder(
     sykemeldtOrgNumbers: Map<String, String>,
     narmesteLederOrgNumbers: Map<String, String>,

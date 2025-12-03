@@ -138,6 +138,10 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 withTestApplication {
                     // Arrange
                     pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
+                    pdlService.prepareGetPersonResponse(
+                        narmesteLederRelasjon.employeeIdentificationNumber,
+                        narmesteLederRelasjon.lastName
+                    )
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.orgNumber}"
@@ -252,6 +256,10 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 withTestApplication {
                     // Arrange
                     pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
+                    pdlService.prepareGetPersonResponse(
+                        narmesteLederRelasjon.employeeIdentificationNumber,
+                        narmesteLederRelasjon.lastName
+                    )
                     val callerPid = "11223344556"
                     texasHttpClientMock.defaultMocks(
                         acr = "Level4",

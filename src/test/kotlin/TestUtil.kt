@@ -53,6 +53,7 @@ fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
     employeeIdentificationNumber = faker.numerify("###########"),
     orgNumber = faker.numerify("#########"),
+    lastName = faker.name().lastName(),
 )
 
 fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
@@ -153,17 +154,21 @@ fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, c
         }
     }
 
+
 fun PdlService.prepareGetPersonResponse(manager: Manager,) {
+    prepareGetPersonResponse(manager.nationalIdentificationNumber, manager.lastName)
+}
+fun PdlService.prepareGetPersonResponse(fnr: String, lastName: String) {
     val name = faker().name()
     coEvery {
-        getPersonFor(manager.nationalIdentificationNumber)
+        getPersonFor(fnr)
     } returns Person(
         name = Navn(
             fornavn = name.firstName(),
             mellomnavn = "",
-            etternavn = manager.lastName,
+            etternavn = lastName,
         ),
-        nationalIdentificationNumber = manager.nationalIdentificationNumber,
+        nationalIdentificationNumber = fnr,
     )
 }
 

@@ -118,7 +118,8 @@ class NarmestelederService(
         val behovEntity = findBehovEntityById(id)
         return Employee(
             nationalIdentificationNumber = behovEntity.sykmeldtFnr,
-            orgNumber = behovEntity.orgnummer
+            orgNumber = behovEntity.orgnummer,
+            lastName = behovEntity.etternavn ?: "",
         )
     }
 }

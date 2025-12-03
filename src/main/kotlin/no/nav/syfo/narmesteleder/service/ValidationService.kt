@@ -34,6 +34,7 @@ class ValidationService(
     suspend fun validateLinemanager(
         linemanager: Linemanager,
         principal: Principal,
+        validateEmployeeLastName: Boolean = true,
     ): LinemanagerActors {
         try {
             validateAltinnTilgang(principal, linemanager.orgNumber)
@@ -45,6 +46,7 @@ class ValidationService(
                     .filter { it.key == linemanager.orgNumber }
             validataActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgNumber)
             validateLinemanagerLastName(leder, linemanager)
+            if (validateEmployeeLastName) validateEmployeeLastName(sykmeldt, linemanager)
             validateNarmesteLeder(
                 orgNumberInRequest = linemanager.orgNumber,
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,

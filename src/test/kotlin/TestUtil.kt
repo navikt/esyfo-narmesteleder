@@ -59,6 +59,7 @@ fun linemanager(): Linemanager = Linemanager(
 fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
     employeeIdentificationNumber = faker.numerify("###########"),
     orgNumber = faker.numerify("#########"),
+    lastName = faker.name().lastName(),
 )
 
 fun nlBehovEntity() = NarmestelederBehovEntity(

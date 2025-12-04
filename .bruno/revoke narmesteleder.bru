@@ -1,11 +1,11 @@
 meta {
-  name: add narmesteleder
+  name: revoke narmesteleder
   type: http
-  seq: 4
+  seq: 5
 }
 
 post {
-  url: {{baseUrlEkstern}}/api/v1/linemanager
+  url: {{baseUrlEkstern}}/api/v1/linemanager/revoke
   body: json
   auth: inherit
 }
@@ -14,13 +14,7 @@ body:json {
   {
     "employeeIdentificationNumber": "15436803416",
     "orgNumber": "215649202",
-    "lastName": "Boyle",
-    "manager": {
-      "nationalIdentificationNumber": "13468329780",
-      "mobile": "12345678",
-      "email": "e@post.no",
-      "lastName": "Hauck"
-    }
+    "lastName": "Hauck"
   }
 }
 

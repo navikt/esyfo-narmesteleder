@@ -4,6 +4,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.pdl.Person
 
 class ValidateNarmesteLederException(message: String) : RuntimeException(message)
@@ -32,6 +33,15 @@ fun validateEmployeeLastName(
     linemanager: Linemanager,
 ) {
     if (managerPdlPerson.name.etternavn.uppercase() != linemanager.lastName.uppercase()) throw ApiErrorException.BadRequestException(
+        "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
+        type = ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH_EMPLOYEE
+    )
+}
+fun validateEmployeeLastName(
+    managerPdlPerson: Person,
+    linemanagerRevoke: LinemanagerRevoke,
+) {
+    if (managerPdlPerson.name.etternavn.uppercase() != linemanagerRevoke.lastName.uppercase()) throw ApiErrorException.BadRequestException(
         "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
         type = ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH_EMPLOYEE
     )

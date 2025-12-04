@@ -120,6 +120,8 @@ class ValidationService(
                 sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
                 systemPrincipal = principal as? SystemPrincipal,
             )
+            validateEmployeeLastName(sykmeldt, linemanagerRevoke)
+
             return sykmeldt
 
         } catch (e: ValidateNarmesteLederException) {

@@ -238,6 +238,10 @@ components:
           type: string
           description: Organisation number where the employee works
           example: "123456789"
+        lastName:
+          type: string
+          description: The last name of the employee.
+          example: "Hansen"
       description: Linemanager revoke payload.
       additionalProperties: true
     Manager:

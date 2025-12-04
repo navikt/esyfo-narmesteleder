@@ -353,6 +353,10 @@ class LinenmanagerApiV1Test : DescribeSpec({
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
+                pdlService.prepareGetPersonResponse(
+                    narmesteLederAvkreft.employeeIdentificationNumber,
+                    narmesteLederAvkreft.lastName
+                )
                 val narmesteLederAvkreft = narmesteLederAvkreft
                 fakeAaregClient.arbeidsForholdForIdent.clear()
                 fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
@@ -367,6 +371,51 @@ class LinenmanagerApiV1Test : DescribeSpec({
                 // Assert
                 response.status shouldBe HttpStatusCode.Accepted
                 coVerify(exactly = 1) {
+                    narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
+                        eq(narmesteLederAvkreft), eq(
+                            NlResponseSource.LPS
+                        )
+                    )
+                }
+                coVerify(exactly = 1) {
+                    validationServiceSpy.validateLinemanagerRevoke(
+                        eq(narmesteLederAvkreft),
+                        any()
+                    )
+                }
+            }
+        }
+
+        it("should return 400 when lastName in payload does not match the nin") {
+            val narmesteLederAvkreft = linemanagerRevoke()
+            withTestApplication {
+                // Arrange
+                texasHttpClientMock.defaultMocks(
+                    systemBrukerOrganisasjon = DefaultOrganization.copy(
+                        ID = "0192:${narmesteLederAvkreft.orgNumber}"
+                    ),
+                    scope = MASKINPORTEN_NL_SCOPE,
+                )
+                pdlService.prepareGetPersonResponse(
+                    narmesteLederAvkreft.employeeIdentificationNumber,
+                    narmesteLederAvkreft.lastName.reversed()
+                )
+                val narmesteLederAvkreft = narmesteLederAvkreft
+                fakeAaregClient.arbeidsForholdForIdent.clear()
+                fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
+                    listOf(narmesteLederAvkreft.orgNumber to narmesteLederRelasjon.orgNumber)
+                // Act
+                val response = client.post("$API_V1_PATH/$REVOKE_PATH") {
+                    contentType(ContentType.Application.Json)
+                    setBody(narmesteLederAvkreft)
+                    bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
+                }
+
+                // Assert
+                response.status shouldBe HttpStatusCode.BadRequest
+                val body = response.body<ApiError>()
+                body.type shouldBe ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH_EMPLOYEE
+                coVerify(exactly = 0) {
                     narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                         eq(narmesteLederAvkreft), eq(
                             NlResponseSource.LPS

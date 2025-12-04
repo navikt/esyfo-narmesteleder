@@ -60,7 +60,7 @@ import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
-class LinenamanagerApiV1Test : DescribeSpec({
+class LinenmanagerApiV1Test : DescribeSpec({
     val pdlService = spyk(PdlService(FakePdlClient()))
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = linemanager()
@@ -189,7 +189,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
 
                     // Assert
                     response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST_INVALID_FORMAT
                     coVerify { narmestelederKafkaServiceSpy wasNot Called }
                 }
             }
@@ -430,7 +430,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
 
                 // Assert
                 response.status shouldBe HttpStatusCode.BadRequest
-                response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST_INVALID_FORMAT
                 coVerify { narmestelederKafkaServiceSpy wasNot Called }
             }
         }
@@ -576,7 +576,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST_INVALID_FORMAT
                 }
             }
 

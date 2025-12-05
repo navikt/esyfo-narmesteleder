@@ -36,9 +36,9 @@ class LinemanagerRequirementRESTHandler(
                 manager = manager
             )
             val linemanagerActors = validationService.validateLinemanager(
-                linemanager,
-                principal,
-                false
+                linemanager = linemanager,
+                principal = principal,
+                validateEmployeeLastName = false
             )
 
             narmestelederKafkaService.sendNarmesteLederRelasjon(

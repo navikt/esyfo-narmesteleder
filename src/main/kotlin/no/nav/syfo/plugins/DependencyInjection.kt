@@ -19,14 +19,13 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.ApplicationState
-import no.nav.syfo.application.Environment
-import no.nav.syfo.application.LocalEnvironment
-import no.nav.syfo.application.NaisEnvironment
+import no.nav.syfo.application.environment.Environment
+import no.nav.syfo.application.environment.LocalEnvironment
+import no.nav.syfo.application.environment.NaisEnvironment
 import no.nav.syfo.application.database.Database
 import no.nav.syfo.application.database.DatabaseConfig
 import no.nav.syfo.application.database.DatabaseInterface
-import no.nav.syfo.application.isLocalEnv
-import no.nav.syfo.application.isProdEnv
+import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
@@ -36,7 +35,6 @@ import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
-import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
@@ -161,7 +159,7 @@ private fun servicesModule() = module {
     single {
         NarmestelederService(
             nlDb = get(),
-            persistLeesahNlBehov = env().otherEnvironment.persistLeesahNlBehov,
+            persistLeesahNlBehov = env().otherProperties.persistLeesahNlBehov,
             aaregService = get(),
             pdlService = get(),
             dinesykmeldteService = get(),
@@ -177,13 +175,13 @@ private fun servicesModule() = module {
     }
     single { PdlService(get()) }
     single { AltinnTilgangerService(get()) }
-    single { LeaderElection(get(), env().otherEnvironment.electorPath) }
+    single { LeaderElection(get(), env().otherProperties.electorPath) }
     single {
-        val sykemeldingNLKafkaProducer = if (!isProdEnv()) SykemeldingNLKafkaProducer(
+        val sykemeldingNLKafkaProducer = SykemeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )
-        ) else FakeSykemeldingNLKafkaProducer()
+        )
         NarmestelederKafkaService(sykemeldingNLKafkaProducer)
     }
     single { PdpService(get()) }
@@ -194,13 +192,13 @@ private fun servicesModule() = module {
         DialogportenService(
             dialogportenClient = get(),
             narmestelederDb = get(),
-            otherEnvironmentProperties = env().otherEnvironment,
+            otherEnvironmentProperties = env().otherProperties,
             pdlService = get(),
         )
     }
     single { SendDialogTask(get(), get()) }
     single {
-        val pollingInterval = Duration.parse(env().otherEnvironment.updateDialogportenTaskProperties.pollingDelay)
+        val pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay)
         UpdateDialogTask(get(), get(), pollingInterval)
     }
 }

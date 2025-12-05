@@ -1,4 +1,4 @@
-package no.nav.syfo.application
+package no.nav.syfo.application.environment
 
 data class ClientProperties(
     val pdlBaseUrl: String,

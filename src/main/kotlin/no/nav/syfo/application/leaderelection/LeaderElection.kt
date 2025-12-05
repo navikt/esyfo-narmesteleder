@@ -6,7 +6,7 @@ import io.ktor.client.request.get
 import java.net.InetAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.syfo.application.isLocalEnv
+import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.util.logger
 
 /**

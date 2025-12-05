@@ -5,7 +5,6 @@ import com.zaxxer.hikari.HikariDataSource
 import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import java.sql.Connection
-import no.nav.syfo.application.getEnvVar
 import org.flywaydb.core.Flyway
 
 data class DatabaseConfig(

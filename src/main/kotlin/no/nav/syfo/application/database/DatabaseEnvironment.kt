@@ -1,8 +1,8 @@
 
 package no.nav.syfo.application.database
 
-import no.nav.syfo.application.NAIS_DATABASE_ENV_PREFIX
-import no.nav.syfo.application.getEnvVar
+import no.nav.syfo.application.environment.NAIS_DATABASE_ENV_PREFIX
+import no.nav.syfo.application.environment.getEnvVar
 
 data class DatabaseEnvironment(
     val host: String,

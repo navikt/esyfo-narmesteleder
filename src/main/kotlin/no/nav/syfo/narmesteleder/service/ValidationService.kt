@@ -36,42 +36,26 @@ class ValidationService(
         principal: Principal,
         validateEmployeeLastName: Boolean = true,
     ): LinemanagerActors {
-        try {
-            validateAltinnTilgang(principal, linemanager.orgNumber)
-            val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
-            val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
-            val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
-            val sykemeldtArbeidsforhold =
-                aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
-                    .filter { it.key == linemanager.orgNumber }
-            validataActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgNumber)
-            validateLinemanagerLastName(leder, linemanager)
-            if (validateEmployeeLastName) validateEmployeeLastName(sykmeldt, linemanager)
-            validateNarmesteLeder(
-                orgNumberInRequest = linemanager.orgNumber,
-                sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
-                narmesteLederOrgNumbers = nlArbeidsforhold,
-                systemPrincipal = principal as? SystemPrincipal,
-            )
-            return LinemanagerActors(
-                employee = sykmeldt,
-                manager = leder,
-            )
-        } catch (e: ValidateNarmesteLederException) {
-            logger.error("Validation of active employment status failed {}", e.message)
-            throw ApiErrorException.BadRequestException(
-                "Error validating employment status for the given organization number"
-            )
-        } catch (e: ValidateActiveSykmeldingException) {
-            logger.error(
-                "No active sick leave in organization number ${linemanager.orgNumber}",
-                e.message
-            )
-            throw ApiErrorException.BadRequestException(
-                errorMessage = e.message ?: "No active sick leave found for the given organization number",
-                type = ErrorType.BAD_REQUEST_NO_ACTIVE_SICK_LEAVE
-            )
-        }
+        validateAltinnTilgang(principal, linemanager.orgNumber)
+        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
+        val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
+        val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
+        val sykemeldtArbeidsforhold =
+            aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
+                .filter { it.key == linemanager.orgNumber }
+        validataActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgNumber)
+        validateLinemanagerLastName(leder, linemanager)
+        if (validateEmployeeLastName) validateEmployeeLastName(sykmeldt, linemanager)
+        validateNarmesteLeder(
+            orgNumberInRequest = linemanager.orgNumber,
+            sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
+            narmesteLederOrgNumbers = nlArbeidsforhold,
+            systemPrincipal = principal as? SystemPrincipal,
+        )
+        return LinemanagerActors(
+            employee = sykmeldt,
+            manager = leder,
+        )
     }
 
     suspend fun validateGetNlBehov(
@@ -94,12 +78,12 @@ class ValidationService(
                 if (hasAccess) {
                     if (!sykemeldtOrgs.contains(principal.getSystemUserOrgNumber())) throw ApiErrorException.ForbiddenException(
                         errorMessage = "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave",
-                        type = ErrorType.FORBIDDEN_LACKS_ORG_ACCESS
+                        type = ErrorType.FORBIDDEN_MISSING_ORG_ACCESS
                     )
                 } else {
                     throw ApiErrorException.ForbiddenException(
                         errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                        type = ErrorType.FORBIDDEN_LACKS_ALITINN_RESOURCE_ACCESS
+                        type = ErrorType.FORBIDDEN_MISSING_ALITINN_RESOURCE_ACCESS
                     )
                 }
             }
@@ -110,29 +94,28 @@ class ValidationService(
         linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
     ): Person {
-        try {
-            validateAltinnTilgang(principal, linemanagerRevoke.orgNumber)
-            val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
-            val sykemeldtArbeidsforhold =
-                aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
-            validateNarmesteLederAvkreft(
-                orgNumberInRequest = linemanagerRevoke.orgNumber,
-                sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
-                systemPrincipal = principal as? SystemPrincipal,
-            )
-            validateEmployeeLastName(sykmeldt, linemanagerRevoke)
+        validateAltinnTilgang(principal, linemanagerRevoke.orgNumber)
+        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
+        val sykemeldtArbeidsforhold =
+            aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
+        validateNarmesteLederAvkreft(
+            orgNumberInRequest = linemanagerRevoke.orgNumber,
+            sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
+            systemPrincipal = principal as? SystemPrincipal,
+        )
+        validateEmployeeLastName(sykmeldt, linemanagerRevoke)
 
-            return sykmeldt
-
-        } catch (e: ValidateNarmesteLederException) {
-            logger.error("Validation of employment situation failed {}", e.message)
-            throw ApiErrorException.BadRequestException("Error when validating persons")
-        }
+        return sykmeldt
     }
 
     private suspend fun validataActiveSickLeave(fnr: String, orgnummer: String) {
         if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
-            throw ValidateActiveSykmeldingException("No active sick leave found for the given organization number")
+            val message = "No active sick leave found for the given organization number: $orgnummer"
+            logger.warn(message)
+            throw ApiErrorException.BadRequestException(
+                errorMessage = message,
+                type = ErrorType.BAD_REQUEST_NO_ACTIVE_SICK_LEAVE
+            )
         }
     }
 

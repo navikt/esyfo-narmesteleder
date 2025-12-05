@@ -14,7 +14,6 @@ import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundExcepti
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
-import no.nav.syfo.narmesteleder.service.ValidateNarmesteLederException
 import no.nav.syfo.narmesteleder.service.ValidationService
 
 class LinemanagerRequirementRESTHandler(
@@ -75,8 +74,6 @@ class LinemanagerRequirementRESTHandler(
             }
         } catch (e: LinemanagerRequirementNotFoundException) {
             throw ApiErrorException.NotFoundException("LinemanagerRequirement", e)
-        } catch (e: ValidateNarmesteLederException) {
-            throw ApiErrorException.ForbiddenException("You don't have access to this LinemanagerRequirement", e)
         } catch (e: ApiErrorException) {
             throw e
         } catch (e: Exception) {

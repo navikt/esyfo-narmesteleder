@@ -7,11 +7,8 @@ import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.pdl.Person
 
-class ValidateNarmesteLederException(message: String) : RuntimeException(message)
-class ValidateActiveSykmeldingException(message: String) : RuntimeException(message)
-
-fun nlrequire(value: Boolean, lazyMessage: () -> String) {
-    if (!value) throw ValidateNarmesteLederException(lazyMessage())
+fun nlrequire(value: Boolean, type: ErrorType, lazyMessage: () -> String) {
+    if (!value) throw ApiErrorException.BadRequestException(type = type, errorMessage = lazyMessage())
 }
 
 private fun nlrequireOrForbidden(value: Boolean, type: ErrorType, lazyMessage: () -> String) {
@@ -37,6 +34,7 @@ fun validateEmployeeLastName(
         type = ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH_EMPLOYEE
     )
 }
+
 fun validateEmployeeLastName(
     managerPdlPerson: Person,
     linemanagerRevoke: LinemanagerRevoke,
@@ -46,6 +44,7 @@ fun validateEmployeeLastName(
         type = ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH_EMPLOYEE
     )
 }
+
 fun validateNarmesteLeder(
     sykemeldtOrgNumbers: Map<String, String>,
     narmesteLederOrgNumbers: Map<String, String>,
@@ -53,19 +52,23 @@ fun validateNarmesteLeder(
     orgNumberInRequest: String,
 ) {
 
-    nlrequire(sykemeldtOrgNumbers.keys.contains(orgNumberInRequest)) { "Ingen arbeidsforhold for sykemeldt for angitt virksomhet" }
+    nlrequire(
+        sykemeldtOrgNumbers.keys.contains(orgNumberInRequest),
+        type = ErrorType.BAD_REQUEST_EMPLOYMENT_MISSING_IN_ORG_EMPLOYEE
+    ) { "Employee on sick leave is missing employment in any organization" }
     val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     val allNlOrgNumbers = narmesteLederOrgNumbers.map { listOf(it.key, it.value) }.flatten()
 
     nlrequire(
-        allNlOrgNumbers.any { it in allSykmeldtOrgNumbers }
-    ) { "Næremeste leder mangler arbeidsforhold i samme organisasjonsstruktur som sykmeldt" }
+        allNlOrgNumbers.any { it in allSykmeldtOrgNumbers },
+        type = ErrorType.BAD_REQUEST_EMPLOYMENT_MISSING_IN_ORG_LINEMANAGER
+    ) { "Linemanager is missing employment in any branch under the parent organization of the employee on sick leave" }
     systemPrincipal?.let {
         nlrequireOrForbidden(
-            type = ErrorType.FORBIDDEN_LACKS_ORG_ACCESS,
+            type = ErrorType.FORBIDDEN_MISSING_ORG_ACCESS,
             value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
         )
-        { "Systembruker har ikke tilgang til virksomhet" }
+        { "Systemuser is missing access to the organization" }
     }
 }
 
@@ -74,13 +77,20 @@ fun validateNarmesteLederAvkreft(
     orgNumberInRequest: String,
     systemPrincipal: SystemPrincipal?,
 ) {
-    nlrequire(sykemeldtOrgNumbers.isNotEmpty()) { "Ingen arbeidsforhold for sykemeldt" }
-    nlrequire(sykemeldtOrgNumbers.contains(orgNumberInRequest)) { "Organisasjonsnummer i HTTP request body samsvarer ikke med sykemeldtes organisasjoner" }
+    nlrequire(
+        sykemeldtOrgNumbers.isNotEmpty(),
+        ErrorType.BAD_REQUEST_EMPLOYMENT_MISSING_IN_ORG_EMPLOYEE
+    ) { "Employee on sick leave is missing employment in any organization" }
+    nlrequire(
+        sykemeldtOrgNumbers.contains(orgNumberInRequest),
+        ErrorType.BAD_REQUEST_EMPLOYMENT_MISSING_IN_ORG_EMPLOYEE
+    ) { "Employee on sick leave does not have employment in the organization indicated in the request" }
     val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     systemPrincipal?.let {
         nlrequireOrForbidden(
-            type = ErrorType.FORBIDDEN_LACKS_ORG_ACCESS,
+            type = ErrorType.FORBIDDEN_MISSING_ORG_ACCESS,
             value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
-        ) { "Innsender samsvarer ikke virksomhet i request" }
+        )
+        { "Systemuser is missing access to the organization" }
     }
 }

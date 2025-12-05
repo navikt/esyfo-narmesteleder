@@ -28,12 +28,12 @@ class AltinnTilgangerService(
             if (!it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)) {
                 throw ApiErrorException.ForbiddenException(
                     errorMessage = "User lacks access to required altinn3 resource for organization: $orgnummer",
-                    type = ErrorType.FORBIDDEN_LACKS_ALITINN_RESOURCE_ACCESS
+                    type = ErrorType.FORBIDDEN_MISSING_ALITINN_RESOURCE_ACCESS
                 )
             }
         } ?: throw ApiErrorException.ForbiddenException(
             errorMessage = "User lacks access to organization: $orgnummer",
-            type = ErrorType.FORBIDDEN_LACKS_ORG_ACCESS
+            type = ErrorType.FORBIDDEN_MISSING_ORG_ACCESS
         )
     }
 

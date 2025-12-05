@@ -542,7 +542,6 @@ class LinenmanagerApiV1Test : DescribeSpec({
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
-//                        consumer = DefaultOrganization.copy(ID = "0192:999999999"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedLinemanagerRequirement()
@@ -550,9 +549,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("999999999"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_LACKS_ORG_ACCESS
-//                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
-//                    response.body<String>() shouldBe "fdafa"
+                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_MISSING_ORG_ACCESS
                 }
             }
 
@@ -645,7 +642,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("000000000"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_LACKS_ORG_ACCESS
+                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_MISSING_ORG_ACCESS
                 }
             }
         }

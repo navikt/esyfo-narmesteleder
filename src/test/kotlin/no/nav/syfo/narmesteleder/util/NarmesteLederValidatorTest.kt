@@ -10,7 +10,6 @@ import io.kotest.matchers.shouldBe
 import linemanager
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.service.ValidateNarmesteLederException
 import no.nav.syfo.narmesteleder.service.validateLinemanagerLastName
 import no.nav.syfo.narmesteleder.service.validateNarmesteLeder
 import no.nav.syfo.narmesteleder.service.validateNarmesteLederAvkreft
@@ -58,14 +57,14 @@ class NarmesteLederValidatorTest : DescribeSpec({
         }
 
         describe("Mismatch in organization number between parties") {
-            it("Should throw ValidateNarmesteLederException if NL is not within sykmeldt orgs") {
+            it("Should throw BadRequestException if NL is not within sykmeldt orgs") {
                 val organizationPrincipal = SystemPrincipal(
                     "0192:${nlOrgNumbers.keys.first()}",
                     "token",
                     "0192:systemOwner",
                     "systemUserId"
                 )
-                shouldThrow<ValidateNarmesteLederException> {
+                shouldThrow<ApiErrorException.BadRequestException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
@@ -75,14 +74,14 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException if payload org is not within sykemldt orgs") {
+            it("Should throw BadRequestException if payload org is not within sykemldt orgs") {
                 val organizationPrincipal = SystemPrincipal(
                     "0192:${nlOrgNumbers.keys.first()}",
                     "token",
                     "0192:systemOwner",
                     "systemUserId"
                 )
-                shouldThrow<ValidateNarmesteLederException> {
+                shouldThrow<ApiErrorException.BadRequestException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = nlOrgNumbers,
@@ -92,7 +91,7 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException if innsender is not within NL org") {
+            it("Should throw BadRequestException if innsender is not within NL org") {
                 shouldThrow<ApiErrorException.ForbiddenException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
@@ -108,8 +107,8 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException if no one is within the same org") {
-                shouldThrow<ValidateNarmesteLederException> {
+            it("Should throw BadRequestException if no one is within the same org") {
+                shouldThrow<ApiErrorException.BadRequestException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
@@ -119,8 +118,8 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException exception if no organizations are found for sykemeldt") {
-                shouldThrow<ValidateNarmesteLederException> {
+            it("Should throw BadRequestException exception if no organizations are found for sykemeldt") {
+                shouldThrow<ApiErrorException.BadRequestException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = emptyMap(),
                         narmesteLederOrgNumbers = nlOrgNumbers,
@@ -130,8 +129,8 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException exception if no organizations are found for nærmeste leder") {
-                shouldThrow<ValidateNarmesteLederException> {
+            it("Should throw BadRequestException exception if no organizations are found for nærmeste leder") {
+                shouldThrow<ApiErrorException.BadRequestException> {
                     validateNarmesteLeder(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         narmesteLederOrgNumbers = emptyMap(),
@@ -167,8 +166,8 @@ class NarmesteLederValidatorTest : DescribeSpec({
         }
 
         describe("Mismatch in organization number between parties") {
-            it("Should throw ValidateNarmesteLederException if payload org is not within sykemeldt orgs") {
-                shouldThrow<ValidateNarmesteLederException> {
+            it("Should throw BadRequestException if payload org is not within sykemeldt orgs") {
+                shouldThrow<ApiErrorException.BadRequestException> {
                     validateNarmesteLederAvkreft(
                         sykemeldtOrgNumbers = nlOrgNumbers,
                         systemPrincipal = organizationPrincipal,
@@ -177,7 +176,7 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException if innsender is not within sykmeldt org") {
+            it("Should throw BadRequestException if innsender is not within sykmeldt org") {
                 shouldThrow<ApiErrorException.ForbiddenException> {
                     validateNarmesteLederAvkreft(
                         sykemeldtOrgNumbers = nlOrgNumbers,
@@ -192,8 +191,8 @@ class NarmesteLederValidatorTest : DescribeSpec({
                 }
             }
 
-            it("Should throw ValidateNarmesteLederException exception if no organizations are found for sykemeldt") {
-                shouldThrow<ValidateNarmesteLederException> {
+            it("Should throw BadRequestException exception if no organizations are found for sykemeldt") {
+                shouldThrow<ApiErrorException.BadRequestException> {
                     validateNarmesteLederAvkreft(
                         sykemeldtOrgNumbers = emptyMap(),
                         systemPrincipal = organizationPrincipal,

@@ -414,7 +414,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
                 // Assert
                 response.status shouldBe HttpStatusCode.BadRequest
                 val body = response.body<ApiError>()
-                body.type shouldBe ErrorType.BAD_REQUEST_NAME_NIN_MISMATCH_EMPLOYEE
+                body.type shouldBe ErrorType.BAD_REQUEST_EMPLOYEE_NAME_NIN_MISMATCH
                 coVerify(exactly = 0) {
                     narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                         eq(narmesteLederAvkreft), eq(

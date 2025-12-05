@@ -220,7 +220,7 @@ components:
           example: "Hansen"
         orgNumber:
           type: string
-          description: Organisation number where the employee works
+          description: Organization number where the employee works
           example: "123456789"
         manager:
           $ref: '#/components/schemas/Manager'
@@ -236,7 +236,7 @@ components:
           example: "12345678901"
         orgNumber:
           type: string
-          description: Organisation number where the employee works
+          description: Organization number where the employee works
           example: "123456789"
         lastName:
           type: string
@@ -286,16 +286,16 @@ components:
           example: "12345678901"
         orgNumber:
           type: string
-          description: Organisation number where the employee works.
+          description: Organization number where the employee works.
           example: "123456789"
         orgName:
           type: string
           nullable: true
-          description: Organisation name (if available).
+          description: Organization name (if available).
           example: "Eksempel AS"
         mainOrgnumber:
           type: string
-          description: Main (parent) organisation number.
+          description: Main (parent) organization number.
           example: "987654321"
         managerIdentificationNumber:
           type: string
@@ -358,7 +358,23 @@ components:
       additionalProperties: false
     ErrorType:
       type: string
-      description: Application error type.
+      description: |
+        Application error type.
+        * `AUTHENTICATION_ERROR`: Authentication failed due to missing or invalid credentials.
+        * `AUTHORIZATION_ERROR`: Authorization failed due to insufficient permissions.
+        * `NOT_FOUND`: The requested resource was not found.
+        * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+        * `ILLEGAL_ARGUMENT`: The request contained an illegal argument.
+        * `BAD_REQUEST`: The request was malformed or contained invalid data.
+        * `BAD_REQUEST_INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
+        * `CONFLICT`: The request could not be completed due to a conflict with the current state of the resource.
+        * `BAD_REQUEST_LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in the specified organization.
+        * `BAD_REQUEST_EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
+        * `BAD_REQUEST_LINEMANAGER_NAME_NIN_MISMATCH`: The name provided for the linemanager does not match the name registered with the provided national identification number.
+        * `BAD_REQUEST_EMPLOYEE_NAME_NIN_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
+        * `FORBIDDEN_MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
+        * `FORBIDDEN_MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource.
+        * `BAD_REQUEST_NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
       enum:
         - AUTHENTICATION_ERROR
         - AUTHORIZATION_ERROR
@@ -366,7 +382,15 @@ components:
         - INTERNAL_SERVER_ERROR
         - ILLEGAL_ARGUMENT
         - BAD_REQUEST
+        - BAD_REQUEST_INVALID_FORMAT
         - CONFLICT
+        - BAD_REQUEST_LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
+        - BAD_REQUEST_EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+        - BAD_REQUEST_LINEMANAGER_NAME_NIN_MISMATCH
+        - BAD_REQUEST_EMPLOYEE_NAME_NIN_MISMATCH
+        - FORBIDDEN_MISSING_ORG_ACCESS
+        - FORBIDDEN_MISSING_ALITINN_RESOURCE_ACCESS
+        - BAD_REQUEST_NO_ACTIVE_SICK_LEAVE
     ApiError:
       type: object
       description: Standard error payload.

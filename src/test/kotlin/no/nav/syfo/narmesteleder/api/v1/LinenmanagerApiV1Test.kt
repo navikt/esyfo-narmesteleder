@@ -163,9 +163,9 @@ class LinenmanagerApiV1Test : DescribeSpec({
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
-                            eq(narmesteLederRelasjon),
+                            narmesteLederRelasjon,
                             linemanagerActors = any<LinemanagerActors>(),
-                            eq(NlResponseSource.LPS),
+                            NlResponseSource.LPS,
                         )
                     }
                 }
@@ -285,14 +285,14 @@ class LinenmanagerApiV1Test : DescribeSpec({
                     response.status shouldBe HttpStatusCode.Accepted
                     coVerify(exactly = 1) {
                         narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
-                            eq(narmesteLederRelasjon),
+                            narmesteLederRelasjon,
                             linemanagerActors = any<LinemanagerActors>(),
-                            eq(NlResponseSource.PERSONALLEDER),
+                            NlResponseSource.PERSONALLEDER,
                         )
                     }
                     coVerify(exactly = 1) {
                         validationServiceSpy.validateLinemanager(
-                            eq(narmesteLederRelasjon),
+                            narmesteLederRelasjon,
                             any()
                         )
                     }
@@ -372,14 +372,14 @@ class LinenmanagerApiV1Test : DescribeSpec({
                 response.status shouldBe HttpStatusCode.Accepted
                 coVerify(exactly = 1) {
                     narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
-                        eq(narmesteLederAvkreft), eq(
-                            NlResponseSource.LPS
-                        )
+                        narmesteLederAvkreft,
+                        NlResponseSource.LPS_REVOKE
+
                     )
                 }
                 coVerify(exactly = 1) {
                     validationServiceSpy.validateLinemanagerRevoke(
-                        eq(narmesteLederAvkreft),
+                        narmesteLederAvkreft,
                         any()
                     )
                 }
@@ -453,9 +453,9 @@ class LinenmanagerApiV1Test : DescribeSpec({
                 response.status shouldBe HttpStatusCode.BadRequest
                 coVerify(exactly = 0) {
                     narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
-                        eq(narmesteLederAvkreft), eq(
-                            NlResponseSource.LPS
-                        )
+                        narmesteLederAvkreft,
+                        NlResponseSource.LPS
+
                     )
                 }
             }

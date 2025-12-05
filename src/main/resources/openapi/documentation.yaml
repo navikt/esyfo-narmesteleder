@@ -252,6 +252,10 @@ components:
           type: string
           description: Norwegian national identity number or D number of the manager.
           example: "10987654321"
+        lastName:
+          type: string
+          description: The last name of the manager.
+          example: "Jensen"
         mobile:
           type: string
           description: Mobile phone number of the manager.
@@ -261,15 +265,11 @@ components:
           format: email
           description: Email address of the manager.
           example: "leder@example.com"
-        lastName:
-          type: string
-          description: The last name of the manager.
-          example: "Jensen"
       required:
         - nationalIdentificationNumber
+        - lastName
         - mobile
         - email
-        - lastName
       additionalProperties: false
     LinemanagerRequirementRead:
       type: object

@@ -88,7 +88,7 @@ spec:
         - host: pdl-api.prod-fss-pub.nais.io
         - host: "platform.altinn.no"
   kafka:
-    pool: nav-dev
+    pool: nav-prod
   env:
     - name: PDL_BASE_URL
       value: https://pdl-api.prod-fss-pub.nais.io/graphql

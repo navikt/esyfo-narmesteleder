@@ -95,6 +95,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/linemanager/requirement:
+    get:
+      summary: Get collection of linemanager requirement
+      description: Returns response with a list containing items with details about outstandig requirements for linemanager for employees.
+      tags: [ requirement ]
+      security:
+        - maskinporten_jwt: [ ]
+        - tokenx_jwt: [ ]
+      parameters:
+        - name: createAfter
+          in: query
+          required: true
+          example: 2025-12-04T09:04:44.261429Z
+          description: Filter results created after this timestamp (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: orgNumber
+          in: query
+          required: true
+          description: Organization number (digits only)
+          schema:
+            type: string
+            pattern: '^\d+$'
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Requirement details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinemanagerRequiremenCollection'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Requirement not found
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/linemanager/requirement/{id}:
     put:
       summary: Assigns a linemanager for employee with requirement
@@ -356,6 +422,30 @@ components:
         - updated
         - status
       additionalProperties: false
+    LinemanagerRequiremenCollection:
+      type: object
+      properties:
+        linemanagerRequirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinemanagerRequirementRead'
+        meta:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - linemanagerRequirements
+        - meta
+
+    PageInfo:
+      description: Information about the pageSize and number of items in the result set.
+      type: object
+      properties:
+        size:
+          type: integer
+        pageSize:
+          type: integer
+      required:
+        - size
+        - pageSize
     ErrorType:
       type: string
       description: |
@@ -375,6 +465,7 @@ components:
         * `MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
         * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource.
         * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
+        * `MISSING_REQUIRED_PARAMETER`: A required parameter is missing from the request.
       enum:
         - AUTHENTICATION_ERROR
         - AUTHORIZATION_ERROR
@@ -391,6 +482,7 @@ components:
         - MISSING_ORG_ACCESS
         - MISSING_ALITINN_RESOURCE_ACCESS
         - NO_ACTIVE_SICK_LEAVE
+        - MISSING_REQUIRED_PARAMETER
     ApiError:
       type: object
       description: Standard error payload.

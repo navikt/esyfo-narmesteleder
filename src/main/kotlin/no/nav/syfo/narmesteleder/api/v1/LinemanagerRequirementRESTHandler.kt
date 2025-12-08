@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.api.v1
 
+import java.time.Instant
 import java.util.*
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.application.auth.Principal
@@ -15,6 +16,7 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmesteleder.service.toEmployeeLinemanagerRead
 
 class LinemanagerRequirementRESTHandler(
     private val narmesteLederService: NarmestelederService,
@@ -82,4 +84,18 @@ class LinemanagerRequirementRESTHandler(
                 e
             )
         }
+
+    suspend fun handleGetLinemanagerRequirementsCollection(
+        pageSize: Int,
+        createdAfter: Instant,
+        orgNumber: String,
+        principal: Principal
+    ): List<LinemanagerRequirementRead> {
+        validationService.validateLinemanagerCollectionAccess(principal, orgNumber)
+        return narmesteLederService.getNlBehovList(
+            pageSize = pageSize,
+            createdAfter = createdAfter,
+            orgNumber = orgNumber
+        )
+    }
 }

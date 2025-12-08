@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.db
 
+import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -39,6 +40,20 @@ class FakeNarmestelederDb : INarmestelederDb {
             it.orgnummer == orgnummer &&
                 it.sykmeldtFnr == sykmeldtFnr &&
                 behovStatus.contains(it.behovStatus) }
+    }
+
+    override suspend fun findBehovByParameters(
+        orgNumber: String,
+        createdAfter: Instant,
+        status: List<BehovStatus>,
+        limit: Int
+    ): List<NarmestelederBehovEntity> {
+        return store.values.filter {
+            it.orgnummer == orgNumber &&
+                it.created.isAfter(createdAfter) &&
+                it.created.isBefore(Instant.now() - java.time.Duration.ofSeconds(10)) &&
+                status.contains(it.behovStatus)
+        }.take(limit)
     }
 
     fun lastId(): UUID? = order.lastOrNull()

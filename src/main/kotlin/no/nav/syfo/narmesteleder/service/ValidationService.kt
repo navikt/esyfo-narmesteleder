@@ -69,24 +69,26 @@ class ValidationService(
                 altinnTilgangerService.validateTilgangToOrganization(altinnTilgang, linemanagerRead.orgNumber)
             }
 
-            is SystemPrincipal -> {
-                val hasAccess = pdpService.hasAccessToResource(
-                    System(principal.systemUserId),
-                    setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
-                    OPPGI_NARMESTELEDER_RESOURCE
-                )
-                if (hasAccess) {
-                    if (!sykemeldtOrgs.contains(principal.getSystemUserOrgNumber())) throw ApiErrorException.ForbiddenException(
-                        errorMessage = "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave",
-                        type = ErrorType.MISSING_ORG_ACCESS
-                    )
-                } else {
-                    throw ApiErrorException.ForbiddenException(
-                        errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                        type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
-                    )
-                }
-            }
+            is SystemPrincipal -> validateSystemPrincipal(sykemeldtOrgs, principal)
+        }
+    }
+
+    suspend fun validateSystemPrincipal(validOrgnumbers: Set<String>, principal: SystemPrincipal) {
+        val hasAccess = pdpService.hasAccessToResource(
+            System(principal.systemUserId),
+            setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
+            OPPGI_NARMESTELEDER_RESOURCE
+        )
+        if (hasAccess) {
+            if (!validOrgnumbers.contains(principal.getSystemUserOrgNumber())) throw ApiErrorException.ForbiddenException(
+                errorMessage = "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave",
+                type = ErrorType.MISSING_ORG_ACCESS
+            )
+        } else {
+            throw ApiErrorException.ForbiddenException(
+                errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+                type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
+            )
         }
     }
 
@@ -106,6 +108,15 @@ class ValidationService(
         validateEmployeeLastName(sykmeldt, linemanagerRevoke)
 
         return sykmeldt
+    }
+
+    suspend fun validateLinemanagerCollectionAccess(principal: Principal, orgNumber: String) {
+        when (principal) {
+            is SystemPrincipal -> validateSystemPrincipal(setOf(orgNumber), principal)
+            is UserPrincipal -> {
+                altinnTilgangerService.validateTilgangToOrganization(principal, orgNumber)
+            }
+        }
     }
 
     private suspend fun validataActiveSickLeave(fnr: String, orgnummer: String) {

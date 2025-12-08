@@ -26,3 +26,6 @@ fun RoutingCall.getUUIDFromPathVariable(name: String): UUID {
 fun RoutingCall.getPathVariable(name: String): String {
     return this.parameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 }
+fun RoutingCall.getQueryParameter(name: String): String {
+    return this.queryParameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
+}

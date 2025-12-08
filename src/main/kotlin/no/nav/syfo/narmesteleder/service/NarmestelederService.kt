@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
+import java.time.Instant
 import java.util.*
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
@@ -31,27 +32,30 @@ class NarmestelederService(
 
     suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead =
         with(findBehovEntityById(id)) {
-            val name = if (fornavn != null && etternavn != null) {
-                Name(
-                    firstName = fornavn,
-                    lastName = etternavn,
-                    middleName = mellomnavn,
-                )
-            } else {
-                val details = pdlService.getPersonFor(sykmeldtFnr)
-                val updated = this.copy(
-                    fornavn = details.name.fornavn,
-                    mellomnavn = details.name.mellomnavn,
-                    etternavn = details.name.etternavn,
-                )
-                nlDb.updateNlBehov(updated)
-                Name(
-                    firstName = details.name.fornavn,
-                    lastName = details.name.etternavn,
-                    middleName = details.name.mellomnavn,
-                )
-            }
+            val name = getName()
             toEmployeeLinemanagerRead(name)
+        }
+
+    suspend fun NarmestelederBehovEntity.getName(): Name =
+        if (fornavn != null && etternavn != null) {
+            Name(
+                firstName = fornavn,
+                lastName = etternavn,
+                middleName = mellomnavn,
+            )
+        } else {
+            val details = pdlService.getPersonFor(sykmeldtFnr)
+            val updated = this.copy(
+                fornavn = details.name.fornavn,
+                mellomnavn = details.name.mellomnavn,
+                etternavn = details.name.etternavn,
+            )
+            nlDb.updateNlBehov(updated)
+            Name(
+                firstName = details.name.fornavn,
+                lastName = details.name.etternavn,
+                middleName = details.name.mellomnavn,
+            )
         }
 
     private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity =
@@ -132,6 +136,18 @@ class NarmestelederService(
             lastName = behovEntity.etternavn ?: "",
         )
     }
+
+    suspend fun getNlBehovList(
+        orgNumber: String,
+        createdAfter: Instant,
+        pageSize: Int
+    ): List<LinemanagerRequirementRead> =
+        nlDb.findBehovByParameters(
+            orgNumber = orgNumber,
+            createdAfter = createdAfter,
+            status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+            limit = pageSize
+        ).map { it.toEmployeeLinemanagerRead(it.getName()) }
 }
 
 fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead =

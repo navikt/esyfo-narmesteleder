@@ -21,7 +21,7 @@ fun validateLinemanagerLastName(
 ) {
     if (managerPdlPerson.name.etternavn.uppercase() != linemanager.manager.lastName.uppercase()) throw ApiErrorException.BadRequestException(
         "Last name for linemanager does not correspond with registered value for the given national identification number",
-        type = ErrorType.BAD_REQUEST_LINEMANAGER_NAME_NIN_MISMATCH
+        type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
     )
 }
 
@@ -31,7 +31,7 @@ fun validateEmployeeLastName(
 ) {
     if (managerPdlPerson.name.etternavn.uppercase() != linemanager.lastName.uppercase()) throw ApiErrorException.BadRequestException(
         "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
-        type = ErrorType.BAD_REQUEST_EMPLOYEE_NAME_NIN_MISMATCH
+        type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
     )
 }
 
@@ -41,7 +41,7 @@ fun validateEmployeeLastName(
 ) {
     if (managerPdlPerson.name.etternavn.uppercase() != linemanagerRevoke.lastName.uppercase()) throw ApiErrorException.BadRequestException(
         "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
-        type = ErrorType.BAD_REQUEST_EMPLOYEE_NAME_NIN_MISMATCH
+        type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
     )
 }
 
@@ -54,18 +54,18 @@ fun validateNarmesteLeder(
 
     nlrequire(
         sykemeldtOrgNumbers.keys.contains(orgNumberInRequest),
-        type = ErrorType.BAD_REQUEST_EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+        type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
     ) { "Employee on sick leave is missing employment in any organization" }
     val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     val allNlOrgNumbers = narmesteLederOrgNumbers.map { listOf(it.key, it.value) }.flatten()
 
     nlrequire(
         allNlOrgNumbers.any { it in allSykmeldtOrgNumbers },
-        type = ErrorType.BAD_REQUEST_LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
+        type = ErrorType.LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
     ) { "Linemanager is missing employment in any branch under the parent organization of the employee on sick leave" }
     systemPrincipal?.let {
         nlrequireOrForbidden(
-            type = ErrorType.FORBIDDEN_MISSING_ORG_ACCESS,
+            type = ErrorType.MISSING_ORG_ACCESS,
             value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
         )
         { "Systemuser is missing access to the organization" }
@@ -79,16 +79,16 @@ fun validateNarmesteLederAvkreft(
 ) {
     nlrequire(
         sykemeldtOrgNumbers.isNotEmpty(),
-        ErrorType.BAD_REQUEST_EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+        ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
     ) { "Employee on sick leave is missing employment in any organization" }
     nlrequire(
         sykemeldtOrgNumbers.contains(orgNumberInRequest),
-        ErrorType.BAD_REQUEST_EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+        ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
     ) { "Employee on sick leave does not have employment in the organization indicated in the request" }
     val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
     systemPrincipal?.let {
         nlrequireOrForbidden(
-            type = ErrorType.FORBIDDEN_MISSING_ORG_ACCESS,
+            type = ErrorType.MISSING_ORG_ACCESS,
             value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
         )
         { "Systemuser is missing access to the organization" }

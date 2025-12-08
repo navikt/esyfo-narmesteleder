@@ -77,7 +77,7 @@ fun BadRequestException.toApiError(path: String?): ApiError {
     return if (rootCause is KotlinInvalidNullException) {
         ApiErrorException.BadRequestException(
             "Invalid request body. Missing required field: ${rootCause.propertyName}",
-            type = ErrorType.BAD_REQUEST_INVALID_FORMAT
+            type = ErrorType.INVALID_FORMAT
         )
             .toApiError(path ?: "")
     } else ApiError(

@@ -366,15 +366,15 @@ components:
         * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
         * `ILLEGAL_ARGUMENT`: The request contained an illegal argument.
         * `BAD_REQUEST`: The request was malformed or contained invalid data.
-        * `BAD_REQUEST_INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
+        * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
         * `CONFLICT`: The request could not be completed due to a conflict with the current state of the resource.
-        * `BAD_REQUEST_LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in the specified organization.
-        * `BAD_REQUEST_EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
-        * `BAD_REQUEST_LINEMANAGER_NAME_NIN_MISMATCH`: The name provided for the linemanager does not match the name registered with the provided national identification number.
-        * `BAD_REQUEST_EMPLOYEE_NAME_NIN_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
-        * `FORBIDDEN_MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
-        * `FORBIDDEN_MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource.
-        * `BAD_REQUEST_NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
+        * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in the specified organization.
+        * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
+        * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the linemanager does not match the name registered with the provided national identification number.
+        * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
+        * `MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
+        * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource.
+        * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
       enum:
         - AUTHENTICATION_ERROR
         - AUTHORIZATION_ERROR
@@ -382,15 +382,15 @@ components:
         - INTERNAL_SERVER_ERROR
         - ILLEGAL_ARGUMENT
         - BAD_REQUEST
-        - BAD_REQUEST_INVALID_FORMAT
+        - INVALID_FORMAT
         - CONFLICT
-        - BAD_REQUEST_LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
-        - BAD_REQUEST_EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
-        - BAD_REQUEST_LINEMANAGER_NAME_NIN_MISMATCH
-        - BAD_REQUEST_EMPLOYEE_NAME_NIN_MISMATCH
-        - FORBIDDEN_MISSING_ORG_ACCESS
-        - FORBIDDEN_MISSING_ALITINN_RESOURCE_ACCESS
-        - BAD_REQUEST_NO_ACTIVE_SICK_LEAVE
+        - LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
+        - EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+        - LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+        - EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+        - MISSING_ORG_ACCESS
+        - MISSING_ALITINN_RESOURCE_ACCESS
+        - NO_ACTIVE_SICK_LEAVE
     ApiError:
       type: object
       description: Standard error payload.

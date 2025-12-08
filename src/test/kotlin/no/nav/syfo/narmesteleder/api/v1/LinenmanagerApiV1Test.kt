@@ -189,7 +189,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
 
                     // Assert
                     response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST_INVALID_FORMAT
+                    response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                     coVerify { narmestelederKafkaServiceSpy wasNot Called }
                 }
             }
@@ -414,7 +414,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
                 // Assert
                 response.status shouldBe HttpStatusCode.BadRequest
                 val body = response.body<ApiError>()
-                body.type shouldBe ErrorType.BAD_REQUEST_EMPLOYEE_NAME_NIN_MISMATCH
+                body.type shouldBe ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
                 coVerify(exactly = 0) {
                     narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                         eq(narmesteLederAvkreft), eq(
@@ -479,7 +479,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
 
                 // Assert
                 response.status shouldBe HttpStatusCode.BadRequest
-                response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST_INVALID_FORMAT
+                response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                 coVerify { narmestelederKafkaServiceSpy wasNot Called }
             }
         }
@@ -549,7 +549,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("999999999"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_MISSING_ORG_ACCESS
+                    response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
                 }
             }
 
@@ -622,7 +622,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST_INVALID_FORMAT
+                    response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                 }
             }
 
@@ -642,7 +642,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("000000000"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.FORBIDDEN_MISSING_ORG_ACCESS
+                    response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
                 }
             }
         }

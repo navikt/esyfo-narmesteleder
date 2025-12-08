@@ -64,8 +64,8 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         )
         coVerify(exactly = 1) {
             servicesWrapper.narmestelederServiceSpyk.updateNlBehov(
-                match { it == fixtureEntity.id },
-                match { it == BehovStatus.BEHOV_FULFILLED })
+                match<UUID> { it == fixtureEntity.id },
+                match<BehovStatus> { it == BehovStatus.BEHOV_FULFILLED })
         }
     }
 

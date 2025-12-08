@@ -13,6 +13,7 @@ interface INarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
+    suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity>
     suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity>
 }
 
@@ -119,6 +120,37 @@ class NarmestelederDb(
                         } else {
                             null
                         }
+                    }
+                }
+        }
+    }
+
+    override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity> = withContext(dispatcher)  {
+        val placeholders = behovStatus.joinToString(", ") { "?" }
+        return@withContext database.connection.use { connection ->
+            connection
+                .prepareStatement(
+                    """
+                        SELECT * FROM nl_behov 
+                          WHERE orgnummer = ? AND 
+                              sykemeldt_fnr = ? AND
+                              behov_status IN ($placeholders) 
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    var idx = 1
+                    preparedStatement.setObject(idx++, orgnummer)
+                    preparedStatement.setObject(idx++, sykmeldtFnr)
+                    behovStatus.forEach { status ->
+                        preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
+                    }
+
+                    preparedStatement.executeQuery().use { resultSet ->
+                        val resultSet = preparedStatement.executeQuery()
+                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                        while (resultSet.next()) {
+                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                        }
+                        nlBehov
                     }
                 }
         }

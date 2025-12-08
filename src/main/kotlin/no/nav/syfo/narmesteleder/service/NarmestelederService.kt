@@ -11,12 +11,12 @@ import no.nav.syfo.narmesteleder.domain.Employee
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
+import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.pdl.PdlService
 import org.slf4j.LoggerFactory
 
@@ -77,6 +77,11 @@ class NarmestelederService(
         nlDb.updateNlBehov(updatedBehov)
         logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
         dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
+    }
+
+    suspend fun findNLBehovEntityByNLKafkaMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) : List<NarmestelederBehovEntity> {
+        return nlDb.findBehovByParameters(sykmeldtFnr =  nlKafkaMessage.fnr, orgnummer =  nlKafkaMessage.orgnummer, behovStatus = listOf(
+            BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION))
     }
 
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {

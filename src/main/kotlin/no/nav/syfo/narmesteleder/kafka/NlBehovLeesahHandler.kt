@@ -1,7 +1,9 @@
 package no.nav.syfo.narmesteleder.kafka
 
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
+import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.util.logger
 
@@ -42,5 +44,11 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
                 logger.warn("Received NL message with null status!")
             }
         }
+    }
+    suspend fun updateStatusForRequirement(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
+        narmesteLederService.findNLBehovEntityByNLKafkaMessage(nlKafkaMessage)
+            .forEach {
+                narmesteLederService.updateNlBehov(it, BehovStatus.BEHOV_FULFILLED)
+            }
     }
 }

@@ -12,12 +12,12 @@ import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
-import no.nav.syfo.application.OtherEnvironmentProperties
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -67,6 +67,11 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             validationService = validationServiceSpyk,
             narmestelederKafkaService = narmestelederKafkaServiceSpyk,
             altinnTilgangerService = altinnTilgangerServiceSpyk,
+        )
+    )
+    val nlBehovLeesahHandlerSpyk = spyk(
+        NlBehovLeesahHandler(
+            narmesteLederService = narmestelederServiceSpyk,
         )
     )
 }

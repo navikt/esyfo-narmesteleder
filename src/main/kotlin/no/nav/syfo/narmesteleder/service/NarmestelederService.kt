@@ -79,8 +79,9 @@ class NarmestelederService(
         dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
     }
 
-    suspend fun findNLBehovEntityByNLKafkaMessage(nlKafkaMessage: NarmestelederLeesahKafkaMessage) : List<NarmestelederBehovEntity> {
-        return nlDb.findBehovByParameters(sykmeldtFnr =  nlKafkaMessage.fnr, orgnummer =  nlKafkaMessage.orgnummer, behovStatus = listOf(
+    suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String)
+    : List<NarmestelederBehovEntity> {
+        return nlDb.findBehovByParameters(sykmeldtFnr =  sykmeldtFnr, orgnummer =  orgnummer, behovStatus = listOf(
             BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION))
     }
 

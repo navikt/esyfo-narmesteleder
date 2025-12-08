@@ -46,7 +46,7 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
         }
     }
     suspend fun updateStatusForRequirement(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
-        narmesteLederService.findNLBehovEntityByNLKafkaMessage(nlKafkaMessage)
+        narmesteLederService.findClosableBehovs(nlKafkaMessage.fnr, nlKafkaMessage.orgnummer)
             .forEach {
                 narmesteLederService.updateNlBehov(it, BehovStatus.BEHOV_FULFILLED)
             }

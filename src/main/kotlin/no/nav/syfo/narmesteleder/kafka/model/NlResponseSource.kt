@@ -8,30 +8,27 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 
 enum class NlResponseSource(val source: String) {
     LPS("esyo-narmesteleder.lps"),
+    LPS_REVOKE("esyo-narmesteleder.lps.deaktivert"),
     PERSONALLEDER("esyo-narmesteleder.personalleder"),
-    ARBEIDSTAGER("esyo-narmesteleder.arbeidstager"),
-    NARMESTELEDER("esyo-narmesteleder.leder");
+    PERSONALLEDER_REVOKE("esyo-narmesteleder.personalleder.deaktivert"),
+    ARBEIDSTAGER_REVOKE("esyo-narmesteleder.arbeidstager.deaktivert"),
+    NARMESTELEDER_REVOKE("esyo-narmesteleder.leder.deaktivert");
 
     companion object {
         fun getSourceFrom(principal: Principal, linemanager: Linemanager): NlResponseSource {
-            return when(principal) {
+            return when (principal) {
                 is SystemPrincipal -> LPS
-                is UserPrincipal -> {
-                    when (principal.ident) {
-                        linemanager.employeeIdentificationNumber -> ARBEIDSTAGER
-                        linemanager.manager.nationalIdentificationNumber -> NARMESTELEDER
-                        else -> PERSONALLEDER
-                    }
-                }
+                is UserPrincipal -> PERSONALLEDER
             }
         }
+
         fun getSourceFrom(principal: Principal, linemanagerRevoke: LinemanagerRevoke): NlResponseSource {
-            return when(principal) {
-                is SystemPrincipal -> LPS
+            return when (principal) {
+                is SystemPrincipal -> LPS_REVOKE
                 is UserPrincipal -> {
                     when (principal.ident) { // Can add option for NARMESTELEDER if we accept requests from them and can identity the caller as such
-                        linemanagerRevoke.employeeIdentificationNumber -> ARBEIDSTAGER
-                        else -> PERSONALLEDER
+                        linemanagerRevoke.employeeIdentificationNumber -> ARBEIDSTAGER_REVOKE
+                        else -> PERSONALLEDER_REVOKE
                     }
                 }
             }

@@ -22,7 +22,7 @@ class NlResponseSourceTest : DescribeSpec({
             source shouldBe NlResponseSource.LPS
         }
 
-        it("Returns ARBEIDSTAGER when principal is UserPrincipal with employee ident") {
+        it("Returns PERSONALLEDER when principal is UserPrincipal") {
             // Arrange
 
             val linemanager = linemanager()
@@ -32,34 +32,8 @@ class NlResponseSourceTest : DescribeSpec({
             val source = NlResponseSource.getSourceFrom(principal, linemanager)
 
             // Assert
-            source shouldBe NlResponseSource.ARBEIDSTAGER
-        }
-        it("Returns LEDER when principal is UserPrincipal with linemanager ident") {
-            // Arrange
-
-            val linemanager = linemanager()
-            val principal = UserPrincipal(linemanager.manager.nationalIdentificationNumber, "token")
-
-            // Act
-            val source = NlResponseSource.getSourceFrom(principal, linemanager)
-
-            // Assert
-            source shouldBe NlResponseSource.NARMESTELEDER
-        }
-        it("Returns PERSONALLEDER when principal is UserPrincipal with other ident") {
-            // Arrange
-
-            val linemanager = linemanager()
-            val principal = UserPrincipal("12345678901", "token")
-
-            // Act
-            val source = NlResponseSource.getSourceFrom(principal, linemanager)
-
-            // Assert
             source shouldBe NlResponseSource.PERSONALLEDER
         }
-
-
     }
     describe("getSourceFrom principal and LinemanagerRevoke") {
         it("Returns LPS when principal is OrganizationPrincipal") {
@@ -71,7 +45,7 @@ class NlResponseSourceTest : DescribeSpec({
             val source = NlResponseSource.getSourceFrom(principal, linemanager)
 
             // Assert
-            source shouldBe NlResponseSource.LPS
+            source shouldBe NlResponseSource.LPS_REVOKE
         }
 
         it("Returns ARBEIDSTAGER when principal is UserPrincipal with employee ident") {
@@ -84,7 +58,7 @@ class NlResponseSourceTest : DescribeSpec({
             val source = NlResponseSource.getSourceFrom(principal, linemanager)
 
             // Assert
-            source shouldBe NlResponseSource.ARBEIDSTAGER
+            source shouldBe NlResponseSource.ARBEIDSTAGER_REVOKE
         }
         it("Returns PERSONALLEDER when principal is UserPrincipal with other ident") {
             // Arrange
@@ -96,7 +70,7 @@ class NlResponseSourceTest : DescribeSpec({
             val source = NlResponseSource.getSourceFrom(principal, linemanager)
 
             // Assert
-            source shouldBe NlResponseSource.PERSONALLEDER
+            source shouldBe NlResponseSource.PERSONALLEDER_REVOKE
         }
     }
 })

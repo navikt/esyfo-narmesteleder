@@ -1,4 +1,4 @@
-package no.nav.syfo.application
+package no.nav.syfo.application.environment
 
 import no.nav.syfo.application.database.DatabaseEnvironment
 import no.nav.syfo.application.kafka.KafkaEnvironment
@@ -9,7 +9,7 @@ interface Environment {
     val texas: TexasEnvironment
     val kafka: KafkaEnvironment
     val clientProperties: ClientProperties
-    val otherEnvironment: OtherEnvironmentProperties
+    val otherProperties: OtherEnvironmentProperties
 }
 
 const val NAIS_DATABASE_ENV_PREFIX = "NARMESTELEDER_DB"
@@ -19,7 +19,7 @@ data class NaisEnvironment(
     override val texas: TexasEnvironment = TexasEnvironment.createFromEnvVars(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createFromEnvVars(),
     override val clientProperties: ClientProperties = ClientProperties.createFromEnvVars(),
-    override val otherEnvironment: OtherEnvironmentProperties = OtherEnvironmentProperties.createFromEnvVars()
+    override val otherProperties: OtherEnvironmentProperties = OtherEnvironmentProperties.createFromEnvVars()
     ) : Environment
 
 fun getEnvVar(varName: String, defaultValue: String? = null) =
@@ -36,5 +36,5 @@ data class LocalEnvironment(
     override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal(),
     override val clientProperties: ClientProperties = ClientProperties.createForLocal(),
-    override val otherEnvironment: OtherEnvironmentProperties = OtherEnvironmentProperties.createForLocal()
+    override val otherProperties: OtherEnvironmentProperties = OtherEnvironmentProperties.createForLocal()
 ) : Environment

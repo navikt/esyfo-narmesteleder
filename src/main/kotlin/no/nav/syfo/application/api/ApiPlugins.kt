@@ -3,6 +3,7 @@ package no.nav.syfo.application.api
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.KotlinInvalidNullException
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.jackson.jackson
@@ -72,7 +73,14 @@ fun Application.installStatusPages() {
 }
 
 fun BadRequestException.toApiError(path: String?): ApiError {
-    return ApiError(
+    val rootCause = this.rootCause()
+    return if (rootCause is KotlinInvalidNullException) {
+        ApiErrorException.BadRequestException(
+            "Invalid request body. Missing required field: ${rootCause.propertyName}",
+            type = ErrorType.INVALID_FORMAT
+        )
+            .toApiError(path ?: "")
+    } else ApiError(
         status = HttpStatusCode.BadRequest,
         type = ErrorType.BAD_REQUEST,
         message = this.message ?: "Bad request",
@@ -87,4 +95,13 @@ fun NotFoundException.toApiError(path: String?): ApiError {
         message = this.message ?: "Bad request",
         path = path
     )
+}
+
+fun Throwable.rootCause(): Throwable {
+    var root: Throwable = this
+    // Loop until the cause is null or the cause is itself (preventing cycles)
+    while (root.cause != null && root.cause != root) {
+        root = root.cause!!
+    }
+    return root
 }

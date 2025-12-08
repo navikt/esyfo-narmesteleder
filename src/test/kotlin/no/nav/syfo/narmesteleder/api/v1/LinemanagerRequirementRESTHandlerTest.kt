@@ -14,6 +14,7 @@ import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import prepareGetPersonResponse
 
 class LinemanagerRequirementRESTHandlerTest : FunSpec({
     val servicesWrapper = FakesWrapper(Dispatchers.Default)
@@ -27,6 +28,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
         nationalIdentificationNumber = defaultManagerFnr,
         mobile = "99999999",
         email = "mail@manager.no",
+        lastName = "Jensen",
     )
     val defaultRequirement = NarmestelederBehovEntity(
         id = UUID.randomUUID(),
@@ -44,6 +46,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
     }
 
     test("Should update status on NlBehov through NarmestelederService") {
+        servicesWrapper.pdlServiceSpyk.prepareGetPersonResponse(defaultManager)
         val handler = servicesWrapper.lnReqRESTHandlerSpyk
         val db = servicesWrapper.fakeDbSpyk
         val fixtureEntity = db.insertNlBehov(defaultRequirement)
@@ -70,6 +73,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
     }
 
     test("Should distribute new linemanager using NarmestelederKafkaService") {
+        servicesWrapper.pdlServiceSpyk.prepareGetPersonResponse(defaultManager)
         val handler = servicesWrapper.lnReqRESTHandlerSpyk
         val db = servicesWrapper.fakeDbSpyk
         val fixtureEntity = db.insertNlBehov(defaultRequirement)
@@ -92,7 +96,7 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
             servicesWrapper.narmestelederKafkaServiceSpyk.sendNarmesteLederRelasjon(
                 match {
                     it.employeeIdentificationNumber == fixtureEntity.sykmeldtFnr &&
-                    it.orgNumber == fixtureEntity.orgnummer
+                        it.orgNumber == fixtureEntity.orgnummer
                 },
                 any(),
                 match { it == NlResponseSource.LPS }

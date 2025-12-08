@@ -1,6 +1,6 @@
 package no.nav.syfo.application.texas
 
-import no.nav.syfo.application.getEnvVar
+import no.nav.syfo.application.environment.getEnvVar
 
 data class TexasEnvironment(
     val tokenIntrospectionEndpoint: String,

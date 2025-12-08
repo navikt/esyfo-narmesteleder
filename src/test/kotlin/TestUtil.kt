@@ -35,24 +35,31 @@ import no.nav.syfo.texas.client.TexasResponse
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import kotlinx.coroutines.withContext
+import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.Person
+import no.nav.syfo.pdl.client.Navn
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
+fun faker() = faker
 fun manager(): Manager = Manager(
     nationalIdentificationNumber = faker.numerify("###########"),
     mobile = faker.phoneNumber().cellPhone(),
     email = faker.internet().emailAddress(),
+    lastName = faker.name().lastName(),
 )
 
 fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
     employeeIdentificationNumber = faker.numerify("###########"),
     orgNumber = faker.numerify("#########"),
+    lastName = faker.name().lastName(),
 )
 
 fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
     employeeIdentificationNumber = faker.numerify("###########"),
     orgNumber = faker.numerify("#########"),
+    lastName = faker.name().lastName(),
 )
 
 fun nlBehovEntity() = NarmestelederBehovEntity(
@@ -147,6 +154,24 @@ fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, c
             else -> error("Unhandled request ${request.url.fullPath}")
         }
     }
+
+
+fun PdlService.prepareGetPersonResponse(manager: Manager,) {
+    prepareGetPersonResponse(manager.nationalIdentificationNumber, manager.lastName)
+}
+fun PdlService.prepareGetPersonResponse(fnr: String, lastName: String) {
+    val name = faker().name()
+    coEvery {
+        getPersonFor(fnr)
+    } returns Person(
+        name = Navn(
+            fornavn = name.firstName(),
+            mellomnavn = "",
+            etternavn = lastName,
+        ),
+        nationalIdentificationNumber = fnr,
+    )
+}
 
 fun TexasHttpClient.defaultMocks(
     pid: String? = null,

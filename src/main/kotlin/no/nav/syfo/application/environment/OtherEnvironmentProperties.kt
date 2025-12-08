@@ -7,6 +7,7 @@ data class OtherEnvironmentProperties(
     val updateDialogportenTaskProperties: UpdateDialogportenTaskProperties,
     val persistLeesahNlBehov: Boolean,
     val isDialogporteBackgroundTaskEnabled: Boolean,
+    val dialogportenIsApiOnly: Boolean,
 ) {
     companion object {
         fun createFromEnvVars() =
@@ -16,6 +17,7 @@ data class OtherEnvironmentProperties(
                 publicIngressUrl = getEnvVar("PUBLIC_INGRESS_URL"),
                 persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
                 isDialogporteBackgroundTaskEnabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
+                dialogportenIsApiOnly = getEnvVar("DIALOGPORTEN_API_ONLY").toBoolean(),
                 updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars()
             )
 
@@ -27,6 +29,7 @@ data class OtherEnvironmentProperties(
                 updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
                 persistLeesahNlBehov = true,
                 isDialogporteBackgroundTaskEnabled = true,
+                dialogportenIsApiOnly = false,
             )
     }
 }

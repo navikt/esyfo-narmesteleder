@@ -142,7 +142,7 @@ class DialogportenService(
                 title = getDialogTitle(name, sykmeldtFnr),
                 summary = getSummary(name),
             ),
-            isApiOnly = false,
+            isApiOnly = otherEnvironmentProperties.dialogportenIsApiOnly,
             attachments = listOf(
                 createAttachement(AttachmentUrlConsumerType.Api, URL_TITLE_API, id),
                 createAttachement(AttachmentUrlConsumerType.Gui, URL_TITLE_GUI, id),

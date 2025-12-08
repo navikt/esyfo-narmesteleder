@@ -39,14 +39,14 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.api.v1.REVOKE_PATH
-import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
@@ -60,8 +60,8 @@ import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
-class LinenamanagerApiV1Test : DescribeSpec({
-    val pdlService = PdlService(FakePdlClient())
+class LinenmanagerApiV1Test : DescribeSpec({
+    val pdlService = spyk(PdlService(FakePdlClient()))
     val texasHttpClientMock = mockk<TexasHttpClient>()
     val narmesteLederRelasjon = linemanager()
     val fakeAaregClient = FakeAaregClient()
@@ -102,6 +102,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
         fakeAaregClient.arbeidsForholdForIdent.clear()
         fakeRepo.clear()
     }
+
     fun withTestApplication(
         fn: suspend ApplicationTestBuilder.() -> Unit
     ) {
@@ -136,6 +137,11 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("should return 202 Accepted for valid payload") {
                 withTestApplication {
                     // Arrange
+                    pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
+                    pdlService.prepareGetPersonResponse(
+                        narmesteLederRelasjon.employeeIdentificationNumber,
+                        narmesteLederRelasjon.lastName
+                    )
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon = DefaultOrganization.copy(
                             ID = "0192:${narmesteLederRelasjon.orgNumber}"
@@ -183,7 +189,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
 
                     // Assert
                     response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                    response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                     coVerify { narmestelederKafkaServiceSpy wasNot Called }
                 }
             }
@@ -249,6 +255,11 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("should return 202 Accepted for valid payload") {
                 withTestApplication {
                     // Arrange
+                    pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
+                    pdlService.prepareGetPersonResponse(
+                        narmesteLederRelasjon.employeeIdentificationNumber,
+                        narmesteLederRelasjon.lastName
+                    )
                     val callerPid = "11223344556"
                     texasHttpClientMock.defaultMocks(
                         acr = "Level4",
@@ -342,6 +353,10 @@ class LinenamanagerApiV1Test : DescribeSpec({
                     ),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
+                pdlService.prepareGetPersonResponse(
+                    narmesteLederAvkreft.employeeIdentificationNumber,
+                    narmesteLederAvkreft.lastName
+                )
                 val narmesteLederAvkreft = narmesteLederAvkreft
                 fakeAaregClient.arbeidsForholdForIdent.clear()
                 fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
@@ -356,6 +371,51 @@ class LinenamanagerApiV1Test : DescribeSpec({
                 // Assert
                 response.status shouldBe HttpStatusCode.Accepted
                 coVerify(exactly = 1) {
+                    narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
+                        eq(narmesteLederAvkreft), eq(
+                            NlResponseSource.LPS
+                        )
+                    )
+                }
+                coVerify(exactly = 1) {
+                    validationServiceSpy.validateLinemanagerRevoke(
+                        eq(narmesteLederAvkreft),
+                        any()
+                    )
+                }
+            }
+        }
+
+        it("should return 400 when lastName in payload does not match the nin") {
+            val narmesteLederAvkreft = linemanagerRevoke()
+            withTestApplication {
+                // Arrange
+                texasHttpClientMock.defaultMocks(
+                    systemBrukerOrganisasjon = DefaultOrganization.copy(
+                        ID = "0192:${narmesteLederAvkreft.orgNumber}"
+                    ),
+                    scope = MASKINPORTEN_NL_SCOPE,
+                )
+                pdlService.prepareGetPersonResponse(
+                    narmesteLederAvkreft.employeeIdentificationNumber,
+                    narmesteLederAvkreft.lastName.reversed()
+                )
+                val narmesteLederAvkreft = narmesteLederAvkreft
+                fakeAaregClient.arbeidsForholdForIdent.clear()
+                fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
+                    listOf(narmesteLederAvkreft.orgNumber to narmesteLederRelasjon.orgNumber)
+                // Act
+                val response = client.post("$API_V1_PATH/$REVOKE_PATH") {
+                    contentType(ContentType.Application.Json)
+                    setBody(narmesteLederAvkreft)
+                    bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
+                }
+
+                // Assert
+                response.status shouldBe HttpStatusCode.BadRequest
+                val body = response.body<ApiError>()
+                body.type shouldBe ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+                coVerify(exactly = 0) {
                     narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                         eq(narmesteLederAvkreft), eq(
                             NlResponseSource.LPS
@@ -419,7 +479,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
 
                 // Assert
                 response.status shouldBe HttpStatusCode.BadRequest
-                response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                 coVerify { narmestelederKafkaServiceSpy wasNot Called }
             }
         }
@@ -481,7 +541,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
             it("GET /requirement/{id} 403 when Maskinporten principal org mismatch") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
-                        consumer = DefaultOrganization.copy(ID = "0192:999999999"),
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val requirementId = seedLinemanagerRequirement()
@@ -489,7 +549,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("999999999"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                    response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
                 }
             }
 
@@ -506,6 +566,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                             .nationalIdentificationNumber
                             .reversed()
                     )
+                    pdlService.prepareGetPersonResponse(manager)
                     fakeAaregClient.arbeidsForholdForIdent[manager.nationalIdentificationNumber] =
                         listOf(orgnummer to orgnummer)
 
@@ -561,12 +622,13 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken(orgnummer))
                     }
                     response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                    response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                 }
             }
 
             it("PUT /requirement/{id} 403 when principal lacks org access") {
                 withTestApplication {
+                    pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                     val requirementId = seedLinemanagerRequirement()
                     texasHttpClientMock.defaultMocks(
                         consumer = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
@@ -580,7 +642,7 @@ class LinenamanagerApiV1Test : DescribeSpec({
                         bearerAuth(createMockToken("000000000"))
                     }
                     response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                    response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
                 }
             }
         }

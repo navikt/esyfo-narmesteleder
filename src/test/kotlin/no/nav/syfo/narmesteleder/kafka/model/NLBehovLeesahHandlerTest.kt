@@ -27,6 +27,7 @@ class NLBehovLeesahHandlerTest : FunSpec({
 
     val defaultManager = Manager(
         nationalIdentificationNumber = defaultManagerFnr,
+        lastName = "ManagerLastName",
         mobile = "99999999",
         email = "mail@manager.no",
     )

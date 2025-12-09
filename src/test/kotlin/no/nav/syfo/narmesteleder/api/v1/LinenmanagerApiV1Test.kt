@@ -484,26 +484,27 @@ class LinenmanagerApiV1Test : DescribeSpec({
             }
         }
 
+    }
+    describe("/linemanager/requirement endpoints") {
+        val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
+        val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
+        val orgnummer = narmesteLederRelasjon.orgNumber
+        fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
+            employeeIdentificationNumber = sykmeldtFnr,
+            orgNumber = orgNumber,
+            managerIdentificationNumber = manager.nationalIdentificationNumber,
+            behovReason = BehovReason.DEAKTIVERT_LEDER,
+            revokedLinemanagerId = UUID.randomUUID(),
+        )
 
-        describe("/linemanager/requirement endpoints") {
-            val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
-            val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
-            val orgnummer = narmesteLederRelasjon.orgNumber
+        suspend fun seedLinemanagerRequirement(): UUID {
+            fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
+            fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
+            narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite())
+            return fakeRepo.lastId() ?: error("No requirement seeded")
+        }
+        describe("GET /requirement/{id}") {
 
-            fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
-                employeeIdentificationNumber = sykmeldtFnr,
-                orgNumber = orgNumber,
-                managerIdentificationNumber = manager.nationalIdentificationNumber,
-                behovReason = BehovReason.DEAKTIVERT_LEDER,
-                revokedLinemanagerId = UUID.randomUUID(),
-            )
-
-            suspend fun seedLinemanagerRequirement(): UUID {
-                fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
-                fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
-                narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite())
-                return fakeRepo.lastId() ?: error("No requirement seeded")
-            }
 
             it("GET /requirement/{id} 200 with Maskinporten token") {
                 withTestApplication {
@@ -552,7 +553,9 @@ class LinenmanagerApiV1Test : DescribeSpec({
                     response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
                 }
             }
+        }
 
+        describe("PUT /requirement/{id}") {
             it("PUT /requirement/{id} 202 updates behov and sends kafka message") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(

@@ -16,7 +16,7 @@ import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exceptions.UnauthorizedException
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequiremenCollection
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 
 suspend inline fun <reified T : Any> RoutingCall.tryReceive() = runCatching { receive<T>() }.getOrElse {
     when {
@@ -58,11 +58,11 @@ fun RoutingCall.getPageSize(): Int =
     this.queryParameters["pageSize"]?.let {
         it.toIntOrNull().let { pageSize ->
             when (it.toIntOrNull()) {
-                in 1..LinemanagerRequiremenCollection.DEFAULT_PAGE_SIZE -> pageSize
-                else -> LinemanagerRequiremenCollection.DEFAULT_PAGE_SIZE
+                in 1..LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE -> pageSize
+                else -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
             }
         }
-    } ?: LinemanagerRequiremenCollection.DEFAULT_PAGE_SIZE
+    } ?: LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
 
 fun RoutingCall.getMyPrincipal(): Principal =
     when (attributes[TOKEN_ISSUER]) {

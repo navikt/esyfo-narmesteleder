@@ -35,11 +35,12 @@ class FakeNarmestelederDb : INarmestelederDb {
 
     override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
     override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>):
-            List<NarmestelederBehovEntity> {
+        List<NarmestelederBehovEntity> {
         return store.values.filter {
             it.orgnummer == orgnummer &&
                 it.sykmeldtFnr == sykmeldtFnr &&
-                behovStatus.contains(it.behovStatus) }
+                behovStatus.contains(it.behovStatus)
+        }
     }
 
     override suspend fun findBehovByParameters(
@@ -51,7 +52,7 @@ class FakeNarmestelederDb : INarmestelederDb {
         return store.values.filter {
             it.orgnummer == orgNumber &&
                 it.created.isAfter(createdAfter) &&
-                it.created.isBefore(Instant.now() - java.time.Duration.ofSeconds(10)) &&
+                it.created.isBefore(Instant.now()) &&
                 status.contains(it.behovStatus)
         }.take(limit)
     }

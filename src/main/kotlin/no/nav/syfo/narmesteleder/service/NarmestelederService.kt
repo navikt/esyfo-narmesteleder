@@ -146,7 +146,7 @@ class NarmestelederService(
             orgNumber = orgNumber,
             createdAfter = createdAfter,
             status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
-            limit = pageSize
+            limit = pageSize + 1,
         ).map { it.toEmployeeLinemanagerRead(it.getName()) }
 }
 

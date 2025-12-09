@@ -680,11 +680,12 @@ class LinenmanagerApiV1Test : DescribeSpec({
                             status = listOf(
                                 BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                             ),
-                            limit = pageSize,
+                            limit = pageSize +1, // +1 to check if there is more pages
                         )
                     }
                 }
             }
         }
+
     }
 })

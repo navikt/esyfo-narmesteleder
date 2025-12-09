@@ -98,13 +98,7 @@ fun Route.registerLinemanagerApiV1(
                 principal = principal,
             )
             call.respond(
-                HttpStatusCode.OK, LinemanagerRequirementCollection(
-                    linemanagerRequirements = collection,
-                    meta = PageInfo(
-                        size = collection.size,
-                        pageSize = pageSize,
-                    )
-                )
+                HttpStatusCode.OK, LinemanagerRequirementCollection.from(collection, pageSize)
             )
         }
     }

@@ -122,7 +122,7 @@ paths:
         - name: pageSize
           in: query
           required: false
-          description: Number of results per page
+          description: Number of results per page. If a value higher than 50 is provided, it will be capped to 50.
           schema:
             type: integer
             default: 50
@@ -443,9 +443,13 @@ components:
           type: integer
         pageSize:
           type: integer
+        hasMore:
+            description: Indicates if there are more results available beyond the current page.
+            type: boolean
       required:
         - size
         - pageSize
+        - hasMore
     ErrorType:
       type: string
       description: |

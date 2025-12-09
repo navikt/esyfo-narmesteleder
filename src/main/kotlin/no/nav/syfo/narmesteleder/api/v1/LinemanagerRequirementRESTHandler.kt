@@ -16,7 +16,6 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
-import no.nav.syfo.narmesteleder.service.toEmployeeLinemanagerRead
 
 class LinemanagerRequirementRESTHandler(
     private val narmesteLederService: NarmestelederService,

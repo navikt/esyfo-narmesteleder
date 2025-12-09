@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.domain
 
-class LinemanagerRequiremenCollection(
+class LinemanagerRequirementCollection(
     val linemanagerRequirements: List<LinemanagerRequirementRead>,
     val meta: PageInfo
 ) {

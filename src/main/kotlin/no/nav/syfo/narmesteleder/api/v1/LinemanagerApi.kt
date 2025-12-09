@@ -8,7 +8,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import no.nav.syfo.narmesteleder.domain.Linemanager
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequiremenCollection
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PageInfo
@@ -98,7 +98,7 @@ fun Route.registerLinemanagerApiV1(
                 principal = principal,
             )
             call.respond(
-                HttpStatusCode.OK, LinemanagerRequiremenCollection(
+                HttpStatusCode.OK, LinemanagerRequirementCollection(
                     linemanagerRequirements = collection,
                     meta = PageInfo(
                         size = collection.size,

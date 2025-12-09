@@ -49,7 +49,7 @@ class DialogportenServiceTest : DescribeSpec({
             frontendBaseUrl = frontendBaseUrl,
             persistLeesahNlBehov = true,
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
-            isDialogporteBackgroundTaskEnabled = true,
+            isDialogportenBackgroundTaskEnabled = true,
             dialogportenIsApiOnly = false,
         ),
         pdlService = pdlService,

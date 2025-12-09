@@ -14,7 +14,7 @@ fun Application.configureBackgroundTasks() {
     val environment by inject<Environment>()
 
     val logger = logger()
-    if (!environment.otherProperties.isDialogporteBackgroundTaskEnabled) {
+    if (!environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
         logger.info("Integration with Dialogporten is not enabled. Skipping background tasks")
         return
     }

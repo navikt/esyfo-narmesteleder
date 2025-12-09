@@ -71,15 +71,7 @@ class NLBehovLeesahHandlerTest : FunSpec({
     test("Should update status on NlBehov through NarmestelederService when getting via Kafka") {
         val handler = servicesWrapper.nlBehovLeesahHandlerSpyk
         val db = servicesWrapper.fakeDbSpyk
-        val fixtureEntity = db.insertNlBehov(defaultRequirement)
-
-        val narmestelederBehovEntity = NarmestelederBehovEntity(
-            orgnummer = defaultRequirement.orgnummer,
-            sykmeldtFnr = defaultRequirement.sykmeldtFnr,
-            narmestelederFnr = defaultRequirement.narmestelederFnr,
-            hovedenhetOrgnummer = defaultRequirement.orgnummer,
-            behovReason = defaultRequirement.behovReason
-        )
+        db.insertNlBehov(defaultRequirement)
 
         handler.updateStatusForRequirement(
             NarmestelederLeesahKafkaMessage(
@@ -119,7 +111,7 @@ class NLBehovLeesahHandlerTest : FunSpec({
         db.insertNlBehov(fullfilledRequirement)
         db.insertNlBehov(defaultRequirementNotReceivedInLeesah)
 
-        val principal = SystemPrincipal(
+        SystemPrincipal(
             ident = "0192:${arbeidsforholdManagerAareg.first}",
             token = createMockToken(
                 ident = "0192:${arbeidsforholdManagerAareg.first}",
@@ -128,7 +120,7 @@ class NLBehovLeesahHandlerTest : FunSpec({
             systemUserId = "systemUserId",
         )
 
-        val narmestelederBehovEntity = NarmestelederBehovEntity(
+        NarmestelederBehovEntity(
             orgnummer = defaultRequirement.orgnummer,
             sykmeldtFnr = defaultRequirement.sykmeldtFnr,
             narmestelederFnr = defaultRequirement.narmestelederFnr,

@@ -97,8 +97,8 @@ class NarmestelederDbTest : DescribeSpec({
             val nlBehovEntity3 =
                 insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION))
             val earlier = Instant.now().minusSeconds(3 * 60L)
-            updateCreated(nlBehovEntity1?.id!!, earlier)
-            updateCreated(nlBehovEntity2?.id!!, earlier)
+            updateCreated(nlBehovEntity1.id!!, earlier)
+            updateCreated(nlBehovEntity2.id!!, earlier)
             updateCreated(nlBehovEntity3?.id!!, earlier)
 
             // Act

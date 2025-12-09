@@ -74,7 +74,11 @@ class LeesahNLKafkaConsumer(
                     jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(it)
 
                 logger.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
-                handler.handleByLeesahStatus(nlKafkaMessage.toNlBehovWrite(), nlKafkaMessage.status)
+                if (nlKafkaMessage.aktivTom == null) {
+                    handler.updateStatusForRequirement(nlKafkaMessage)
+                } else {
+                    handler.handleByLeesahStatus(nlKafkaMessage.toNlBehovWrite(), nlKafkaMessage.status)
+                }
             } ?: logger.info("Received record with empty value: ${record.key()}")
             addToProcessed(record)
         }.getOrElse {
@@ -121,7 +125,7 @@ class LeesahNLKafkaConsumer(
             else -> {
                 logger.error(
                     "Error while processing record with key ${record.key()} " +
-                            "and offset ${record.offset()}. Will NOT ack, message will be retried.",
+                        "and offset ${record.offset()}. Will NOT ack, message will be retried.",
                     error
                 )
             }

@@ -66,4 +66,20 @@ docs {
       ```
   1. Inspect the logs from the running ```esyfo-narmesteleder``` service and copy the UUID from the log line ```Inserted nærmeste leder-behov with id:```
   1. Create a file ```.env``` in the root folder of this collection, based on the existing ```.env.default```, and set the id in the proverty BEHOV_ID.
+  1. To test the case where we update pending requirements due to a linemanager being supplied through the original methods, produce the followin message in kafka localy
+      ```json
+      {
+        "narmesteLederId": "0199b8f1-0cfe-7787-bab8-2fb1cf1b4767",
+        "fnr": "15436803416",
+        "orgnummer": "215649202",
+        "narmesteLederFnr": "215649202",
+        "narmesteLederTelefonnummer": "12346532",
+        "narmesteLederEpost": "e@post.no",
+        "arbeidsgiverForskutterer": "false",
+        "aktivFom": "2025-10-06",
+        "aktivTom": null,
+        "timestamp": "2025-10-06T11:50:52.433859Z",
+        "status": "DEAKTIVERT_NY_LEDER"
+      }
+      ```
 }

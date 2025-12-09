@@ -11,7 +11,6 @@ import no.nav.syfo.narmesteleder.domain.Employee
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
@@ -55,7 +54,6 @@ class NarmestelederService(
             toEmployeeLinemanagerRead(name)
         }
 
-
     private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity =
         nlDb.findBehovById(id)
             ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
@@ -65,12 +63,25 @@ class NarmestelederService(
         behovStatus: BehovStatus
     ) {
         val narmestelederBehovEntity = findBehovEntityById(requirementId)
-        val updatedBehov = narmestelederBehovEntity.copy(
+        updateNlBehov(narmestelederBehovEntity, behovStatus)
+    }
+
+    suspend fun updateNlBehov(
+        behovEntity: NarmestelederBehovEntity,
+        behovStatus: BehovStatus
+    ) {
+        val updatedBehov = behovEntity.copy(
             behovStatus = behovStatus,
         )
         nlDb.updateNlBehov(updatedBehov)
         logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
         dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
+    }
+
+    suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String)
+    : List<NarmestelederBehovEntity> {
+        return nlDb.findBehovByParameters(sykmeldtFnr =  sykmeldtFnr, orgnummer =  orgnummer, behovStatus = listOf(
+            BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION))
     }
 
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {

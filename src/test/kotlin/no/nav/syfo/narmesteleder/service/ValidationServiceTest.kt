@@ -1,11 +1,13 @@
 package no.nav.syfo.narmesteleder.service
 
 import DefaultSystemPrincipal
+import faker
 import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.spyk
 import linemanagerRevoke
@@ -232,6 +234,88 @@ class ValidationServiceTest : DescribeSpec({
                 )
                 aaregService.findOrgNumbersByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
+            }
+        }
+
+        describe("validateLinemanagerCollectionAccess") {
+            it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
+                // Arrange
+                val fnr = altinnTilgangerClient.usersWithAccess.first().first
+                val orgNumber = faker.numerify("#########")
+                val principal = UserPrincipal(fnr, "token")
+
+                // Act
+                shouldThrow<ApiErrorException.ForbiddenException> {
+                    service.validateLinemanagerCollectionAccess(principal = principal, orgNumber = orgNumber)
+                }
+                // Assert
+                coVerify(exactly = 1) {
+                    altinnTilgangerService.validateTilgangToOrganization(
+                        eq(principal),
+                        eq(orgNumber)
+                    )
+                }
+                coVerify(exactly = 0) {
+                    pdpService.hasAccessToResource(any(), any(), any())
+                    aaregService.findOrgNumbersByPersonIdent(any())
+                    pdlService.getPersonOrThrowApiError(any())
+                }
+            }
+
+            it("should not call AltinnTilgangerService when principal is Systemprincipal") {
+                // Arrange
+                val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
+                val orgNumber = faker.numerify("#########")
+                val principal = DefaultSystemPrincipal.copy(
+                    ident = "0192:${userWithAccess.second}",
+                )
+
+                // Act
+                shouldThrow<ApiErrorException.ForbiddenException> {
+                    service.validateLinemanagerCollectionAccess(principal, orgNumber)
+                }
+                // Assert
+                coVerify(exactly = 0) {
+                    altinnTilgangerService.validateTilgangToOrganization(
+                        any<AltinnTilgang>(),
+                        eq(orgNumber)
+                    )
+                }
+                coVerify(exactly = 1) {
+                    pdpService.hasAccessToResource(
+                        match<System> { it.id == "systemId" },
+                        eq(setOf(userWithAccess.second, "systemowner")),
+                        eq("nav_syfo_oppgi-narmesteleder")
+                    )
+                }
+            }
+
+            it("should not throw when access is OK") {
+                // Arrange
+                val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
+                val orgNumber = faker.numerify("#########")
+                val principal = DefaultSystemPrincipal.copy(
+                    ident = "0192:${orgNumber}",
+                )
+
+                // Act
+                shouldNotThrow<ApiErrorException.ForbiddenException> {
+                    service.validateLinemanagerCollectionAccess(principal, orgNumber)
+                }
+                // Assert
+                coVerify(exactly = 0) {
+                    altinnTilgangerService.validateTilgangToOrganization(
+                        any<AltinnTilgang>(),
+                        eq(orgNumber)
+                    )
+                }
+                coVerify(exactly = 1) {
+                    pdpService.hasAccessToResource(
+                        match<System> { it.id == "systemId" },
+                        eq(setOf(orgNumber, "systemowner")),
+                        eq("nav_syfo_oppgi-narmesteleder")
+                    )
+                }
             }
         }
     }

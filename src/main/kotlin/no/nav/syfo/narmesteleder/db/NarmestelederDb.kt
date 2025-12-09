@@ -201,7 +201,6 @@ class NarmestelederDb(
             return@withContext database.connection.use { connection ->
                 val placeholders = status.joinToString(", ") { "?" }
                 connection
-                    // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
                     .prepareStatement(
                         """
                         SELECT *
@@ -212,8 +211,6 @@ class NarmestelederDb(
                             behov_status in ($placeholders) 
                         AND
                             created > ? 
-                        AND
-                            created < NOW() - INTERVAL '10 second'
                         ORDER BY created
                         LIMIT ?
                         """.trimIndent()

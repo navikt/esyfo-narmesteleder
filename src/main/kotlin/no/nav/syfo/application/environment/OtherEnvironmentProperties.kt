@@ -6,7 +6,8 @@ data class OtherEnvironmentProperties(
     val publicIngressUrl: String,
     val updateDialogportenTaskProperties: UpdateDialogportenTaskProperties,
     val persistLeesahNlBehov: Boolean,
-    val isDialogporteBackgroundTaskEnabled: Boolean,
+    val isDialogportenBackgroundTaskEnabled: Boolean,
+    val dialogportenIsApiOnly: Boolean,
 ) {
     companion object {
         fun createFromEnvVars() =
@@ -15,7 +16,8 @@ data class OtherEnvironmentProperties(
                 frontendBaseUrl = getEnvVar("FRONTEND_BASE_URL"),
                 publicIngressUrl = getEnvVar("PUBLIC_INGRESS_URL"),
                 persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
-                isDialogporteBackgroundTaskEnabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
+                isDialogportenBackgroundTaskEnabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
+                dialogportenIsApiOnly = getEnvVar("DIALOGPORTEN_API_ONLY").toBoolean(),
                 updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars()
             )
 
@@ -26,7 +28,8 @@ data class OtherEnvironmentProperties(
                 publicIngressUrl = "http://localhost:8080",
                 updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
                 persistLeesahNlBehov = true,
-                isDialogporteBackgroundTaskEnabled = true,
+                isDialogportenBackgroundTaskEnabled = true,
+                dialogportenIsApiOnly = false,
             )
     }
 }

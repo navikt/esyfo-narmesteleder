@@ -120,5 +120,7 @@ spec:
       value: "false"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
+    - name: DIALOGPORTEN_API_ONLY
+      value: "true"
   envFrom:
     - secret: altinn-subscription-key

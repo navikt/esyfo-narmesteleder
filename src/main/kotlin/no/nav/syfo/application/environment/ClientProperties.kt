@@ -37,7 +37,7 @@ data class ClientProperties(
                 pdlScope = getEnvVar("PDL_SCOPE"),
                 altinn3BaseUrl = getEnvVar("ALTINN_3_BASE_URL"),
                 pdpSubscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY"),
-                eregBaseUrl = "",
+                eregBaseUrl = getEnvVar("EREG_BASE_URL"),
             )
     }
 }

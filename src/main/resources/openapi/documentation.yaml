@@ -104,7 +104,7 @@ paths:
         - maskinporten_jwt: [ ]
         - tokenx_jwt: [ ]
       parameters:
-        - name: createAfter
+        - name: createdAfter
           in: query
           required: true
           example: 2025-12-04T09:04:44.261429Z

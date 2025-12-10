@@ -111,14 +111,17 @@ class ValidationService(
     suspend fun validateLinemanagerRequirementCollectionAccess(principal: Principal, orgNumber: String) {
         when (principal) {
             is SystemPrincipal -> {
+                logger.info("Validating LinemanagerRequirement collection access for system principal")
                 val organizationSet = if (principal.getSystemUserOrgNumber() == orgNumber) setOf(orgNumber) else {
+                    logger.info("Fetching organizations from Ereg")
                     eregService.getOrganization(orgNumber).orgnummerSet()
                 }
                 validateSystemPrincipal(organizationSet, principal)
             }
 
             is UserPrincipal -> {
-                altinnTilgangerService.validateTilgangToOrganization(principal, orgNumber)
+                logger.info("Validating LinemanagerRequirement collection access for user principal")
+                altinnTilgangerService.validateTilgangToOrganization(userPrincipal = principal, orgnummer = orgNumber)
             }
         }
     }

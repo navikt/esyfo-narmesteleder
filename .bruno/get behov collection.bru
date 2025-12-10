@@ -5,15 +5,19 @@ meta {
 }
 
 get {
-  url: {{baseUrlEkstern}}/api/v1/linemanager/requirement?orgNumber=215649202&createdAfter=2025-09-08T11:55:24Z&pageSize=5
+  url: {{baseUrlEkstern}}/api/v1/linemanager/requirement?orgNumber=311315293&createdAfter=2025-09-08T11:55:24Z&pageSize=5
   body: none
-  auth: inherit
+  auth: bearer
 }
 
 params:query {
-  orgNumber: 215649202
+  orgNumber: 311315293
   createdAfter: 2025-09-08T11:55:24Z
   pageSize: 5
+}
+
+auth:bearer {
+  token: eyJraWQiOiJhYTU1OGUzYi0zYTYxLTQxMDQtYjk4Ni01YTQ5NDEwYjA2M2UiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMTkxNjM5ODU1OSIsImlzcyI6Imh0dHBzOi8vdG9rZW54LmRldi1nY3AubmF2LmNsb3VkLm5haXMuaW8iLCJjbGllbnRfYW1yIjoicHJpdmF0ZV9rZXlfand0IiwicGlkIjoiMTE5MTYzOTg1NTkiLCJjbGllbnRfaWQiOiJkZXYtZ2NwOm5haXM6dG9rZW54LXRva2VuLWdlbmVyYXRvciIsImF1ZCI6ImRldi1nY3A6dGVhbS1lc3lmbzplc3lmby1uYXJtZXN0ZWxlZGVyIiwiYWNyIjoiTGV2ZWw0IiwibmJmIjoxNzY1Mzc2MjU5LCJpZHAiOiJodHRwczovL3Rlc3QuaWRwb3J0ZW4ubm8iLCJzY29wZSI6Im9wZW5pZCIsImV4cCI6MTc2NTM3OTg1OSwiaWF0IjoxNzY1Mzc2MjU5LCJqdGkiOiI5ZDYwZTFjMC05OWJiLTRiYTQtODMzNS0wMWRiNzBmN2Q0ZDciLCJjb25zdW1lciI6eyJhdXRob3JpdHkiOiJpc282NTIzLWFjdG9yaWQtdXBpcyIsIklEIjoiMDE5Mjo4ODk2NDA3ODIifX0.qWH0tQCcrqI6up4XBLHgJxlVZwQHT2IHur1QoB5uM1EtfFW_y_9pwd8HioQzd89vHVfeMcvhwkVseh2hCtHLHRt77hLt2Td_Ls5lVmuL7J-lN5p5ZS6DvTNO1z-RsQny71S60WgQn_eZmw2ye2yM6my96kfLI9IUSiZgRchrL6EgC1Q6LhD-39a5KcQb1VpFoQJQ9PfjtJ3uIKcFqGTCyWa8_ZvBufxRJMltmwnYyzXi7pL5ieOqkpUnPo1d2uYunX1VDijFuZw1xdOJWybD5WUHdKT9w9AdKYDtwOvqfpsPA4GcgvxmGcXFioXQLxJWJGLPW4NNlFyuS8NfVJshlQ
 }
 
 assert {

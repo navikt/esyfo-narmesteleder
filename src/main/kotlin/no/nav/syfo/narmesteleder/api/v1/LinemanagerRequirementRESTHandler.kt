@@ -16,6 +16,7 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.util.logger
 
 class LinemanagerRequirementRESTHandler(
     private val narmesteLederService: NarmestelederService,
@@ -23,6 +24,9 @@ class LinemanagerRequirementRESTHandler(
     private val narmestelederKafkaService: NarmestelederKafkaService,
     private val altinnTilgangerService: AltinnTilgangerService,
 ) {
+    companion object {
+        val logger = logger()
+    }
     suspend fun handleUpdatedRequirement(
         manager: Manager,
         requirementId: UUID,
@@ -91,6 +95,7 @@ class LinemanagerRequirementRESTHandler(
         principal: Principal
     ): List<LinemanagerRequirementRead> {
         validationService.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
+        logger.info("Validation successful for fetching LinemanagerRequirement collection for orgNumber: $orgNumber")
         return narmesteLederService.getNlBehovList(
             pageSize = pageSize,
             createdAfter = createdAfter,

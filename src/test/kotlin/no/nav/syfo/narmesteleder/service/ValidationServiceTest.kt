@@ -7,7 +7,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.spyk
 import linemanagerRevoke
@@ -24,6 +23,8 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.ereg.EregService
+import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import prepareGetPersonResponse
@@ -36,6 +37,8 @@ class ValidationServiceTest : DescribeSpec({
 
     val aaregClient = FakeAaregClient()
     val aaregService = spyk(AaregService(aaregClient))
+    val eregClient = FakeEregClient()
+    val eregService = spyk(EregService(eregClient))
     val pdlClient = FakePdlClient()
     val pdlService = spyk(PdlService(pdlClient))
     val pdpClient = FakePdpClient()
@@ -45,7 +48,8 @@ class ValidationServiceTest : DescribeSpec({
         aaregService = aaregService,
         altinnTilgangerService = altinnTilgangerService,
         dinesykmeldteService = dinesykmeldteService,
-        pdpService = pdpService
+        pdpService = pdpService,
+        eregService = eregService,
     )
     beforeTest {
         clearAllMocks()
@@ -246,7 +250,7 @@ class ValidationServiceTest : DescribeSpec({
 
                 // Act
                 shouldThrow<ApiErrorException.ForbiddenException> {
-                    service.validateLinemanagerCollectionAccess(principal = principal, orgNumber = orgNumber)
+                    service.validateLinemanagerRequirementCollectionAccess(principal = principal, orgNumber = orgNumber)
                 }
                 // Assert
                 coVerify(exactly = 1) {
@@ -264,27 +268,25 @@ class ValidationServiceTest : DescribeSpec({
 
             it("should not call AltinnTilgangerService when principal is Systemprincipal") {
                 // Arrange
-                val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
-                val orgNumber = faker.numerify("#########")
+                val orgNumber = eregClient.organisasjoner.keys.first()
                 val principal = DefaultSystemPrincipal.copy(
-                    ident = "0192:${userWithAccess.second}",
+                    ident = "0192:${orgNumber.reversed()}",
                 )
 
                 // Act
                 shouldThrow<ApiErrorException.ForbiddenException> {
-                    service.validateLinemanagerCollectionAccess(principal, orgNumber)
+                    service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
                 }
                 // Assert
                 coVerify(exactly = 0) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        any<AltinnTilgang>(),
-                        eq(orgNumber)
+                        any<AltinnTilgang>(), any()
                     )
                 }
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
                         match<System> { it.id == "systemId" },
-                        eq(setOf(userWithAccess.second, "systemowner")),
+                        eq(setOf(orgNumber.reversed(), "systemowner")),
                         eq("nav_syfo_oppgi-narmesteleder")
                     )
                 }
@@ -292,7 +294,6 @@ class ValidationServiceTest : DescribeSpec({
 
             it("should not throw when access is OK") {
                 // Arrange
-                val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
                 val orgNumber = faker.numerify("#########")
                 val principal = DefaultSystemPrincipal.copy(
                     ident = "0192:${orgNumber}",
@@ -300,7 +301,7 @@ class ValidationServiceTest : DescribeSpec({
 
                 // Act
                 shouldNotThrow<ApiErrorException.ForbiddenException> {
-                    service.validateLinemanagerCollectionAccess(principal, orgNumber)
+                    service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
                 }
                 // Assert
                 coVerify(exactly = 0) {
@@ -314,6 +315,41 @@ class ValidationServiceTest : DescribeSpec({
                         match<System> { it.id == "systemId" },
                         eq(setOf(orgNumber, "systemowner")),
                         eq("nav_syfo_oppgi-narmesteleder")
+                    )
+                }
+            }
+
+            it("should not throw when access is OK due to system user on parent orgnumber") {
+                // Arrange
+                val organization =
+                    eregClient.organisasjoner.filter { it.value.inngaarIJuridiskEnheter != null }.values.first()
+                val orgNumber = organization.organisasjonsnummer
+                val systemUserOrgnumber = organization.inngaarIJuridiskEnheter!!.first().organisasjonsnummer
+                val principal = DefaultSystemPrincipal.copy(
+                    ident = "0192:$systemUserOrgnumber",
+                )
+
+                // Act
+                shouldNotThrow<ApiErrorException.ForbiddenException> {
+                    service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
+                }
+                // Assert
+                coVerify(exactly = 0) {
+                    altinnTilgangerService.validateTilgangToOrganization(
+                        any<AltinnTilgang>(),
+                        eq(orgNumber)
+                    )
+                }
+                coVerify(exactly = 1) {
+                    pdpService.hasAccessToResource(
+                        match<System> { it.id == "systemId" },
+                        eq(setOf(systemUserOrgnumber, "systemowner")),
+                        eq("nav_syfo_oppgi-narmesteleder")
+                    )
+                }
+                coVerify(exactly = 1) {
+                    eregService.getOrganization(
+                        match<String> { it == orgNumber },
                     )
                 }
             }

@@ -32,6 +32,9 @@ import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.ereg.EregService
+import no.nav.syfo.ereg.client.EregClient
+import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
@@ -143,6 +146,13 @@ private fun clientsModule() = module {
             altinnTokenProvider = get(),
         )
     }
+
+    single {
+        if (isLocalEnv()) FakeEregClient() else EregClient(
+            eregBaseUrl = env().clientProperties.eregBaseUrl,
+        )
+    }
+
     single {
         if (isLocalEnv()) FakePdpClient() else PdpClient(
             httpClient = get(),
@@ -186,7 +196,14 @@ private fun servicesModule() = module {
     }
     single { PdpService(get()) }
     single {
-        ValidationService(get(), get(), get(), get(), get())
+        ValidationService(
+            pdlService = get(),
+            aaregService = get(),
+            altinnTilgangerService = get(),
+            dinesykmeldteService = get(),
+            pdpService = get(),
+            eregService = get()
+        )
     }
     single {
         DialogportenService(
@@ -194,6 +211,11 @@ private fun servicesModule() = module {
             narmestelederDb = get(),
             otherEnvironmentProperties = env().otherProperties,
             pdlService = get(),
+        )
+    }
+    single {
+        EregService(
+            eregClient = get()
         )
     }
     single { SendDialogTask(get(), get()) }

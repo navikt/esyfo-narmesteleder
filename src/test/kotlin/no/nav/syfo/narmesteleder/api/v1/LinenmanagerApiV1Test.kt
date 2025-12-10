@@ -41,13 +41,14 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.ereg.EregService
+import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.api.v1.REVOKE_PATH
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
@@ -70,6 +71,8 @@ class LinenmanagerApiV1Test : DescribeSpec({
     val narmesteLederRelasjon = linemanager()
     val fakeAaregClient = FakeAaregClient()
     val aaregService = AaregService(fakeAaregClient)
+    val fakseEregClient = FakeEregClient()
+    val eregService = EregService(fakseEregClient)
     val narmestelederKafkaService =
         NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
@@ -81,7 +84,14 @@ class LinenmanagerApiV1Test : DescribeSpec({
     val fakePdpClient = FakePdpClient()
     val pdpService = PdpService(fakePdpClient)
     val validationService =
-        ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy, dineSykmelteService, pdpService)
+        ValidationService(
+            pdlService = pdlService,
+            aaregService = aaregService,
+            altinnTilgangerService = altinnTilgangerServiceSpy,
+            dinesykmeldteService = dineSykmelteService,
+            pdpService = pdpService,
+            eregService = eregService
+        )
     val validationServiceSpy = spyk(validationService)
     val tokenXIssuer = "https://tokenx.nav.no"
     val fakeRepo = spyk(FakeNarmestelederDb())
@@ -680,7 +690,7 @@ class LinenmanagerApiV1Test : DescribeSpec({
                             status = listOf(
                                 BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                             ),
-                            limit = pageSize +1, // +1 to check if there is more pages
+                            limit = pageSize + 1, // +1 to check if there is more pages
                         )
                     }
                 }

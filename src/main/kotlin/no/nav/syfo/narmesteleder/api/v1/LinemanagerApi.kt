@@ -11,7 +11,6 @@ import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
-import no.nav.syfo.narmesteleder.domain.PageInfo
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -88,9 +87,8 @@ fun Route.registerLinemanagerApiV1(
         get {
             val pageSize = call.getPageSize()
             val createAfter = call.getCreatedAfter()
-            val orgNumber = call.getQueryParameter("orgNumber")
+            val orgNumber = call.getRequiredQueryParameter("orgNumber")
             val principal = call.getMyPrincipal()
-            validationService.validateLinemanagerCollectionAccess(principal, orgNumber)
             val collection = linemanagerRequirementRestHandler.handleGetLinemanagerRequirementsCollection(
                 pageSize = pageSize,
                 createdAfter = createAfter,

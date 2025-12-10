@@ -38,12 +38,12 @@ fun RoutingCall.getPathVariable(name: String): String {
     return this.parameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 }
 
-fun RoutingCall.getQueryParameter(name: String): String {
+fun RoutingCall.getRequiredQueryParameter(name: String): String {
     return this.queryParameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 }
 
 fun RoutingCall.getCreatedAfter(): Instant {
-    val createdAfter = getQueryParameter("createdAfter")
+    val createdAfter = getRequiredQueryParameter("createdAfter")
     try {
         return Instant.parse(createdAfter)
     } catch (e: DateTimeParseException) {
@@ -54,15 +54,15 @@ fun RoutingCall.getCreatedAfter(): Instant {
     }
 }
 
-fun RoutingCall.getPageSize(): Int =
-    this.queryParameters["pageSize"]?.let {
-        it.toIntOrNull().let { pageSize ->
-            when (it.toIntOrNull()) {
-                in 1..LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE -> pageSize
-                else -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
-            }
-        }
-    } ?: LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
+fun RoutingCall.getPageSize(): Int {
+    val pageSize = this.queryParameters["pageSize"]
+        ?.toIntOrNull()
+    return when (pageSize) {
+        null -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
+        in 1..LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE -> pageSize
+        else -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
+    }
+}
 
 fun RoutingCall.getMyPrincipal(): Principal =
     when (attributes[TOKEN_ISSUER]) {

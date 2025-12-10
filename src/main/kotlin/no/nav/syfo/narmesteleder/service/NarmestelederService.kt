@@ -36,7 +36,7 @@ class NarmestelederService(
             toEmployeeLinemanagerRead(name)
         }
 
-    suspend fun NarmestelederBehovEntity.getName(): Name =
+    private suspend fun NarmestelederBehovEntity.getName(): Name =
         if (fornavn != null && etternavn != null) {
             Name(
                 firstName = fornavn,

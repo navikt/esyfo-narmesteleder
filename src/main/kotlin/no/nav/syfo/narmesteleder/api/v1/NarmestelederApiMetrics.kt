@@ -6,12 +6,12 @@ import no.nav.syfo.application.metric.METRICS_REGISTRY
 
 const val REVOKE_LINEMANAGER_BY_LPS = "${METRICS_NS}_revoke_linemanager_by_lps"
 val COUNT_REVOKE_LINEMANAGER_BY_LPS: Counter = Counter.builder(REVOKE_LINEMANAGER_BY_LPS)
-    .description("Counts the number of revokations performed by LPS")
+    .description("Counts the number of revocations performed by LPS")
     .register(METRICS_REGISTRY)
 
 const val REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER = "${METRICS_NS}_revoke_linemanager_by_personnel_manager"
 val COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER: Counter = Counter.builder(REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER)
-    .description("Counts the number of revokations performed by personnel manager")
+    .description("Counts the number of revocations performed by personnel manager")
     .register(METRICS_REGISTRY)
 
 const val FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS = "${METRICS_NS}_fulfill_linemanager_requirement_by_lps"

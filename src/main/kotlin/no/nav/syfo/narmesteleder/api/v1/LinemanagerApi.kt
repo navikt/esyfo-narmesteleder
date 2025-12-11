@@ -31,22 +31,26 @@ fun Route.registerLinemanagerApiV1(
             client = texasHttpClient
         }
 
-        post() {
+        post {
+            val principal = call.getMyPrincipal()
             val create = call.tryReceive<Linemanager>()
             val actors = validationService.validateLinemanager(create, call.getMyPrincipal())
 
             narmestelederKafkaService.sendNarmesteLederRelasjon(
                 create,
                 actors,
-                NlResponseSource.getSourceFrom(call.getMyPrincipal(), create)
+                NlResponseSource.getSourceFrom(principal, create)
             )
-
+            when (principal) {
+                is SystemPrincipal -> COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS.increment()
+                is UserPrincipal -> COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.increment()
+            }
             call.respond(HttpStatusCode.Accepted)
         }
     }
 
     route(REVOKE_PATH) {
-        post() {
+        post {
             val principal = call.getMyPrincipal()
             val revoke = call.tryReceive<LinemanagerRevoke>()
             val employee = validationService.validateLinemanagerRevoke(revoke, principal)
@@ -56,22 +60,29 @@ fun Route.registerLinemanagerApiV1(
                 tweakedRevoke,
                 NlResponseSource.getSourceFrom(principal, tweakedRevoke)
             )
-
+            when (principal) {
+                is SystemPrincipal -> COUNT_REVOKE_LINEMANAGER_BY_LPS.increment()
+                is UserPrincipal -> COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()
+            }
             call.respond(HttpStatusCode.Accepted)
         }
     }
 
     route(RECUIREMENT_PATH) {
         put("/{id}") {
+            val principal = call.getMyPrincipal()
             val id = call.getUUIDFromPathVariable(name = "id")
             val linemanager = call.tryReceive<Manager>()
 
             linemanagerRequirementRestHandler.handleUpdatedRequirement(
                 linemanager,
-                id,
-                principal = call.getMyPrincipal()
+                requirementId = id,
+                principal = principal
             )
-
+            when (principal) {
+                is SystemPrincipal -> COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS.increment()
+                is UserPrincipal -> COUNT_FULFILL_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()
+            }
             call.respond(HttpStatusCode.Accepted)
         }
 

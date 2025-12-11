@@ -87,9 +87,9 @@ spec:
           namespace: fager
       external:
         - host: aareg-services-q2.dev-fss-pub.nais.io
-        - host: "ereg-services-q1.dev-fss-pub.nais.io"
+        - host: ereg-services-q1.dev-fss-pub.nais.io
         - host: pdl-api.dev-fss-pub.nais.io
-        - host: "platform.tt02.altinn.no"
+        - host: platform.tt02.altinn.no
   kafka:
     pool: nav-dev
   env:
@@ -102,7 +102,7 @@ spec:
     - name: AAREG_SCOPE
       value: dev-fss.arbeidsforhold.aareg-services-nais
     - name: DIALOGPORTEN_SCOPE
-      value: "digdir:dialogporten.serviceprovider"
+      value: digdir:dialogporten.serviceprovider
     - name: ALTINN_3_BASE_URL
       value: https://platform.tt02.altinn.no
     - name: DINESYMELDTE_BASEURL
@@ -110,7 +110,7 @@ spec:
     - name: DINESYMELDTE_SCOPE
       value: dev-gcp.team-esyfo.dinesykmeldte-backend
     - name: EREG_BASE_URL
-      value: "https://ereg-services-q1.dev-fss-pub.nais.io"
+      value: https://ereg-services-q1.dev-fss-pub.nais.io
     - name: ALTINN_TILGANGER_BASE_URL
       value: http://arbeidsgiver-altinn-tilganger.fager
     - name: FRONTEND_BASE_URL

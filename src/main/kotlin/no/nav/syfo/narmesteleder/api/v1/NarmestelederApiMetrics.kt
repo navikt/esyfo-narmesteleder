@@ -38,12 +38,12 @@ val COUNT_CREATE_LINEMANAGER_REQUIREMENT: Counter = Counter.builder(CREATE_LINEM
 const val ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS = "${METRICS_NS}_assign_linemanager_from_empty_form_by_lps"
 val COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS: Counter =
     Counter.builder(ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS)
-        .description("Counts the number of assigned linemanagers from empty form by LPS")
+        .description("Counts the number of assigned line managers from empty form by LPS")
         .register(METRICS_REGISTRY)
 
 const val ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER =
     "${METRICS_NS}_assign_linemanager_from_empty_form_by_personnel_manager"
 val COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER: Counter =
     Counter.builder(ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER)
-        .description("Counts the number of assigned linemanagers from empty form by personnel manager")
+        .description("Counts the number of assigned line managers from empty form by personnel manager")
         .register(METRICS_REGISTRY)

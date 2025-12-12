@@ -1,5 +1,7 @@
 package no.nav.syfo.narmesteleder.kafka
 
+import no.nav.syfo.narmesteleder.api.v1.COUNT_CREATE_LINEMANAGER_REQUIREMENT
+import no.nav.syfo.narmesteleder.api.v1.COUNT_FULFILL_LINEMANAGER_BY_LEGACY_SYSTEM
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
@@ -17,7 +19,10 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
             LeesahStatus.DEAKTIVERT_ARBEIDSTAKER,
             LeesahStatus.DEAKTIVERT_ARBEIDSTAKER_INNSENDT_SYKMELDING,
             LeesahStatus.DEAKTIVERT_LEDER,
-                -> narmesteLederService.createNewNlBehov(nlBehov)
+                -> {
+                narmesteLederService.createNewNlBehov(nlBehov)
+                COUNT_CREATE_LINEMANAGER_REQUIREMENT.increment()
+            }
 
             LeesahStatus.DEAKTIVERT_NY_LEDER -> {
                 // Denne sendes fra `Narmesteleder` når de mottar en melding om ny leder
@@ -45,10 +50,12 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
             }
         }
     }
+
     suspend fun updateStatusForRequirement(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
         narmesteLederService.findClosableBehovs(nlKafkaMessage.fnr, nlKafkaMessage.orgnummer)
             .forEach {
                 narmesteLederService.updateNlBehov(it, BehovStatus.BEHOV_FULFILLED)
+                COUNT_FULFILL_LINEMANAGER_BY_LEGACY_SYSTEM.increment()
             }
     }
 }

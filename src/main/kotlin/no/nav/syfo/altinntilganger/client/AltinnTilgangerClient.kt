@@ -69,12 +69,13 @@ class AltinnTilgangerClient(
             val response = httpClient.post("$baseUrl/altinn-tilganger") {
                 bearerAuth(oboToken)
             }.body<AltinnTilgangerResponse>()
-            // TODO: Remove logging of full response after inspection
-            logger.info(ObjectMapper().writeValueAsString(response))
             return response
         } catch (e: ResponseException) {
             logger.error("Feil ved henting av altinn-tilganger, status: ${e.response.status}", e)
             throw UpstreamRequestException("Feil ved henting av altinn-tilganger", e)
+        } catch (e: Exception) {
+            logger.error("Uventet feil ved henting av altinn-tilganger", e)
+            throw UpstreamRequestException("Uventet feil ved henting av altinn-tilganger")
         }
     }
 

@@ -1,6 +1,8 @@
 package no.nav.syfo.narmesteleder.db
 
 import java.sql.ResultSet
+import java.sql.Timestamp
+import java.time.Instant
 import java.util.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +17,12 @@ interface INarmestelederDb {
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
     suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity>
     suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity>
+    suspend fun findBehovByParameters(
+        orgNumber: String,
+        createdAfter: Instant,
+        status: List<BehovStatus>,
+        limit: Int
+    ): List<NarmestelederBehovEntity>
 }
 
 class NarmestelederDb(
@@ -22,11 +30,12 @@ class NarmestelederDb(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) :
     INarmestelederDb {
-    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity = withContext(dispatcher) {
-        return@withContext database.connection.use { connection ->
-            connection
-                .prepareStatement(
-                    """
+    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity =
+        withContext(dispatcher) {
+            return@withContext database.connection.use { connection ->
+                connection
+                    .prepareStatement(
+                        """
                     INSERT INTO nl_behov(orgnummer,
                                          hovedenhet_orgnummer,
                                          sykemeldt_fnr,
@@ -40,32 +49,32 @@ class NarmestelederDb(
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     RETURNING *;
                     """.trimIndent()
-                ).use { preparedStatement ->
-                    preparedStatement.setString(1, nlBehov.orgnummer)
-                    preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
-                    preparedStatement.setString(3, nlBehov.sykmeldtFnr)
-                    preparedStatement.setString(4, nlBehov.narmestelederFnr)
-                    preparedStatement.setString(5, nlBehov.behovReason.name)
-                    preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
-                    preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
-                    preparedStatement.setString(8, nlBehov.fornavn)
-                    preparedStatement.setString(9, nlBehov.mellomnavn)
-                    preparedStatement.setString(10, nlBehov.etternavn)
-                    preparedStatement.execute()
+                    ).use { preparedStatement ->
+                        preparedStatement.setString(1, nlBehov.orgnummer)
+                        preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
+                        preparedStatement.setString(3, nlBehov.sykmeldtFnr)
+                        preparedStatement.setString(4, nlBehov.narmestelederFnr)
+                        preparedStatement.setString(5, nlBehov.behovReason.name)
+                        preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
+                        preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
+                        preparedStatement.setString(8, nlBehov.fornavn)
+                        preparedStatement.setString(9, nlBehov.mellomnavn)
+                        preparedStatement.setString(10, nlBehov.etternavn)
+                        preparedStatement.execute()
 
-                    runCatching {
-                        if (preparedStatement.resultSet.next()) {
-                            preparedStatement.resultSet.toNarmestelederBehovEntity()
-                        } else throw NarmestelederBehovEntityInsertException("Could not get the inserted document.")
-                    }.getOrElse {
-                        connection.rollback()
-                        throw it
+                        runCatching {
+                            if (preparedStatement.resultSet.next()) {
+                                preparedStatement.resultSet.toNarmestelederBehovEntity()
+                            } else throw NarmestelederBehovEntityInsertException("Could not get the inserted document.")
+                        }.getOrElse {
+                            connection.rollback()
+                            throw it
+                        }
+                    }.also {
+                        connection.commit()
                     }
-                }.also {
-                    connection.commit()
-                }
+            }
         }
-    }
 
     override suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity): Unit = withContext(dispatcher) {
         database.connection.use { connection ->
@@ -181,6 +190,47 @@ class NarmestelederDb(
                     }
             }
         }
+
+    override suspend fun findBehovByParameters(
+        orgNumber: String,
+        createdAfter: Instant,
+        status: List<BehovStatus>,
+        limit: Int
+    ): List<NarmestelederBehovEntity> =
+        withContext(dispatcher) {
+            return@withContext database.connection.use { connection ->
+                val placeholders = status.joinToString(", ") { "?" }
+                connection
+                    .prepareStatement(
+                        """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE 
+                            orgnummer = ?
+                        AND
+                            behov_status in ($placeholders) 
+                        AND
+                            created > ? 
+                        ORDER BY created
+                        LIMIT ?
+                        """.trimIndent()
+                    ).use { preparedStatement ->
+                        var idx = 1
+                        preparedStatement.setString(idx++, orgNumber)
+                        status.forEach { status ->
+                            preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
+                        }
+                        preparedStatement.setTimestamp(idx++, Timestamp.from(createdAfter))
+                        preparedStatement.setInt(idx++, limit)
+                        val resultSet = preparedStatement.executeQuery()
+                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                        while (resultSet.next()) {
+                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                        }
+                        nlBehov
+                    }
+            }
+        }
 }
 
 private fun ResultSet.getGeneratedUUID(idColumnLabel: String): UUID = this.use {
@@ -194,4 +244,5 @@ private fun ResultSet.getGeneratedUUID(idColumnLabel: String): UUID = this.use {
         "Could not get the generated id."
     )
 }
+
 class NarmestelederBehovEntityInsertException(message: String) : RuntimeException(message)

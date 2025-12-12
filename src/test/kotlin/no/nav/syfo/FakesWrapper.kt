@@ -14,6 +14,8 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.ereg.EregService
+import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
@@ -27,6 +29,7 @@ import no.nav.syfo.pdl.client.FakePdlClient
 class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeDbSpyk = spyk(FakeNarmestelederDb())
     val fakeAaregClientSpyk = spyk(FakeAaregClient())
+    val fakeEregClientSpyk = spyk(FakeEregClient())
     val fakePdlClientSpyk = spyk(FakePdlClient())
     val fakeDinesykemeldteClientSpyk = spyk(FakeDinesykmeldteClient())
     val fakeKafkaProducerSpyk = spyk(FakeSykemeldingNLKafkaProducer())
@@ -35,6 +38,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeDialogportenClient = FakeDialogportenClient()
     val dialogportenService = mockk<DialogportenService>(relaxed = true)
     val aaregServiceSpyk = spyk(AaregService(fakeAaregClientSpyk))
+    val eregServiceSpyk = spyk(EregService(fakeEregClientSpyk))
     val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk))
     val dinesykemeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykemeldteClientSpyk))
     val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
@@ -44,11 +48,12 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     )
     val validationServiceSpyk = spyk(
         ValidationService(
-            pdlServiceSpyk,
-            aaregServiceSpyk,
-            altinnTilgangerServiceSpyk,
-            dinesykemeldteServiceSpyk,
-            pdpServiceSpyk
+            pdlService = pdlServiceSpyk,
+            aaregService = aaregServiceSpyk,
+            altinnTilgangerService = altinnTilgangerServiceSpyk,
+            dinesykmeldteService = dinesykemeldteServiceSpyk,
+            pdpService = pdpServiceSpyk,
+            eregService = eregServiceSpyk,
         )
     )
     val narmestelederServiceSpyk = spyk(

@@ -34,7 +34,7 @@ import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import no.nav.syfo.texas.client.TexasResponse
 import java.time.LocalDate
 import java.time.OffsetDateTime
-import kotlinx.coroutines.withContext
+import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
@@ -54,6 +54,11 @@ fun linemanager(): Linemanager = Linemanager(
     employeeIdentificationNumber = faker.numerify("###########"),
     orgNumber = faker.numerify("#########"),
     lastName = faker.name().lastName(),
+)
+
+fun organisasjon() = Organisasjon(
+    organisasjonsnummer = faker.numerify("#########"),
+    inngaarIJuridiskEnheter = listOf(Organisasjon(organisasjonsnummer = faker.numerify("#########")))
 )
 
 fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
@@ -156,9 +161,10 @@ fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, c
     }
 
 
-fun PdlService.prepareGetPersonResponse(manager: Manager,) {
+fun PdlService.prepareGetPersonResponse(manager: Manager) {
     prepareGetPersonResponse(manager.nationalIdentificationNumber, manager.lastName)
 }
+
 fun PdlService.prepareGetPersonResponse(fnr: String, lastName: String) {
     val name = faker().name()
     coEvery {

@@ -9,7 +9,8 @@ data class ClientProperties(
     val aaregScope: String,
     val dinesykmeldteScope: String,
     val altinn3BaseUrl: String,
-    val pdpSubscriptionKey: String
+    val pdpSubscriptionKey: String,
+    val eregBaseUrl: String,
 ) {
     companion object {
         fun createForLocal() = ClientProperties(
@@ -21,7 +22,8 @@ data class ClientProperties(
             dinesykmeldteScope = "",
             pdlScope = "pdl",
             altinn3BaseUrl = "http://localhost:8080/dialogporten",
-            pdpSubscriptionKey = "secret-key"
+            pdpSubscriptionKey = "secret-key",
+            eregBaseUrl = "https://ereg-test.intern.nav.no",
         )
 
         fun createFromEnvVars() =
@@ -34,7 +36,8 @@ data class ClientProperties(
                 pdlBaseUrl = getEnvVar("PDL_BASE_URL"),
                 pdlScope = getEnvVar("PDL_SCOPE"),
                 altinn3BaseUrl = getEnvVar("ALTINN_3_BASE_URL"),
-                pdpSubscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY")
+                pdpSubscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY"),
+                eregBaseUrl = getEnvVar("EREG_BASE_URL"),
             )
     }
 }

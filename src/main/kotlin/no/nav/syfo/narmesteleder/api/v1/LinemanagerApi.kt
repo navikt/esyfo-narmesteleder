@@ -1,21 +1,14 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.authentication
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.SystemPrincipal
-import no.nav.syfo.application.auth.Principal
-import no.nav.syfo.application.auth.TOKEN_ISSUER
-import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -90,18 +83,21 @@ fun Route.registerLinemanagerApiV1(
             )
             call.respond(HttpStatusCode.OK, nlBehov)
         }
+
+        get {
+            val pageSize = call.getPageSize()
+            val createAfter = call.getCreatedAfter()
+            val orgNumber = call.getRequiredQueryParameter("orgNumber")
+            val principal = call.getMyPrincipal()
+            val collection = linemanagerRequirementRestHandler.handleGetLinemanagerRequirementsCollection(
+                pageSize = pageSize,
+                createdAfter = createAfter,
+                orgNumber = orgNumber,
+                principal = principal,
+            )
+            call.respond(
+                HttpStatusCode.OK, LinemanagerRequirementCollection.from(collection, pageSize)
+            )
+        }
     }
 }
-
-fun RoutingCall.getMyPrincipal(): Principal =
-    when (attributes[TOKEN_ISSUER]) {
-        JwtIssuer.MASKINPORTEN -> {
-            authentication.principal<SystemPrincipal>() ?: throw UnauthorizedException()
-        }
-
-        JwtIssuer.TOKEN_X -> {
-            authentication.principal<UserPrincipal>() ?: throw UnauthorizedException()
-        }
-
-        else -> throw UnauthorizedException()
-    }

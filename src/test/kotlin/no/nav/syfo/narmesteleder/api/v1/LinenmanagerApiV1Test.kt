@@ -2,6 +2,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import io.kotest.assertions.any
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -23,6 +24,7 @@ import io.mockk.clearAllMocks
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import java.time.Instant
 import java.util.*
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
@@ -39,6 +41,8 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.ereg.EregService
+import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.api.v1.REVOKE_PATH
@@ -47,6 +51,7 @@ import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
@@ -66,6 +71,8 @@ class LinenmanagerApiV1Test : DescribeSpec({
     val narmesteLederRelasjon = linemanager()
     val fakeAaregClient = FakeAaregClient()
     val aaregService = AaregService(fakeAaregClient)
+    val fakseEregClient = FakeEregClient()
+    val eregService = EregService(fakseEregClient)
     val narmestelederKafkaService =
         NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
     val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
@@ -77,10 +84,17 @@ class LinenmanagerApiV1Test : DescribeSpec({
     val fakePdpClient = FakePdpClient()
     val pdpService = PdpService(fakePdpClient)
     val validationService =
-        ValidationService(pdlService, aaregService, altinnTilgangerServiceSpy, dineSykmelteService, pdpService)
+        ValidationService(
+            pdlService = pdlService,
+            aaregService = aaregService,
+            altinnTilgangerService = altinnTilgangerServiceSpy,
+            dinesykmeldteService = dineSykmelteService,
+            pdpService = pdpService,
+            eregService = eregService
+        )
     val validationServiceSpy = spyk(validationService)
     val tokenXIssuer = "https://tokenx.nav.no"
-    val fakeRepo = FakeNarmestelederDb()
+    val fakeRepo = spyk(FakeNarmestelederDb())
 
     val narmesteLederService = NarmestelederService(
         nlDb = fakeRepo,
@@ -484,27 +498,26 @@ class LinenmanagerApiV1Test : DescribeSpec({
             }
         }
 
+    }
+    describe("/linemanager/requirement endpoints") {
+        val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
+        val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
+        val orgnummer = narmesteLederRelasjon.orgNumber
+        fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
+            employeeIdentificationNumber = sykmeldtFnr,
+            orgNumber = orgNumber,
+            managerIdentificationNumber = manager.nationalIdentificationNumber,
+            behovReason = BehovReason.DEAKTIVERT_LEDER,
+            revokedLinemanagerId = UUID.randomUUID(),
+        )
 
-        describe("/linemanager/requirement endpoints") {
-            val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
-            val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
-            val orgnummer = narmesteLederRelasjon.orgNumber
-
-            fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
-                employeeIdentificationNumber = sykmeldtFnr,
-                orgNumber = orgNumber,
-                managerIdentificationNumber = manager.nationalIdentificationNumber,
-                behovReason = BehovReason.DEAKTIVERT_LEDER,
-                revokedLinemanagerId = UUID.randomUUID(),
-            )
-
-            suspend fun seedLinemanagerRequirement(): UUID {
-                fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
-                fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
-                narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite())
-                return fakeRepo.lastId() ?: error("No requirement seeded")
-            }
-
+        suspend fun seedLinemanagerRequirement(): UUID {
+            fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
+            fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
+            narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite())
+            return fakeRepo.lastId() ?: error("No requirement seeded")
+        }
+        describe("GET /requirement/{id}") {
             it("GET /requirement/{id} 200 with Maskinporten token") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
@@ -552,7 +565,9 @@ class LinenmanagerApiV1Test : DescribeSpec({
                     response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
                 }
             }
+        }
 
+        describe("PUT /requirement/{id}") {
             it("PUT /requirement/{id} 202 updates behov and sends kafka message") {
                 withTestApplication {
                     texasHttpClientMock.defaultMocks(
@@ -646,5 +661,41 @@ class LinenmanagerApiV1Test : DescribeSpec({
                 }
             }
         }
+        describe("GET /requirement") {
+            it("GET /requirement should use provided query parameters to fetch results") {
+                withTestApplication {
+                    texasHttpClientMock.defaultMocks(
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber}"),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    val requirementId = seedLinemanagerRequirement()
+                    val requirement = narmesteLederService.getLinemanagerRequirementReadById(requirementId)
+                    val pageSize = 10
+                    val response = client.get(
+                        "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=${requirement.orgNumber}&createdAfter=${
+                            Instant.now().minusSeconds(60)
+                        }&pageSize=$pageSize"
+                    ) {
+                        bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber))
+                    }
+                    response.status shouldBe HttpStatusCode.OK
+                    val body = response.body<LinemanagerRequirementCollection>()
+                    body.meta.pageSize shouldBe pageSize
+                    body.meta.size shouldBe 1
+                    body.linemanagerRequirements.first().id shouldBe requirementId
+
+                    coVerify(exactly = 1) {
+                        fakeRepo.findBehovByParameters(
+                            orgNumber = requirement.orgNumber, createdAfter = any(),
+                            status = listOf(
+                                BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                            ),
+                            limit = pageSize + 1, // +1 to check if there is more pages
+                        )
+                    }
+                }
+            }
+        }
+
     }
 })

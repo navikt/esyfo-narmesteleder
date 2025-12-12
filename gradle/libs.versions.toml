@@ -13,9 +13,11 @@ logback-version = "1.5.21"
 micrometer-prometheus = "1.16.0"
 mockk = "1.14.6"
 postgresql = "42.7.8"
-testcontainers = "1.21.3"
+testcontainers = "2.0.2"
+testcontainers-postgres = "1.21.3"
 logstashEncoder = "9.0"
 coroutines-test = "1.10.2"
+swagger = "3.3.3"
 
 [libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
@@ -33,6 +35,8 @@ kotest-junit = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotes
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.ref = "ktor-version" }
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor-version" }
+ktor-server-swagger = { module = "io.ktor:ktor-server-swagger", version.ref = "swagger" }
+ktor-server-openapi = { module = "io.ktor:ktor-server-openapi", version.ref = "swagger" }
 ktor-server-micrometer = { module = "io.ktor:ktor-server-metrics-micrometer", version.ref = "ktor-version" }
 ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor-version" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor-version" }
@@ -41,7 +45,7 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer-prometheus" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
-testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers-postgres" }
 logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstashEncoder" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines-test" }
 

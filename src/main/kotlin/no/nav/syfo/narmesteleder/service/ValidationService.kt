@@ -12,6 +12,7 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.ereg.EregService
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
@@ -25,7 +26,8 @@ class ValidationService(
     val aaregService: AaregService,
     val altinnTilgangerService: AltinnTilgangerService,
     val dinesykmeldteService: DinesykmeldteService,
-    val pdpService: PdpService
+    val pdpService: PdpService,
+    val eregService: EregService,
 ) {
     companion object {
         val logger = logger()
@@ -40,10 +42,9 @@ class ValidationService(
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
         val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
         val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
-        val sykemeldtArbeidsforhold =
-            aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
-                .filter { it.key == linemanager.orgNumber }
-        validataActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgNumber)
+        val sykemeldtArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
+            .filter { it.key == linemanager.orgNumber }
+        validateActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgNumber)
         validateLinemanagerLastName(leder, linemanager)
         if (validateEmployeeLastName) validateEmployeeLastName(sykmeldt, linemanager)
         validateNarmesteLeder(
@@ -59,9 +60,7 @@ class ValidationService(
     }
 
     suspend fun validateGetNlBehov(
-        principal: Principal,
-        linemanagerRead: LinemanagerRequirementRead,
-        altinnTilgang: AltinnTilgang?
+        principal: Principal, linemanagerRead: LinemanagerRequirementRead, altinnTilgang: AltinnTilgang?
     ) {
         val sykemeldtOrgs = setOf(linemanagerRead.orgNumber, linemanagerRead.mainOrgNumber)
         when (principal) {
@@ -69,24 +68,26 @@ class ValidationService(
                 altinnTilgangerService.validateTilgangToOrganization(altinnTilgang, linemanagerRead.orgNumber)
             }
 
-            is SystemPrincipal -> {
-                val hasAccess = pdpService.hasAccessToResource(
-                    System(principal.systemUserId),
-                    setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
-                    OPPGI_NARMESTELEDER_RESOURCE
-                )
-                if (hasAccess) {
-                    if (!sykemeldtOrgs.contains(principal.getSystemUserOrgNumber())) throw ApiErrorException.ForbiddenException(
-                        errorMessage = "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave",
-                        type = ErrorType.MISSING_ORG_ACCESS
-                    )
-                } else {
-                    throw ApiErrorException.ForbiddenException(
-                        errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                        type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
-                    )
-                }
-            }
+            is SystemPrincipal -> validateSystemPrincipal(sykemeldtOrgs, principal)
+        }
+    }
+
+    suspend fun validateSystemPrincipal(validOrgnumbers: Set<String>, principal: SystemPrincipal) {
+        val hasAccess = pdpService.hasAccessToResource(
+            System(principal.systemUserId),
+            setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
+            OPPGI_NARMESTELEDER_RESOURCE
+        )
+        if (hasAccess) {
+            if (!validOrgnumbers.contains(principal.getSystemUserOrgNumber())) throw ApiErrorException.ForbiddenException(
+                errorMessage = "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave",
+                type = ErrorType.MISSING_ORG_ACCESS
+            )
+        } else {
+            throw ApiErrorException.ForbiddenException(
+                errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+                type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
+            )
         }
     }
 
@@ -96,8 +97,7 @@ class ValidationService(
     ): Person {
         validateAltinnTilgang(principal, linemanagerRevoke.orgNumber)
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
-        val sykemeldtArbeidsforhold =
-            aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
+        val sykemeldtArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
         validateNarmesteLederAvkreft(
             orgNumberInRequest = linemanagerRevoke.orgNumber,
             sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
@@ -108,13 +108,30 @@ class ValidationService(
         return sykmeldt
     }
 
-    private suspend fun validataActiveSickLeave(fnr: String, orgnummer: String) {
+    suspend fun validateLinemanagerRequirementCollectionAccess(principal: Principal, orgNumber: String) {
+        when (principal) {
+            is SystemPrincipal -> {
+                logger.info("Validating LinemanagerRequirement collection access for system principal")
+                val organizationSet = if (principal.getSystemUserOrgNumber() == orgNumber) setOf(orgNumber) else {
+                    logger.info("Fetching organizations from Ereg")
+                    eregService.getOrganization(orgNumber).orgnummerSet()
+                }
+                validateSystemPrincipal(organizationSet, principal)
+            }
+
+            is UserPrincipal -> {
+                logger.info("Validating LinemanagerRequirement collection access for user principal")
+                altinnTilgangerService.validateTilgangToOrganization(userPrincipal = principal, orgnummer = orgNumber)
+            }
+        }
+    }
+
+    private suspend fun validateActiveSickLeave(fnr: String, orgnummer: String) {
         if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
             val message = "No active sick leave found for the given organization number: $orgnummer"
             logger.warn(message)
             throw ApiErrorException.BadRequestException(
-                errorMessage = message,
-                type = ErrorType.NO_ACTIVE_SICK_LEAVE
+                errorMessage = message, type = ErrorType.NO_ACTIVE_SICK_LEAVE
             )
         }
     }
@@ -122,8 +139,7 @@ class ValidationService(
     private suspend fun validateAltinnTilgang(principal: Principal, orgNumber: String) {
         when (principal) {
             is UserPrincipal -> altinnTilgangerService.validateTilgangToOrganization(
-                principal,
-                orgNumber
+                principal, orgNumber
             )
 
             is SystemPrincipal -> {

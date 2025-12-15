@@ -290,6 +290,11 @@ components:
           example: "123456789"
         manager:
           $ref: '#/components/schemas/Manager'
+      required:
+        - employeeIdentificationNumber
+        - lastName
+        - orgNumber
+        - manager
 
       description: Linemanager relation payload.
       additionalProperties: true
@@ -308,6 +313,10 @@ components:
           type: string
           description: The last name of the employee.
           example: "Hansen"
+      required:
+        - employeeIdentificationNumber
+        - orgNumber
+        - lastName
       description: Linemanager revoke payload.
       additionalProperties: true
     Manager:

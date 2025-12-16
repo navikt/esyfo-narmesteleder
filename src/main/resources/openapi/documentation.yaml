@@ -282,7 +282,7 @@ components:
           example: "12345678901"
         lastName:
           type: string
-          description: The last name of the employee.
+          description: The last name of the employee. Used to validate against the registered value in folkeregisteret. Validation is case-insensitive.
           example: "Hansen"
         orgNumber:
           type: string
@@ -290,6 +290,11 @@ components:
           example: "123456789"
         manager:
           $ref: '#/components/schemas/Manager'
+      required:
+        - employeeIdentificationNumber
+        - lastName
+        - orgNumber
+        - manager
 
       description: Linemanager relation payload.
       additionalProperties: true
@@ -308,6 +313,10 @@ components:
           type: string
           description: The last name of the employee.
           example: "Hansen"
+      required:
+        - employeeIdentificationNumber
+        - orgNumber
+        - lastName
       description: Linemanager revoke payload.
       additionalProperties: true
     Manager:
@@ -320,7 +329,7 @@ components:
           example: "10987654321"
         lastName:
           type: string
-          description: The last name of the manager.
+          description: The last name of the manager. Used to validate against the registered value in folkeregisteret. Validation is case-insensitive.
           example: "Jensen"
         mobile:
           type: string
@@ -382,7 +391,7 @@ components:
               example: "Ola"
             lastName:
               type: string
-              description: Fast name.
+              description: Last name.
               example: "Nordmann"
           required:
             - firstName
@@ -462,7 +471,7 @@ components:
         * `BAD_REQUEST`: The request was malformed or contained invalid data.
         * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
         * `CONFLICT`: The request could not be completed due to a conflict with the current state of the resource.
-        * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in the specified organization.
+        * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in any sub organization under the parent of the specified organization.
         * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
         * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the linemanager does not match the name registered with the provided national identification number.
         * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.

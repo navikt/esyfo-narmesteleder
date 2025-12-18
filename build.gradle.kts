@@ -42,7 +42,6 @@ dependencies {
     implementation(libs.ktor.server.micrometer)
     implementation(libs.micrometer.prometheus)
     implementation(libs.kafka.clients)
-    implementation(libs.kafka.twothirteen) { exclude(group = "log4j") }
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)

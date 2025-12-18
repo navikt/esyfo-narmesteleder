@@ -26,7 +26,6 @@ database-postgresql = { module = "org.postgresql:postgresql", version.ref = "pos
 datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson-datatype-jsr" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
-kafka-twothirteen = { module = "org.apache.kafka:kafka_2.13", version.ref = "kafka" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }
 koin-logger = { module = "io.insert-koin:koin-logger-slf4j", version.ref = "koin" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }

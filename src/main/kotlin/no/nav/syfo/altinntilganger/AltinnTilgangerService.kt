@@ -25,11 +25,19 @@ class AltinnTilgangerService(
         orgnummer: String
     ) {
         altinnTilgang?.let {
+            val hasAltinn3Resource = it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)
+            val hasAltinn2Resource = it.altinn2Tilganger.contains(OPPRETT_NL_REALASJON_RESOURCE)
+            when {
+                hasAltinn3Resource -> {
+                    COUNT_HAS_ALTINN3_RESOURCE.increment()
+                }
 
-            if (!(it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE) ||
-                    it.altinn2Tilganger.contains(OPPRETT_NL_REALASJON_RESOURCE)
-                    )
-            ) {
+                hasAltinn2Resource && !hasAltinn3Resource -> {
+                    COUNT_HAS_ALTINN2_AND_NOT_ALTIN3_RESOURCE.increment()
+                    // We might add logging of the org numbers that only has altinn2 access here
+                }
+            }
+            if (!(hasAltinn3Resource || hasAltinn2Resource)) {
                 throw ApiErrorException.ForbiddenException(
                     errorMessage = "User lacks access to required altinn resource for organization: $orgnummer",
                     type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS

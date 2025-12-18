@@ -107,8 +107,10 @@ class NarmestelederService(
         }
         val isActiveSykmelding = skipSykmeldingCheck ||
             dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+        val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+            .isNotEmpty()
 
-        return if (isActiveSykmelding) {
+        return if (isActiveSykmelding && !registeredPreviousBehov) {
             val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
                 nlBehov.employeeIdentificationNumber,
                 nlBehov.orgNumber

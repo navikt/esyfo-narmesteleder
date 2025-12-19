@@ -107,8 +107,10 @@ class NarmestelederService(
         }
         val isActiveSykmelding = skipSykmeldingCheck ||
             dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+        val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+            .isNotEmpty()
 
-        return if (isActiveSykmelding) {
+        return if (isActiveSykmelding && !registeredPreviousBehov) {
             val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
                 nlBehov.employeeIdentificationNumber,
                 nlBehov.orgNumber
@@ -124,7 +126,12 @@ class NarmestelederService(
             dialogportenService.sendToDialogporten(insertedEntity)
             return insertedEntity.id
         } else {
-            logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}")
+            if (!isActiveSykmelding){
+                logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}")
+            }
+            if (registeredPreviousBehov) {
+                logger.info("Not inserting NarmestelederBehovEntity as there it's already registered in org ${nlBehov.orgNumber}")
+            }
             null
         }
     }

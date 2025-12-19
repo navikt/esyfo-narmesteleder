@@ -39,7 +39,7 @@ class AltinnTilgangerService(
             }
             if (!(hasAltinn3Resource || hasAltinn2Resource)) {
                 throw ApiErrorException.ForbiddenException(
-                    errorMessage = "User lacks access to required altinn resource for organization: $orgnummer",
+                    errorMessage = "User lacks access to required Altinn resource for organization: $orgnummer",
                     type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                 )
             }

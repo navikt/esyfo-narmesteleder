@@ -83,4 +83,8 @@ tasks {
     test {
         useJUnitPlatform()
     }
+
+    named("check") {
+        dependsOn("ktlintCheck")
+    }
 }

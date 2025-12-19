@@ -63,6 +63,7 @@ class DialogportenServiceTest :
                         ),
                     pdlService = pdlService,
                 )
+            spyNarmestelederDb.clear()
         }
         describe("sendDocumentsToDialogporten") {
             context("when there are no behov to send") {

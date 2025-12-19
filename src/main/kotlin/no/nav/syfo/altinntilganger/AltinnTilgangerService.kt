@@ -25,9 +25,21 @@ class AltinnTilgangerService(
         orgnummer: String
     ) {
         altinnTilgang?.let {
-            if (!it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)) {
+            val hasAltinn3Resource = it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)
+            val hasAltinn2Resource = it.altinn2Tilganger.contains(OPPRETT_NL_REALASJON_RESOURCE)
+            when {
+                hasAltinn3Resource -> {
+                    COUNT_HAS_ALTINN3_RESOURCE.increment()
+                }
+
+                hasAltinn2Resource && !hasAltinn3Resource -> {
+                    COUNT_HAS_ALTINN2_AND_NOT_ALTIN3_RESOURCE.increment()
+                    // We might add logging of the org numbers that only has altinn2 access here
+                }
+            }
+            if (!(hasAltinn3Resource || hasAltinn2Resource)) {
                 throw ApiErrorException.ForbiddenException(
-                    errorMessage = "User lacks access to required altinn3 resource for organization: $orgnummer",
+                    errorMessage = "User lacks access to required Altinn resource for organization: $orgnummer",
                     type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                 )
             }
@@ -61,7 +73,8 @@ class AltinnTilgangerService(
 
     companion object {
         const val OPPGI_NARMESTELEDER_RESOURCE =
-            "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn2 to access NL relasjon
+            "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn3 to access NL relasjon
+        const val OPPRETT_NL_REALASJON_RESOURCE = "4596:1" // Access resource in Altinn2 to access NL relasjon
         private val logger = logger()
     }
 }

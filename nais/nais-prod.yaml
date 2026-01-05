@@ -25,8 +25,8 @@ spec:
     periodSeconds: 5
     timeout: 5
   replicas:
-    max: 0
-    min: 0
+    max: 4
+    min: 2
     cpuThresholdPercentage: 60
   prometheus:
     enabled: true
@@ -116,11 +116,11 @@ spec:
     - name: PUBLIC_INGRESS_URL
       value: https://esyfo-narmesteleder.ekstern.nav.no
     - name: PERSIST_LEESAH_NL_BEHOV
-      value: "false"
+      value: "true"
     - name: CONSUME_KAFKA_TOPICS
-      value: "false"
+      value: "true"
     - name: DIALOGPORTEN_TASK_ENABLED
-      value: "false"
+      value: "true"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
     - name: DIALOGPORTEN_API_ONLY

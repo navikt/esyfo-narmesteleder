@@ -83,9 +83,12 @@ class NarmestelederService(
     }
 
     suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String)
-    : List<NarmestelederBehovEntity> {
-        return nlDb.findBehovByParameters(sykmeldtFnr =  sykmeldtFnr, orgnummer =  orgnummer, behovStatus = listOf(
-            BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION))
+            : List<NarmestelederBehovEntity> {
+        return nlDb.findBehovByParameters(
+            sykmeldtFnr = sykmeldtFnr, orgnummer = orgnummer, behovStatus = listOf(
+                BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+            )
+        )
     }
 
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {
@@ -106,34 +109,37 @@ class NarmestelederService(
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
         val isActiveSykmelding = skipSykmeldingCheck ||
-            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+                dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
         val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
             .isNotEmpty()
 
-        return if (isActiveSykmelding && !registeredPreviousBehov) {
-            val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
-                nlBehov.employeeIdentificationNumber,
-                nlBehov.orgNumber
+        if (!isActiveSykmelding) {
+            logger.info(
+                "Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with" +
+                        " narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}"
             )
-            val entity = NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
-                nlBehov,
-                hovedenhetOrgnummer = hovededenhet,
-                behovStatus = BehovStatus.BEHOV_CREATED,
-            )
-            val insertedEntity = nlDb.insertNlBehov(entity).also {
-                logger.info("Inserted NarmestelederBehovEntity with id: $it")
-            }
-            dialogportenService.sendToDialogporten(insertedEntity)
-            return insertedEntity.id
-        } else {
-            if (!isActiveSykmelding){
-                logger.info("Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}")
-            }
-            if (registeredPreviousBehov) {
-                logger.info("Not inserting NarmestelederBehovEntity as there it's already registered in org ${nlBehov.orgNumber}")
-            }
-            null
+            return null
         }
+        if (registeredPreviousBehov) {
+            logger.info(
+                "Not inserting NarmestelederBehovEntity as there it's already registered in org ${nlBehov.orgNumber}"
+            )
+            return null
+        }
+        val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
+            nlBehov.employeeIdentificationNumber,
+            nlBehov.orgNumber
+        )
+        val entity = NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+            nlBehov,
+            hovedenhetOrgnummer = hovededenhet,
+            behovStatus = BehovStatus.BEHOV_CREATED,
+        )
+        val insertedEntity = nlDb.insertNlBehov(entity).also {
+            logger.info("Inserted NarmestelederBehovEntity with id: $it")
+        }
+        dialogportenService.sendToDialogporten(insertedEntity)
+        return insertedEntity.id
     }
 
     suspend fun getEmployeeByRequirementId(id: UUID): Employee {

@@ -95,7 +95,7 @@ class NarmestelederService(
         val arbeidsforholdMap = aaregService.findOrgNumbersByPersonIdent(personIdent)
         return arbeidsforholdMap[orgNumber]
             ?: throw HovedenhetNotFoundException(
-                "Could not find main entity for employee on sick leave on orgnumber ${orgNumber} in aareg. Found arbeidsforhold for: ${arbeidsforholdMap.keys}"
+                "Could not find main entity for employee on sick leave and orgnumber in aareg"
             )
     }
 
@@ -122,10 +122,11 @@ class NarmestelederService(
         }
         if (registeredPreviousBehov) {
             logger.info(
-                "Not inserting NarmestelederBehovEntity as there it's already registered in org ${nlBehov.orgNumber}"
+                "Not inserting NarmestelederBehovEntity since one already exists for org ${nlBehov.orgNumber}"
             )
             return null
         }
+        logger.info("Finding hovedenhet for behov with reason ${nlBehov.behovReason}")
         val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
             nlBehov.employeeIdentificationNumber,
             nlBehov.orgNumber

@@ -164,7 +164,7 @@ class NarmestelederService(
         ).map { it.toEmployeeLinemanagerRead(it.getName()) }
 
     suspend fun expireOldLinemanagerRequirements(createdBeforeDays: Long): Int {
-        val expiredNlBehovs = nlDb.findExpiredBehovs(
+        val expiredNlBehovs = nlDb.findByCreatedBeforeAndStatus(
             createdBefore = Instant.now().minusSeconds(getDaysInSeconds(createdBeforeDays)),
             status = listOf(
                 BehovStatus.BEHOV_CREATED,

@@ -4,7 +4,7 @@ import io.ktor.http.ContentType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
-import java.util.*
+import java.util.UUID
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Attachment
@@ -74,19 +74,23 @@ class DialogportenService(
     }
 
     suspend fun setAllFulfilledBehovsAsCompletedInDialogporten() {
-        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED)
+        narmestelederDb.getNlBehovByStatus(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED))
             .also {
                 logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
             }
             .forEach { behov ->
                 behov.dialogId?.let {
-                    setToCompletedInDialogportenIfFulfilled(behov)
+                    setToCompletedInDialogporten(behov)
                 }
             }
     }
 
-    suspend fun setToCompletedInDialogportenIfFulfilled(behov: NarmestelederBehovEntity) {
-        if (behov.behovStatus != BehovStatus.BEHOV_FULFILLED) {
+    suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
+        val completableBehovs = listOf(
+            BehovStatus.BEHOV_FULFILLED,
+            BehovStatus.BEHOV_EXPIRED
+        )
+        if (behov.behovStatus !in completableBehovs) {
             logger.info("Skipping setting dialog to completed for behov ${behov.id} with status ${behov.behovStatus}")
             return
         }

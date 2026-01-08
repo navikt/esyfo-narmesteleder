@@ -9,8 +9,11 @@ enum class LineManagerRequirementStatus {
     companion object {
         fun from(behovStatus: BehovStatus): LineManagerRequirementStatus = when (behovStatus) {
             BehovStatus.BEHOV_CREATED -> CREATED
+
             BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION -> REQUIRES_ATTENTION
+
             BehovStatus.BEHOV_FULFILLED,
+            BehovStatus.BEHOV_EXPIRED,
             BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED -> COMPLETED
 
             BehovStatus.ERROR,

@@ -140,5 +140,7 @@ spec:
       value: "false"
     - name: PERSIST_SENDT_SYKMELDING
       value: "false"
+    - name: MAINTENANCE_TASK_DELAY
+      value: "6h"
   envFrom:
     - secret: altinn-subscription-key

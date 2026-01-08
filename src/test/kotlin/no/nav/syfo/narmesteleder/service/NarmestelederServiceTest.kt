@@ -11,24 +11,25 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import java.util.*
+import net.bytebuddy.description.type.TypeDefinition.Sort.describe
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.Arbeidsforhold
 import no.nav.syfo.aareg.client.ArbeidsstedType
 import no.nav.syfo.aareg.client.OpplysningspliktigType
+import no.nav.syfo.application.database.ResultPage
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
-import java.util.*
 
 class NarmestelederServiceTest :
     DescribeSpec({
@@ -38,7 +39,7 @@ class NarmestelederServiceTest :
         val dinesykmeldteService = mockk<DinesykmeldteService>()
 
         beforeTest {
-            clearMocks(nlDb, aaregService, pdlService)
+            clearMocks(nlDb, aaregService, pdlService, dinesykmeldteService)
         }
 
         fun service(persist: Boolean = true) = NarmestelederService(
@@ -48,13 +49,6 @@ class NarmestelederServiceTest :
             pdlService = pdlService,
             dinesykmeldteService = dinesykmeldteService,
             dialogportenService = mockk(relaxed = true)
-        )
-
-        val defaultManager = Manager(
-            nationalIdentificationNumber = "01999999999",
-            mobile = "99999999",
-            email = "manager@epost.no",
-            lastName = "Jensen",
         )
 
         describe("createNewNlBehov") {
@@ -127,8 +121,16 @@ class NarmestelederServiceTest :
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
 
-                coEvery { nlDb.insertNlBehov(any()) } throws AssertionError("insertNlBehov should not be called when persistLeesahNlBehov=false")
-                coEvery { aaregService.findOrgNumbersByPersonIdent(any()) } throws AssertionError("AaregService should not be called when persistLeesahNlBehov=false")
+                coEvery {
+                    nlDb.insertNlBehov(any())
+                } throws AssertionError(
+                    "insertNlBehov should not be called when persistLeesahNlBehov=false"
+                )
+                coEvery {
+                    aaregService.findOrgNumbersByPersonIdent(any())
+                } throws AssertionError(
+                    "AaregService should not be called when persistLeesahNlBehov=false"
+                )
 
                 // Act
                 service(persist = false).createNewNlBehov(
@@ -453,6 +455,98 @@ class NarmestelederServiceTest :
                 shouldThrow<LinemanagerRequirementNotFoundException> {
                     service().updateNlBehov(id, BehovStatus.BEHOV_FULFILLED)
                 }
+            }
+        }
+
+        describe("expireOldLinemanagerRequirements") {
+            it("expires only behovs where sykmelding is inactive and returns count") {
+                // Arrange
+                val createdBeforeDays = 7L
+                val inactiveId = UUID.randomUUID()
+                val activeId = UUID.randomUUID()
+
+                val inactiveBehov = NarmestelederBehovEntity(
+                    id = inactiveId,
+                    orgnummer = "111111111",
+                    hovedenhetOrgnummer = "222222222",
+                    sykmeldtFnr = "12345678910",
+                    narmestelederFnr = "01987654321",
+                    behovReason = BehovReason.DEAKTIVERT_LEDER,
+                    behovStatus = BehovStatus.BEHOV_CREATED,
+                    avbruttNarmesteLederId = UUID.randomUUID(),
+                )
+                val activeBehov = inactiveBehov.copy(
+                    id = activeId,
+                    sykmeldtFnr = "10987654321",
+                    behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                )
+
+                val updatedSlot: CapturingSlot<NarmestelederBehovEntity> = slot()
+
+                coEvery { nlDb.findByCreatedBeforeAndStatus(any(), any(), any(), any()) } coAnswers {
+                    ResultPage(
+                        listOf(
+                            inactiveBehov,
+                            activeBehov
+                        ),
+                        page = secondArg()
+                    )
+                }
+                coEvery {
+                    dinesykmeldteService.getIsActiveSykmelding(
+                        inactiveBehov.sykmeldtFnr,
+                        inactiveBehov.orgnummer
+                    )
+                } returns false
+                coEvery {
+                    dinesykmeldteService.getIsActiveSykmelding(
+                        activeBehov.sykmeldtFnr,
+                        activeBehov.orgnummer
+                    )
+                } returns true
+                coEvery { nlDb.updateNlBehov(capture(updatedSlot)) } returns Unit
+
+                // Act
+                val expiredCount = service().expireOldLinemanagerRequirements(createdBeforeDays)
+
+                // Assert
+                expiredCount shouldBe 1
+
+                coVerify(exactly = 1) {
+                    nlDb.findByCreatedBeforeAndStatus(
+                        createdBefore = any(),
+                        page = 0,
+                        pageSize = 100,
+                        status = listOf(
+                            BehovStatus.BEHOV_CREATED,
+                            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                        )
+                    )
+                }
+                coVerify(exactly = 2) { dinesykmeldteService.getIsActiveSykmelding(any(), any()) }
+                coVerify(exactly = 1) { nlDb.updateNlBehov(any()) }
+
+                updatedSlot.isCaptured shouldBe true
+                updatedSlot.captured.id shouldBe inactiveId
+                updatedSlot.captured.behovStatus shouldBe BehovStatus.BEHOV_EXPIRED
+            }
+
+            it("returns 0 and does not update when no candidates are found") {
+                // Arrange
+                coEvery { nlDb.findByCreatedBeforeAndStatus(any(), any(), any(), any()) } answers {
+                    ResultPage(
+                        emptyList(),
+                        page = secondArg()
+                    )
+                }
+
+                // Act
+                val expiredCount = service().expireOldLinemanagerRequirements(30)
+
+                // Assert
+                expiredCount shouldBe 0
+                coVerify(exactly = 0) { dinesykmeldteService.getIsActiveSykmelding(any(), any()) }
+                coVerify(exactly = 0) { nlDb.updateNlBehov(any()) }
             }
         }
     })

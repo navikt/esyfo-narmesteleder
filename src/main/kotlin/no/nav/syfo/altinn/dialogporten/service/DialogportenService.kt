@@ -113,19 +113,23 @@ class DialogportenService(
     }
 
     suspend fun setAllFulfilledBehovsAsCompletedInDialogporten() {
-        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED, BEHOV_BY_STATUS_LIMIT)
+        narmestelederDb.getNlBehovByStatus(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED), BEHOV_BY_STATUS_LIMIT)
             .also {
                 logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
             }
             .forEach { behov ->
                 behov.dialogId?.let {
-                    setToCompletedInDialogportenIfFulfilled(behov)
+                    setToCompletedInDialogporten(behov)
                 }
             }
     }
 
-    suspend fun setToCompletedInDialogportenIfFulfilled(behov: NarmestelederBehovEntity) {
-        if (behov.behovStatus != BehovStatus.BEHOV_FULFILLED) {
+    suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
+        val completableBehovs = listOf(
+            BehovStatus.BEHOV_FULFILLED,
+            BehovStatus.BEHOV_EXPIRED
+        )
+        if (behov.behovStatus !in completableBehovs) {
             logger.info("Skipping setting dialog to completed for behov ${behov.id} with status ${behov.behovStatus}")
             return
         }

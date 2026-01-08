@@ -65,6 +65,8 @@ class DialogportenServiceTest :
                         dialogportenIsApiOnly = false,
                         deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
                         persistSendtSykmelding = false,
+                        checkForInactiveSykmeldingOnBehovsAfterDays = 7,
+                        maintenanceTaskDelay = "1s",
                     ),
                     pdlService = pdlService,
                 )
@@ -164,9 +166,7 @@ class DialogportenServiceTest :
                 it("should log error and continue without updating document status") {
                     // Arrange
                     val behovEntity1 = nlBehovEntity()
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
-                        behovEntity1
-                    )
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.createDialog(any()) } throws RuntimeException("Dialogporten error")
 
                     // Act
@@ -225,9 +225,7 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
-                        behovEntity1
-                    )
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -247,9 +245,7 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
-                        behovEntity1
-                    )
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -285,7 +281,12 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(eq(BehovStatus.BEHOV_FULFILLED)) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
                     coVerify(exactly = 0) { dialogportenClient.getDialogById(any()) }
                     coVerify(exactly = 0) { dialogportenClient.updateDialogStatus(any(), any(), any()) }
                     coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
@@ -325,7 +326,12 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
                     coVerify(exactly = 1) { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) }
                     coVerify(exactly = 1) {
                         dialogportenClient.updateDialogStatus(eq(behovEntity.dialogId!!), any(), DialogStatus.Completed)
@@ -357,7 +363,12 @@ class DialogportenServiceTest :
                             ),
                         )
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) } returns behovs
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
                         val idArg = firstArg<UUID>()
                         behovs.first { it.dialogId == idArg }.toExtendedDialog()
@@ -375,7 +386,12 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
                     coVerify(exactly = 2) { dialogportenClient.getDialogById(any()) }
                     coVerify(exactly = 2) {
                         dialogportenClient.updateDialogStatus(
@@ -407,10 +423,12 @@ class DialogportenServiceTest :
                             behovStatus = BehovStatus.BEHOV_FULFILLED,
                             dialogId = UUID.randomUUID(),
                         )
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) } returns
-                        listOf(
-                            behovEntity1,
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
+                    } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.getDialogById(any()) } returns behovEntity1.toExtendedDialog()
                     coEvery {
                         dialogportenClient.updateDialogStatus(
@@ -424,7 +442,12 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
                     coVerify(exactly = 1) {
                         dialogportenClient.updateDialogStatus(
                             behovEntity1.dialogId!!,
@@ -456,7 +479,12 @@ class DialogportenServiceTest :
                             }
                         }
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) } returns behovs
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT,
+                        )
+                    } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
                         val idArg = firstArg<UUID>()
                         behovs
@@ -481,7 +509,12 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT,
+                        )
+                    }
 
                     coVerify(exactly = numOfBehovs) {
                         dialogportenClient.getDialogById(
@@ -537,7 +570,7 @@ class DialogportenServiceTest :
                 coEvery { dialogportenClient.getDialogById(any()) } returns extendedDialg
 
                 // Act
-                dialogportenService.setToCompletedInDialogportenIfFulfilled(behovEntity)
+                dialogportenService.setToCompletedInDialogporten(behovEntity)
 
                 // Assert
                 coVerify(exactly = 1) { dialogportenClient.getDialogById(behovEntity.dialogId!!) }

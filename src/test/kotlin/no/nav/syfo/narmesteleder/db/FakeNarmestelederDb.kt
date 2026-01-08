@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.db
 
+import no.nav.syfo.application.database.ResultPage
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import java.time.Instant
 import java.util.*
@@ -29,7 +30,7 @@ class FakeNarmestelederDb : INarmestelederDb {
         store[id] = toStore
     }
 
-    override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus == status }.take(limit)
+    override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = getNlBehovByStatus(listOf(status), limit)
 
     override suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus == status && it.dialogDeletePerformed != null && it.dialogId == null }.take(limit)
     override suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.dialogDeletePerformed == null }
@@ -46,14 +47,29 @@ class FakeNarmestelederDb : INarmestelederDb {
     override suspend fun findBehovByParameters(
         orgNumber: String,
         createdAfter: Instant,
-        status: List<BehovStatus>,
+        behovStatus: List<BehovStatus>,
         limit: Int
     ): List<NarmestelederBehovEntity> = store.values.filter {
         it.orgnummer == orgNumber &&
             it.created.isAfter(createdAfter) &&
             it.created.isBefore(Instant.now()) &&
-            status.contains(it.behovStatus)
+            behovStatus.contains(it.behovStatus)
     }.take(limit)
+
+    override suspend fun findByCreatedBeforeAndStatus(
+        createdBefore: Instant,
+        page: Int,
+        pageSize: Int,
+        status: List<BehovStatus>
+    ): ResultPage<NarmestelederBehovEntity> = ResultPage(
+        store.values.filter {
+            it.created.isBefore(createdBefore) &&
+                status.contains(it.behovStatus)
+        },
+        page
+    )
+
+    override suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus in status }
 
     fun lastId(): UUID? = order.lastOrNull()
     fun findAll(): List<NarmestelederBehovEntity> = order.mapNotNull { store[it] }

@@ -2,14 +2,12 @@ package no.nav.syfo.narmesteleder.db
 
 import faker
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAllIgnoringFields
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
-import io.kotest.matchers.equality.shouldNotBeEqualUsingFields
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.TestDB.Companion.updateCreated
@@ -109,6 +107,57 @@ class NarmestelederDbTest : DescribeSpec({
 
             retrievedEntities.shouldContainAllIgnoringFields(
                 setOf(nlBehovEntity1, nlBehovEntity2),
+                NarmestelederBehovEntity::created,
+                NarmestelederBehovEntity::updated
+            )
+        }
+
+        it("should retrieve entities with any of the provided statuses and created in the past") {
+            // Arrange
+            val created1 = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_CREATED))!!
+            val created2 =
+                insertAndGetBehovWithId(
+                    nlBehovEntity().copy(behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
+                )!!
+            val fulfilled = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_FULFILLED))!!
+
+            val earlier = Instant.now().minusSeconds(3 * 60L)
+            updateCreated(created1.id!!, earlier)
+            updateCreated(created2.id!!, earlier)
+            updateCreated(fulfilled.id!!, earlier)
+
+            // Act
+            val retrieved = db.getNlBehovByStatus(
+                listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
+            )
+
+            // Assert
+            retrieved.size shouldBe 2
+            retrieved.shouldContainAllIgnoringFields(
+                setOf(created1, created2),
+                NarmestelederBehovEntity::created,
+                NarmestelederBehovEntity::updated
+            )
+        }
+
+        it("should not retrieve entities created within the last 10 seconds") {
+            // Arrange
+            val recent = insertAndGetBehovWithId(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_CREATED))!!
+            // Ensure it's 'recent' (created defaults to now)
+
+            // Act
+            val retrieved = db.getNlBehovByStatus(listOf(BehovStatus.BEHOV_CREATED))
+
+            // Assert
+            retrieved.size shouldBe 0
+
+            // Sanity: if we move created back in time, it should be returned
+            val earlier = Instant.now().minusSeconds(3 * 60L)
+            updateCreated(recent.id!!, earlier)
+            val retrievedAfterUpdate = db.getNlBehovByStatus(listOf(BehovStatus.BEHOV_CREATED))
+            retrievedAfterUpdate.size shouldBe 1
+            retrievedAfterUpdate.shouldContainAllIgnoringFields(
+                setOf(recent),
                 NarmestelederBehovEntity::created,
                 NarmestelederBehovEntity::updated
             )

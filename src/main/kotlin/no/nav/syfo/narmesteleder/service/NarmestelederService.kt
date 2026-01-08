@@ -83,7 +83,7 @@ class NarmestelederService(
     }
 
     suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String)
-            : List<NarmestelederBehovEntity> {
+        : List<NarmestelederBehovEntity> {
         return nlDb.findBehovByParameters(
             sykmeldtFnr = sykmeldtFnr, orgnummer = orgnummer, behovStatus = listOf(
                 BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
@@ -109,14 +109,14 @@ class NarmestelederService(
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
         val isActiveSykmelding = skipSykmeldingCheck ||
-                dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
         val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
             .isNotEmpty()
 
         if (!isActiveSykmelding) {
             logger.info(
                 "Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with" +
-                        " narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}"
+                    " narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}"
             )
             return null
         }
@@ -126,20 +126,33 @@ class NarmestelederService(
             )
             return null
         }
-        logger.info("Finding hovedenhet for behov with reason ${nlBehov.behovReason}")
-        val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
-            nlBehov.employeeIdentificationNumber,
-            nlBehov.orgNumber
-        )
-        val entity = NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
-            nlBehov,
-            hovedenhetOrgnummer = hovededenhet,
-            behovStatus = BehovStatus.BEHOV_CREATED,
-        )
+        val entity = try {
+            val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
+                nlBehov.employeeIdentificationNumber,
+                nlBehov.orgNumber
+            )
+            NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+                nlBehov,
+                hovedenhetOrgnummer = hovededenhet,
+                behovStatus = BehovStatus.BEHOV_CREATED,
+            )
+        } catch (e: HovedenhetNotFoundException) {
+            logger.warn(
+                "Unable to fint hovedenhetOrgnummer for behov with reason ${nlBehov.behovReason}, setting behovStatus to ERROR",
+                e
+            )
+            NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+                nlBehov,
+                hovedenhetOrgnummer = "UNKNOWN",
+                behovStatus = BehovStatus.ERROR,
+            )
+        }
         val insertedEntity = nlDb.insertNlBehov(entity).also {
             logger.info("Inserted NarmestelederBehovEntity with id: $it")
         }
-        dialogportenService.sendToDialogporten(insertedEntity)
+        if (entity.behovStatus != BehovStatus.ERROR) {
+            dialogportenService.sendToDialogporten(insertedEntity)
+        }
         return insertedEntity.id
     }
 

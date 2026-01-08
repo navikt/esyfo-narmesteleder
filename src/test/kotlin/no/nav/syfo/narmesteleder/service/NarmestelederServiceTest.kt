@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
+import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
@@ -121,7 +122,7 @@ class NarmestelederServiceTest : DescribeSpec({
             coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
         }
 
-        it("throws when hovedenhet missing for underenhet") {
+        it("persists with status ERROR when hovedenhet missing for underenhet") {
             // Arrange
             val sykmeldtFnr = "12345678910"
             val underenhetOrg = "123456789"
@@ -140,11 +141,14 @@ class NarmestelederServiceTest : DescribeSpec({
             } returns true
 
             // Act
-            shouldThrow<HovedenhetNotFoundException> { service().createNewNlBehov(write) }
+            shouldNotThrow<HovedenhetNotFoundException> { service().createNewNlBehov(write) }
 
             // Assert
-            coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
             coVerify(exactly = 1) { aaregService.findOrgNumbersByPersonIdent(eq(write.employeeIdentificationNumber)) }
+            coVerify(exactly = 1) { nlDb.insertNlBehov(withArg {
+                it.behovStatus shouldBe BehovStatus.ERROR
+                it.hovedenhetOrgnummer shouldBe "UNKNOWN"
+            }) }
         }
 
         it("should skip persists if active sykmelding is missing") {

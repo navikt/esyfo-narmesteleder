@@ -95,7 +95,7 @@ class NarmestelederService(
         val arbeidsforholdMap = aaregService.findOrgNumbersByPersonIdent(personIdent)
         return arbeidsforholdMap[orgNumber]
             ?: throw HovedenhetNotFoundException(
-                "Could not find main entity for employee on sick leave on orgnumber ${orgNumber} in aareg. Found arbeidsforhold for: ${arbeidsforholdMap.keys}"
+                "Could not find main entity for employee on sick leave and orgnumber in aareg"
             )
     }
 

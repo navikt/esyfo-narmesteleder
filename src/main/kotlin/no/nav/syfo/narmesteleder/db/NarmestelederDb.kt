@@ -4,6 +4,7 @@ import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,14 +16,26 @@ interface INarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
-    suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity>
+    suspend fun findBehovByParameters(
+        sykmeldtFnr: String,
+        orgnummer: String,
+        behovStatus: List<BehovStatus>
+    ): List<NarmestelederBehovEntity>
+
     suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity>
     suspend fun findBehovByParameters(
         orgNumber: String,
         createdAfter: Instant,
         status: List<BehovStatus>,
-        limit: Int
+        limit: Int,
     ): List<NarmestelederBehovEntity>
+
+    suspend fun findExpiredBehovs(
+        createdBefore: Instant,
+        status: List<BehovStatus>,
+    ): List<NarmestelederBehovEntity>
+
+    suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity>
 }
 
 class NarmestelederDb(
@@ -134,7 +147,11 @@ class NarmestelederDb(
         }
     }
 
-    override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity> = withContext(dispatcher)  {
+    override suspend fun findBehovByParameters(
+        sykmeldtFnr: String,
+        orgnummer: String,
+        behovStatus: List<BehovStatus>
+    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
         val placeholders = behovStatus.joinToString(", ") { "?" }
         return@withContext database.connection.use { connection ->
             connection
@@ -191,11 +208,40 @@ class NarmestelederDb(
             }
         }
 
+    override suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity> =
+        withContext(dispatcher) {
+            val placeholders = status.joinToString(", ") { "?" }
+            return@withContext database.connection.use { connection ->
+                connection
+                    .prepareStatement(
+                        """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE behov_status in ($placeholders)
+                        AND created < NOW() - INTERVAL '10 second'
+                        ORDER BY created
+                        LIMIT 100
+                        """.trimIndent()
+                    ).use { preparedStatement ->
+                        var idx = 1
+                        status.forEach { status ->
+                            preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
+                        }
+                        val resultSet = preparedStatement.executeQuery()
+                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                        while (resultSet.next()) {
+                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                        }
+                        nlBehov
+                    }
+            }
+        }
+
     override suspend fun findBehovByParameters(
         orgNumber: String,
         createdAfter: Instant,
         status: List<BehovStatus>,
-        limit: Int
+        limit: Int,
     ): List<NarmestelederBehovEntity> =
         withContext(dispatcher) {
             return@withContext database.connection.use { connection ->
@@ -228,6 +274,40 @@ class NarmestelederDb(
                             nlBehov.add(resultSet.toNarmestelederBehovEntity())
                         }
                         nlBehov
+                    }
+            }
+        }
+
+    override suspend fun findExpiredBehovs(
+        createdBefore: Instant,
+        status: List<BehovStatus>
+    ): List<NarmestelederBehovEntity> =
+        withContext(dispatcher) {
+            database.connection.use { connection ->
+                val placeholders = status.joinToString(", ") { "?" }
+                connection
+                    .prepareStatement(
+                        """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE 
+                            behov_status in ($placeholders) 
+                        AND
+                            created < ? 
+                        ORDER BY created
+                        """.trimIndent()
+                    ).use { preparedStatement ->
+                        var idx = 0
+                        status.forEach { status ->
+                            preparedStatement.setObject(++idx, status, java.sql.Types.OTHER)
+                        }
+                        preparedStatement.setTimestamp(++idx, Timestamp.from(createdBefore))
+                        val resultSet = preparedStatement.executeQuery()
+                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                        while (resultSet.next()) {
+                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                        }
+                        return@use nlBehov
                     }
             }
         }

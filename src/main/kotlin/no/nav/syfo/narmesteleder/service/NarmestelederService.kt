@@ -1,7 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -79,7 +79,7 @@ class NarmestelederService(
         )
         nlDb.updateNlBehov(updatedBehov)
         logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
-        dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
+        dialogportenService.setToCompletedInDialogporten(updatedBehov)
     }
 
     suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String)
@@ -154,7 +154,7 @@ class NarmestelederService(
     suspend fun getNlBehovList(
         orgNumber: String,
         createdAfter: Instant,
-        pageSize: Int
+        pageSize: Int,
     ): List<LinemanagerRequirementRead> =
         nlDb.findBehovByParameters(
             orgNumber = orgNumber,
@@ -162,6 +162,36 @@ class NarmestelederService(
             status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
             limit = pageSize + 1,
         ).map { it.toEmployeeLinemanagerRead(it.getName()) }
+
+    suspend fun expireOldLinemanagerRequirements(createdBeforeDays: Long): Int {
+        val expiredNlBehovs = nlDb.findExpiredBehovs(
+            createdBefore = Instant.now().minusSeconds(getDaysInSeconds(createdBeforeDays)),
+            status = listOf(
+                BehovStatus.BEHOV_CREATED,
+                BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+            )
+        )
+
+        return expiredNlBehovs
+            .mapNotNull { behov ->
+                val isSykmeldingActive = dinesykmeldteService.getIsActiveSykmelding(behov.sykmeldtFnr, behov.orgnummer)
+
+                if (!isSykmeldingActive) {
+                    val updatedBehov = behov.copy(
+                        behovStatus = BehovStatus.BEHOV_EXPIRED,
+                    )
+                    nlDb.updateNlBehov(updatedBehov)
+                    logger.info(
+                        "Expired NarmestelederBehovEntity with id: ${behov.id}. Employee no longer on sick leave."
+                    )
+                } else {
+                    null
+                }
+            }
+            .count()
+    }
+
+    private fun getDaysInSeconds(days: Long): Long = days * 24 * 60 * 60
 }
 
 fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead =

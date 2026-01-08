@@ -16,7 +16,7 @@ class UpdateDialogTask(
 ) {
     private val logger = logger()
 
-    suspend fun runSetCompletedTask() = coroutineScope {
+    suspend fun runTask() = coroutineScope {
         try {
             while (isActive) {
                 if (leaderElection.isLeader()) {

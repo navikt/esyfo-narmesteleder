@@ -4,7 +4,6 @@ import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.*
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,7 +29,7 @@ interface INarmestelederDb {
         limit: Int,
     ): List<NarmestelederBehovEntity>
 
-    suspend fun findExpiredBehovs(
+    suspend fun findByCreatedBeforeAndStatus(
         createdBefore: Instant,
         status: List<BehovStatus>,
     ): List<NarmestelederBehovEntity>
@@ -277,7 +276,7 @@ class NarmestelederDb(
             }
         }
 
-    override suspend fun findExpiredBehovs(
+    override suspend fun findByCreatedBeforeAndStatus(
         createdBefore: Instant,
         status: List<BehovStatus>
     ): List<NarmestelederBehovEntity> =

@@ -57,7 +57,7 @@ class FakeNarmestelederDb : INarmestelederDb {
         }.take(limit)
     }
 
-    override suspend fun findExpiredBehovs(
+    override suspend fun findByCreatedBeforeAndStatus(
         createdBefore: Instant,
         status: List<BehovStatus>
     ): List<NarmestelederBehovEntity> {

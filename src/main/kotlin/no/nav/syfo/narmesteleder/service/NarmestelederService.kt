@@ -114,15 +114,17 @@ class NarmestelederService(
             .isNotEmpty()
 
         if (!isActiveSykmelding) {
+            COUNT_CREATE_BEHOV_SKIPPED_NO_SICKLEAVE.increment()
             logger.info(
                 "Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with" +
-                    " narmestelederId ${nlBehov.revokedLinemanagerId} in org ${nlBehov.orgNumber}"
+                    " narmestelederId ${nlBehov.revokedLinemanagerId}"
             )
             return null
         }
         if (registeredPreviousBehov) {
+            COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING.increment()
             logger.info(
-                "Not inserting NarmestelederBehovEntity since one already exists for org ${nlBehov.orgNumber}"
+                "Not inserting NarmestelederBehovEntity since one already for employee and org"
             )
             return null
         }
@@ -137,8 +139,9 @@ class NarmestelederService(
                 behovStatus = BehovStatus.BEHOV_CREATED,
             )
         } catch (e: HovedenhetNotFoundException) {
+            COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT.increment()
             logger.warn(
-                "Unable to fint hovedenhetOrgnummer for behov with reason ${nlBehov.behovReason}, setting behovStatus to ERROR",
+                "Unable to find hovedenhetOrgnummer for behov with reason ${nlBehov.behovReason}, setting behovStatus to ERROR",
                 e
             )
             NarmestelederBehovEntity.fromLinemanagerRequirementWrite(

@@ -27,7 +27,8 @@ class BehovMaintenanceTaskTest : DescribeSpec({
         updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
         isDialogportenBackgroundTaskEnabled = true,
         dialogportenIsApiOnly = false,
-        checkForInactiveSykmeldingOnBehovsAfterDays = 7
+        checkForInactiveSykmeldingOnBehovsAfterDays = 7,
+        maintenanceTaskDelay = "100ms"
     )
 
     fun createTask(pollingInterval: kotlin.time.Duration = 50.milliseconds) = BehovMaintenanceTask(
@@ -62,7 +63,9 @@ class BehovMaintenanceTaskTest : DescribeSpec({
                 // Assert
                 coVerify(atLeast = 1) { leaderElection.isLeader() }
                 coVerify(atLeast = 1) {
-                    narmestelederService.expireOldLinemanagerRequirements(eq(env.checkForInactiveSykmeldingOnBehovsAfterDays))
+                    narmestelederService.expireOldLinemanagerRequirements(
+                        env.checkForInactiveSykmeldingOnBehovsAfterDays
+                    )
                 }
             }
 

@@ -125,5 +125,7 @@ spec:
       value: "10m"
     - name: DIALOGPORTEN_API_ONLY
       value: "true"
+    - name: MAINTENANCE_TASK_DELAY
+      value: "12h"
   envFrom:
     - secret: altinn-subscription-key

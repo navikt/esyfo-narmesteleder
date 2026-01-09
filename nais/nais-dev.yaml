@@ -93,6 +93,8 @@ spec:
   kafka:
     pool: nav-dev
   env:
+    - name: MAINTENANCE_TASK_DELAY
+      value: "1h"
     - name: PDL_BASE_URL
       value: https://pdl-api.dev-fss-pub.nais.io/graphql
     - name: PDL_SCOPE

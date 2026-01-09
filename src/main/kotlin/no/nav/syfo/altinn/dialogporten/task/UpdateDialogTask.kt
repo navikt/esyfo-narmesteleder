@@ -30,7 +30,7 @@ class UpdateDialogTask(
                 delay(pollingInterval)
             }
         } catch (ex: CancellationException) {
-            logger.info("Cancelled SendDialogTask", ex)
+            logger.info("Cancelled UpdateDialogTask", ex)
         }
     }
 }

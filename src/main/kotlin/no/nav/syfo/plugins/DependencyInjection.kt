@@ -224,7 +224,7 @@ private fun servicesModule() = module {
 
 private fun tasksModule() = module {
     single {
-        val maintenanceTask = BehovMaintenanceTask(
+        BehovMaintenanceTask(
             narmestelederService = get(),
             leaderElection = get(),
             pollingInterval = Duration.parse(env().otherProperties.maintenanceTaskDelay),

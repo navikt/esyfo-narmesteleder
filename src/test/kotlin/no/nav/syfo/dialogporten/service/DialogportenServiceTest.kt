@@ -61,6 +61,7 @@ class DialogportenServiceTest :
                             isDialogportenBackgroundTaskEnabled = true,
                             dialogportenIsApiOnly = false,
                             checkForInactiveSykmeldingOnBehovsAfterDays = 7,
+                            maintenanceTaskDelay = "1s",
                         ),
                     pdlService = pdlService,
                 )

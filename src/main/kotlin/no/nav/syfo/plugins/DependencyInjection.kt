@@ -44,6 +44,7 @@ import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
@@ -68,7 +69,8 @@ fun Application.configureDependencies() {
             databaseModule(),
             clientsModule(),
             servicesModule(),
-            handlerModule()
+            handlerModule(),
+            tasksModule()
         )
     }
 }
@@ -216,6 +218,17 @@ private fun servicesModule() = module {
     single {
         EregService(
             eregClient = get()
+        )
+    }
+}
+
+private fun tasksModule() = module {
+    single {
+        BehovMaintenanceTask(
+            narmestelederService = get(),
+            leaderElection = get(),
+            pollingInterval = Duration.parse(env().otherProperties.maintenanceTaskDelay),
+            env = env().otherProperties
         )
     }
     single { SendDialogTask(get(), get()) }

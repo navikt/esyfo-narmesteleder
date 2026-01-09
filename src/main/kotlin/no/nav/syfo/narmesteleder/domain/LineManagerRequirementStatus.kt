@@ -12,6 +12,8 @@ enum class LineManagerRequirementStatus {
             BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION -> REQUIRES_ATTENTION
             BehovStatus.BEHOV_FULFILLED,
             BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED -> COMPLETED
+
+            BehovStatus.BEHOV_EXPIRED -> COMPLETED
             BehovStatus.ERROR -> throw IllegalArgumentException("Cannot map BehovStatus.ERROR to LineManagerRequirementStatus")
         }
     }

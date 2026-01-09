@@ -5,9 +5,11 @@ data class OtherEnvironmentProperties(
     val frontendBaseUrl: String,
     val publicIngressUrl: String,
     val updateDialogportenTaskProperties: UpdateDialogportenTaskProperties,
+    val maintenanceTaskDelay: String,
     val persistLeesahNlBehov: Boolean,
     val isDialogportenBackgroundTaskEnabled: Boolean,
     val dialogportenIsApiOnly: Boolean,
+    val checkForInactiveSykmeldingOnBehovsAfterDays: Long
 ) {
     companion object {
         fun createFromEnvVars() =
@@ -18,7 +20,12 @@ data class OtherEnvironmentProperties(
                 persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
                 isDialogportenBackgroundTaskEnabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
                 dialogportenIsApiOnly = getEnvVar("DIALOGPORTEN_API_ONLY").toBoolean(),
-                updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars()
+                updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars(),
+                checkForInactiveSykmeldingOnBehovsAfterDays = getEnvVar(
+                    "CHECK_INACTIVE_SYKMELDING_ON_BEHOVS_AFTER_DAYS",
+                    "7"
+                ).toLong(),
+                maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
             )
 
         fun createForLocal() =
@@ -30,6 +37,8 @@ data class OtherEnvironmentProperties(
                 persistLeesahNlBehov = true,
                 isDialogportenBackgroundTaskEnabled = true,
                 dialogportenIsApiOnly = false,
+                checkForInactiveSykmeldingOnBehovsAfterDays = 0,
+                maintenanceTaskDelay = "1m"
             )
     }
 }

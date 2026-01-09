@@ -35,11 +35,11 @@ class FakeNarmestelederDb : INarmestelederDb {
 
     override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
     override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>):
-        List<NarmestelederBehovEntity> {
+            List<NarmestelederBehovEntity> {
         return store.values.filter {
             it.orgnummer == orgnummer &&
-                it.sykmeldtFnr == sykmeldtFnr &&
-                behovStatus.contains(it.behovStatus)
+                    it.sykmeldtFnr == sykmeldtFnr &&
+                    behovStatus.contains(it.behovStatus)
         }
     }
 
@@ -51,10 +51,24 @@ class FakeNarmestelederDb : INarmestelederDb {
     ): List<NarmestelederBehovEntity> {
         return store.values.filter {
             it.orgnummer == orgNumber &&
-                it.created.isAfter(createdAfter) &&
-                it.created.isBefore(Instant.now()) &&
-                status.contains(it.behovStatus)
+                    it.created.isAfter(createdAfter) &&
+                    it.created.isBefore(Instant.now()) &&
+                    status.contains(it.behovStatus)
         }.take(limit)
+    }
+
+    override suspend fun findByCreatedBeforeAndStatus(
+        createdBefore: Instant,
+        status: List<BehovStatus>
+    ): List<NarmestelederBehovEntity> {
+        return store.values.filter {
+            it.created.isBefore(createdBefore) &&
+                    status.contains(it.behovStatus)
+        }
+    }
+
+    override suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity> {
+        return store.values.filter { it.behovStatus in status }
     }
 
     fun lastId(): UUID? = order.lastOrNull()

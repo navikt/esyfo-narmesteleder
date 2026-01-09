@@ -38,7 +38,7 @@ data class OtherEnvironmentProperties(
                 isDialogportenBackgroundTaskEnabled = true,
                 dialogportenIsApiOnly = false,
                 checkForInactiveSykmeldingOnBehovsAfterDays = 0,
-                maintenanceTaskDelay = "5m"
+                maintenanceTaskDelay = "1m"
             )
     }
 }

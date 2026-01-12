@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.application.database.SqlFilter
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 
 class NarmestelederGeneratedIDException(message: String) : RuntimeException(message)
@@ -31,8 +32,10 @@ interface INarmestelederDb {
 
     suspend fun findByCreatedBeforeAndStatus(
         createdBefore: Instant,
+        page: Int,
+        pageSize: Int,
         status: List<BehovStatus>,
-    ): List<NarmestelederBehovEntity>
+    ): SqlFilter.Page<NarmestelederBehovEntity>
 
     suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity>
 }
@@ -278,35 +281,38 @@ class NarmestelederDb(
 
     override suspend fun findByCreatedBeforeAndStatus(
         createdBefore: Instant,
+        page: Int,
+        pageSize: Int,
         status: List<BehovStatus>
-    ): List<NarmestelederBehovEntity> =
+    ): SqlFilter.Page<NarmestelederBehovEntity> =
         withContext(dispatcher) {
+            val page = page.coerceAtLeast(0)
+            val pageSize = pageSize.coerceIn(1, 500)
+
             database.connection.use { connection ->
-                val placeholders = status.joinToString(", ") { "?" }
-                connection
-                    .prepareStatement(
-                        """
-                        SELECT *
-                        FROM nl_behov
-                        WHERE 
-                            behov_status in ($placeholders) 
-                        AND
-                            created < ? 
-                        ORDER BY created
-                        """.trimIndent()
-                    ).use { preparedStatement ->
-                        var idx = 0
-                        status.forEach { status ->
-                            preparedStatement.setObject(++idx, status, java.sql.Types.OTHER)
-                        }
-                        preparedStatement.setTimestamp(++idx, Timestamp.from(createdBefore))
-                        val resultSet = preparedStatement.executeQuery()
-                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                val preparedStatement = SqlFilter.build {
+                    offset = page * pageSize
+                    limit = pageSize
+                    orderBy = SqlFilter.OrderBy.CREATED
+                    orderDirection = SqlFilter.OrderDirection.ASC
+
+                    filterParam("created", createdBefore, SqlFilter.ComparisonOperator.LESS_THAN)
+                    filterParam("behov_status", status, SqlFilter.ComparisonOperator.IN)
+                    connection.prepareStatement(
+                        "SELECT * FROM nl_behov ${buildFilterString()}"
+                    )
+                }
+
+                val resultSet = preparedStatement.executeQuery()
+
+                SqlFilter.Page(
+                    items = buildList {
                         while (resultSet.next()) {
-                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                            add(resultSet.toNarmestelederBehovEntity())
                         }
-                        return@use nlBehov
-                    }
+                    },
+                    page = page,
+                )
             }
         }
 }

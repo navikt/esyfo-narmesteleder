@@ -13,7 +13,6 @@ import no.nav.syfo.util.logger
 class BehovMaintenanceTask(
     private val narmestelederService: NarmestelederService,
     private val leaderElection: LeaderElection,
-    private val pollingInterval: Duration,
     private val env: OtherEnvironmentProperties
 ) {
     private val logger = logger()
@@ -35,7 +34,7 @@ class BehovMaintenanceTask(
                         logger.error("Something went wrong", ex)
                     }
                 }
-                delay(pollingInterval)
+                delay(Duration.parse(env.maintenanceTaskDelay))
             }
         } catch (ex: CancellationException) {
             logger.info("Cancelled BehovMaintenanceTask", ex)

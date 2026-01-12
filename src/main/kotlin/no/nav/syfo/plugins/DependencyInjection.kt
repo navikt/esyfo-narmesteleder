@@ -227,7 +227,6 @@ private fun tasksModule() = module {
         BehovMaintenanceTask(
             narmestelederService = get(),
             leaderElection = get(),
-            pollingInterval = Duration.parse(env().otherProperties.maintenanceTaskDelay),
             env = env().otherProperties
         )
     }

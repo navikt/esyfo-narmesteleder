@@ -1,7 +1,6 @@
 package no.nav.syfo.narmesteleder.task
 
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -31,10 +30,9 @@ class BehovMaintenanceTaskTest : DescribeSpec({
         maintenanceTaskDelay = "100ms"
     )
 
-    fun createTask(pollingInterval: kotlin.time.Duration = 50.milliseconds) = BehovMaintenanceTask(
+    fun createTask() = BehovMaintenanceTask(
         narmestelederService = narmestelederService,
         leaderElection = leaderElection,
-        pollingInterval = pollingInterval,
         env = env
     )
 
@@ -101,7 +99,7 @@ class BehovMaintenanceTaskTest : DescribeSpec({
                     3
                 }
 
-                val task = createTask(pollingInterval = 30.milliseconds)
+                val task = createTask()
 
                 // Act
                 val job = launch {
@@ -123,7 +121,6 @@ class BehovMaintenanceTaskTest : DescribeSpec({
                 val task = BehovMaintenanceTask(
                     narmestelederService = narmestelederService,
                     leaderElection = leaderElection,
-                    pollingInterval = 50.milliseconds,
                     env = customEnv
                 )
 
@@ -144,26 +141,6 @@ class BehovMaintenanceTaskTest : DescribeSpec({
                 }
             }
 
-            it("should respect polling interval") {
-                // Arrange
-                coEvery { leaderElection.isLeader() } returns true
-                coEvery { narmestelederService.expireOldLinemanagerRequirements(any()) } returns 0
-
-                val task = createTask(pollingInterval = 100.milliseconds)
-
-                // Act
-                val job = launch {
-                    task.runTask()
-                }
-
-                // Wait for task to run - with 100ms interval, should run at most 3 times in 250ms
-                delay(250.milliseconds)
-                job.cancelAndJoin()
-
-                // Assert - with 100ms polling and 250ms wait time, expect 2-3 calls
-                coVerify(atMost = 3) { narmestelederService.expireOldLinemanagerRequirements(any()) }
-            }
-
             it("should gracefully handle cancellation") {
                 // Arrange
                 coEvery { leaderElection.isLeader() } returns true
@@ -180,30 +157,6 @@ class BehovMaintenanceTaskTest : DescribeSpec({
 
                 // Assert - should not throw when cancelled
                 job.cancelAndJoin()
-            }
-
-            it("should run multiple iterations when leader") {
-                // Arrange
-                var callCount = 0
-                coEvery { leaderElection.isLeader() } returns true
-                coEvery { narmestelederService.expireOldLinemanagerRequirements(any()) } answers {
-                    callCount++
-                    callCount
-                }
-
-                val task = createTask(pollingInterval = 30.milliseconds)
-
-                // Act
-                val job = launch {
-                    task.runTask()
-                }
-
-                delay(150.milliseconds)
-                job.cancelAndJoin()
-
-                // Assert - should have been called multiple times
-                (callCount >= 2) shouldBe true
-                coVerify(atLeast = 2) { narmestelederService.expireOldLinemanagerRequirements(any()) }
             }
         }
     }

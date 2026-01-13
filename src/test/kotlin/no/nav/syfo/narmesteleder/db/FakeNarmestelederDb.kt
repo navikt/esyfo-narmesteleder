@@ -3,6 +3,7 @@ package no.nav.syfo.narmesteleder.db
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import no.nav.syfo.application.database.ResultPage
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 
 class FakeNarmestelederDb : INarmestelederDb {
@@ -57,14 +58,19 @@ class FakeNarmestelederDb : INarmestelederDb {
         }.take(limit)
     }
 
+
     override suspend fun findByCreatedBeforeAndStatus(
         createdBefore: Instant,
+        page: Int,
+        pageSize: Int,
         status: List<BehovStatus>
-    ): List<NarmestelederBehovEntity> {
-        return store.values.filter {
-            it.created.isBefore(createdBefore) &&
-                    status.contains(it.behovStatus)
-        }
+    ): ResultPage<NarmestelederBehovEntity> {
+        return ResultPage(
+            store.values.filter {
+                it.created.isBefore(createdBefore) &&
+                        status.contains(it.behovStatus)
+            }, page
+        )
     }
 
     override suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity> {

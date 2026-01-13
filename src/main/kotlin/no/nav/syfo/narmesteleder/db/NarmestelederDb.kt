@@ -1,17 +1,16 @@
 package no.nav.syfo.narmesteleder.db
 
-import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
-import no.nav.syfo.application.database.SqlFilter
+import no.nav.syfo.application.database.ResultPage
+import no.nav.syfo.application.database.SqlBuilder
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 
-class NarmestelederGeneratedIDException(message: String) : RuntimeException(message)
 interface INarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
@@ -35,7 +34,7 @@ interface INarmestelederDb {
         page: Int,
         pageSize: Int,
         status: List<BehovStatus>,
-    ): SqlFilter.Page<NarmestelederBehovEntity>
+    ): ResultPage<NarmestelederBehovEntity>
 
     suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity>
 }
@@ -154,87 +153,93 @@ class NarmestelederDb(
         orgnummer: String,
         behovStatus: List<BehovStatus>
     ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
-        val placeholders = behovStatus.joinToString(", ") { "?" }
         return@withContext database.connection.use { connection ->
-            connection
-                .prepareStatement(
+            SqlBuilder.filterBuilder {
+                filterParam(SqlBuilder.Column.ORGNUMMER, orgnummer)
+                filterParam(SqlBuilder.Column.SYKEMELDT_FNR, sykmeldtFnr)
+                filterParam(SqlBuilder.Column.BEHOV_STATUS, behovStatus, SqlBuilder.ComparisonOperator.IN)
+
+                connection.prepareStatement(
                     """
                         SELECT * FROM nl_behov 
-                          WHERE orgnummer = ? AND 
-                              sykemeldt_fnr = ? AND
-                              behov_status IN ($placeholders) 
+                          ${buildFilterString()}
                     """.trimIndent()
-                ).use { preparedStatement ->
-                    var idx = 1
-                    preparedStatement.setObject(idx++, orgnummer)
-                    preparedStatement.setObject(idx++, sykmeldtFnr)
-                    behovStatus.forEach { status ->
-                        preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
-                    }
-
-                    preparedStatement.executeQuery().use { resultSet ->
-                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                        while (resultSet.next()) {
-                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                        }
-                        nlBehov
-                    }
+                )
+            }.use { preparedStatement ->
+                val resultSet = preparedStatement.executeQuery()
+                val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                while (resultSet.next()) {
+                    nlBehov.add(resultSet.toNarmestelederBehovEntity())
                 }
+                nlBehov
+            }
         }
     }
 
     override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> =
         withContext(dispatcher) {
             return@withContext database.connection.use { connection ->
-                connection
-                    // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
-                    .prepareStatement(
+                SqlBuilder.filterBuilder {
+                    orderBy = SqlBuilder.Column.CREATED
+                    orderDirection = SqlBuilder.OrderDirection.ASC
+                    limit = 100
+
+                    filterParam(SqlBuilder.Column.BEHOV_STATUS, status)
+                    // Add created < now() - 1 minute in where clause if we add something that triggers sending immediately after insert
+                    filterParam(
+                        SqlBuilder.Column.CREATED,
+                        Timestamp.from(Instant.now().minusSeconds(60)),
+                        SqlBuilder.ComparisonOperator.LESS_THAN
+                    )
+
+                    connection.prepareStatement(
                         """
-                        SELECT *
-                        FROM nl_behov
-                        WHERE behov_status = ?
-                        AND created < NOW() - INTERVAL '10 second'
-                        ORDER BY created
-                        LIMIT 100
-                        """.trimIndent()
-                    ).use { preparedStatement ->
-                        preparedStatement.setObject(1, status, java.sql.Types.OTHER)
-                        val resultSet = preparedStatement.executeQuery()
-                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                        while (resultSet.next()) {
-                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                        }
-                        nlBehov
+                    SELECT *
+                    FROM nl_behov
+                    ${buildFilterString()}
+                    """.trimIndent()
+                    )
+                }.use { preparedStatement ->
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
                     }
+                    nlBehov
+                }
             }
         }
 
     override suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity> =
         withContext(dispatcher) {
-            val placeholders = status.joinToString(", ") { "?" }
             return@withContext database.connection.use { connection ->
-                connection
-                    .prepareStatement(
+                SqlBuilder.filterBuilder {
+                    orderBy = SqlBuilder.Column.CREATED
+                    orderDirection = SqlBuilder.OrderDirection.ASC
+                    limit = 100
+
+                    filterParam(SqlBuilder.Column.BEHOV_STATUS, status, SqlBuilder.ComparisonOperator.IN)
+                    filterParam(
+                        SqlBuilder.Column.CREATED,
+                        Timestamp.from(Instant.now().minusSeconds(60)),
+                        SqlBuilder.ComparisonOperator.LESS_THAN
+                    )
+
+                    connection.prepareStatement(
                         """
-                        SELECT *
-                        FROM nl_behov
-                        WHERE behov_status in ($placeholders)
-                        AND created < NOW() - INTERVAL '10 second'
-                        ORDER BY created
-                        LIMIT 100
-                        """.trimIndent()
-                    ).use { preparedStatement ->
-                        var idx = 1
-                        status.forEach { status ->
-                            preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
-                        }
-                        val resultSet = preparedStatement.executeQuery()
-                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                        while (resultSet.next()) {
-                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                        }
-                        nlBehov
+                    SELECT *
+                    FROM nl_behov
+                    ${buildFilterString()}
+                    """.trimIndent()
+                    )
+                }.use { preparedStatement ->
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
                     }
+                    nlBehov
+                }
             }
         }
 
@@ -246,36 +251,30 @@ class NarmestelederDb(
     ): List<NarmestelederBehovEntity> =
         withContext(dispatcher) {
             return@withContext database.connection.use { connection ->
-                val placeholders = status.joinToString(", ") { "?" }
-                connection
-                    .prepareStatement(
+                SqlBuilder.filterBuilder {
+                    this.limit = limit
+                    this.orderBy = SqlBuilder.Column.CREATED
+                    this.orderDirection = SqlBuilder.OrderDirection.ASC
+
+                    filterParam(SqlBuilder.Column.ORGNUMMER, orgNumber)
+                    filterParam(SqlBuilder.Column.BEHOV_STATUS, status, SqlBuilder.ComparisonOperator.IN)
+                    filterParam(SqlBuilder.Column.CREATED, createdAfter, SqlBuilder.ComparisonOperator.GREATER_THAN)
+
+                    connection.prepareStatement(
                         """
-                        SELECT *
+                        SELECT * 
                         FROM nl_behov
-                        WHERE 
-                            orgnummer = ?
-                        AND
-                            behov_status in ($placeholders) 
-                        AND
-                            created > ? 
-                        ORDER BY created
-                        LIMIT ?
-                        """.trimIndent()
-                    ).use { preparedStatement ->
-                        var idx = 1
-                        preparedStatement.setString(idx++, orgNumber)
-                        status.forEach { status ->
-                            preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
-                        }
-                        preparedStatement.setTimestamp(idx++, Timestamp.from(createdAfter))
-                        preparedStatement.setInt(idx++, limit)
-                        val resultSet = preparedStatement.executeQuery()
-                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                        while (resultSet.next()) {
-                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                        }
-                        nlBehov
+                        ${buildFilterString()}
+                    """.trimIndent()
+                    )
+                }.use { preparedStatement ->
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
                     }
+                    nlBehov
+                }
             }
         }
 
@@ -284,49 +283,40 @@ class NarmestelederDb(
         page: Int,
         pageSize: Int,
         status: List<BehovStatus>
-    ): SqlFilter.Page<NarmestelederBehovEntity> =
+    ): ResultPage<NarmestelederBehovEntity> =
         withContext(dispatcher) {
             val page = page.coerceAtLeast(0)
             val pageSize = pageSize.coerceIn(1, 500)
 
             database.connection.use { connection ->
-                val preparedStatement = SqlFilter.build {
+                SqlBuilder.filterBuilder {
                     offset = page * pageSize
                     limit = pageSize
-                    orderBy = SqlFilter.OrderBy.CREATED
-                    orderDirection = SqlFilter.OrderDirection.ASC
+                    orderBy = SqlBuilder.Column.CREATED
+                    orderDirection = SqlBuilder.OrderDirection.ASC
 
-                    filterParam("created", createdBefore, SqlFilter.ComparisonOperator.LESS_THAN)
-                    filterParam("behov_status", status, SqlFilter.ComparisonOperator.IN)
+                    filterParam(SqlBuilder.Column.CREATED, createdBefore, SqlBuilder.ComparisonOperator.LESS_THAN)
+                    filterParam(SqlBuilder.Column.BEHOV_STATUS, status, SqlBuilder.ComparisonOperator.IN)
                     connection.prepareStatement(
-                        "SELECT * FROM nl_behov ${buildFilterString()}"
+                        """SELECT * 
+                            FROM nl_behov 
+                            ${buildFilterString()}
+                            """.trimIndent()
+                    )
+                }.use { preparedStatement ->
+                    val resultSet = preparedStatement.executeQuery()
+
+                    ResultPage(
+                        items = buildList {
+                            while (resultSet.next()) {
+                                add(resultSet.toNarmestelederBehovEntity())
+                            }
+                        },
+                        page = page,
                     )
                 }
-
-                val resultSet = preparedStatement.executeQuery()
-
-                SqlFilter.Page(
-                    items = buildList {
-                        while (resultSet.next()) {
-                            add(resultSet.toNarmestelederBehovEntity())
-                        }
-                    },
-                    page = page,
-                )
             }
         }
-}
-
-private fun ResultSet.getGeneratedUUID(idColumnLabel: String): UUID = this.use {
-    val id = if (this.next()) {
-        this.getObject(idColumnLabel) as? UUID
-    } else {
-        null
-    }
-
-    return id ?: throw NarmestelederGeneratedIDException(
-        "Could not get the generated id."
-    )
 }
 
 class NarmestelederBehovEntityInsertException(message: String) : RuntimeException(message)

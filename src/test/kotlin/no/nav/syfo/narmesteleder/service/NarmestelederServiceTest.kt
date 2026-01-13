@@ -14,6 +14,7 @@ import io.mockk.slot
 import java.time.Instant
 import java.util.UUID
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.application.database.ResultPage
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
@@ -358,7 +359,15 @@ class NarmestelederServiceTest : DescribeSpec({
 
             val updatedSlot: CapturingSlot<NarmestelederBehovEntity> = slot()
 
-            coEvery { nlDb.findByCreatedBeforeAndStatus(any(), any()) } returns listOf(inactiveBehov, activeBehov)
+            coEvery { nlDb.findByCreatedBeforeAndStatus(any(), any(), any(), any()) } coAnswers {
+                ResultPage(
+                    listOf(
+                        inactiveBehov,
+                        activeBehov
+                    ),
+                    page = secondArg()
+                )
+            }
             coEvery {
                 dinesykmeldteService.getIsActiveSykmelding(
                     inactiveBehov.sykmeldtFnr,
@@ -382,6 +391,8 @@ class NarmestelederServiceTest : DescribeSpec({
             coVerify(exactly = 1) {
                 nlDb.findByCreatedBeforeAndStatus(
                     createdBefore = any<Instant>(),
+                    page = 0,
+                    pageSize = 100,
                     status = listOf(
                         BehovStatus.BEHOV_CREATED,
                         BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
@@ -398,7 +409,12 @@ class NarmestelederServiceTest : DescribeSpec({
 
         it("returns 0 and does not update when no candidates are found") {
             // Arrange
-            coEvery { nlDb.findByCreatedBeforeAndStatus(any(), any()) } returns emptyList()
+            coEvery { nlDb.findByCreatedBeforeAndStatus(any(), any(), any(), any()) } answers {
+                ResultPage(
+                    emptyList(),
+                    page = secondArg()
+                )
+            }
 
             // Act
             val expiredCount = service().expireOldLinemanagerRequirements(30)

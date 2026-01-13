@@ -21,7 +21,6 @@ interface INarmestelederDb {
         behovStatus: List<BehovStatus>
     ): List<NarmestelederBehovEntity>
 
-    suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity>
     suspend fun findBehovByParameters(
         orgNumber: String,
         createdAfter: Instant,
@@ -37,6 +36,8 @@ interface INarmestelederDb {
     ): ResultPage<NarmestelederBehovEntity>
 
     suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity>
+    suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> =
+        getNlBehovByStatus(listOf(status))
 }
 
 class NarmestelederDb(
@@ -176,40 +177,6 @@ class NarmestelederDb(
         }
     }
 
-    override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> =
-        withContext(dispatcher) {
-            return@withContext database.connection.use { connection ->
-                SqlBuilder.filterBuilder {
-                    orderBy = SqlBuilder.Column.CREATED
-                    orderDirection = SqlBuilder.OrderDirection.ASC
-                    limit = 100
-
-                    filterParam(SqlBuilder.Column.BEHOV_STATUS, status)
-                    // Add created < now() - 1 minute in where clause if we add something that triggers sending immediately after insert
-                    filterParam(
-                        SqlBuilder.Column.CREATED,
-                        Timestamp.from(Instant.now().minusSeconds(60)),
-                        SqlBuilder.ComparisonOperator.LESS_THAN
-                    )
-
-                    connection.prepareStatement(
-                        """
-                    SELECT *
-                    FROM nl_behov
-                    ${buildWhereClause()}
-                    """.trimIndent()
-                    )
-                }.use { preparedStatement ->
-                    val resultSet = preparedStatement.executeQuery()
-                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                    while (resultSet.next()) {
-                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                    }
-                    nlBehov
-                }
-            }
-        }
-
     override suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity> =
         withContext(dispatcher) {
             return@withContext database.connection.use { connection ->
@@ -221,7 +188,7 @@ class NarmestelederDb(
                     filterParam(SqlBuilder.Column.BEHOV_STATUS, status, SqlBuilder.ComparisonOperator.IN)
                     filterParam(
                         SqlBuilder.Column.CREATED,
-                        Timestamp.from(Instant.now().minusSeconds(60)),
+                        Timestamp.from(Instant.now().minusSeconds(10)),
                         SqlBuilder.ComparisonOperator.LESS_THAN
                     )
 

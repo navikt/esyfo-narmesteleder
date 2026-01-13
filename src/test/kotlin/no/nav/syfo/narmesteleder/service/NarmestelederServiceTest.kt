@@ -46,7 +46,7 @@ class NarmestelederServiceTest : DescribeSpec({
         dialogportenService = mockk(relaxed = true)
     )
 
-    context("createNewNlBehov") {
+    describe("createNewNlBehov") {
         it("persists entity with resolved hovedenhet") {
             // Arrange
             val sykmeldtFnr = "12345678910"
@@ -152,10 +152,12 @@ class NarmestelederServiceTest : DescribeSpec({
 
             // Assert
             coVerify(exactly = 1) { aaregService.findOrgNumbersByPersonIdent(eq(write.employeeIdentificationNumber)) }
-            coVerify(exactly = 1) { nlDb.insertNlBehov(withArg {
-                it.behovStatus shouldBe BehovStatus.ERROR
-                it.hovedenhetOrgnummer shouldBe "UNKNOWN"
-            }) }
+            coVerify(exactly = 1) {
+                nlDb.insertNlBehov(withArg {
+                    it.behovStatus shouldBe BehovStatus.ERROR
+                    it.hovedenhetOrgnummer shouldBe "UNKNOWN"
+                })
+            }
         }
 
         it("should skip persists if active sykmelding is missing") {
@@ -185,7 +187,7 @@ class NarmestelederServiceTest : DescribeSpec({
         }
     }
 
-    context("getLinemanagerRequirementReadById") {
+    describe("getLinemanagerRequirementReadById") {
         it("returns mapped read DTO with name from database") {
             // Arrange
             val id = UUID.randomUUID()
@@ -268,7 +270,7 @@ class NarmestelederServiceTest : DescribeSpec({
         }
     }
 
-    context("updateNlBehov") {
+    describe("updateNlBehov") {
         it("updates entity") {
             // Arrange
             val id = UUID.randomUUID()
@@ -334,7 +336,7 @@ class NarmestelederServiceTest : DescribeSpec({
         }
     }
 
-    context("expireOldLinemanagerRequirements") {
+    describe("expireOldLinemanagerRequirements") {
         it("expires only behovs where sykmelding is inactive and returns count") {
             // Arrange
             val createdBeforeDays = 7L

@@ -41,7 +41,7 @@ class BehovMaintenanceTaskTest : DescribeSpec({
     }
 
     describe("BehovMaintenanceTask") {
-        describe("runTask") {
+        context("runTask") {
             it("should call expireOldLinemanagerRequirements when leader") {
                 // Arrange
                 coEvery { leaderElection.isLeader() } returns true

@@ -340,7 +340,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
             }
         }
 
-        describe("null value handling") {
+        context("null value handling") {
             it("ignores null values in filterParam") {
                 // Arrange
                 insertBehov(nlBehovEntity().copy(id = UUID.randomUUID()))

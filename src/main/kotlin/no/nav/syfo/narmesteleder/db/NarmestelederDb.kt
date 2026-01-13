@@ -162,7 +162,7 @@ class NarmestelederDb(
                 connection.prepareStatement(
                     """
                         SELECT * FROM nl_behov 
-                          ${buildFilterString()}
+                          ${buildWhereClause()}
                     """.trimIndent()
                 )
             }.use { preparedStatement ->
@@ -196,7 +196,7 @@ class NarmestelederDb(
                         """
                     SELECT *
                     FROM nl_behov
-                    ${buildFilterString()}
+                    ${buildWhereClause()}
                     """.trimIndent()
                     )
                 }.use { preparedStatement ->
@@ -229,7 +229,7 @@ class NarmestelederDb(
                         """
                     SELECT *
                     FROM nl_behov
-                    ${buildFilterString()}
+                    ${buildWhereClause()}
                     """.trimIndent()
                     )
                 }.use { preparedStatement ->
@@ -264,7 +264,7 @@ class NarmestelederDb(
                         """
                         SELECT * 
                         FROM nl_behov
-                        ${buildFilterString()}
+                        ${buildWhereClause()}
                     """.trimIndent()
                     )
                 }.use { preparedStatement ->
@@ -300,7 +300,7 @@ class NarmestelederDb(
                     connection.prepareStatement(
                         """SELECT * 
                             FROM nl_behov 
-                            ${buildFilterString()}
+                            ${buildWhereClause()}
                             """.trimIndent()
                     )
                 }.use { preparedStatement ->

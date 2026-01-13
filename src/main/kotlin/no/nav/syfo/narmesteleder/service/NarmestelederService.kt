@@ -3,7 +3,6 @@ package no.nav.syfo.narmesteleder.service
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
-import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.count
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
@@ -89,7 +88,7 @@ class NarmestelederService(
     }
 
     suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String)
-        : List<NarmestelederBehovEntity> {
+            : List<NarmestelederBehovEntity> {
         return nlDb.findBehovByParameters(
             sykmeldtFnr = sykmeldtFnr, orgnummer = orgnummer, behovStatus = listOf(
                 BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
@@ -115,7 +114,7 @@ class NarmestelederService(
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
         val isActiveSykmelding = skipSykmeldingCheck ||
-            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+                dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
         val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
             .isNotEmpty()
 
@@ -123,7 +122,7 @@ class NarmestelederService(
             COUNT_CREATE_BEHOV_SKIPPED_NO_SICKLEAVE.increment()
             logger.info(
                 "Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with" +
-                    " narmestelederId ${nlBehov.revokedLinemanagerId}"
+                        " narmestelederId ${nlBehov.revokedLinemanagerId}"
             )
             return null
         }

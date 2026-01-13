@@ -26,7 +26,7 @@ import java.util.UUID
  *      orderBy = OrderBy.CREATED
  *      orderDirection = OrderDirection.DESC
  *
- *      connection.prepareStatement("select * from table ${buildFilterString()}")
+ *      connection.prepareStatement("select * from table ${buildWhereClause()}")
  * }.use { ps ->
  *      ps.executeQuery()
  *    }
@@ -71,9 +71,9 @@ class SqlBuilder {
 
     /**
      * Builds the SQL WHERE clause with optional ORDER BY, LIMIT, and OFFSET.
-     * Append to the prepareStatement you provide to the builder function.
+     * Append the result to the `prepareStatement` you provide to the builder function.
      */
-    fun buildFilterString(): String {
+    fun buildWhereClause(): String {
         val whereClause = if (filters.isNotEmpty()) {
             "WHERE ${filters.joinToString(" AND ") { it.toSqlFragment() }}"
         } else {

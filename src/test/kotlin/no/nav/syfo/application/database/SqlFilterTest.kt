@@ -36,7 +36,7 @@ class SqlFilterTest : DescribeSpec({
                     limit = 10
                     offset = 20
 
-                    connection.prepareStatement("SELECT * FROM t ${buildFilterString()}")
+                    connection.prepareStatement("SELECT * FROM t ${buildWhereClause()}")
                 }
 
                 capturedSql.isCaptured shouldBe true
@@ -71,7 +71,7 @@ class SqlFilterTest : DescribeSpec({
 
                 SqlBuilder.filterBuilder {
                     filterParam(SqlBuilder.Column.CREATED, "safe_value")
-                    connection.prepareStatement("SELECT * FROM t ${buildFilterString()}")
+                    connection.prepareStatement("SELECT * FROM t ${buildWhereClause()}")
                 }
 
                 // The generated SQL only contains the predefined column name from the enum

@@ -45,9 +45,8 @@ class SqlFilterIntegrationTest : DescribeSpec({
         return entity
     }
 
-    describe("SqlFilter integration with PostgreSQL") {
-
-        describe("filterParam with EQUALS operator") {
+    describe("SqlBuilder integration with PostgreSQL") {
+        context("filterParam with EQUALS operator") {
             it("filters by single column value") {
                 // Arrange
                 val targetOrg = "123456789"
@@ -58,7 +57,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                 val results = database.connection.use { connection ->
                     SqlBuilder.filterBuilder {
                         filterParam(SqlBuilder.Column.ORGNUMMER, targetOrg)
-                        connection.prepareStatement("SELECT id FROM nl_behov ${buildFilterString()}")
+                        connection.prepareStatement("SELECT id FROM nl_behov ${buildWhereClause()}")
                     }.use { ps ->
                         ps.executeQuery().use { rs ->
                             buildList {
@@ -76,7 +75,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
             }
         }
 
-        describe("filterParam with IN operator") {
+        context("filterParam with IN operator") {
             it("filters by list of enum values using = IN (?, ?, ...)") {
                 // Arrange
                 val entity1 = insertBehov(
@@ -102,7 +101,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                 val results = database.connection.use { connection ->
                     SqlBuilder.filterBuilder {
                         filterParam(SqlBuilder.Column.BEHOV_STATUS, statusesToFind, SqlBuilder.ComparisonOperator.IN)
-                        filterString = buildFilterString()
+                        filterString = buildWhereClause()
                         connection.prepareStatement("SELECT id FROM nl_behov $filterString")
 
                     }.use { ps ->
@@ -136,7 +135,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                 val results = database.connection.use { connection ->
                     SqlBuilder.filterBuilder {
                         filterParam(SqlBuilder.Column.ORGNUMMER, listOf(org1, org3), SqlBuilder.ComparisonOperator.IN)
-                        connection.prepareStatement("SELECT id FROM nl_behov ${buildFilterString()}")
+                        connection.prepareStatement("SELECT id FROM nl_behov ${buildWhereClause()}")
                     }.use { ps ->
                         ps.executeQuery().use { rs ->
                             buildList {
@@ -154,7 +153,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
             }
         }
 
-        describe("filterParam with LESS_THAN operator") {
+        context("filterParam with LESS_THAN operator") {
             it("filters by timestamp less than value") {
                 // Arrange
                 val now = Instant.now()
@@ -172,7 +171,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                 val results = database.connection.use { connection ->
                     SqlBuilder.filterBuilder {
                         filterParam(SqlBuilder.Column.CREATED, now, SqlBuilder.ComparisonOperator.LESS_THAN)
-                        connection.prepareStatement("SELECT id FROM nl_behov ${buildFilterString()}")
+                        connection.prepareStatement("SELECT id FROM nl_behov ${buildWhereClause()}")
                     }.use { ps ->
                         ps.executeQuery().use { rs ->
                             buildList {
@@ -190,7 +189,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
             }
         }
 
-        describe("combined filters") {
+        context("combined filters") {
             it("combines multiple filter conditions with AND") {
                 // Arrange
                 val targetOrg = "999888777"
@@ -223,7 +222,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                     SqlBuilder.filterBuilder {
                         filterParam(SqlBuilder.Column.ORGNUMMER, targetOrg)
                         filterParam(SqlBuilder.Column.BEHOV_STATUS, targetStatus)
-                        connection.prepareStatement("SELECT id FROM nl_behov ${buildFilterString()}")
+                        connection.prepareStatement("SELECT id FROM nl_behov ${buildWhereClause()}")
                     }.use { ps ->
                         ps.executeQuery().use { rs ->
                             buildList {
@@ -241,7 +240,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
             }
         }
 
-        describe("ORDER BY, LIMIT, and OFFSET") {
+        context("ORDER BY, LIMIT, and OFFSET") {
             it("orders results and applies pagination") {
                 // Arrange
                 val time1 = Instant.now().minusSeconds(300)
@@ -260,7 +259,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                         limit = 1
                         offset = 1
 
-                        connection.prepareStatement("SELECT id FROM nl_behov ${buildFilterString()}")
+                        connection.prepareStatement("SELECT id FROM nl_behov ${buildWhereClause()}")
                     }.use { ps ->
                         ps.executeQuery().use { rs ->
                             buildList {
@@ -294,7 +293,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                         orderDirection = SqlBuilder.OrderDirection.DESC
                         limit = 1
 
-                        connection.prepareStatement("SELECT id FROM nl_behov ${buildFilterString()}")
+                        connection.prepareStatement("SELECT id FROM nl_behov ${buildWhereClause()}")
                     }.use { ps ->
                         ps.executeQuery().use { rs ->
                             buildList {
@@ -312,7 +311,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
             }
         }
 
-        describe("empty filter") {
+        context("empty filter") {
             it("returns all rows when no filters applied") {
                 // Arrange
                 val entity1 = insertBehov(nlBehovEntity().copy(id = UUID.randomUUID()))
@@ -323,7 +322,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                 val results = database.connection.use { connection ->
                     SqlBuilder.filterBuilder {
                         // No filters
-                        connection.prepareStatement("SELECT id FROM nl_behov ${buildFilterString()}")
+                        connection.prepareStatement("SELECT id FROM nl_behov ${buildWhereClause()}")
                     }.use { ps ->
                         ps.executeQuery().use { rs ->
                             buildList {
@@ -351,7 +350,7 @@ class SqlFilterIntegrationTest : DescribeSpec({
                 val results = database.connection.use { connection ->
                     SqlBuilder.filterBuilder {
                         filterParam(SqlBuilder.Column.ORGNUMMER, null)
-                        connection.prepareStatement("SELECT id FROM nl_behov ${buildFilterString()}")
+                        connection.prepareStatement("SELECT id FROM nl_behov ${buildWhereClause()}")
                     }.use { ps ->
                         ps.executeQuery().use { rs ->
                             buildList {

@@ -118,9 +118,9 @@ spec:
     - name: PERSIST_LEESAH_NL_BEHOV
       value: "true"
     - name: CONSUME_KAFKA_TOPICS
-      value: "true"
+      value: "false"
     - name: DIALOGPORTEN_TASK_ENABLED
-      value: "true"
+      value: "false"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
     - name: DIALOGPORTEN_API_ONLY

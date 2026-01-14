@@ -188,7 +188,7 @@ class NarmestelederService(
     suspend fun expireOldLinemanagerRequirements(createdBeforeDays: Long): Int {
         val cutoffTime = Instant.now().minus(Duration.ofDays(createdBeforeDays))
         val openStatuses = listOf(
-            BehovStatus.BEHOV_CREATED, // Antakelig overflødig når vi har cutlffTime
+            BehovStatus.BEHOV_CREATED, // Antakelig overflødig når vi har cutoffTime
             BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
         )
 

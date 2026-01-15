@@ -1,5 +1,7 @@
 package no.nav.syfo.narmesteleder.kafka
 
+import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
+import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
@@ -29,6 +31,18 @@ class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INl
         try {
             producer.send(ProducerRecord(SYKEMELDING_NL_TOPIC, sykmeldingNL.orgnummer, kafkaMessage)).get()
         } catch (ex: Exception) {
+            when(source){
+                NlResponseSource.LPS -> {
+                    COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS.increment()
+                //dsfds    // Metrics increment can be added here if needed
+                }
+                NlResponseSource.PERSONALLEDER -> {
+                    COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.increment()
+                // Metrics increment can be added here if needed
+                }
+                else -> {
+                }
+            }
             logger.error("Exception was thrown when attempting to send NlRelasjon: ${ex.message}")
             throw ex
         }

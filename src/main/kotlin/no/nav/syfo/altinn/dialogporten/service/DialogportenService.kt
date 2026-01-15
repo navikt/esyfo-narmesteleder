@@ -2,6 +2,7 @@ package no.nav.syfo.altinn.dialogporten.service
 
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.isSuccess
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -121,25 +122,34 @@ class DialogportenService(
             logger.info("Found ${dialogsToDeleteInDialogporten.size} documents to delete from to dialogporten")
 
             for (dialog in dialogsToDeleteInDialogporten) {
-                try {
-
-                    dialog.dialogId?.let { uuid ->
+                dialog.dialogId?.let { uuid ->
+                    try {
                         val status = dialogportenClient.deleteDialog(uuid)
-                        if (status == HttpStatusCode.NoContent) {
-                            narmestelederDb.updateDialogportenAfterDelete(
+                        if (status.isSuccess()) {
+                            narmestelederDb.updateNlBehov(
                                 dialog.copy(
                                     dialogId = null,
-                                    updated = Instant.now()
+                                    updated = Instant.now(),
+                                    dialogDeletePerformed = Instant.now(),
+                                )
+                            )
+                        } else if (
+                            status == HttpStatusCode.Gone) {
+                            logger.info("Skipping setting properties to null, dialog ${dialog.id} with dialogportenUUID $uuid already deleted in dialogporten")
+                            narmestelederDb.updateNlBehov(
+                                dialog.copy(
+                                    updated = Instant.now(),
+                                    dialogDeletePerformed = Instant.now(),
                                 )
                             )
                         } else {
                             logger.error("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid from dialogporten, received status $status")
                             throw RuntimeException("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid")
                         }
+                    } catch (ex: Exception) {
+                        logger.error("Failed to delete dialog ${dialog.id} from dialogporten", ex)
+                        throw ex
                     }
-                } catch (ex: Exception) {
-                    logger.error("Failed to delete dialog ${dialog.id} from dialogporten", ex)
-                    throw ex
                 }
             }
             delay(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerSleepAfterPage) // small delay to avoid hammering dialogporten
@@ -157,8 +167,8 @@ class DialogportenService(
         } ?: "En ansatt $DIALOG_SUMMARY"
 
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
-
-    private suspend fun getDialogsToDelete() = narmestelederDb.getNlBehovForDelete(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
+    private suspend fun getDialogsToDelete() =
+        narmestelederDb.getNlBehovForDelete(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
 
     private fun createApiLink(id: UUID): String =
         "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"

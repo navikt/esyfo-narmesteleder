@@ -23,7 +23,7 @@ interface INarmestelederDb {
         status: List<BehovStatus>,
         limit: Int
     ): List<NarmestelederBehovEntity>
-     suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity> =
+     suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity>
 }
 
 class NarmestelederDb(

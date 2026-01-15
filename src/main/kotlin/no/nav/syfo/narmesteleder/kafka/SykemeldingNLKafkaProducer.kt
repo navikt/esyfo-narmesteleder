@@ -34,11 +34,9 @@ class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INl
             when(source){
                 NlResponseSource.LPS -> {
                     COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS.increment()
-                //dsfds    // Metrics increment can be added here if needed
                 }
                 NlResponseSource.PERSONALLEDER -> {
                     COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.increment()
-                // Metrics increment can be added here if needed
                 }
                 else -> {
                 }

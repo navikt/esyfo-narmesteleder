@@ -157,7 +157,9 @@ class DialogportenService(
         } ?: "En ansatt $DIALOG_SUMMARY"
 
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
-    private suspend fun getDialogsToDelete() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
+
+    private suspend fun getDialogsToDelete() = narmestelederDb.getNlBehovForDelete(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
+
     private fun createApiLink(id: UUID): String =
         "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
 

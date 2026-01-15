@@ -7,10 +7,16 @@ metadata:
     texas.nais.io/enabled: "true"
 spec:
   ingresses:
+    # Keep these for backwards compatibility
     - https://esyfo-narmesteleder.intern.dev.nav.no
     - https://esyfo-narmesteleder.ekstern.dev.nav.no/api/v1/linemanager
     - https://esyfo-narmesteleder.ekstern.dev.nav.no/swagger
     - https://esyfo-narmesteleder.ekstern.dev.nav.no/openapi
+
+    - https://narmesteleder-api.intern.dev.nav.no
+    - https://narmesteleder-api.ekstern.dev.nav.no/api/v1/linemanager
+    - https://narmesteleder-api.ekstern.dev.nav.no/swagger
+    - https://narmesteleder-api.ekstern.dev.nav.no/openapi
   image: {{image}} #
   port: 8080
   liveness:
@@ -116,7 +122,7 @@ spec:
     - name: FRONTEND_BASE_URL
       value: https://www.ekstern.dev.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
-      value: https://esyfo-narmesteleder.ekstern.dev.nav.no
+      value: https://narmesteleder-api.ekstern.dev.nav.no
     - name: PERSIST_LEESAH_NL_BEHOV
       value: "true"
     - name: CONSUME_KAFKA_TOPICS

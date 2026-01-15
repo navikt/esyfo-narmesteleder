@@ -10,7 +10,7 @@ info:
     The Maskinporten token must be issued to a SystemUser with
     scope `nav:syfo/narmesteleder/lps` and Altinn resource `nav_syfo_oppgi-narmesteleder`.
 servers:
-  - url: https://esyfo-narmesteleder.ekstern.dev.nav.no
+  - url: https://narmesteleder-api.dev.nav.no
     description: Test server for assigning line manager to employees on sick leave.
 paths:
   /api/v1/linemanager:
@@ -453,8 +453,8 @@ components:
         pageSize:
           type: integer
         hasMore:
-            description: Indicates if there are more results available beyond the current page.
-            type: boolean
+          description: Indicates if there are more results available beyond the current page.
+          type: boolean
       required:
         - size
         - pageSize

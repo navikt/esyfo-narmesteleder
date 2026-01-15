@@ -126,12 +126,20 @@ spec:
     - name: PERSIST_LEESAH_NL_BEHOV
       value: "true"
     - name: CONSUME_KAFKA_TOPICS
-      value: "true"
+      value: "false"
     - name: DIALOGPORTEN_TASK_ENABLED
-      value: "true"
+      value: "false"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
     - name: DIALOGPORTEN_API_ONLY
       value: "false"
+    - name: DIALOGPORTEN_DELETE_DIALOGER_POLLING_DELAY
+      value: "5m"
+    - name: DIALOGPORTEN_DELETE_DIALOGER_TASK_ENABLED
+      value: "true"
+    - name: DIALOGPORTEN_DELETE_DIALOGER_PAGE_LIMIT
+      value: "100"
+    - name: DIALOGPORTEN_DELETE_DIALOGER_SLEEP_AFTER_PAGE
+      value: "5000"
   envFrom:
     - secret: altinn-subscription-key

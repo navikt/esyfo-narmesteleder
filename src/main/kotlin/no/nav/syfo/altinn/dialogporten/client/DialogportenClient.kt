@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.patch
@@ -12,6 +13,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import java.util.*
 import no.nav.syfo.altinn.dialogporten.domain.Content
@@ -28,6 +30,7 @@ interface IDialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
     suspend fun updateDialogStatus(dialogId: UUID, revisionNumber: UUID, dialogStatus: DialogStatus)
     suspend fun getDialogById(dialogId: UUID): ExtendedDialog
+    suspend fun deleteDialog(dialogId: UUID): HttpStatusCode
 }
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
@@ -121,13 +124,34 @@ class DialogportenClient(
             fun toJson() = jsonValue
         }
     }
+
+    override suspend fun deleteDialog(dialogId: UUID): HttpStatusCode {
+        val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)
+            .accessToken
+
+        return runCatching<DialogportenClient, HttpStatusCode> {
+            httpClient
+                .delete("$dialogportenUrl/$dialogId") {
+                    header(HttpHeaders.ContentType, ContentType.Application.Json)
+                    bearerAuth(token)
+                }.status
+        }.getOrElse { e ->
+            logger.error("Feil ved kall til Dialogporten for å opprette dialog", e)
+            throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten: create dialog")
+        }
+    }
 }
 
 class FakeDialogportenClient : IDialogportenClient {
+    companion object {
+        val logger = logger()
+    }
+
     override suspend fun createDialog(dialog: Dialog): UUID {
-        logger().info(ObjectMapper().writeValueAsString(dialog))
+        logger.info(ObjectMapper().writeValueAsString(dialog))
         return UUID.randomUUID()
     }
+
 
     override suspend fun updateDialogStatus(
         dialogId: UUID,
@@ -153,5 +177,10 @@ class FakeDialogportenClient : IDialogportenClient {
             serviceResource = "service:resource",
             transmissions = listOf(),
         )
+
+    override suspend fun deleteDialog(dialogId: UUID): HttpStatusCode {
+        logger.info("Deleting dialog with id: $dialogId")
+        return HttpStatusCode.NoContent
+    }
 
 }

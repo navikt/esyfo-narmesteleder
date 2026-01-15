@@ -1,10 +1,13 @@
 package no.nav.syfo.altinn.dialogporten.service
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
+import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Attachment
@@ -112,6 +115,37 @@ class DialogportenService(
         logger.info("Completed set ${behov.dialogId} to complete in dialogporten")
     }
 
+    suspend fun deleteDialogsInDialogporten() {
+        do {
+            val dialogsToDeleteInDialogporten = getDialogsToDelete()
+            logger.info("Found ${dialogsToDeleteInDialogporten.size} documents to delete from to dialogporten")
+
+            for (dialog in dialogsToDeleteInDialogporten) {
+                try {
+
+                    dialog.dialogId?.let { uuid ->
+                        val status = dialogportenClient.deleteDialog(uuid)
+                        if (status == HttpStatusCode.NoContent) {
+                            narmestelederDb.updateDialogportenAfterDelete(
+                                dialog.copy(
+                                    dialogId = null,
+                                    updated = Instant.now()
+                                )
+                            )
+                        } else {
+                            logger.error("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid from dialogporten, received status $status")
+                            throw RuntimeException("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid")
+                        }
+                    }
+                } catch (ex: Exception) {
+                    logger.error("Failed to delete dialog ${dialog.id} from dialogporten", ex)
+                    throw ex
+                }
+            }
+            delay(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerSleepAfterPage) // small delay to avoid hammering dialogporten
+        } while (dialogsToDeleteInDialogporten.size == otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
+    }
+
     private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String): String =
         name?.let {
             "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${ninToInfoString(nationalIdentityNumber)}"
@@ -123,7 +157,7 @@ class DialogportenService(
         } ?: "En ansatt $DIALOG_SUMMARY"
 
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
-
+    private suspend fun getDialogsToDelete() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
     private fun createApiLink(id: UUID): String =
         "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
 

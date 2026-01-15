@@ -90,7 +90,8 @@ class NarmestelederDb(
                         dialog_id            = ?,
                         fornavn              = ?,
                         mellomnavn           = ?,
-                        etternavn            = ?
+                        etternavn            = ?,
+                        dialog_delete_performed = ?
                         WHERE id = ?;
                     """.trimIndent()
                 ).use { preparedStatement ->
@@ -104,7 +105,10 @@ class NarmestelederDb(
                         preparedStatement.setString(7, fornavn)
                         preparedStatement.setString(8, mellomnavn)
                         preparedStatement.setString(9, etternavn)
-                        preparedStatement.setObject(10, id)
+                        dialogDeletePerformed?.let {
+                            preparedStatement.setTimestamp(10, Timestamp.from(dialogDeletePerformed))
+                        }
+                        preparedStatement.setObject(11, id)
                     }
                     preparedStatement.executeUpdate()
                 }.also {

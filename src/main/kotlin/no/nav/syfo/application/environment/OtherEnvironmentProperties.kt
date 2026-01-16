@@ -47,18 +47,18 @@ data class DeleteDialogportenDialogsTaskProperties(
         fun createFromEnvVars() =
             DeleteDialogportenDialogsTaskProperties(
                 pollingDelay = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_POLLING_DELAY", "5m"),
-                deleteDialogerTaskEnabled = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_TASK_ENABLED",  "true").toBoolean(),
                 deleteDialogerLimit = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_PAGE_LIMIT", "100").toInt(),
                 deleteDialogerSleepAfterPage = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_SLEEP_AFTER_PAGE", "5").toLong(),
+                deleteDialogerTaskEnabled = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_TASK_ENABLED",  "false").toBoolean(),
                 resendDialogTaskEnabled = getEnvVar("DIALOGPORTEN_RESEND_DIALOGER_TASK_ENABLED", "false").toBoolean(),
             )
 
         fun createForLocal() =
             DeleteDialogportenDialogsTaskProperties(
                 pollingDelay = "30s",
-                deleteDialogerTaskEnabled = false,
                 deleteDialogerLimit = 3,
                 deleteDialogerSleepAfterPage = 2000L,
+                deleteDialogerTaskEnabled = false,
                 resendDialogTaskEnabled = true,
             )
     }

@@ -7,10 +7,10 @@ metadata:
     texas.nais.io/enabled: "true"
 spec:
   ingresses:
-    - https://esyfo-narmesteleder.intern.nav.no
-    - https://esyfo-narmesteleder.ekstern.nav.no/api/v1/linemanager
-    - https://esyfo-narmesteleder.ekstern.nav.no/swagger
-    - https://esyfo-narmesteleder.ekstern.nav.no/openapi
+    - https://narmesteleder-api.intern.nav.no
+    - https://narmesteleder-api.nav.no/api/v1/linemanager
+    - https://narmesteleder-api.nav.no/swagger
+    - https://narmesteleder-api.nav.no/openapi
   image: {{image}} #
   port: 8080
   liveness:
@@ -114,7 +114,7 @@ spec:
     - name: FRONTEND_BASE_URL
       value: https://www.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
-      value: https://esyfo-narmesteleder.ekstern.nav.no
+      value: https://narmesteleder-api.nav.no
     - name: PERSIST_LEESAH_NL_BEHOV
       value: "true"
     - name: CONSUME_KAFKA_TOPICS

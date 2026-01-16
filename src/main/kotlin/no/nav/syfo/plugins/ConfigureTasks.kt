@@ -14,7 +14,16 @@ import org.koin.ktor.ext.inject
 fun Application.configureBackgroundTasks() {
     val environment by inject<Environment>()
 
+
     val logger = logger()
+    if (environment.otherProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerTaskEnabled) {
+        logger.info("Activating delete dialoger task")
+        val deleteDialogTask by inject<DeleteDialogTask>()
+        val deleteDialogTaskJob = launch { deleteDialogTask.runSetCompletedTask() }
+        monitor.subscribe(ApplicationStopping) {
+            deleteDialogTaskJob.cancel()
+        }
+    }
     if (!environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
         logger.info("Integration with Dialogporten is not enabled. Skipping background tasks")
         return
@@ -23,7 +32,6 @@ fun Application.configureBackgroundTasks() {
 
     val sendDialogTask by inject<SendDialogTask>()
     val updateDialogTast by inject<UpdateDialogTask>()
-    val deleteDialogTast by inject<DeleteDialogTask>()
 
     val sendDialogTaskJob = launch { sendDialogTask.runTask() }
     monitor.subscribe(ApplicationStopping) {
@@ -33,10 +41,5 @@ fun Application.configureBackgroundTasks() {
     val updateDialogTaskJob = launch { updateDialogTast.runSetCompletedTask() }
     monitor.subscribe(ApplicationStopping) {
         updateDialogTaskJob.cancel()
-    }
-
-    val deleteDialogTaskJob = launch { deleteDialogTast.runSetCompletedTask() }
-    monitor.subscribe(ApplicationStopping) {
-        deleteDialogTaskJob.cancel()
     }
 }

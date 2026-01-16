@@ -136,8 +136,8 @@ class DialogportenClient(
                     bearerAuth(token)
                 }.status
         }.getOrElse { e ->
-            logger.error("Feil ved kall til Dialogporten for å opprette dialog", e)
-            throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten: create dialog")
+            logger.error("Feil ved kall til Dialogporten for å slette dialog", e)
+            throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten:  actions-purge")
         }
     }
 }

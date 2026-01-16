@@ -30,7 +30,7 @@ data class OtherEnvironmentProperties(
                 publicIngressUrl = "http://localhost:8080",
                 updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
                 persistLeesahNlBehov = true,
-                isDialogportenBackgroundTaskEnabled = true,
+                isDialogportenBackgroundTaskEnabled = false,
                 dialogportenIsApiOnly = false,
                 deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
             )

@@ -41,6 +41,7 @@ data class DeleteDialogportenDialogsTaskProperties(
     val deleteDialogerTaskEnabled: Boolean,
     val deleteDialogerLimit : Int = 100,
     val deleteDialogerSleepAfterPage : Long = 5000,
+    val resendDialogTaskEnabled:Boolean,
 ) {
     companion object {
         fun createFromEnvVars() =
@@ -49,14 +50,16 @@ data class DeleteDialogportenDialogsTaskProperties(
                 deleteDialogerTaskEnabled = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_TASK_ENABLED",  "true").toBoolean(),
                 deleteDialogerLimit = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_PAGE_LIMIT", "100").toInt(),
                 deleteDialogerSleepAfterPage = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_SLEEP_AFTER_PAGE", "5").toLong(),
+                resendDialogTaskEnabled = getEnvVar("DIALOGPORTEN_RESEND_DIALOGER_TASK_ENABLED", "false").toBoolean(),
             )
 
         fun createForLocal() =
             DeleteDialogportenDialogsTaskProperties(
                 pollingDelay = "30s",
-                deleteDialogerTaskEnabled = true,
+                deleteDialogerTaskEnabled = false,
                 deleteDialogerLimit = 3,
                 deleteDialogerSleepAfterPage = 2000L,
+                resendDialogTaskEnabled = true,
             )
     }
 }

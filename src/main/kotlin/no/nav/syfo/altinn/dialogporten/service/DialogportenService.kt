@@ -38,13 +38,33 @@ class DialogportenService(
 ) {
     private val logger = logger()
 
-    suspend fun sendDocumentsToDialogporten() {
-        val behovToSend = getRequirementsToSend()
-        logger.info("Found ${behovToSend.size} documents to send to dialogporten")
+    /**
+     * This function can be removed after we have fixed requirements and dialogs due to incorrect url in
+     * dialog attachment
+     */
+    suspend fun resendDocumentsToDialogporten() {
+        do {
+            val behovToSend = getRequirementsToResend()
+            logger.info("Found ${behovToSend.size} documents to resend to dialogporten")
 
-        for (behov in behovToSend) {
-            sendToDialogporten(behov)
-        }
+            for (behov in behovToSend) {
+                sendToDialogporten(behov)
+            }
+            delay(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerSleepAfterPage)
+        } while (behovToSend.size >= BEHOV_BY_STATUS_LIMIT)
+    }
+
+    suspend fun sendDocumentsToDialogporten() {
+        do {
+
+            val behovToSend = getRequirementsToSend()
+            logger.info("Found ${behovToSend.size} documents to send to dialogporten")
+
+            for (behov in behovToSend) {
+                sendToDialogporten(behov)
+            }
+            delay(5000)
+        } while (behovToSend.size >= BEHOV_BY_STATUS_LIMIT)
     }
 
     suspend fun sendToDialogporten(behov: NarmestelederBehovEntity) {
@@ -77,8 +97,9 @@ class DialogportenService(
         }
     }
 
+
     suspend fun setAllFulfilledBehovsAsCompletedInDialogporten() {
-        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED)
+        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED, BEHOV_BY_STATUS_LIMIT)
             .also {
                 logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
             }
@@ -166,9 +187,17 @@ class DialogportenService(
             "${it.navnFullt()} $DIALOG_SUMMARY"
         } ?: "En ansatt $DIALOG_SUMMARY"
 
-    private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED)
+    private suspend fun getRequirementsToSend() =
+        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED, BEHOV_BY_STATUS_LIMIT)
+
     private suspend fun getDialogsToDelete() =
         narmestelederDb.getNlBehovForDelete(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
+
+    private suspend fun getRequirementsToResend() =
+        narmestelederDb.getNlBehovForResendToDialogporten(
+            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+            BEHOV_BY_STATUS_LIMIT
+        )
 
     private fun createApiLink(id: UUID): String =
         "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
@@ -248,6 +277,8 @@ class DialogportenService(
             "er sykmeldt. Nav trenger informasjon om hvem som er nærmeste leder for å kunne gi tilgang til oppfølginstjenestene på \"Dine sykmeldte\" hos Nav"
         const val URL_TITLE_GUI = "Naviger til nærmeste leder skjema"
         const val URL_TITLE_API = "Endpoint for LinemanagerRequirement request"
+
+        const val BEHOV_BY_STATUS_LIMIT = 100
 
     }
 }

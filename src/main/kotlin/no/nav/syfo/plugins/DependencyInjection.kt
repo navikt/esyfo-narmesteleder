@@ -11,6 +11,7 @@ import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinn.dialogporten.task.DeleteDialogTask
+import no.nav.syfo.altinn.dialogporten.task.ResendDialogTask
 import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
 import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
@@ -227,6 +228,10 @@ private fun servicesModule() = module {
     single {
         val pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay)
         DeleteDialogTask(get(), get(), pollingInterval)
+    }
+    single {
+        val pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay)
+        ResendDialogTask(get(), get(), pollingInterval)
     }
 
 }

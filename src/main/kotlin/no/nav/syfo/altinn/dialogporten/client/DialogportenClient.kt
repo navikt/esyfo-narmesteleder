@@ -131,7 +131,7 @@ class DialogportenClient(
 
         return runCatching<DialogportenClient, HttpStatusCode> {
             httpClient
-                .delete("$dialogportenUrl/$dialogId") {
+                .post("$dialogportenUrl/$dialogId/actions/purge") {
                     header(HttpHeaders.Accept, ContentType.Application.Json)
                     bearerAuth(token)
                 }.status

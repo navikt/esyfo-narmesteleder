@@ -108,7 +108,7 @@ class NarmestelederDb(
                         preparedStatement.setString(9, etternavn)
                         dialogDeletePerformed?.let {
                             preparedStatement.setTimestamp(10, Timestamp.from(dialogDeletePerformed))
-                        }
+                        } ?: preparedStatement.setObject(10, null)
                         preparedStatement.setObject(11, id)
                     }
                     preparedStatement.executeUpdate()

@@ -24,7 +24,7 @@ class ResendDialogTask(
             while (isActive) {
                 if (leaderElection.isLeader()) {
                     try {
-                        logger.info("Starting task for resending documents to dialogporten")
+                        logger.info("Starting task for resending dialogs to dialogporten")
                         dialogportenService.resendDocumentsToDialogporten()
                     } catch (ex: Exception) {
                         logger.error("Could not resend dialogs to dialogporten", ex)

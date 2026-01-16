@@ -45,7 +45,7 @@ class DialogportenService(
     suspend fun resendDocumentsToDialogporten() {
         do {
             val behovToSend = getRequirementsToResend()
-            logger.info("Found ${behovToSend.size} documents to resend to dialogporten")
+            logger.info("Found ${behovToSend.size} behov to resend to dialogporten")
 
             for (behov in behovToSend) {
                 sendToDialogporten(behov)

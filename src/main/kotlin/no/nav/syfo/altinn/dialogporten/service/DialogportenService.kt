@@ -154,8 +154,7 @@ class DialogportenService(
                                     dialogDeletePerformed = Instant.now(),
                                 )
                             )
-                        } else if (
-                            status == HttpStatusCode.Gone) {
+                        } else if (listOf(HttpStatusCode.Gone, HttpStatusCode.NotFound).contains(status)) {
                             logger.info("Skipping setting properties to null, dialog ${dialog.id} with dialogportenUUID $uuid already deleted in dialogporten")
                             narmestelederDb.updateNlBehov(
                                 dialog.copy(

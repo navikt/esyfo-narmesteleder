@@ -3,6 +3,7 @@ package no.nav.syfo.narmesteleder.db
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import no.nav.syfo.application.database.ResultPage
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 
 class FakeNarmestelederDb : INarmestelederDb {
@@ -35,11 +36,11 @@ class FakeNarmestelederDb : INarmestelederDb {
 
     override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
     override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>):
-        List<NarmestelederBehovEntity> {
+            List<NarmestelederBehovEntity> {
         return store.values.filter {
             it.orgnummer == orgnummer &&
-                it.sykmeldtFnr == sykmeldtFnr &&
-                behovStatus.contains(it.behovStatus)
+                    it.sykmeldtFnr == sykmeldtFnr &&
+                    behovStatus.contains(it.behovStatus)
         }
     }
 
@@ -51,10 +52,29 @@ class FakeNarmestelederDb : INarmestelederDb {
     ): List<NarmestelederBehovEntity> {
         return store.values.filter {
             it.orgnummer == orgNumber &&
-                it.created.isAfter(createdAfter) &&
-                it.created.isBefore(Instant.now()) &&
-                status.contains(it.behovStatus)
+                    it.created.isAfter(createdAfter) &&
+                    it.created.isBefore(Instant.now()) &&
+                    status.contains(it.behovStatus)
         }.take(limit)
+    }
+
+
+    override suspend fun findByCreatedBeforeAndStatus(
+        createdBefore: Instant,
+        page: Int,
+        pageSize: Int,
+        status: List<BehovStatus>
+    ): ResultPage<NarmestelederBehovEntity> {
+        return ResultPage(
+            store.values.filter {
+                it.created.isBefore(createdBefore) &&
+                        status.contains(it.behovStatus)
+            }, page
+        )
+    }
+
+    override suspend fun getNlBehovByStatus(status: List<BehovStatus>): List<NarmestelederBehovEntity> {
+        return store.values.filter { it.behovStatus in status }
     }
 
     fun lastId(): UUID? = order.lastOrNull()

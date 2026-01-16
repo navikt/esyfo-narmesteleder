@@ -1,7 +1,12 @@
 package no.nav.syfo.narmesteleder.service
 
+import java.time.Duration
 import java.time.Instant
-import java.util.*
+import java.util.UUID
+import kotlinx.coroutines.flow.count
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -79,11 +84,11 @@ class NarmestelederService(
         )
         nlDb.updateNlBehov(updatedBehov)
         logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
-        dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
+        dialogportenService.setToCompletedInDialogporten(updatedBehov)
     }
 
     suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String)
-        : List<NarmestelederBehovEntity> {
+            : List<NarmestelederBehovEntity> {
         return nlDb.findBehovByParameters(
             sykmeldtFnr = sykmeldtFnr, orgnummer = orgnummer, behovStatus = listOf(
                 BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
@@ -109,7 +114,7 @@ class NarmestelederService(
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
         val isActiveSykmelding = skipSykmeldingCheck ||
-            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+                dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
         val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
             .isNotEmpty()
 
@@ -117,7 +122,7 @@ class NarmestelederService(
             COUNT_CREATE_BEHOV_SKIPPED_NO_SICKLEAVE.increment()
             logger.info(
                 "Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with" +
-                    " narmestelederId ${nlBehov.revokedLinemanagerId}"
+                        " narmestelederId ${nlBehov.revokedLinemanagerId}"
             )
             return null
         }
@@ -171,7 +176,7 @@ class NarmestelederService(
     suspend fun getNlBehovList(
         orgNumber: String,
         createdAfter: Instant,
-        pageSize: Int
+        pageSize: Int,
     ): List<LinemanagerRequirementRead> =
         nlDb.findBehovByParameters(
             orgNumber = orgNumber,
@@ -179,6 +184,42 @@ class NarmestelederService(
             status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
             limit = pageSize + 1,
         ).map { it.toEmployeeLinemanagerRead(it.getName()) }
+
+    suspend fun expireOldLinemanagerRequirements(createdBeforeDays: Long): Int {
+        val cutoffTime = Instant.now().minus(Duration.ofDays(createdBeforeDays))
+        val openStatuses = listOf(
+            BehovStatus.BEHOV_CREATED, // Antakelig overflødig når vi har cutoffTime
+            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+        )
+
+        // Using a flow to avoid loading too many behovs into memory at once
+        return paginatedFlow { page ->
+            nlDb.findByCreatedBeforeAndStatus(
+                createdBefore = cutoffTime,
+                page = page,
+                pageSize = PAGE_SIZE,
+                status = openStatuses
+            ).items
+        }
+            .filter { behov -> !dinesykmeldteService.getIsActiveSykmelding(behov.sykmeldtFnr, behov.orgnummer) }
+            .onEach { behov ->
+                nlDb.updateNlBehov(behov.copy(behovStatus = BehovStatus.BEHOV_EXPIRED))
+                logger.info("Expired NarmestelederBehovEntity with id: ${behov.id}. Employee no longer on sick leave.")
+            }
+            .count()
+    }
+
+    private fun <T> paginatedFlow(fetcher: suspend (page: Int) -> List<T>) = flow {
+        var page = 0
+        do {
+            val items = fetcher(page++)
+            items.forEach { emit(it) }
+        } while (items.size == PAGE_SIZE)
+    }
+
+    companion object {
+        private const val PAGE_SIZE = 100
+    }
 }
 
 fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead =

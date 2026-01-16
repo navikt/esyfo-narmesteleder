@@ -16,7 +16,7 @@ class UpdateDialogTask(
 ) {
     private val logger = logger()
 
-    suspend fun runSetCompletedTask() = coroutineScope {
+    suspend fun runTask() = coroutineScope {
         try {
             while (isActive) {
                 if (leaderElection.isLeader()) {
@@ -30,7 +30,7 @@ class UpdateDialogTask(
                 delay(pollingInterval)
             }
         } catch (ex: CancellationException) {
-            logger.info("Cancelled SendDialogTask", ex)
+            logger.info("Cancelled UpdateDialogTask", ex)
         }
     }
 }

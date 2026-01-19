@@ -29,9 +29,17 @@ class FakeNarmestelederDb : INarmestelederDb {
         store[id] = toStore
     }
 
-    override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> {
-        return store.values.filter { it.behovStatus == status }
+    override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> {
+        return store.values.filter { it.behovStatus == status }.take(limit)
     }
+
+    override suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> {
+    return store.values.filter { it.behovStatus == status && it.dialogDeletePerformed != null && it.dialogId == null }.take(limit)
+}
+    override suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity> =
+        store.values.filter { it.dialogDeletePerformed == null}
+            .sortedBy { it.created }
+            .take(limit)
 
     override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
     override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>):

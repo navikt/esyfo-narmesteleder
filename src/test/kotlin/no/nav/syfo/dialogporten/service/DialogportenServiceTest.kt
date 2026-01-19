@@ -30,6 +30,8 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import java.util.*
+import no.nav.syfo.altinn.dialogporten.domain.create
+import no.nav.syfo.application.environment.DeleteDialogportenDialogsTaskProperties
 
 class DialogportenServiceTest :
     DescribeSpec({
@@ -60,6 +62,7 @@ class DialogportenServiceTest :
                             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
                             isDialogportenBackgroundTaskEnabled = true,
                             dialogportenIsApiOnly = false,
+                            deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
                         ),
                     pdlService = pdlService,
                 )

@@ -128,12 +128,12 @@ spec:
     - name: DIALOGPORTEN_DELETE_DIALOGER_POLLING_DELAY
       value: "3m"
     - name: DIALOGPORTEN_DELETE_DIALOGER_TASK_ENABLED
-      value: "true"
+      value: "false"
     - name: DIALOGPORTEN_DELETE_DIALOGER_PAGE_LIMIT
       value: "100"
     - name: DIALOGPORTEN_DELETE_DIALOGER_SLEEP_AFTER_PAGE
       value: "3000"
     - name: DIALOGPORTEN_RESEND_DIALOGER_TASK_ENABLED
-      value: "false"
+      value: "true"
   envFrom:
     - secret: altinn-subscription-key

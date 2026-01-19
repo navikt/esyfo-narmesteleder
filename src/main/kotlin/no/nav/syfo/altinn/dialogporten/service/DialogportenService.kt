@@ -43,9 +43,15 @@ class DialogportenService(
      * dialog attachment
      */
     suspend fun resendDocumentsToDialogporten() {
+        var batchNum = 0
+        var firstCreatedTimestamp : Instant?
         do {
             val behovToSend = getRequirementsToResend()
-            logger.info("Found ${behovToSend.size} behov to resend to dialogporten")
+            batchNum += 1
+            firstCreatedTimestamp = if (!behovToSend.isEmpty()) {
+                behovToSend.first().created
+            } else null
+            logger.info("Batch: ${batchNum}: Found ${behovToSend.size} behov to resend to dialogporten. First created at ${firstCreatedTimestamp ?: "N/A"}")
 
             for (behov in behovToSend) {
                 sendToDialogporten(behov)
@@ -55,10 +61,15 @@ class DialogportenService(
     }
 
     suspend fun sendDocumentsToDialogporten() {
+        var batchNum = 0
+        var firstCreatedTimestamp : Instant?
         do {
-
             val behovToSend = getRequirementsToSend()
-            logger.info("Found ${behovToSend.size} documents to send to dialogporten")
+            batchNum += 1
+            firstCreatedTimestamp = if (!behovToSend.isEmpty()) {
+                behovToSend.first().created
+            } else null
+            logger.info("Batch: ${batchNum}: Found ${behovToSend.size} behov to send to dialogporten. First created at ${firstCreatedTimestamp ?: "N/A"}")
 
             for (behov in behovToSend) {
                 sendToDialogporten(behov)
@@ -138,9 +149,15 @@ class DialogportenService(
     }
 
     suspend fun deleteDialogsInDialogporten() {
+        var batchNum = 0
+        var firstCreatedTimestamp : Instant?
         do {
             val dialogsToDeleteInDialogporten = getDialogsToDelete()
-            logger.info("Found ${dialogsToDeleteInDialogporten.size} documents to delete from to dialogporten")
+            batchNum += 1
+            firstCreatedTimestamp = if (!dialogsToDeleteInDialogporten.isEmpty()) {
+                dialogsToDeleteInDialogporten.first().created
+            } else null
+            logger.info("Batch: ${batchNum}: Found ${dialogsToDeleteInDialogporten.size} dialogs to delete from dialogporten. First behov created at ${firstCreatedTimestamp ?: "N/A"}")
 
             for (dialog in dialogsToDeleteInDialogporten) {
                 dialog.dialogId?.let { uuid ->

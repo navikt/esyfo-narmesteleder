@@ -11,6 +11,12 @@ spec:
     - https://narmesteleder-api.ekstern.dev.nav.no/api/v1/linemanager
     - https://narmesteleder-api.ekstern.dev.nav.no/swagger
     - https://narmesteleder-api.ekstern.dev.nav.no/openapi
+
+    # Keep these for backwards compatibility
+    - https://esyfo-narmesteleder.intern.dev.nav.no
+    - https://esyfo-narmesteleder.ekstern.dev.nav.no/api/v1/linemanager
+    - https://esyfo-narmesteleder.ekstern.dev.nav.no/swagger
+    - https://esyfo-narmesteleder.ekstern.dev.nav.no/openapi
   image: {{image}} #
   port: 8080
   liveness:

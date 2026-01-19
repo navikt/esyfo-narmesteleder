@@ -1,12 +1,12 @@
 package no.nav.syfo.ereg
 
 import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.ereg.client.IEaregClient
+import no.nav.syfo.ereg.client.IEregClient
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.ereg.client.Organisasjon
 
-class EregService(private val eregClient: IEaregClient) {
+class EregService(private val eregClient: IEregClient) {
     suspend fun getOrganization(
         orgNumber: String
     ): Organisasjon {

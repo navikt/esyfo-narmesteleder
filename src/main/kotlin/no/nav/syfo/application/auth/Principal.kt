@@ -1,6 +1,6 @@
 package no.nav.syfo.application.auth
 
-sealed class Principal{
+sealed class Principal {
     abstract val ident: String
     abstract val token: String
 }
@@ -14,7 +14,7 @@ data class SystemPrincipal(
     override val token: String,
     val systemOwner: String,
     val systemUserId: String,
-): Principal() {
+) : Principal() {
     fun getSystemUserOrgNumber(): String = maskinportenIdToOrgnumber(ident)
     fun getSystemOwnerOrgNumber(): String = maskinportenIdToOrgnumber(systemOwner)
 }

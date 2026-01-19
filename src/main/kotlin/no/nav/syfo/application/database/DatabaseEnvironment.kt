@@ -16,37 +16,39 @@ data class DatabaseEnvironment(
     val sslmode: String,
 ) {
     fun jdbcUrl(): String {
-        val sslsuffix = if (sslcert == null ) "" else
+        val sslsuffix = if (sslcert == null) {
+            ""
+        } else {
             "?ssl=on&sslrootcert=$sslrootcert&sslcert=$sslcert&sslmode=$sslmode&sslkey=$sslkey"
+        }
 
         val url = "jdbc:postgresql://$host:$port/$name$sslsuffix"
         return url
     }
 
     companion object {
-        fun createForLocal(): DatabaseEnvironment =
-            DatabaseEnvironment(
-                host = "localhost",
-                port = "5432",
-                name = "esyfo-narmesteleder_dev",
-                username = "username",
-                password = "password",
-                sslcert = null,
-                sslkey = "",
-                sslrootcert = "",
-                sslmode = "",
-            )
+        fun createForLocal(): DatabaseEnvironment = DatabaseEnvironment(
+            host = "localhost",
+            port = "5432",
+            name = "esyfo-narmesteleder_dev",
+            username = "username",
+            password = "password",
+            sslcert = null,
+            sslkey = "",
+            sslrootcert = "",
+            sslmode = "",
+        )
 
         fun createFromEnvVars() = DatabaseEnvironment(
-                host = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_HOST"),
-                port = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_PORT"),
-                name = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_DATABASE"),
-                username = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_USERNAME"),
-                password = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_PASSWORD"),
-                sslcert = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLCERT"),
-                sslkey = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLKEY_PK8"),
-                sslrootcert = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLROOTCERT"),
-                sslmode = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLMODE"),
-            )
+            host = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_HOST"),
+            port = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_PORT"),
+            name = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_DATABASE"),
+            username = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_USERNAME"),
+            password = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_PASSWORD"),
+            sslcert = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLCERT"),
+            sslkey = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLKEY_PK8"),
+            sslrootcert = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLROOTCERT"),
+            sslmode = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLMODE"),
+        )
     }
 }

@@ -2,17 +2,17 @@ package no.nav.syfo
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import no.nav.syfo.application.database.DatabaseInterface
+import org.flywaydb.core.Flyway
+import org.slf4j.LoggerFactory
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import java.sql.Connection
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
 import kotlin.time.ExperimentalTime
 import kotlin.use
-import no.nav.syfo.application.database.DatabaseInterface
-import org.flywaydb.core.Flyway
-import org.slf4j.LoggerFactory
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 
 class PsqlContainer : PostgreSQLContainer<PsqlContainer>("postgres:17-alpine")
 
@@ -44,13 +44,12 @@ class TestDatabase(
         runFlywayMigrations()
     }
 
-    private fun runFlywayMigrations() =
-        Flyway.configure().run {
-            locations("db")
-            configuration(mapOf("flyway.postgresql.transactional.lock" to "false"))
-            dataSource(connectionName, dbUsername, dbPassword)
-            load().migrate()
-        }
+    private fun runFlywayMigrations() = Flyway.configure().run {
+        locations("db")
+        configuration(mapOf("flyway.postgresql.transactional.lock" to "false"))
+        dataSource(connectionName, dbUsername, dbPassword)
+        load().migrate()
+    }
 }
 
 class TestDB private constructor() {
@@ -80,6 +79,7 @@ class TestDB private constructor() {
                 throw ex
             }
         }
+
         @OptIn(ExperimentalTime::class)
         fun updateCreated(id: UUID, timestamp: Instant) {
             database.connection.use {
@@ -92,15 +92,12 @@ class TestDB private constructor() {
                 }
                 it.commit()
             }
-
         }
-        fun clearAllData() =
-            database.connection.use {
-                it.prepareStatement(
-                    "DELETE FROM nl_behov;"
-                ).use { ps -> ps.executeUpdate() }
-                it.commit()
-            }
+        fun clearAllData() = database.connection.use {
+            it.prepareStatement(
+                "DELETE FROM nl_behov;"
+            ).use { ps -> ps.executeUpdate() }
+            it.commit()
+        }
     }
-
 }

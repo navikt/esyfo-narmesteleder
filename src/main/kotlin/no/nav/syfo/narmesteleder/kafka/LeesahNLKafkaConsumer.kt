@@ -3,8 +3,6 @@ package no.nav.syfo.narmesteleder.kafka
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import java.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +19,8 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
+import java.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 const val SYKMELDING_NL_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
 
@@ -37,7 +37,6 @@ class LeesahNLKafkaConsumer(
     override fun listen() {
         logger.info("Starting leesah consumer")
         job = scope.launch(Dispatchers.IO + CoroutineName("leesah-consumer")) {
-
             while (isActive) {
                 try {
                     kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
@@ -45,7 +44,8 @@ class LeesahNLKafkaConsumer(
                 } catch (_: WakeupException) {
                 } catch (e: Exception) {
                     logger.error(
-                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.", e
+                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",
+                        e
                     )
                     kafkaConsumer.unsubscribe()
                     delay(DELAY_ON_ERROR_SECONDS.seconds)
@@ -105,7 +105,6 @@ class LeesahNLKafkaConsumer(
         job.cancel()
         kafkaConsumer.wakeup()
     }
-
 
     private fun addToProcessed(record: ConsumerRecord<String, String?>) {
         processed[TopicPartition(record.topic(), record.partition())] = record.offset()

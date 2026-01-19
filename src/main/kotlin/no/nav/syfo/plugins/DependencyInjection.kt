@@ -2,7 +2,6 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
-import kotlin.time.Duration
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.AaregClient
@@ -21,12 +20,12 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.ApplicationState
-import no.nav.syfo.application.environment.Environment
-import no.nav.syfo.application.environment.LocalEnvironment
-import no.nav.syfo.application.environment.NaisEnvironment
 import no.nav.syfo.application.database.Database
 import no.nav.syfo.application.database.DatabaseConfig
 import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.application.environment.Environment
+import no.nav.syfo.application.environment.LocalEnvironment
+import no.nav.syfo.application.environment.NaisEnvironment
 import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
@@ -59,6 +58,7 @@ import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
+import kotlin.time.Duration
 
 fun Application.configureDependencies() {
     install(Koin) {
@@ -79,8 +79,11 @@ private fun applicationStateModule() = module { single { ApplicationState() } }
 
 private fun environmentModule(isLocalEnv: Boolean) = module {
     single {
-        if (isLocalEnv) LocalEnvironment()
-        else NaisEnvironment()
+        if (isLocalEnv) {
+            LocalEnvironment()
+        } else {
+            NaisEnvironment()
+        }
     }
 }
 
@@ -111,57 +114,85 @@ private fun clientsModule() = module {
     single { httpClientDefault() }
     single { TexasHttpClient(client = get(), environment = env().texas) }
     single {
-        if (isLocalEnv()) FakeAaregClient() else AaregClient(
-            aaregBaseUrl = env().clientProperties.aaregBaseUrl,
-            texasHttpClient = get(),
-            scope = env().clientProperties.aaregScope,
-        )
+        if (isLocalEnv()) {
+            FakeAaregClient()
+        } else {
+            AaregClient(
+                aaregBaseUrl = env().clientProperties.aaregBaseUrl,
+                texasHttpClient = get(),
+                scope = env().clientProperties.aaregScope,
+            )
+        }
     }
     single {
-        if (isLocalEnv()) FakeDinesykmeldteClient() else DinesykmeldteClient(
-            texasHttpClient = get(),
-            scope = env().clientProperties.dinesykmeldteScope,
-            httpClient = get(),
-            dinesykmeldteBaseUrl = env().clientProperties.dinesykmeldteBaseUrl,
-        )
+        if (isLocalEnv()) {
+            FakeDinesykmeldteClient()
+        } else {
+            DinesykmeldteClient(
+                texasHttpClient = get(),
+                scope = env().clientProperties.dinesykmeldteScope,
+                httpClient = get(),
+                dinesykmeldteBaseUrl = env().clientProperties.dinesykmeldteBaseUrl,
+            )
+        }
     }
     single {
-        if (isLocalEnv()) FakePdlClient() else PdlClient(
-            httpClient = get(),
-            pdlBaseUrl = env().clientProperties.pdlBaseUrl,
-            texasHttpClient = get(),
-            scope = env().clientProperties.pdlScope
-        )
+        if (isLocalEnv()) {
+            FakePdlClient()
+        } else {
+            PdlClient(
+                httpClient = get(),
+                pdlBaseUrl = env().clientProperties.pdlBaseUrl,
+                texasHttpClient = get(),
+                scope = env().clientProperties.pdlScope
+            )
+        }
     }
     single {
-        if (isLocalEnv()) FakeAltinnTilgangerClient() else AltinnTilgangerClient(
-            texasClient = get(),
-            httpClient = get(),
-            baseUrl = env().clientProperties.altinnTilgangerBaseUrl,
-        )
+        if (isLocalEnv()) {
+            FakeAltinnTilgangerClient()
+        } else {
+            AltinnTilgangerClient(
+                texasClient = get(),
+                httpClient = get(),
+                baseUrl = env().clientProperties.altinnTilgangerBaseUrl,
+            )
+        }
     }
 
     single {
-        if (isLocalEnv()) FakeDialogportenClient() else DialogportenClient(
-            httpClient = get(),
-            baseUrl = env().clientProperties.altinn3BaseUrl,
-            altinnTokenProvider = get(),
-        )
+        if (isLocalEnv()) {
+            FakeDialogportenClient()
+        } else {
+            DialogportenClient(
+                httpClient = get(),
+                baseUrl = env().clientProperties.altinn3BaseUrl,
+                altinnTokenProvider = get(),
+            )
+        }
     }
 
     single {
-        if (isLocalEnv()) FakeEregClient() else EregClient(
-            eregBaseUrl = env().clientProperties.eregBaseUrl,
-        )
+        if (isLocalEnv()) {
+            FakeEregClient()
+        } else {
+            EregClient(
+                eregBaseUrl = env().clientProperties.eregBaseUrl,
+            )
+        }
     }
 
     single {
-        if (isLocalEnv()) FakePdpClient() else PdpClient(
-            httpClient = get(),
-            baseUrl = env().clientProperties.altinn3BaseUrl,
-            subscriptionKey = env().clientProperties.pdpSubscriptionKey,
-            altinnTokenProvider = get(),
-        )
+        if (isLocalEnv()) {
+            FakePdpClient()
+        } else {
+            PdpClient(
+                httpClient = get(),
+                baseUrl = env().clientProperties.altinn3BaseUrl,
+                subscriptionKey = env().clientProperties.pdpSubscriptionKey,
+                altinnTokenProvider = get(),
+            )
+        }
     }
 }
 
@@ -233,7 +264,6 @@ private fun servicesModule() = module {
         val pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay)
         ResendDialogTask(get(), get(), pollingInterval)
     }
-
 }
 
 private fun Scope.env() = get<Environment>()

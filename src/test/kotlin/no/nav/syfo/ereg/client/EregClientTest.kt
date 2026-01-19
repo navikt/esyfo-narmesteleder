@@ -18,72 +18,70 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import organisasjon
 
-class EregClientTest : DescribeSpec({
-    val texasHttpClient = mockk<TexasHttpClient>(relaxed = true)
-    beforeTest {
-        clearAllMocks()
-    }
-
-    val eregPath = "/ereg/api/v1/organisasjon"
-
-    describe("Successfull responses from Ereg") {
-        val organization = organisasjon()
-        val mockEngine = getMockEngine(
-            path = "$eregPath/${organization.organisasjonsnummer}?inkluderHierarki=true",
-            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-            status = HttpStatusCode.Companion.OK,
-            content = jacksonObjectMapper().writeValueAsString(organization)
-        )
-
-        val httpClient = httpClientDefault(HttpClient(mockEngine))
-        val eregClient = EregClient(
-            eregBaseUrl = "",
-            httpClient = httpClient,
-        )
-
-        it("Fetches Organisasjon in Ereg") {
-            texasHttpClient.defaultMocks()
-            val result = eregClient.getOrganisasjon(organization.organisasjonsnummer)
-            result shouldBe organization
+class EregClientTest :
+    DescribeSpec({
+        val texasHttpClient = mockk<TexasHttpClient>(relaxed = true)
+        beforeTest {
+            clearAllMocks()
         }
 
+        val eregPath = "/ereg/api/v1/organisasjon"
 
-    }
-    describe("Error responses from Ereg") {
-        it("It should re-throw with internal server error if 4xx error except 404") {
+        describe("Successfull responses from Ereg") {
             val organization = organisasjon()
             val mockEngine = getMockEngine(
                 path = "$eregPath/${organization.organisasjonsnummer}?inkluderHierarki=true",
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                status = HttpStatusCode.Companion.BadRequest,
-                content = ""
+                status = HttpStatusCode.Companion.OK,
+                content = jacksonObjectMapper().writeValueAsString(organization)
             )
-            val client = httpClientDefault(HttpClient(mockEngine))
-            val arClient = EregClient(
-                eregBaseUrl = "",
-                httpClient = client,
-            )
-            shouldThrow<UpstreamRequestException> {
-                arClient.getOrganisasjon(organization.organisasjonsnummer)
-            }
-        }
 
-
-        it("Should return null if 4xx error") {
-            val organization = organisasjon()
-            val mockEngine = getMockEngine(
-                path = "$eregPath/${organization.organisasjonsnummer}?inkluderHierarki=true",
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                status = HttpStatusCode.Companion.NotFound,
-                content = ""
-            )
-            val client = httpClientDefault(HttpClient(mockEngine))
+            val httpClient = httpClientDefault(HttpClient(mockEngine))
             val eregClient = EregClient(
                 eregBaseUrl = "",
-                httpClient = client,
+                httpClient = httpClient,
             )
-            val result = eregClient.getOrganisasjon(organization.organisasjonsnummer)
-            result shouldBe null
+
+            it("Fetches Organisasjon in Ereg") {
+                texasHttpClient.defaultMocks()
+                val result = eregClient.getOrganisasjon(organization.organisasjonsnummer)
+                result shouldBe organization
+            }
         }
-    }
-})
+        describe("Error responses from Ereg") {
+            it("It should re-throw with internal server error if 4xx error except 404") {
+                val organization = organisasjon()
+                val mockEngine = getMockEngine(
+                    path = "$eregPath/${organization.organisasjonsnummer}?inkluderHierarki=true",
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    status = HttpStatusCode.Companion.BadRequest,
+                    content = ""
+                )
+                val client = httpClientDefault(HttpClient(mockEngine))
+                val arClient = EregClient(
+                    eregBaseUrl = "",
+                    httpClient = client,
+                )
+                shouldThrow<UpstreamRequestException> {
+                    arClient.getOrganisasjon(organization.organisasjonsnummer)
+                }
+            }
+
+            it("Should return null if 4xx error") {
+                val organization = organisasjon()
+                val mockEngine = getMockEngine(
+                    path = "$eregPath/${organization.organisasjonsnummer}?inkluderHierarki=true",
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    status = HttpStatusCode.Companion.NotFound,
+                    content = ""
+                )
+                val client = httpClientDefault(HttpClient(mockEngine))
+                val eregClient = EregClient(
+                    eregBaseUrl = "",
+                    httpClient = client,
+                )
+                val result = eregClient.getOrganisasjon(organization.organisasjonsnummer)
+                result shouldBe null
+            }
+        }
+    })

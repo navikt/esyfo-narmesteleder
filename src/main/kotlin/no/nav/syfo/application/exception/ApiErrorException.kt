@@ -5,7 +5,9 @@ import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 
 sealed class ApiErrorException(
-    message: String, val type: ErrorType, cause: Throwable?
+    message: String,
+    val type: ErrorType,
+    cause: Throwable?
 ) : RuntimeException(message, cause) {
     abstract fun toApiError(path: String): ApiError
 

@@ -7,7 +7,6 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
-import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.pdl.exception.PdlRequestException
@@ -15,6 +14,7 @@ import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
+import java.util.*
 
 private const val BEHANDLINGSNUMMER_NARMESTELEDER = "B506"
 private const val PDL_BEHANDLINGSNUMMER_HEADER = "behandlingsnummer"
@@ -74,7 +74,7 @@ class PdlClient(
                     header(HttpHeaders.ContentType, "application/json")
                 }
                 .body<GetPersonResponse>()
-            if (!pdlReponse.errors.isNullOrEmpty() ) {
+            if (!pdlReponse.errors.isNullOrEmpty()) {
                 logger.error("Error when requesting person from PDL. Got errors: ${pdlReponse.errors}")
             }
             if (pdlReponse.data?.person == null || pdlReponse.data.identer == null) {

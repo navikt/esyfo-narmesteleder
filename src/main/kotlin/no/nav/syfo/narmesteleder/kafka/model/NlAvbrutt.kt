@@ -6,5 +6,5 @@ import java.time.ZoneOffset
 data class NlAvbrutt(
     val orgnummer: String,
     val sykmeldtFnr: String,
-    val aktivTom: OffsetDateTime =  OffsetDateTime.now(ZoneOffset.UTC),
+    val aktivTom: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
 )

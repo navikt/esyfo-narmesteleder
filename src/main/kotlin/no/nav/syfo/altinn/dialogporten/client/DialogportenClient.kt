@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.patch
@@ -15,7 +14,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import java.util.*
 import no.nav.syfo.altinn.dialogporten.domain.Content
 import no.nav.syfo.altinn.dialogporten.domain.ContentValue
 import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
@@ -25,6 +23,7 @@ import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger
+import java.util.*
 
 interface IDialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
@@ -43,22 +42,20 @@ class DialogportenClient(
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
     private val logger = logger()
 
-    override suspend fun createDialog(dialog: Dialog): UUID {
-        return runCatching<DialogportenClient, UUID> {
-            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
-            val response =
-                httpClient
-                    .post(dialogportenUrl) {
-                        header(HttpHeaders.ContentType, ContentType.Application.Json)
-                        header(HttpHeaders.Accept, ContentType.Application.Json)
-                        bearerAuth(token)
-                        setBody(dialog)
-                    }.body<String>()
-            UUID.fromString(response.removeSurrounding("\""))
-        }.getOrElse { e ->
-            logger.error("Error in create dialog request", e)
-            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
-        }
+    override suspend fun createDialog(dialog: Dialog): UUID = runCatching<DialogportenClient, UUID> {
+        val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+        val response =
+            httpClient
+                .post(dialogportenUrl) {
+                    header(HttpHeaders.ContentType, ContentType.Application.Json)
+                    header(HttpHeaders.Accept, ContentType.Application.Json)
+                    bearerAuth(token)
+                    setBody(dialog)
+                }.body<String>()
+        UUID.fromString(response.removeSurrounding("\""))
+    }.getOrElse { e ->
+        logger.error("Error in create dialog request", e)
+        throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
     }
 
     override suspend fun updateDialogStatus(
@@ -152,7 +149,6 @@ class FakeDialogportenClient : IDialogportenClient {
         return UUID.randomUUID()
     }
 
-
     override suspend fun updateDialogStatus(
         dialogId: UUID,
         revisionNumber: UUID,
@@ -161,26 +157,24 @@ class FakeDialogportenClient : IDialogportenClient {
         return
     }
 
-    override suspend fun getDialogById(dialogId: UUID): ExtendedDialog =
-        ExtendedDialog(
-            id = dialogId,
-            externalReference = dialogId.toString(),
-            party = "urn:altinn:organization:identifier-no:123456789",
-            status = DialogStatus.RequiresAttention,
-            isApiOnly = false,
-            attachments = emptyList(),
-            revision = UUID.randomUUID(),
-            content = Content(
-                title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
-                summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary")))
-            ),
-            serviceResource = "service:resource",
-            transmissions = listOf(),
-        )
+    override suspend fun getDialogById(dialogId: UUID): ExtendedDialog = ExtendedDialog(
+        id = dialogId,
+        externalReference = dialogId.toString(),
+        party = "urn:altinn:organization:identifier-no:123456789",
+        status = DialogStatus.RequiresAttention,
+        isApiOnly = false,
+        attachments = emptyList(),
+        revision = UUID.randomUUID(),
+        content = Content(
+            title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+            summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary")))
+        ),
+        serviceResource = "service:resource",
+        transmissions = listOf(),
+    )
 
     override suspend fun deleteDialog(dialogId: UUID): HttpStatusCode {
         logger.info("Deleting dialog with id: $dialogId")
         return HttpStatusCode.NoContent
     }
-
 }

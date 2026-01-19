@@ -21,7 +21,7 @@ class SendtSykmeldingHandler(
                 ?: run {
                     logger.error("No arbeidsgiver information for sykmeldingId: ${message.event.sykmeldingId}. Skipping NL behov creation.")
                     return
-            }
+                }
             narmesteLederService.createNewNlBehov(
                 nlBehov = LinemanagerRequirementWrite(
                     employeeIdentificationNumber = message.kafkaMetadata.fnr,

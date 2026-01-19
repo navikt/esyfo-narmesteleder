@@ -24,6 +24,4 @@ fun ApplicationCall.jwtIssuer(): JwtIssuer {
     return JwtIssuer.fromIssuerString(issuer)
 }
 
-fun maskinportenIdToOrgnumber(id: String): String {
-    return id.split(":")[1].trim()
-}
+fun maskinportenIdToOrgnumber(id: String): String = id.split(":")[1].trim()

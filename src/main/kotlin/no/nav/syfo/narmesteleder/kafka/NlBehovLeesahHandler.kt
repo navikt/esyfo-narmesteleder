@@ -19,7 +19,7 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
             LeesahStatus.DEAKTIVERT_ARBEIDSTAKER,
             LeesahStatus.DEAKTIVERT_ARBEIDSTAKER_INNSENDT_SYKMELDING,
             LeesahStatus.DEAKTIVERT_LEDER,
-                -> {
+            -> {
                 narmesteLederService.createNewNlBehov(nlBehov)
                 COUNT_CREATE_LINEMANAGER_REQUIREMENT.increment()
             }

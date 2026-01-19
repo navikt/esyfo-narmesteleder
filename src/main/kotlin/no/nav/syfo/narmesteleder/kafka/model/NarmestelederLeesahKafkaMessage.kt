@@ -2,10 +2,10 @@ package no.nav.syfo.narmesteleder.kafka.model
 
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import no.nav.syfo.narmesteleder.domain.BehovReason
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 
 enum class LeesahStatus {
     NY_LEDER,
@@ -17,7 +17,7 @@ enum class LeesahStatus {
     IDENTENDRING,
 
     @JsonEnumDefaultValue
-    UKJENT;
+    UKJENT
 }
 
 data class NarmestelederLeesahKafkaMessage(

@@ -12,6 +12,8 @@ info:
 servers:
   - url: https://narmesteleder-api.ekstern.dev.nav.no
     description: Test server for assigning line manager to employees on sick leave.
+  - url: https://esyfo-narmesteleder.ekstern.dev.nav.no
+    description: Production server for assigning line manager to employees on sick leave.
   - url: https://narmesteleder-api.nav.no
     description: Production server for assigning line manager to employees on sick leave.
 paths:

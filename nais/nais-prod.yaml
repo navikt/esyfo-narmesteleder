@@ -126,13 +126,13 @@ spec:
     - name: DIALOGPORTEN_API_ONLY
       value: "true"
     - name: DIALOGPORTEN_DELETE_DIALOGER_POLLING_DELAY
-      value: "5m"
+      value: "3m"
     - name: DIALOGPORTEN_DELETE_DIALOGER_TASK_ENABLED
       value: "true"
     - name: DIALOGPORTEN_DELETE_DIALOGER_PAGE_LIMIT
       value: "100"
     - name: DIALOGPORTEN_DELETE_DIALOGER_SLEEP_AFTER_PAGE
-      value: "5000"
+      value: "3000"
     - name: DIALOGPORTEN_RESEND_DIALOGER_TASK_ENABLED
       value: "false"
   envFrom:

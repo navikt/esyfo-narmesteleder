@@ -1,7 +1,5 @@
 package no.nav.syfo.narmesteleder.service
 
-import java.time.Instant
-import java.util.*
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -19,6 +17,8 @@ import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundExcepti
 import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.pdl.PdlService
 import org.slf4j.LoggerFactory
+import java.time.Instant
+import java.util.*
 
 class NarmestelederService(
     private val nlDb: INarmestelederDb,
@@ -30,37 +30,34 @@ class NarmestelederService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead =
-        with(findBehovEntityById(id)) {
-            val name = getName()
-            toEmployeeLinemanagerRead(name)
-        }
+    suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead = with(findBehovEntityById(id)) {
+        val name = getName()
+        toEmployeeLinemanagerRead(name)
+    }
 
-    private suspend fun NarmestelederBehovEntity.getName(): Name =
-        if (fornavn != null && etternavn != null) {
-            Name(
-                firstName = fornavn,
-                lastName = etternavn,
-                middleName = mellomnavn,
-            )
-        } else {
-            val details = pdlService.getPersonFor(sykmeldtFnr)
-            val updated = this.copy(
-                fornavn = details.name.fornavn,
-                mellomnavn = details.name.mellomnavn,
-                etternavn = details.name.etternavn,
-            )
-            nlDb.updateNlBehov(updated)
-            Name(
-                firstName = details.name.fornavn,
-                lastName = details.name.etternavn,
-                middleName = details.name.mellomnavn,
-            )
-        }
+    private suspend fun NarmestelederBehovEntity.getName(): Name = if (fornavn != null && etternavn != null) {
+        Name(
+            firstName = fornavn,
+            lastName = etternavn,
+            middleName = mellomnavn,
+        )
+    } else {
+        val details = pdlService.getPersonFor(sykmeldtFnr)
+        val updated = this.copy(
+            fornavn = details.name.fornavn,
+            mellomnavn = details.name.mellomnavn,
+            etternavn = details.name.etternavn,
+        )
+        nlDb.updateNlBehov(updated)
+        Name(
+            firstName = details.name.fornavn,
+            lastName = details.name.etternavn,
+            middleName = details.name.mellomnavn,
+        )
+    }
 
-    private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity =
-        nlDb.findBehovById(id)
-            ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
+    private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity = nlDb.findBehovById(id)
+        ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
 
     suspend fun updateNlBehov(
         requirementId: UUID,
@@ -82,14 +79,14 @@ class NarmestelederService(
         dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
     }
 
-    suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String)
-        : List<NarmestelederBehovEntity> {
-        return nlDb.findBehovByParameters(
-            sykmeldtFnr = sykmeldtFnr, orgnummer = orgnummer, behovStatus = listOf(
-                BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-            )
+    suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String): List<NarmestelederBehovEntity> = nlDb.findBehovByParameters(
+        sykmeldtFnr = sykmeldtFnr,
+        orgnummer = orgnummer,
+        behovStatus = listOf(
+            BehovStatus.BEHOV_CREATED,
+            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
         )
-    }
+    )
 
     private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {
         val arbeidsforholdMap = aaregService.findOrgNumbersByPersonIdent(personIdent)
@@ -172,25 +169,23 @@ class NarmestelederService(
         orgNumber: String,
         createdAfter: Instant,
         pageSize: Int
-    ): List<LinemanagerRequirementRead> =
-        nlDb.findBehovByParameters(
-            orgNumber = orgNumber,
-            createdAfter = createdAfter,
-            status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
-            limit = pageSize + 1,
-        ).map { it.toEmployeeLinemanagerRead(it.getName()) }
+    ): List<LinemanagerRequirementRead> = nlDb.findBehovByParameters(
+        orgNumber = orgNumber,
+        createdAfter = createdAfter,
+        status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+        limit = pageSize + 1,
+    ).map { it.toEmployeeLinemanagerRead(it.getName()) }
 }
 
-fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead =
-    LinemanagerRequirementRead(
-        id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
-        employeeIdentificationNumber = this.sykmeldtFnr,
-        orgNumber = this.orgnummer,
-        mainOrgNumber = this.hovedenhetOrgnummer,
-        managerIdentificationNumber = this.narmestelederFnr,
-        name = name,
-        created = this.created,
-        updated = this.updated,
-        status = LineManagerRequirementStatus.from(this.behovStatus),
-        revokedBy = RevokedBy.from(this.behovReason),
-    )
+fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead = LinemanagerRequirementRead(
+    id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
+    employeeIdentificationNumber = this.sykmeldtFnr,
+    orgNumber = this.orgnummer,
+    mainOrgNumber = this.hovedenhetOrgnummer,
+    managerIdentificationNumber = this.narmestelederFnr,
+    name = name,
+    created = this.created,
+    updated = this.updated,
+    status = LineManagerRequirementStatus.from(this.behovStatus),
+    revokedBy = RevokedBy.from(this.behovReason),
+)

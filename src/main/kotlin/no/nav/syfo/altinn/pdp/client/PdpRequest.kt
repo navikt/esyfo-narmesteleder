@@ -44,48 +44,48 @@ fun createPdpRequest(
     resource: String,
 ) = PdpRequest(
     request =
-        PdpRequest.XacmlJsonRequestExternal(
-            returnPolicyIdList = true,
-            accessSubject =
+    PdpRequest.XacmlJsonRequestExternal(
+        returnPolicyIdList = true,
+        accessSubject =
+        listOf(
+            PdpRequest.XacmlJsonCategoryExternal(
+                attribute =
                 listOf(
-                    PdpRequest.XacmlJsonCategoryExternal(
-                        attribute =
-                            listOf(
-                                PdpRequest.XacmlJsonAttributeExternal(
-                                    attributeId = user.attributeId,
-                                    value = user.id,
-                                ),
-                            ),
+                    PdpRequest.XacmlJsonAttributeExternal(
+                        attributeId = user.attributeId,
+                        value = user.id,
                     ),
                 ),
-            action =
-                listOf(
-                    PdpRequest.XacmlJsonCategoryExternal(
-                        attribute =
-                            listOf(
-                                PdpRequest.XacmlJsonAttributeExternal(
-                                    attributeId = "urn:oasis:names:tc:xacml:1.0:action:action-id",
-                                    value = "access",
-                                    dataType = "http://www.w3.org/2001/XMLSchema#string",
-                                ),
-                            ),
-                    ),
-                ),
-            resource =
-                orgNumberSet.map { orgnr ->
-                    PdpRequest.XacmlJsonCategoryExternal(
-                        attribute =
-                            listOf(
-                                PdpRequest.XacmlJsonAttributeExternal(
-                                    attributeId = "urn:altinn:resource",
-                                    value = resource,
-                                ),
-                                PdpRequest.XacmlJsonAttributeExternal(
-                                    attributeId = "urn:altinn:organization:identifier-no",
-                                    value = orgnr,
-                                ),
-                            ),
-                    )
-                },
+            ),
         ),
+        action =
+        listOf(
+            PdpRequest.XacmlJsonCategoryExternal(
+                attribute =
+                listOf(
+                    PdpRequest.XacmlJsonAttributeExternal(
+                        attributeId = "urn:oasis:names:tc:xacml:1.0:action:action-id",
+                        value = "access",
+                        dataType = "http://www.w3.org/2001/XMLSchema#string",
+                    ),
+                ),
+            ),
+        ),
+        resource =
+        orgNumberSet.map { orgnr ->
+            PdpRequest.XacmlJsonCategoryExternal(
+                attribute =
+                listOf(
+                    PdpRequest.XacmlJsonAttributeExternal(
+                        attributeId = "urn:altinn:resource",
+                        value = resource,
+                    ),
+                    PdpRequest.XacmlJsonAttributeExternal(
+                        attributeId = "urn:altinn:organization:identifier-no",
+                        value = orgnr,
+                    ),
+                ),
+            )
+        },
+    ),
 )

@@ -4,10 +4,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.auth.authentication
 import io.ktor.server.response.respondNullable
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.texas.client.getSystemUserId
 import no.nav.syfo.texas.client.getSystemUserOrganization
@@ -56,7 +56,7 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
                         throw ApiErrorException.UnauthorizedException("No consumer in token claims")
                     }
                     if (introspectionResponse.scope != MASKINPORTEN_NL_SCOPE) {
-                        throw ApiErrorException.UnauthorizedException("Invalid scope from maskinporten" )
+                        throw ApiErrorException.UnauthorizedException("Invalid scope from maskinporten")
                     }
                     val systemUserOrganization = introspectionResponse.getSystemUserOrganization()
                         ?: throw ApiErrorException.UnauthorizedException("No system user organization number in token claims")

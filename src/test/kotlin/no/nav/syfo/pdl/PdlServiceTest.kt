@@ -18,123 +18,127 @@ import no.nav.syfo.pdl.client.ResponseData
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 
-class PdlServiceTest : DescribeSpec({
+class PdlServiceTest :
+    DescribeSpec({
 
-    val pdlClient = mockk<IPdlClient>()
-    val pdlService = PdlService(pdlClient)
+        val pdlClient = mockk<IPdlClient>()
+        val pdlService = PdlService(pdlClient)
 
-    beforeTest {
-        clearAllMocks()
-    }
-
-    fun getPersonResponse(navn: List<Navn>, identer: List<Ident>) = GetPersonResponse(
-        data = ResponseData(
-            person = PersonResponse(navn = navn), identer = IdentResponse(identer = identer)
-        ), errors = null
-    )
-    describe("getPersonFor") {
-        it("should return person when PDL returns valid data") {
-            val fnr = "12345678901"
-            val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
-            val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
-
-            coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), listOf(ident))
-
-            val result = pdlService.getPersonFor(fnr)
-
-            result.nationalIdentificationNumber shouldBe fnr
-            result.name shouldBe navn
-            coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
+        beforeTest {
+            clearAllMocks()
         }
 
-        it("should pass through exception when PDL client throws exception") {
-            val fnr = "12345678901"
-            val exception = PdlRequestException("PDL error")
+        fun getPersonResponse(navn: List<Navn>, identer: List<Ident>) = GetPersonResponse(
+            data = ResponseData(
+                person = PersonResponse(navn = navn),
+                identer = IdentResponse(identer = identer)
+            ),
+            errors = null
+        )
+        describe("getPersonFor") {
+            it("should return person when PDL returns valid data") {
+                val fnr = "12345678901"
+                val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
+                val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
 
-            coEvery { pdlClient.getPerson(fnr) } throws exception
+                coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), listOf(ident))
 
-            shouldThrow<PdlRequestException> {
-                pdlService.getPersonFor(fnr)
+                val result = pdlService.getPersonFor(fnr)
+
+                result.nationalIdentificationNumber shouldBe fnr
+                result.name shouldBe navn
+                coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }
 
-            coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
-        }
+            it("should pass through exception when PDL client throws exception") {
+                val fnr = "12345678901"
+                val exception = PdlRequestException("PDL error")
 
-        it("should pass through throw PdlPersonMissingPropertiesException when fnr is null") {
-            val fnr = "12345678901"
-            val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
+                coEvery { pdlClient.getPerson(fnr) } throws exception
 
-            coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), emptyList())
-            shouldThrow<PdlResourceNotFoundException> {
-                pdlService.getPersonFor(fnr)
+                shouldThrow<PdlRequestException> {
+                    pdlService.getPersonFor(fnr)
+                }
+
+                coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
+            }
+
+            it("should pass through throw PdlPersonMissingPropertiesException when fnr is null") {
+                val fnr = "12345678901"
+                val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
+
+                coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), emptyList())
+                shouldThrow<PdlResourceNotFoundException> {
+                    pdlService.getPersonFor(fnr)
+                }
+            }
+
+            it("should throw PdlPersonMissingPropertiesException when navn is null") {
+                val fnr = "12345678901"
+                val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
+                coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(emptyList(), listOf(ident))
+
+                shouldThrow<PdlResourceNotFoundException> {
+                    pdlService.getPersonFor(fnr)
+                }
+            }
+
+            it("should throw IllegalStateException when person is null") {
+                val fnr = "12345678901"
+                val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
+                val response = GetPersonResponse(
+                    data = ResponseData(
+                        person = null,
+                        identer = IdentResponse(identer = listOf(ident))
+                    ),
+                    errors = null
+                )
+
+                coEvery { pdlClient.getPerson(fnr) } returns response
+
+                shouldThrow<PdlResourceNotFoundException> {
+                    pdlService.getPersonFor(fnr)
+                }
             }
         }
 
-        it("should throw PdlPersonMissingPropertiesException when navn is null") {
-            val fnr = "12345678901"
-            val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
-            coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(emptyList(), listOf(ident))
+        describe("getPersonOrThrowApiError") {
+            it("should return person when PDL returns valid data") {
+                val fnr = "12345678901"
+                val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
+                val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
 
-            shouldThrow<PdlResourceNotFoundException> {
-                pdlService.getPersonFor(fnr)
-            }
-        }
+                coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), listOf(ident))
 
-        it("should throw IllegalStateException when person is null") {
-            val fnr = "12345678901"
-            val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
-            val response = GetPersonResponse(
-                data = ResponseData(
-                    person = null, identer = IdentResponse(identer = listOf(ident))
-                ), errors = null
-            )
+                val result = pdlService.getPersonOrThrowApiError(fnr)
 
-            coEvery { pdlClient.getPerson(fnr) } returns response
-
-            shouldThrow<PdlResourceNotFoundException> {
-                pdlService.getPersonFor(fnr)
-            }
-        }
-    }
-
-    describe("getPersonOrThrowApiError") {
-        it("should return person when PDL returns valid data") {
-            val fnr = "12345678901"
-            val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
-            val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
-
-            coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), listOf(ident))
-
-            val result = pdlService.getPersonOrThrowApiError(fnr)
-
-            result.nationalIdentificationNumber shouldBe fnr
-            result.name shouldBe navn
-            coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
-        }
-
-        it("should convert PdlResourceNotFoundException to BadRequestException") {
-            val fnr = "12345678901"
-
-            coEvery { pdlClient.getPerson(fnr) } throws PdlResourceNotFoundException("Not found")
-
-            shouldThrow< ApiErrorException.BadRequestException> {
-                pdlService.getPersonOrThrowApiError(fnr)
+                result.nationalIdentificationNumber shouldBe fnr
+                result.name shouldBe navn
+                coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }
 
-            coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
-        }
+            it("should convert PdlResourceNotFoundException to BadRequestException") {
+                val fnr = "12345678901"
 
-        it("should convert PdlRequestException to InternalServerErrorException") {
-            val fnr = "12345678901"
+                coEvery { pdlClient.getPerson(fnr) } throws PdlResourceNotFoundException("Not found")
 
-            coEvery { pdlClient.getPerson(fnr) } throws PdlRequestException("PDL error")
+                shouldThrow<ApiErrorException.BadRequestException> {
+                    pdlService.getPersonOrThrowApiError(fnr)
+                }
 
-            shouldThrow<ApiErrorException.InternalServerErrorException> {
-                pdlService.getPersonOrThrowApiError(fnr)
+                coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }
 
-            coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
-        }
+            it("should convert PdlRequestException to InternalServerErrorException") {
+                val fnr = "12345678901"
 
-    }
-})
+                coEvery { pdlClient.getPerson(fnr) } throws PdlRequestException("PDL error")
+
+                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    pdlService.getPersonOrThrowApiError(fnr)
+                }
+
+                coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
+            }
+        }
+    })

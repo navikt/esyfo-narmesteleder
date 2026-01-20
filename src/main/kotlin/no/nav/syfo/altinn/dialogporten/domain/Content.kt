@@ -17,10 +17,9 @@ data class ContentValueItem(
     val languageCode: String = "nb",
 )
 
-fun String.toContentValue() =
-    ContentValue(
-        value = listOf(ContentValueItem(this)),
-    )
+fun String.toContentValue() = ContentValue(
+    value = listOf(ContentValueItem(this)),
+)
 
 fun Content.Companion.create(
     title: String,

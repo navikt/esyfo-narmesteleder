@@ -33,7 +33,9 @@ class EregClient(
             if (e.response.status == HttpStatusCode.NotFound) {
                 logger.error("Could not find organization for orgNumber $orgnummer")
                 null
-            } else throw UpstreamRequestException("Error when fetching organization from ereg", e)
+            } else {
+                throw UpstreamRequestException("Error when fetching organization from ereg", e)
+            }
         }
         return response
     }

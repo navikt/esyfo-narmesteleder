@@ -7,7 +7,6 @@ enum class JwtIssuer(val value: String? = null) {
     FAKEDINGS("fakedings"),
     UNSUPPORTED;
 
-
     companion object {
         fun fromIssuerString(iss: String): JwtIssuer = when {
             // https://maskinporten.no/.well-known/oauth-authorization-server

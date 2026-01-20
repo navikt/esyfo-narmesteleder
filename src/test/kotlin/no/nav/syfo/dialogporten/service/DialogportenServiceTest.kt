@@ -22,6 +22,7 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
+import no.nav.syfo.application.environment.DeleteDialogportenDialogsTaskProperties
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
@@ -30,8 +31,6 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import java.util.*
-import no.nav.syfo.altinn.dialogporten.domain.create
-import no.nav.syfo.application.environment.DeleteDialogportenDialogsTaskProperties
 
 class DialogportenServiceTest :
     DescribeSpec({
@@ -54,16 +53,16 @@ class DialogportenServiceTest :
                     dialogportenClient = dialogportenClient,
                     narmestelederDb = spyNarmestelederDb,
                     otherEnvironmentProperties =
-                        OtherEnvironmentProperties(
-                            electorPath = "elector",
-                            publicIngressUrl = publicIngressUrl,
-                            frontendBaseUrl = frontendBaseUrl,
-                            persistLeesahNlBehov = true,
-                            updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
-                            isDialogportenBackgroundTaskEnabled = true,
-                            dialogportenIsApiOnly = false,
-                            deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
-                        ),
+                    OtherEnvironmentProperties(
+                        electorPath = "elector",
+                        publicIngressUrl = publicIngressUrl,
+                        frontendBaseUrl = frontendBaseUrl,
+                        persistLeesahNlBehov = true,
+                        updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
+                        isDialogportenBackgroundTaskEnabled = true,
+                        dialogportenIsApiOnly = false,
+                        deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
+                    ),
                     pdlService = pdlService,
                 )
             spyNarmestelederDb.clear()
@@ -305,10 +304,10 @@ class DialogportenServiceTest :
                             attachments = emptyList(),
                             revision = UUID.randomUUID(),
                             content =
-                                Content(
-                                    title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
-                                    summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
-                                ),
+                            Content(
+                                title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+                                summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
+                            ),
                             serviceResource = "service:resource",
                             transmissions = listOf(),
                         )
@@ -383,7 +382,8 @@ class DialogportenServiceTest :
                             match { behovToPersist ->
                                 behovs.any { behov ->
                                     behov.id == behovToPersist.id
-                                } && behovToPersist.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                                } &&
+                                    behovToPersist.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
                             },
                         )
                     }
@@ -547,10 +547,10 @@ private fun NarmestelederBehovEntity.toExtendedDialog(): ExtendedDialog {
         status = DialogStatus.RequiresAttention,
         party = "urn:altinn:organization:identifier-no:$orgnummer",
         content =
-            Content(
-                title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
-                summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
-            ),
+        Content(
+            title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+            summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
+        ),
         isApiOnly = false,
         attachments = emptyList(),
     )

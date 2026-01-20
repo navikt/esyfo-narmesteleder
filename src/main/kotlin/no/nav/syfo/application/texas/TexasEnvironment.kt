@@ -16,12 +16,11 @@ data class TexasEnvironment(
             exchangeTargetIsAltinnTilganger = "dev:teamsykefravr:istilgangskontroll",
         )
 
-        fun createFromEnvVars() =
-            TexasEnvironment(
-                tokenIntrospectionEndpoint = getEnvVar("NAIS_TOKEN_INTROSPECTION_ENDPOINT"),
-                tokenExchangeEndpoint = getEnvVar("NAIS_TOKEN_EXCHANGE_ENDPOINT"),
-                tokenEndpoint = getEnvVar("NAIS_TOKEN_ENDPOINT"),
-                exchangeTargetIsAltinnTilganger = "${getEnvVar("NAIS_CLUSTER_NAME")}:fager:arbeidsgiver-altinn-tilganger"
-            )
+        fun createFromEnvVars() = TexasEnvironment(
+            tokenIntrospectionEndpoint = getEnvVar("NAIS_TOKEN_INTROSPECTION_ENDPOINT"),
+            tokenExchangeEndpoint = getEnvVar("NAIS_TOKEN_EXCHANGE_ENDPOINT"),
+            tokenEndpoint = getEnvVar("NAIS_TOKEN_ENDPOINT"),
+            exchangeTargetIsAltinnTilganger = "${getEnvVar("NAIS_CLUSTER_NAME")}:fager:arbeidsgiver-altinn-tilganger"
+        )
     }
 }

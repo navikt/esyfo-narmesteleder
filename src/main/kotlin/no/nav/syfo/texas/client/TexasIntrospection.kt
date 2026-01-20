@@ -2,7 +2,6 @@ package no.nav.syfo.texas.client
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-
 data class TexasIntrospectionRequest(
     @get:JsonProperty("identity_provider")
     val identityProvider: String,

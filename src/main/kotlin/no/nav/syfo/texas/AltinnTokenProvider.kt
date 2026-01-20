@@ -6,13 +6,12 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import no.nav.syfo.texas.client.TexasHttpClient
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class AltinnTokenProvider(
     private val texasHttpClient: TexasHttpClient,
@@ -78,17 +77,16 @@ class AltinnTokenProvider(
                 .replace("\"", "")
                 .toAltinnToken()
         }
-        
+
         tokens[scope] = token
         return token
     }
 
-    private suspend fun altinnExchange(token: String): String =
-        httpClient
-            .get("$altinnBaseUrl/authentication/api/v1/exchange/maskinporten") {
-                bearerAuth(token)
-            }.bodyAsText()
-            .replace("\"", "")
+    private suspend fun altinnExchange(token: String): String = httpClient
+        .get("$altinnBaseUrl/authentication/api/v1/exchange/maskinporten") {
+            bearerAuth(token)
+        }.bodyAsText()
+        .replace("\"", "")
 
     companion object {
         const val DIALOGPORTEN_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"

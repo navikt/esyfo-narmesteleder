@@ -13,22 +13,20 @@ class PdlService(private val pdlClient: IPdlClient) {
         with(response.data) {
             val navn = response.data?.person?.navn?.firstOrNull()
                 ?: throw PdlResourceNotFoundException("Fant ikke navn")
-            val fnr = response.data.identer?.identer?.firstOrNull() { it.gruppe == GRUPPE_IDENT_FNR }?.ident
+            val fnr = response.data.identer?.identer?.firstOrNull { it.gruppe == GRUPPE_IDENT_FNR }?.ident
                 ?: throw PdlResourceNotFoundException("Fant ikke fnr")
             return Person(
-                name = navn, nationalIdentificationNumber = fnr
+                name = navn,
+                nationalIdentificationNumber = fnr
             )
         }
     }
 
-    suspend fun getPersonOrThrowApiError(fnr: String): Person {
-        return try {
-            getPersonFor(fnr)
-        } catch (e: PdlResourceNotFoundException) {
-            throw ApiErrorException.BadRequestException("Fant ikke person i PDL", e)
-        } catch (e: PdlRequestException) {
-            throw ApiErrorException.InternalServerErrorException("Kunne ikke hente person fra PDL", e)
-        }
+    suspend fun getPersonOrThrowApiError(fnr: String): Person = try {
+        getPersonFor(fnr)
+    } catch (e: PdlResourceNotFoundException) {
+        throw ApiErrorException.BadRequestException("Fant ikke person i PDL", e)
+    } catch (e: PdlRequestException) {
+        throw ApiErrorException.InternalServerErrorException("Kunne ikke hente person fra PDL", e)
     }
-
 }

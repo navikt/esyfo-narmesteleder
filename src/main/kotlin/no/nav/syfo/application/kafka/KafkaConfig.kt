@@ -1,9 +1,5 @@
 package no.nav.syfo.application.kafka
 
-import java.time.Duration
-import java.util.*
-import kotlin.reflect.KClass
-import no.nav.syfo.application.ApplicationState
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -13,6 +9,8 @@ import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
+import java.util.*
+import kotlin.reflect.KClass
 
 const val JAVA_KEYSTORE = "JKS"
 const val PKCS12 = "PKCS12"

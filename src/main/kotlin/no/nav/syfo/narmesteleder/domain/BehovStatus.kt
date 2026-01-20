@@ -7,7 +7,5 @@ enum class BehovStatus {
     DIALOGPORTEN_STATUS_SET_COMPLETED,
     ERROR;
 
-    override fun toString(): String {
-        return name
-    }
+    override fun toString(): String = name
 }

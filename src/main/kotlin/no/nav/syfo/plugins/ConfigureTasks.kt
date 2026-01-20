@@ -2,7 +2,6 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
-import kotlin.getValue
 import kotlinx.coroutines.launch
 import no.nav.syfo.altinn.dialogporten.task.DeleteDialogTask
 import no.nav.syfo.altinn.dialogporten.task.ResendDialogTask
@@ -11,6 +10,7 @@ import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject
+import kotlin.getValue
 
 fun Application.configureBackgroundTasks() {
     val environment by inject<Environment>()

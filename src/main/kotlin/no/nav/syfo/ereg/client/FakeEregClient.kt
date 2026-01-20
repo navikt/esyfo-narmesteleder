@@ -2,7 +2,7 @@ package no.nav.syfo.ereg.client
 
 import java.util.concurrent.atomic.*
 
-class FakeEregClient() : IEregClient {
+class FakeEregClient : IEregClient {
     val organisasjoner = defaultOrganisasjoner.toMutableMap()
     private val failureRef = AtomicReference<Throwable?>(null)
 

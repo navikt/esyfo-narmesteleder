@@ -3,11 +3,6 @@ package no.nav.syfo.altinn.dialogporten.service
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
-import java.time.Instant
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
-import java.util.*
 import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
@@ -27,6 +22,11 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.util.logger
+import java.time.Instant
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.util.*
 
 const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
 
@@ -44,14 +44,16 @@ class DialogportenService(
      */
     suspend fun resendDocumentsToDialogporten() {
         var batchNum = 0
-        var firstCreatedTimestamp : Instant?
+        var firstCreatedTimestamp: Instant?
         do {
             val behovToSend = getRequirementsToResend()
             batchNum += 1
             firstCreatedTimestamp = if (!behovToSend.isEmpty()) {
                 behovToSend.first().created
-            } else null
-            logger.info("Batch: ${batchNum}: Found ${behovToSend.size} behov to resend to dialogporten. First created at ${firstCreatedTimestamp ?: "N/A"}")
+            } else {
+                null
+            }
+            logger.info("Batch: $batchNum: Found ${behovToSend.size} behov to resend to dialogporten. First created at ${firstCreatedTimestamp ?: "N/A"}")
 
             for (behov in behovToSend) {
                 sendToDialogporten(behov)
@@ -62,14 +64,16 @@ class DialogportenService(
 
     suspend fun sendDocumentsToDialogporten() {
         var batchNum = 0
-        var firstCreatedTimestamp : Instant?
+        var firstCreatedTimestamp: Instant?
         do {
             val behovToSend = getRequirementsToSend()
             batchNum += 1
             firstCreatedTimestamp = if (!behovToSend.isEmpty()) {
                 behovToSend.first().created
-            } else null
-            logger.info("Batch: ${batchNum}: Found ${behovToSend.size} behov to send to dialogporten. First created at ${firstCreatedTimestamp ?: "N/A"}")
+            } else {
+                null
+            }
+            logger.info("Batch: $batchNum: Found ${behovToSend.size} behov to send to dialogporten. First created at ${firstCreatedTimestamp ?: "N/A"}")
 
             for (behov in behovToSend) {
                 sendToDialogporten(behov)
@@ -107,7 +111,6 @@ class DialogportenService(
             logger.error("Failed to send behov ${behov.id} to dialogporten", ex)
         }
     }
-
 
     suspend fun setAllFulfilledBehovsAsCompletedInDialogporten() {
         narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED, BEHOV_BY_STATUS_LIMIT)
@@ -150,14 +153,16 @@ class DialogportenService(
 
     suspend fun deleteDialogsInDialogporten() {
         var batchNum = 0
-        var firstCreatedTimestamp : Instant?
+        var firstCreatedTimestamp: Instant?
         do {
             val dialogsToDeleteInDialogporten = getDialogsToDelete()
             batchNum += 1
             firstCreatedTimestamp = if (!dialogsToDeleteInDialogporten.isEmpty()) {
                 dialogsToDeleteInDialogporten.first().created
-            } else null
-            logger.info("Batch: ${batchNum}: Found ${dialogsToDeleteInDialogporten.size} dialogs to delete from dialogporten. First behov created at ${firstCreatedTimestamp ?: "N/A"}")
+            } else {
+                null
+            }
+            logger.info("Batch: $batchNum: Found ${dialogsToDeleteInDialogporten.size} dialogs to delete from dialogporten. First behov created at ${firstCreatedTimestamp ?: "N/A"}")
 
             for (dialog in dialogsToDeleteInDialogporten) {
                 dialog.dialogId?.let { uuid ->
@@ -193,34 +198,27 @@ class DialogportenService(
         } while (dialogsToDeleteInDialogporten.size == otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
     }
 
-    private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String): String =
-        name?.let {
-            "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${ninToInfoString(nationalIdentityNumber)}"
-        } ?: DIALOG_TITLE_NO_NAME
+    private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String): String = name?.let {
+        "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${ninToInfoString(nationalIdentityNumber)}"
+    } ?: DIALOG_TITLE_NO_NAME
 
-    private fun getSummary(name: Navn?): String =
-        name?.let {
-            "${it.navnFullt()} $DIALOG_SUMMARY"
-        } ?: "En ansatt $DIALOG_SUMMARY"
+    private fun getSummary(name: Navn?): String = name?.let {
+        "${it.navnFullt()} $DIALOG_SUMMARY"
+    } ?: "En ansatt $DIALOG_SUMMARY"
 
-    private suspend fun getRequirementsToSend() =
-        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED, BEHOV_BY_STATUS_LIMIT)
+    private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED, BEHOV_BY_STATUS_LIMIT)
 
-    private suspend fun getDialogsToDelete() =
-        narmestelederDb.getNlBehovForDelete(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
+    private suspend fun getDialogsToDelete() = narmestelederDb.getNlBehovForDelete(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
 
-    private suspend fun getRequirementsToResend() =
-        narmestelederDb.getNlBehovForResendToDialogporten(
-            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
-            BEHOV_BY_STATUS_LIMIT
-        )
+    private suspend fun getRequirementsToResend() = narmestelederDb.getNlBehovForResendToDialogporten(
+        BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+        BEHOV_BY_STATUS_LIMIT
+    )
 
-    private fun createApiLink(id: UUID): String =
-        "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
+    private fun createApiLink(id: UUID): String = "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
 
-    private fun createGuiLink(id: UUID): String =
-        "${otherEnvironmentProperties.frontendBaseUrl}/ansatte/narmesteleder/$id"
-    //https://www.ekstern.dev.nav.no/arbeidsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
+    private fun createGuiLink(id: UUID): String = "${otherEnvironmentProperties.frontendBaseUrl}/ansatte/narmesteleder/$id"
+    // https://www.ekstern.dev.nav.no/arbeidsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
 
     private fun NarmestelederBehovEntity.toDialog(name: Navn?): Dialog {
         require(id != null) { "Cannot create Dialogporten Dialog without id" }
@@ -241,30 +239,29 @@ class DialogportenService(
         )
     }
 
-    private fun createAttachement(type: AttachmentUrlConsumerType, name: String, id: UUID): Attachment =
-        Attachment(
-            displayName = listOf(
-                ContentValueItem(
-                    name, if (type == AttachmentUrlConsumerType.Api) "en" else "nb"
-                ),
+    private fun createAttachement(type: AttachmentUrlConsumerType, name: String, id: UUID): Attachment = Attachment(
+        displayName = listOf(
+            ContentValueItem(
+                name,
+                if (type == AttachmentUrlConsumerType.Api) "en" else "nb"
             ),
-            urls = listOf(createUrl(type, id)),
+        ),
+        urls = listOf(createUrl(type, id)),
+    )
+
+    private fun createUrl(type: AttachmentUrlConsumerType, id: UUID): Url = when (type) {
+        AttachmentUrlConsumerType.Gui -> Url(
+            url = createGuiLink(id),
+            mediaType = ContentType.Text.Html.toString(),
+            consumerType = type,
         )
 
-    private fun createUrl(type: AttachmentUrlConsumerType, id: UUID): Url =
-        when (type) {
-            AttachmentUrlConsumerType.Gui -> Url(
-                url = createGuiLink(id),
-                mediaType = ContentType.Text.Html.toString(),
-                consumerType = type,
-            )
-
-            AttachmentUrlConsumerType.Api -> Url(
-                url = createApiLink(id),
-                mediaType = ContentType.Application.Json.toString(),
-                consumerType = type,
-            )
-        }
+        AttachmentUrlConsumerType.Api -> Url(
+            url = createApiLink(id),
+            mediaType = ContentType.Application.Json.toString(),
+            consumerType = type,
+        )
+    }
 
     private fun ninToInfoString(nationalIdentityNumber: String): String {
         val birthDate = ninToBirthDate(nationalIdentityNumber)
@@ -295,6 +292,5 @@ class DialogportenService(
         const val URL_TITLE_API = "Endpoint for LinemanagerRequirement request"
 
         const val BEHOV_BY_STATUS_LIMIT = 100
-
     }
 }

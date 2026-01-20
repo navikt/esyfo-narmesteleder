@@ -5,9 +5,6 @@ import io.ktor.server.auth.authentication
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.request.receive
 import io.ktor.server.routing.RoutingCall
-import java.time.Instant
-import java.time.format.DateTimeParseException
-import java.util.UUID
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.Principal
@@ -17,6 +14,9 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
+import java.time.Instant
+import java.time.format.DateTimeParseException
+import java.util.UUID
 
 suspend inline fun <reified T : Any> RoutingCall.tryReceive() = runCatching { receive<T>() }.getOrElse {
     when {
@@ -34,13 +34,9 @@ fun RoutingCall.getUUIDFromPathVariable(name: String): UUID {
     }
 }
 
-fun RoutingCall.getPathVariable(name: String): String {
-    return this.parameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
-}
+fun RoutingCall.getPathVariable(name: String): String = this.parameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 
-fun RoutingCall.getRequiredQueryParameter(name: String): String {
-    return this.queryParameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
-}
+fun RoutingCall.getRequiredQueryParameter(name: String): String = this.queryParameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 
 fun RoutingCall.getCreatedAfter(): Instant {
     val createdAfter = getRequiredQueryParameter("createdAfter")
@@ -64,15 +60,14 @@ fun RoutingCall.getPageSize(): Int {
     }
 }
 
-fun RoutingCall.getMyPrincipal(): Principal =
-    when (attributes[TOKEN_ISSUER]) {
-        JwtIssuer.MASKINPORTEN -> {
-            authentication.principal<SystemPrincipal>() ?: throw UnauthorizedException()
-        }
-
-        JwtIssuer.TOKEN_X -> {
-            authentication.principal<UserPrincipal>() ?: throw UnauthorizedException()
-        }
-
-        else -> throw UnauthorizedException()
+fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
+    JwtIssuer.MASKINPORTEN -> {
+        authentication.principal<SystemPrincipal>() ?: throw UnauthorizedException()
     }
+
+    JwtIssuer.TOKEN_X -> {
+        authentication.principal<UserPrincipal>() ?: throw UnauthorizedException()
+    }
+
+    else -> throw UnauthorizedException()
+}

@@ -1,9 +1,10 @@
-package no.nav.syfo.sykmelding.kafka.model
+package no.nav.syfo.sykmelding.model
 
 import java.time.LocalDate
 
 data class ArbeidsgiverSykmelding(
     val sykmeldingsperioder: List<SykmeldingsperiodeAGDTO>,
+    val syketilfelleStartDato: LocalDate?
 )
 
 data class SykmeldingsperiodeAGDTO(

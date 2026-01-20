@@ -49,6 +49,9 @@ import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
+import no.nav.syfo.sykmelding.db.ISykmeldingDb
+import no.nav.syfo.sykmelding.db.SykmeldingDb
+import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
@@ -100,11 +103,14 @@ private fun databaseModule() = module {
     single<INarmestelederDb> {
         NarmestelederDb(get(), Dispatchers.IO)
     }
+    single<ISykmeldingDb> {
+        SykmeldingDb(get(), Dispatchers.IO)
+    }
 }
 
 private fun handlerModule() = module {
     single { NlBehovLeesahHandler(get()) }
-    single { SendtSykmeldingHandler(get()) }
+    single { SendtSykmeldingHandler(get(), get()) }
     single {
         LinemanagerRequirementRESTHandler(get(), get(), get(), get())
     }
@@ -199,6 +205,7 @@ private fun clientsModule() = module {
 private fun servicesModule() = module {
     single { AaregService(arbeidsforholdOversiktClient = get()) }
     single { DinesykmeldteService(dinesykmeldteClient = get()) }
+    single { SykmeldingService(sykmeldingDb = get()) }
     single {
         NarmestelederService(
             nlDb = get(),

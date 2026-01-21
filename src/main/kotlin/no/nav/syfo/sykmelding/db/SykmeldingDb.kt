@@ -2,14 +2,19 @@ package no.nav.syfo.sykmelding.db
 
 import java.sql.Date
 import java.sql.Timestamp
+import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.util.logger
 
 interface ISykmeldingDb {
     suspend fun insertSykmelding(sykmeldingEntity: SykmeldingEntity)
+    suspend fun deleteSykmelding(sykmeldingId: UUID): Int
 }
+
+class SykmeldingDbException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 class SykmeldingDb(
     private val database: DatabaseInterface,
@@ -50,4 +55,34 @@ class SykmeldingDb(
                     }
             }
         }
+
+    override suspend fun deleteSykmelding(sykmeldingId: UUID): Int = withContext(dispatcher) {
+        database.connection.use { connection ->
+            connection
+                .prepareStatement(
+                    """
+                DELETE FROM sendt_sykmelding 
+                WHERE sykmelding_id = ?
+                """.trimIndent()
+                ).use { preparedStatement ->
+                    try {
+                        preparedStatement.setObject(1, sykmeldingId)
+                        val deletedRows = preparedStatement.executeUpdate()
+                        connection.commit()
+                        return@use deletedRows
+                    } catch (e: Exception) {
+                        logger.error("Failed to delete entries with sykmeldingId: $sykmeldingId. Rolling back.", e)
+                        connection.rollback()
+                        throw SykmeldingDbException(
+                            "Error deleting sendt_sykmelding with sykmeldingId: $sykmeldingId",
+                            e
+                        )
+                    }
+                }
+        }
+    }
+
+    companion object {
+        private val logger = logger()
+    }
 }

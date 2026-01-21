@@ -22,7 +22,6 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.application.environment.DeleteDialogportenDialogsTaskProperties
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
@@ -31,6 +30,8 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import java.util.*
+import no.nav.syfo.altinn.dialogporten.domain.create
+import no.nav.syfo.application.environment.DeleteDialogportenDialogsTaskProperties
 
 class DialogportenServiceTest :
     DescribeSpec({
@@ -53,16 +54,17 @@ class DialogportenServiceTest :
                     dialogportenClient = dialogportenClient,
                     narmestelederDb = spyNarmestelederDb,
                     otherEnvironmentProperties =
-                    OtherEnvironmentProperties(
-                        electorPath = "elector",
-                        publicIngressUrl = publicIngressUrl,
-                        frontendBaseUrl = frontendBaseUrl,
-                        persistLeesahNlBehov = true,
-                        updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
-                        isDialogportenBackgroundTaskEnabled = true,
-                        dialogportenIsApiOnly = false,
-                        deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
-                    ),
+                        OtherEnvironmentProperties(
+                            electorPath = "elector",
+                            publicIngressUrl = publicIngressUrl,
+                            frontendBaseUrl = frontendBaseUrl,
+                            persistLeesahNlBehov = true,
+                            updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
+                            isDialogportenBackgroundTaskEnabled = true,
+                            dialogportenIsApiOnly = false,
+                            deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
+                            persistSendtSykmelding = false
+                        ),
                     pdlService = pdlService,
                 )
             spyNarmestelederDb.clear()
@@ -100,8 +102,8 @@ class DialogportenServiceTest :
                         spyNarmestelederDb.updateNlBehov(
                             match {
                                 it.id == it.id &&
-                                    it.dialogId == dialogId &&
-                                    it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                                        it.dialogId == dialogId &&
+                                        it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                             },
                         )
                     }
@@ -140,10 +142,10 @@ class DialogportenServiceTest :
                     val dialogId2 = UUID.randomUUID()
 
                     coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns
-                        listOf(
-                            behovEntity1,
-                            behovEntity2,
-                        )
+                            listOf(
+                                behovEntity1,
+                                behovEntity2,
+                            )
                     coEvery { dialogportenClient.createDialog(any()) } returnsMany listOf(dialogId1, dialogId2)
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -161,7 +163,9 @@ class DialogportenServiceTest :
                 it("should log error and continue without updating document status") {
                     // Arrange
                     val behovEntity1 = nlBehovEntity()
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
+                        behovEntity1
+                    )
                     coEvery { dialogportenClient.createDialog(any()) } throws RuntimeException("Dialogporten error")
 
                     // Act
@@ -184,11 +188,11 @@ class DialogportenServiceTest :
                     val dialogId3 = UUID.randomUUID()
 
                     coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns
-                        listOf(
-                            behovEntity1,
-                            behovEntity2,
-                            behovEntity3,
-                        )
+                            listOf(
+                                behovEntity1,
+                                behovEntity2,
+                                behovEntity3,
+                            )
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
                     // First call succeeds, second fails, third succeeds
@@ -220,7 +224,9 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
+                        behovEntity1
+                    )
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -240,7 +246,9 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
+                        behovEntity1
+                    )
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -295,22 +303,22 @@ class DialogportenServiceTest :
                         )
                     coEvery { dialogportenClient.updateDialogStatus(any(), any(), any()) } just Runs
                     coEvery { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) } returns
-                        ExtendedDialog(
-                            id = UUID.randomUUID(),
-                            externalReference = behovEntity.dialogId.toString(),
-                            party = "urn:altinn:organization:identifier-no:123456789",
-                            status = DialogStatus.RequiresAttention,
-                            isApiOnly = false,
-                            attachments = emptyList(),
-                            revision = UUID.randomUUID(),
-                            content =
-                            Content(
-                                title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
-                                summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
-                            ),
-                            serviceResource = "service:resource",
-                            transmissions = listOf(),
-                        )
+                            ExtendedDialog(
+                                id = UUID.randomUUID(),
+                                externalReference = behovEntity.dialogId.toString(),
+                                party = "urn:altinn:organization:identifier-no:123456789",
+                                status = DialogStatus.RequiresAttention,
+                                isApiOnly = false,
+                                attachments = emptyList(),
+                                revision = UUID.randomUUID(),
+                                content =
+                                    Content(
+                                        title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+                                        summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
+                                    ),
+                                serviceResource = "service:resource",
+                                transmissions = listOf(),
+                            )
 
                     // Act
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
@@ -325,8 +333,8 @@ class DialogportenServiceTest :
                         spyNarmestelederDb.updateNlBehov(
                             match {
                                 it.id == behovEntity.id &&
-                                    it.dialogId == behovEntity.dialogId &&
-                                    it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                                        it.dialogId == behovEntity.dialogId &&
+                                        it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
                             },
                         )
                     }
@@ -382,8 +390,7 @@ class DialogportenServiceTest :
                             match { behovToPersist ->
                                 behovs.any { behov ->
                                     behov.id == behovToPersist.id
-                                } &&
-                                    behovToPersist.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                                } && behovToPersist.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
                             },
                         )
                     }
@@ -399,9 +406,9 @@ class DialogportenServiceTest :
                             dialogId = UUID.randomUUID(),
                         )
                     coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) } returns
-                        listOf(
-                            behovEntity1,
-                        )
+                            listOf(
+                                behovEntity1,
+                            )
                     coEvery { dialogportenClient.getDialogById(any()) } returns behovEntity1.toExtendedDialog()
                     coEvery {
                         dialogportenClient.updateDialogStatus(
@@ -416,7 +423,13 @@ class DialogportenServiceTest :
 
                     // Assert
                     coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
-                    coVerify(exactly = 1) { dialogportenClient.updateDialogStatus(behovEntity1.dialogId!!, any(), any()) }
+                    coVerify(exactly = 1) {
+                        dialogportenClient.updateDialogStatus(
+                            behovEntity1.dialogId!!,
+                            any(),
+                            any()
+                        )
+                    }
                     coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
                 }
             }
@@ -547,10 +560,10 @@ private fun NarmestelederBehovEntity.toExtendedDialog(): ExtendedDialog {
         status = DialogStatus.RequiresAttention,
         party = "urn:altinn:organization:identifier-no:$orgnummer",
         content =
-        Content(
-            title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
-            summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
-        ),
+            Content(
+                title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+                summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
+            ),
         isApiOnly = false,
         attachments = emptyList(),
     )

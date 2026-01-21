@@ -205,7 +205,7 @@ private fun clientsModule() = module {
 private fun servicesModule() = module {
     single { AaregService(arbeidsforholdOversiktClient = get()) }
     single { DinesykmeldteService(dinesykmeldteClient = get()) }
-    single { SykmeldingService(sykmeldingDb = get()) }
+    single { SykmeldingService(sykmeldingDb = get(), env = get()) }
     single {
         NarmestelederService(
             nlDb = get(),

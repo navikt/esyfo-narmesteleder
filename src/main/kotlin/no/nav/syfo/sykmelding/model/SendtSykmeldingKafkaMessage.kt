@@ -1,8 +1,8 @@
 package no.nav.syfo.sykmelding.model
 
+import no.nav.syfo.sykmelding.db.SykmeldingEntity
 import java.time.Instant
 import java.util.UUID
-import no.nav.syfo.sykmelding.db.SykmeldingEntity
 
 data class SendtSykmeldingKafkaMessage(
     val sykmelding: ArbeidsgiverSykmelding,

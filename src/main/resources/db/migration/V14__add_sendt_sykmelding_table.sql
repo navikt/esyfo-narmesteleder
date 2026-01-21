@@ -1,12 +1,13 @@
 CREATE TABLE sendt_sykmelding
 (
     id                     SERIAL PRIMARY KEY,
-    sykmelding_id          VARCHAR(50)                                        NOT NULL,
+    sykmelding_id          UUID                                               NOT NULL,
     orgnummer              VARCHAR(9)                                         NOT NULL,
     syketilfelle_startdato DATE,
     fnr                    VARCHAR                                            NOT NULL,
     fom                    DATE                                               NOT NULL,
     tom                    DATE                                               NOT NULL,
+    revoked_date           DATE,
     created                TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated                TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

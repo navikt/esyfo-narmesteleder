@@ -2,27 +2,30 @@ package no.nav.syfo.sykmelding.service
 
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.sykmelding.db.SykmeldingDb
-import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
+import no.nav.syfo.sykmelding.model.SendtSykmeldingDto
 import no.nav.syfo.sykmelding.model.toDbEntity
 import no.nav.syfo.util.logger
+import java.time.LocalDate
 import java.util.UUID
 
-class SykmeldingService(private val sykmeldingDb: SykmeldingDb, private val env: OtherEnvironmentProperties) {
+class SykmeldingService(
+    private val sykmeldingDb: SykmeldingDb,
+    private val env: OtherEnvironmentProperties
+) {
     suspend fun insertSykmelding(
-        sendtSykmelding: SendtSykmeldingKafkaMessage
+        sendtSykmelding: SendtSykmeldingDto
     ) = if (env.persistSendtSykmelding) {
         sykmeldingDb.insertSykmelding(sendtSykmelding.toDbEntity())
     } else {
-        logger.info("Not persisting sendt sykmelding with id ${sendtSykmelding.kafkaMetadata.sykmeldingId} due to configuration")
+        logger.info("Not persisting sendt sykmelding with id ${sendtSykmelding.sykmeldingId} due to configuration")
     }
 
-    suspend fun deleteSykmelding(sykmeldingId: UUID) = if (env.persistSendtSykmelding) {
-        sykmeldingDb.deleteSykmelding(sykmeldingId).also { rows ->
-            logger.info("Deleted $rows entries with sykmeldingId: $sykmeldingId")
+    suspend fun revokeSykmelding(sykmeldingId: UUID) = if (env.persistSendtSykmelding) {
+        sykmeldingDb.revokeSykmelding(sykmeldingId, LocalDate.now()).also { rows ->
+            logger.info("Marked $rows entries with sykmeldingId: $sykmeldingId as revoked")
         }
-        // TODO: Update expiration in Dialogporten
     } else {
-        logger.info("Wont delete entries with sykmeldingId $sykmeldingId due to configuration")
+        logger.info("Wont revoke entries with sykmeldingId $sykmeldingId due to configuration")
     }
 
     companion object {

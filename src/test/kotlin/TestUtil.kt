@@ -236,13 +236,13 @@ fun defaultSendtSykmeldingMessage(
     riktigNarmesteLeder: RiktigNarmesteLeder? = null
 ): SendtSykmeldingKafkaMessage = SendtSykmeldingKafkaMessage(
     kafkaMetadata = KafkaMetadata(
-        sykmeldingId = "sykmelding-123",
+        sykmeldingId = "00000000-0000-0000-0000-000000000123",
         timestamp = OffsetDateTime.now(),
         fnr = fnr,
         source = "test"
     ),
     event = Event(
-        sykmeldingId = "sykmelding-123",
+        sykmeldingId = "00000000-0000-0000-0000-000000000123",
         timestamp = OffsetDateTime.now(),
         brukerSvar = BrukerSvar(riktigNarmesteLeder = riktigNarmesteLeder),
         arbeidsgiver = Arbeidsgiver(

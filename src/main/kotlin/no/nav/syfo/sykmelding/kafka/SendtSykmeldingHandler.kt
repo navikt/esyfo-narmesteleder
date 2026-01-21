@@ -44,4 +44,8 @@ class SendtSykmeldingHandler(
             logger.info("Employee has answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")
         }
     }
+
+    suspend fun handleTombstone(sykmeldingId: String) {
+        sykmeldingService.deleteSykmelding(UUID.fromString(sykmeldingId))
+    }
 }

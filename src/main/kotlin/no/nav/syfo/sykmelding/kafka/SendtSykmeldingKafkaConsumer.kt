@@ -37,17 +37,19 @@ class SendtSykmeldingKafkaConsumer(
                     kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
                         .forEach { record: ConsumerRecord<String, String?> ->
                             logger.info("Received record with key: ${record.key()}")
-                            val value = record.value()
-                            val isTombstone = value == null
+                            val sykmeldingMessage = record.value()
+                            val sykmeldingId = record.key()
+                            val isTombstone = sykmeldingMessage == null
 
                             if (isTombstone) {
-                                // Handle tombstone message if necessary
+                                logger.info("Received tombstone for sykmeldingId: $sykmeldingId.")
+                                handler.handleTombstone(sykmeldingId)
                             } else {
                                 val sendtSykmeldingKafkaMessage =
-                                    jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(value)
+                                    jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(sykmeldingMessage)
                                 handler.handleSendtSykmelding(sendtSykmeldingKafkaMessage)
-                                kafkaConsumer.commitSync()
                             }
+                            kafkaConsumer.commitSync()
                         }
                 } catch (_: WakeupException) {
                     logger.info("Waked Kafka consumer")

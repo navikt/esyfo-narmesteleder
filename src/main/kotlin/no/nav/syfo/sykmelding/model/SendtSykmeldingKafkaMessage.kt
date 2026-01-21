@@ -1,6 +1,5 @@
 package no.nav.syfo.sykmelding.model
 
-import java.time.Instant
 import java.util.UUID
 
 data class SendtSykmeldingKafkaMessage(
@@ -18,7 +17,5 @@ fun SendtSykmeldingKafkaMessage.toDto(): SendtSykmeldingDto {
         fom = mostRecentSykmeldingperiode.fom,
         tom = mostRecentSykmeldingperiode.tom,
         syketilfelleStartDato = sykmelding.syketilfelleStartDato,
-        created = Instant.now(),
-        updated = Instant.now(),
     )
 }

@@ -13,6 +13,6 @@ data class SendtSykmeldingEntity(
     val tom: LocalDate,
     val revokedDate: LocalDate? = null,
     val syketilfelleStartDato: LocalDate?,
-    val created: Instant,
+    val created: Instant? = null,
     val updated: Instant = Instant.now(),
 )

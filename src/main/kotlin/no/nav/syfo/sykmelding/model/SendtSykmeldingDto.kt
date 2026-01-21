@@ -12,8 +12,8 @@ data class SendtSykmeldingDto(
     val fom: LocalDate,
     val tom: LocalDate,
     val syketilfelleStartDato: LocalDate?,
-    val created: Instant,
-    val updated: Instant = Instant.now(),
+    val updated: Instant? = null,
+    val created: Instant? = null,
 )
 
 fun SendtSykmeldingDto.toDbEntity(): SendtSykmeldingEntity = SendtSykmeldingEntity(
@@ -23,6 +23,4 @@ fun SendtSykmeldingDto.toDbEntity(): SendtSykmeldingEntity = SendtSykmeldingEnti
     fom = this.fom,
     tom = this.tom,
     syketilfelleStartDato = this.syketilfelleStartDato,
-    created = this.created,
-    updated = this.updated,
 )

@@ -4,6 +4,7 @@ import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
+import no.nav.syfo.sykmelding.model.toDto
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.util.logger
 import java.time.LocalDate
@@ -26,7 +27,7 @@ class SendtSykmeldingHandler(
                     return
                 }
 
-            sykmeldingService.insertSykmelding(message)
+            sykmeldingService.insertSykmelding(message.toDto())
             narmesteLederService.createNewNlBehov(
                 nlBehov = LinemanagerRequirementWrite(
                     employeeIdentificationNumber = message.kafkaMetadata.fnr,
@@ -43,6 +44,6 @@ class SendtSykmeldingHandler(
     }
 
     suspend fun handleTombstone(sykmeldingId: String) {
-        sykmeldingService.deleteSykmelding(UUID.fromString(sykmeldingId))
+        sykmeldingService.revokeSykmelding(UUID.fromString(sykmeldingId))
     }
 }

@@ -1,6 +1,5 @@
 package no.nav.syfo.sykmelding.model
 
-import no.nav.syfo.sykmelding.db.SykmeldingEntity
 import java.time.Instant
 import java.util.UUID
 
@@ -10,12 +9,12 @@ data class SendtSykmeldingKafkaMessage(
     val event: Event,
 )
 
-fun SendtSykmeldingKafkaMessage.toDbEntity(): SykmeldingEntity {
+fun SendtSykmeldingKafkaMessage.toDto(): SendtSykmeldingDto {
     val mostRecentSykmeldingperiode = sykmelding.sykmeldingsperioder.maxBy { it.tom }
-    return SykmeldingEntity(
+    return SendtSykmeldingDto(
         sykmeldingId = UUID.fromString(kafkaMetadata.sykmeldingId),
         fnr = kafkaMetadata.fnr,
-        orgnummer = requireNotNull(event.arbeidsgiver?.orgnummer) { "orgnummer must not be null in db entities" },
+        orgnummer = event.arbeidsgiver?.orgnummer,
         fom = mostRecentSykmeldingperiode.fom,
         tom = mostRecentSykmeldingperiode.tom,
         syketilfelleStartDato = sykmelding.syketilfelleStartDato,

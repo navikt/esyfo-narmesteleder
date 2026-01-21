@@ -1,11 +1,11 @@
 package no.nav.syfo.sykmelding.service
 
-import java.util.UUID
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.sykmelding.db.SykmeldingDb
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.model.toDbEntity
 import no.nav.syfo.util.logger
+import java.util.UUID
 
 class SykmeldingService(private val sykmeldingDb: SykmeldingDb, private val env: OtherEnvironmentProperties) {
     suspend fun insertSykmelding(
@@ -22,7 +22,7 @@ class SykmeldingService(private val sykmeldingDb: SykmeldingDb, private val env:
         }
         // TODO: Update expiration in Dialogporten
     } else {
-        logger.info("Wont delete entries with sykmeldingId ${sykmeldingId} due to configuration")
+        logger.info("Wont delete entries with sykmeldingId $sykmeldingId due to configuration")
     }
 
     companion object {

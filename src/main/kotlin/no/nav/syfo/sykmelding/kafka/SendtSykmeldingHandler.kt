@@ -5,12 +5,11 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
+import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.util.logger
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
 import kotlin.collections.any
-import no.nav.syfo.sykmelding.service.SykmeldingService
 
 class SendtSykmeldingHandler(
     private val narmesteLederService: NarmestelederService,

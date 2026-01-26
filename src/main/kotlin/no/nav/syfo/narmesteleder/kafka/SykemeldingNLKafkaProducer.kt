@@ -2,6 +2,8 @@ package no.nav.syfo.narmesteleder.kafka
 
 import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
 import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.KafkaMetadata
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbruddResponseKafkaMessage
@@ -12,15 +14,14 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.util.logger
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 
 interface ISykemeldingNLKafkaProducer {
     fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource)
     fun sendSykmldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource)
 }
 
-class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INlResponseKafkaMessage>) : ISykemeldingNLKafkaProducer {
+class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INlResponseKafkaMessage>) :
+    ISykemeldingNLKafkaProducer {
     override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) {
         val kafkaMessage =
             NlRelationResponseKafkaMessage(

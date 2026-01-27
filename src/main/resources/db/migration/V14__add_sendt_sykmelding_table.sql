@@ -1,7 +1,7 @@
 CREATE TABLE sendt_sykmelding
 (
     id                     SERIAL PRIMARY KEY,
-    sykmelding_id          UUID                                               NOT NULL,
+    sykmelding_id          UUID UNIQUE                                        NOT NULL,
     orgnummer              VARCHAR(9)                                         NOT NULL,
     syketilfelle_startdato DATE,
     fnr                    VARCHAR                                            NOT NULL,

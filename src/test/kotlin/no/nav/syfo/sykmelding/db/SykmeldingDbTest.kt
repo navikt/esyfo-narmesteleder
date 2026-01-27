@@ -51,8 +51,8 @@ class SykmeldingDbTest :
                 db.insertSykmelding(toInsert)
 
                 val retrieved = db.findBySykmeldingId(sykmeldingId)
-                retrieved shouldHaveSize 1
-                val row = retrieved.first()
+                retrieved shouldNotBe null
+                val row = retrieved!!
 
                 row.id shouldNotBe null
                 row.sykmeldingId shouldBe sykmeldingId
@@ -64,15 +64,15 @@ class SykmeldingDbTest :
                 row.revokedDate shouldBe null
             }
 
-            it("should allow multiple rows with same sykmeldingId") {
+            it("should update existing entry when inserting with same sykmeldingId") {
                 val sykmeldingId = UUID.randomUUID()
 
-                db.insertSykmelding(entity(sykmeldingId = sykmeldingId, orgnummer = "111111111"))
-                db.insertSykmelding(entity(sykmeldingId = sykmeldingId, orgnummer = "222222222"))
+                db.insertSykmelding(entity(sykmeldingId = sykmeldingId, orgnummer = "111111111", fnr = "12345678901"))
+                db.insertSykmelding(entity(sykmeldingId = sykmeldingId, orgnummer = "111111111", fnr = "98765432109"))
 
                 val retrieved = db.findBySykmeldingId(sykmeldingId)
-                retrieved shouldHaveSize 2
-                retrieved.map { it.orgnummer }.toSet() shouldBe setOf("111111111", "222222222")
+                retrieved shouldNotBe null
+                retrieved!!.fnr shouldBe "98765432109"
             }
         }
 
@@ -83,7 +83,7 @@ class SykmeldingDbTest :
                 result shouldBe 0
             }
 
-            it("should update only rows where tom <= revokedDate and return affected count") {
+            it("should update row where tom <= revokedDate and return 1") {
                 val sykmeldingId = UUID.randomUUID()
 
                 // tom = 2025-01-10 (should be updated when revokedDate = 2025-01-15)
@@ -95,33 +95,19 @@ class SykmeldingDbTest :
                     )
                 )
 
-                // tom = 2025-02-01 (should NOT be updated when revokedDate = 2025-01-15)
-                db.insertSykmelding(
-                    entity(
-                        sykmeldingId = sykmeldingId,
-                        orgnummer = "222222222",
-                        tom = LocalDate.of(2025, 2, 1),
-                    )
-                )
-
                 val revokedDate = LocalDate.of(2025, 1, 15)
                 val affectedRows = db.revokeSykmelding(sykmeldingId, revokedDate)
 
                 affectedRows shouldBe 1
 
-                val rows = db.findBySykmeldingId(sykmeldingId)
-                rows shouldHaveSize 2
-
-                val updated = rows.first { it.orgnummer == "111111111" }
-                val notUpdated = rows.first { it.orgnummer == "222222222" }
-
-                updated.revokedDate shouldBe revokedDate
-                notUpdated.revokedDate shouldBe null
+                val row = db.findBySykmeldingId(sykmeldingId)
+                row shouldNotBe null
+                row!!.revokedDate shouldBe revokedDate
             }
 
-            it("should update multiple rows if all match criteria") {
+            it("should not update row where tom > revokedDate") {
                 val sykmeldingId = UUID.randomUUID()
-                val revokedDate = LocalDate.of(2025, 1, 20)
+                val revokedDate = LocalDate.of(2025, 1, 5)
 
                 db.insertSykmelding(
                     entity(
@@ -130,27 +116,21 @@ class SykmeldingDbTest :
                         tom = LocalDate.of(2025, 1, 10),
                     )
                 )
-                db.insertSykmelding(
-                    entity(
-                        sykmeldingId = sykmeldingId,
-                        orgnummer = "222222222",
-                        tom = LocalDate.of(2025, 1, 15),
-                    )
-                )
 
                 val affectedRows = db.revokeSykmelding(sykmeldingId, revokedDate)
 
-                affectedRows shouldBe 2
+                affectedRows shouldBe 0
 
-                val rows = db.findBySykmeldingId(sykmeldingId)
-                rows.all { it.revokedDate == revokedDate } shouldBe true
+                val row = db.findBySykmeldingId(sykmeldingId)
+                row shouldNotBe null
+                row!!.revokedDate shouldBe null
             }
         }
 
         describe("findBySykmeldingId") {
-            it("should return empty list when no rows exist") {
+            it("should return null when no row exists") {
                 val result = db.findBySykmeldingId(UUID.randomUUID())
-                result shouldHaveSize 0
+                result shouldBe null
             }
         }
 
@@ -175,11 +155,10 @@ class SykmeldingDbTest :
                 // Revoke to test that field is also mapped
                 db.revokeSykmelding(sykmeldingId, LocalDate.of(2025, 3, 20))
 
-                val rows = db.findBySykmeldingId(sykmeldingId)
-                rows shouldHaveSize 1
+                val row = db.findBySykmeldingId(sykmeldingId)
+                row shouldNotBe null
 
-                val row = rows.first()
-                row.id shouldNotBe null
+                row!!.id shouldNotBe null
                 row.sykmeldingId shouldBe sykmeldingId
                 row.fnr shouldBe "09876543210"
                 row.orgnummer shouldBe "123456789"
@@ -222,9 +201,9 @@ class SykmeldingDbTest :
                     )
                 )
                 // Verify the row exists and has no revokedDate
-                val beforeRows = dbWithSpy.findBySykmeldingId(sykmeldingId)
-                beforeRows shouldHaveSize 1
-                beforeRows.first().revokedDate shouldBe null
+                val beforeRow = dbWithSpy.findBySykmeldingId(sykmeldingId)
+                beforeRow shouldNotBe null
+                beforeRow!!.revokedDate shouldBe null
 
                 shouldThrow = true
                 // Attempt revoke - should fail and rollback
@@ -237,9 +216,9 @@ class SykmeldingDbTest :
                 exception.cause shouldNotBe null
 
                 // Verify the data was NOT modified (rollback worked)
-                val afterRows = dbWithSpy.findBySykmeldingId(sykmeldingId)
-                afterRows shouldHaveSize 1
-                afterRows.first().revokedDate shouldBe null
+                val afterRow = dbWithSpy.findBySykmeldingId(sykmeldingId)
+                afterRow shouldNotBe null
+                afterRow!!.revokedDate shouldBe null
             }
         }
     })

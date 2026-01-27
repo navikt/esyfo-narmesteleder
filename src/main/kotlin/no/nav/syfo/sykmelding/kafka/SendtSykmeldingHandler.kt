@@ -28,7 +28,7 @@ class SendtSykmeldingHandler(
                     return
                 }
 
-            sykmeldingService.insertSykmelding(message.toDto())
+            sykmeldingService.insertOrUpdateSykmelding(message.toDto())
             narmesteLederService.createNewNlBehov(
                 nlBehov = LinemanagerRequirementWrite(
                     employeeIdentificationNumber = message.kafkaMetadata.fnr,

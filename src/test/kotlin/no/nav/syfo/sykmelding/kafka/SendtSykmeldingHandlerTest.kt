@@ -25,7 +25,7 @@ class SendtSykmeldingHandlerTest :
 
         beforeEach {
             clearAllMocks()
-            coEvery { sykmeldingService.insertSykmelding(any()) } just Runs
+            coEvery { sykmeldingService.insertOrUpdateSykmelding(any()) } just Runs
             coEvery { narmesteLederService.createNewNlBehov(any(), any(), any()) } returns null
         }
 

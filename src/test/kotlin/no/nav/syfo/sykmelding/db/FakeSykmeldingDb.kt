@@ -8,25 +8,34 @@ class FakeSykmeldingDb : ISykmeldingDb {
     private val store = CopyOnWriteArrayList<SendtSykmeldingEntity>()
 
     override suspend fun insertSykmelding(sykmeldingEntity: SendtSykmeldingEntity) {
-        store += sykmeldingEntity
+        val existingIndex = store.indexOfFirst { it.sykmeldingId == sykmeldingEntity.sykmeldingId }
+        if (existingIndex >= 0) {
+            // Upsert: update existing entry with new values
+            val existing = store[existingIndex]
+            store[existingIndex] = existing.copy(
+                fnr = sykmeldingEntity.fnr,
+                fom = sykmeldingEntity.fom,
+                tom = sykmeldingEntity.tom,
+                updated = sykmeldingEntity.updated
+            )
+        } else {
+            store += sykmeldingEntity
+        }
     }
 
     override suspend fun revokeSykmelding(
         sykmeldingId: UUID,
         revokedDate: LocalDate
     ): Int {
-        var affected = 0
-        for (i in store.indices) {
-            val current = store[i]
-            if (current.sykmeldingId == sykmeldingId && !current.tom.isAfter(revokedDate)) {
-                store[i] = current.copy(revokedDate = revokedDate)
-                affected++
-            }
+        val index = store.indexOfFirst { it.sykmeldingId == sykmeldingId && !it.tom.isAfter(revokedDate) }
+        if (index >= 0) {
+            store[index] = store[index].copy(revokedDate = revokedDate)
+            return 1
         }
-        return affected
+        return 0
     }
 
-    override suspend fun findBySykmeldingId(sykmeldingId: UUID): List<SendtSykmeldingEntity> = store.filter { it.sykmeldingId == sykmeldingId }
+    override suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity? = store.find { it.sykmeldingId == sykmeldingId }
 
     fun findAll(): List<SendtSykmeldingEntity> = store.toList()
 

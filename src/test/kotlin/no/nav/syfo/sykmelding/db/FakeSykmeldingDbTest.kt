@@ -3,6 +3,7 @@ package no.nav.syfo.sykmelding.db
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -35,13 +36,13 @@ class FakeSykmeldingDbTest :
         )
 
         describe("insertSykmelding") {
-            it("allows multiple rows with the same sykmeldingId") {
+            it("should update existing entry when inserting with same sykmeldingId") {
                 val id = UUID.randomUUID()
                 db.insertSykmelding(entity(sykmeldingId = id, orgnummer = "111111111"))
-                db.insertSykmelding(entity(sykmeldingId = id, orgnummer = "222222222"))
+                db.insertSykmelding(entity(sykmeldingId = id, orgnummer = "111111111"))
 
-                db.findAll() shouldHaveSize 2
-                db.findBySykmeldingId(id) shouldHaveSize 2
+                db.findAll() shouldHaveSize 1
+                db.findBySykmeldingId(id) shouldNotBe null
             }
         }
 
@@ -50,7 +51,7 @@ class FakeSykmeldingDbTest :
                 db.revokeSykmelding(UUID.randomUUID(), LocalDate.of(2025, 1, 10)) shouldBe 0
             }
 
-            it("only updates rows where tom <= revokedDate and returns affected row count") {
+            it("updates row where tom <= revokedDate and returns 1") {
                 val sykmeldingId = UUID.randomUUID()
 
                 // Eligible (tom <= revokedDate)
@@ -62,26 +63,31 @@ class FakeSykmeldingDbTest :
                     )
                 )
 
-                // Not eligible (tom after revokedDate)
+                val revokedDate = LocalDate.of(2025, 1, 10)
+                db.revokeSykmelding(sykmeldingId, revokedDate) shouldBe 1
+
+                val row = db.findBySykmeldingId(sykmeldingId)
+                row shouldNotBe null
+                row!!.revokedDate shouldBe revokedDate
+            }
+
+            it("does not update row where tom > revokedDate") {
+                val sykmeldingId = UUID.randomUUID()
+
                 db.insertSykmelding(
                     entity(
                         sykmeldingId = sykmeldingId,
-                        orgnummer = "222222222",
+                        orgnummer = "111111111",
                         tom = LocalDate.of(2025, 2, 1),
                     )
                 )
 
                 val revokedDate = LocalDate.of(2025, 1, 10)
-                db.revokeSykmelding(sykmeldingId, revokedDate) shouldBe 1
+                db.revokeSykmelding(sykmeldingId, revokedDate) shouldBe 0
 
-                val rows = db.findBySykmeldingId(sykmeldingId)
-                rows shouldHaveSize 2
-
-                val eligible = rows.first { it.orgnummer == "111111111" }
-                val notEligible = rows.first { it.orgnummer == "222222222" }
-
-                eligible.revokedDate shouldBe revokedDate
-                notEligible.revokedDate shouldBe null
+                val row = db.findBySykmeldingId(sykmeldingId)
+                row shouldNotBe null
+                row!!.revokedDate shouldBe null
             }
         }
     })

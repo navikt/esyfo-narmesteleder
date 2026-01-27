@@ -12,7 +12,7 @@ class SykmeldingService(
     private val sykmeldingDb: SykmeldingDb,
     private val env: OtherEnvironmentProperties
 ) {
-    suspend fun insertSykmelding(
+    suspend fun insertOrUpdateSykmelding(
         sendtSykmelding: SendtSykmeldingDto
     ) = if (env.persistSendtSykmelding) {
         sykmeldingDb.insertSykmelding(sendtSykmelding.toDbEntity())

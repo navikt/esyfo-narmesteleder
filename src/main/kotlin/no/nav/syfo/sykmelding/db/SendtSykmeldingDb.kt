@@ -14,7 +14,7 @@ import java.util.UUID
 interface ISykmeldingDb {
     suspend fun insertSykmelding(sykmeldingEntity: SendtSykmeldingEntity)
     suspend fun revokeSykmelding(sykmeldingId: UUID, revokedDate: LocalDate): Int
-    suspend fun findBySykmeldingId(sykmeldingId: UUID): List<SendtSykmeldingEntity>
+    suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity?
 }
 
 class SykmeldingDbException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -37,7 +37,12 @@ class SykmeldingDb(
                                          tom,
                                         updated
                     )
-                    VALUES (?, ?, ?, ?,?, ?, ?)
+                    VALUES (?, ?, ?, ?,?, ?, ?) 
+                    ON CONFLICT (sykmelding_id) DO UPDATE SET
+                        fnr = EXCLUDED.fnr,
+                        fom = EXCLUDED.fom,
+                        tom = EXCLUDED.tom,
+                        updated = EXCLUDED.updated
                     """.trimIndent()
                 ).use { preparedStatement ->
                     var idx = 0
@@ -79,12 +84,12 @@ class SykmeldingDb(
                         }
                     } catch (e: Exception) {
                         logger.error(
-                            "Failed to delete entries with sykmeldingId: $sykmeldingId. Rolling back.",
+                            "Failed to revoke sykmelding with sykmeldingId: $sykmeldingId. Rolling back.",
                             e
                         )
                         connection.rollback()
                         throw SykmeldingDbException(
-                            "Error revoking sendt_sykmelding with sykmeldingId: $sykmeldingId",
+                            "Error revoking sykmelding with sykmeldingId: $sykmeldingId",
                             e
                         )
                     }
@@ -92,7 +97,7 @@ class SykmeldingDb(
         }
     }
 
-    override suspend fun findBySykmeldingId(sykmeldingId: UUID): List<SendtSykmeldingEntity> = withContext(dispatcher) {
+    override suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity? = withContext(dispatcher) {
         database.connection.use { connection ->
             connection
                 .prepareStatement(
@@ -104,10 +109,10 @@ class SykmeldingDb(
                 ).use { preparedStatement ->
                     preparedStatement.setObject(1, sykmeldingId)
                     val resultSet = preparedStatement.executeQuery()
-                    buildList {
-                        while (resultSet.next()) {
-                            add(resultSet.toSendtSykmeldingEntity())
-                        }
+                    if (resultSet.next()) {
+                        resultSet.toSendtSykmeldingEntity()
+                    } else {
+                        null
                     }
                 }
         }

@@ -46,6 +46,11 @@ class SendtSykmeldingHandler(
     }
 
     suspend fun handleTombstone(sykmeldingId: String) {
-        sykmeldingService.revokeSykmelding(UUID.fromString(sykmeldingId))
+        try {
+            val sykmeldingUuid = UUID.fromString(sykmeldingId)
+            sykmeldingService.revokeSykmelding(sykmeldingUuid)
+        } catch (e: IllegalArgumentException) {
+            logger.error("Received tombstone with invalid sykmeldingId format: $sykmeldingId", e)
+        }
     }
 }

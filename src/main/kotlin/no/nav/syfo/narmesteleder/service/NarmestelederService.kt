@@ -144,13 +144,13 @@ class NarmestelederService(
             NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
                 nlBehov,
                 hovedenhetOrgnummer = "UNKNOWN",
-                behovStatus = BehovStatus.ERROR,
+                behovStatus = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND,
             )
         }
         val insertedEntity = nlDb.insertNlBehov(entity).also {
             logger.info("Inserted NarmestelederBehovEntity with id: $it")
         }
-        if (entity.behovStatus != BehovStatus.ERROR) {
+        if (!listOf(BehovStatus.ERROR, BehovStatus.ARBEIDSFORHOLD_NOT_FOUND).contains(entity.behovStatus)) {
             dialogportenService.sendToDialogporten(insertedEntity)
         }
         return insertedEntity.id

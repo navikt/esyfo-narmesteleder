@@ -4,8 +4,6 @@ import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMP
 import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
 import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
 import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.KafkaMetadata
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbruddResponseKafkaMessage
@@ -16,14 +14,15 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.util.logger
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 interface ISykemeldingNLKafkaProducer {
     fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource)
     fun sendSykmldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource)
 }
 
-class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INlResponseKafkaMessage>) :
-    ISykemeldingNLKafkaProducer {
+class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INlResponseKafkaMessage>) : ISykemeldingNLKafkaProducer {
     override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) {
         val kafkaMessage =
             NlRelationResponseKafkaMessage(
@@ -33,13 +32,15 @@ class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INl
         try {
             producer.send(ProducerRecord(SYKEMELDING_NL_TOPIC, sykmeldingNL.orgnummer, kafkaMessage)).get()
         } catch (ex: Exception) {
-            when(source){
+            when (source) {
                 NlResponseSource.LPS -> {
                     COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS.increment()
                 }
+
                 NlResponseSource.PERSONALLEDER -> {
                     COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.increment()
                 }
+
                 else -> {
                 }
             }
@@ -57,13 +58,15 @@ class SykemeldingNLKafkaProducer(private val producer: KafkaProducer<String, INl
         try {
             producer.send(ProducerRecord(SYKEMELDING_NL_TOPIC, nlAvbrutt.orgnummer, kafkaMessage)).get()
         } catch (ex: Exception) {
-            when(source){
+            when (source) {
                 NlResponseSource.LPS -> {
                     COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS.increment()
                 }
+
                 NlResponseSource.PERSONALLEDER -> {
                     COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.increment()
                 }
+
                 else -> {
                 }
             }

@@ -151,7 +151,7 @@ class NarmestelederServiceTest :
                 coVerify(exactly = 1) {
                     nlDb.insertNlBehov(
                         withArg {
-                            it.behovStatus shouldBe BehovStatus.ERROR
+                            it.behovStatus shouldBe BehovStatus.ARBEIDSFORHOLD_NOT_FOUND
                             it.hovedenhetOrgnummer shouldBe "UNKNOWN"
                         }
                     )

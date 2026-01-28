@@ -1,5 +1,6 @@
 package no.nav.syfo.sykmelding.service
 
+import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
 import no.nav.syfo.sykmelding.db.SykmeldingDb
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
@@ -9,23 +10,34 @@ import java.util.UUID
 
 class SykmeldingService(
     private val sykmeldingDb: SykmeldingDb,
+    private val otherEnvironmentProperties: OtherEnvironmentProperties,
 ) {
     suspend fun insertOrUpdateSykmelding(
         sendtSykmelding: SendtSykmeldingKafkaMessage
     ) {
         val hasEmployer = sendtSykmelding.event.arbeidsgiver != null
-        if (hasEmployer) {
-            val latestSykmeldingPeriod = sendtSykmelding.sykmelding.sykmeldingsperioder.maxBy { it.fom }
+        val latestPeriodOrNull = sendtSykmelding.sykmelding.sykmeldingsperioder
+            .maxBy { it.tom }
+            .takeIf { period ->
+                val today = LocalDate.now()
+                // Vi har p.t. behandlingsgrunnlag for å be om nærmeste leder på sykmeldinger som er utløpt med inntil 16 dager.
+                // Setter denne som miljøvariabel for testing utenfor prod
+                today <= period.tom.plusDays(otherEnvironmentProperties.sykmeldingTomPaddingDays)
+            }
+
+        if (hasEmployer && latestPeriodOrNull != null) {
+            val sykmeldingId = sendtSykmelding.event.sykmeldingId
             sykmeldingDb.insertOrUpdateSykmelding(
                 SendtSykmeldingEntity(
-                    sykmeldingId = UUID.fromString(sendtSykmelding.event.sykmeldingId),
+                    sykmeldingId = UUID.fromString(sykmeldingId),
                     fnr = sendtSykmelding.kafkaMetadata.fnr,
                     orgnummer = sendtSykmelding.event.arbeidsgiver.orgnummer,
-                    fom = latestSykmeldingPeriod.fom,
-                    tom = latestSykmeldingPeriod.tom,
+                    fom = latestPeriodOrNull.fom,
+                    tom = latestPeriodOrNull.tom,
                     syketilfelleStartDato = sendtSykmelding.sykmelding.syketilfelleStartDato,
                 )
             )
+            logger.info("Inserted/updated sykmeldingId: $sykmeldingId")
         }
     }
 

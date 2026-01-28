@@ -1,4 +1,4 @@
-package no.nav.syfo.sykmelding.kafka.model
+package no.nav.syfo.sykmelding.model
 
 data class SendtSykmeldingKafkaMessage(
     val sykmelding: ArbeidsgiverSykmelding,

@@ -9,6 +9,8 @@ data class OtherEnvironmentProperties(
     val persistLeesahNlBehov: Boolean,
     val isDialogportenBackgroundTaskEnabled: Boolean,
     val dialogportenIsApiOnly: Boolean,
+    val persistSendtSykmelding: Boolean,
+    val sykmeldingTomPaddingDays: Long
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -20,6 +22,8 @@ data class OtherEnvironmentProperties(
             dialogportenIsApiOnly = getEnvVar("DIALOGPORTEN_API_ONLY").toBoolean(),
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars(),
             deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createFromEnvVars(),
+            persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
+            sykmeldingTomPaddingDays = getEnvVar("SYKMELDING_TOM_PADDING", "16").toLong(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -31,9 +35,12 @@ data class OtherEnvironmentProperties(
             isDialogportenBackgroundTaskEnabled = false,
             dialogportenIsApiOnly = false,
             deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
+            persistSendtSykmelding = true,
+            sykmeldingTomPaddingDays = 0
         )
     }
 }
+
 data class DeleteDialogportenDialogsTaskProperties(
     val pollingDelay: String,
     val deleteDialogerTaskEnabled: Boolean,
@@ -59,6 +66,7 @@ data class DeleteDialogportenDialogsTaskProperties(
         )
     }
 }
+
 data class UpdateDialogportenTaskProperties(
     val pollingDelay: String,
 ) {

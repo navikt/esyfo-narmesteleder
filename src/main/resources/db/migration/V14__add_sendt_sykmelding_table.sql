@@ -11,3 +11,19 @@ CREATE TABLE sendt_sykmelding
     created                TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated                TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+-- Create a function to update the updated column
+CREATE OR REPLACE FUNCTION update_updated_column()
+    RETURNS TRIGGER AS
+$$
+BEGIN
+    NEW.updated = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create the trigger
+CREATE TRIGGER update_sendt_sykmelding_updated
+    BEFORE UPDATE
+    ON sendt_sykmelding
+    FOR EACH ROW
+EXECUTE FUNCTION update_updated_column();

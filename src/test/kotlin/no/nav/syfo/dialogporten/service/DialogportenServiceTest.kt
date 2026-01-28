@@ -62,7 +62,8 @@ class DialogportenServiceTest :
                         isDialogportenBackgroundTaskEnabled = true,
                         dialogportenIsApiOnly = false,
                         deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
-                        persistSendtSykmelding = false
+                        persistSendtSykmelding = false,
+                        sykmeldingTomPaddingDays = 16L
                     ),
                     pdlService = pdlService,
                 )

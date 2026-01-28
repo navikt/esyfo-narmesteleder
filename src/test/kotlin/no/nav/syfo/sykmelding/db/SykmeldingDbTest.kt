@@ -42,7 +42,7 @@ class SykmeldingDbTest :
             updated = Instant.now(),
         )
 
-        describe("insertSykmelding") {
+        describe("insertOrUpdateSykmelding") {
             it("should persist a sykmelding entity and allow retrieval") {
                 val sykmeldingId = UUID.randomUUID()
                 val toInsert = entity(sykmeldingId = sykmeldingId)

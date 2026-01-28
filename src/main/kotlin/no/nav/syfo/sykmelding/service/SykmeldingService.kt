@@ -1,15 +1,15 @@
 package no.nav.syfo.sykmelding.service
 
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
+import no.nav.syfo.sykmelding.db.ISykmeldingDb
 import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
-import no.nav.syfo.sykmelding.db.SykmeldingDb
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.util.logger
 import java.time.LocalDate
 import java.util.UUID
 
 class SykmeldingService(
-    private val sykmeldingDb: SykmeldingDb,
+    private val sykmeldingDb: ISykmeldingDb,
     private val otherEnvironmentProperties: OtherEnvironmentProperties,
 ) {
     suspend fun insertOrUpdateSykmelding(
@@ -41,7 +41,7 @@ class SykmeldingService(
         }
     }
 
-    suspend fun revokeSykmelding(sykmeldingId: UUID) = sykmeldingDb.revokeSykmelding(sykmeldingId, LocalDate.now()).also { rows ->
+    suspend fun revokeSykmelding(sykmeldingId: UUID) = sykmeldingDb.revokeSykmelding(sykmeldingId, LocalDate.now()).also {
         logger.info("Marked sykmeldingId: $sykmeldingId as revoked")
     }
 

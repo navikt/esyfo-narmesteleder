@@ -34,15 +34,13 @@ class SykmeldingDb(
                                          fnr,
                                          syketilfelle_startdato,
                                          fom,
-                                         tom,
-                                        updated
+                                         tom
                     )
                     VALUES (?, ?, ?, ?,?, ?, ?) 
                     ON CONFLICT (sykmelding_id) DO UPDATE SET
                         fnr = EXCLUDED.fnr,
                         fom = EXCLUDED.fom,
-                        tom = EXCLUDED.tom,
-                        updated = EXCLUDED.updated
+                        tom = EXCLUDED.tom
                     """.trimIndent()
                 ).use { preparedStatement ->
                     try {
@@ -56,7 +54,6 @@ class SykmeldingDb(
                         )
                         preparedStatement.setDate(++idx, Date.valueOf(sykmeldingEntity.fom))
                         preparedStatement.setDate(++idx, Date.valueOf(sykmeldingEntity.tom))
-                        preparedStatement.setTimestamp(++idx, Timestamp.from(sykmeldingEntity.updated))
                         preparedStatement.execute()
                         connection.commit()
                     } catch (e: Exception) {

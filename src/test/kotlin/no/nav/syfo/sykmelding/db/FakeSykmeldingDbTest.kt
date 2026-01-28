@@ -38,8 +38,8 @@ class FakeSykmeldingDbTest :
         describe("insertSykmelding") {
             it("should update existing entry when inserting with same sykmeldingId") {
                 val id = UUID.randomUUID()
-                db.insertSykmelding(entity(sykmeldingId = id, orgnummer = "111111111"))
-                db.insertSykmelding(entity(sykmeldingId = id, orgnummer = "111111111"))
+                db.insertOrUpdateSykmelding(entity(sykmeldingId = id, orgnummer = "111111111"))
+                db.insertOrUpdateSykmelding(entity(sykmeldingId = id, orgnummer = "111111111"))
 
                 db.findAll() shouldHaveSize 1
                 db.findBySykmeldingId(id) shouldNotBe null
@@ -55,7 +55,7 @@ class FakeSykmeldingDbTest :
                 val sykmeldingId = UUID.randomUUID()
 
                 // Eligible (tom <= revokedDate)
-                db.insertSykmelding(
+                db.insertOrUpdateSykmelding(
                     entity(
                         sykmeldingId = sykmeldingId,
                         orgnummer = "111111111",
@@ -74,7 +74,7 @@ class FakeSykmeldingDbTest :
             it("does not update row where tom > revokedDate") {
                 val sykmeldingId = UUID.randomUUID()
 
-                db.insertSykmelding(
+                db.insertOrUpdateSykmelding(
                     entity(
                         sykmeldingId = sykmeldingId,
                         orgnummer = "111111111",

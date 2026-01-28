@@ -9,9 +9,11 @@ import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
+import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingKafkaConsumer
 import no.nav.syfo.util.logger
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
@@ -60,15 +62,35 @@ fun Application.configureKafkaConsumers() {
         scope = this
     )
 
+    val persistSendtSykmeldingConsumer = PersistSendtSykmeldingConsumer(
+        handler = sendtSykmeldingHandler,
+        jacksonMapper = jacksonMapper(),
+        kafkaConsumer = KafkaConsumer(
+            consumerProperties(
+                env = environment.kafka,
+                valueSerializer = StringDeserializer::class,
+                groupId = "esyfo-narmesteleder-persist-sendt-sykmelding-consumer"
+            ).apply {
+                put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+            },
+            StringDeserializer(),
+            StringDeserializer(),
+        ),
+        scope = this,
+        env = environment.otherProperties
+    )
+
     monitor.subscribe(ApplicationStarted) {
         leesahConsumer.listen()
         sendtSykmeldingConsumer.listen()
+        persistSendtSykmeldingConsumer.listen()
     }
 
     monitor.subscribe(ApplicationStopping) {
         runBlocking {
             leesahConsumer.stop()
             sendtSykmeldingConsumer.stop()
+            persistSendtSykmeldingConsumer.stop()
         }
     }
 }

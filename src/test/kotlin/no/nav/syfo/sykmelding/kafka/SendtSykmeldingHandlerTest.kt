@@ -39,7 +39,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -58,7 +58,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -77,7 +77,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -96,7 +96,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -115,7 +115,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -134,7 +134,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -153,7 +153,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -174,7 +174,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -195,7 +195,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -217,7 +217,7 @@ class SendtSykmeldingHandlerTest :
                     )
                 )
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any())
@@ -243,7 +243,7 @@ class SendtSykmeldingHandlerTest :
                 val nlBehovSlot = slot<LinemanagerRequirementWrite>()
                 val skipCheckSlot = slot<Boolean>()
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
@@ -262,7 +262,7 @@ class SendtSykmeldingHandlerTest :
                 val message = defaultSendtSykmeldingMessage()
                     .copy(event = defaultSendtSykmeldingMessage().event.copy(arbeidsgiver = null))
 
-                handler.handleSendtSykmelding(message)
+                handler.requireNarmestelederIfMissing(message)
 
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any())

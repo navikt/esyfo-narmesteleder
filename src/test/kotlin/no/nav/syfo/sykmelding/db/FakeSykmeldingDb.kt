@@ -7,7 +7,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 class FakeSykmeldingDb : ISykmeldingDb {
     private val store = CopyOnWriteArrayList<SendtSykmeldingEntity>()
 
-    override suspend fun insertSykmelding(sykmeldingEntity: SendtSykmeldingEntity) {
+    override suspend fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity) {
         val existingIndex = store.indexOfFirst { it.sykmeldingId == sykmeldingEntity.sykmeldingId }
         if (existingIndex >= 0) {
             // Upsert: update existing entry with new values

@@ -9,6 +9,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -16,21 +17,26 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import kotlin.String
 import kotlin.time.Duration.Companion.seconds
 
-const val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
-
-class SendtSykmeldingKafkaConsumer(
+class PersistSendtSykmeldingConsumer(
     private val handler: SendtSykmeldingHandler,
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumer: KafkaConsumer<String, String>,
     private val scope: CoroutineScope,
+    private val env: OtherEnvironmentProperties
 ) : KafkaListener {
     private lateinit var job: Job
 
     override fun listen() {
-        logger.info("Starting $SENDT_SYKMELDING_TOPIC consumer")
-        job = scope.launch(Dispatchers.IO + CoroutineName("sendt-sykmelding-consumer")) {
+        if (!env.persistSendtSykmelding) {
+            logger.info("Persisting of sendt sykmelding is disabled, not starting consumer for $SENDT_SYKMELDING_TOPIC")
+            return
+        }
+
+        logger.info("Starting persist $SENDT_SYKMELDING_TOPIC consumer")
+        job = scope.launch(Dispatchers.IO + CoroutineName("persist-sendt-sykmelding-consumer")) {
             kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
             while (isActive) {
                 try {
@@ -38,12 +44,16 @@ class SendtSykmeldingKafkaConsumer(
                         .forEach { record: ConsumerRecord<String, String?> ->
                             logger.info("Received record with key: ${record.key()}")
                             val sykmeldingMessage = record.value()
+                            val sykmeldingId = record.key()
                             val isTombstone = sykmeldingMessage == null
 
-                            if (!isTombstone) {
+                            if (isTombstone) {
+                                logger.info("Received tombstone for sykmeldingId: $sykmeldingId.")
+                                handler.handleTombstone(sykmeldingId)
+                            } else {
                                 val sendtSykmeldingKafkaMessage =
                                     jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(sykmeldingMessage)
-                                handler.requireNarmestelederIfMissing(sendtSykmeldingKafkaMessage)
+                                handler.persistSendtSykmelding(sendtSykmeldingKafkaMessage)
                             }
                             kafkaConsumer.commitSync()
                         }
@@ -65,7 +75,7 @@ class SendtSykmeldingKafkaConsumer(
     }
 
     override suspend fun stop() {
-        if (!::job.isInitialized) error("$SENDT_SYKMELDING_TOPIC consumer not started!")
+        if (!::job.isInitialized) error("persist $SENDT_SYKMELDING_TOPIC consumer not started!")
 
         logger.info("Preparing shutdown")
         logger.info("Stopping consuming topic $SENDT_SYKMELDING_TOPIC")
@@ -78,5 +88,6 @@ class SendtSykmeldingKafkaConsumer(
         private val logger = LoggerFactory.getLogger(SendtSykmeldingKafkaConsumer::class.java)
         private const val DELAY_ON_ERROR_SECONDS = 60L
         private const val POLL_DURATION_SECONDS = 1L
+        private val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
     }
 }

@@ -5,12 +5,10 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
-import no.nav.syfo.sykmelding.model.toDto
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.util.logger
 import java.time.LocalDate
 import java.util.UUID
-import kotlin.collections.any
 
 class SendtSykmeldingHandler(
     private val narmesteLederService: NarmestelederService,
@@ -18,7 +16,12 @@ class SendtSykmeldingHandler(
 ) {
     private val logger = logger()
 
-    suspend fun handleSendtSykmelding(message: SendtSykmeldingKafkaMessage) {
+    suspend fun persistSendtSykmelding(message: SendtSykmeldingKafkaMessage) {
+        logger.info("Persisting sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}")
+        sykmeldingService.insertOrUpdateSykmelding(message)
+    }
+
+    suspend fun requireNarmestelederIfMissing(message: SendtSykmeldingKafkaMessage) {
         logger.info("Handling sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}")
         if (message.event.brukerSvar?.riktigNarmesteLeder == null) {
             logger.info("No riktigNarmesteLeder answer for sykmeldingId: ${message.event.sykmeldingId}. Creating NL behov...")
@@ -28,7 +31,6 @@ class SendtSykmeldingHandler(
                     return
                 }
 
-            sykmeldingService.insertOrUpdateSykmelding(message.toDto())
             narmesteLederService.createNewNlBehov(
                 nlBehov = LinemanagerRequirementWrite(
                     employeeIdentificationNumber = message.kafkaMetadata.fnr,

@@ -2,7 +2,6 @@ package no.nav.syfo.sykmelding.db
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
@@ -48,7 +47,7 @@ class SykmeldingDbTest :
                 val sykmeldingId = UUID.randomUUID()
                 val toInsert = entity(sykmeldingId = sykmeldingId)
 
-                db.insertSykmelding(toInsert)
+                db.insertOrUpdateSykmelding(toInsert)
 
                 val retrieved = db.findBySykmeldingId(sykmeldingId)
                 retrieved shouldNotBe null
@@ -67,8 +66,20 @@ class SykmeldingDbTest :
             it("should update existing entry when inserting with same sykmeldingId") {
                 val sykmeldingId = UUID.randomUUID()
 
-                db.insertSykmelding(entity(sykmeldingId = sykmeldingId, orgnummer = "111111111", fnr = "12345678901"))
-                db.insertSykmelding(entity(sykmeldingId = sykmeldingId, orgnummer = "111111111", fnr = "98765432109"))
+                db.insertOrUpdateSykmelding(
+                    entity(
+                        sykmeldingId = sykmeldingId,
+                        orgnummer = "111111111",
+                        fnr = "12345678901"
+                    )
+                )
+                db.insertOrUpdateSykmelding(
+                    entity(
+                        sykmeldingId = sykmeldingId,
+                        orgnummer = "111111111",
+                        fnr = "98765432109"
+                    )
+                )
 
                 val retrieved = db.findBySykmeldingId(sykmeldingId)
                 retrieved shouldNotBe null
@@ -87,7 +98,7 @@ class SykmeldingDbTest :
                 val sykmeldingId = UUID.randomUUID()
 
                 // tom = 2025-01-10 (should be updated when revokedDate = 2025-01-15)
-                db.insertSykmelding(
+                db.insertOrUpdateSykmelding(
                     entity(
                         sykmeldingId = sykmeldingId,
                         orgnummer = "111111111",
@@ -109,7 +120,7 @@ class SykmeldingDbTest :
                 val sykmeldingId = UUID.randomUUID()
                 val revokedDate = LocalDate.of(2025, 1, 5)
 
-                db.insertSykmelding(
+                db.insertOrUpdateSykmelding(
                     entity(
                         sykmeldingId = sykmeldingId,
                         orgnummer = "111111111",
@@ -141,7 +152,7 @@ class SykmeldingDbTest :
                 val tom = LocalDate.of(2025, 3, 15)
                 val syketilfelleStart = LocalDate.of(2025, 2, 28)
 
-                db.insertSykmelding(
+                db.insertOrUpdateSykmelding(
                     entity(
                         sykmeldingId = sykmeldingId,
                         fnr = "09876543210",
@@ -194,7 +205,7 @@ class SykmeldingDbTest :
                     }
                 }
                 // First insert a row using to check spy setup
-                dbWithSpy.insertSykmelding(
+                dbWithSpy.insertOrUpdateSykmelding(
                     entity(
                         sykmeldingId = sykmeldingId,
                         tom = LocalDate.of(2025, 1, 10),

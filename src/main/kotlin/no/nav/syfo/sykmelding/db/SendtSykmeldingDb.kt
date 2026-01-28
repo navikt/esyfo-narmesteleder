@@ -12,7 +12,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 interface ISykmeldingDb {
-    suspend fun insertSykmelding(sykmeldingEntity: SendtSykmeldingEntity)
+    suspend fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity)
     suspend fun revokeSykmelding(sykmeldingId: UUID, revokedDate: LocalDate): Int
     suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity?
 }
@@ -23,7 +23,7 @@ class SykmeldingDb(
     private val database: DatabaseInterface,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ISykmeldingDb {
-    override suspend fun insertSykmelding(sykmeldingEntity: SendtSykmeldingEntity) = withContext(dispatcher) {
+    override suspend fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity) = withContext(dispatcher) {
         database.connection.use { connection ->
             connection
                 .prepareStatement(

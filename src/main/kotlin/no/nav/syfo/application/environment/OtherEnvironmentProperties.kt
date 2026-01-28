@@ -1,7 +1,5 @@
 package no.nav.syfo.application.environment
 
-import kotlin.time.Duration
-
 data class OtherEnvironmentProperties(
     val electorPath: String,
     val frontendBaseUrl: String,

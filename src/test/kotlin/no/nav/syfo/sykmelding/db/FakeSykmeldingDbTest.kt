@@ -35,7 +35,7 @@ class FakeSykmeldingDbTest :
             updated = Instant.parse("2025-01-02T00:00:00Z"),
         )
 
-        describe("insertSykmelding") {
+        describe("insertOrUpdateSykmelding") {
             it("should update existing entry when inserting with same sykmeldingId") {
                 val id = UUID.randomUUID()
                 db.insertOrUpdateSykmelding(entity(sykmeldingId = id, orgnummer = "111111111"))

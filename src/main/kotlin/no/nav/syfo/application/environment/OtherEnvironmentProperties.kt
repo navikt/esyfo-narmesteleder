@@ -1,5 +1,7 @@
 package no.nav.syfo.application.environment
 
+import kotlin.time.Duration
+
 data class OtherEnvironmentProperties(
     val electorPath: String,
     val frontendBaseUrl: String,
@@ -10,6 +12,7 @@ data class OtherEnvironmentProperties(
     val isDialogportenBackgroundTaskEnabled: Boolean,
     val dialogportenIsApiOnly: Boolean,
     val persistSendtSykmelding: Boolean,
+    val sykmeldingTomPaddingDays: Long
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -22,6 +25,7 @@ data class OtherEnvironmentProperties(
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars(),
             deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createFromEnvVars(),
             persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
+            sykmeldingTomPaddingDays = getEnvVar("SYKMELDING_TOM_PADDING", "16").toLong(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -34,6 +38,7 @@ data class OtherEnvironmentProperties(
             dialogportenIsApiOnly = false,
             deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
             persistSendtSykmelding = true,
+            sykmeldingTomPaddingDays = 0
         )
     }
 }

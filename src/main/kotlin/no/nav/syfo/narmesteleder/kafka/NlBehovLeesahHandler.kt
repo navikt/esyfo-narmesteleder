@@ -6,13 +6,14 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
+import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.util.logger
 
 class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederService) {
     private val logger = logger()
 
-    suspend fun handleByLeesahStatus(nlBehov: LinemanagerRequirementWrite, status: LeesahStatus?) {
+    suspend fun handleByLeesahStatus(nlBehov: LinemanagerRequirementWrite, status: LeesahStatus?, behovSource: BehovSource) {
         logger.info("Processing NL message with status: $status")
 
         when (status) {
@@ -20,7 +21,7 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
             LeesahStatus.DEAKTIVERT_ARBEIDSTAKER_INNSENDT_SYKMELDING,
             LeesahStatus.DEAKTIVERT_LEDER,
             -> {
-                narmesteLederService.createNewNlBehov(nlBehov)
+                narmesteLederService.createNewNlBehov(nlBehov, behovSource = behovSource)
                 COUNT_CREATE_LINEMANAGER_REQUIREMENT.increment()
             }
 

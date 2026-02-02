@@ -98,18 +98,26 @@ class NarmestelederService(
 
     suspend fun createNewNlBehov(
         nlBehov: LinemanagerRequirementWrite,
-        hovedenhetOrgnummer: String? = null,
-        skipSykmeldingCheck: Boolean = false
+        skipSykmeldingCheck: Boolean = false,
+        behovSource: BehovSource,
     ): UUID? {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
-        val isActiveSykmelding = skipSykmeldingCheck ||
-            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
         val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
             .isNotEmpty()
 
+        if (registeredPreviousBehov) {
+            COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING.increment()
+            logger.info(
+                "Not inserting NarmestelederBehovEntity since one already for employee and org"
+            )
+            return null
+        }
+
+        val isActiveSykmelding = skipSykmeldingCheck ||
+            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
         if (!isActiveSykmelding) {
             COUNT_CREATE_BEHOV_SKIPPED_NO_SICKLEAVE.increment()
             logger.info(
@@ -118,35 +126,25 @@ class NarmestelederService(
             )
             return null
         }
-        if (registeredPreviousBehov) {
-            COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING.increment()
-            logger.info(
-                "Not inserting NarmestelederBehovEntity since one already for employee and org"
-            )
-            return null
+        val arbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(nlBehov.employeeIdentificationNumber)
+            .find { it.orgnummer == nlBehov.orgNumber }
+        if (arbeidsforhold == null) {
+            COUNT_CREATE_BEHOV_STORED_ARBEIDSFORHOLD_NOT_FOUND.increment()
+            logger.warn("No arbeidsforhold found for behovSource: ${behovSource.id}:${behovSource.source} ")
+        } else {
+            if (arbeidsforhold.orgnummer == nlBehov.orgNumber) {
+                logger.warn(
+                    "No hovedenhet found in arbeidsforhold for ${arbeidsforhold.orgnummer} and " +
+                        "behovSource: ${behovSource.id}:${behovSource.source} "
+                )
+            }
         }
-        val entity = try {
-            val hovededenhet = hovedenhetOrgnummer ?: findHovedenhetOrgnummer(
-                nlBehov.employeeIdentificationNumber,
-                nlBehov.orgNumber
-            )
-            NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
-                nlBehov,
-                hovedenhetOrgnummer = hovededenhet,
-                behovStatus = BehovStatus.BEHOV_CREATED,
-            )
-        } catch (e: HovedenhetNotFoundException) {
-            COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT.increment()
-            logger.warn(
-                "Unable to find hovedenhetOrgnummer for behov with reason ${nlBehov.behovReason}, setting behovStatus to ERROR",
-                e
-            )
-            NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
-                nlBehov,
-                hovedenhetOrgnummer = "UNKNOWN",
-                behovStatus = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND,
-            )
-        }
+
+        val entity = NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+            nlBehov,
+            hovedenhetOrgnummer = arbeidsforhold?.opplysningspliktigOrgnummer ?: "UNKNOWN",
+            behovStatus = arbeidsforhold?.let { BehovStatus.BEHOV_CREATED } ?: BehovStatus.ARBEIDSFORHOLD_NOT_FOUND,
+        )
         val insertedEntity = nlDb.insertNlBehov(entity).also {
             logger.info("Inserted NarmestelederBehovEntity with id: $it")
         }

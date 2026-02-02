@@ -8,6 +8,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.kafka.model.*
 import java.time.LocalDate
@@ -37,9 +38,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = true
+                        nlBehov = any(),
+                        skipSykmeldingCheck = true,
+                        behovSource = any(),
                     )
                 }
             }
@@ -56,9 +57,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = true
+                        nlBehov = any(),
+                        skipSykmeldingCheck = true,
+                        behovSource = any(),
                     )
                 }
             }
@@ -75,9 +76,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = true
+                        nlBehov = any(),
+                        skipSykmeldingCheck = true,
+                        behovSource = any(),
                     )
                 }
             }
@@ -93,10 +94,10 @@ class SendtSykmeldingHandlerTest :
                 handler.handleSendtSykmelding(message)
 
                 coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                    val createNewNlBehov = narmesteLederService.createNewNlBehov(
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
                     )
                 }
             }
@@ -113,9 +114,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
                     )
                 }
             }
@@ -132,9 +133,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
                     )
                 }
             }
@@ -151,9 +152,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
                     )
                 }
             }
@@ -172,9 +173,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = true
+                        nlBehov = any(),
+                        skipSykmeldingCheck = true,
+                        behovSource = any(),
                     )
                 }
             }
@@ -193,9 +194,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
                     )
                 }
             }
@@ -241,9 +242,9 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        capture(nlBehovSlot),
-                        juridiskOrgnummer,
-                        capture(skipCheckSlot)
+                        nlBehov = capture(nlBehovSlot),
+                        skipSykmeldingCheck = capture(skipCheckSlot),
+                        behovSource = BehovSource(message.kafkaMetadata.sykmeldingId, source = SENDT_SYKMELDING_TOPIC)
                     )
                 }
 

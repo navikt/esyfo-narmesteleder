@@ -12,6 +12,9 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.aareg.Arbeidsforhold
+import no.nav.syfo.aareg.client.ArbeidsstedType
+import no.nav.syfo.aareg.client.OpplysningspliktigType
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
@@ -68,7 +71,14 @@ class NarmestelederServiceTest :
                 )
                 val captured: CapturingSlot<NarmestelederBehovEntity> = slot()
 
-                coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns mapOf(underenhetOrg to hovedenhetOrg)
+                coEvery { aaregService.findArbeidsforholdByPersonIdent(sykmeldtFnr) } returns listOf(
+                    Arbeidsforhold(
+                        underenhetOrg,
+                        ArbeidsstedType.Underenhet,
+                        opplysningspliktigOrgnummer = hovedenhetOrg,
+                        OpplysningspliktigType.Hovedenhet
+                    )
+                )
                 coEvery { nlDb.insertNlBehov(capture(captured)) } answers {
                     NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
                         write,
@@ -85,11 +95,11 @@ class NarmestelederServiceTest :
                 } returns true
 
                 // Act
-                service().createNewNlBehov(write)
+                service().createNewNlBehov(write, behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test"))
 
                 // Assert
                 coVerify(exactly = 1) { nlDb.insertNlBehov(any()) }
-                coVerify(exactly = 1) { aaregService.findOrgNumbersByPersonIdent(eq(write.employeeIdentificationNumber)) }
+                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber)) }
 
                 captured.isCaptured shouldBe true
                 val entity = captured.captured
@@ -117,14 +127,14 @@ class NarmestelederServiceTest :
                 coEvery { aaregService.findOrgNumbersByPersonIdent(any()) } throws AssertionError("AaregService should not be called when persistLeesahNlBehov=false")
 
                 // Act
-                service(persist = false).createNewNlBehov(write)
+                service(persist = false).createNewNlBehov(write, behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test"))
 
                 // Assert
                 coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
                 coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
             }
 
-            it("persists with status ERROR when hovedenhet missing for underenhet") {
+            it("persists with status ARBEIDSFORHOLD_NOT_FOUND when hovedenhet missing for underenhet") {
                 // Arrange
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
@@ -135,7 +145,7 @@ class NarmestelederServiceTest :
                     behovReason = BehovReason.DEAKTIVERT_LEDER,
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
-                coEvery { aaregService.findOrgNumbersByPersonIdent(sykmeldtFnr) } returns emptyMap()
+                coEvery { aaregService.findArbeidsforholdByPersonIdent(sykmeldtFnr) } returns emptyList()
                 coEvery {
                     dinesykmeldteService.getIsActiveSykmelding(
                         eq(write.employeeIdentificationNumber),
@@ -144,10 +154,10 @@ class NarmestelederServiceTest :
                 } returns true
 
                 // Act
-                shouldNotThrow<HovedenhetNotFoundException> { service().createNewNlBehov(write) }
+                shouldNotThrow<HovedenhetNotFoundException> { service().createNewNlBehov(write, behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")) }
 
                 // Assert
-                coVerify(exactly = 1) { aaregService.findOrgNumbersByPersonIdent(eq(write.employeeIdentificationNumber)) }
+                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber)) }
                 coVerify(exactly = 1) {
                     nlDb.insertNlBehov(
                         withArg {
@@ -178,7 +188,10 @@ class NarmestelederServiceTest :
                 } returns false
 
                 // Act
-                service().createNewNlBehov(write)
+                service().createNewNlBehov(
+                    nlBehov = write,
+                    behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")
+                )
 
                 // Assert
                 coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }

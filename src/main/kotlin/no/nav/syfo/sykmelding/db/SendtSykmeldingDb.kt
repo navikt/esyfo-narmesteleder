@@ -36,7 +36,7 @@ class SykmeldingDb(
                                          fom,
                                          tom
                     )
-                    VALUES (?, ?, ?, ?,?, ?, ?) 
+                    VALUES (?, ?, ?, ?,?, ?) 
                     ON CONFLICT (sykmelding_id) DO UPDATE SET
                         fnr = EXCLUDED.fnr,
                         fom = EXCLUDED.fom,

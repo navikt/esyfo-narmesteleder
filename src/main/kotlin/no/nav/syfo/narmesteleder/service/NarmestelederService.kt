@@ -98,35 +98,75 @@ class NarmestelederService(
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
             return null // TODO: Fjern nullable når vi begynner å lagre
         }
-        val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
-            .isNotEmpty()
-
-        if (registeredPreviousBehov) {
-            COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING.increment()
-            logger.info(
-                "Not inserting NarmestelederBehovEntity since one already for employee and org"
-            )
+        if (skipDueToExistingBehov(nlBehov)) {
+            return null
+        }
+        if (skipDueToNoActiveSykmelding(nlBehov, skipSykmeldingCheck)) {
             return null
         }
 
+        val (behovStatus, hovedenhetOrgnummer) = getStatusAndHovedEnhetOrgnummerFromArbeidsforhold(
+            fnr = nlBehov.employeeIdentificationNumber,
+            orgnummer = nlBehov.orgNumber,
+            behovSource = behovSource,
+        )
+
+        val entity = NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
+            linemanagerRequirementWrite = nlBehov,
+            hovedenhetOrgnummer = hovedenhetOrgnummer,
+            behovStatus = behovStatus,
+        )
+        val insertedEntity = nlDb.insertNlBehov(entity).also {
+            logger.info("Inserted NarmestelederBehovEntity with id: $it")
+        }
+        if (!listOf(BehovStatus.ERROR, BehovStatus.ARBEIDSFORHOLD_NOT_FOUND).contains(entity.behovStatus)) {
+            dialogportenService.sendToDialogporten(insertedEntity)
+        }
+        return insertedEntity.id
+    }
+
+    private suspend fun skipDueToNoActiveSykmelding(
+        nlBehov: LinemanagerRequirementWrite,
+        skipSykmeldingCheck: Boolean
+    ): Boolean {
         val isActiveSykmelding = skipSykmeldingCheck ||
             dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
-        if (!isActiveSykmelding) {
+        return if (!isActiveSykmelding) {
             COUNT_CREATE_BEHOV_SKIPPED_NO_SICKLEAVE.increment()
             logger.info(
                 "Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with" +
                     " narmestelederId ${nlBehov.revokedLinemanagerId}"
             )
-            return null
-        }
+            true
+        } else false
+    }
+
+    private suspend fun skipDueToExistingBehov(nlBehov: LinemanagerRequirementWrite): Boolean {
+        val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+            .isNotEmpty()
+
+        return if (registeredPreviousBehov) {
+            COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING.increment()
+            logger.info(
+                "Not inserting NarmestelederBehovEntity since one already for employee and org"
+            )
+            true
+        } else false
+    }
+
+    private suspend fun getStatusAndHovedEnhetOrgnummerFromArbeidsforhold(
+        fnr: String,
+        orgnummer: String,
+        behovSource: BehovSource
+    ): Pair<BehovStatus, String> {
         var behovStatus = BehovStatus.BEHOV_CREATED
-        val arbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(nlBehov.employeeIdentificationNumber)
-            .find { it.orgnummer == nlBehov.orgNumber }
+        val arbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(fnr)
+            .find { it.orgnummer == orgnummer }
         if (arbeidsforhold == null) {
             behovStatus = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND
             COUNT_CREATE_BEHOV_STORED_ARBEIDSFORHOLD_NOT_FOUND.increment()
             logger.warn(
-                "No arbeidsforhold found for for orgnumber ${nlBehov.orgNumber} and " +
+                "No arbeidsforhold found for for orgnumber ${orgnummer} and " +
                     "behovSource id: ${behovSource.id} type: ${behovSource.source} "
             )
         } else {
@@ -138,19 +178,7 @@ class NarmestelederService(
                 )
             }
         }
-
-        val entity = NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
-            nlBehov,
-            hovedenhetOrgnummer = arbeidsforhold?.opplysningspliktigOrgnummer ?: "UNKNOWN",
-            behovStatus = behovStatus,
-        )
-        val insertedEntity = nlDb.insertNlBehov(entity).also {
-            logger.info("Inserted NarmestelederBehovEntity with id: $it")
-        }
-        if (!listOf(BehovStatus.ERROR, BehovStatus.ARBEIDSFORHOLD_NOT_FOUND).contains(entity.behovStatus)) {
-            dialogportenService.sendToDialogporten(insertedEntity)
-        }
-        return insertedEntity.id
+        return Pair(behovStatus, arbeidsforhold?.opplysningspliktigOrgnummer ?: "UNKNOWN")
     }
 
     suspend fun getEmployeeByRequirementId(id: UUID): Employee {

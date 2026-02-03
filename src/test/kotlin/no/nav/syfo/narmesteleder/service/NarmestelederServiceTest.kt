@@ -27,6 +27,7 @@ import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundExcepti
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
+import no.nav.syfo.sykmelding.kafka.model.Arbeidsgiver
 import java.util.*
 
 class NarmestelederServiceTest :
@@ -95,7 +96,10 @@ class NarmestelederServiceTest :
                 } returns true
 
                 // Act
-                service().createNewNlBehov(write, behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test"))
+                service().createNewNlBehov(
+                    write,
+                    behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")
+                )
 
                 // Assert
                 coVerify(exactly = 1) { nlDb.insertNlBehov(any()) }
@@ -127,14 +131,17 @@ class NarmestelederServiceTest :
                 coEvery { aaregService.findOrgNumbersByPersonIdent(any()) } throws AssertionError("AaregService should not be called when persistLeesahNlBehov=false")
 
                 // Act
-                service(persist = false).createNewNlBehov(write, behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test"))
+                service(persist = false).createNewNlBehov(
+                    write,
+                    behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")
+                )
 
                 // Assert
                 coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
                 coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
             }
 
-            it("persists with status ARBEIDSFORHOLD_NOT_FOUND when hovedenhet missing for underenhet") {
+            it("persists with status ARBEIDSFORHOLD_NOT_FOUND when arbeidsforhold missing") {
                 // Arrange
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
@@ -154,7 +161,12 @@ class NarmestelederServiceTest :
                 } returns true
 
                 // Act
-                shouldNotThrow<HovedenhetNotFoundException> { service().createNewNlBehov(write, behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")) }
+                shouldNotThrow<HovedenhetNotFoundException> {
+                    service().createNewNlBehov(
+                        write,
+                        behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")
+                    )
+                }
 
                 // Assert
                 coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber)) }
@@ -162,6 +174,101 @@ class NarmestelederServiceTest :
                     nlDb.insertNlBehov(
                         withArg {
                             it.behovStatus shouldBe BehovStatus.ARBEIDSFORHOLD_NOT_FOUND
+                            it.hovedenhetOrgnummer shouldBe "UNKNOWN"
+                        }
+                    )
+                }
+            }
+
+            it("persists with status ERROR when hovedenhet missing for underenhet") {
+                // Arrange
+                val sykmeldtFnr = "12345678910"
+                val underenhetOrg = "123456789"
+                val write = LinemanagerRequirementWrite(
+                    employeeIdentificationNumber = sykmeldtFnr,
+                    orgNumber = underenhetOrg,
+                    managerIdentificationNumber = "01987654321",
+                    behovReason = BehovReason.DEAKTIVERT_LEDER,
+                    revokedLinemanagerId = UUID.randomUUID(),
+                )
+                coEvery { aaregService.findArbeidsforholdByPersonIdent(sykmeldtFnr) } returns listOf(
+                    Arbeidsforhold(
+                        underenhetOrg,
+                        ArbeidsstedType.Underenhet,
+                        opplysningspliktigOrgnummer = null,
+                        OpplysningspliktigType.Person
+                    )
+                )
+                coEvery {
+                    dinesykmeldteService.getIsActiveSykmelding(
+                        eq(write.employeeIdentificationNumber),
+                        eq(write.orgNumber)
+                    )
+                } returns true
+
+                // Act
+                shouldNotThrow<HovedenhetNotFoundException> {
+                    service().createNewNlBehov(
+                        write,
+                        behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")
+                    )
+                }
+
+                // Assert
+                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber)) }
+                coVerify(exactly = 1) {
+                    nlDb.insertNlBehov(
+                        withArg {
+                            it.behovStatus shouldBe BehovStatus.ERROR
+                            it.hovedenhetOrgnummer shouldBe "UNKNOWN"
+                        }
+                    )
+                }
+            }
+
+            it("persists with status ERROR when juridiskOrgnummer missing for arbeidsgiver from sykmelding") {
+                // Arrange
+                val sykmeldtFnr = "12345678910"
+                val underenhetOrg = "123456789"
+                val write = LinemanagerRequirementWrite(
+                    employeeIdentificationNumber = sykmeldtFnr,
+                    orgNumber = underenhetOrg,
+                    managerIdentificationNumber = "01987654321",
+                    behovReason = BehovReason.DEAKTIVERT_LEDER,
+                    revokedLinemanagerId = UUID.randomUUID(),
+                )
+
+                val arbeidsgiver = Arbeidsgiver(
+                    orgnummer = underenhetOrg,
+                    juridiskOrgnummer = null,
+                    orgNavn = "Test AS"
+                )
+
+                coEvery {
+                    dinesykmeldteService.getIsActiveSykmelding(
+                        eq(write.employeeIdentificationNumber),
+                        eq(write.orgNumber)
+                    )
+                } returns true
+
+                // Act
+                shouldNotThrow<HovedenhetNotFoundException> {
+                    service().createNewNlBehov(
+                        write,
+                        behovSource = BehovSource(
+                            id = UUID.randomUUID().toString(),
+                            source = "test"
+                        ),
+                        arbeidsgiver = arbeidsgiver
+                    )
+                }
+
+                // Assert
+                coVerify(exactly = 0) { aaregService.findArbeidsforholdByPersonIdent(any()) }
+                coVerify(exactly = 1) {
+                    nlDb.insertNlBehov(
+                        withArg {
+                            it.behovStatus shouldBe BehovStatus.ERROR
                             it.hovedenhetOrgnummer shouldBe "UNKNOWN"
                         }
                     )

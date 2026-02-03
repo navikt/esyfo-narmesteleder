@@ -15,6 +15,7 @@ import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.sykmelding.kafka.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.*
@@ -29,11 +30,10 @@ class NarmestelederService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead =
-        with(findBehovEntityById(id)) {
-            val name = getName()
-            toEmployeeLinemanagerRead(name)
-        }
+    suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead = with(findBehovEntityById(id)) {
+        val name = getName()
+        toEmployeeLinemanagerRead(name)
+    }
 
     private suspend fun NarmestelederBehovEntity.getName(): Name = if (fornavn != null && etternavn != null) {
         Name(
@@ -79,20 +79,20 @@ class NarmestelederService(
         dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
     }
 
-    suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String): List<NarmestelederBehovEntity> =
-        nlDb.findBehovByParameters(
-            sykmeldtFnr = sykmeldtFnr,
-            orgnummer = orgnummer,
-            behovStatus = listOf(
-                BehovStatus.BEHOV_CREATED,
-                BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-            )
+    suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String): List<NarmestelederBehovEntity> = nlDb.findBehovByParameters(
+        sykmeldtFnr = sykmeldtFnr,
+        orgnummer = orgnummer,
+        behovStatus = listOf(
+            BehovStatus.BEHOV_CREATED,
+            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
         )
+    )
 
     suspend fun createNewNlBehov(
         nlBehov: LinemanagerRequirementWrite,
         skipSykmeldingCheck: Boolean = false,
         behovSource: BehovSource,
+        arbeidsgiver: Arbeidsgiver? = null,
     ): UUID? {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
@@ -105,11 +105,15 @@ class NarmestelederService(
             return null
         }
 
-        val (behovStatus, hovedenhetOrgnummer) = getStatusAndHovedEnhetOrgnummerFromArbeidsforhold(
-            fnr = nlBehov.employeeIdentificationNumber,
-            orgnummer = nlBehov.orgNumber,
-            behovSource = behovSource,
-        )
+        val (behovStatus, hovedenhetOrgnummer) = if (arbeidsgiver != null) {
+            getStatusAndHovedEnhetOrgnummerFromArbeidsgiver(arbeidsgiver, behovSource)
+        } else {
+            getStatusAndHovedEnhetOrgnummerFromArbeidsforhold(
+                fnr = nlBehov.employeeIdentificationNumber,
+                orgnummer = nlBehov.orgNumber,
+                behovSource = behovSource,
+            )
+        }
 
         val entity = NarmestelederBehovEntity.fromLinemanagerRequirementWrite(
             linemanagerRequirementWrite = nlBehov,
@@ -138,7 +142,9 @@ class NarmestelederService(
                     " narmestelederId ${nlBehov.revokedLinemanagerId}"
             )
             true
-        } else false
+        } else {
+            false
+        }
     }
 
     private suspend fun skipDueToExistingBehov(nlBehov: LinemanagerRequirementWrite): Boolean {
@@ -151,13 +157,15 @@ class NarmestelederService(
                 "Not inserting NarmestelederBehovEntity since one already for employee and org"
             )
             true
-        } else false
+        } else {
+            false
+        }
     }
 
     private suspend fun getStatusAndHovedEnhetOrgnummerFromArbeidsforhold(
         fnr: String,
         orgnummer: String,
-        behovSource: BehovSource
+        behovSource: BehovSource,
     ): Pair<BehovStatus, String> {
         var behovStatus = BehovStatus.BEHOV_CREATED
         val arbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(fnr)
@@ -166,7 +174,7 @@ class NarmestelederService(
             behovStatus = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND
             COUNT_CREATE_BEHOV_STORED_ARBEIDSFORHOLD_NOT_FOUND.increment()
             logger.warn(
-                "No arbeidsforhold found for for orgnumber ${orgnummer} and " +
+                "No arbeidsforhold found for for orgnumber $orgnummer and " +
                     "behovSource id: ${behovSource.id} type: ${behovSource.source} "
             )
         } else {
@@ -179,6 +187,22 @@ class NarmestelederService(
             }
         }
         return Pair(behovStatus, arbeidsforhold?.opplysningspliktigOrgnummer ?: "UNKNOWN")
+    }
+
+    private fun getStatusAndHovedEnhetOrgnummerFromArbeidsgiver(
+        arbeidsgiver: Arbeidsgiver,
+        behovSource: BehovSource
+    ): Pair<BehovStatus, String> {
+        if (arbeidsgiver.juridiskOrgnummer == null) {
+            COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT.increment()
+            logger.warn(
+                "No hovedenhet found in arbeidsgiver for orgnumber ${arbeidsgiver.orgnummer} and " +
+                    "behovSource id: ${behovSource.id} type: ${behovSource.source} "
+            )
+            return Pair(BehovStatus.ERROR, "UNKNOWN")
+        } else {
+            return Pair(BehovStatus.BEHOV_CREATED, arbeidsgiver.juridiskOrgnummer)
+        }
     }
 
     suspend fun getEmployeeByRequirementId(id: UUID): Employee {
@@ -202,16 +226,15 @@ class NarmestelederService(
     ).map { it.toEmployeeLinemanagerRead(it.getName()) }
 }
 
-fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead =
-    LinemanagerRequirementRead(
-        id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
-        employeeIdentificationNumber = this.sykmeldtFnr,
-        orgNumber = this.orgnummer,
-        mainOrgNumber = this.hovedenhetOrgnummer,
-        managerIdentificationNumber = this.narmestelederFnr,
-        name = name,
-        created = this.created,
-        updated = this.updated,
-        status = LineManagerRequirementStatus.from(this.behovStatus),
-        revokedBy = RevokedBy.from(this.behovReason),
-    )
+fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead = LinemanagerRequirementRead(
+    id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
+    employeeIdentificationNumber = this.sykmeldtFnr,
+    orgNumber = this.orgnummer,
+    mainOrgNumber = this.hovedenhetOrgnummer,
+    managerIdentificationNumber = this.narmestelederFnr,
+    name = name,
+    created = this.created,
+    updated = this.updated,
+    status = LineManagerRequirementStatus.from(this.behovStatus),
+    revokedBy = RevokedBy.from(this.behovReason),
+)

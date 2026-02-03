@@ -1,0 +1,108 @@
+{
+  "sykmelding": {
+    "id": "e0a5df0c-f7fe-4cd7-ae6b-bc272b1c29c3",
+    "mottattTidspunkt": "2025-11-30T22:00:00Z",
+    "syketilfelleStartDato": "2025-12-01",
+    "behandletTidspunkt": "2025-12-01T00:00:00Z",
+    "arbeidsgiver": {
+      "navn": "Eksempel Arbeidsgiversen AS",
+      "yrkesbetegnelse": "Utvikler"
+    },
+    "sykmeldingsperioder": [
+      {
+        "fom": "2025-12-01",
+        "tom": "2025-12-22",
+        "gradert": null,
+        "behandlingsdager": null,
+        "innspillTilArbeidsgiver": null,
+        "type": "AKTIVITET_IKKE_MULIG",
+        "aktivitetIkkeMulig": {
+          "arbeidsrelatertArsak": {
+            "beskrivelse": "andre årsaker til sykefravær",
+            "arsak": [
+              "ANNET"
+            ]
+          }
+        },
+        "reisetilskudd": false
+      }
+    ],
+    "prognose": {
+      "arbeidsforEtterPeriode": true,
+      "hensynArbeidsplassen": "Må ta det pent"
+    },
+    "tiltakArbeidsplassen": null,
+    "meldingTilArbeidsgiver": null,
+    "kontaktMedPasient": {
+      "kontaktDato": null
+    },
+    "behandler": {
+      "fornavn": "TRIVIELL",
+      "mellomnavn": "MÅPENDE",
+      "etternavn": "FLOSKEL",
+      "hpr": "9144889",
+      "adresse": {
+        "gate": null,
+        "postnummer": null,
+        "kommune": null,
+        "postboks": null,
+        "land": null
+      },
+      "tlf": " 90909090"
+    },
+    "egenmeldt": false,
+    "papirsykmelding": false,
+    "harRedusertArbeidsgiverperiode": false,
+    "merknader": null,
+    "utenlandskSykmelding": null,
+    "signaturDato": "2025-12-01T00:00:00Z"
+  },
+  "kafkaMetadata": {
+    "sykmeldingId": "2b11fb47-49d4-461f-be74-cce81a044815",
+    "timestamp": "2026-01-29T12:53:04.847582066Z",
+    "fnr": "13468329780",
+    "source": "flex-sykmeldinger-backend"
+  },
+  "event": {
+    "sykmeldingId": "2b11fb47-49d4-461f-be74-cce81a044815",
+    "timestamp": "2026-01-29T12:53:04.784245607Z",
+    "statusEvent": "SENDT",
+    "arbeidsgiver": {
+      "orgnummer": "315649196",
+      "juridiskOrgnummer": "315649196",
+      "orgNavn": "SAUEFABRIKK"
+    },
+    "sporsmals": [
+      {
+        "tekst": "Jeg er sykmeldt som",
+        "shortName": "ARBEIDSSITUASJON",
+        "svartype": "ARBEIDSSITUASJON",
+        "svar": "ARBEIDSTAKER"
+      }
+    ],
+    "erSvarOppdatering": null,
+    "tidligereArbeidsgiver": null,
+    "brukerSvar": {
+      "erOpplysningeneRiktige": {
+        "sporsmaltekst": "Stemmer opplysningene?",
+        "svar": "JA"
+      },
+      "uriktigeOpplysninger": null,
+      "arbeidssituasjon": {
+        "sporsmaltekst": "Jeg er sykmeldt som",
+        "svar": "ARBEIDSTAKER"
+      },
+      "arbeidsgiverOrgnummer": {
+        "sporsmaltekst": "Velg arbeidsgiver",
+        "svar": "315649196"
+      },
+      "riktigNarmesteLeder": null,
+      "harBruktEgenmelding": null,
+      "egenmeldingsperioder": null,
+      "harForsikring": null,
+      "egenmeldingsdager": null,
+      "harBruktEgenmeldingsdager": null,
+      "fisker": null
+    }
+  }
+}

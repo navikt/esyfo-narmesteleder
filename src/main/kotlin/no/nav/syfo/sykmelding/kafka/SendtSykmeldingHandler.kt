@@ -32,6 +32,7 @@ class SendtSykmeldingHandler(
                 skipSykmeldingCheck = message.sykmelding.sykmeldingsperioder
                     .any { LocalDate.now() in it.fom..it.tom },
                 behovSource = BehovSource(message.kafkaMetadata.sykmeldingId, source = SENDT_SYKMELDING_TOPIC),
+                arbeidsgiver = arbeidsgiver,
             )
         } else {
             logger.info("Employee has answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")

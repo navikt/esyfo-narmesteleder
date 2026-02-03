@@ -12,7 +12,6 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.RevokedBy
-import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.pdl.PdlService
@@ -87,14 +86,6 @@ class NarmestelederService(
             BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
         )
     )
-
-    private suspend fun findHovedenhetOrgnummer(personIdent: String, orgNumber: String): String {
-        val arbeidsforholdMap = aaregService.findOrgNumbersByPersonIdent(personIdent)
-        return arbeidsforholdMap[orgNumber]
-            ?: throw HovedenhetNotFoundException(
-                "Could not find main entity for employee on sick leave and orgnumber in aareg"
-            )
-    }
 
     suspend fun createNewNlBehov(
         nlBehov: LinemanagerRequirementWrite,

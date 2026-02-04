@@ -179,6 +179,7 @@ class NarmestelederService(
             )
         } else {
             if (arbeidsforhold.opplysningspliktigOrgnummer == null) {
+                COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT.increment()
                 behovStatus = BehovStatus.ERROR
                 logger.warn(
                     "No hovedenhet found in arbeidsforhold for orgnumber ${arbeidsforhold.orgnummer} and " +
@@ -196,7 +197,7 @@ class NarmestelederService(
         if (arbeidsgiver.juridiskOrgnummer == null) {
             COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT.increment()
             logger.warn(
-                "No hovedenhet found in arbeidsgiver for orgnumber ${arbeidsgiver.orgnummer} and " +
+                "No hovedenhet found in arbeidsgiver from sykmelding for orgnumber ${arbeidsgiver.orgnummer} and " +
                     "behovSource id: ${behovSource.id} type: ${behovSource.source} "
             )
             return Pair(BehovStatus.ERROR, "UNKNOWN")

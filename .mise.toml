@@ -1,0 +1,47 @@
+[tasks.docker-up]
+description = "Spin up dependency services using Docker Compose. Postgres, Kafka etc."
+run = '''
+docker-compose \
+  -f docker-compose.yml \
+  -f docker-compose.kafka.yml \
+  up \
+  db authserver texas broker kafka-ui \
+  -d
+'''
+
+[tasks.docker-down]
+description = "Tear down dependency services running in Docker Compose."
+run = '''
+docker-compose \
+  -f docker-compose.yml \
+  -f docker-compose.kafka.yml \
+  down
+'''
+
+[tasks.build]
+description = "Run build with gradle"
+run = './gradlew build'
+
+[tasks.start]
+description = "Run app using gradle"
+run = './gradlew run'
+
+[tasks.test]
+description = "Run tests with gradle"
+run = './gradlew test'
+
+[tasks.lint]
+description = "Run check with gradle"
+run = './gradlew ktlintCheck'
+
+[tasks.format]
+description = "Run ktlintFormat with gradle"
+run = './gradlew ktlintFormat'
+
+[tasks.auth-obo]
+description = "Open a browser to get an onbehalf-of token"
+run = 'open https://tokenx-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp:team-esyfo:syfo-dokumentporten'
+
+[tasks.auth-m2m]
+description = "Open a browser to get a machine2machine"
+run = 'open https://azure-token-generator.intern.dev.nav.no/api/m2m?aud=dev-gcp.team-esyfo.syfo-dokumentporten'

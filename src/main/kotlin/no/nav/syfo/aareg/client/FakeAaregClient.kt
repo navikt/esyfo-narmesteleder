@@ -67,7 +67,7 @@ class FakeAaregClient : IAaregClient {
     companion object {
         val defaultArbeidsforhold = mapOf(
             "15436803416" to listOf("215649202" to "310667633", "972674818" to "963743254"),
-            "13468329780" to listOf("315649196" to "310667633"),
+            "13468329780" to listOf("315649196" to "315649196"),
             "01518721689" to listOf("215649202" to "310667633"),
         )
 

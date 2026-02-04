@@ -5,7 +5,17 @@ enum class BehovStatus {
     DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
     BEHOV_FULFILLED,
     DIALOGPORTEN_STATUS_SET_COMPLETED,
-    ERROR;
+    ERROR,
+    ARBEIDSFORHOLD_NOT_FOUND,
+    HOVEDENHET_NOT_FOUND;
+
+    companion object {
+        fun errorStatusList(): List<BehovStatus> = listOf(
+            ERROR,
+            ARBEIDSFORHOLD_NOT_FOUND,
+            HOVEDENHET_NOT_FOUND,
+        )
+    }
 
     override fun toString(): String = name
 }

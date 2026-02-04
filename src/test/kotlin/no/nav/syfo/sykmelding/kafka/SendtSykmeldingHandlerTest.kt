@@ -8,6 +8,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.kafka.model.*
 import java.time.LocalDate
@@ -20,7 +21,7 @@ class SendtSykmeldingHandlerTest :
 
         beforeEach {
             clearAllMocks()
-            coEvery { narmesteLederService.createNewNlBehov(any(), any(), any()) } returns null
+            coEvery { narmesteLederService.createNewNlBehov(any(), any(), any(), any()) } returns null
         }
 
         describe("skipSykmeldingCheck parameter tests") {
@@ -37,9 +38,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = true
+                        nlBehov = any(),
+                        skipSykmeldingCheck = true,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -56,9 +58,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = true
+                        nlBehov = any(),
+                        skipSykmeldingCheck = true,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -75,9 +78,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = true
+                        nlBehov = any(),
+                        skipSykmeldingCheck = true,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -93,10 +97,11 @@ class SendtSykmeldingHandlerTest :
                 handler.handleSendtSykmelding(message)
 
                 coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                    val createNewNlBehov = narmesteLederService.createNewNlBehov(
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -113,9 +118,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -132,9 +138,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -151,9 +158,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -172,9 +180,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = true
+                        nlBehov = any(),
+                        skipSykmeldingCheck = true,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -193,9 +202,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        any(),
-                        any(),
-                        skipSykmeldingCheck = false
+                        nlBehov = any(),
+                        skipSykmeldingCheck = false,
+                        behovSource = any(),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
             }
@@ -214,7 +224,7 @@ class SendtSykmeldingHandlerTest :
                 handler.handleSendtSykmelding(message)
 
                 coVerify(exactly = 0) {
-                    narmesteLederService.createNewNlBehov(any(), any(), any())
+                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
                 }
             }
 
@@ -231,7 +241,7 @@ class SendtSykmeldingHandlerTest :
                     sykmeldingsperioder = listOf(
                         SykmeldingsperiodeAGDTO(fom = today.minusDays(5), tom = today.plusDays(5))
                     ),
-                    riktigNarmesteLeder = null
+                    riktigNarmesteLeder = null,
                 )
 
                 val nlBehovSlot = slot<LinemanagerRequirementWrite>()
@@ -241,9 +251,10 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify {
                     narmesteLederService.createNewNlBehov(
-                        capture(nlBehovSlot),
-                        juridiskOrgnummer,
-                        capture(skipCheckSlot)
+                        nlBehov = capture(nlBehovSlot),
+                        skipSykmeldingCheck = capture(skipCheckSlot),
+                        behovSource = BehovSource(message.kafkaMetadata.sykmeldingId, source = SENDT_SYKMELDING_TOPIC),
+                        arbeidsgiver = message.event.arbeidsgiver,
                     )
                 }
 

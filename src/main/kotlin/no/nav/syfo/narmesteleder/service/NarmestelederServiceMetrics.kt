@@ -18,3 +18,8 @@ const val NL_BEHOV_STORED_AS_ERROR_NO_MAIN_ORGUNIT = "${METRICS_NS}_nl_behov_sto
 val COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT: Counter = Counter.builder(NL_BEHOV_STORED_AS_ERROR_NO_MAIN_ORGUNIT)
     .description("Counts the number of nl-behov stored as error due to no main orgunit")
     .register(METRICS_REGISTRY)
+
+const val NL_BEHOV_STORED_AS_ARBEIDSFORHOLD_NOT_FOUND = "${METRICS_NS}_nl_behov_stored_as_arbeidsforhold_not_found"
+val COUNT_CREATE_BEHOV_STORED_ARBEIDSFORHOLD_NOT_FOUND: Counter = Counter.builder(NL_BEHOV_STORED_AS_ARBEIDSFORHOLD_NOT_FOUND)
+    .description("Counts the number of nl-behov stored as arbeidsforhold not found")
+    .register(METRICS_REGISTRY)

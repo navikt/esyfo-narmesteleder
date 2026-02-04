@@ -13,6 +13,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
+import no.nav.syfo.narmesteleder.service.BehovSource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -77,7 +78,14 @@ class LeesahNLKafkaConsumer(
                 if (nlKafkaMessage.aktivTom == null) {
                     handler.updateStatusForRequirement(nlKafkaMessage)
                 } else {
-                    handler.handleByLeesahStatus(nlKafkaMessage.toNlBehovWrite(), nlKafkaMessage.status)
+                    handler.handleByLeesahStatus(
+                        nlKafkaMessage.toNlBehovWrite(),
+                        nlKafkaMessage.status,
+                        behovSource = BehovSource(
+                            nlKafkaMessage.narmesteLederId.toString(),
+                            source = SYKMELDING_NL_TOPIC
+                        )
+                    )
                 }
             } ?: logger.info("Received record with empty value: ${record.key()}")
             addToProcessed(record)

@@ -10,7 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
-import no.nav.syfo.sykmelding.kafka.model.SendtSykmeldingKafkaMessage
+import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
@@ -37,7 +37,12 @@ class SendtSykmeldingKafkaConsumer(
                     kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
                         .forEach { record: ConsumerRecord<String, String?> ->
                             logger.info("Received record with key: ${record.key()}")
-                            record.value()?.let { value ->
+                            val value = record.value()
+                            val isTombstone = value == null
+
+                            if (isTombstone) {
+                                // Handle tombstone message if necessary
+                            } else {
                                 val sendtSykmeldingKafkaMessage =
                                     jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(value)
                                 handler.handleSendtSykmelding(sendtSykmeldingKafkaMessage)

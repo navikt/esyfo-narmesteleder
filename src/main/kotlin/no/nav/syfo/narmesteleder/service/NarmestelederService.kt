@@ -177,15 +177,12 @@ class NarmestelederService(
                 "No arbeidsforhold found for for orgnumber $orgnummer and " +
                     "behovSource id: ${behovSource.id} type: ${behovSource.source} "
             )
-        } else {
-            if (arbeidsforhold.opplysningspliktigOrgnummer == null) {
-                COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT.increment()
-                behovStatus = BehovStatus.ERROR
-                logger.warn(
-                    "No hovedenhet found in arbeidsforhold for orgnumber ${arbeidsforhold.orgnummer} and " +
-                        "behovSource id: ${behovSource.id} type: ${behovSource.source} "
-                )
-            }
+        } else if (arbeidsforhold.opplysningspliktigOrgnummer == null) {
+            behovStatus = BehovStatus.ERROR
+            logger.warn(
+                "No hovedenhet found in arbeidsforhold for orgnumber ${arbeidsforhold.orgnummer} and " +
+                    "behovSource id: ${behovSource.id} type: ${behovSource.source} "
+            )
         }
         return Pair(behovStatus, arbeidsforhold?.opplysningspliktigOrgnummer ?: "UNKNOWN")
     }

@@ -180,7 +180,7 @@ class NarmestelederServiceTest :
                 }
             }
 
-            it("persists with status ERROR when hovedenhet missing for underenhet") {
+            it("persists with status HOVEDENHET_NOT_FOUND when hovedenhet missing for underenhet") {
                 // Arrange
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
@@ -219,14 +219,14 @@ class NarmestelederServiceTest :
                 coVerify(exactly = 1) {
                     nlDb.insertNlBehov(
                         withArg {
-                            it.behovStatus shouldBe BehovStatus.ERROR
+                            it.behovStatus shouldBe BehovStatus.HOVEDENHET_NOT_FOUND
                             it.hovedenhetOrgnummer shouldBe "UNKNOWN"
                         }
                     )
                 }
             }
 
-            it("persists with status ERROR when juridiskOrgnummer missing for arbeidsgiver from sykmelding") {
+            it("persists with status HOVEDENHET_NOT_FOUND when juridiskOrgnummer missing for arbeidsgiver from sykmelding") {
                 // Arrange
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
@@ -268,7 +268,7 @@ class NarmestelederServiceTest :
                 coVerify(exactly = 1) {
                     nlDb.insertNlBehov(
                         withArg {
-                            it.behovStatus shouldBe BehovStatus.ERROR
+                            it.behovStatus shouldBe BehovStatus.HOVEDENHET_NOT_FOUND
                             it.hovedenhetOrgnummer shouldBe "UNKNOWN"
                         }
                     )

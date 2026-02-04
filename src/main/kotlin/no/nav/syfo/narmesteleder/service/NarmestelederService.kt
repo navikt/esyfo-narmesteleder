@@ -123,7 +123,7 @@ class NarmestelederService(
         val insertedEntity = nlDb.insertNlBehov(entity).also {
             logger.info("Inserted NarmestelederBehovEntity with id: $it")
         }
-        if (!listOf(BehovStatus.ERROR, BehovStatus.ARBEIDSFORHOLD_NOT_FOUND).contains(entity.behovStatus)) {
+        if (!BehovStatus.errorStatusList().contains(entity.behovStatus)) {
             dialogportenService.sendToDialogporten(insertedEntity)
         }
         return insertedEntity.id
@@ -178,7 +178,7 @@ class NarmestelederService(
                     "behovSource id: ${behovSource.id} type: ${behovSource.source} "
             )
         } else if (arbeidsforhold.opplysningspliktigOrgnummer == null) {
-            behovStatus = BehovStatus.ERROR
+            behovStatus = BehovStatus.HOVEDENHET_NOT_FOUND
             logger.warn(
                 "No hovedenhet found in arbeidsforhold for orgnumber ${arbeidsforhold.orgnummer} and " +
                     "behovSource id: ${behovSource.id} type: ${behovSource.source} "
@@ -197,7 +197,7 @@ class NarmestelederService(
                 "No hovedenhet found in arbeidsgiver from sykmelding for orgnumber ${arbeidsgiver.orgnummer} and " +
                     "behovSource id: ${behovSource.id} type: ${behovSource.source} "
             )
-            return Pair(BehovStatus.ERROR, "UNKNOWN")
+            return Pair(BehovStatus.HOVEDENHET_NOT_FOUND, "UNKNOWN")
         } else {
             return Pair(BehovStatus.BEHOV_CREATED, arbeidsgiver.juridiskOrgnummer)
         }

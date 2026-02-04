@@ -14,7 +14,7 @@ enum class LineManagerRequirementStatus {
             BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED -> COMPLETED
 
             BehovStatus.ERROR,
-            BehovStatus.ARBEIDSFORHOLD_NOT_FOUND -> throw IllegalArgumentException("Cannot map BehovStatus.ERROR to LineManagerRequirementStatus")
+            BehovStatus.ARBEIDSFORHOLD_NOT_FOUND -> throw IllegalArgumentException("Cannot map BehovStatus.ERROR or BehovStatus.ARBEIDSFORHOLD_NOT_FOUND  to LineManagerRequirementStatus")
         }
     }
 }

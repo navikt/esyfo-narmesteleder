@@ -9,13 +9,13 @@ import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
-import java.time.LocalDate
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.model.RiktigNarmesteLeder
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import no.nav.syfo.sykmelding.service.SykmeldingService
+import java.time.LocalDate
 
 class SendtSykmeldingHandlerTest :
     DescribeSpec({
@@ -27,18 +27,18 @@ class SendtSykmeldingHandlerTest :
         beforeEach {
             clearAllMocks()
             coEvery { sykmeldingService.insertOrUpdateSykmelding(any()) } just Runs
-            coEvery { narmesteLederService.createNewNlBehov(any(), any(), any()) } returns null
+            coEvery { narmesteLederService.createNewNlBehov(any(), any(), any(), any()) } returns null
         }
 
-    describe("skipSykmeldingCheck parameter tests") {
+        describe("skipSykmeldingCheck parameter tests") {
 
-        it("should set skipSykmeldingCheck to true when period includes today") {
-            val today = LocalDate.now()
-            val message = defaultSendtSykmeldingMessage(
-                sykmeldingsperioder = listOf(
-                    SykmeldingsperiodeAGDTO(fom = today.minusDays(5), tom = today.plusDays(5))
+            it("should set skipSykmeldingCheck to true when period includes today") {
+                val today = LocalDate.now()
+                val message = defaultSendtSykmeldingMessage(
+                    sykmeldingsperioder = listOf(
+                        SykmeldingsperiodeAGDTO(fom = today.minusDays(5), tom = today.plusDays(5))
+                    )
                 )
-            )
 
                 handler.requireNarmestelederIfMissing(message)
 
@@ -52,13 +52,13 @@ class SendtSykmeldingHandlerTest :
                 }
             }
 
-        it("should set skipSykmeldingCheck to true when today is the first day of period") {
-            val today = LocalDate.now()
-            val message = defaultSendtSykmeldingMessage(
-                sykmeldingsperioder = listOf(
-                    SykmeldingsperiodeAGDTO(fom = today, tom = today.plusDays(10))
+            it("should set skipSykmeldingCheck to true when today is the first day of period") {
+                val today = LocalDate.now()
+                val message = defaultSendtSykmeldingMessage(
+                    sykmeldingsperioder = listOf(
+                        SykmeldingsperiodeAGDTO(fom = today, tom = today.plusDays(10))
+                    )
                 )
-            )
 
                 handler.requireNarmestelederIfMissing(message)
 

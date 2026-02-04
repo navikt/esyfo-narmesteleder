@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Esyfo Narmesteleder API
-  version: 1.0.0
+  version: 1.0.1
   description: |
     API v1 for linemanager creation, revoke, requirement, and metrics.
     
@@ -508,10 +508,17 @@ components:
       description: Standard error payload.
       properties:
         status:
-          type: integer
-          format: int32
-          description: HTTP status code.
-          example: 400
+          type: object
+          properties:
+            value:
+              type: integer
+              format: int32
+              description: HTTP status code that matches the status of the request.
+              example: 400
+            description:
+              type: string
+              description: Status description appropriate for the status value.
+              example: Bad Request
         type:
           $ref: '#/components/schemas/ErrorType'
         message:

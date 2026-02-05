@@ -45,3 +45,35 @@ run = 'open https://tokenx-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp
 [tasks.auth-m2m]
 description = "Open a browser to get a machine2machine"
 run = 'open https://azure-token-generator.intern.dev.nav.no/api/m2m?aud=dev-gcp.team-esyfo.syfo-dokumentporten'
+
+[tasks.flyway-repair]
+description = "Run flyway repair using gradle"
+usage = '''
+flag "--username <username>" help="database username" default="username"
+flag "--password <password>" help="database password" default="password"
+flag "--url <url>" help="database url" default="jdbc:postgresql://localhost:5432/esyfo-narmesteleder_dev"
+'''
+
+run = './gradlew -Dflyway.user=${usage_username?} -Dflyway.password=${usage_password?} -Dflyway.url=${usage_url?} flywayRepair'
+
+
+[tasks.flyway-info]
+description = "Run flyway info using gradle"
+usage = '''
+flag "--username <username>" help="database username" default="username"
+flag "--password <password>" help="database password" default="password"
+flag "--url <url>" help="database url" default="jdbc:postgresql://localhost:5432/esyfo-narmesteleder_dev"
+'''
+
+run = './gradlew -Dflyway.user=${usage_username?} -Dflyway.password=${usage_password?} -Dflyway.url=${usage_url?} flywayInfo'
+
+
+[tasks.flyway-undo]
+description = "Run flyway undo using gradle"
+usage = '''
+flag "--username <username>" help="database username" default="username"
+flag "--password <password>" help="database password" default="password"
+flag "--url <url>" help="database url" default="jdbc:postgresql://localhost:5432/esyfo-narmesteleder_dev"
+'''
+
+run = './gradlew -Dflyway.user=${usage_username?} -Dflyway.password=${usage_password?} -Dflyway.url=${usage_url?} flywayUndo'

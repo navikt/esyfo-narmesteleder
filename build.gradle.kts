@@ -16,6 +16,15 @@ repositories {
     mavenCentral()
 }
 
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.flywaydb:flyway-database-postgresql:12.0.0")
+    }
+}
+
 dependencies {
     implementation(libs.datafaker)
     implementation(libs.ktor.server.core)

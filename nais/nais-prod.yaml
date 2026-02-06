@@ -136,9 +136,6 @@ spec:
     - name: DIALOGPORTEN_RESEND_DIALOGER_TASK_ENABLED
       value: "false"
     - name: PERSIST_SENDT_SYKMELDING
-      value: "true"
-    # Accept sykmeldinger with TOM up to 16 days in the past
-    - name: SYKMELDING_TOM_PADDING
-      value: "16d"
+      value: "false"
   envFrom:
     - secret: altinn-subscription-key

@@ -21,14 +21,14 @@ import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
-import no.nav.syfo.sykmelding.kafka.model.Arbeidsgiver
-import no.nav.syfo.sykmelding.kafka.model.ArbeidsgiverSykmelding
-import no.nav.syfo.sykmelding.kafka.model.BrukerSvar
-import no.nav.syfo.sykmelding.kafka.model.Event
-import no.nav.syfo.sykmelding.kafka.model.KafkaMetadata
-import no.nav.syfo.sykmelding.kafka.model.RiktigNarmesteLeder
-import no.nav.syfo.sykmelding.kafka.model.SendtSykmeldingKafkaMessage
-import no.nav.syfo.sykmelding.kafka.model.SykmeldingsperiodeAGDTO
+import no.nav.syfo.sykmelding.model.Arbeidsgiver
+import no.nav.syfo.sykmelding.model.ArbeidsgiverSykmelding
+import no.nav.syfo.sykmelding.model.BrukerSvar
+import no.nav.syfo.sykmelding.model.Event
+import no.nav.syfo.sykmelding.model.KafkaMetadata
+import no.nav.syfo.sykmelding.model.RiktigNarmesteLeder
+import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
+import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -236,13 +236,13 @@ fun defaultSendtSykmeldingMessage(
     riktigNarmesteLeder: RiktigNarmesteLeder? = null
 ): SendtSykmeldingKafkaMessage = SendtSykmeldingKafkaMessage(
     kafkaMetadata = KafkaMetadata(
-        sykmeldingId = "sykmelding-123",
+        sykmeldingId = "00000000-0000-0000-0000-000000000123",
         timestamp = OffsetDateTime.now(),
         fnr = fnr,
         source = "test"
     ),
     event = Event(
-        sykmeldingId = "sykmelding-123",
+        sykmeldingId = "00000000-0000-0000-0000-000000000123",
         timestamp = OffsetDateTime.now(),
         brukerSvar = BrukerSvar(riktigNarmesteLeder = riktigNarmesteLeder),
         arbeidsgiver = Arbeidsgiver(
@@ -251,7 +251,10 @@ fun defaultSendtSykmeldingMessage(
             orgNavn = "Test Bedrift AS"
         )
     ),
-    sykmelding = ArbeidsgiverSykmelding(sykmeldingsperioder = sykmeldingsperioder)
+    sykmelding = ArbeidsgiverSykmelding(
+        sykmeldingsperioder = sykmeldingsperioder,
+        syketilfelleStartDato = sykmeldingsperioder.first().fom
+    )
 )
 
 fun TexasHttpClient.defaultMocks(pid: String = "userIdentifier", acr: String = "Level4", navident: String? = null) {

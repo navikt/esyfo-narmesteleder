@@ -15,7 +15,7 @@ import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.sykmelding.kafka.model.Arbeidsgiver
+import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.*

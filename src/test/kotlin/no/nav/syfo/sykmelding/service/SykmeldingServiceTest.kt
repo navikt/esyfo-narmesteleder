@@ -14,13 +14,7 @@ class SykmeldingServiceTest :
     DescribeSpec({
 
         val sykmeldingDb = FakeSykmeldingDb()
-
-        fun createService(paddingDays: Long = 16L) = SykmeldingService(
-            sykmeldingDb = sykmeldingDb,
-            otherEnvironmentProperties = OtherEnvironmentProperties.createForLocal().copy(
-                sykmeldingTomPaddingDays = paddingDays
-            )
-        )
+        val service = SykmeldingService(sykmeldingDb)
 
         beforeEach {
             sykmeldingDb.clear()
@@ -29,7 +23,6 @@ class SykmeldingServiceTest :
         describe("insertOrUpdateSykmelding") {
 
             it("should insert sykmelding when it has employer and valid period") {
-                val service = createService(paddingDays = 16L)
                 val today = LocalDate.now()
                 val message = defaultSendtSykmeldingMessage(
                     sykmeldingsperioder = listOf(
@@ -46,7 +39,6 @@ class SykmeldingServiceTest :
             }
 
             it("should NOT insert sykmelding when it has no employer") {
-                val service = createService()
                 val today = LocalDate.now()
                 val message = defaultSendtSykmeldingMessage(
                     sykmeldingsperioder = listOf(
@@ -61,15 +53,13 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 0
             }
 
-            it("should NOT insert sykmelding when period is too old (beyond padding days)") {
-                val service = createService(paddingDays = 16L)
+            it("should NOT insert sykmelding when period is too old (1 year)") {
                 val today = LocalDate.now()
-                // Period ended 20 days ago - beyond 16 day padding
                 val message = defaultSendtSykmeldingMessage(
                     sykmeldingsperioder = listOf(
                         SykmeldingsperiodeAGDTO(
                             fom = today.minusDays(30),
-                            tom = today.minusDays(20)
+                            tom = today.minusYears(2)
                         )
                     )
                 )
@@ -79,15 +69,13 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 0
             }
 
-            it("should insert sykmelding when period ended within padding days") {
-                val service = createService(paddingDays = 16L)
+            it("should insert sykmelding when period ended within one year") {
                 val today = LocalDate.now()
-                // Period ended 10 days ago - within 16 day padding
                 val message = defaultSendtSykmeldingMessage(
                     sykmeldingsperioder = listOf(
                         SykmeldingsperiodeAGDTO(
-                            fom = today.minusDays(20),
-                            tom = today.minusDays(10)
+                            fom = today.minusDays(20).minusYears(1),
+                            tom = today.minusYears(1)
                         )
                     )
                 )
@@ -98,7 +86,6 @@ class SykmeldingServiceTest :
             }
 
             it("should use the latest period (max tom) for fom and tom") {
-                val service = createService(paddingDays = 16L)
                 val today = LocalDate.now()
                 val earlierPeriod = SykmeldingsperiodeAGDTO(
                     fom = today.minusDays(30),
@@ -121,7 +108,6 @@ class SykmeldingServiceTest :
             }
 
             it("should update existing sykmelding when inserting with same sykmeldingId") {
-                val service = createService(paddingDays = 16L)
                 val today = LocalDate.now()
 
                 val firstMessage = defaultSendtSykmeldingMessage(
@@ -148,7 +134,6 @@ class SykmeldingServiceTest :
             }
 
             it("should insert sykmelding with syketilfelleStartDato from message") {
-                val service = createService(paddingDays = 16L)
                 val today = LocalDate.now()
                 val message = defaultSendtSykmeldingMessage(
                     sykmeldingsperioder = listOf(
@@ -164,15 +149,13 @@ class SykmeldingServiceTest :
                 stored.first().syketilfelleStartDato shouldNotBe null
             }
 
-            it("should insert sykmelding when period ends exactly on padding day limit") {
-                val service = createService(paddingDays = 16L)
+            it("should insert sykmelding when period ends exactly on 1 year limit") {
                 val today = LocalDate.now()
-                // Period ended exactly 16 days ago - at the boundary
                 val message = defaultSendtSykmeldingMessage(
                     sykmeldingsperioder = listOf(
                         SykmeldingsperiodeAGDTO(
-                            fom = today.minusDays(26),
-                            tom = today.minusDays(16)
+                            fom = today.minusDays(26).minusYears(1),
+                            tom = today.minusYears(1)
                         )
                     )
                 )
@@ -183,14 +166,12 @@ class SykmeldingServiceTest :
             }
 
             it("should NOT insert sykmelding when period ends one day beyond padding limit") {
-                val service = createService(paddingDays = 16L)
                 val today = LocalDate.now()
-                // Period ended 17 days ago - one day beyond 16 day padding
                 val message = defaultSendtSykmeldingMessage(
                     sykmeldingsperioder = listOf(
                         SykmeldingsperiodeAGDTO(
-                            fom = today.minusDays(27),
-                            tom = today.minusDays(17)
+                            fom = today.minusDays(27).minusYears(1),
+                            tom = today.minusDays(1).minusYears(1)
                         )
                     )
                 )
@@ -204,7 +185,6 @@ class SykmeldingServiceTest :
         describe("revokeSykmelding") {
 
             it("should delegate to db and return affected row count") {
-                val service = createService()
                 val today = LocalDate.now()
                 val message = defaultSendtSykmeldingMessage(
                     sykmeldingsperioder = listOf(
@@ -225,8 +205,6 @@ class SykmeldingServiceTest :
             }
 
             it("should return 0 when sykmelding does not exist") {
-                val service = createService()
-
                 val result = service.revokeSykmelding(UUID.randomUUID())
 
                 result shouldBe 0

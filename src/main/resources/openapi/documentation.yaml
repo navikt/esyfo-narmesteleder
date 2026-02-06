@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Esyfo Narmesteleder API
-  version: 1.0.1
+  version: 1.0.2
   description: |
     API v1 for linemanager creation, revoke, requirement, and metrics.
     
@@ -414,7 +414,12 @@ components:
           description: Timestamp when the requirement was last updated
         status:
           type: string
-          description: Status of the requirement
+          description: |
+            Status types for requirements.
+            * `CREATED`: A requirement to get a linemanager assigned has been identified. The requirement is stored in our database but we have not yet sent it to Dialogporten.
+            * `REQUIRES_ATTENTION`: A requirement to get a linemanager assigned has created in our database AND it has been delivered to Dialogporten.
+            * `COMPLETED`: There is no longer a need to assign linemanger for this requirement. Probably because a linemanager has been assigned.
+            * `ERROR`: An unexpected error occurred in the process of handling the requirement. No need for api consumers to take action.
           enum:
             - CREATED
             - REQUIRES_ATTENTION

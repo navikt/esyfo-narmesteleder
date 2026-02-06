@@ -90,6 +90,9 @@ spec:
         - host: platform.altinn.no
   kafka:
     pool: nav-prod
+  valkey:
+    - instance: felles-cache
+      access: readwrite
   env:
     - name: PDL_BASE_URL
       value: https://pdl-api.prod-fss-pub.nais.io/graphql

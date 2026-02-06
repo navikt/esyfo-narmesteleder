@@ -29,6 +29,7 @@ import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
+import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -67,6 +68,7 @@ fun Application.configureDependencies() {
             environmentModule(isLocalEnv()),
             databaseModule(),
             clientsModule(),
+            valkeyModule(),
             servicesModule(),
             handlerModule()
         )
@@ -163,6 +165,12 @@ private fun clientsModule() = module {
     }
 }
 
+private fun valkeyModule() = module {
+    single {
+        ValkeyCache(env().valkeyEnvironment)
+    }
+}
+
 private fun servicesModule() = module {
     single { AaregService(arbeidsforholdOversiktClient = get()) }
     single { DinesykmeldteService(dinesykmeldteClient = get()) }
@@ -183,7 +191,7 @@ private fun servicesModule() = module {
             httpClient = get()
         )
     }
-    single { PdlService(get()) }
+    single { PdlService(get(), get()) }
     single { AltinnTilgangerService(get()) }
     single { LeaderElection(get(), env().otherProperties.electorPath) }
     single {

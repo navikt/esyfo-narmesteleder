@@ -7,7 +7,9 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
+import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.mockk
 import io.mockk.spyk
 import linemanagerRevoke
 import linemanager
@@ -21,6 +23,7 @@ import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
@@ -40,7 +43,8 @@ class ValidationServiceTest : DescribeSpec({
     val eregClient = FakeEregClient()
     val eregService = spyk(EregService(eregClient))
     val pdlClient = FakePdlClient()
-    val pdlService = spyk(PdlService(pdlClient))
+    val valkeyCacheMock = mockk<ValkeyCache>(relaxed = true)
+    val pdlService = spyk(PdlService(pdlClient, valkeyCacheMock))
     val pdpClient = FakePdpClient()
     val pdpService = spyk(PdpService(pdpClient))
     val service = ValidationService(
@@ -53,6 +57,7 @@ class ValidationServiceTest : DescribeSpec({
     )
     beforeTest {
         clearAllMocks()
+        coEvery { valkeyCacheMock.getPerson(any()) } returns null
     }
 
     describe("validateNarmesteleder") {

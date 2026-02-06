@@ -20,6 +20,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import io.mockk.Called
 import io.mockk.clearAllMocks
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
@@ -36,6 +37,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
+import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
@@ -66,7 +68,8 @@ import java.util.*
 
 class LinenmanagerApiV1Test :
     DescribeSpec({
-        val pdlService = spyk(PdlService(FakePdlClient()))
+        val valkeyCacheMock = mockk<ValkeyCache>(relaxed = true)
+        val pdlService = spyk(PdlService(FakePdlClient(), valkeyCacheMock))
         val texasHttpClientMock = mockk<TexasHttpClient>()
         val narmesteLederRelasjon = linemanager()
         val fakeAaregClient = FakeAaregClient()
@@ -104,6 +107,7 @@ class LinenmanagerApiV1Test :
             fakeAltinnTilgangerClient.usersWithAccess.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
+            coEvery { valkeyCacheMock.getPerson(any())} returns null
             narmesteLederService =
                 NarmestelederService(
                     nlDb = fakeRepo,

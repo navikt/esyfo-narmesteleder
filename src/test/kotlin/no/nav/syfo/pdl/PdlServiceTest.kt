@@ -8,6 +8,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.pdl.client.GetPersonResponse
 import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident
@@ -21,10 +22,14 @@ import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 class PdlServiceTest : DescribeSpec({
 
     val pdlClient = mockk<IPdlClient>()
-    val pdlService = PdlService(pdlClient)
+    val valkeyCache = mockk<ValkeyCache>(relaxed = true)
+    val pdlService = PdlService(pdlClient, valkeyCache)
 
     beforeTest {
         clearAllMocks()
+
+        coEvery { valkeyCache.getPerson(any()) } returns null
+
     }
 
     fun getPersonResponse(navn: List<Navn>, identer: List<Ident>) = GetPersonResponse(

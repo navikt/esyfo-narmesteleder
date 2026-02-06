@@ -11,6 +11,15 @@ services:
       POSTGRES_DB: esyfo-narmesteleder_dev
     volumes:
       - pgdata:/var/lib/postgresql/data
+  valkey:
+    image: valkey/valkey:latest
+    container_name: valkey-server
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+    environment:
+      - VALKEY_PASSWORD=test
 
   authserver:
     image: ghcr.io/navikt/mock-oauth2-server:3.0.0
@@ -93,3 +102,4 @@ services:
 
 volumes:
   pgdata:
+  valkey_data:

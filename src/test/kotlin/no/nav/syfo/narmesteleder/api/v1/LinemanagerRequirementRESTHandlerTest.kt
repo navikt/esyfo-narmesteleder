@@ -3,6 +3,7 @@ package no.nav.syfo.narmesteleder.api.v1
 import createMockToken
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
+import io.mockk.coEvery
 import io.mockk.coVerify
 import java.util.*
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +44,9 @@ class LinemanagerRequirementRESTHandlerTest : FunSpec({
     beforeTest {
         clearAllMocks()
         servicesWrapper.fakeDbSpyk.clear()
+
+        coEvery {
+            servicesWrapper.valkeyCacheMock.getPerson(any())} returns null
     }
 
     test("Should update status on NlBehov through NarmestelederService") {

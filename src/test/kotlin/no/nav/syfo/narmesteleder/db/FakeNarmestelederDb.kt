@@ -1,9 +1,9 @@
 package no.nav.syfo.narmesteleder.db
 
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 
 class FakeNarmestelederDb : INarmestelederDb {
     private val store = ConcurrentHashMap<UUID, NarmestelederBehovEntity>()
@@ -29,18 +29,18 @@ class FakeNarmestelederDb : INarmestelederDb {
         store[id] = toStore
     }
 
-    override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> {
-        return store.values.filter { it.behovStatus == status }
-    }
+    override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus == status }.take(limit)
+
+    override suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus == status && it.dialogDeletePerformed != null && it.dialogId == null }.take(limit)
+    override suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.dialogDeletePerformed == null }
+        .sortedBy { it.created }
+        .take(limit)
 
     override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
-    override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>):
-        List<NarmestelederBehovEntity> {
-        return store.values.filter {
-            it.orgnummer == orgnummer &&
-                it.sykmeldtFnr == sykmeldtFnr &&
-                behovStatus.contains(it.behovStatus)
-        }
+    override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity> = store.values.filter {
+        it.orgnummer == orgnummer &&
+            it.sykmeldtFnr == sykmeldtFnr &&
+            behovStatus.contains(it.behovStatus)
     }
 
     override suspend fun findBehovByParameters(
@@ -48,18 +48,17 @@ class FakeNarmestelederDb : INarmestelederDb {
         createdAfter: Instant,
         status: List<BehovStatus>,
         limit: Int
-    ): List<NarmestelederBehovEntity> {
-        return store.values.filter {
-            it.orgnummer == orgNumber &&
-                it.created.isAfter(createdAfter) &&
-                it.created.isBefore(Instant.now()) &&
-                status.contains(it.behovStatus)
-        }.take(limit)
-    }
+    ): List<NarmestelederBehovEntity> = store.values.filter {
+        it.orgnummer == orgNumber &&
+            it.created.isAfter(createdAfter) &&
+            it.created.isBefore(Instant.now()) &&
+            status.contains(it.behovStatus)
+    }.take(limit)
 
     fun lastId(): UUID? = order.lastOrNull()
     fun findAll(): List<NarmestelederBehovEntity> = order.mapNotNull { store[it] }
     fun clear() {
-        store.clear(); order.clear()
+        store.clear()
+        order.clear()
     }
 }

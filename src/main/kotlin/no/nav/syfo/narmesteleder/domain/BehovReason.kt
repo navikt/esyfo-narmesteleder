@@ -9,5 +9,5 @@ enum class BehovReason {
     DEAKTIVERT_ARBEIDSFORHOLD,
     DEAKTIVERT_NY_LEDER,
     IDENTENDRING,
-    UKJENT;
+    UKJENT
 }

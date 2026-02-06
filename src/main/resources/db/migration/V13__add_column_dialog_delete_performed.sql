@@ -1,0 +1,2 @@
+ALTER TABLE nl_behov
+    ADD COLUMN IF NOT EXISTS dialog_delete_performed TIMESTAMP WITH TIME ZONE DEFAULT null;

@@ -19,30 +19,36 @@ fun validateLinemanagerLastName(
     managerPdlPerson: Person,
     linemanager: Linemanager,
 ) {
-    if (managerPdlPerson.name.etternavn.uppercase() != linemanager.manager.lastName.uppercase()) throw ApiErrorException.BadRequestException(
-        "Last name for linemanager does not correspond with registered value for the given national identification number",
-        type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
-    )
+    if (managerPdlPerson.name.etternavn.uppercase() != linemanager.manager.lastName.uppercase()) {
+        throw ApiErrorException.BadRequestException(
+            "Last name for linemanager does not correspond with registered value for the given national identification number",
+            type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+        )
+    }
 }
 
 fun validateEmployeeLastName(
     managerPdlPerson: Person,
     linemanager: Linemanager,
 ) {
-    if (managerPdlPerson.name.etternavn.uppercase() != linemanager.lastName.uppercase()) throw ApiErrorException.BadRequestException(
-        "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
-        type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
-    )
+    if (managerPdlPerson.name.etternavn.uppercase() != linemanager.lastName.uppercase()) {
+        throw ApiErrorException.BadRequestException(
+            "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
+            type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+        )
+    }
 }
 
 fun validateEmployeeLastName(
     managerPdlPerson: Person,
     linemanagerRevoke: LinemanagerRevoke,
 ) {
-    if (managerPdlPerson.name.etternavn.uppercase() != linemanagerRevoke.lastName.uppercase()) throw ApiErrorException.BadRequestException(
-        "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
-        type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
-    )
+    if (managerPdlPerson.name.etternavn.uppercase() != linemanagerRevoke.lastName.uppercase()) {
+        throw ApiErrorException.BadRequestException(
+            "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
+            type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+        )
+    }
 }
 
 fun validateNarmesteLeder(
@@ -51,7 +57,6 @@ fun validateNarmesteLeder(
     systemPrincipal: SystemPrincipal?,
     orgNumberInRequest: String,
 ) {
-
     nlrequire(
         sykemeldtOrgNumbers.keys.contains(orgNumberInRequest),
         type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
@@ -67,8 +72,7 @@ fun validateNarmesteLeder(
         nlrequireOrForbidden(
             type = ErrorType.MISSING_ORG_ACCESS,
             value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
-        )
-        { "Systemuser is missing access to the organization" }
+        ) { "Systemuser is missing access to the organization" }
     }
 }
 
@@ -90,7 +94,6 @@ fun validateNarmesteLederAvkreft(
         nlrequireOrForbidden(
             type = ErrorType.MISSING_ORG_ACCESS,
             value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
-        )
-        { "Systemuser is missing access to the organization" }
+        ) { "Systemuser is missing access to the organization" }
     }
 }

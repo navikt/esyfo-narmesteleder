@@ -7,10 +7,10 @@ metadata:
     texas.nais.io/enabled: "true"
 spec:
   ingresses:
-    - https://esyfo-narmesteleder.intern.nav.no
-    - https://esyfo-narmesteleder.ekstern.nav.no/api/v1/linemanager
-    - https://esyfo-narmesteleder.ekstern.nav.no/swagger
-    - https://esyfo-narmesteleder.ekstern.nav.no/openapi
+    - https://narmesteleder-api.intern.nav.no
+    - https://narmesteleder-api.nav.no/api/v1/linemanager
+    - https://narmesteleder-api.nav.no/swagger
+    - https://narmesteleder-api.nav.no/openapi
   image: {{image}} #
   port: 8080
   liveness:
@@ -117,7 +117,7 @@ spec:
     - name: FRONTEND_BASE_URL
       value: https://www.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
-      value: https://esyfo-narmesteleder.ekstern.nav.no
+      value: https://narmesteleder-api.nav.no
     - name: PERSIST_LEESAH_NL_BEHOV
       value: "true"
     - name: CONSUME_KAFKA_TOPICS
@@ -128,5 +128,15 @@ spec:
       value: "10m"
     - name: DIALOGPORTEN_API_ONLY
       value: "true"
+    - name: DIALOGPORTEN_DELETE_DIALOGER_POLLING_DELAY
+      value: "3m"
+    - name: DIALOGPORTEN_DELETE_DIALOGER_TASK_ENABLED
+      value: "false"
+    - name: DIALOGPORTEN_DELETE_DIALOGER_PAGE_LIMIT
+      value: "100"
+    - name: DIALOGPORTEN_DELETE_DIALOGER_SLEEP_AFTER_PAGE
+      value: "3000"
+    - name: DIALOGPORTEN_RESEND_DIALOGER_TASK_ENABLED
+      value: "false"
   envFrom:
     - secret: altinn-subscription-key

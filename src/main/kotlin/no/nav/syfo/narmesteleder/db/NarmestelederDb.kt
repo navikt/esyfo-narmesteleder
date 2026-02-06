@@ -1,41 +1,52 @@
 package no.nav.syfo.narmesteleder.db
 
-import java.sql.ResultSet
-import java.sql.Timestamp
-import java.time.Instant
-import java.util.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import java.sql.ResultSet
+import java.sql.Timestamp
+import java.time.Instant
+import java.util.*
 
 class NarmestelederGeneratedIDException(message: String) : RuntimeException(message)
 interface INarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
-    suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity>
-    suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity>
+    suspend fun findBehovByParameters(
+        sykmeldtFnr: String,
+        orgnummer: String,
+        behovStatus: List<BehovStatus>
+    ): List<NarmestelederBehovEntity>
+
+    suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int = 100): List<NarmestelederBehovEntity>
     suspend fun findBehovByParameters(
         orgNumber: String,
         createdAfter: Instant,
         status: List<BehovStatus>,
         limit: Int
     ): List<NarmestelederBehovEntity>
+
+    suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity>
+
+    /**
+     * This function can be removed after we have fixed requirements and dialogs due to incorrect url in
+     * dialog attachment
+     */
+    suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity>
 }
 
 class NarmestelederDb(
     private val database: DatabaseInterface,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
-) :
-    INarmestelederDb {
-    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity =
-        withContext(dispatcher) {
-            return@withContext database.connection.use { connection ->
-                connection
-                    .prepareStatement(
-                        """
+) : INarmestelederDb {
+    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity = withContext(dispatcher) {
+        return@withContext database.connection.use { connection ->
+            connection
+                .prepareStatement(
+                    """
                     INSERT INTO nl_behov(orgnummer,
                                          hovedenhet_orgnummer,
                                          sykemeldt_fnr,
@@ -49,32 +60,34 @@ class NarmestelederDb(
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     RETURNING *;
                     """.trimIndent()
-                    ).use { preparedStatement ->
-                        preparedStatement.setString(1, nlBehov.orgnummer)
-                        preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
-                        preparedStatement.setString(3, nlBehov.sykmeldtFnr)
-                        preparedStatement.setString(4, nlBehov.narmestelederFnr)
-                        preparedStatement.setString(5, nlBehov.behovReason.name)
-                        preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
-                        preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
-                        preparedStatement.setString(8, nlBehov.fornavn)
-                        preparedStatement.setString(9, nlBehov.mellomnavn)
-                        preparedStatement.setString(10, nlBehov.etternavn)
-                        preparedStatement.execute()
+                ).use { preparedStatement ->
+                    preparedStatement.setString(1, nlBehov.orgnummer)
+                    preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
+                    preparedStatement.setString(3, nlBehov.sykmeldtFnr)
+                    preparedStatement.setString(4, nlBehov.narmestelederFnr)
+                    preparedStatement.setString(5, nlBehov.behovReason.name)
+                    preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
+                    preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
+                    preparedStatement.setString(8, nlBehov.fornavn)
+                    preparedStatement.setString(9, nlBehov.mellomnavn)
+                    preparedStatement.setString(10, nlBehov.etternavn)
+                    preparedStatement.execute()
 
-                        runCatching {
-                            if (preparedStatement.resultSet.next()) {
-                                preparedStatement.resultSet.toNarmestelederBehovEntity()
-                            } else throw NarmestelederBehovEntityInsertException("Could not get the inserted document.")
-                        }.getOrElse {
-                            connection.rollback()
-                            throw it
+                    runCatching {
+                        if (preparedStatement.resultSet.next()) {
+                            preparedStatement.resultSet.toNarmestelederBehovEntity()
+                        } else {
+                            throw NarmestelederBehovEntityInsertException("Could not get the inserted document.")
                         }
-                    }.also {
-                        connection.commit()
+                    }.getOrElse {
+                        connection.rollback()
+                        throw it
                     }
-            }
+                }.also {
+                    connection.commit()
+                }
         }
+    }
 
     override suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity): Unit = withContext(dispatcher) {
         database.connection.use { connection ->
@@ -90,7 +103,8 @@ class NarmestelederDb(
                         dialog_id            = ?,
                         fornavn              = ?,
                         mellomnavn           = ?,
-                        etternavn            = ?
+                        etternavn            = ?,
+                        dialog_delete_performed = ?
                         WHERE id = ?;
                     """.trimIndent()
                 ).use { preparedStatement ->
@@ -104,7 +118,10 @@ class NarmestelederDb(
                         preparedStatement.setString(7, fornavn)
                         preparedStatement.setString(8, mellomnavn)
                         preparedStatement.setString(9, etternavn)
-                        preparedStatement.setObject(10, id)
+                        dialogDeletePerformed?.let {
+                            preparedStatement.setTimestamp(10, Timestamp.from(dialogDeletePerformed))
+                        } ?: preparedStatement.setObject(10, null)
+                        preparedStatement.setObject(11, id)
                     }
                     preparedStatement.executeUpdate()
                 }.also {
@@ -134,7 +151,11 @@ class NarmestelederDb(
         }
     }
 
-    override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity> = withContext(dispatcher)  {
+    override suspend fun findBehovByParameters(
+        sykmeldtFnr: String,
+        orgnummer: String,
+        behovStatus: List<BehovStatus>
+    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
         val placeholders = behovStatus.joinToString(", ") { "?" }
         return@withContext database.connection.use { connection ->
             connection
@@ -165,44 +186,101 @@ class NarmestelederDb(
         }
     }
 
-    override suspend fun getNlBehovByStatus(status: BehovStatus): List<NarmestelederBehovEntity> =
-        withContext(dispatcher) {
-            return@withContext database.connection.use { connection ->
-                connection
-                    // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
-                    .prepareStatement(
-                        """
+    override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = withContext(dispatcher) {
+        return@withContext database.connection.use { connection ->
+            connection
+                // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
+                .prepareStatement(
+                    """
                         SELECT *
                         FROM nl_behov
                         WHERE behov_status = ?
                         AND created < NOW() - INTERVAL '10 second'
                         ORDER BY created
-                        LIMIT 100
-                        """.trimIndent()
-                    ).use { preparedStatement ->
-                        preparedStatement.setObject(1, status, java.sql.Types.OTHER)
-                        val resultSet = preparedStatement.executeQuery()
-                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                        while (resultSet.next()) {
-                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                        }
-                        nlBehov
+                        LIMIT ?
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    preparedStatement.setObject(1, status, java.sql.Types.OTHER)
+                    preparedStatement.setInt(2, limit)
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
                     }
-            }
+                    nlBehov
+                }
         }
+    }
+
+    /**
+     * This function can be removed after we have fixed requirements and dialogs due to incorrect url in
+     * dialog attachment
+     */
+    override suspend fun getNlBehovForResendToDialogporten(
+        status: BehovStatus,
+        limit: Int
+    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
+        return@withContext database.connection.use { connection ->
+            connection
+                // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
+                .prepareStatement(
+                    """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE behov_status = ?
+                        AND dialog_id IS NULL
+                        AND dialog_delete_performed IS NOT NULL
+                        ORDER BY created
+                        LIMIT ?
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    preparedStatement.setObject(1, status, java.sql.Types.OTHER)
+                    preparedStatement.setInt(2, limit)
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                    }
+                    nlBehov
+                }
+        }
+    }
+
+    override suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity> = withContext(dispatcher) {
+        return@withContext database.connection.use { connection ->
+            connection
+                // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
+                .prepareStatement(
+                    """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE dialog_delete_performed IS NULL AND dialog_id IS NOT NULL
+                        ORDER BY created
+                        LIMIT ?
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    preparedStatement.setInt(1, limit)
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                    }
+                    nlBehov
+                }
+        }
+    }
 
     override suspend fun findBehovByParameters(
         orgNumber: String,
         createdAfter: Instant,
         status: List<BehovStatus>,
         limit: Int
-    ): List<NarmestelederBehovEntity> =
-        withContext(dispatcher) {
-            return@withContext database.connection.use { connection ->
-                val placeholders = status.joinToString(", ") { "?" }
-                connection
-                    .prepareStatement(
-                        """
+    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
+        return@withContext database.connection.use { connection ->
+            val placeholders = status.joinToString(", ") { "?" }
+            connection
+                .prepareStatement(
+                    """
                         SELECT *
                         FROM nl_behov
                         WHERE 
@@ -213,24 +291,24 @@ class NarmestelederDb(
                             created > ? 
                         ORDER BY created
                         LIMIT ?
-                        """.trimIndent()
-                    ).use { preparedStatement ->
-                        var idx = 1
-                        preparedStatement.setString(idx++, orgNumber)
-                        status.forEach { status ->
-                            preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
-                        }
-                        preparedStatement.setTimestamp(idx++, Timestamp.from(createdAfter))
-                        preparedStatement.setInt(idx++, limit)
-                        val resultSet = preparedStatement.executeQuery()
-                        val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                        while (resultSet.next()) {
-                            nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                        }
-                        nlBehov
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    var idx = 1
+                    preparedStatement.setString(idx++, orgNumber)
+                    status.forEach { status ->
+                        preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
                     }
-            }
+                    preparedStatement.setTimestamp(idx++, Timestamp.from(createdAfter))
+                    preparedStatement.setInt(idx++, limit)
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                    }
+                    nlBehov
+                }
         }
+    }
 }
 
 private fun ResultSet.getGeneratedUUID(idColumnLabel: String): UUID = this.use {

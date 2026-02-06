@@ -2,7 +2,6 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStarted
-import io.ktor.server.application.ApplicationStopPreparing
 import io.ktor.server.application.ApplicationStopped
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.util.logger

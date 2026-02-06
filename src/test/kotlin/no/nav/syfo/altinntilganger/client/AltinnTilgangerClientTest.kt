@@ -19,38 +19,39 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
 
-class AltinnTilgangerClientTest : DescribeSpec({
+class AltinnTilgangerClientTest :
+    DescribeSpec({
 
-    val mockTexasClient = mockk<TexasHttpClient>()
-    beforeTest {
-        clearAllMocks()
-    }
-
-    fun getMockEngine(status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->
-        when (request.url.fullPath) {
-            "/altinn-tilganger" -> {
-                if (status.isSuccess()) {
-                    respond(
-                        status = status,
-                        headers = headers,
-                        content = content.toByteArray(Charsets.UTF_8),
-                    )
-                } else {
-                    respond(
-                        status = status,
-                        headers = headers,
-                        content = content,
-                    )
-                }
-            }
-
-            else -> error("Unhandled request ${request.url.fullPath}")
+        val mockTexasClient = mockk<TexasHttpClient>()
+        beforeTest {
+            clearAllMocks()
         }
-    }
-    describe("fetchAltinnTilganger") {
-        it("should return AltinnTilgangerResponse when fetchAltinnTilganger responds with 200") {
-            val userPrincipal = UserPrincipal("12345678901", "token")
-            val getPersonResponse = """
+
+        fun getMockEngine(status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->
+            when (request.url.fullPath) {
+                "/altinn-tilganger" -> {
+                    if (status.isSuccess()) {
+                        respond(
+                            status = status,
+                            headers = headers,
+                            content = content.toByteArray(Charsets.UTF_8),
+                        )
+                    } else {
+                        respond(
+                            status = status,
+                            headers = headers,
+                            content = content,
+                        )
+                    }
+                }
+
+                else -> error("Unhandled request ${request.url.fullPath}")
+            }
+        }
+        describe("fetchAltinnTilganger") {
+            it("should return AltinnTilgangerResponse when fetchAltinnTilganger responds with 200") {
+                val userPrincipal = UserPrincipal("12345678901", "token")
+                val getPersonResponse = """
 {
   "hierarki": [
     {
@@ -100,63 +101,69 @@ class AltinnTilgangerClientTest : DescribeSpec({
 }
 
                 """.trimIndent()
-            val mockEngine = getMockEngine(
-                status = HttpStatusCode.Companion.OK,
-                headers = Headers.Companion.build {
-                    append("Content-Type", "application/json")
-                },
-                content = getPersonResponse,
-            )
-            coEvery {
-                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-            } returns TexasResponse(
-                "token", 111, "tokenType"
-            )
-            val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
+                val mockEngine = getMockEngine(
+                    status = HttpStatusCode.Companion.OK,
+                    headers = Headers.Companion.build {
+                        append("Content-Type", "application/json")
+                    },
+                    content = getPersonResponse,
+                )
+                coEvery {
+                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
+                } returns TexasResponse(
+                    "token",
+                    111,
+                    "tokenType"
+                )
+                val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
-            val result = client.fetchAltinnTilganger(userPrincipal)
+                val result = client.fetchAltinnTilganger(userPrincipal)
 
-            result?.hierarki?.firstOrNull()?.orgnr shouldBe "987654321"
+                result?.hierarki?.firstOrNull()?.orgnr shouldBe "987654321"
+            }
+
+            it("should throw exception when getPerson responds with 4xx") {
+                val userPrincipal = UserPrincipal("12345678901", "token")
+
+                val mockEngine = getMockEngine(
+                    status = HttpStatusCode.Companion.BadRequest,
+                    headers = Headers.Companion.build {
+                        append("Content-Type", "application/json")
+                    },
+                    content = "invalid request",
+                )
+                coEvery {
+                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
+                } returns TexasResponse(
+                    "token",
+                    111,
+                    "tokenType"
+                )
+                val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
+
+                shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
+            }
+
+            it("should throw exception when getPerson responds with 5xx") {
+                val userPrincipal = UserPrincipal("12345678901", "token")
+
+                val mockEngine = getMockEngine(
+                    status = HttpStatusCode.Companion.ServiceUnavailable,
+                    headers = Headers.Companion.build {
+                        append("Content-Type", "application/json")
+                    },
+                    content = "invalid request",
+                )
+                coEvery {
+                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
+                } returns TexasResponse(
+                    "token",
+                    111,
+                    "tokenType"
+                )
+                val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
+
+                shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
+            }
         }
-
-        it("should throw exception when getPerson responds with 4xx") {
-            val userPrincipal = UserPrincipal("12345678901", "token")
-
-            val mockEngine = getMockEngine(
-                status = HttpStatusCode.Companion.BadRequest,
-                headers = Headers.Companion.build {
-                    append("Content-Type", "application/json")
-                },
-                content = "invalid request",
-            )
-            coEvery {
-                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-            } returns TexasResponse(
-                "token", 111, "tokenType"
-            )
-            val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
-
-            shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
-        }
-
-        it("should throw exception when getPerson responds with 5xx") {
-            val userPrincipal = UserPrincipal("12345678901", "token")
-
-            val mockEngine = getMockEngine(
-                status = HttpStatusCode.Companion.ServiceUnavailable,
-                headers = Headers.Companion.build {
-                    append("Content-Type", "application/json")
-                },
-                content = "invalid request",
-            )
-            coEvery {
-                mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-            } returns TexasResponse(
-                "token", 111, "tokenType"
-            )
-            val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
-
-            shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
-        }
-    }
-})
+    })

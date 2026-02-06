@@ -24,20 +24,18 @@ data class Opplysningspliktig(
     val type: OpplysningspliktigType,
     val identer: List<Ident>,
 ) {
-    fun getJuridiskOrgnummer() =
-        identer.firstOrNull {
-            it.type == IdentType.ORGANISASJONSNUMMER
-        }?.ident
+    fun getJuridiskOrgnummer() = identer.firstOrNull {
+        it.type == IdentType.ORGANISASJONSNUMMER
+    }?.ident
 }
 
 data class Arbeidssted(
     val type: ArbeidsstedType,
     val identer: List<Ident>,
 ) {
-    fun getOrgnummer() =
-        identer.firstOrNull {
-            it.type == IdentType.ORGANISASJONSNUMMER
-        }?.ident
+    fun getOrgnummer() = identer.firstOrNull {
+        it.type == IdentType.ORGANISASJONSNUMMER
+    }?.ident
 }
 
 data class Ident(

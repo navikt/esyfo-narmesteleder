@@ -37,9 +37,7 @@ class AaregClient(
 ) : IAaregClient {
     private val arbeidsforholdOversiktPath = "${aaregBaseUrl}$ARBEIDSFORHOLD_OVERSIKT_PATH"
 
-    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt {
-        return getArbeidsforholdInAareg(personIdent, getSystemToken())
-    }
+    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt = getArbeidsforholdInAareg(personIdent, getSystemToken())
 
     private suspend fun getSystemToken() = runCatching {
         texasHttpClient.systemToken(
@@ -47,8 +45,11 @@ class AaregClient(
             TexasHttpClient.getTarget(scope)
         ).accessToken
     }.getOrElse {
-        if (it is Exception) throw AaregClientException("An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}", it)
-        else throw it
+        if (it is Exception) {
+            throw AaregClientException("An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}", it)
+        } else {
+            throw it
+        }
     }
 
     private suspend fun getArbeidsforholdInAareg(

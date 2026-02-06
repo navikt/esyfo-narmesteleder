@@ -7,4 +7,4 @@ When the dialog is read by api, it contains link to a resource in Nav api to get
 
 ![narmesteleder uml diagram](lps-request-diagram.png)
 
-Documentation for the api is available [here](https://esyfo-narmesteleder.ekstern.dev.nav.no/swagger)
+Documentation for the api is available [here](https://narmesteleder-api.ekstern.dev.nav.no/swagger)

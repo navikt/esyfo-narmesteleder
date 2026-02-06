@@ -29,24 +29,25 @@ class DinesykmeldteClient(
     dinesykmeldteBaseUrl: String,
     private val texasHttpClient: TexasHttpClient,
     private val scope: String
-): IDinesykmeldteClient {
+) : IDinesykmeldteClient {
     private val arbeidsforholdOversiktPath = "${dinesykmeldteBaseUrl}$DINESYKMELDTE_ACTIVE_SYKMELDING_PATH"
 
-    override suspend fun getIsActiveSykmelding(fnr: String, orgnummer: String): Boolean {
-        return getDineSykmeldteIsActiveSykmelding(
-            fnr,
-            orgnummer,
-            getSystemToken()
-        )
-    }
+    override suspend fun getIsActiveSykmelding(fnr: String, orgnummer: String): Boolean = getDineSykmeldteIsActiveSykmelding(
+        fnr,
+        orgnummer,
+        getSystemToken()
+    )
     private suspend fun getSystemToken() = runCatching {
         texasHttpClient.systemToken(
             TexasHttpClient.IDENTITY_PROVIDER_AZUREAD,
             TexasHttpClient.getTarget(scope)
         ).accessToken
     }.getOrElse {
-        if (it is Exception) throw DinesykmeldteClientException("An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}", it)
-        else throw it
+        if (it is Exception) {
+            throw DinesykmeldteClientException("An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}", it)
+        } else {
+            throw it
+        }
     }
 
     private suspend fun getDineSykmeldteIsActiveSykmelding(

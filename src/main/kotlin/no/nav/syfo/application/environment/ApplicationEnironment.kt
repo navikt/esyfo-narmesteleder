@@ -28,16 +28,13 @@ data class NaisEnvironment(
     override val kafka: KafkaEnvironment = KafkaEnvironment.createFromEnvVars(),
     override val clientProperties: ClientProperties = ClientProperties.createFromEnvVars(),
     override val otherProperties: OtherEnvironmentProperties = OtherEnvironmentProperties.createFromEnvVars()
-    ) : Environment
+) : Environment
 
-fun getEnvVar(varName: String, defaultValue: String? = null) =
-    System.getenv(varName) ?: defaultValue ?: throw RuntimeException("Missing required variable \"$varName\"")
+fun getEnvVar(varName: String, defaultValue: String? = null) = System.getenv(varName) ?: defaultValue ?: throw RuntimeException("Missing required variable \"$varName\"")
 
-fun isLocalEnv(): Boolean =
-    getEnvVar("NAIS_CLUSTER_NAME", "local") == "local"
+fun isLocalEnv(): Boolean = getEnvVar("NAIS_CLUSTER_NAME", "local") == "local"
 
-fun isProdEnv(): Boolean =
-    getEnvVar("NAIS_CLUSTER_NAME", "local") == "prod-gcp"
+fun isProdEnv(): Boolean = getEnvVar("NAIS_CLUSTER_NAME", "local") == "prod-gcp"
 
 data class LocalEnvironment(
     override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),

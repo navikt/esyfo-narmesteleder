@@ -26,18 +26,17 @@ data class ClientProperties(
             eregBaseUrl = "https://ereg-test.intern.nav.no",
         )
 
-        fun createFromEnvVars() =
-            ClientProperties(
-                aaregBaseUrl = getEnvVar("AAREG_BASE_URL"),
-                aaregScope = getEnvVar("AAREG_SCOPE"),
-                altinnTilgangerBaseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
-                dinesykmeldteBaseUrl = getEnvVar("DINESYMELDTE_BASEURL"),
-                dinesykmeldteScope = getEnvVar("DINESYMELDTE_SCOPE"),
-                pdlBaseUrl = getEnvVar("PDL_BASE_URL"),
-                pdlScope = getEnvVar("PDL_SCOPE"),
-                altinn3BaseUrl = getEnvVar("ALTINN_3_BASE_URL"),
-                pdpSubscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY"),
-                eregBaseUrl = getEnvVar("EREG_BASE_URL"),
-            )
+        fun createFromEnvVars() = ClientProperties(
+            aaregBaseUrl = getEnvVar("AAREG_BASE_URL"),
+            aaregScope = getEnvVar("AAREG_SCOPE"),
+            altinnTilgangerBaseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
+            dinesykmeldteBaseUrl = getEnvVar("DINESYMELDTE_BASEURL"),
+            dinesykmeldteScope = getEnvVar("DINESYMELDTE_SCOPE"),
+            pdlBaseUrl = getEnvVar("PDL_BASE_URL"),
+            pdlScope = getEnvVar("PDL_SCOPE"),
+            altinn3BaseUrl = getEnvVar("ALTINN_3_BASE_URL"),
+            pdpSubscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY"),
+            eregBaseUrl = getEnvVar("EREG_BASE_URL"),
+        )
     }
 }

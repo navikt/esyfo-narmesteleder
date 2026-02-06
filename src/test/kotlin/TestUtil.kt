@@ -7,11 +7,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.fullPath
 import io.ktor.http.isSuccess
 import io.mockk.coEvery
-import java.time.Instant
-import java.util.*
 import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.SystemPrincipal
+import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -19,6 +18,9 @@ import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
+import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.Person
+import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.sykmelding.kafka.model.Arbeidsgiver
 import no.nav.syfo.sykmelding.kafka.model.ArbeidsgiverSykmelding
 import no.nav.syfo.sykmelding.kafka.model.BrukerSvar
@@ -32,12 +34,10 @@ import no.nav.syfo.texas.client.OrganizationId
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import no.nav.syfo.texas.client.TexasResponse
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
-import no.nav.syfo.ereg.client.Organisasjon
-import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.Person
-import no.nav.syfo.pdl.client.Navn
+import java.util.*
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
@@ -129,37 +129,33 @@ fun createRandomValidOrgNumbers(
     prefix: String = "0192:",
     count: Int = 20,
     orgNumLength: Int = 9
-): List<String> =
-    buildList {
-        repeat(count) { add(faker.regexify("$prefix[0-9]{$orgNumLength}")) }
-    }
+): List<String> = buildList {
+    repeat(count) { add(faker.regexify("$prefix[0-9]{$orgNumLength}")) }
+}
 
-fun addMaskinportenOrgPrefix(orgNumber: String): String =
-    "0192:$orgNumber"
+fun addMaskinportenOrgPrefix(orgNumber: String): String = "0192:$orgNumber"
 
-fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, content: String) =
-    MockEngine.Companion { request ->
-        when (request.url.fullPath) {
-            path -> {
-                if (status.isSuccess()) {
-                    respond(
-                        status = status,
-                        headers = headers,
-                        content = content.toByteArray(Charsets.UTF_8),
-                    )
-                } else {
-                    respond(
-                        status = status,
-                        headers = headers,
-                        content = content,
-                    )
-                }
+fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->
+    when (request.url.fullPath) {
+        path -> {
+            if (status.isSuccess()) {
+                respond(
+                    status = status,
+                    headers = headers,
+                    content = content.toByteArray(Charsets.UTF_8),
+                )
+            } else {
+                respond(
+                    status = status,
+                    headers = headers,
+                    content = content,
+                )
             }
-
-            else -> error("Unhandled request ${request.url.fullPath}")
         }
-    }
 
+        else -> error("Unhandled request ${request.url.fullPath}")
+    }
+}
 
 fun PdlService.prepareGetPersonResponse(manager: Manager) {
     prepareGetPersonResponse(manager.nationalIdentificationNumber, manager.lastName)
@@ -225,7 +221,6 @@ fun TexasHttpClient.defaultMocks(
                 )
             }
 
-
             else -> TODO("Legg til identityProvider i mock")
         }
     }
@@ -239,27 +234,25 @@ fun defaultSendtSykmeldingMessage(
         SykmeldingsperiodeAGDTO(fom = LocalDate.now().minusDays(5), tom = LocalDate.now().plusDays(5))
     ),
     riktigNarmesteLeder: RiktigNarmesteLeder? = null
-): SendtSykmeldingKafkaMessage {
-    return SendtSykmeldingKafkaMessage(
-        kafkaMetadata = KafkaMetadata(
-            sykmeldingId = "sykmelding-123",
-            timestamp = OffsetDateTime.now(),
-            fnr = fnr,
-            source = "test"
-        ),
-        event = Event(
-            sykmeldingId = "sykmelding-123",
-            timestamp = OffsetDateTime.now(),
-            brukerSvar = BrukerSvar(riktigNarmesteLeder = riktigNarmesteLeder),
-            arbeidsgiver = Arbeidsgiver(
-                orgnummer = orgnummer,
-                juridiskOrgnummer = juridiskOrgnummer,
-                orgNavn = "Test Bedrift AS"
-            )
-        ),
-        sykmelding = ArbeidsgiverSykmelding(sykmeldingsperioder = sykmeldingsperioder)
-    )
-}
+): SendtSykmeldingKafkaMessage = SendtSykmeldingKafkaMessage(
+    kafkaMetadata = KafkaMetadata(
+        sykmeldingId = "sykmelding-123",
+        timestamp = OffsetDateTime.now(),
+        fnr = fnr,
+        source = "test"
+    ),
+    event = Event(
+        sykmeldingId = "sykmelding-123",
+        timestamp = OffsetDateTime.now(),
+        brukerSvar = BrukerSvar(riktigNarmesteLeder = riktigNarmesteLeder),
+        arbeidsgiver = Arbeidsgiver(
+            orgnummer = orgnummer,
+            juridiskOrgnummer = juridiskOrgnummer,
+            orgNavn = "Test Bedrift AS"
+        )
+    ),
+    sykmelding = ArbeidsgiverSykmelding(sykmeldingsperioder = sykmeldingsperioder)
+)
 
 fun TexasHttpClient.defaultMocks(pid: String = "userIdentifier", acr: String = "Level4", navident: String? = null) {
     coEvery { introspectToken(any(), any()) } returns TexasIntrospectionResponse(

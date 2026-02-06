@@ -55,6 +55,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -167,9 +168,9 @@ class LinenmanagerApiV1Test :
                         )
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon =
-                                DefaultOrganization.copy(
-                                    ID = "0192:${narmesteLederRelasjon.orgNumber}",
-                                ),
+                            DefaultOrganization.copy(
+                                ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                            ),
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
                         fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.employeeIdentificationNumber] =
@@ -201,9 +202,9 @@ class LinenmanagerApiV1Test :
                         // Arrange
                         texasHttpClientMock.defaultMocks(
                             consumer =
-                                DefaultOrganization.copy(
-                                    ID = "0192:${narmesteLederRelasjon.orgNumber}",
-                                ),
+                            DefaultOrganization.copy(
+                                ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                            ),
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
                         // Act
@@ -244,9 +245,9 @@ class LinenmanagerApiV1Test :
                         // Arrange
                         texasHttpClientMock.defaultMocks(
                             consumer =
-                                DefaultOrganization.copy(
-                                    ID = "0192:${narmesteLederRelasjon.orgNumber}",
-                                ),
+                            DefaultOrganization.copy(
+                                ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                            ),
                             scope = "invalid-scope",
                         )
                         // Act
@@ -383,9 +384,9 @@ class LinenmanagerApiV1Test :
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon =
-                            DefaultOrganization.copy(
-                                ID = "0192:${narmesteLederAvkreft.orgNumber}",
-                            ),
+                        DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederAvkreft.orgNumber}",
+                        ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     pdlService.prepareGetPersonResponse(
@@ -427,9 +428,9 @@ class LinenmanagerApiV1Test :
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon =
-                            DefaultOrganization.copy(
-                                ID = "0192:${narmesteLederAvkreft.orgNumber}",
-                            ),
+                        DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederAvkreft.orgNumber}",
+                        ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     pdlService.prepareGetPersonResponse(
@@ -475,9 +476,9 @@ class LinenmanagerApiV1Test :
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer =
-                            DefaultOrganization.copy(
-                                ID = "0192:${narmesteLederRelasjon.orgNumber}",
-                            ),
+                        DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                        ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     val narmesteLederAvkreft = linemanagerRevoke()
@@ -505,9 +506,9 @@ class LinenmanagerApiV1Test :
                     // Arrange
                     texasHttpClientMock.defaultMocks(
                         consumer =
-                            DefaultOrganization.copy(
-                                ID = "0192:${narmesteLederRelasjon.orgNumber}",
-                            ),
+                        DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                        ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     // Act
@@ -530,19 +531,18 @@ class LinenmanagerApiV1Test :
             val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
             val orgnummer = narmesteLederRelasjon.orgNumber
 
-            fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite =
-                LinemanagerRequirementWrite(
-                    employeeIdentificationNumber = sykmeldtFnr,
-                    orgNumber = orgNumber,
-                    managerIdentificationNumber = manager.nationalIdentificationNumber,
-                    behovReason = BehovReason.DEAKTIVERT_LEDER,
-                    revokedLinemanagerId = UUID.randomUUID(),
-                )
+            fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
+                employeeIdentificationNumber = sykmeldtFnr,
+                orgNumber = orgNumber,
+                managerIdentificationNumber = manager.nationalIdentificationNumber,
+                behovReason = BehovReason.DEAKTIVERT_LEDER,
+                revokedLinemanagerId = UUID.randomUUID(),
+            )
 
             suspend fun seedLinemanagerRequirement(): UUID {
                 fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                 fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
-                narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite())
+                narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite(), behovSource = BehovSource(UUID.randomUUID().toString(), "test"))
                 return fakeRepo.lastId() ?: error("No requirement seeded")
             }
             describe("GET /requirement/{id}") {
@@ -609,10 +609,10 @@ class LinenmanagerApiV1Test :
                         val manager =
                             manager().copy(
                                 nationalIdentificationNumber =
-                                    narmesteLederRelasjon
-                                        .manager
-                                        .nationalIdentificationNumber
-                                        .reversed(),
+                                narmesteLederRelasjon
+                                    .manager
+                                    .nationalIdentificationNumber
+                                    .reversed(),
                             )
                         pdlService.prepareGetPersonResponse(manager)
                         fakeAaregClient.arbeidsForholdForIdent[manager.nationalIdentificationNumber] =
@@ -729,10 +729,10 @@ class LinenmanagerApiV1Test :
                                 orgNumber = requirement.orgNumber,
                                 createdAfter = any(),
                                 status =
-                                    listOf(
-                                        BehovStatus.BEHOV_CREATED,
-                                        BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
-                                    ),
+                                listOf(
+                                    BehovStatus.BEHOV_CREATED,
+                                    BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                                ),
                                 limit = pageSize + 1, // +1 to check if there is more pages
                             )
                         }

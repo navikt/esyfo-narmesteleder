@@ -24,7 +24,7 @@ class PdpClient(
     private val httpClient: HttpClient,
     private val altinnTokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
-): IPdpClient {
+) : IPdpClient {
     override suspend fun authorize(
         user: User,
         orgNumberSet: Set<String>,

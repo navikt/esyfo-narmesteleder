@@ -1,6 +1,5 @@
 package no.nav.syfo.altinn.dialogporten.domain
 
-
 data class Transmission(
     val type: TransmissionType,
     val extendedType: String? = null,

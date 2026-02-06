@@ -2,8 +2,6 @@ package no.nav.syfo.sykmelding.kafka
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import java.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +15,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
+import java.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 const val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
 
@@ -31,7 +31,6 @@ class SendtSykmeldingKafkaConsumer(
     override fun listen() {
         logger.info("Starting $SENDT_SYKMELDING_TOPIC consumer")
         job = scope.launch(Dispatchers.IO + CoroutineName("sendt-sykmelding-consumer")) {
-
             kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
             while (isActive) {
                 try {
@@ -49,7 +48,8 @@ class SendtSykmeldingKafkaConsumer(
                     logger.info("Waked Kafka consumer")
                 } catch (e: Exception) {
                     logger.error(
-                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.", e
+                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",
+                        e
                     )
                     kafkaConsumer.unsubscribe()
                     delay(DELAY_ON_ERROR_SECONDS.seconds)

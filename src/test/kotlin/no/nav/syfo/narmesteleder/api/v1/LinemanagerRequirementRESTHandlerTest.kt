@@ -42,13 +42,14 @@ class LinemanagerRequirementRESTHandlerTest :
             avbruttNarmesteLederId = UUID.randomUUID(),
         )
 
-    beforeTest {
-        clearAllMocks()
-        servicesWrapper.fakeDbSpyk.clear()
+        beforeTest {
+            clearAllMocks()
+            servicesWrapper.fakeDbSpyk.clear()
 
-        coEvery {
-            servicesWrapper.valkeyCacheMock.getPerson(any())} returns null
-    }
+            coEvery {
+                servicesWrapper.valkeyCacheMock.getPerson(any())
+            } returns null
+        }
 
         test("Should update status on NlBehov through NarmestelederService") {
             servicesWrapper.pdlServiceSpyk.prepareGetPersonResponse(defaultManager)

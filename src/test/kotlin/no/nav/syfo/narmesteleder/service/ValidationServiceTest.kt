@@ -39,27 +39,27 @@ class ValidationServiceTest :
         val dinesykmeldteClient = FakeDinesykmeldteClient()
         val dinesykmeldteService = spyk(DinesykmeldteService(dinesykmeldteClient))
 
-    val aaregClient = FakeAaregClient()
-    val aaregService = spyk(AaregService(aaregClient))
-    val eregClient = FakeEregClient()
-    val eregService = spyk(EregService(eregClient))
-    val pdlClient = FakePdlClient()
-    val valkeyCacheMock = mockk<ValkeyCache>(relaxed = true)
-    val pdlService = spyk(PdlService(pdlClient, valkeyCacheMock))
-    val pdpClient = FakePdpClient()
-    val pdpService = spyk(PdpService(pdpClient))
-    val service = ValidationService(
-        pdlService = pdlService,
-        aaregService = aaregService,
-        altinnTilgangerService = altinnTilgangerService,
-        dinesykmeldteService = dinesykmeldteService,
-        pdpService = pdpService,
-        eregService = eregService,
-    )
-    beforeTest {
-        clearAllMocks()
-        coEvery { valkeyCacheMock.getPerson(any()) } returns null
-    }
+        val aaregClient = FakeAaregClient()
+        val aaregService = spyk(AaregService(aaregClient))
+        val eregClient = FakeEregClient()
+        val eregService = spyk(EregService(eregClient))
+        val pdlClient = FakePdlClient()
+        val valkeyCacheMock = mockk<ValkeyCache>(relaxed = true)
+        val pdlService = spyk(PdlService(pdlClient, valkeyCacheMock))
+        val pdpClient = FakePdpClient()
+        val pdpService = spyk(PdpService(pdpClient))
+        val service = ValidationService(
+            pdlService = pdlService,
+            aaregService = aaregService,
+            altinnTilgangerService = altinnTilgangerService,
+            dinesykmeldteService = dinesykmeldteService,
+            pdpService = pdpService,
+            eregService = eregService,
+        )
+        beforeTest {
+            clearAllMocks()
+            coEvery { valkeyCacheMock.getPerson(any()) } returns null
+        }
 
         describe("validateNarmesteleder") {
             it("should not thrown when all validation passes and principal is BrukerPrincipal") {

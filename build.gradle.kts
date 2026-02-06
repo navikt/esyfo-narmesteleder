@@ -1,4 +1,4 @@
-val valkeyVersion="5.5.0"
+val valkeyVersion = "5.5.0"
 
 plugins {
     alias(libs.plugins.kotlin.jvm)

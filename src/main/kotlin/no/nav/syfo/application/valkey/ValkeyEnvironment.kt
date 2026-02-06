@@ -1,6 +1,6 @@
 package no.nav.syfo.application.valkey
 
-data class ValkeyEnvironment (
+data class ValkeyEnvironment(
     val host: String,
     val port: Int,
     val username: String,

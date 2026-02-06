@@ -22,16 +22,15 @@ import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 class PdlServiceTest :
     DescribeSpec({
 
-    val pdlClient = mockk<IPdlClient>()
-    val valkeyCache = mockk<ValkeyCache>(relaxed = true)
-    val pdlService = PdlService(pdlClient, valkeyCache)
+        val pdlClient = mockk<IPdlClient>()
+        val valkeyCache = mockk<ValkeyCache>(relaxed = true)
+        val pdlService = PdlService(pdlClient, valkeyCache)
 
-    beforeTest {
-        clearAllMocks()
+        beforeTest {
+            clearAllMocks()
 
-        coEvery { valkeyCache.getPerson(any()) } returns null
-
-    }
+            coEvery { valkeyCache.getPerson(any()) } returns null
+        }
 
         fun getPersonResponse(navn: List<Navn>, identer: List<Ident>) = GetPersonResponse(
             data = ResponseData(

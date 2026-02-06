@@ -9,8 +9,10 @@ import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.util.logger
 
-class PdlService(private val pdlClient: IPdlClient,
-    private val valkeyCache: ValkeyCache) {
+class PdlService(
+    private val pdlClient: IPdlClient,
+    private val valkeyCache: ValkeyCache
+) {
 
     suspend fun getPersonFor(fnr: String): Person {
         val response = pdlClient.getPerson(fnr)
@@ -28,7 +30,7 @@ class PdlService(private val pdlClient: IPdlClient,
 
     suspend fun getPersonOrThrowApiError(fnr: String): Person {
         valkeyCache.getPerson(fnr).let { cachedPerson ->
-            //TODO remove logs after test
+            // TODO remove logs after test
             logger.info("Fant følgende info i cache {}", cachedPerson)
             if (cachedPerson != null) {
                 return cachedPerson
@@ -36,7 +38,7 @@ class PdlService(private val pdlClient: IPdlClient,
         }
         COUNT_CACHE_MISS_DINE_SYKMELDTE.increment()
         return try {
-            val person:Person =getPersonFor(fnr)
+            val person: Person = getPersonFor(fnr)
             valkeyCache.putPerson(fnr, person)
             person
         } catch (e: PdlResourceNotFoundException) {

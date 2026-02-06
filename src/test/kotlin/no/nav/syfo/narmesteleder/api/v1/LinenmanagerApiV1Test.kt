@@ -108,7 +108,7 @@ class LinenmanagerApiV1Test :
             fakeAltinnTilgangerClient.usersWithAccess.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
-            coEvery { valkeyCacheMock.getPerson(any())} returns null
+            coEvery { valkeyCacheMock.getPerson(any()) } returns null
             narmesteLederService =
                 NarmestelederService(
                     nlDb = fakeRepo,

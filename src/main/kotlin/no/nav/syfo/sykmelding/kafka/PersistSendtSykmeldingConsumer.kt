@@ -16,7 +16,6 @@ import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.service.SykmeldingRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -69,7 +68,7 @@ class PersistSendtSykmeldingConsumer(
         runCatching {
             val sykmeldingRecords = deserializeRecords(records)
             handler.handleSykmeldingBatch(sykmeldingRecords)
-            commitBatch(records)
+            kafkaConsumer.commitSync()
         }.getOrElse { error ->
             handleBatchError(records, error)
         }
@@ -101,19 +100,6 @@ class PersistSendtSykmeldingConsumer(
         }
     }
 
-    private fun commitBatch(records: ConsumerRecords<String, String?>) {
-        val offsets = records.partitions().associateWith { partition ->
-            val partitionRecords = records.records(partition)
-            val lastOffset = partitionRecords.last().offset()
-            OffsetAndMetadata(lastOffset + 1)
-        }
-
-        if (offsets.isNotEmpty()) {
-            kafkaConsumer.commitSync(offsets)
-            logger.info("Committed offsets for ${records.count()} records")
-        }
-    }
-
     private fun handleBatchError(
         records: ConsumerRecords<String, String?>,
         error: Throwable
@@ -126,7 +112,7 @@ class PersistSendtSykmeldingConsumer(
 
         if (commitOnAllErrors) {
             logger.info("commitOnAllErrors is enabled, committing offsets despite the error.")
-            commitBatch(records)
+            kafkaConsumer.commitSync()
         } else {
             throw error
         }

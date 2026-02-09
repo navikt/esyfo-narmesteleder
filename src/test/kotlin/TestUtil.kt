@@ -227,6 +227,7 @@ fun TexasHttpClient.defaultMocks(
 }
 
 fun defaultSendtSykmeldingMessage(
+    sykmeldingId: String = "00000000-0000-0000-0000-000000000123",
     fnr: String = "12345678901",
     orgnummer: String = "123456789",
     juridiskOrgnummer: String? = "987654321",
@@ -236,13 +237,13 @@ fun defaultSendtSykmeldingMessage(
     riktigNarmesteLeder: RiktigNarmesteLeder? = null
 ): SendtSykmeldingKafkaMessage = SendtSykmeldingKafkaMessage(
     kafkaMetadata = KafkaMetadata(
-        sykmeldingId = "00000000-0000-0000-0000-000000000123",
+        sykmeldingId = sykmeldingId,
         timestamp = OffsetDateTime.now(),
         fnr = fnr,
         source = "test"
     ),
     event = Event(
-        sykmeldingId = "00000000-0000-0000-0000-000000000123",
+        sykmeldingId = sykmeldingId,
         timestamp = OffsetDateTime.now(),
         brukerSvar = BrukerSvar(riktigNarmesteLeder = riktigNarmesteLeder),
         arbeidsgiver = Arbeidsgiver(

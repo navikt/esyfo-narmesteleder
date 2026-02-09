@@ -43,7 +43,7 @@ class SendtSykmeldingKafkaConsumer(
                             if (!isTombstone) {
                                 val sendtSykmeldingKafkaMessage =
                                     jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(sykmeldingMessage)
-                                handler.requireNarmestelederIfMissing(sendtSykmeldingKafkaMessage)
+                                handler.handleNarmestelederbehov(sendtSykmeldingKafkaMessage)
                             }
                             kafkaConsumer.commitSync()
                         }

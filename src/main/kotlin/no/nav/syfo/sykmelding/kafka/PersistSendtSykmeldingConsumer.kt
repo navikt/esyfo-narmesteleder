@@ -1,5 +1,6 @@
 package no.nav.syfo.sykmelding.kafka
 
+import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.CoroutineName
@@ -12,22 +13,25 @@ import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
-import org.apache.kafka.clients.consumer.ConsumerRecord
+import no.nav.syfo.sykmelding.service.SykmeldingRecord
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 import java.time.Duration
-import kotlin.String
+import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 
 class PersistSendtSykmeldingConsumer(
     private val handler: SendtSykmeldingHandler,
     private val jacksonMapper: ObjectMapper,
-    private val kafkaConsumer: KafkaConsumer<String, String>,
+    private val kafkaConsumer: KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
     private val env: OtherEnvironmentProperties
 ) : KafkaListener {
     private lateinit var job: Job
+    var commitOnAllErrors = false
 
     override fun listen() {
         if (!env.persistSendtSykmelding) {
@@ -40,23 +44,10 @@ class PersistSendtSykmeldingConsumer(
             kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
             while (isActive) {
                 try {
-                    kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
-                        .forEach { record: ConsumerRecord<String, String?> ->
-                            logger.info("Received record with key: ${record.key()}")
-                            val sykmeldingMessage = record.value()
-                            val sykmeldingId = record.key()
-                            val isTombstone = sykmeldingMessage == null
-
-                            if (isTombstone) {
-                                logger.info("Received tombstone for sykmeldingId: $sykmeldingId.")
-                                handler.handleTombstone(sykmeldingId)
-                            } else {
-                                val sendtSykmeldingKafkaMessage =
-                                    jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(sykmeldingMessage)
-                                handler.persistSendtSykmelding(sendtSykmeldingKafkaMessage)
-                            }
-                            kafkaConsumer.commitSync()
-                        }
+                    val records = kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
+                    if (!records.isEmpty) {
+                        processBatch(records)
+                    }
                 } catch (_: WakeupException) {
                     logger.info("Waked Kafka consumer")
                 } catch (e: Exception) {
@@ -74,6 +65,73 @@ class PersistSendtSykmeldingConsumer(
         }
     }
 
+    private suspend fun processBatch(records: ConsumerRecords<String, String?>) {
+        runCatching {
+            val sykmeldingRecords = deserializeRecords(records)
+            handler.handleSykmeldingBatch(sykmeldingRecords)
+            commitBatch(records)
+        }.getOrElse { error ->
+            handleBatchError(records, error)
+        }
+    }
+
+    private fun deserializeRecords(records: ConsumerRecords<String, String?>): List<SykmeldingRecord> = records.mapNotNull { record ->
+        try {
+            val sykmeldingId = UUID.fromString(record.key())
+            val message = record.value()?.let {
+                jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(it)
+            }
+            SykmeldingRecord(
+                offset = record.offset(),
+                sykmeldingId = sykmeldingId,
+                message = message
+            )
+        } catch (e: JsonMappingException) {
+            logger.error(
+                "Error while deserializing record with key ${record.key()} and offset ${record.offset()}. Skipping record.",
+                e
+            )
+            null // Skip malformed records
+        } catch (e: IllegalArgumentException) {
+            logger.error(
+                "Invalid UUID format for key ${record.key()} at offset ${record.offset()}. Skipping record.",
+                e
+            )
+            null // Skip records with invalid UUID keys
+        }
+    }
+
+    private fun commitBatch(records: ConsumerRecords<String, String?>) {
+        val offsets = records.partitions().associateWith { partition ->
+            val partitionRecords = records.records(partition)
+            val lastOffset = partitionRecords.last().offset()
+            OffsetAndMetadata(lastOffset + 1)
+        }
+
+        if (offsets.isNotEmpty()) {
+            kafkaConsumer.commitSync(offsets)
+            logger.info("Committed offsets for ${records.count()} records")
+        }
+    }
+
+    private fun handleBatchError(
+        records: ConsumerRecords<String, String?>,
+        error: Throwable
+    ) {
+        logger.error(
+            "Error while processing batch of ${records.count()} records. " +
+                "Entire batch will be retried on next poll.",
+            error
+        )
+
+        if (commitOnAllErrors) {
+            logger.info("commitOnAllErrors is enabled, committing offsets despite the error.")
+            commitBatch(records)
+        } else {
+            throw error
+        }
+    }
+
     override suspend fun stop() {
         if (!::job.isInitialized) error("persist $SENDT_SYKMELDING_TOPIC consumer not started!")
 
@@ -86,7 +144,7 @@ class PersistSendtSykmeldingConsumer(
 
     companion object {
         private val logger = LoggerFactory.getLogger(SendtSykmeldingKafkaConsumer::class.java)
-        private const val DELAY_ON_ERROR_SECONDS = 60L
+        private const val DELAY_ON_ERROR_SECONDS = 30L
         private const val POLL_DURATION_SECONDS = 1L
         private val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
     }

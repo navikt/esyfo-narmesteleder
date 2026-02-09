@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
+import kotlin.time.Duration.Companion.minutes
 
 fun Application.configureKafkaConsumers() {
     val nlLeesahHandler by inject<NlBehovLeesahHandler>()
@@ -36,7 +37,7 @@ fun Application.configureKafkaConsumers() {
         kafkaConsumer = KafkaConsumer(
             consumerProperties(
                 env = environment.kafka,
-                valueSerializer = StringDeserializer::class,
+                valueDeserializer = StringDeserializer::class,
                 groupId = "esyfo-narmesteleder-les-behov"
             ),
             StringDeserializer(),
@@ -53,7 +54,7 @@ fun Application.configureKafkaConsumers() {
         kafkaConsumer = KafkaConsumer(
             consumerProperties(
                 env = environment.kafka,
-                valueSerializer = StringDeserializer::class,
+                valueDeserializer = StringDeserializer::class,
                 groupId = "esyfo-narmesteleder-sendt-sykmelding-consumer"
             ),
             StringDeserializer(),
@@ -68,10 +69,19 @@ fun Application.configureKafkaConsumers() {
         kafkaConsumer = KafkaConsumer(
             consumerProperties(
                 env = environment.kafka,
-                valueSerializer = StringDeserializer::class,
+                valueDeserializer = StringDeserializer::class,
                 groupId = "esyfo-narmesteleder-persist-sendt-sykmelding-consumer"
             ).apply {
                 put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+                put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500")
+                put(
+                    ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG,
+                    5.minutes
+                        .inWholeMilliseconds
+                        .toString()
+                )
+                put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "1048576")
+                put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "500")
             },
             StringDeserializer(),
             StringDeserializer(),

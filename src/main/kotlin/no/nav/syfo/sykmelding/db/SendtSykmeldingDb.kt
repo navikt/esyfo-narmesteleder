@@ -7,13 +7,12 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.util.logger
 import java.sql.Date
 import java.sql.ResultSet
-import java.sql.Timestamp
 import java.time.LocalDate
 import java.util.UUID
 
 interface ISykmeldingDb {
-    suspend fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity)
-    suspend fun revokeSykmelding(sykmeldingId: UUID, revokedDate: LocalDate): Int
+    suspend fun insertOrUpdateSykmeldingBatch(entities: List<SendtSykmeldingEntity>)
+    suspend fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int
     suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity?
 }
 
@@ -23,7 +22,9 @@ class SykmeldingDb(
     private val database: DatabaseInterface,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ISykmeldingDb {
-    override suspend fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity) = withContext(dispatcher) {
+    override suspend fun insertOrUpdateSykmeldingBatch(entities: List<SendtSykmeldingEntity>) = withContext(dispatcher) {
+        if (entities.isEmpty()) return@withContext
+
         database.connection.use { connection ->
             connection
                 .prepareStatement(
@@ -44,26 +45,30 @@ class SykmeldingDb(
                     """.trimIndent()
                 ).use { preparedStatement ->
                     try {
-                        var idx = 0
-                        preparedStatement.setString(++idx, sykmeldingEntity.orgnummer)
-                        preparedStatement.setObject(++idx, sykmeldingEntity.sykmeldingId)
-                        preparedStatement.setString(++idx, sykmeldingEntity.fnr)
-                        preparedStatement.setDate(
-                            ++idx,
-                            sykmeldingEntity.syketilfelleStartDato?.let { Date.valueOf(it) }
-                        )
-                        preparedStatement.setDate(++idx, Date.valueOf(sykmeldingEntity.fom))
-                        preparedStatement.setDate(++idx, Date.valueOf(sykmeldingEntity.tom))
-                        preparedStatement.execute()
+                        entities.forEach { sykmeldingEntity ->
+                            var idx = 0
+                            preparedStatement.setString(++idx, sykmeldingEntity.orgnummer)
+                            preparedStatement.setObject(++idx, sykmeldingEntity.sykmeldingId)
+                            preparedStatement.setString(++idx, sykmeldingEntity.fnr)
+                            preparedStatement.setDate(
+                                ++idx,
+                                sykmeldingEntity.syketilfelleStartDato?.let { Date.valueOf(it) }
+                            )
+                            preparedStatement.setDate(++idx, Date.valueOf(sykmeldingEntity.fom))
+                            preparedStatement.setDate(++idx, Date.valueOf(sykmeldingEntity.tom))
+                            preparedStatement.addBatch()
+                        }
+                        preparedStatement.executeBatch()
                         connection.commit()
+                        logger.info("Batch inserted/updated ${entities.size} sykmeldinger")
                     } catch (e: Exception) {
                         logger.error(
-                            "Failed to insert sykmelding with sykmeldingId: ${sykmeldingEntity.sykmeldingId}. Rolling back.",
+                            "Failed to batch insert ${entities.size} sykmeldinger. Rolling back.",
                             e
                         )
                         connection.rollback()
                         throw SykmeldingDbException(
-                            "Error inserting sykmelding with sykmeldingId: ${sykmeldingEntity.sykmeldingId}",
+                            "Error batch inserting ${entities.size} sykmeldinger",
                             e
                         )
                     }
@@ -71,7 +76,9 @@ class SykmeldingDb(
         }
     }
 
-    override suspend fun revokeSykmelding(sykmeldingId: UUID, revokedDate: LocalDate): Int = withContext(dispatcher) {
+    override suspend fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int = withContext(dispatcher) {
+        if (sykmeldingIds.isEmpty()) return@withContext 0
+
         database.connection.use { connection ->
             connection
                 .prepareStatement(
@@ -83,21 +90,26 @@ class SykmeldingDb(
                 ).use { preparedStatement ->
                     try {
                         val revoked = Date.valueOf(revokedDate)
-                        preparedStatement.setDate(1, revoked)
-                        preparedStatement.setObject(2, sykmeldingId)
-                        preparedStatement.setDate(3, revoked)
-
-                        preparedStatement.executeUpdate().also {
-                            connection.commit()
+                        sykmeldingIds.forEach { sykmeldingId ->
+                            preparedStatement.setDate(1, revoked)
+                            preparedStatement.setObject(2, sykmeldingId)
+                            preparedStatement.setDate(3, revoked)
+                            preparedStatement.addBatch()
                         }
+
+                        val results = preparedStatement.executeBatch()
+                        connection.commit()
+                        val totalUpdated = results.sum()
+                        logger.info("Batch revoked $totalUpdated of ${sykmeldingIds.size} sykmeldinger")
+                        totalUpdated
                     } catch (e: Exception) {
                         logger.error(
-                            "Failed to revoke sykmelding with sykmeldingId: $sykmeldingId. Rolling back.",
+                            "Failed to batch revoke ${sykmeldingIds.size} sykmeldinger. Rolling back.",
                             e
                         )
                         connection.rollback()
                         throw SykmeldingDbException(
-                            "Error revoking sykmelding with sykmeldingId: $sykmeldingId",
+                            "Error batch revoking ${sykmeldingIds.size} sykmeldinger",
                             e
                         )
                     }

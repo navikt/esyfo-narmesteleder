@@ -7,7 +7,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 class FakeSykmeldingDb : ISykmeldingDb {
     private val store = CopyOnWriteArrayList<SendtSykmeldingEntity>()
 
-    override suspend fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity) {
+    private fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity) {
         val existingIndex = store.indexOfFirst { it.sykmeldingId == sykmeldingEntity.sykmeldingId }
         if (existingIndex >= 0) {
             // Upsert: update existing entry with new values
@@ -23,7 +23,11 @@ class FakeSykmeldingDb : ISykmeldingDb {
         }
     }
 
-    override suspend fun revokeSykmelding(
+    override suspend fun insertOrUpdateSykmeldingBatch(entities: List<SendtSykmeldingEntity>) {
+        entities.forEach { insertOrUpdateSykmelding(it) }
+    }
+
+    private fun revokeSykmelding(
         sykmeldingId: UUID,
         revokedDate: LocalDate
     ): Int {
@@ -34,6 +38,8 @@ class FakeSykmeldingDb : ISykmeldingDb {
         }
         return 0
     }
+
+    override suspend fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int = sykmeldingIds.sumOf { revokeSykmelding(it, revokedDate) }
 
     override suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity? = store.find { it.sykmeldingId == sykmeldingId }
 

@@ -4,7 +4,6 @@ import defaultSendtSykmeldingMessage
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.sykmelding.db.FakeSykmeldingDb
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import java.time.LocalDate
@@ -179,35 +178,6 @@ class SykmeldingServiceTest :
                 service.insertOrUpdateSykmelding(message)
 
                 sykmeldingDb.findAll().size shouldBe 0
-            }
-        }
-
-        describe("revokeSykmelding") {
-
-            it("should delegate to db and return affected row count") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
-                    )
-                )
-
-                service.insertOrUpdateSykmelding(message)
-
-                val sykmeldingId = UUID.fromString(message.event.sykmeldingId)
-                val result = service.revokeSykmelding(sykmeldingId)
-
-                result shouldBe 1
-
-                val stored = sykmeldingDb.findBySykmeldingId(sykmeldingId)
-                stored shouldNotBe null
-                stored!!.revokedDate shouldNotBe null
-            }
-
-            it("should return 0 when sykmelding does not exist") {
-                val result = service.revokeSykmelding(UUID.randomUUID())
-
-                result shouldBe 0
             }
         }
     })

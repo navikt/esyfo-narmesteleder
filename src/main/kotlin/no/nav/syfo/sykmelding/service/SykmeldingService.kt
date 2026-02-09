@@ -29,19 +29,25 @@ class SykmeldingService(
         // Partition into inserts vs revokes based on final state
         val (revokes, inserts) = finalStateByKey.partition { it.message == null }
 
-        // Prepare insert entities (filter by business rules)
         val entitiesToInsert = inserts.mapNotNull { record ->
             record.message?.let { toEntityIfValid(it) }
         }
 
-        // Execute batch operations
-        if (entitiesToInsert.isNotEmpty()) {
-            sykmeldingDb.insertOrUpdateSykmeldingBatch(entitiesToInsert)
-        }
+        val existingSykmeldinger =
+            sykmeldingDb.findSykmeldingIdsByFnrAndOrgnr(entitiesToInsert.map { it.fnr to it.orgnummer })
 
-        if (revokes.isNotEmpty()) {
-            val revokeIds = revokes.map { it.sykmeldingId }
-            sykmeldingDb.revokeSykmeldingBatch(revokeIds, LocalDate.now())
+        sykmeldingDb.transaction {
+            // Delete any existing sykmeldinger, insert new ones and perform revokes
+            if (existingSykmeldinger.isNotEmpty()) {
+                deleteAll(existingSykmeldinger)
+            }
+            if (entitiesToInsert.isNotEmpty()) {
+                insertOrUpdateSykmeldingBatch(entitiesToInsert)
+            }
+            if (revokes.isNotEmpty()) {
+                val revokeIds = revokes.map { it.sykmeldingId }
+                revokeSykmeldingBatch(revokeIds, LocalDate.now())
+            }
         }
 
         logger.info(

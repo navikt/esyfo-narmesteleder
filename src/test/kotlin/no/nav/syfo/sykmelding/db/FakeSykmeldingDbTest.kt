@@ -1,9 +1,6 @@
 package no.nav.syfo.sykmelding.db
 
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID

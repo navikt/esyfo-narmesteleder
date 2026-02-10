@@ -2,7 +2,7 @@ package no.nav.syfo.pdl
 
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.COUNT_CACHE_MISS_DINE_SYKMELDTE
-import no.nav.syfo.application.valkey.ValkeyCache
+import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.pdl.exception.PdlRequestException
@@ -11,7 +11,7 @@ import no.nav.syfo.util.logger
 
 class PdlService(
     private val pdlClient: IPdlClient,
-    private val valkeyCache: ValkeyCache
+    private val pdlCache: PdlCache
 ) {
 
     suspend fun getPersonFor(fnr: String): Person {
@@ -29,7 +29,7 @@ class PdlService(
     }
 
     suspend fun getPersonOrThrowApiError(fnr: String): Person {
-        valkeyCache.getPerson(fnr).let { cachedPerson ->
+        pdlCache.getPerson(fnr).let { cachedPerson ->
             // TODO remove logs after test
             logger.info("Fant følgende info i cache {}", cachedPerson)
             if (cachedPerson != null) {
@@ -39,7 +39,7 @@ class PdlService(
         COUNT_CACHE_MISS_DINE_SYKMELDTE.increment()
         return try {
             val person: Person = getPersonFor(fnr)
-            valkeyCache.putPerson(fnr, person)
+            pdlCache.putPerson(fnr, person)
             person
         } catch (e: PdlResourceNotFoundException) {
             throw ApiErrorException.BadRequestException("Fant ikke person i PDL", e)

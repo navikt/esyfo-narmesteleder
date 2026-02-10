@@ -5,7 +5,6 @@ import io.valkey.DefaultJedisClientConfig
 import io.valkey.HostAndPort
 import io.valkey.JedisPool
 import io.valkey.JedisPoolConfig
-import no.nav.syfo.pdl.Person
 import no.nav.syfo.util.logger
 
 class ValkeyCache(
@@ -24,7 +23,7 @@ class ValkeyCache(
             .build()
     )
 
-    private fun <T> get(key: String, type: Class<T>): T? {
+    fun <T> get(key: String, type: Class<T>): T? {
         try {
             val jedis = jedisPool.resource
             val json = jedis.get(key)
@@ -39,7 +38,7 @@ class ValkeyCache(
         }
     }
 
-    private fun <T> put(key: String, value: T, ttlSeconds: Long = CACHE_TTL_SECONDS) {
+    fun <T> put(key: String, value: T, ttlSeconds: Long = CACHE_TTL_SECONDS) {
         try {
             val jedis = jedisPool.resource
             val json = jacksonObjectMapper().writeValueAsString(value)
@@ -51,20 +50,7 @@ class ValkeyCache(
         }
     }
 
-    fun getPerson(fnr: String): Person? {
-        val person = get("$PDL_CACHE_KEY_PREFIX-$fnr", Person::class.java)
-        if (person != null) {
-            COUNT_CACHE_HIT_DINE_SYKMELDTE.increment()
-        }
-        return person
-    }
-
-    fun putPerson(fnr: String, person: Person) {
-        put("$PDL_CACHE_KEY_PREFIX-$fnr", person)
-    }
-
     companion object {
         const val CACHE_TTL_SECONDS = 3600L
-        const val PDL_CACHE_KEY_PREFIX = "pdl"
     }
 }

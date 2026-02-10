@@ -19,6 +19,7 @@ logstashEncoder = "9.0"
 coroutines-test = "1.10.2"
 swagger = "3.4.0"
 ktlint = "14.0.1"
+valkey-version = "5.5.0"
 
 [libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
@@ -48,6 +49,7 @@ testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "
 testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers-postgres" }
 logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstashEncoder" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines-test" }
+valkey-java = { module = "io.valkey:valkey-java", version.ref = "valkey-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }

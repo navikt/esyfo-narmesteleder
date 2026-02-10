@@ -12,7 +12,7 @@ import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
-import no.nav.syfo.application.valkey.ValkeyCache
+import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
@@ -40,8 +40,8 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val dialogportenService = mockk<DialogportenService>(relaxed = true)
     val aaregServiceSpyk = spyk(AaregService(fakeAaregClientSpyk))
     val eregServiceSpyk = spyk(EregService(fakeEregClientSpyk))
-    val valkeyCacheMock = mockk<ValkeyCache>(relaxed = true)
-    val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk, valkeyCacheMock))
+    val pdlCacheMock = mockk<PdlCache>(relaxed = true)
+    val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk, pdlCacheMock))
     val dinesykemeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykemeldteClientSpyk))
     val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
     val pdpServiceSpyk = spyk(PdpService(fakePdpClientSpyk))

@@ -47,7 +47,7 @@ class LinemanagerRequirementRESTHandlerTest :
             servicesWrapper.fakeDbSpyk.clear()
 
             coEvery {
-                servicesWrapper.valkeyCacheMock.getPerson(any())
+                servicesWrapper.pdlCacheMock.getPerson(any())
             } returns null
         }
 

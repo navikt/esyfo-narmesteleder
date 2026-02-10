@@ -30,6 +30,7 @@ import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
+import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
@@ -201,6 +202,9 @@ private fun clientsModule() = module {
 private fun valkeyModule() = module {
     single {
         ValkeyCache(env().valkeyEnvironment)
+    }
+    single {
+        PdlCache(get())
     }
 }
 

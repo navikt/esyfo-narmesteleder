@@ -23,7 +23,7 @@ import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.valkey.ValkeyCache
+import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
@@ -44,8 +44,8 @@ class ValidationServiceTest :
         val eregClient = FakeEregClient()
         val eregService = spyk(EregService(eregClient))
         val pdlClient = FakePdlClient()
-        val valkeyCacheMock = mockk<ValkeyCache>(relaxed = true)
-        val pdlService = spyk(PdlService(pdlClient, valkeyCacheMock))
+        val pdlCacheMock = mockk<PdlCache>(relaxed = true)
+        val pdlService = spyk(PdlService(pdlClient, pdlCacheMock))
         val pdpClient = FakePdpClient()
         val pdpService = spyk(PdpService(pdpClient))
         val service = ValidationService(
@@ -58,7 +58,7 @@ class ValidationServiceTest :
         )
         beforeTest {
             clearAllMocks()
-            coEvery { valkeyCacheMock.getPerson(any()) } returns null
+            coEvery { pdlCacheMock.getPerson(any()) } returns null
         }
 
         describe("validateNarmesteleder") {

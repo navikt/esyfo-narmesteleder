@@ -79,14 +79,13 @@ class SykmeldingDb(
                     """
                     UPDATE sendt_sykmelding 
                     SET revoked_date = ?
-                    WHERE sykmelding_id = ? AND tom <= ?
+                    WHERE sykmelding_id = ? 
                     """.trimIndent()
                 ).use { preparedStatement ->
                     val revoked = Date.valueOf(revokedDate)
                     sykmeldingIds.forEach { sykmeldingId ->
                         preparedStatement.setDate(1, revoked)
                         preparedStatement.setObject(2, sykmeldingId)
-                        preparedStatement.setDate(3, revoked)
                         preparedStatement.addBatch()
                     }
 

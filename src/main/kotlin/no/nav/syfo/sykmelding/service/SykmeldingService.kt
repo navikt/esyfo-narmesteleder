@@ -2,17 +2,12 @@ package no.nav.syfo.sykmelding.service
 
 import no.nav.syfo.sykmelding.db.ISykmeldingDb
 import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
+import no.nav.syfo.sykmelding.kafka.SykmeldingRecord
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import no.nav.syfo.util.logger
 import java.time.LocalDate
 import java.util.UUID
-
-data class SykmeldingRecord(
-    val offset: Long,
-    val sykmeldingId: UUID,
-    val message: SendtSykmeldingKafkaMessage?
-)
 
 class SykmeldingService(
     private val sykmeldingDb: ISykmeldingDb,
@@ -37,7 +32,6 @@ class SykmeldingService(
             sykmeldingDb.findSykmeldingIdsByFnrAndOrgnr(entitiesToInsert.map { it.fnr to it.orgnummer })
 
         sykmeldingDb.transaction {
-            // Delete any existing sykmeldinger, insert new ones and perform revokes
             if (existingSykmeldinger.isNotEmpty()) {
                 deleteAll(existingSykmeldinger)
             }

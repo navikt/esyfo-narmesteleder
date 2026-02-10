@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
-import no.nav.syfo.sykmelding.service.SykmeldingRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException

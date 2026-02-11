@@ -1,3 +1,5 @@
+val valkeyVersion = "5.5.0"
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
@@ -53,6 +55,7 @@ dependencies {
     implementation(libs.ktor.server.micrometer)
     implementation(libs.micrometer.prometheus)
     implementation(libs.kafka.clients)
+    implementation(libs.valkey.java)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)

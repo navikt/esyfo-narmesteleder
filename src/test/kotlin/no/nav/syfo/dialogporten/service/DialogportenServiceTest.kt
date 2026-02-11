@@ -25,6 +25,7 @@ import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.application.environment.DeleteDialogportenDialogsTaskProperties
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
+import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -38,7 +39,8 @@ class DialogportenServiceTest :
         val publicIngressUrl = "https://test.nav.no"
         val frontendBaseUrl = "https://frontend.test.nav.no"
         val fakePdsClient = FakePdlClient()
-        val pdlService = spyk(PdlService(fakePdsClient))
+        val pdlCacheMock = mockk<PdlCache>()
+        val pdlService = spyk(PdlService(fakePdsClient, pdlCacheMock))
 
         lateinit var fakeNarmestelederDb: FakeNarmestelederDb
         lateinit var spyNarmestelederDb: FakeNarmestelederDb

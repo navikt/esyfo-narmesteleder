@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.flyway)
 }
 
 group = "no.nav.syfo"
@@ -13,6 +14,15 @@ application {
 
 repositories {
     mavenCentral()
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.flywaydb:flyway-database-postgresql:12.0.0")
+    }
 }
 
 dependencies {

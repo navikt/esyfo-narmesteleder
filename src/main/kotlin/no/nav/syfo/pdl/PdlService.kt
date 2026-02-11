@@ -31,7 +31,7 @@ class PdlService(
     suspend fun getPersonOrThrowApiError(fnr: String): Person {
         pdlCache.getPerson(fnr).let { cachedPerson ->
             // TODO remove logs after test
-            logger.info("Fant følgende info i cache {}", cachedPerson)
+            logger.info("Fant følgende info i cache, using it")
             if (cachedPerson != null) {
                 return cachedPerson
             }

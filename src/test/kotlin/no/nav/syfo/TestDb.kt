@@ -93,9 +93,17 @@ class TestDB private constructor() {
                 it.commit()
             }
         }
+
         fun clearAllData() = database.connection.use {
             it.prepareStatement(
                 "DELETE FROM nl_behov;"
+            ).use { ps -> ps.executeUpdate() }
+            it.commit()
+        }
+
+        fun clearSendtSykmeldingData() = database.connection.use {
+            it.prepareStatement(
+                "DELETE FROM sendt_sykmelding;"
             ).use { ps -> ps.executeUpdate() }
             it.commit()
         }

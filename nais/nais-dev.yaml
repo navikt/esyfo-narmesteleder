@@ -143,5 +143,7 @@ spec:
       value: "5000"
     - name: DIALOGPORTEN_RESEND_DIALOGER_TASK_ENABLED
       value: "false"
+    - name: PERSIST_SENDT_SYKMELDING
+      value: "true"
   envFrom:
     - secret: altinn-subscription-key

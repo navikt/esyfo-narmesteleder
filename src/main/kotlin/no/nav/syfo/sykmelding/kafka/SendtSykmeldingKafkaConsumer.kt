@@ -10,7 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
-import no.nav.syfo.sykmelding.kafka.model.SendtSykmeldingKafkaMessage
+import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
@@ -37,12 +37,15 @@ class SendtSykmeldingKafkaConsumer(
                     kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
                         .forEach { record: ConsumerRecord<String, String?> ->
                             logger.info("Received record with key: ${record.key()}")
-                            record.value()?.let { value ->
+                            val sykmeldingMessage = record.value()
+                            val isTombstone = sykmeldingMessage == null
+
+                            if (!isTombstone) {
                                 val sendtSykmeldingKafkaMessage =
-                                    jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(value)
-                                handler.handleSendtSykmelding(sendtSykmeldingKafkaMessage)
-                                kafkaConsumer.commitSync()
+                                    jacksonMapper.readValue<SendtSykmeldingKafkaMessage>(sykmeldingMessage)
+                                handler.handleNarmestelederbehov(sendtSykmeldingKafkaMessage)
                             }
+                            kafkaConsumer.commitSync()
                         }
                 } catch (_: WakeupException) {
                     logger.info("Waked Kafka consumer")

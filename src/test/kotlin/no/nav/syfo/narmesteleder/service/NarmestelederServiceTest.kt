@@ -27,7 +27,7 @@ import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundExcepti
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
-import no.nav.syfo.sykmelding.kafka.model.Arbeidsgiver
+import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import java.util.*
 
 class NarmestelederServiceTest :

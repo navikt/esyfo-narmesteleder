@@ -62,6 +62,7 @@ class DialogportenServiceTest :
                         isDialogportenBackgroundTaskEnabled = true,
                         dialogportenIsApiOnly = false,
                         deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
+                        persistSendtSykmelding = false,
                     ),
                     pdlService = pdlService,
                 )
@@ -161,7 +162,9 @@ class DialogportenServiceTest :
                 it("should log error and continue without updating document status") {
                     // Arrange
                     val behovEntity1 = nlBehovEntity()
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
+                        behovEntity1
+                    )
                     coEvery { dialogportenClient.createDialog(any()) } throws RuntimeException("Dialogporten error")
 
                     // Act
@@ -220,7 +223,9 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
+                        behovEntity1
+                    )
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -240,7 +245,9 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
+                        behovEntity1
+                    )
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -416,7 +423,13 @@ class DialogportenServiceTest :
 
                     // Assert
                     coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
-                    coVerify(exactly = 1) { dialogportenClient.updateDialogStatus(behovEntity1.dialogId!!, any(), any()) }
+                    coVerify(exactly = 1) {
+                        dialogportenClient.updateDialogStatus(
+                            behovEntity1.dialogId!!,
+                            any(),
+                            any()
+                        )
+                    }
                     coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
                 }
             }

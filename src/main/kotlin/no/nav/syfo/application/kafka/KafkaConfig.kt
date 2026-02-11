@@ -55,8 +55,8 @@ fun producerProperties(
 fun consumerProperties(
     groupId: String,
     env: KafkaEnvironment,
-    valueSerializer: KClass<out Deserializer<out Any>>,
-    keySerializer: KClass<out Deserializer<out Any>> = StringDeserializer::class
+    valueDeserializer: KClass<out Deserializer<out Any>>,
+    keyDeserializer: KClass<out Deserializer<out Any>> = StringDeserializer::class
 ): Properties {
     val consumerProperties = commonProperties(env)
 
@@ -65,8 +65,8 @@ fun consumerProperties(
         put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
         put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1")
         put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
-        put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, valueSerializer.java)
-        put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, keySerializer.java)
+        put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer.java)
+        put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.java)
     }
 }
 

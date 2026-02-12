@@ -38,7 +38,15 @@ paths:
         '202':
           description: Request accepted for processing
         '400':
-          description: Validation failed
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also be occur if we fail to lookup the person linked to the provided national identification number.
+            * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
+            * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
+            * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in any sub organization under the parent of the specified organization.
+            * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the linemanager does not match the name registered with the provided national identification number.
+            * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
           content:
             application/json:
               schema:
@@ -67,6 +75,7 @@ paths:
             Internal Server Error:
             Possible reasons for internal server error include:
             * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -90,13 +99,11 @@ paths:
           description: Revocation accepted
         '400':
           description: |
-            Validation failed:
-            Possible reasons for validation failure include:
-            * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in any sub organization under the parent of the specified organization.
+            Bad Request: Possible reasons for bad request include:
+            * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also be occur if we fail to lookup the person linked to the provided national identification number.
             * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
-            * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the linemanager does not match the name registered with the provided national identification number.
             * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
-
           content:
             application/json:
               schema:
@@ -125,6 +132,7 @@ paths:
             Internal Server Error:
             Possible reasons for internal server error include:
             * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -170,7 +178,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/LinemanagerRequirementCollection'
         '400':
-          description: Validation failed
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Might be missing required query parameters.
+            * `ORGANIZATION_NOT_FOUND`: Failed to lookup the organization by orgnumber.
           content:
             application/json:
               schema:
@@ -194,13 +205,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: Requirement not found
         '500':
           description: |
             Internal Server Error:
             Possible reasons for internal server error include:
             * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -232,10 +242,13 @@ paths:
           description: Update accepted
         '400':
           description: |
-            Bad Request:
-            Possible reasons for bad request include:
+            Bad Request: Possible reasons for bad request include:
             * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
-
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also be occur if we fail to lookup the person linked to the provided national identification number.
+            * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
+            * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
+            * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in any sub organization under the parent of the specified organization.
+            * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the linemanager does not match the name registered with the provided national identification number.
           content:
             application/json:
               schema:
@@ -260,12 +273,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Requirement not found
+          description: |
+            Not Found: Possible reasons for not found response include:
+            * `NOT_FOUND`: The requested resource was not found.
         '500':
           description: |
             Internal Server Error:
             Possible reasons for internal server error include:
             * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -293,7 +309,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/LinemanagerRequirementRead'
         '400':
-          description: Validation failed
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also be occur if we fail to lookup the person linked to the provided national identification number.
           content:
             application/json:
               schema:
@@ -318,12 +336,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Requirement not found
+          description: |
+            Not Found: Possible reasons for not found response include:
+            * `NOT_FOUND`: The requested resource was not found.
         '500':
           description: |
             Internal Server Error:
             Possible reasons for internal server error include:
             * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -552,6 +573,7 @@ components:
         * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource.
         * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
         * `MISSING_REQUIRED_PARAMETER`: A required parameter is missing from the request.
+        * `ORGANIZATION_NOT_FOUND`: Failed to lookup the organization by orgnumber.
       enum:
         - AUTHENTICATION_ERROR
         - AUTHORIZATION_ERROR
@@ -569,6 +591,7 @@ components:
         - MISSING_ALITINN_RESOURCE_ACCESS
         - NO_ACTIVE_SICK_LEAVE
         - MISSING_REQUIRED_PARAMETER
+        - ORGANIZATION_NOT_FOUND
     ApiError:
       type: object
       description: Standard error payload.

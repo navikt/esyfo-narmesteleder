@@ -137,7 +137,7 @@ class SykmeldingDb(
                 connection.prepareStatement(
                     """
                     SELECT sykmelding_id FROM sendt_sykmelding
-                    WHERE (fnr, orgnummer) IN (?, ?)
+                    WHERE fnr = ? AND orgnummer= ?
                     """.trimIndent()
                 ).use { preparedStatement ->
                     map.forEach { (fnr, orgnummer) ->

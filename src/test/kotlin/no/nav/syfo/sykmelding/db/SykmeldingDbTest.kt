@@ -2,6 +2,7 @@ package no.nav.syfo.sykmelding.db
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
@@ -237,6 +238,31 @@ class SykmeldingDbTest :
             it("should return null when no row exists") {
                 val result = db.findBySykmeldingId(UUID.randomUUID())
                 result shouldBe null
+            }
+        }
+
+        describe("findSykmeldingIdsByFnrAndOrgnr") {
+            it("should return empty list when no matches exist") {
+                val result = db.findSykmeldingIdsByFnrAndOrgnr(listOf(Pair("00000000000", "000000000")))
+                result shouldBe emptyList()
+            }
+
+            it("Should find matching sykmeldingIds for given fnr and orgnr") {
+                val id1 = UUID.randomUUID()
+                val id2 = UUID.randomUUID()
+
+                db.transaction {
+                    insertOrUpdateSykmeldingBatch(
+                        listOf(
+                            entity(sykmeldingId = id1, fnr = "12345678910", orgnummer = "999999999"),
+                            entity(sykmeldingId = id2, fnr = "12345678910", orgnummer = "999999999")
+                        )
+                    )
+                }
+
+                val result = db.findSykmeldingIdsByFnrAndOrgnr(listOf(Pair("12345678910", "999999999")))
+                result shouldContain id1
+                result shouldContain id2
             }
         }
 

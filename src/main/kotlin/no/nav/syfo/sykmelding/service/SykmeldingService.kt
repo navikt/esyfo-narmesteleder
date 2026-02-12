@@ -52,7 +52,7 @@ class SykmeldingService(
         }
 
         logger.info(
-            "Batch processed: ${entitiesToInsert.size} inserts/updates, ${revokes.size} revokes ,${existingSykmeldingIds.size} deletes " +
+            "Batch processed: ${entitiesToInsert.size} inserts/updates, ${revokes.size} revokes, ${existingSykmeldingIds.size} deletes " +
                 "(from ${records.size} total records, ${finalStateByKey.size} unique keys)"
         )
     }

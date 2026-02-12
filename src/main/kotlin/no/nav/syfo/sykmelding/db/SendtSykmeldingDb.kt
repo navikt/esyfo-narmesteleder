@@ -137,10 +137,11 @@ class SykmeldingDb(
                 connection.prepareStatement(
                     """
                     SELECT sykmelding_id FROM sendt_sykmelding
-                    WHERE fnr = ? AND orgnummer= ?
+                    WHERE fnr = ? AND orgnummer = ?
                     """.trimIndent()
                 ).use { preparedStatement ->
                     map.forEach { (fnr, orgnummer) ->
+                        logger.info("Adding fnr: ${fnr?.substring(0, 3) ?: "NULL" }****** and orgnummer: ${orgnummer?.substring(0, 3) ?: "NULL" }****** to batch for findSykmeldingIdsByFnrAndOrgnr")
                         preparedStatement.setString(1, fnr)
                         preparedStatement.setString(2, orgnummer)
                         preparedStatement.addBatch()
@@ -153,8 +154,8 @@ class SykmeldingDb(
                     }
                 }
             } catch (e: Exception) {
-                logger.error("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr", e)
-                throw SykmeldingDbException("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr", e)
+                logger.error("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr")
+                throw SykmeldingDbException("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr")
             }
         }
     }

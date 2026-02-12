@@ -55,7 +55,6 @@ flag "--url <url>" help="database url" default="jdbc:postgresql://localhost:5432
 '''
 run = './gradlew --no-configuration-cache -Dflyway.user=${usage_username?} -Dflyway.password=${usage_password?} -Dflyway.url=${usage_url?} flywayRepair'
 
-
 [tasks.flyway-info]
 description = "Run flyway info using gradle"
 usage = '''
@@ -64,3 +63,7 @@ flag "--password <password>" help="database password" default="password"
 flag "--url <url>" help="database url" default="jdbc:postgresql://localhost:5432/esyfo-narmesteleder_dev"
 '''
 run = './gradlew --no-configuration-cache -Dflyway.user=${usage_username?} -Dflyway.password=${usage_password?} -Dflyway.url=${usage_url?} flywayInfo'
+
+[tasks.add-lint-check-as-pre-commit-hook]
+description = "Add ktlint check as pre-commit hook to git"
+run = './gradlew addKtlintCheckGitPreCommitHook'

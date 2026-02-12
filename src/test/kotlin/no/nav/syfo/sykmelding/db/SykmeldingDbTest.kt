@@ -264,6 +264,11 @@ class SykmeldingDbTest :
                 result shouldContain id1
                 result shouldContain id2
             }
+
+            it("Should return an empty list when empty list is provided") {
+                val result = db.findSykmeldingIdsByFnrAndOrgnr(emptyList())
+                result shouldBe emptyList()
+            }
         }
 
         describe("mapping correctness") {

@@ -30,6 +30,34 @@ If the server starts successfully, you'll see the following output:
 2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
 ```
 
+
+## Running tasks with mise
+We use [mise](https://mise.jdx.dev/) to simplify running common tasks.
+To run a task, use the command
+```bash
+mise <task-name>
+````
+
+To get a list of available tasks, run
+```bash
+mise tasks
+```
+
+## Linting and formatting is done using [ktlint](https://pinterest.github.io/ktlint/latest/)
+Please make sure to run the lint check before pushing code. Best way to ensure this is to add a pre-commit git hook.
+You can do this with the mise task
+```bash
+mise add-lint-check-as-pre-commit-hook 
+```
+Or manually by running
+```bash
+mise lint
+```
+If there are any linting errors, you can try to fix them automatically with
+```bash
+mise format
+```
+
 ## Docker compose
 ### Size of container platform
 In order to run kafka++ you will probably need to extend the default size of your container platform. (Rancher Desktop, Colima etc.)
@@ -67,7 +95,7 @@ https://tokenx-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp:team-esyfo:
 
 Select "på høyt nivå" and give the ident of a Daglig leder for the organisasjonsnummer you want to test with.
 
-## Runniuing requests locally
+## Running requests locally
 There is a [Bruno](https://www.usebruno.com/) collection in the folder [.bruno](./.bruno) that you can open and find request to run against your localy running instance.
 Look in the Docs tab of requests for further instructions, when needed.
 EG. How to create the row in db for value of the ```:id``` path parameter, is explained in the ```get behov``` request for narmesteleder.

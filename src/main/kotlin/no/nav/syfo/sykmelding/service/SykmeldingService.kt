@@ -28,12 +28,19 @@ class SykmeldingService(
             record.message?.let { toEntityIfValid(it) }
         }
 
-        val existingSykmeldinger =
-            sykmeldingDb.findSykmeldingIdsByFnrAndOrgnr(entitiesToInsert.map { it.fnr to it.orgnummer })
+        // Every sykmelding has its own id. We only need the most recent dates for a person in a given org, so
+        // we may delete the old sykmelding (if any) and insert the new one.
+        val sykmeldingerToLookUp = entitiesToInsert.map { it.fnr to it.orgnummer }
+
+        val existingSykmeldingIds = if (entitiesToInsert.isNotEmpty()) {
+            sykmeldingDb.findSykmeldingIdsByFnrAndOrgnr(sykmeldingerToLookUp)
+        } else {
+            emptyList()
+        }
 
         sykmeldingDb.transaction {
-            if (existingSykmeldinger.isNotEmpty()) {
-                deleteAll(existingSykmeldinger)
+            if (existingSykmeldingIds.isNotEmpty()) {
+                deleteAll(existingSykmeldingIds)
             }
             if (entitiesToInsert.isNotEmpty()) {
                 insertOrUpdateSykmeldingBatch(entitiesToInsert)
@@ -45,7 +52,7 @@ class SykmeldingService(
         }
 
         logger.info(
-            "Batch processed: ${entitiesToInsert.size} inserts/updates, ${revokes.size} revokes " +
+            "Batch processed: ${entitiesToInsert.size} inserts/updates, ${revokes.size} revokes, ${existingSykmeldingIds.size} deletes " +
                 "(from ${records.size} total records, ${finalStateByKey.size} unique keys)"
         )
     }

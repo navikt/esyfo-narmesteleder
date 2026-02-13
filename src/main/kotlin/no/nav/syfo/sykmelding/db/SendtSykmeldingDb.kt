@@ -132,12 +132,14 @@ class SykmeldingDb(
     }
 
     override suspend fun findSykmeldingIdsByFnrAndOrgnr(map: List<Pair<String, String>>): List<UUID> {
+        if (map.isEmpty()) return emptyList()
+
         database.connection.use { connection ->
             try {
                 connection.prepareStatement(
                     """
                     SELECT sykmelding_id FROM sendt_sykmelding
-                    WHERE (fnr, orgnummer) IN (?, ?)
+                    WHERE fnr = ? AND orgnummer = ?
                     """.trimIndent()
                 ).use { preparedStatement ->
                     map.forEach { (fnr, orgnummer) ->
@@ -152,9 +154,9 @@ class SykmeldingDb(
                         }
                     }
                 }
-            } catch (e: Exception) {
-                logger.error("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr", e)
-                throw SykmeldingDbException("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr", e)
+            } catch (_: Exception) {
+                logger.error("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr")
+                throw SykmeldingDbException("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr")
             }
         }
     }

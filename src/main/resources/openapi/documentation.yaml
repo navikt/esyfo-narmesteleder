@@ -27,12 +27,13 @@ paths:
       description: |
         This endpoint can be used to assign a line manager to an employee on sick leave.
         It is not dependent on the existence of a requirement for line manager.
-        If a requirement for line manager exists for the employee, it will be marked as completed (internally and eventually in Dialogporten) when a line manager is
-        assigned through this endpoint.
+        
+        One scenario for the use of this endpoint could be when the organizations knows that the current line manager
+        will be unavailable for a period and wants to assign a replacement line manager to the employee on sick leave.
         If there already is a line manager assigned to the employee, the new line manager will overwrite the existing one.
         
-        A scenario for the use of this endpoint could be when the organizations knows that the current line manager
-        will be unavailable for a period and wants to assign a replacement line manager to the employee on sick leave.
+        If a requirement for line manager exists for the employee, it will be marked as completed (internally and eventually in Dialogporten) when a line manager is
+        assigned through this endpoint.
         
         Constraints:
         - The employee must have an active sick leave, with a grace period of 16 additional days after the end of the sick leave.

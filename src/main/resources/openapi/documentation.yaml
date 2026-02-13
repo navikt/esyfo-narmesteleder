@@ -178,7 +178,7 @@ paths:
         If there was a line manager assigned to the employee before the requirement was created,
         it also reveal the national identification number of the previous line manager and who or what caused the previous line manager to be revoked.
         This could perhaps be used to determine if the candidate the organization has on file should not be assigned
-        as line manager again, and they should look for a different person to assign as instead.
+        as line manager again, and instead look for a different person to assign.
         
         Use cases for this endpoint:
         - An LPS has a subscriptions to Dialogporten and receives notifications about new requirements for line manager.

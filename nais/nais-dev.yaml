@@ -102,8 +102,6 @@ spec:
     - instance: felles-cache
       access: readwrite
   env:
-    - name: MAINTENANCE_TASK_DELAY
-      value: "1h"
     - name: PDL_BASE_URL
       value: https://pdl-api.dev-fss-pub.nais.io/graphql
     - name: PDL_SCOPE
@@ -150,5 +148,9 @@ spec:
       value: "false"
     - name: PERSIST_SENDT_SYKMELDING
       value: "true"
+    - name: MAINTENANCE_TASK_DELAY
+      value: "1h"
+    - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
+      value: "16"
   envFrom:
     - secret: altinn-subscription-key

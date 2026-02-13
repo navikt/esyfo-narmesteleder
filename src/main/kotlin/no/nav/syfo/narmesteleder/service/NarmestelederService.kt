@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
-import kotlinx.coroutines.flow.count
+import kotlinx.coroutines.delay
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -20,7 +20,9 @@ import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 class NarmestelederService(
     private val nlDb: INarmestelederDb,
@@ -98,7 +100,7 @@ class NarmestelederService(
     ): UUID? {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
-            return null // TODO: Fjern nullable når vi begynner å lagre
+            return null
         }
         if (skipDueToExistingBehov(nlBehov)) {
             return null
@@ -221,44 +223,30 @@ class NarmestelederService(
     ): List<LinemanagerRequirementRead> = nlDb.findBehovByParameters(
         orgNumber = orgNumber,
         createdAfter = createdAfter,
-        behovStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+        status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
         limit = pageSize + 1,
     ).map { it.toEmployeeLinemanagerRead(it.getName()) }
 
-    suspend fun expireOldLinemanagerRequirements(createdBeforeDays: Long): Int {
-        val cutoffTime = Instant.now().minus(Duration.ofDays(createdBeforeDays))
-        val openStatuses = listOf(
-            BehovStatus.BEHOV_CREATED, // Antakelig overflødig når vi har cutoffTime
-            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-        )
+    suspend fun updateStatusOnExpiredBehovs(daysAfterTom: Long) {
+        var count: Int
+        var totalUpdated = 0
 
-        // Using a flow to avoid loading too many behovs into memory at once
-        return paginatedFlow { page ->
-            nlDb.findByCreatedBeforeAndStatus(
-                createdBefore = cutoffTime,
-                page = page,
-                pageSize = PAGE_SIZE,
-                status = openStatuses
-            ).items
-        }
-            .filter { behov -> !dinesykmeldteService.getIsActiveSykmelding(behov.sykmeldtFnr, behov.orgnummer) }
-            .onEach { behov ->
-                nlDb.updateNlBehov(behov.copy(behovStatus = BehovStatus.BEHOV_EXPIRED))
-                logger.info("Expired NarmestelederBehovEntity with id: ${behov.id}. Employee no longer on sick leave.")
-            }
-            .count()
-    }
-
-    private fun <T> paginatedFlow(fetcher: suspend (page: Int) -> List<T>) = flow {
-        var page = 0
         do {
-            val items = fetcher(page++)
-            items.forEach { emit(it) }
-        } while (items.size == PAGE_SIZE)
+            count = nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                tomBefore = Instant.now().plus(Duration.ofDays(daysAfterTom)),
+                fromStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+                newStatus = BehovStatus.BEHOV_EXPIRED,
+            )
+            totalUpdated += count
+            delay(UPDATE_EXPIRED_BEHOVS_DELAY_MS.milliseconds)
+        }
+        while (count > 0)
+
+        logger.info("Updated total of $totalUpdated behovs to BEHOV_EXPIRED with tom before $daysAfterTom")
     }
 
     companion object {
-        private const val PAGE_SIZE = 100
+        const val UPDATE_EXPIRED_BEHOVS_DELAY_MS = 500
     }
 }
 

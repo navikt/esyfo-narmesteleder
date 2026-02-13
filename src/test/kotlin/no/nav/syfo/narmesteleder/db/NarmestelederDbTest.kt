@@ -332,7 +332,7 @@ class NarmestelederDbTest :
                     val retrievedEntities = db.findBehovByParameters(
                         orgNumber = defaultOrgnummer,
                         createdAfter = Instant.now().minusSeconds(3 * 60L),
-                        behovStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+                        status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
                         limit = 50
                     )
 
@@ -371,7 +371,7 @@ class NarmestelederDbTest :
                     val retrievedEntities = db.findBehovByParameters(
                         orgNumber = defaultOrgnummer,
                         createdAfter = Instant.now().minusSeconds(3 * 60L),
-                        behovStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+                        status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
                         limit = 1
                     )
 

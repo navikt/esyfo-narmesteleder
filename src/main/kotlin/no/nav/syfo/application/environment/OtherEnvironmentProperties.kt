@@ -10,7 +10,7 @@ data class OtherEnvironmentProperties(
     val persistLeesahNlBehov: Boolean,
     val isDialogportenBackgroundTaskEnabled: Boolean,
     val dialogportenIsApiOnly: Boolean,
-    val checkForInactiveSykmeldingOnBehovsAfterDays: Long,
+    val daysAfterTomToExpireBehovs: Long,
     val persistSendtSykmelding: Boolean,
 ) {
     companion object {
@@ -24,27 +24,26 @@ data class OtherEnvironmentProperties(
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars(),
             deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createFromEnvVars(),
             persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
-            checkForInactiveSykmeldingOnBehovsAfterDays = getEnvVar(
-                "CHECK_INACTIVE_SYKMELDING_ON_BEHOVS_AFTER_DAYS",
-                "7"
+            daysAfterTomToExpireBehovs = getEnvVar(
+                "DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS",
+                "16"
             ).toLong(),
             maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
         )
 
-        fun createForLocal() =
-            OtherEnvironmentProperties(
-                electorPath = "esyfo-narmesteleder",
-                frontendBaseUrl = "http://localhost:3000",
-                publicIngressUrl = "http://localhost:8080",
-                updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
-                persistLeesahNlBehov = true,
-                isDialogportenBackgroundTaskEnabled = true,
-                dialogportenIsApiOnly = false,
-                deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
-                persistSendtSykmelding = true,
-                checkForInactiveSykmeldingOnBehovsAfterDays = 0,
-                maintenanceTaskDelay = "1m"
-            )
+        fun createForLocal() = OtherEnvironmentProperties(
+            electorPath = "esyfo-narmesteleder",
+            frontendBaseUrl = "http://localhost:3000",
+            publicIngressUrl = "http://localhost:8080",
+            updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
+            persistLeesahNlBehov = true,
+            isDialogportenBackgroundTaskEnabled = true,
+            dialogportenIsApiOnly = false,
+            deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
+            persistSendtSykmelding = true,
+            daysAfterTomToExpireBehovs = 0,
+            maintenanceTaskDelay = "1m"
+        )
     }
 }
 

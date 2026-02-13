@@ -142,5 +142,7 @@ spec:
       value: "false"
     - name: MAINTENANCE_TASK_DELAY
       value: "6h"
+    - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
+      value: "16"
   envFrom:
     - secret: altinn-subscription-key

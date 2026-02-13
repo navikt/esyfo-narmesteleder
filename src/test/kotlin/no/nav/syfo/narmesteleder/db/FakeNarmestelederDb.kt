@@ -1,6 +1,5 @@
 package no.nav.syfo.narmesteleder.db
 
-import no.nav.syfo.application.database.ResultPage
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import java.time.Instant
 import java.util.*
@@ -33,6 +32,23 @@ class FakeNarmestelederDb : INarmestelederDb {
     override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = getNlBehovByStatus(listOf(status), limit)
 
     override suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus == status && it.dialogDeletePerformed != null && it.dialogId == null }.take(limit)
+    override suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+        tomBefore: Instant,
+        newStatus: BehovStatus,
+        fromStatus: List<BehovStatus>,
+        limit: Int
+    ): Int {
+        val toUpdate = store.values.filter {
+            it.created.isBefore(tomBefore) && it.behovStatus in fromStatus
+        }.take(limit)
+
+        toUpdate.forEach {
+            val updated = it.copy(behovStatus = newStatus)
+            store[updated.id!!] = updated
+        }
+        return toUpdate.size
+    }
+
     override suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.dialogDeletePerformed == null }
         .sortedBy { it.created }
         .take(limit)
@@ -47,27 +63,14 @@ class FakeNarmestelederDb : INarmestelederDb {
     override suspend fun findBehovByParameters(
         orgNumber: String,
         createdAfter: Instant,
-        behovStatus: List<BehovStatus>,
+        status: List<BehovStatus>,
         limit: Int
     ): List<NarmestelederBehovEntity> = store.values.filter {
         it.orgnummer == orgNumber &&
             it.created.isAfter(createdAfter) &&
             it.created.isBefore(Instant.now()) &&
-            behovStatus.contains(it.behovStatus)
+            status.contains(it.behovStatus)
     }.take(limit)
-
-    override suspend fun findByCreatedBeforeAndStatus(
-        createdBefore: Instant,
-        page: Int,
-        pageSize: Int,
-        status: List<BehovStatus>
-    ): ResultPage<NarmestelederBehovEntity> = ResultPage(
-        store.values.filter {
-            it.created.isBefore(createdBefore) &&
-                status.contains(it.behovStatus)
-        },
-        page
-    )
 
     override suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus in status }
 

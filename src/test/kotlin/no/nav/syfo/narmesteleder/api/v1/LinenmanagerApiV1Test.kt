@@ -728,7 +728,7 @@ class LinenmanagerApiV1Test :
                             fakeRepo.findBehovByParameters(
                                 orgNumber = requirement.orgNumber,
                                 createdAfter = any(),
-                                behovStatus =
+                                status =
                                 listOf(
                                     BehovStatus.BEHOV_CREATED,
                                     BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,

@@ -127,7 +127,6 @@ class SqlBuilder {
             is Instant -> preparedStatement.setTimestamp(parameterIndex, Timestamp.from(value))
             is Enum<*> -> preparedStatement.setObject(parameterIndex, value, Types.OTHER)
             is UUID, is Timestamp -> preparedStatement.setObject(parameterIndex, value)
-
             else -> throw IllegalArgumentException("Unsupported parameter type: ${value.javaClass.simpleName}")
         }
     }
@@ -143,6 +142,8 @@ class SqlBuilder {
         HOVEDENHET_ORGNUMMER("hovedenhet_orgnummer"),
         BEHOV_REASON("behov_reason"),
         AVBRUTT_NARMESTELEDER_ID("avbrutt_narmesteleder_id"),
+        FNR("fnr"),
+        TOM("tom")
         ;
 
         override fun toString(): String = columnName

@@ -8,6 +8,7 @@ import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.util.logger
+import java.time.Instant
 import kotlin.time.Duration
 
 class BehovMaintenanceTask(
@@ -23,8 +24,8 @@ class BehovMaintenanceTask(
                 if (leaderElection.isLeader()) {
                     try {
                         logger.info("Starting task for behov maintenance")
-                        narmestelederService.expireOldLinemanagerRequirements(
-                            env.checkForInactiveSykmeldingOnBehovsAfterDays
+                        narmestelederService.updateStatusOnExpiredBehovs(
+                            env.daysAfterTomToExpireBehovs
                         )
                             .also {
                                 logger.info("Expired $it old linemanager requirements.")

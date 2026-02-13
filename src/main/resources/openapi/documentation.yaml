@@ -27,7 +27,7 @@ paths:
       description: |
         This endpoint can be used to assign a line manager to an employee on sick leave.
         It is not dependent on the existence of a requirement for line manager.
-        If a requirement for line manager exists for the employee, it will be marked as completed when a line manager is
+        If a requirement for line manager exists for the employee, it will be marked as completed (internally and eventually in Dialogporten) when a line manager is
         assigned through this endpoint.
         If there already is a line manager assigned to the employee, the new line manager will overwrite the existing one.
         

@@ -2,6 +2,8 @@ package no.nav.syfo.narmesteleder.db
 
 import faker
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainAllIgnoringFields
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.shouldBe
@@ -10,16 +12,23 @@ import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.TestDB.Companion.updateCreated
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
+import no.nav.syfo.sykmelding.db.SykmeldingDb
 import java.time.Instant
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.Period.ofDays
 import java.util.UUID
 
 class NarmestelederDbTest :
     DescribeSpec({
         val testDb = TestDB.database
         val db = NarmestelederDb(testDb)
+        val sykmeldingDb = SykmeldingDb(testDb)
 
         beforeTest {
             TestDB.clearAllData()
+            TestDB.clearSendtSykmeldingData()
         }
         suspend fun insertAndGetBehovWithId(entity: NarmestelederBehovEntity): NarmestelederBehovEntity? {
             val entity = db.insertNlBehov(entity)
@@ -384,6 +393,210 @@ class NarmestelederDbTest :
                         NarmestelederBehovEntity::updated
                     )
                 }
+            }
+        }
+
+        describe("setBehovStatusForSykmeldingWithTomBeforeAndStatus") {
+            fun sykmeldingEntity(
+                fnr: String,
+                tom: LocalDate,
+                orgnummer: String = faker.numerify("#########")
+            ) = SendtSykmeldingEntity(
+                sykmeldingId = UUID.randomUUID(),
+                fnr = fnr,
+                orgnummer = orgnummer,
+                fom = tom.minusDays(14),
+                tom = tom,
+                revokedDate = null,
+                syketilfelleStartDato = tom.minusDays(14),
+                created = Instant.now(),
+                updated = Instant.now(),
+            )
+
+            beforeTest {
+                TestDB.clearAllData()
+                TestDB.clearSendtSykmeldingData()
+            }
+
+            it("should update behovs where sykmelding tom is before cutoff") {
+                // Arrange
+                val fnr = faker.numerify("###########")
+                val expiredTom = LocalDate.now().minusDays(10)
+
+                sykmeldingDb.transaction {
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom)))
+                }
+
+                val behov = db.insertNlBehov(
+                    nlBehovEntity().copy(
+                        sykmeldtFnr = fnr,
+                        behovStatus = BehovStatus.BEHOV_CREATED
+                    )
+                )
+
+                // Act
+                val updated = db.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                    tomBefore = LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC),
+                    fromStatus = listOf(BehovStatus.BEHOV_CREATED),
+                    newStatus = BehovStatus.BEHOV_EXPIRED
+                )
+
+                // Assert
+                updated shouldBe 1
+                val retrieved = db.findBehovById(behov.id!!)
+                retrieved?.behovStatus shouldBe BehovStatus.BEHOV_EXPIRED
+            }
+
+            it("should not update behovs where sykmelding tom is after cutoff") {
+                // Arrange
+                val fnr = faker.numerify("###########")
+                val activeTom = LocalDate.now().plusDays(30)
+
+                sykmeldingDb.transaction {
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = activeTom)))
+                }
+
+                val behov = db.insertNlBehov(
+                    nlBehovEntity().copy(
+                        sykmeldtFnr = fnr,
+                        behovStatus = BehovStatus.BEHOV_CREATED
+                    )
+                )
+
+                // Act
+                val updated = db.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                    tomBefore = LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC),
+                    fromStatus = listOf(BehovStatus.BEHOV_CREATED),
+                    newStatus = BehovStatus.BEHOV_EXPIRED
+                )
+
+                // Assert
+                updated shouldBe 0
+                val retrieved = db.findBehovById(behov.id!!)
+                retrieved?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+            }
+
+            it("should only update behovs with matching fromStatus") {
+                // Arrange
+                val fnr = faker.numerify("###########")
+                val expiredTom = LocalDate.now().minusDays(10)
+
+                sykmeldingDb.transaction {
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom)))
+                }
+
+                val behovCreated = db.insertNlBehov(
+                    nlBehovEntity().copy(
+                        sykmeldtFnr = fnr,
+                        behovStatus = BehovStatus.BEHOV_CREATED
+                    )
+                )
+                val behovFulfilled = db.insertNlBehov(
+                    nlBehovEntity().copy(
+                        sykmeldtFnr = fnr,
+                        behovStatus = BehovStatus.BEHOV_FULFILLED
+                    )
+                )
+
+                // Act
+                val updated = db.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                    tomBefore = LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC),
+                    fromStatus = listOf(BehovStatus.BEHOV_CREATED),
+                    newStatus = BehovStatus.BEHOV_EXPIRED
+                )
+
+                // Assert
+                updated shouldBe 1
+                db.findBehovById(behovCreated.id!!)?.behovStatus shouldBe BehovStatus.BEHOV_EXPIRED
+                db.findBehovById(behovFulfilled.id!!)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+            }
+
+            it("should respect limit parameter") {
+                // Arrange
+                val fnr1 = faker.numerify("###########")
+                val fnr2 = faker.numerify("###########")
+                val expiredTom = LocalDate.now().minusDays(10)
+
+                sykmeldingDb.transaction {
+                    insertOrUpdateSykmeldingBatch(
+                        listOf(
+                            sykmeldingEntity(fnr = fnr1, tom = expiredTom),
+                            sykmeldingEntity(fnr = fnr2, tom = expiredTom)
+                        )
+                    )
+                }
+
+                val behov1 = db.insertNlBehov(
+                    nlBehovEntity().copy(sykmeldtFnr = fnr1, behovStatus = BehovStatus.BEHOV_CREATED)
+                )
+                val behov2 = db.insertNlBehov(
+                    nlBehovEntity().copy(sykmeldtFnr = fnr2, behovStatus = BehovStatus.BEHOV_CREATED)
+                )
+
+                // Act
+                val updated = db.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                    tomBefore = LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC),
+                    fromStatus = listOf(BehovStatus.BEHOV_CREATED),
+                    newStatus = BehovStatus.BEHOV_EXPIRED,
+                    limit = 1
+                )
+
+                // Assert
+                updated shouldBe 1
+            }
+
+            it("should return 0 when fromStatus list is empty") {
+                // Arrange
+                val fnr = faker.numerify("###########")
+                val expiredTom = LocalDate.now().minusDays(10)
+
+                sykmeldingDb.transaction {
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom)))
+                }
+
+                db.insertNlBehov(
+                    nlBehovEntity().copy(sykmeldtFnr = fnr, behovStatus = BehovStatus.BEHOV_CREATED)
+                )
+
+                // Act
+                val updated = db.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                    tomBefore = LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC),
+                    fromStatus = emptyList(),
+                    newStatus = BehovStatus.BEHOV_EXPIRED
+                )
+
+                // Assert
+                updated shouldBe 0
+            }
+
+            it("should not update behovs without matching sykmelding") {
+                // Arrange
+                val fnrWithSykmelding = faker.numerify("###########")
+                val fnrWithoutSykmelding = faker.numerify("###########")
+                val expiredTom = LocalDate.now().minusDays(17)
+
+                sykmeldingDb.transaction {
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnrWithSykmelding, tom = expiredTom)))
+                }
+
+                val behovWithSykmelding = db.insertNlBehov(
+                    nlBehovEntity().copy(sykmeldtFnr = fnrWithSykmelding, behovStatus = BehovStatus.BEHOV_CREATED)
+                )
+                val behovWithoutSykmelding = db.insertNlBehov(
+                    nlBehovEntity().copy(sykmeldtFnr = fnrWithoutSykmelding, behovStatus = BehovStatus.BEHOV_CREATED)
+                )
+
+                // Act
+                val updated = db.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                    tomBefore = LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC),
+                    fromStatus = listOf(BehovStatus.BEHOV_CREATED),
+                    newStatus = BehovStatus.BEHOV_EXPIRED
+                )
+
+                // Assert
+                updated shouldBe 1
+                db.findBehovById(behovWithSykmelding.id!!)?.behovStatus shouldBe BehovStatus.BEHOV_EXPIRED
+                db.findBehovById(behovWithoutSykmelding.id!!)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
             }
         }
     })

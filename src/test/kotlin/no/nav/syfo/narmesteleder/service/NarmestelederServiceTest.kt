@@ -11,13 +11,10 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
-import java.util.*
-import net.bytebuddy.description.type.TypeDefinition.Sort.describe
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.Arbeidsforhold
 import no.nav.syfo.aareg.client.ArbeidsstedType
 import no.nav.syfo.aareg.client.OpplysningspliktigType
-import no.nav.syfo.application.database.ResultPage
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
@@ -30,6 +27,7 @@ import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
+import java.util.*
 
 class NarmestelederServiceTest :
     DescribeSpec({
@@ -458,95 +456,91 @@ class NarmestelederServiceTest :
             }
         }
 
-        describe("expireOldLinemanagerRequirements") {
-            it("expires only behovs where sykmelding is inactive and returns count") {
+        describe("updateStatusOnExpiredBehovs") {
+            it("expires behovs with matching sykmelding tom and returns total count") {
                 // Arrange
-                val createdBeforeDays = 7L
-                val inactiveId = UUID.randomUUID()
-                val activeId = UUID.randomUUID()
+                val daysAfterTom = 16L
+                val updatedCount = 5
 
-                val inactiveBehov = NarmestelederBehovEntity(
-                    id = inactiveId,
-                    orgnummer = "111111111",
-                    hovedenhetOrgnummer = "222222222",
-                    sykmeldtFnr = "12345678910",
-                    narmestelederFnr = "01987654321",
-                    behovReason = BehovReason.DEAKTIVERT_LEDER,
-                    behovStatus = BehovStatus.BEHOV_CREATED,
-                    avbruttNarmesteLederId = UUID.randomUUID(),
-                )
-                val activeBehov = inactiveBehov.copy(
-                    id = activeId,
-                    sykmeldtFnr = "10987654321",
-                    behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
-                )
-
-                val updatedSlot: CapturingSlot<NarmestelederBehovEntity> = slot()
-
-                coEvery { nlDb.findByCreatedBeforeAndStatus(any(), any(), any(), any()) } coAnswers {
-                    ResultPage(
-                        listOf(
-                            inactiveBehov,
-                            activeBehov
+                coEvery {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = listOf(
+                            BehovStatus.BEHOV_CREATED,
+                            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                         ),
-                        page = secondArg()
+                        newStatus = BehovStatus.BEHOV_EXPIRED,
+                        limit = any()
                     )
-                }
-                coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
-                        inactiveBehov.sykmeldtFnr,
-                        inactiveBehov.orgnummer
-                    )
-                } returns false
-                coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
-                        activeBehov.sykmeldtFnr,
-                        activeBehov.orgnummer
-                    )
-                } returns true
-                coEvery { nlDb.updateNlBehov(capture(updatedSlot)) } returns Unit
+                } returnsMany listOf(updatedCount, 0)
 
                 // Act
-                val expiredCount = service().expireOldLinemanagerRequirements(createdBeforeDays)
+                service().updateStatusOnExpiredBehovs(daysAfterTom)
 
                 // Assert
-                expiredCount shouldBe 1
-
-                coVerify(exactly = 1) {
-                    nlDb.findByCreatedBeforeAndStatus(
-                        createdBefore = any(),
-                        page = 0,
-                        pageSize = 100,
-                        status = listOf(
+                coVerify(exactly = 2) {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = listOf(
                             BehovStatus.BEHOV_CREATED,
-                            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
-                        )
+                            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                        ),
+                        newStatus = BehovStatus.BEHOV_EXPIRED,
+                        limit = any()
                     )
                 }
-                coVerify(exactly = 2) { dinesykmeldteService.getIsActiveSykmelding(any(), any()) }
-                coVerify(exactly = 1) { nlDb.updateNlBehov(any()) }
-
-                updatedSlot.isCaptured shouldBe true
-                updatedSlot.captured.id shouldBe inactiveId
-                updatedSlot.captured.behovStatus shouldBe BehovStatus.BEHOV_EXPIRED
             }
 
-            it("returns 0 and does not update when no candidates are found") {
+            it("loops until no more behovs are updated") {
                 // Arrange
-                coEvery { nlDb.findByCreatedBeforeAndStatus(any(), any(), any(), any()) } answers {
-                    ResultPage(
-                        emptyList(),
-                        page = secondArg()
+                val daysAfterTom = 16L
+
+                coEvery {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = any(),
+                        newStatus = any(),
+                        limit = any()
                     )
-                }
+                } returnsMany listOf(500, 500, 300, 0)
 
                 // Act
-                val expiredCount = service().expireOldLinemanagerRequirements(30)
+                service().updateStatusOnExpiredBehovs(daysAfterTom)
 
                 // Assert
-                expiredCount shouldBe 0
-                coVerify(exactly = 0) { dinesykmeldteService.getIsActiveSykmelding(any(), any()) }
-                coVerify(exactly = 0) { nlDb.updateNlBehov(any()) }
+                coVerify(exactly = 4) {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = any(),
+                        newStatus = any(),
+                        limit = any()
+                    )
+                }
+            }
+
+            it("does nothing when no behovs match") {
+                // Arrange
+                coEvery {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = any(),
+                        newStatus = any(),
+                        limit = any()
+                    )
+                } returns 0
+
+                // Act
+                service().updateStatusOnExpiredBehovs(16L)
+
+                // Assert
+                coVerify(exactly = 1) {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = any(),
+                        newStatus = any(),
+                        limit = any()
+                    )
+                }
             }
         }
     })

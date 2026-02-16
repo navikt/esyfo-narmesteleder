@@ -20,7 +20,6 @@ import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -227,13 +226,13 @@ class NarmestelederService(
         limit = pageSize + 1,
     ).map { it.toEmployeeLinemanagerRead(it.getName()) }
 
-    suspend fun updateStatusOnExpiredBehovs(daysAfterTom: Long) {
+    suspend fun updateStatusOnExpiredBehovs(validDaysAfterTom: Long) {
         var count: Int
         var totalUpdated = 0
 
         do {
             count = nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
-                tomBefore = Instant.now().plus(Duration.ofDays(daysAfterTom)),
+                tomBefore = Instant.now().plus(Duration.ofDays(validDaysAfterTom)),
                 fromStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
                 newStatus = BehovStatus.BEHOV_EXPIRED,
             )
@@ -242,7 +241,7 @@ class NarmestelederService(
         }
         while (count > 0)
 
-        logger.info("Updated total of $totalUpdated behovs to BEHOV_EXPIRED with tom before $daysAfterTom")
+        logger.info("Updated total of $totalUpdated behovs to BEHOV_EXPIRED with tom before $validDaysAfterTom")
     }
 
     companion object {

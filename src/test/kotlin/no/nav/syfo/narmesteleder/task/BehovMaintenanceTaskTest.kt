@@ -1,9 +1,11 @@
 package no.nav.syfo.narmesteleder.task
 
 import io.kotest.core.spec.style.DescribeSpec
+import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.just
 import io.mockk.mockk
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -27,7 +29,7 @@ class BehovMaintenanceTaskTest :
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
             isDialogportenBackgroundTaskEnabled = true,
             dialogportenIsApiOnly = false,
-            checkForInactiveSykmeldingOnBehovsAfterDays = 7,
+            daysAfterTomToExpireBehovs = 16,
             maintenanceTaskDelay = "100ms",
             deleteDialogportenDialogsTaskProperties = mockk(relaxed = true),
             persistSendtSykmelding = mockk(relaxed = true),
@@ -45,10 +47,10 @@ class BehovMaintenanceTaskTest :
 
         describe("BehovMaintenanceTask") {
             context("runTask") {
-                it("should call expireOldLinemanagerRequirements when leader") {
+                it("should call updateStatusOnExpiredBehovs when leader") {
                     // Arrange
                     coEvery { leaderElection.isLeader() } returns true
-                    coEvery { narmestelederService.expireOldLinemanagerRequirements(any()) } returns 5
+                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
 
                     val task = createTask()
 
@@ -64,13 +66,13 @@ class BehovMaintenanceTaskTest :
                     // Assert
                     coVerify(atLeast = 1) { leaderElection.isLeader() }
                     coVerify(atLeast = 1) {
-                        narmestelederService.expireOldLinemanagerRequirements(
-                            env.checkForInactiveSykmeldingOnBehovsAfterDays
+                        narmestelederService.updateStatusOnExpiredBehovs(
+                            env.daysAfterTomToExpireBehovs
                         )
                     }
                 }
 
-                it("should not call expireOldLinemanagerRequirements when not leader") {
+                it("should not call updateStatusOnExpiredBehovs when not leader") {
                     // Arrange
                     coEvery { leaderElection.isLeader() } returns false
 
@@ -87,19 +89,18 @@ class BehovMaintenanceTaskTest :
 
                     // Assert
                     coVerify(atLeast = 1) { leaderElection.isLeader() }
-                    coVerify(exactly = 0) { narmestelederService.expireOldLinemanagerRequirements(any()) }
+                    coVerify(exactly = 0) { narmestelederService.updateStatusOnExpiredBehovs(any()) }
                 }
 
-                it("should continue running after exception in expireOldLinemanagerRequirements") {
+                it("should continue running after exception in updateStatusOnExpiredBehovs") {
                     // Arrange
                     var callCount = 0
                     coEvery { leaderElection.isLeader() } returns true
-                    coEvery { narmestelederService.expireOldLinemanagerRequirements(any()) } answers {
+                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } answers {
                         callCount++
                         if (callCount == 1) {
                             throw RuntimeException("Test exception")
                         }
-                        3
                     }
 
                     val task = createTask()
@@ -114,13 +115,13 @@ class BehovMaintenanceTaskTest :
                     job.cancelAndJoin()
 
                     // Assert - should have been called at least twice (once with exception, once without)
-                    coVerify(atLeast = 2) { narmestelederService.expireOldLinemanagerRequirements(any()) }
+                    coVerify(atLeast = 2) { narmestelederService.updateStatusOnExpiredBehovs(any()) }
                 }
 
-                it("should use correct checkForInactiveSykmeldingOnBehovsAfterDays value") {
+                it("should use correct daysAfterTomToExpireBehovs value") {
                     // Arrange
                     val customDays = 14L
-                    val customEnv = env.copy(checkForInactiveSykmeldingOnBehovsAfterDays = customDays)
+                    val customEnv = env.copy(daysAfterTomToExpireBehovs = customDays)
                     val task = BehovMaintenanceTask(
                         narmestelederService = narmestelederService,
                         leaderElection = leaderElection,
@@ -128,7 +129,7 @@ class BehovMaintenanceTaskTest :
                     )
 
                     coEvery { leaderElection.isLeader() } returns true
-                    coEvery { narmestelederService.expireOldLinemanagerRequirements(any()) } returns 0
+                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
 
                     // Act
                     val job = launch {
@@ -140,14 +141,14 @@ class BehovMaintenanceTaskTest :
 
                     // Assert
                     coVerify(atLeast = 1) {
-                        narmestelederService.expireOldLinemanagerRequirements(eq(customDays))
+                        narmestelederService.updateStatusOnExpiredBehovs(eq(customDays))
                     }
                 }
 
                 it("should gracefully handle cancellation") {
                     // Arrange
                     coEvery { leaderElection.isLeader() } returns true
-                    coEvery { narmestelederService.expireOldLinemanagerRequirements(any()) } returns 0
+                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
 
                     val task = createTask()
 

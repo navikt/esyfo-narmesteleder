@@ -1,6 +1,7 @@
 package no.nav.syfo.narmesteleder.db
 
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import java.time.Duration
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -32,6 +33,12 @@ class FakeNarmestelederDb : INarmestelederDb {
     override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = getNlBehovByStatus(listOf(status), limit)
 
     override suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus == status && it.dialogDeletePerformed != null && it.dialogId == null }.take(limit)
+
+    /**
+     * Note: This fake implementation does NOT join with sendt_sykmelding like the real implementation.
+     * It simply filters on created time. Use the real NarmestelederDb with TestDB for integration tests
+     * that need to verify the actual join behavior.
+     */
     override suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
         tomBefore: Instant,
         newStatus: BehovStatus,
@@ -39,7 +46,7 @@ class FakeNarmestelederDb : INarmestelederDb {
         limit: Int
     ): Int {
         val toUpdate = store.values.filter {
-            it.created.isBefore(tomBefore) && it.behovStatus in fromStatus
+            it.created.plus(Duration.ofDays(14)).isBefore(tomBefore) && it.behovStatus in fromStatus
         }.take(limit)
 
         toUpdate.forEach {

@@ -158,7 +158,8 @@ class ValidationService(
                 )
                 if (!hasAccess) {
                     throw ApiErrorException.ForbiddenException(
-                        "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource"
+                        errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+                        type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                     )
                 }
             }

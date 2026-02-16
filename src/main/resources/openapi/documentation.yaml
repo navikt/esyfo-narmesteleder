@@ -1,29 +1,56 @@
 openapi: 3.0.3
 info:
   title: Esyfo Narmesteleder API
-  version: 1.0.2
+  version: 1.0.3
   description: |
-    API v1 for linemanager creation, revoke, requirement, and metrics.
+    API v1 for assigning line manager for employees on sick leave, removing existing line managers
+    and to retrieve requirements for line managers for employees on sick leave.
+    
+    Not all the endpoints are required to be used in order to accomplish the goal of assigning 
+    line managers to employees on sick leave. Read the descriptions of the endpoints for more details to determine
+    which endpoints are relevant for your use case.
     
     This api require authentication with Maskinporten or Idporten Level 4 issued JWT.
     
     The Maskinporten token must be issued to a SystemUser with
     scope `nav:syfo/narmesteleder/lps` and Altinn resource `nav_syfo_oppgi-narmesteleder`.
     
-    DEV: In Swagger UI, select the server in the “Servers” dropdown that matches the URL where Swagger UI is hosted. If the selected server uses a different host\/origin, the browser will treat requests as cross\-origin and you may get CORS preflight errors.
-
+    Several of the endpoints has a constraint that the employee has to have an active sick leave in order for the endpoint to be used successfully.
+    An employee has an **active sick leave** when:
+    - The sick leave has been verified by the employee
+    - The employee has confirmed which employer the sick leave applies to and sent it to the employer
+    - **AND** one of the following conditions is met:
+      - The end date of the sick leave has not yet passed, OR
+      - The end date has passed, but fewer than 16 days have elapsed since the end date (grace period)
 servers:
   - url: https://narmesteleder-api.ekstern.dev.nav.no
     description: Test server for assigning line manager to employees on sick leave.
-  - url: https://esyfo-narmesteleder.ekstern.dev.nav.no
-    description: Legacy test server for assigning line manager to employees on sick leave(will be removed soon).
   - url: https://narmesteleder-api.nav.no
     description: Production server for assigning line manager to employees on sick leave.
+
+
 paths:
   /api/v1/linemanager:
     post:
       summary: Assign linemanager to employee on sick leave
-      description: Assigns a linemanager to an employee on sick leave. Will override any existing linemanger.
+      description: |
+        This endpoint can be used to assign a line manager to an employee on sick leave.
+        It is not dependent on the existence of a requirement for line manager.
+        
+        One scenario for the use of this endpoint could be when the organizations knows that the current line manager
+        will be unavailable for a period and wants to assign a replacement line manager to the employee on sick leave.
+        If there already is a line manager assigned to the employee, the new line manager will overwrite the existing one.
+        
+        If a requirement for line manager exists for the employee, it will be marked as completed (internally and eventually in Dialogporten) when a line manager is
+        assigned through this endpoint.
+        
+        Constraints:
+        - The employee must have an active sick leave, with a grace period of 16 additional days after the end of the sick leave.
+        - The employee must have an active employment in the specified organization.
+        - The line manager must have an active employment in any sub organization under the parent of the specified organization.
+        - The lastname provided for the employee on sick leave  must match the name registered with the provided national identification number.
+        - The lastname provided for the line manager must match the name registered with the provided national identification number.
+
       tags: [ linemanager ]
       security:
         - maskinporten_jwt: [ ]
@@ -38,25 +65,44 @@ paths:
         '202':
           description: Request accepted for processing
         '400':
-          description: Validation failed
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also occur if we fail to lookup the person linked to the provided national identification number.
+            * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
+            * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
+            * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The line manager does not have an active employment in any sub organization under the parent of the specified organization.
+            * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the line manager does not match the name registered with the provided national identification number.
+            * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: Unauthorized
+          description: |
+            Unauthorized:
+            Possible reasons for unauthorized response include:
+            * `AUTHORIZATION_ERROR`: Invalid token issuer, invalid token, missing scope, missing or invalid system user id or organization number in the token.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Forbidden
+          description: |
+            Forbidden:
+            Possible reasons for forbidden response include:
+            * `MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
+            * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource. EG: nav_syfo_oppgi-narmesteleder
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '500':
-          description: Internal Server Error
+          description: |
+            Internal Server Error:
+            Possible reasons for internal server error include:
+            * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -64,7 +110,19 @@ paths:
   /api/v1/linemanager/revoke:
     post:
       summary: Revoke existing linemanager for employee on sick leave
-      description: Publishes a revoke event to Kafka.
+      description: |
+        This endpoint can be used to revoke the currently assigned line manager for an employee.
+        The employee does not need to have an active sick leave.
+        If the employee does have an active sick leave, using this endpoint will result in the creation of a requirement for line manager.
+        
+        A scenario for the use of this endpoint could be if there is an urgent need to prevent the current line manager
+        from having access to the employee's sick leave information.
+        This could be if the current line manager is leaving the organization and one needs to immediately revoke their access,
+        without knowing who the replacement line manager will be or when they will start.
+        
+        Constraints:
+        - The employee must have an active employment in the specified organization.
+        - The lastname provided for the employee on sick leave  must match the name registered with the provided national identification number.
       tags: [ linemanager ]
       security:
         - maskinporten_jwt: [ ]
@@ -79,25 +137,41 @@ paths:
         '202':
           description: Revocation accepted
         '400':
-          description: Validation failed
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also occur if we fail to lookup the person linked to the provided national identification number.
+            * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
+            * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: Unauthorized
+          description: |
+            Unauthorized:
+            Possible reasons for unauthorized response include:
+            * `AUTHORIZATION_ERROR`: Invalid token issuer, invalid token, missing scope, missing or invalid system user id or organization number in the token.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Forbidden
+          description: |
+            Forbidden:
+            Possible reasons for forbidden response include:
+            * `MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
+            * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource. EG: nav_syfo_oppgi-narmesteleder
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '500':
-          description: Internal Server Error
+          description: |
+            Internal Server Error:
+            Possible reasons for internal server error include:
+            * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -105,7 +179,23 @@ paths:
   /api/v1/linemanager/requirement:
     get:
       summary: Get collection of linemanager requirement
-      description: Returns response with a list containing items with details about outstandig requirements for linemanager for employees.
+      description: |
+        Returns a response with a list containing items with details about outstanding requirements for
+        linemanager for employees on sickleave.
+        
+        Each item in the returned list, contains details about the requirement for line manager for an employee.
+        This includes details about the employee, like the national identification number and the name.
+        If there was a line manager assigned to the employee before the requirement was created,
+        it also reveal the national identification number of the previous line manager and who or what caused the previous line manager to be revoked.
+        This could perhaps be used to determine if the candidate the organization has on file should not be assigned
+        as line manager again, and instead look for a different person to assign.
+        
+        Use cases for this endpoint:
+        - An LPS has a subscriptions to Dialogporten and receives notifications about new requirements for line manager.
+        They are concerned that they occasionally miss notifications about new requirements and want to use this
+        endpoint to regularly poll for new requirements to make sure they do not miss any.
+        - An LPS does not have a subscription to Dialogporten but still wants to be able to retrieve requirements for line managers.
+        They can then poll this endpoint to retrieve requirements for line managers.
       tags: [ requirement ]
       security:
         - maskinporten_jwt: [ ]
@@ -143,27 +233,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/LinemanagerRequirementCollection'
         '400':
-          description: Validation failed
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Might be missing required query parameters.
+            * `ORGANIZATION_NOT_FOUND`: Failed to lookup the organization by orgnumber.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: Unauthorized
+          description: |
+            Unauthorized:
+            Possible reasons for unauthorized response include:
+            * `AUTHORIZATION_ERROR`: Invalid token issuer, invalid token, missing scope, missing or invalid system user id or organization number in the token.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Forbidden
+          description: |
+            Forbidden:
+            Possible reasons for forbidden response include:
+            * `MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
+            * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource. EG: nav_syfo_oppgi-narmesteleder
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-        '404':
-          description: Requirement not found
         '500':
-          description: Internal Server Error
+          description: |
+            Internal Server Error:
+            Possible reasons for internal server error include:
+            * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -171,7 +273,19 @@ paths:
   /api/v1/linemanager/requirement/{id}:
     put:
       summary: Assigns a linemanager for employee with requirement
-      description: Assigns a linemanager to the employee with requirement idenified by the id parameter
+      description: |
+        This endpoint is used to assign a line manager to the employee with requirement identified by the id parameter
+        assigned through this endpoint.
+        
+        This endpoint matches the url in dialogs in Dialogporten for requirements for line managers.
+        And LPS can call the corresponding GET endpoint to get details about the requirement before they call this PUT endpoint to assign a linemanager for the requirement.
+        
+        Constraints:
+        - The employee must have an active sick leave, with a grace period of 16 additional days after the end of the sick leave.
+          We will automatically close the requirement due to en expired sick leave,
+          but it is done by a scheduled job so there might be a delay between the sick leave expiring and the requirement being closed in the system.
+        - The line manager must have an active employment in any sub organization under the parent of the specified organization.
+        - The lastname provided for the line manager must match the name registered with the provided national identification number.
       tags: [ requirement ]
       security:
         - maskinporten_jwt: [ ]
@@ -194,34 +308,63 @@ paths:
         '202':
           description: Update accepted
         '400':
-          description: Validation failed
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also occur if we fail to lookup the person linked to the provided national identification number.
+            * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
+            * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
+            * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The line manager does not have an active employment in any sub organization under the parent of the specified organization.
+            * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the line manager does not match the name registered with the provided national identification number.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: Unauthorized
+          description: |
+            Unauthorized:
+            Possible reasons for unauthorized response include:
+            * `AUTHORIZATION_ERROR`: Invalid token issuer, invalid token, missing scope, missing or invalid system user id or organization number in the token.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Forbidden
+          description: |
+            Forbidden:
+            Possible reasons for forbidden response include:
+            * `MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
+            * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource. EG: nav_syfo_oppgi-narmesteleder
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Requirement not found
+          description: |
+            Not Found: Possible reasons for not found response include:
+            * `NOT_FOUND`: The requested resource was not found.
         '500':
-          description: Internal Server Error
+          description: |
+            Internal Server Error:
+            Possible reasons for internal server error include:
+            * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
     get:
       summary: Get linemanager requirement
-      description: Returns details about the requirement for linemanager for an employee.
+      description: |
+        Returns details about the requirement for linemanager for an employee, identified by the id parameter.
+        This includes details about the employee, like the national identification number and the name.
+        If there was a line manager assigned to the employee before the requirement was created,
+        it also reveal the national identification number of the previous line manager and who or what caused the previous line manager to be revoked.
+        This could perhaps be used to determine if the candidate the organization has on file should not be assigned
+        as line manager again, and they should look for a different person to assign as instead.
+        
+        This endpoint matches the url in dialogs in Dialogporten for requirements for line managers.
+        An LPS can call this GET endpoint to get details about the requirement, before they call the corresponding PUT endpoint to assign a line manager for the requirement.
       tags: [ requirement ]
       security:
         - maskinporten_jwt: [ ]
@@ -242,27 +385,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/LinemanagerRequirementRead'
         '400':
-          description: Validation failed
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also occur if we fail to lookup the person linked to the provided national identification number.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: Unauthorized
+          description: |
+            Unauthorized:
+            Possible reasons for unauthorized response include:
+            * `AUTHORIZATION_ERROR`: Invalid token issuer, invalid token, missing scope, missing or invalid system user id or organization number in the token.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Forbidden
+          description: |
+            Forbidden:
+            Possible reasons for forbidden response include:
+            * `MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
+            * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource. EG: nav_syfo_oppgi-narmesteleder
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Requirement not found
+          description: |
+            Not Found: Possible reasons for not found response include:
+            * `NOT_FOUND`: The requested resource was not found.
         '500':
-          description: Internal Server Error
+          description: |
+            Internal Server Error:
+            Possible reasons for internal server error include:
+            * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
           content:
             application/json:
               schema:
@@ -491,6 +649,7 @@ components:
         * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource.
         * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
         * `MISSING_REQUIRED_PARAMETER`: A required parameter is missing from the request.
+        * `ORGANIZATION_NOT_FOUND`: Failed to lookup the organization by orgnumber.
       enum:
         - AUTHENTICATION_ERROR
         - AUTHORIZATION_ERROR
@@ -508,6 +667,7 @@ components:
         - MISSING_ALITINN_RESOURCE_ACCESS
         - NO_ACTIVE_SICK_LEAVE
         - MISSING_REQUIRED_PARAMETER
+        - ORGANIZATION_NOT_FOUND
     ApiError:
       type: object
       description: Standard error payload.
@@ -548,8 +708,11 @@ components:
       additionalProperties: false
 tags:
   - name: linemanager
-    description: Linemanager relation operations.
+    description: Endpoints to assign or revoke a line manager. Not required to have a requirement for line manager to use these endpoints.
   - name: requirement
-    description: Linemanager requirement operations.
-  - name: metrics
-    description: Operational metrics.
+    description: |
+      Endpoints to retrieve details about requirements for line managers and for assigning line managers in order to fulfill the requirements.
+      
+      These endpoints are relevant when there is a requirement for line manager that needs to be fulfilled.
+      "requirement" is the term we have coined for the situation when an employee on sick leave does not have a
+      line manager assigned, so the employer is required to assign a line manager to the employee.

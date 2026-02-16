@@ -1,7 +1,12 @@
+package no.nav.syfo.narmesteleder.api.v1
+
+import DefaultOrganization
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import createMockToken
+import defaultMocks
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -24,6 +29,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import linemanager
+import linemanagerRevoke
+import manager
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -42,9 +50,6 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
-import no.nav.syfo.narmesteleder.api.v1.REVOKE_PATH
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -64,6 +69,7 @@ import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
+import prepareGetPersonResponse
 import java.time.Instant
 import java.util.*
 
@@ -157,7 +163,7 @@ class LinenmanagerApiV1Test :
             }
         }
         describe("POST /linemanager") {
-            describe("Maskinporten token") {
+            context("Maskinporten token") {
                 it("should return 202 Accepted for valid payload") {
                     withTestApplication {
                         // Arrange
@@ -283,7 +289,7 @@ class LinenmanagerApiV1Test :
                     }
                 }
             }
-            describe("TokenX token") {
+            context("TokenX token") {
                 it("should return 202 Accepted for valid payload") {
                     withTestApplication {
                         // Arrange

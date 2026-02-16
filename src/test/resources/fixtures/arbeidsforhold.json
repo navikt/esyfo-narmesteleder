@@ -1,0 +1,52 @@
+{
+  "test-fnr-001": {
+    "arbeidsforholdoversikter": [
+      {
+        "arbeidssted": {
+          "type": "Underenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "111111111", "gjeldende": true }
+          ]
+        },
+        "opplysningspliktig": {
+          "type": "Hovedenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "222222222", "gjeldende": true }
+          ]
+        }
+      }
+    ]
+  },
+  "test-fnr-002": {
+    "arbeidsforholdoversikter": [
+      {
+        "arbeidssted": {
+          "type": "Underenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "333333333", "gjeldende": true }
+          ]
+        },
+        "opplysningspliktig": {
+          "type": "Hovedenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "444444444", "gjeldende": true }
+          ]
+        }
+      },
+      {
+        "arbeidssted": {
+          "type": "Underenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "555555555", "gjeldende": true }
+          ]
+        },
+        "opplysningspliktig": {
+          "type": "Hovedenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "666666666", "gjeldende": true }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -180,7 +180,7 @@ class DialogportenService(
                 dialogId = dialogId,
                 revisionNumber = existingDialog.revision,
                 dialogStatus = DialogStatus.Completed,
-                expiresAt = OffsetDateTime.now()
+                expiresAt = OffsetDateTime.now().plusHours(1) // The API only allows expiresAt set in the future. Might need adjustments
             )
         }
         logger.info("Successfully updated dialog $dialogId to expired and completed in Dialogporten")

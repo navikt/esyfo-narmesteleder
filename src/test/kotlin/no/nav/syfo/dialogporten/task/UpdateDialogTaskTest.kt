@@ -9,12 +9,10 @@ import io.mockk.just
 import io.mockk.mockk
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.application.leaderelection.LeaderElection
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 class UpdateDialogTaskTest :
     DescribeSpec({

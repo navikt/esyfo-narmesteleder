@@ -283,7 +283,7 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovByStatus(
-                            listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED),
+                            BehovStatus.BEHOV_FULFILLED,
                             DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
                     }
@@ -328,7 +328,7 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovByStatus(
-                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            eq(BehovStatus.BEHOV_FULFILLED),
                             DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
                     }
@@ -365,7 +365,7 @@ class DialogportenServiceTest :
 
                     coEvery {
                         spyNarmestelederDb.getNlBehovByStatus(
-                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            eq(BehovStatus.BEHOV_FULFILLED),
                             DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
                     } returns behovs
@@ -388,7 +388,7 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovByStatus(
-                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            eq(BehovStatus.BEHOV_FULFILLED),
                             DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
                     }
@@ -425,7 +425,7 @@ class DialogportenServiceTest :
                         )
                     coEvery {
                         spyNarmestelederDb.getNlBehovByStatus(
-                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            eq(BehovStatus.BEHOV_FULFILLED),
                             DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
                     } returns listOf(behovEntity1)
@@ -444,7 +444,7 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovByStatus(
-                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            eq(BehovStatus.BEHOV_FULFILLED),
                             DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
                     }
@@ -481,7 +481,7 @@ class DialogportenServiceTest :
 
                     coEvery {
                         spyNarmestelederDb.getNlBehovByStatus(
-                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            eq(BehovStatus.BEHOV_FULFILLED),
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
                         )
                     } returns behovs
@@ -511,7 +511,7 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovByStatus(
-                            eq(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED)),
+                            eq(BehovStatus.BEHOV_FULFILLED),
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
                         )
                     }

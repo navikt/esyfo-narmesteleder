@@ -24,6 +24,7 @@ import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.util.logger
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
@@ -113,7 +114,7 @@ class DialogportenService(
     }
 
     suspend fun setAllFulfilledBehovsAsCompletedInDialogporten() {
-        narmestelederDb.getNlBehovByStatus(listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED), BEHOV_BY_STATUS_LIMIT)
+        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED, BEHOV_BY_STATUS_LIMIT)
             .also {
                 logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
             }
@@ -153,6 +154,39 @@ class DialogportenService(
             }
         }
         logger.info("Completed set ${behov.dialogId} to complete in dialogporten")
+    }
+
+    suspend fun setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() {
+        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_EXPIRED, BEHOV_BY_STATUS_LIMIT)
+            .also {
+                logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
+            }
+            .forEach { behov ->
+                behov.dialogId?.let {
+                    setToExpiredAndCompetedInDialogporten(it)
+                    narmestelederDb.updateNlBehov(
+                        behov.copy(
+                            behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                        )
+                    )
+                }
+            }
+    }
+
+    suspend fun setToExpiredAndCompetedInDialogporten(dialogId: UUID) {
+        try {
+            dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+                dialogportenClient.updateDialogStatusAndExpirationDate(
+                    dialogId = dialogId,
+                    revisionNumber = existingDialog.revision,
+                    dialogStatus = DialogStatus.Completed,
+                    expiresAt = OffsetDateTime.now()
+                )
+            }
+            logger.info("Successfully updated Dialogporten for dialog $dialogId")
+        } catch (ex: Exception) {
+            logger.error("Failed to update expired behov in dialogporten for dialogId: $dialogId", ex)
+        }
     }
 
     suspend fun deleteDialogsInDialogporten() {

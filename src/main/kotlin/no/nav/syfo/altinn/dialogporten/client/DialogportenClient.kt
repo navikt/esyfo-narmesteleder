@@ -23,6 +23,7 @@ import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger
+import java.time.OffsetDateTime
 import java.util.*
 
 interface IDialogportenClient {
@@ -30,6 +31,7 @@ interface IDialogportenClient {
     suspend fun updateDialogStatus(dialogId: UUID, revisionNumber: UUID, dialogStatus: DialogStatus)
     suspend fun getDialogById(dialogId: UUID): ExtendedDialog
     suspend fun deleteDialog(dialogId: UUID): HttpStatusCode
+    suspend fun updateDialogStatusAndExpirationDate(dialogId: UUID, revisionNumber: UUID, dialogStatus: DialogStatus, expiresAt: OffsetDateTime)
 }
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
@@ -137,6 +139,41 @@ class DialogportenClient(
             throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten:  actions-purge")
         }
     }
+
+    override suspend fun updateDialogStatusAndExpirationDate(
+        dialogId: UUID,
+        revisionNumber: UUID,
+        dialogStatus: DialogStatus,
+        expiresAt: OffsetDateTime
+    ) {
+        runCatching {
+            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+            httpClient
+                .patch("$dialogportenUrl/$dialogId") {
+                    header(HttpHeaders.Accept, ContentType.Application.Json)
+                    header(HttpHeaders.IfMatch, revisionNumber.toString())
+                    contentType(JSON_PATCH_CONTENT_TYPE)
+                    bearerAuth(token)
+                    setBody(
+                        listOf(
+                            DialogportenPatch(
+                                DialogportenPatch.OPERATION.REPLACE,
+                                "/status",
+                                dialogStatus.name
+                            ),
+                            DialogportenPatch(
+                                DialogportenPatch.OPERATION.ADD,
+                                "/expiresAt",
+                                expiresAt.toString()
+                            )
+                        )
+                    )
+                }
+        }.onFailure { e ->
+            logger.error("Error on update request to Dialogporten on dialogId: $dialogId", e)
+            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
+        }
+    }
 }
 
 class FakeDialogportenClient : IDialogportenClient {
@@ -176,5 +213,15 @@ class FakeDialogportenClient : IDialogportenClient {
     override suspend fun deleteDialog(dialogId: UUID): HttpStatusCode {
         logger.info("Deleting dialog with id: $dialogId")
         return HttpStatusCode.NoContent
+    }
+
+    override suspend fun updateDialogStatusAndExpirationDate(
+        dialogId: UUID,
+        revisionNumber: UUID,
+        dialogStatus: DialogStatus,
+        expiresAt: OffsetDateTime
+    ) {
+        logger.info("Fake call updating dialog with id: $dialogId, setting status to $dialogStatus and expiration date to $expiresAt")
+        return
     }
 }

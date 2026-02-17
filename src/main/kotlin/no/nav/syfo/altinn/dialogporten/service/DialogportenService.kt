@@ -126,12 +126,8 @@ class DialogportenService(
     }
 
     suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
-        val completableBehovs = listOf(
-            BehovStatus.BEHOV_FULFILLED,
-            BehovStatus.BEHOV_EXPIRED
-        )
-        if (behov.behovStatus !in completableBehovs) {
-            logger.info("Skipping setting dialog to completed for behov ${behov.id} with status ${behov.behovStatus}")
+        if (behov.behovStatus != BehovStatus.BEHOV_FULFILLED) {
+            logger.info("Skipping setting dialog to completed for behov ${behov.id} with non-completable status ${behov.behovStatus}")
             return
         }
         behov.dialogId?.let { dialogId ->
@@ -159,34 +155,35 @@ class DialogportenService(
     suspend fun setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() {
         narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_EXPIRED, BEHOV_BY_STATUS_LIMIT)
             .also {
-                logger.info("Found ${it.size} fulfilled behovs to complete in dialogporten")
+                logger.info("Found ${it.size} expired behovs to complete in dialogporten")
             }
             .forEach { behov ->
-                behov.dialogId?.let {
-                    setToExpiredAndCompetedInDialogporten(it)
-                    narmestelederDb.updateNlBehov(
-                        behov.copy(
-                            behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                behov.dialogId?.let { dialogId ->
+                    try {
+                        setToExpiredAndCompletedInDialogporten(dialogId)
+                        narmestelederDb.updateNlBehov(
+                            behov.copy(
+                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                            )
                         )
-                    )
+                        logger.info("Successfully updated expired behov ${behov.id} to completed in dialogporten")
+                    } catch (ex: Exception) {
+                        logger.error("Failed to update expired behov ${behov.id} in dialogporten for dialogId: $dialogId", ex)
+                    }
                 }
             }
     }
 
-    suspend fun setToExpiredAndCompetedInDialogporten(dialogId: UUID) {
-        try {
-            dialogportenClient.getDialogById(dialogId).let { existingDialog ->
-                dialogportenClient.updateDialogStatusAndExpirationDate(
-                    dialogId = dialogId,
-                    revisionNumber = existingDialog.revision,
-                    dialogStatus = DialogStatus.Completed,
-                    expiresAt = OffsetDateTime.now()
-                )
-            }
-            logger.info("Successfully updated Dialogporten for dialog $dialogId")
-        } catch (ex: Exception) {
-            logger.error("Failed to update expired behov in dialogporten for dialogId: $dialogId", ex)
+    suspend fun setToExpiredAndCompletedInDialogporten(dialogId: UUID) {
+        dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+            dialogportenClient.updateDialogStatusAndExpirationDate(
+                dialogId = dialogId,
+                revisionNumber = existingDialog.revision,
+                dialogStatus = DialogStatus.Completed,
+                expiresAt = OffsetDateTime.now()
+            )
         }
+        logger.info("Successfully updated dialog $dialogId to expired and completed in Dialogporten")
     }
 
     suspend fun deleteDialogsInDialogporten() {

@@ -64,7 +64,7 @@ class ValidationServiceTest :
         describe("validateNarmesteleder") {
             it("should not thrown when all validation passes and principal is BrukerPrincipal") {
                 // Arrange
-                val fnr = altinnTilgangerClient.usersWithAccess.first().first
+                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
                 val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
 
@@ -77,8 +77,8 @@ class ValidationServiceTest :
                     narmestelederRelasjonerWrite.lastName
                 )
                 pdlService.prepareGetPersonResponse(narmestelederRelasjonerWrite.manager)
-                altinnTilgangerClient.usersWithAccess.clear()
-                altinnTilgangerClient.usersWithAccess.add(principal.ident to narmestelederRelasjonerWrite.orgNumber)
+                altinnTilgangerClient.accessPolicy.clear()
+                altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber)
                 // Act
                 shouldNotThrow<Exception> {
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
@@ -101,12 +101,12 @@ class ValidationServiceTest :
 
             it("should throw BadRequestException when lastName of manager does mot match value in PDL") {
                 // Arrange
-                val fnr = altinnTilgangerClient.usersWithAccess.first().first
+                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
                 val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
 
-                altinnTilgangerClient.usersWithAccess.clear()
-                altinnTilgangerClient.usersWithAccess.add(principal.ident to narmestelederRelasjonerWrite.orgNumber)
+                altinnTilgangerClient.accessPolicy.clear()
+                altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber)
                 // Act
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
@@ -131,7 +131,7 @@ class ValidationServiceTest :
 
             it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
                 // Arrange
-                val fnr = altinnTilgangerClient.usersWithAccess.first().first
+                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
                 val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
 
@@ -155,13 +155,13 @@ class ValidationServiceTest :
 
             it("should not call AltinnTilgangerService when principal is OrganizationPrincipal") {
                 // Arrange
-                val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
+                val userWithAccess = altinnTilgangerClient.accessPolicy.first()
                 val narmestelederRelasjonerWrite = linemanager().copy(
-                    employeeIdentificationNumber = userWithAccess.first,
-                    orgNumber = userWithAccess.second
+                    employeeIdentificationNumber = userWithAccess.hasAccess.first(),
+                    orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
                 )
                 val principal = DefaultSystemPrincipal.copy(
-                    ident = "0192:${userWithAccess.second}",
+                    ident = "0192:${userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr}",
                 )
 
                 // Act
@@ -178,7 +178,7 @@ class ValidationServiceTest :
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
                         match<System> { it.id == "systemId" },
-                        eq(setOf(userWithAccess.second, "systemowner")),
+                        eq(setOf(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr, "systemowner")),
                         eq("nav_syfo_oppgi-narmesteleder")
                     )
                     aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
@@ -192,7 +192,7 @@ class ValidationServiceTest :
         describe("validateNarmestelederAvkreft") {
             it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
                 // Arrange
-                val fnr = altinnTilgangerClient.usersWithAccess.first().first
+                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
                 val narmesteLederAvkreft = linemanagerRevoke().copy(employeeIdentificationNumber = fnr)
 
@@ -216,13 +216,13 @@ class ValidationServiceTest :
 
             it("should not call AltinnTilgangerService when principal is OrganizationPrincipal") {
                 // Arrange
-                val userWithAccess = altinnTilgangerClient.usersWithAccess.first()
+                val userWithAccess = altinnTilgangerClient.accessPolicy.first()
                 val narmesteLederAvkreft = linemanagerRevoke().copy(
-                    employeeIdentificationNumber = userWithAccess.first,
-                    orgNumber = userWithAccess.second
+                    employeeIdentificationNumber = userWithAccess.hasAccess.first(),
+                    orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
                 )
                 val principal = DefaultSystemPrincipal.copy(
-                    ident = "0192:${userWithAccess.second}",
+                    ident = "0192:${userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr}",
                 )
 
                 // Act
@@ -239,7 +239,7 @@ class ValidationServiceTest :
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
                         match<System> { it.id == "systemId" },
-                        eq(setOf(userWithAccess.second, "systemowner")),
+                        eq(setOf(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr, "systemowner")),
                         eq("nav_syfo_oppgi-narmesteleder")
                     )
                     aaregService.findOrgNumbersByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
@@ -250,7 +250,7 @@ class ValidationServiceTest :
             describe("validateLinemanagerCollectionAccess") {
                 it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
                     // Arrange
-                    val fnr = altinnTilgangerClient.usersWithAccess.first().first
+                    val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                     val orgNumber = faker.numerify("#########")
                     val principal = UserPrincipal(fnr, "token")
 

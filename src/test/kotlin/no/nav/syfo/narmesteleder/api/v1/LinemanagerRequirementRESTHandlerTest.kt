@@ -2,15 +2,12 @@ package no.nav.syfo.narmesteleder.api.v1
 
 import createMockToken
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.FakesWrapper
 import no.nav.syfo.aareg.client.FakeAaregClient
-import no.nav.syfo.aareg.client.FakeAaregClientTest
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason

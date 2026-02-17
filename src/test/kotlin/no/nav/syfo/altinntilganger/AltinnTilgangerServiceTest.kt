@@ -26,8 +26,8 @@ class AltinnTilgangerServiceTest :
 
         describe("validateTilgangToOrganization") {
             it("should not throw when user has access to org") {
-                val fnr = altinnTilgangerClient.usersWithAccess.first().first
-                val orgnummer = altinnTilgangerClient.usersWithAccess.first().second
+                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
+                val orgnummer = altinnTilgangerClient.accessPolicy.first().altinnTilgangerResponse.hierarki.first().orgnr
                 val userPrincipal = UserPrincipal(fnr, "token")
                 shouldNotThrow<ApiErrorException.ForbiddenException> {
                     altinnTilgangerService.validateTilgangToOrganization(userPrincipal, orgnummer)
@@ -35,8 +35,8 @@ class AltinnTilgangerServiceTest :
             }
 
             it("should not throw when user has access to org through altinn2") {
-                val fnr = altinnTilgangerClient.usersWithAccess.first().first
-                val orgnummer = altinnTilgangerClient.usersWithAccess.first().second
+                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
+                val orgnummer = altinnTilgangerClient.accessPolicy.first().altinnTilgangerResponse.hierarki.first().orgnr
                 val userPrincipal = UserPrincipal(fnr, "token")
                 val tilgang = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
                 val adjustedTilgang = tilgang.hierarki.first()
@@ -55,11 +55,11 @@ class AltinnTilgangerServiceTest :
             }
 
             it("should throw Forbidden when user lacks access to org") {
-                val accessPair = altinnTilgangerClient.usersWithAccess.first()
-                val userPrincipal = UserPrincipal(accessPair.first, "token")
-                altinnTilgangerClient.usersWithAccess.clear()
+                val accessPolicy = altinnTilgangerClient.accessPolicy.first()
+                val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
+                altinnTilgangerClient.accessPolicy.clear()
                 shouldThrow<ApiErrorException.ForbiddenException> {
-                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, accessPair.second)
+                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
             }
 
@@ -67,10 +67,10 @@ class AltinnTilgangerServiceTest :
                 val mockAltinnTilgangerClient = mockk<FakeAltinnTilgangerClient>()
                 coEvery { mockAltinnTilgangerClient.fetchAltinnTilganger(any()) } throws UpstreamRequestException("Forced failure")
                 val altinnTilgangerServiceWithMock = AltinnTilgangerService(mockAltinnTilgangerClient)
-                val accessPair = altinnTilgangerClient.usersWithAccess.first()
-                val userPrincipal = UserPrincipal(accessPair.first, "token")
+                val accessPolicy = altinnTilgangerClient.accessPolicy.first()
+                val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
                 shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    altinnTilgangerServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPair.second)
+                    altinnTilgangerServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
             }
         }

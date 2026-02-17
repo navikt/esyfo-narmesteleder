@@ -241,7 +241,7 @@ class NarmestelederService(
         }
         while (count > 0)
 
-        logger.info("Updated total of $totalUpdated behovs to BEHOV_EXPIRED with tom before $validDaysAfterTom")
+        logger.info("Updated total of $totalUpdated behovs to BEHOV_EXPIRED with tom before ${Instant.now().plus(Duration.ofDays(validDaysAfterTom))}")
     }
 
     companion object {

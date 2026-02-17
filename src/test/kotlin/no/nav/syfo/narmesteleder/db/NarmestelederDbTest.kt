@@ -2,8 +2,6 @@ package no.nav.syfo.narmesteleder.db
 
 import faker
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainAllIgnoringFields
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.shouldBe
@@ -16,8 +14,6 @@ import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
 import no.nav.syfo.sykmelding.db.SykmeldingDb
 import java.time.Instant
 import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.Period.ofDays
 import java.util.UUID
 
 class NarmestelederDbTest :

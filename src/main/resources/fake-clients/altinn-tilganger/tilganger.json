@@ -1,0 +1,34 @@
+[
+  {
+    "hasAccess": ["72022183071", "15436803416", "15823349332"],
+    "altinnTilgangerResponse": {
+      "isError": false,
+      "hierarki" : [
+        {
+          "orgnr": "310667633",
+          "altinn3Tilganger": ["nav_syfo_oppgi-narmesteleder"],
+          "altinn2Tilganger": [],
+          "underenheter": [
+            {
+              "orgnr": "215649202",
+              "altinn3Tilganger": ["nav_syfo_oppgi-narmesteleder"],
+              "altinn2Tilganger": [],
+              "underenheter": [],
+              "navn": "Norsk underenhet",
+              "organisasjonsform": "BEDR"
+            }
+          ],
+          "navn": "Norsk Tipping AS",
+          "organisasjonsform": "AS"
+        }
+      ],
+      "orgNrTilTilganger":{
+          "215649202": ["nav_syfo_oppgi-narmesteleder"]
+        },
+      "tilgangTilOrgNr": {
+          "nav_syfo_oppgi-narmesteleder": ["215649202"]
+        },
+      "error": false
+    }
+  }
+]

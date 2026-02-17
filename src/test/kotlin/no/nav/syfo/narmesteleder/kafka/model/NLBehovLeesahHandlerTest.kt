@@ -2,7 +2,6 @@ package no.nav.syfo.narmesteleder.kafka.model
 
 import createMockToken
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks

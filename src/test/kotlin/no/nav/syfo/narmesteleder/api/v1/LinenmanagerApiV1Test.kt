@@ -111,7 +111,7 @@ class LinenmanagerApiV1Test :
 
         beforeTest {
             clearAllMocks()
-            fakeAltinnTilgangerClient.usersWithAccess.clear()
+            fakeAltinnTilgangerClient.accessPolicy.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
             coEvery { pdlCacheMock.getPerson(any()) } returns null
@@ -303,8 +303,8 @@ class LinenmanagerApiV1Test :
                             acr = "Level4",
                             pid = callerPid,
                         )
-                        fakeAltinnTilgangerClient.usersWithAccess.clear()
-                        fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgNumber)
+                        fakeAltinnTilgangerClient.accessPolicy.clear()
+                        fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber)
                         fakeAaregClient.arbeidsForholdForIdent.put(
                             narmesteLederRelasjon.employeeIdentificationNumber,
                             listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber),
@@ -367,7 +367,7 @@ class LinenmanagerApiV1Test :
                             acr = "Level3",
                             pid = callerPid,
                         )
-                        fakeAltinnTilgangerClient.usersWithAccess.add(callerPid to narmesteLederRelasjon.orgNumber)
+                        fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber)
                         // Act
                         val response =
                             client.post("/api/v1/linemanager") {

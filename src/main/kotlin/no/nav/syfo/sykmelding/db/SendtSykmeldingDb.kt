@@ -144,7 +144,6 @@ class SykmeldingDb(
                     """.trimIndent()
                 ).use { preparedStatement ->
                     map.forEach { (fnr, orgnummer) ->
-                        logger.info("Finding sykmeldingId for fnr: ${fnr.substring(0,4)} and orgnummer: $orgnummer")
                         preparedStatement.setString(1, fnr)
                         preparedStatement.setString(2, orgnummer)
                         preparedStatement.addBatch()

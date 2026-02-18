@@ -28,7 +28,6 @@ buildscript {
 }
 
 dependencies {
-    // Source: https://mvnrepository.com/artifact/io.ktor/ktor-client-apache5
     implementation(libs.datafaker)
     implementation(libs.logback.classic)
     implementation(libs.bundles.ktor.client)
@@ -37,13 +36,12 @@ dependencies {
     implementation(libs.koin.logger)
     implementation(libs.logstash)
     implementation(libs.jackson.datatype.jsr310)
-    // Database
     implementation(libs.bundles.database)
-    // Metrics and Prometheus
     implementation(libs.ktor.server.micrometer)
     implementation(libs.micrometer.prometheus)
     implementation(libs.kafka.clients)
     implementation(libs.valkey.java)
+
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)

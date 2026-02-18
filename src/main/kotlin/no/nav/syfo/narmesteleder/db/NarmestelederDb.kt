@@ -335,7 +335,7 @@ class NarmestelederDb(
                     SELECT eb.id 
                         FROM nl_behov eb
                         JOIN sendt_sykmelding es ON eb.sykemeldt_fnr = es.fnr
-                        WHERE es.tom <= ?
+                        WHERE es.tom < ?
                         AND eb.behov_status IN ($fromStatusPlaceholders)
                         ORDER BY eb.created
                         LIMIT ? 

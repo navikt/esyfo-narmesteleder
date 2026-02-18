@@ -830,7 +830,7 @@ class DialogportenServiceTest :
             }
 
             context("when behov has no dialogId") {
-                it("should skip the behov without calling dialogporten") {
+                it("should skip dialogporten call but still update behov status to completed") {
                     // Arrange
                     val behovWithoutDialogId =
                         nlBehovEntity().copy(
@@ -873,7 +873,52 @@ class DialogportenServiceTest :
                             any()
                         )
                     }
-                    coVerify(exactly = 1) { spyNarmestelederDb.updateNlBehov(any()) }
+                    // Should update both behovs (with and without dialogId)
+                    coVerify(exactly = 2) {
+                        spyNarmestelederDb.updateNlBehov(
+                            match { it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED }
+                        )
+                    }
+                }
+
+                it("should update behov status even when only behovs without dialogId exist") {
+                    // Arrange
+                    val behovWithoutDialogId =
+                        nlBehovEntity().copy(
+                            behovStatus = BehovStatus.BEHOV_EXPIRED,
+                            dialogId = null,
+                        )
+
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns listOf(behovWithoutDialogId)
+                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+
+                    // Act
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+
+                    // Assert
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+                    // Should not call dialogporten at all
+                    coVerify(exactly = 0) { dialogportenClient.getDialogById(any()) }
+                    coVerify(exactly = 0) { dialogportenClient.updateDialogStatusAndExpirationDate(any(), any(), any(), any()) }
+                    // Should still update the behov status to prevent infinite loop
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.updateNlBehov(
+                            match {
+                                it.id == behovWithoutDialogId.id &&
+                                    it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                            }
+                        )
+                    }
                 }
             }
         }

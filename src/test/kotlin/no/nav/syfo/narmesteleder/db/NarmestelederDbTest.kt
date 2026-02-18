@@ -594,5 +594,66 @@ class NarmestelederDbTest :
                 db.findBehovById(behovWithSykmelding.id!!)?.behovStatus shouldBe BehovStatus.BEHOV_EXPIRED
                 db.findBehovById(behovWithoutSykmelding.id!!)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
             }
+
+            it("should not update behovs where sykmelding tom is exactly equal to cutoff") {
+                // Arrange
+                val fnr = faker.numerify("###########")
+                val cutoffDate = LocalDate.now().plusDays(16)
+                val cutoffInstant = cutoffDate.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
+
+                sykmeldingDb.transaction {
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = cutoffDate)))
+                }
+
+                val behov = db.insertNlBehov(
+                    nlBehovEntity().copy(
+                        sykmeldtFnr = fnr,
+                        behovStatus = BehovStatus.BEHOV_CREATED
+                    )
+                )
+
+                // Act
+                val updated = db.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                    tomBefore = cutoffInstant,
+                    fromStatus = listOf(BehovStatus.BEHOV_CREATED),
+                    newStatus = BehovStatus.BEHOV_EXPIRED
+                )
+
+                // Assert
+                updated shouldBe 0
+                val retrieved = db.findBehovById(behov.id!!)
+                retrieved?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+            }
+
+            it("should update behovs where sykmelding tom is exactly one day before cutoff") {
+                // Arrange
+                val fnr = faker.numerify("###########")
+                val cutoffDate = LocalDate.now().plusDays(16)
+                val tomDate = cutoffDate.minusDays(1)
+                val cutoffInstant = cutoffDate.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
+
+                sykmeldingDb.transaction {
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = tomDate)))
+                }
+
+                val behov = db.insertNlBehov(
+                    nlBehovEntity().copy(
+                        sykmeldtFnr = fnr,
+                        behovStatus = BehovStatus.BEHOV_CREATED
+                    )
+                )
+
+                // Act
+                val updated = db.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                    tomBefore = cutoffInstant,
+                    fromStatus = listOf(BehovStatus.BEHOV_CREATED),
+                    newStatus = BehovStatus.BEHOV_EXPIRED
+                )
+
+                // Assert
+                updated shouldBe 1
+                val retrieved = db.findBehovById(behov.id!!)
+                retrieved?.behovStatus shouldBe BehovStatus.BEHOV_EXPIRED
+            }
         }
     })

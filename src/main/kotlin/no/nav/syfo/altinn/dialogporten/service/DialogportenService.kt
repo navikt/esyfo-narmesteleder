@@ -158,18 +158,20 @@ class DialogportenService(
                 logger.info("Found ${it.size} expired behovs to complete in dialogporten")
             }
             .forEach { behov ->
-                behov.dialogId?.let { dialogId ->
-                    try {
+                try {
+                    behov.dialogId?.let { dialogId ->
                         setToExpiredAndCompletedInDialogporten(dialogId)
-                        narmestelederDb.updateNlBehov(
-                            behov.copy(
-                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-                            )
-                        )
-                        logger.info("Successfully updated expired behov ${behov.id} to completed in dialogporten")
-                    } catch (ex: Exception) {
-                        logger.error("Failed to update expired behov ${behov.id} in dialogporten for dialogId: $dialogId", ex)
+                    } ?: run {
+                        logger.info("Expired behov ${behov.id} has no dialogId, marking as completed without notifying Dialogporten")
                     }
+                    narmestelederDb.updateNlBehov(
+                        behov.copy(
+                            behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                        )
+                    )
+                    logger.info("Successfully updated expired behov ${behov.id} to completed")
+                } catch (ex: Exception) {
+                    logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
                 }
             }
     }

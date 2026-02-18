@@ -149,8 +149,8 @@ spec:
     - name: PERSIST_SENDT_SYKMELDING
       value: "true"
     - name: MAINTENANCE_TASK_DELAY
-      value: "01m"
+      value: "10m"
     - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
-      value: "0"
+      value: "16"
   envFrom:
     - secret: altinn-subscription-key

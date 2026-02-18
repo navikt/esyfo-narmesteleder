@@ -149,7 +149,7 @@ spec:
     - name: PERSIST_SENDT_SYKMELDING
       value: "true"
     - name: MAINTENANCE_TASK_DELAY
-      value: "1m"
+      value: "01m"
     - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
       value: "0"
   envFrom:

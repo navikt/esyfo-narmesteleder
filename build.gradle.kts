@@ -23,46 +23,32 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("org.flywaydb:flyway-database-postgresql:12.0.0")
+        classpath(libs.database.flyway.core)
     }
 }
 
 dependencies {
     implementation(libs.datafaker)
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.netty)
     implementation(libs.logback.classic)
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.config.yaml)
-    implementation("io.ktor:ktor-client-core")
-    implementation("io.ktor:ktor-client-content-negotiation")
-    implementation("io.ktor:ktor-client-apache-jvm")
-    implementation("io.ktor:ktor-serialization-jackson")
-    implementation("io.ktor:ktor-server-auth")
-    implementation("io.ktor:ktor-server-auth-jwt")
-    implementation("io.ktor:ktor-server-call-id")
-    implementation("io.ktor:ktor-server-content-negotiation")
-    implementation("io.ktor:ktor-server-status-pages")
-    implementation(libs.ktor.server.openapi)
-    implementation(libs.ktor.server.swagger)
+    implementation(libs.bundles.ktor.client)
+    implementation(libs.bundles.ktor.server)
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger)
     implementation(libs.logstash)
     implementation(libs.jackson.datatype.jsr310)
-    // Database
     implementation(libs.bundles.database)
-    // Metrics and Prometheus
     implementation(libs.ktor.server.micrometer)
     implementation(libs.micrometer.prometheus)
     implementation(libs.kafka.clients)
     implementation(libs.valkey.java)
+
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)
     testImplementation(libs.testcontainers)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.bundles.testcontainers) // Will want this eventually
+    testImplementation(libs.bundles.testcontainers)
 }
 application {
     mainClass.set("no.nav.syfo.ApplicationKt")

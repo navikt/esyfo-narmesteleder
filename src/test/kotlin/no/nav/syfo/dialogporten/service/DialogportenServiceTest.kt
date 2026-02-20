@@ -13,6 +13,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.spyk
 import nlBehovEntity
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.altinn.dialogporten.domain.Content
@@ -65,6 +66,9 @@ class DialogportenServiceTest :
                         dialogportenIsApiOnly = false,
                         deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
                         persistSendtSykmelding = false,
+                        daysAfterTomToExpireBehovs = 7,
+                        maintenanceTaskDelay = "1s",
+                        maintenanceTaskEnabled = true,
                     ),
                     pdlService = pdlService,
                 )
@@ -164,9 +168,7 @@ class DialogportenServiceTest :
                 it("should log error and continue without updating document status") {
                     // Arrange
                     val behovEntity1 = nlBehovEntity()
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
-                        behovEntity1
-                    )
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.createDialog(any()) } throws RuntimeException("Dialogporten error")
 
                     // Act
@@ -225,9 +227,7 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
-                        behovEntity1
-                    )
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -247,9 +247,7 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(
-                        behovEntity1
-                    )
+                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -285,9 +283,14 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(eq(BehovStatus.BEHOV_FULFILLED)) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            BehovStatus.BEHOV_FULFILLED,
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
                     coVerify(exactly = 0) { dialogportenClient.getDialogById(any()) }
-                    coVerify(exactly = 0) { dialogportenClient.updateDialogStatus(any(), any(), any()) }
+                    coVerify(exactly = 0) { dialogportenClient.patchDialog(any(), any(), any<DialogportenClient.DialogportenPatch>()) }
                     coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
                 }
             }
@@ -302,7 +305,7 @@ class DialogportenServiceTest :
                                 dialogId = UUID.randomUUID(),
                             ),
                         )
-                    coEvery { dialogportenClient.updateDialogStatus(any(), any(), any()) } just Runs
+                    coEvery { dialogportenClient.patchDialog(any(), any(), any<DialogportenClient.DialogportenPatch>()) } just Runs
                     coEvery { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) } returns
                         ExtendedDialog(
                             id = UUID.randomUUID(),
@@ -325,10 +328,22 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_FULFILLED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
                     coVerify(exactly = 1) { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) }
                     coVerify(exactly = 1) {
-                        dialogportenClient.updateDialogStatus(eq(behovEntity.dialogId!!), any(), DialogStatus.Completed)
+                        dialogportenClient.patchDialog(
+                            dialogId = eq(behovEntity.dialogId!!),
+                            revisionNumber = any<UUID>(),
+                            patch = match<DialogportenClient.DialogportenPatch> {
+                                it.value == DialogStatus.Completed.name &&
+                                    it.operation == DialogportenClient.DialogportenPatch.OPERATION.REPLACE
+                            }
+                        )
                     }
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.updateNlBehov(
@@ -357,16 +372,21 @@ class DialogportenServiceTest :
                             ),
                         )
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) } returns behovs
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_FULFILLED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
                         val idArg = firstArg<UUID>()
                         behovs.first { it.dialogId == idArg }.toExtendedDialog()
                     }
                     coEvery {
-                        dialogportenClient.updateDialogStatus(
+                        dialogportenClient.patchDialog(
                             match { dialogId -> behovs.any { behov -> dialogId == behov.dialogId } },
                             any(),
-                            DialogStatus.Completed,
+                            any<DialogportenClient.DialogportenPatch>(),
                         )
                     } just Runs
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
@@ -375,15 +395,20 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_FULFILLED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
                     coVerify(exactly = 2) { dialogportenClient.getDialogById(any()) }
                     coVerify(exactly = 2) {
-                        dialogportenClient.updateDialogStatus(
+                        dialogportenClient.patchDialog(
                             match {
                                 behovs.any { behov -> behov.dialogId == it }
                             },
                             any(),
-                            DialogStatus.Completed,
+                            any<DialogportenClient.DialogportenPatch>(),
                         )
                     }
                     coVerify(exactly = 2) {
@@ -407,16 +432,18 @@ class DialogportenServiceTest :
                             behovStatus = BehovStatus.BEHOV_FULFILLED,
                             dialogId = UUID.randomUUID(),
                         )
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) } returns
-                        listOf(
-                            behovEntity1,
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_FULFILLED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
+                    } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.getDialogById(any()) } returns behovEntity1.toExtendedDialog()
                     coEvery {
-                        dialogportenClient.updateDialogStatus(
+                        dialogportenClient.patchDialog(
                             any(),
                             any(),
-                            any(),
+                            any<DialogportenClient.DialogportenPatch>(),
                         )
                     } throws RuntimeException("Dialogporten error")
 
@@ -424,12 +451,17 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
                     coVerify(exactly = 1) {
-                        dialogportenClient.updateDialogStatus(
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_FULFILLED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+                    coVerify(exactly = 1) {
+                        dialogportenClient.patchDialog(
                             behovEntity1.dialogId!!,
                             any(),
-                            any()
+                            any<DialogportenClient.DialogportenPatch>(),
                         )
                     }
                     coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
@@ -456,7 +488,12 @@ class DialogportenServiceTest :
                             }
                         }
 
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) } returns behovs
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_FULFILLED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT,
+                        )
+                    } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
                         val idArg = firstArg<UUID>()
                         behovs
@@ -468,7 +505,7 @@ class DialogportenServiceTest :
 
                     val successfulUpdateIds = mutableSetOf<UUID>()
                     var callCount = 0
-                    coEvery { dialogportenClient.updateDialogStatus(any(), any(), any()) } answers {
+                    coEvery { dialogportenClient.patchDialog(any(), any(), any<DialogportenClient.DialogportenPatch>()) } answers {
                         callCount++
                         if (callCount % failsEveryNth == 0) {
                             throw RuntimeException("Something went wrong")
@@ -481,7 +518,12 @@ class DialogportenServiceTest :
                     dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
 
                     // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_FULFILLED) }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_FULFILLED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT,
+                        )
+                    }
 
                     coVerify(exactly = numOfBehovs) {
                         dialogportenClient.getDialogById(
@@ -492,12 +534,12 @@ class DialogportenServiceTest :
                     }
 
                     coVerify(exactly = numOfBehovs) {
-                        dialogportenClient.updateDialogStatus(
+                        dialogportenClient.patchDialog(
                             match {
                                 behovs.any { behov -> behov.dialogId == it }
                             },
                             any(),
-                            DialogStatus.Completed,
+                            any<DialogportenClient.DialogportenPatch>(),
                         )
                     }
 
@@ -508,6 +550,415 @@ class DialogportenServiceTest :
                             },
                         )
                     }
+                }
+            }
+        }
+
+        describe("setAllExpiredBehovsAsExpiredAndCompletedInDialogporten") {
+            context("when there are no expired behovs") {
+                it("should not call dialogporten client") {
+                    // Arrange
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns emptyList()
+
+                    // Act
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+
+                    // Assert
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+                    coVerify(exactly = 0) { dialogportenClient.getDialogById(any()) }
+                    coVerify(exactly = 0) { dialogportenClient.patchDialog(any(), any(), any<List<DialogportenClient.DialogportenPatch>>()) }
+                    coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
+                }
+            }
+
+            context("when there is one expired behov") {
+                it("should update Dialogporten message to Expired and Completed") {
+                    // Arrange
+                    val behovEntity =
+                        nlBehovEntity().copy(
+                            behovStatus = BehovStatus.BEHOV_EXPIRED,
+                            dialogId = UUID.randomUUID(),
+                        )
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns listOf(behovEntity)
+                    coEvery { dialogportenClient.patchDialog(any(), any(), any<List<DialogportenClient.DialogportenPatch>>()) } just Runs
+                    coEvery { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) } returns
+                        ExtendedDialog(
+                            id = UUID.randomUUID(),
+                            externalReference = behovEntity.dialogId.toString(),
+                            party = "urn:altinn:organization:identifier-no:123456789",
+                            status = DialogStatus.RequiresAttention,
+                            isApiOnly = false,
+                            attachments = emptyList(),
+                            revision = UUID.randomUUID(),
+                            content =
+                            Content(
+                                title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+                                summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
+                            ),
+                            serviceResource = "service:resource",
+                            transmissions = listOf(),
+                        )
+
+                    // Act
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+
+                    // Assert
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+                    coVerify(exactly = 1) { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) }
+                    coVerify(exactly = 1) {
+                        dialogportenClient.patchDialog(
+                            eq(behovEntity.dialogId!!),
+                            any(),
+                            any<List<DialogportenClient.DialogportenPatch>>(),
+                        )
+                    }
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.updateNlBehov(
+                            match {
+                                it.id == behovEntity.id &&
+                                    it.dialogId == behovEntity.dialogId &&
+                                    it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                            },
+                        )
+                    }
+                }
+            }
+
+            context("when there are multiple expired behovs") {
+                it("should update all Dialogporten messages to Expired and Completed") {
+                    // Arrange
+                    val behovs =
+                        listOf(
+                            nlBehovEntity().copy(
+                                behovStatus = BehovStatus.BEHOV_EXPIRED,
+                                dialogId = UUID.randomUUID(),
+                            ),
+                            nlBehovEntity().copy(
+                                behovStatus = BehovStatus.BEHOV_EXPIRED,
+                                dialogId = UUID.randomUUID(),
+                            ),
+                        )
+
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns behovs
+                    coEvery { dialogportenClient.getDialogById(any()) } answers {
+                        val idArg = firstArg<UUID>()
+                        behovs.first { it.dialogId == idArg }.toExtendedDialog()
+                    }
+                    coEvery {
+                        dialogportenClient.patchDialog(
+                            match { dialogId -> behovs.any { behov -> dialogId == behov.dialogId } },
+                            any(),
+                            any<List<DialogportenClient.DialogportenPatch>>(),
+                        )
+                    } just Runs
+                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+
+                    // Act
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+
+                    // Assert
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+                    coVerify(exactly = 2) { dialogportenClient.getDialogById(any()) }
+                    coVerify(exactly = 2) {
+                        dialogportenClient.patchDialog(
+                            match {
+                                behovs.any { behov -> behov.dialogId == it }
+                            },
+                            any(),
+                            any<List<DialogportenClient.DialogportenPatch>>(),
+                        )
+                    }
+                    coVerify(exactly = 2) {
+                        spyNarmestelederDb.updateNlBehov(
+                            match {
+                                behovs.any { behov ->
+                                    behov.id == it.id &&
+                                        it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+
+            context("when dialogporten call fails") {
+                it("should not update the behov status and continue with other behovs") {
+                    // Arrange
+                    val behovEntity1 =
+                        nlBehovEntity().copy(
+                            behovStatus = BehovStatus.BEHOV_EXPIRED,
+                            dialogId = UUID.randomUUID(),
+                        )
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns listOf(behovEntity1)
+                    coEvery { dialogportenClient.getDialogById(any()) } returns behovEntity1.toExtendedDialog()
+                    coEvery {
+                        dialogportenClient.patchDialog(
+                            any(),
+                            any(),
+                            any<List<DialogportenClient.DialogportenPatch>>(),
+                        )
+                    } throws RuntimeException("Dialogporten error")
+
+                    // Act
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+
+                    // Assert
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+                    coVerify(exactly = 1) {
+                        dialogportenClient.patchDialog(
+                            behovEntity1.dialogId!!,
+                            any(),
+                            any<List<DialogportenClient.DialogportenPatch>>(),
+                        )
+                    }
+                    // Should not update behov status when dialogporten call fails
+                    coVerify(exactly = 0) {
+                        spyNarmestelederDb.updateNlBehov(any())
+                    }
+                }
+            }
+
+            context("when some dialogporten calls fail") {
+                it("should still update the behovs that succeeded") {
+                    // Arrange
+                    val numOfBehovs = 5
+                    val failsEveryNth = 2 // Will fail on calls 2 and 4
+                    val numOfSuccesses = 3 // Calls 1, 3, and 5 should succeed
+
+                    val behovs =
+                        (1..numOfBehovs).map {
+                            nlBehovEntity().copy(
+                                behovStatus = BehovStatus.BEHOV_EXPIRED,
+                                dialogId = UUID.randomUUID(),
+                            )
+                        }
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns behovs
+                    coEvery { dialogportenClient.getDialogById(any()) } answers {
+                        val idArg = firstArg<UUID>()
+                        behovs
+                            .first {
+                                it.dialogId == idArg
+                            }.toExtendedDialog()
+                    }
+                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+
+                    val successfulUpdateIds = mutableSetOf<UUID>()
+                    var callCount = 0
+                    coEvery { dialogportenClient.patchDialog(any(), any(), any<List<DialogportenClient.DialogportenPatch>>()) } answers {
+                        callCount++
+                        if (callCount % failsEveryNth == 0) {
+                            throw RuntimeException("Something went wrong")
+                        }
+                        val idArg = firstArg<UUID>()
+                        successfulUpdateIds.add(idArg)
+                    }
+
+                    // Act
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+
+                    // Assert
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+
+                    coVerify(exactly = numOfBehovs) { dialogportenClient.getDialogById(any()) }
+
+                    coVerify(exactly = numOfBehovs) {
+                        dialogportenClient.patchDialog(
+                            match {
+                                behovs.any { behov -> behov.dialogId == it }
+                            },
+                            any(),
+                            any<List<DialogportenClient.DialogportenPatch>>(),
+                        )
+                    }
+
+                    // Only the successful ones should have their status updated
+                    coVerify(exactly = numOfSuccesses) {
+                        spyNarmestelederDb.updateNlBehov(
+                            match {
+                                successfulUpdateIds.contains(it.dialogId!!)
+                            },
+                        )
+                    }
+                }
+            }
+
+            context("when behov has no dialogId") {
+                it("should skip dialogporten call but still update behov status to completed") {
+                    // Arrange
+                    val behovWithoutDialogId =
+                        nlBehovEntity().copy(
+                            behovStatus = BehovStatus.BEHOV_EXPIRED,
+                            dialogId = null,
+                        )
+                    val behovWithDialogId =
+                        nlBehovEntity().copy(
+                            behovStatus = BehovStatus.BEHOV_EXPIRED,
+                            dialogId = UUID.randomUUID(),
+                        )
+
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns listOf(behovWithoutDialogId, behovWithDialogId)
+                    coEvery { dialogportenClient.getDialogById(any()) } returns behovWithDialogId.toExtendedDialog()
+                    coEvery { dialogportenClient.patchDialog(any(), any(), any<List<DialogportenClient.DialogportenPatch>>()) } just Runs
+                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+
+                    // Act
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+
+                    // Assert
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+                    // Should only call dialogporten for the behov with dialogId
+                    coVerify(exactly = 1) { dialogportenClient.getDialogById(behovWithDialogId.dialogId!!) }
+                    coVerify(exactly = 1) {
+                        dialogportenClient.patchDialog(
+                            behovWithDialogId.dialogId!!,
+                            any(),
+                            any<List<DialogportenClient.DialogportenPatch>>(),
+                        )
+                    }
+                    // Should update both behovs (with and without dialogId)
+                    coVerify(exactly = 2) {
+                        spyNarmestelederDb.updateNlBehov(
+                            match { it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED }
+                        )
+                    }
+                }
+
+                it("should update behov status even when only behovs without dialogId exist") {
+                    // Arrange
+                    val behovWithoutDialogId =
+                        nlBehovEntity().copy(
+                            behovStatus = BehovStatus.BEHOV_EXPIRED,
+                            dialogId = null,
+                        )
+
+                    coEvery {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    } returns listOf(behovWithoutDialogId)
+                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+
+                    // Act
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+
+                    // Assert
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.getNlBehovByStatus(
+                            eq(BehovStatus.BEHOV_EXPIRED),
+                            DialogportenService.BEHOV_BY_STATUS_LIMIT
+                        )
+                    }
+                    // Should not call dialogporten at all
+                    coVerify(exactly = 0) { dialogportenClient.getDialogById(any()) }
+                    coVerify(exactly = 0) { dialogportenClient.patchDialog(any(), any(), any<List<DialogportenClient.DialogportenPatch>>()) }
+                    // Should still update the behov status to prevent infinite loop
+                    coVerify(exactly = 1) {
+                        spyNarmestelederDb.updateNlBehov(
+                            match {
+                                it.id == behovWithoutDialogId.id &&
+                                    it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        describe("setToExpiredAndCompletedInDialogporten") {
+            it("should update dialog status to completed and set expiration date") {
+                // Arrange
+                val dialogId = UUID.randomUUID()
+                val extendedDialog = ExtendedDialog(
+                    id = dialogId,
+                    externalReference = dialogId.toString(),
+                    party = "urn:altinn:organization:identifier-no:123456789",
+                    status = DialogStatus.RequiresAttention,
+                    isApiOnly = false,
+                    attachments = emptyList(),
+                    revision = UUID.randomUUID(),
+                    content =
+                    Content(
+                        title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+                        summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
+                    ),
+                    serviceResource = "service:resource",
+                    transmissions = listOf(),
+                )
+                coEvery { dialogportenClient.getDialogById(dialogId) } returns extendedDialog
+                coEvery { dialogportenClient.patchDialog(any(), any(), any<List<DialogportenClient.DialogportenPatch>>()) } just Runs
+
+                // Act
+                dialogportenService.setToExpiredAndCompletedInDialogporten(dialogId)
+
+                // Assert
+                coVerify(exactly = 1) { dialogportenClient.getDialogById(dialogId) }
+                coVerify(exactly = 1) {
+                    dialogportenClient.patchDialog(
+                        dialogId,
+                        extendedDialog.revision,
+                        any<List<DialogportenClient.DialogportenPatch>>(),
+                    )
                 }
             }
         }
@@ -537,15 +988,15 @@ class DialogportenServiceTest :
                 coEvery { dialogportenClient.getDialogById(any()) } returns extendedDialg
 
                 // Act
-                dialogportenService.setToCompletedInDialogportenIfFulfilled(behovEntity)
+                dialogportenService.setToCompletedInDialogporten(behovEntity)
 
                 // Assert
                 coVerify(exactly = 1) { dialogportenClient.getDialogById(behovEntity.dialogId!!) }
                 coVerify(exactly = 1) {
-                    dialogportenClient.updateDialogStatus(
+                    dialogportenClient.patchDialog(
                         behovEntity.dialogId!!,
                         extendedDialg.revision,
-                        DialogStatus.Completed,
+                        any<DialogportenClient.DialogportenPatch>(),
                     )
                 }
             }

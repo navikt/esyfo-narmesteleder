@@ -1,0 +1,14 @@
+[
+  {
+    "organisasjonsnummer": "111111111",
+    "driverVirksomheter": [
+      { "organisasjonsnummer": "222222222" }
+    ]
+  },
+  {
+    "organisasjonsnummer": "222222222",
+    "inngaarIJuridiskEnheter": [
+      { "organisasjonsnummer": "111111111" }
+    ]
+  }
+]

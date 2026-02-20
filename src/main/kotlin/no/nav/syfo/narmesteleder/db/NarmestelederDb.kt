@@ -5,7 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.*
@@ -21,7 +20,7 @@ interface INarmestelederDb {
         behovStatus: List<BehovStatus>
     ): List<NarmestelederBehovEntity>
 
-    suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int = 100): List<NarmestelederBehovEntity>
+    suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int = 100) = getNlBehovByStatus(listOf(status), limit)
     suspend fun findBehovByParameters(
         orgNumber: String,
         createdAfter: Instant,
@@ -36,6 +35,15 @@ interface INarmestelederDb {
      * dialog attachment
      */
     suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity>
+
+    suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+        tomBefore: Instant,
+        newStatus: BehovStatus,
+        fromStatus: List<BehovStatus>,
+        limit: Int = 500
+    ): Int
+
+    suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int = 100): List<NarmestelederBehovEntity>
 }
 
 class NarmestelederDb(
@@ -309,18 +317,84 @@ class NarmestelederDb(
                 }
         }
     }
-}
 
-private fun ResultSet.getGeneratedUUID(idColumnLabel: String): UUID = this.use {
-    val id = if (this.next()) {
-        this.getObject(idColumnLabel) as? UUID
-    } else {
-        null
+    override suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+        tomBefore: Instant,
+        newStatus: BehovStatus,
+        fromStatus: List<BehovStatus>,
+        limit: Int
+    ): Int = withContext(dispatcher) {
+        if (fromStatus.isEmpty()) return@withContext 0
+
+        database.connection.use { connection ->
+            val fromStatusPlaceholders = fromStatus.joinToString(", ") { "?" }
+
+            connection.prepareStatement(
+                """
+                WITH expired_behov AS (
+                    SELECT eb.id 
+                        FROM nl_behov eb
+                        JOIN sendt_sykmelding es ON eb.sykemeldt_fnr = es.fnr AND eb.orgnummer = es.orgnummer
+                        WHERE es.tom < ?
+                        AND eb.behov_status IN ($fromStatusPlaceholders)
+                        ORDER BY eb.created
+                        LIMIT ? 
+                )
+                UPDATE nl_behov b
+                SET behov_status = ?
+                FROM expired_behov e
+                WHERE b.id = e.id
+                """.trimIndent()
+            ).use { preparedStatement ->
+                var idx = 0
+                preparedStatement.setTimestamp(++idx, Timestamp.from(tomBefore))
+                fromStatus.forEach { status ->
+                    preparedStatement.setObject(++idx, status, java.sql.Types.OTHER)
+                }
+                preparedStatement.setInt(++idx, limit)
+                preparedStatement.setObject(++idx, newStatus, java.sql.Types.OTHER)
+                preparedStatement.executeUpdate().also {
+                    connection.commit()
+                }
+            }
+        }
     }
 
-    return id ?: throw NarmestelederGeneratedIDException(
-        "Could not get the generated id."
-    )
+    override suspend fun getNlBehovByStatus(
+        status: List<BehovStatus>,
+        limit: Int
+    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
+        if (status.isEmpty()) return@withContext emptyList()
+
+        val placeholders = status.joinToString(", ") { "?" }
+
+        return@withContext database.connection.use { connection ->
+            connection
+                // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
+                .prepareStatement(
+                    """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE behov_status IN ($placeholders)
+                        AND created < NOW() - INTERVAL '10 second'
+                        ORDER BY created
+                        LIMIT ?
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    var idx = 0
+                    status.forEach { s ->
+                        preparedStatement.setObject(++idx, s, java.sql.Types.OTHER)
+                    }
+                    preparedStatement.setInt(++idx, limit)
+                    val resultSet = preparedStatement.executeQuery()
+                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
+                    while (resultSet.next()) {
+                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
+                    }
+                    nlBehov
+                }
+        }
+    }
 }
 
 class NarmestelederBehovEntityInsertException(message: String) : RuntimeException(message)

@@ -23,13 +23,14 @@ import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger
-import java.util.*
+import java.util.UUID
 
 interface IDialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
-    suspend fun updateDialogStatus(dialogId: UUID, revisionNumber: UUID, dialogStatus: DialogStatus)
     suspend fun getDialogById(dialogId: UUID): ExtendedDialog
     suspend fun deleteDialog(dialogId: UUID): HttpStatusCode
+    suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: DialogportenClient.DialogportenPatch) = patchDialog(dialogId, revisionNumber, listOf(patch))
+    suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<DialogportenClient.DialogportenPatch>)
 }
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
@@ -58,35 +59,6 @@ class DialogportenClient(
         throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
     }
 
-    override suspend fun updateDialogStatus(
-        dialogId: UUID,
-        revisionNumber: UUID,
-        dialogStatus: DialogStatus
-    ) {
-        runCatching {
-            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
-            httpClient
-                .patch("$dialogportenUrl/$dialogId") {
-                    header(HttpHeaders.Accept, ContentType.Application.Json)
-                    header(HttpHeaders.IfMatch, revisionNumber.toString())
-                    contentType(JSON_PATCH_CONTENT_TYPE)
-                    bearerAuth(token)
-                    setBody(
-                        listOf(
-                            DialogportenPatch(
-                                DialogportenPatch.OPERATION.REPLACE,
-                                "/status",
-                                dialogStatus.name
-                            )
-                        )
-                    )
-                }
-        }.onFailure { e ->
-            logger.error("Error on update request to Dialogporten on dialogId: $dialogId", e)
-            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
-        }
-    }
-
     override suspend fun getDialogById(
         dialogId: UUID
     ): ExtendedDialog {
@@ -106,16 +78,23 @@ class DialogportenClient(
         return dialog
     }
 
-    // internal for access in tests
-    internal data class DialogportenPatch(
-        val op: OPERATION,
-        val path: String,
-        val value: String,
+    data class DialogportenPatch(
+        val operation: OPERATION,
+        val path: PATH,
+        val value: String
     ) {
         enum class OPERATION(val jsonValue: String) {
             REPLACE("Replace"),
             ADD("Add"),
             REMOVE("Remove");
+
+            @JsonValue
+            fun toJson() = jsonValue
+        }
+
+        enum class PATH(val jsonValue: String) {
+            STATUS("/status"),
+            EXPIRES_AT("/expiresAt");
 
             @JsonValue
             fun toJson() = jsonValue
@@ -137,6 +116,27 @@ class DialogportenClient(
             throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten:  actions-purge")
         }
     }
+
+    override suspend fun patchDialog(
+        dialogId: UUID,
+        revisionNumber: UUID,
+        patch: List<DialogportenPatch>
+    ) {
+        runCatching {
+            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+            httpClient
+                .patch("$dialogportenUrl/$dialogId") {
+                    header(HttpHeaders.Accept, ContentType.Application.Json)
+                    header(HttpHeaders.IfMatch, revisionNumber.toString())
+                    contentType(JSON_PATCH_CONTENT_TYPE)
+                    bearerAuth(token)
+                    setBody(patch)
+                }
+        }.onFailure { e ->
+            logger.error("Error on patch request to Dialogporten on dialogId: $dialogId", e)
+            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
+        }
+    }
 }
 
 class FakeDialogportenClient : IDialogportenClient {
@@ -147,14 +147,6 @@ class FakeDialogportenClient : IDialogportenClient {
     override suspend fun createDialog(dialog: Dialog): UUID {
         logger.info(ObjectMapper().writeValueAsString(dialog))
         return UUID.randomUUID()
-    }
-
-    override suspend fun updateDialogStatus(
-        dialogId: UUID,
-        revisionNumber: UUID,
-        dialogStatus: DialogStatus
-    ) {
-        return
     }
 
     override suspend fun getDialogById(dialogId: UUID): ExtendedDialog = ExtendedDialog(
@@ -176,5 +168,14 @@ class FakeDialogportenClient : IDialogportenClient {
     override suspend fun deleteDialog(dialogId: UUID): HttpStatusCode {
         logger.info("Deleting dialog with id: $dialogId")
         return HttpStatusCode.NoContent
+    }
+
+    override suspend fun patchDialog(
+        dialogId: UUID,
+        revisionNumber: UUID,
+        patch: List<DialogportenClient.DialogportenPatch>
+    ) {
+        logger.info("Fake call patching dialog with id: $dialogId, with patch: ${ObjectMapper().writeValueAsString(patch)}")
+        return
     }
 }

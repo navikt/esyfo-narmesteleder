@@ -5,13 +5,12 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
-import net.datafaker.Faker
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.util.JsonFixtureLoader
 import no.nav.syfo.util.logger
-import java.util.*
 
 interface IAltinnTilgangerClient {
     suspend fun fetchAltinnTilganger(
@@ -19,39 +18,112 @@ interface IAltinnTilgangerClient {
     ): AltinnTilgangerResponse?
 }
 
-class FakeAltinnTilgangerClient : IAltinnTilgangerClient {
-    val usersWithAccess = hasAccess.toMutableList()
+class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = defaultFixtureLoader) : IAltinnTilgangerClient {
+    val accessPolicy by lazy { loadTilganger(fixtureLoader).toMutableList() }
+    private var failure: Throwable? = null
+
+    fun setFailure(failure: Throwable) {
+        this.failure = failure
+    }
+
+    fun clearFailure() {
+        this.failure = null
+    }
+
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
     ): AltinnTilgangerResponse {
-        val faker = Faker(Random(bruker.ident.toLong()))
-        val accessPair = usersWithAccess.find { it.first == bruker.ident }
-        val organisasjonsnummer = accessPair?.second ?: faker.numerify("#########")
-        return AltinnTilgangerResponse(
-            false,
-            listOf(
-                AltinnTilgang(
-                    organisasjonsnummer,
-                    if (accessPair != null) setOf(OPPGI_NARMESTELEDER_RESOURCE) else emptySet(),
-                    setOf(),
-                    emptyList(),
-                    faker.ghostbusters().character(),
-                    "BEDR",
+        failure?.let { throw it }
 
+        val userIdent = runCatching { bruker.ident }.getOrNull()
+            ?: return emptyResponse()
+
+        val orgsUserHasAccessTo = accessPolicy
+            .firstOrNull { userIdent in it.hasAccess }
+            ?.altinnTilgangerResponse
+
+        return orgsUserHasAccessTo ?: emptyResponse()
+    }
+
+    fun addAccess(fnr: String, orgNrTilgang: String, altinn3tilgang: String = OPPGI_NARMESTELEDER_RESOURCE) {
+        val existingPolicy = accessPolicy.find {
+            orgNrTilgang in it.altinnTilgangerResponse.orgNrTilTilganger.keys
+        }
+        if (existingPolicy != null) {
+            if (fnr !in existingPolicy.hasAccess) {
+                existingPolicy.hasAccess += fnr
+            }
+            val updatedOrgNrTilTilganger = existingPolicy.altinnTilgangerResponse.orgNrTilTilganger.toMutableMap()
+            val existingTilganger = updatedOrgNrTilTilganger[orgNrTilgang] ?: emptySet()
+            updatedOrgNrTilTilganger[orgNrTilgang] = existingTilganger + altinn3tilgang
+
+            val updatedTilgangTilOrgNr = existingPolicy.altinnTilgangerResponse.tilgangTilOrgNr.toMutableMap()
+            val existingOrgs = updatedTilgangTilOrgNr[altinn3tilgang] ?: emptySet()
+            updatedTilgangTilOrgNr[altinn3tilgang] = existingOrgs + orgNrTilgang
+
+            val index = accessPolicy.indexOf(existingPolicy)
+            accessPolicy[index] = existingPolicy.copy(
+                altinnTilgangerResponse = existingPolicy.altinnTilgangerResponse.copy(
+                    orgNrTilTilganger = updatedOrgNrTilTilganger,
+                    tilgangTilOrgNr = updatedTilgangTilOrgNr
                 )
-            ),
-            if (accessPair != null) mapOf(organisasjonsnummer to setOf(OPPGI_NARMESTELEDER_RESOURCE)) else emptyMap(),
-            if (accessPair != null) mapOf(OPPGI_NARMESTELEDER_RESOURCE to setOf(organisasjonsnummer)) else emptyMap(),
-        )
+            )
+        } else {
+            accessPolicy.add(
+                FakeArbeidsforholdOversikt(
+                    hasAccess = mutableListOf(fnr),
+                    altinnTilgangerResponse = AltinnTilgangerResponse(
+                        isError = false,
+                        hierarki = listOf(
+                            AltinnTilgang(
+                                orgnr = orgNrTilgang,
+                                altinn3Tilganger = setOf(altinn3tilgang),
+                                altinn2Tilganger = emptySet(),
+                                underenheter = emptyList(),
+                                navn = "Test Org",
+                                organisasjonsform = "BEDR",
+                            )
+                        ),
+                        orgNrTilTilganger = mapOf(orgNrTilgang to setOf(altinn3tilgang)),
+                        tilgangTilOrgNr = mapOf(altinn3tilgang to setOf(orgNrTilgang)),
+                    )
+                )
+            )
+        }
+    }
+
+    fun removeAccess(fnr: String, orgNrTilgang: String? = null) {
+        if (orgNrTilgang != null) {
+            accessPolicy.find { orgNrTilgang in it.altinnTilgangerResponse.orgNrTilTilganger.keys }
+                ?.hasAccess?.remove(fnr)
+        } else {
+            accessPolicy.forEach { it.hasAccess.remove(fnr) }
+        }
     }
 
     fun reset() {
-        usersWithAccess.clear()
-        usersWithAccess.addAll(hasAccess)
+        accessPolicy.clear()
+        accessPolicy.addAll(loadTilganger(fixtureLoader))
+        failure = null
     }
 
+    private fun emptyResponse() = AltinnTilgangerResponse(
+        isError = false,
+        hierarki = emptyList(),
+        orgNrTilTilganger = emptyMap(),
+        tilgangTilOrgNr = emptyMap(),
+    )
+
+    private fun loadTilganger(fixtureLoader: JsonFixtureLoader): List<FakeArbeidsforholdOversikt> = fixtureLoader.loadOrNull(FIXTURE_FILE) ?: emptyList()
+
+    data class FakeArbeidsforholdOversikt(
+        val hasAccess: MutableList<String>,
+        val altinnTilgangerResponse: AltinnTilgangerResponse,
+    )
+
     companion object {
-        val hasAccess = listOf("72022183071" to "215649202", "215649202" to "310667633", "15436803416" to "215649202", "15823349332" to "215649202")
+        private const val FIXTURE_FILE = "tilganger.json"
+        private val defaultFixtureLoader = JsonFixtureLoader("classpath:fake-clients/altinn-tilganger")
     }
 }
 

@@ -10,7 +10,8 @@ import java.sql.Date
 import java.sql.ResultSet
 import java.time.LocalDate
 import java.util.UUID
-import kotlin.collections.buildList
+import kotlin.collections.forEach
+import kotlin.use
 
 interface ISykmeldingDb {
     suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity?
@@ -139,7 +140,7 @@ class SykmeldingDb(
                 connection.prepareStatement(
                     """
                     SELECT sykmelding_id FROM sendt_sykmelding
-                    WHERE fnr = ? AND orgnummer = ?
+                    WHERE fnr = ? AND orgnummer = ? 
                     """.trimIndent()
                 ).use { preparedStatement ->
                     map.forEach { (fnr, orgnummer) ->

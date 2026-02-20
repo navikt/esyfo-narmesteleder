@@ -21,7 +21,6 @@ import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.pdl.PdlService
@@ -38,7 +37,7 @@ class NarmestelederServiceTest :
         val dinesykmeldteService = mockk<DinesykmeldteService>()
 
         beforeTest {
-            clearMocks(nlDb, aaregService, pdlService)
+            clearMocks(nlDb, aaregService, pdlService, dinesykmeldteService)
         }
 
         fun service(persist: Boolean = true) = NarmestelederService(
@@ -48,13 +47,6 @@ class NarmestelederServiceTest :
             pdlService = pdlService,
             dinesykmeldteService = dinesykmeldteService,
             dialogportenService = mockk(relaxed = true)
-        )
-
-        val defaultManager = Manager(
-            nationalIdentificationNumber = "01999999999",
-            mobile = "99999999",
-            email = "manager@epost.no",
-            lastName = "Jensen",
         )
 
         describe("createNewNlBehov") {
@@ -127,8 +119,16 @@ class NarmestelederServiceTest :
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
 
-                coEvery { nlDb.insertNlBehov(any()) } throws AssertionError("insertNlBehov should not be called when persistLeesahNlBehov=false")
-                coEvery { aaregService.findOrgNumbersByPersonIdent(any()) } throws AssertionError("AaregService should not be called when persistLeesahNlBehov=false")
+                coEvery {
+                    nlDb.insertNlBehov(any())
+                } throws AssertionError(
+                    "insertNlBehov should not be called when persistLeesahNlBehov=false"
+                )
+                coEvery {
+                    aaregService.findOrgNumbersByPersonIdent(any())
+                } throws AssertionError(
+                    "AaregService should not be called when persistLeesahNlBehov=false"
+                )
 
                 // Act
                 service(persist = false).createNewNlBehov(
@@ -452,6 +452,94 @@ class NarmestelederServiceTest :
                 // Act + Assert
                 shouldThrow<LinemanagerRequirementNotFoundException> {
                     service().updateNlBehov(id, BehovStatus.BEHOV_FULFILLED)
+                }
+            }
+        }
+
+        describe("updateStatusOnExpiredBehovs") {
+            it("expires behovs with matching sykmelding tom and returns total count") {
+                // Arrange
+                val daysAfterTom = 16L
+                val updatedCount = 5
+
+                coEvery {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = listOf(
+                            BehovStatus.BEHOV_CREATED,
+                            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                        ),
+                        newStatus = BehovStatus.BEHOV_EXPIRED,
+                        limit = any()
+                    )
+                } returnsMany listOf(updatedCount, 0)
+
+                // Act
+                service().updateStatusOnExpiredBehovs(daysAfterTom)
+
+                // Assert
+                coVerify(exactly = 2) {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = listOf(
+                            BehovStatus.BEHOV_CREATED,
+                            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                        ),
+                        newStatus = BehovStatus.BEHOV_EXPIRED,
+                        limit = any()
+                    )
+                }
+            }
+
+            it("loops until no more behovs are updated") {
+                // Arrange
+                val daysAfterTom = 16L
+
+                coEvery {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = any(),
+                        newStatus = any(),
+                        limit = any()
+                    )
+                } returnsMany listOf(500, 500, 300, 0)
+
+                // Act
+                service().updateStatusOnExpiredBehovs(daysAfterTom)
+
+                // Assert
+                coVerify(exactly = 4) {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = any(),
+                        newStatus = any(),
+                        limit = any()
+                    )
+                }
+            }
+
+            it("does nothing when no behovs match") {
+                // Arrange
+                coEvery {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = any(),
+                        newStatus = any(),
+                        limit = any()
+                    )
+                } returns 0
+
+                // Act
+                service().updateStatusOnExpiredBehovs(16L)
+
+                // Assert
+                coVerify(exactly = 1) {
+                    nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                        tomBefore = any(),
+                        fromStatus = any(),
+                        newStatus = any(),
+                        limit = any()
+                    )
                 }
             }
         }

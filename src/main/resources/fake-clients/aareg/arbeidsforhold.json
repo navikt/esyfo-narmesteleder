@@ -1,0 +1,70 @@
+{
+  "15436803416": {
+    "arbeidsforholdoversikter": [
+      {
+        "arbeidssted": {
+          "type": "Underenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "215649202", "gjeldende": true }
+          ]
+        },
+        "opplysningspliktig": {
+          "type": "Hovedenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "310667633", "gjeldende": true }
+          ]
+        }
+      },
+      {
+        "arbeidssted": {
+          "type": "Underenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "972674818", "gjeldende": true }
+          ]
+        },
+        "opplysningspliktig": {
+          "type": "Hovedenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "963743254", "gjeldende": true }
+          ]
+        }
+      }
+    ]
+  },
+  "13468329780": {
+    "arbeidsforholdoversikter": [
+      {
+        "arbeidssted": {
+          "type": "Underenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "315649196", "gjeldende": true }
+          ]
+        },
+        "opplysningspliktig": {
+          "type": "Hovedenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "310667633", "gjeldende": true }
+          ]
+        }
+      }
+    ]
+  },
+  "01518721689": {
+    "arbeidsforholdoversikter": [
+      {
+        "arbeidssted": {
+          "type": "Underenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "215649202", "gjeldende": true }
+          ]
+        },
+        "opplysningspliktig": {
+          "type": "Hovedenhet",
+          "identer": [
+            { "type": "ORGANISASJONSNUMMER", "ident": "310667633", "gjeldende": true }
+          ]
+        }
+      }
+    ]
+  }
+}

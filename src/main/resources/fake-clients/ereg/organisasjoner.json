@@ -1,0 +1,28 @@
+[
+  {
+    "organisasjonsnummer": "310667633",
+    "driverVirksomheter": [
+      { "organisasjonsnummer": "215649202" },
+      { "organisasjonsnummer": "315649196" },
+      { "organisasjonsnummer": "315649218" }
+    ]
+  },
+  {
+    "organisasjonsnummer": "215649202",
+    "inngaarIJuridiskEnheter": [
+      { "organisasjonsnummer": "310667633" }
+    ]
+  },
+  {
+    "organisasjonsnummer": "315649196",
+    "inngaarIJuridiskEnheter": [
+      { "organisasjonsnummer": "310667633" }
+    ]
+  },
+  {
+    "organisasjonsnummer": "315649218",
+    "inngaarIJuridiskEnheter": [
+      { "organisasjonsnummer": "310667633" }
+    ]
+  }
+]

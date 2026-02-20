@@ -16,13 +16,14 @@ class UpdateDialogTask(
 ) {
     private val logger = logger()
 
-    suspend fun runSetCompletedTask() = coroutineScope {
+    suspend fun runTask() = coroutineScope {
         try {
             while (isActive) {
                 if (leaderElection.isLeader()) {
                     try {
                         logger.info("Starting task for updating dialog statuses")
                         dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
+                        dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
                     } catch (ex: Exception) {
                         logger.error("Could not update dialogs in dialogporten", ex)
                     }
@@ -30,7 +31,7 @@ class UpdateDialogTask(
                 delay(pollingInterval)
             }
         } catch (ex: CancellationException) {
-            logger.info("Cancelled SendDialogTask", ex)
+            logger.info("Cancelled UpdateDialogTask", ex)
         }
     }
 }

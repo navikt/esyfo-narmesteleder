@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
+import kotlinx.coroutines.delay
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -17,8 +18,10 @@ import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import java.time.Instant
-import java.util.*
+import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 class NarmestelederService(
     private val nlDb: INarmestelederDb,
@@ -76,7 +79,7 @@ class NarmestelederService(
         )
         nlDb.updateNlBehov(updatedBehov)
         logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
-        dialogportenService.setToCompletedInDialogportenIfFulfilled(updatedBehov)
+        dialogportenService.setToCompletedInDialogporten(updatedBehov)
     }
 
     suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String): List<NarmestelederBehovEntity> = nlDb.findBehovByParameters(
@@ -96,7 +99,7 @@ class NarmestelederService(
     ): UUID? {
         if (!persistLeesahNlBehov) {
             logger.info("Skipping persistence of LinemanagerRequirement as configured.")
-            return null // TODO: Fjern nullable når vi begynner å lagre
+            return null
         }
         if (skipDueToExistingBehov(nlBehov)) {
             return null
@@ -222,6 +225,28 @@ class NarmestelederService(
         status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
         limit = pageSize + 1,
     ).map { it.toEmployeeLinemanagerRead(it.getName()) }
+
+    suspend fun updateStatusOnExpiredBehovs(validDaysAfterTom: Long) {
+        var count: Int
+        var totalUpdated = 0
+
+        do {
+            count = nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
+                tomBefore = Instant.now().minus(Duration.ofDays(validDaysAfterTom)),
+                fromStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+                newStatus = BehovStatus.BEHOV_EXPIRED,
+            )
+            totalUpdated += count
+            delay(UPDATE_EXPIRED_BEHOVS_DELAY_MS.milliseconds)
+        }
+        while (count > 0)
+
+        logger.info("Updated total of $totalUpdated behovs to BEHOV_EXPIRED with tom before ${Instant.now().plus(Duration.ofDays(validDaysAfterTom))}")
+    }
+
+    companion object {
+        const val UPDATE_EXPIRED_BEHOVS_DELAY_MS = 500
+    }
 }
 
 fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead = LinemanagerRequirementRead(

@@ -5,6 +5,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient.DialogportenPatch.OPERATION
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient.DialogportenPatch.PATH
 import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Attachment
 import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
@@ -24,6 +27,7 @@ import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.util.logger
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
@@ -119,23 +123,27 @@ class DialogportenService(
             }
             .forEach { behov ->
                 behov.dialogId?.let {
-                    setToCompletedInDialogportenIfFulfilled(behov)
+                    setToCompletedInDialogporten(behov)
                 }
             }
     }
 
-    suspend fun setToCompletedInDialogportenIfFulfilled(behov: NarmestelederBehovEntity) {
+    suspend fun setToCompletedInDialogporten(behov: NarmestelederBehovEntity) {
         if (behov.behovStatus != BehovStatus.BEHOV_FULFILLED) {
-            logger.info("Skipping setting dialog to completed for behov ${behov.id} with status ${behov.behovStatus}")
+            logger.info("Skipping setting dialog to completed for behov ${behov.id} with non-completable status ${behov.behovStatus}")
             return
         }
         behov.dialogId?.let { dialogId ->
             try {
                 dialogportenClient.getDialogById(dialogId).let { existingDialog ->
-                    dialogportenClient.updateDialogStatus(
+                    dialogportenClient.patchDialog(
                         dialogId = dialogId,
                         revisionNumber = existingDialog.revision,
-                        dialogStatus = DialogStatus.Completed
+                        patch = DialogportenClient.DialogportenPatch(
+                            operation = DialogportenClient.DialogportenPatch.OPERATION.REPLACE,
+                            path = PATH.STATUS,
+                            value = DialogStatus.Completed.name
+                        )
                     )
                 }
                 narmestelederDb.updateNlBehov(
@@ -149,6 +157,52 @@ class DialogportenService(
             }
         }
         logger.info("Completed set ${behov.dialogId} to complete in dialogporten")
+    }
+
+    suspend fun setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() {
+        narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_EXPIRED, BEHOV_BY_STATUS_LIMIT)
+            .also {
+                logger.info("Found ${it.size} expired behovs to complete in dialogporten")
+            }
+            .forEach { behov ->
+                try {
+                    behov.dialogId?.let { dialogId ->
+                        setToExpiredAndCompletedInDialogporten(dialogId)
+                    } ?: run {
+                        logger.info("Expired behov ${behov.id} has no dialogId, marking as completed without notifying Dialogporten")
+                    }
+                    narmestelederDb.updateNlBehov(
+                        behov.copy(
+                            behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                        )
+                    )
+                    logger.info("Successfully updated expired behov ${behov.id} to completed")
+                } catch (ex: Exception) {
+                    logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
+                }
+            }
+    }
+
+    suspend fun setToExpiredAndCompletedInDialogporten(dialogId: UUID) {
+        dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+            dialogportenClient.patchDialog(
+                dialogId = dialogId,
+                revisionNumber = existingDialog.revision,
+                patch = listOf(
+                    DialogportenClient.DialogportenPatch(
+                        OPERATION.REPLACE,
+                        PATH.STATUS,
+                        DialogStatus.Completed.name
+                    ),
+                    DialogportenClient.DialogportenPatch(
+                        OPERATION.ADD,
+                        PATH.EXPIRES_AT,
+                        OffsetDateTime.now().plusMinutes(10).toString() // Must be set to a future time. Adding some slack for retries and processing.
+                    )
+                )
+            )
+        }
+        logger.info("Successfully updated dialog $dialogId to expired and completed in Dialogporten")
     }
 
     suspend fun deleteDialogsInDialogporten() {

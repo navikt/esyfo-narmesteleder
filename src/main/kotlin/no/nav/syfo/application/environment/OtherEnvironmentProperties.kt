@@ -5,11 +5,14 @@ data class OtherEnvironmentProperties(
     val frontendBaseUrl: String,
     val publicIngressUrl: String,
     val updateDialogportenTaskProperties: UpdateDialogportenTaskProperties,
+    val maintenanceTaskDelay: String,
     val deleteDialogportenDialogsTaskProperties: DeleteDialogportenDialogsTaskProperties,
     val persistLeesahNlBehov: Boolean,
     val isDialogportenBackgroundTaskEnabled: Boolean,
     val dialogportenIsApiOnly: Boolean,
+    val daysAfterTomToExpireBehovs: Long,
     val persistSendtSykmelding: Boolean,
+    val maintenanceTaskEnabled: Boolean,
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -22,6 +25,12 @@ data class OtherEnvironmentProperties(
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars(),
             deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createFromEnvVars(),
             persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
+            daysAfterTomToExpireBehovs = getEnvVar(
+                "DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS",
+                "16"
+            ).toLong(),
+            maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
+            maintenanceTaskEnabled = getEnvVar("BEHOV_MAINTENANCE_TASK_ENABLED", "false").toBoolean(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -30,10 +39,13 @@ data class OtherEnvironmentProperties(
             publicIngressUrl = "http://localhost:8080",
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
             persistLeesahNlBehov = true,
-            isDialogportenBackgroundTaskEnabled = false,
+            isDialogportenBackgroundTaskEnabled = true,
             dialogportenIsApiOnly = false,
             deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
             persistSendtSykmelding = true,
+            daysAfterTomToExpireBehovs = 0,
+            maintenanceTaskDelay = "1m",
+            maintenanceTaskEnabled = true
         )
     }
 }

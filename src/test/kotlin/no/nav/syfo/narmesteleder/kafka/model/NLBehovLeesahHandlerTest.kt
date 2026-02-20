@@ -1,7 +1,7 @@
 package no.nav.syfo.narmesteleder.kafka.model
 
 import createMockToken
-import io.kotest.core.spec.style.FunSpec
+import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
@@ -18,13 +18,14 @@ import java.time.OffsetDateTime
 import java.util.*
 
 class NLBehovLeesahHandlerTest :
-    FunSpec({
+    DescribeSpec({
+        val fakeAaregClient = FakeAaregClient()
         val servicesWrapper = FakesWrapper(Dispatchers.Default)
-        val defaultManagerFnr = FakeAaregClient.defaultArbeidsforhold.keys.first()
-        val defaultEmployeeFnr = FakeAaregClient.defaultArbeidsforhold.keys.last()
+        val defaultManagerFnr = fakeAaregClient.arbeidsForholdForIdent.keys.first()
+        val defaultEmployeeFnr = fakeAaregClient.arbeidsForholdForIdent.keys.last()
         val defaultEmployeeFnrNotReceivedInLeesah = "92392392399"
-        val arbeidsforholdEmployeeAareg = FakeAaregClient.defaultArbeidsforhold[defaultEmployeeFnr]!!.first()
-        val arbeidsforholdManagerAareg = FakeAaregClient.defaultArbeidsforhold[defaultManagerFnr]!!.first()
+        val arbeidsforholdEmployeeAareg = fakeAaregClient.arbeidsForholdForIdent[defaultEmployeeFnr]!!.first()
+        val arbeidsforholdManagerAareg = fakeAaregClient.arbeidsForholdForIdent[defaultManagerFnr]!!.first()
 
         val defaultManager = Manager(
             nationalIdentificationNumber = defaultManagerFnr,
@@ -68,43 +69,45 @@ class NLBehovLeesahHandlerTest :
             servicesWrapper.fakeDbSpyk.clear()
         }
 
-        test("Should update status on NlBehov through NarmestelederService when getting via Kafka") {
-            val handler = servicesWrapper.nlBehovLeesahHandlerSpyk
-            val db = servicesWrapper.fakeDbSpyk
-            db.insertNlBehov(defaultRequirement)
+        describe("updateStatusForRequirement") {
+            it("Should update status on NlBehov through NarmestelederService when getting via Kafka") {
+                val handler = servicesWrapper.nlBehovLeesahHandlerSpyk
+                val db = servicesWrapper.fakeDbSpyk
+                db.insertNlBehov(defaultRequirement)
 
-            handler.updateStatusForRequirement(
-                NarmestelederLeesahKafkaMessage(
-                    narmesteLederId = UUID.randomUUID(),
-                    fnr = defaultRequirement.sykmeldtFnr,
-                    orgnummer = defaultRequirement.orgnummer,
-                    narmesteLederFnr = defaultRequirement.narmestelederFnr.toString(),
-                    narmesteLederTelefonnummer = defaultManager.mobile,
-                    narmesteLederEpost = defaultManager.email,
-                    aktivFom = LocalDate.now(),
-                    aktivTom = null,
-                    arbeidsgiverForskutterer = null,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER
+                handler.updateStatusForRequirement(
+                    NarmestelederLeesahKafkaMessage(
+                        narmesteLederId = UUID.randomUUID(),
+                        fnr = defaultRequirement.sykmeldtFnr,
+                        orgnummer = defaultRequirement.orgnummer,
+                        narmesteLederFnr = defaultRequirement.narmestelederFnr.toString(),
+                        narmesteLederTelefonnummer = defaultManager.mobile,
+                        narmesteLederEpost = defaultManager.email,
+                        aktivFom = LocalDate.now(),
+                        aktivTom = null,
+                        arbeidsgiverForskutterer = null,
+                        timestamp = OffsetDateTime.now(),
+                        status = LeesahStatus.NY_LEDER
+                    )
                 )
-            )
-            val retrievedEntityFullfilledBehov = db.findBehovByParameters(
-                defaultRequirement.sykmeldtFnr,
-                defaultRequirement.orgnummer,
-                listOf(BehovStatus.BEHOV_FULFILLED)
-            )
-            retrievedEntityFullfilledBehov.size shouldBe 1
-            retrievedEntityFullfilledBehov.firstOrNull()?.shouldBeEqualUsingFields {
-                excludedProperties = setOf(
-                    NarmestelederBehovEntity::id,
-                    NarmestelederBehovEntity::created,
-                    NarmestelederBehovEntity::updated
+                val retrievedEntityFullfilledBehov = db.findBehovByParameters(
+                    defaultRequirement.sykmeldtFnr,
+                    defaultRequirement.orgnummer,
+                    listOf(BehovStatus.BEHOV_FULFILLED)
                 )
-                fullfilledRequirement
+                retrievedEntityFullfilledBehov.size shouldBe 1
+                retrievedEntityFullfilledBehov.firstOrNull()?.shouldBeEqualUsingFields {
+                    excludedProperties = setOf(
+                        NarmestelederBehovEntity::id,
+                        NarmestelederBehovEntity::created,
+                        NarmestelederBehovEntity::updated
+                    )
+                    fullfilledRequirement
+                }
             }
         }
 
-        test("Should NOT update status on NlBehov through NarmestelederService when getting other info via Kafka") {
+        it("Should NOT update status on NlBehov through NarmestelederService when getting other info via Kafka") {
             val handler = servicesWrapper.nlBehovLeesahHandlerSpyk
             val db = servicesWrapper.fakeDbSpyk
             db.insertNlBehov(defaultRequirement)

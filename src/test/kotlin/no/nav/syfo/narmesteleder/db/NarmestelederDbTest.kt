@@ -417,15 +417,17 @@ class NarmestelederDbTest :
             it("should update behovs where sykmelding tom is before cutoff") {
                 // Arrange
                 val fnr = faker.numerify("###########")
+                val orgnummer = faker.numerify("#########")
                 val expiredTom = LocalDate.now().minusDays(10)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom)))
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
                 }
 
                 val behov = db.insertNlBehov(
                     nlBehovEntity().copy(
                         sykmeldtFnr = fnr,
+                        orgnummer = orgnummer,
                         behovStatus = BehovStatus.BEHOV_CREATED
                     )
                 )
@@ -446,15 +448,17 @@ class NarmestelederDbTest :
             it("should not update behovs where sykmelding tom is after cutoff") {
                 // Arrange
                 val fnr = faker.numerify("###########")
+                val orgnummer = faker.numerify("#########")
                 val activeTom = LocalDate.now().plusDays(30)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = activeTom)))
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = activeTom, orgnummer = orgnummer)))
                 }
 
                 val behov = db.insertNlBehov(
                     nlBehovEntity().copy(
                         sykmeldtFnr = fnr,
+                        orgnummer = orgnummer,
                         behovStatus = BehovStatus.BEHOV_CREATED
                     )
                 )
@@ -475,21 +479,24 @@ class NarmestelederDbTest :
             it("should only update behovs with matching fromStatus") {
                 // Arrange
                 val fnr = faker.numerify("###########")
+                val orgnummer = faker.numerify("#########")
                 val expiredTom = LocalDate.now().minusDays(10)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom)))
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
                 }
 
                 val behovCreated = db.insertNlBehov(
                     nlBehovEntity().copy(
                         sykmeldtFnr = fnr,
+                        orgnummer = orgnummer,
                         behovStatus = BehovStatus.BEHOV_CREATED
                     )
                 )
                 val behovFulfilled = db.insertNlBehov(
                     nlBehovEntity().copy(
                         sykmeldtFnr = fnr,
+                        orgnummer = orgnummer,
                         behovStatus = BehovStatus.BEHOV_FULFILLED
                     )
                 )
@@ -511,22 +518,24 @@ class NarmestelederDbTest :
                 // Arrange
                 val fnr1 = faker.numerify("###########")
                 val fnr2 = faker.numerify("###########")
+                val orgnummer1 = faker.numerify("#########")
+                val orgnummer2 = faker.numerify("#########")
                 val expiredTom = LocalDate.now().minusDays(10)
 
                 sykmeldingDb.transaction {
                     insertOrUpdateSykmeldingBatch(
                         listOf(
-                            sykmeldingEntity(fnr = fnr1, tom = expiredTom),
-                            sykmeldingEntity(fnr = fnr2, tom = expiredTom)
+                            sykmeldingEntity(fnr = fnr1, tom = expiredTom, orgnummer = orgnummer1),
+                            sykmeldingEntity(fnr = fnr2, tom = expiredTom, orgnummer = orgnummer2)
                         )
                     )
                 }
 
                 val behov1 = db.insertNlBehov(
-                    nlBehovEntity().copy(sykmeldtFnr = fnr1, behovStatus = BehovStatus.BEHOV_CREATED)
+                    nlBehovEntity().copy(sykmeldtFnr = fnr1, orgnummer = orgnummer1, behovStatus = BehovStatus.BEHOV_CREATED)
                 )
                 val behov2 = db.insertNlBehov(
-                    nlBehovEntity().copy(sykmeldtFnr = fnr2, behovStatus = BehovStatus.BEHOV_CREATED)
+                    nlBehovEntity().copy(sykmeldtFnr = fnr2, orgnummer = orgnummer2, behovStatus = BehovStatus.BEHOV_CREATED)
                 )
 
                 // Act
@@ -544,14 +553,15 @@ class NarmestelederDbTest :
             it("should return 0 when fromStatus list is empty") {
                 // Arrange
                 val fnr = faker.numerify("###########")
+                val orgnummer = faker.numerify("#########")
                 val expiredTom = LocalDate.now().minusDays(10)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom)))
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
                 }
 
                 db.insertNlBehov(
-                    nlBehovEntity().copy(sykmeldtFnr = fnr, behovStatus = BehovStatus.BEHOV_CREATED)
+                    nlBehovEntity().copy(sykmeldtFnr = fnr, orgnummer = orgnummer, behovStatus = BehovStatus.BEHOV_CREATED)
                 )
 
                 // Act
@@ -569,14 +579,15 @@ class NarmestelederDbTest :
                 // Arrange
                 val fnrWithSykmelding = faker.numerify("###########")
                 val fnrWithoutSykmelding = faker.numerify("###########")
+                val orgnummer = faker.numerify("#########")
                 val expiredTom = LocalDate.now().minusDays(17)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnrWithSykmelding, tom = expiredTom)))
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnrWithSykmelding, tom = expiredTom, orgnummer = orgnummer)))
                 }
 
                 val behovWithSykmelding = db.insertNlBehov(
-                    nlBehovEntity().copy(sykmeldtFnr = fnrWithSykmelding, behovStatus = BehovStatus.BEHOV_CREATED)
+                    nlBehovEntity().copy(sykmeldtFnr = fnrWithSykmelding, orgnummer = orgnummer, behovStatus = BehovStatus.BEHOV_CREATED)
                 )
                 val behovWithoutSykmelding = db.insertNlBehov(
                     nlBehovEntity().copy(sykmeldtFnr = fnrWithoutSykmelding, behovStatus = BehovStatus.BEHOV_CREATED)
@@ -598,16 +609,18 @@ class NarmestelederDbTest :
             it("should not update behovs where sykmelding tom is exactly equal to cutoff") {
                 // Arrange
                 val fnr = faker.numerify("###########")
+                val orgnummer = faker.numerify("#########")
                 val cutoffDate = LocalDate.now().plusDays(16)
                 val cutoffInstant = cutoffDate.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = cutoffDate)))
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = cutoffDate, orgnummer = orgnummer)))
                 }
 
                 val behov = db.insertNlBehov(
                     nlBehovEntity().copy(
                         sykmeldtFnr = fnr,
+                        orgnummer = orgnummer,
                         behovStatus = BehovStatus.BEHOV_CREATED
                     )
                 )
@@ -628,17 +641,19 @@ class NarmestelederDbTest :
             it("should update behovs where sykmelding tom is exactly one day before cutoff") {
                 // Arrange
                 val fnr = faker.numerify("###########")
+                val orgnummer = faker.numerify("#########")
                 val cutoffDate = LocalDate.now().plusDays(16)
                 val tomDate = cutoffDate.minusDays(1)
                 val cutoffInstant = cutoffDate.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = tomDate)))
+                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = tomDate, orgnummer = orgnummer)))
                 }
 
                 val behov = db.insertNlBehov(
                     nlBehovEntity().copy(
                         sykmeldtFnr = fnr,
+                        orgnummer = orgnummer,
                         behovStatus = BehovStatus.BEHOV_CREATED
                     )
                 )

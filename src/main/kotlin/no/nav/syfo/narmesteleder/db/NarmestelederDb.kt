@@ -334,7 +334,7 @@ class NarmestelederDb(
                 WITH expired_behov AS (
                     SELECT eb.id 
                         FROM nl_behov eb
-                        JOIN sendt_sykmelding es ON eb.sykemeldt_fnr = es.fnr
+                        JOIN sendt_sykmelding es ON eb.sykemeldt_fnr = es.fnr AND eb.orgnummer = es.orgnummer
                         WHERE es.tom < ?
                         AND eb.behov_status IN ($fromStatusPlaceholders)
                         ORDER BY eb.created

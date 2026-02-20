@@ -68,6 +68,7 @@ class DialogportenServiceTest :
                         persistSendtSykmelding = false,
                         daysAfterTomToExpireBehovs = 7,
                         maintenanceTaskDelay = "1s",
+                        maintenanceTaskEnabled = true,
                     ),
                     pdlService = pdlService,
                 )

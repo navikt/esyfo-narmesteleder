@@ -12,6 +12,7 @@ data class OtherEnvironmentProperties(
     val dialogportenIsApiOnly: Boolean,
     val daysAfterTomToExpireBehovs: Long,
     val persistSendtSykmelding: Boolean,
+    val maintenanceTaskEnabled: Boolean,
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -29,6 +30,7 @@ data class OtherEnvironmentProperties(
                 "16"
             ).toLong(),
             maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
+            maintenanceTaskEnabled = getEnvVar("BEHOV_MAINTENANCE_TASK_ENABLED", "false").toBoolean(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -42,7 +44,8 @@ data class OtherEnvironmentProperties(
             deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
             persistSendtSykmelding = true,
             daysAfterTomToExpireBehovs = 0,
-            maintenanceTaskDelay = "1m"
+            maintenanceTaskDelay = "1m",
+            maintenanceTaskEnabled = true
         )
     }
 }

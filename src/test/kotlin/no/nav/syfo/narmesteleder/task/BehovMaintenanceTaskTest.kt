@@ -33,6 +33,7 @@ class BehovMaintenanceTaskTest :
             maintenanceTaskDelay = "100ms",
             deleteDialogportenDialogsTaskProperties = mockk(relaxed = true),
             persistSendtSykmelding = mockk(relaxed = true),
+            maintenanceTaskEnabled = true,
         )
 
         fun createTask() = BehovMaintenanceTask(

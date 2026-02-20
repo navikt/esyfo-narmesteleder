@@ -48,24 +48,31 @@ fun Application.configureBackgroundTasks() {
     val sendDialogTaskJob = launch(start = CoroutineStart.LAZY) { sendDialogTask.runTask() }
     val updateDialogTaskJob = launch(start = CoroutineStart.LAZY) { updateDialogTast.runTask() }
 
-    monitor.subscribe(ApplicationStarted) {
-        behovMaintenanceTaskJob.start()
-
-        if (!environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
-            logger.info("Integration with Dialogporten is not enabled. Skipping background tasks")
-            return@subscribe
+    if (environment.otherProperties.maintenanceTaskEnabled) {
+        monitor.subscribe(ApplicationStarted) {
+            behovMaintenanceTaskJob.start()
         }
-        logger.info("Integration with Dialogporten is enabled. Configuring background tasks")
-        sendDialogTaskJob.start()
-        updateDialogTaskJob.start()
+        monitor.subscribe(ApplicationStopping) {
+            behovMaintenanceTaskJob.cancel()
+        }
+    } else {
+        logger.info("Behov maintenance task is not enabled. Skipping task")
     }
-    monitor.subscribe(ApplicationStopping) {
-        behovMaintenanceTaskJob.cancel()
 
-        if (!environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
-            return@subscribe
+    if (environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
+        logger.info("Integration with Dialogporten is enabled. Configuring background tasks")
+        monitor.subscribe(ApplicationStarted) {
+            sendDialogTaskJob.start()
+            updateDialogTaskJob.start()
         }
-        sendDialogTaskJob.cancel()
-        updateDialogTaskJob.cancel()
+        monitor.subscribe(ApplicationStopping) {
+            if (!environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
+                return@subscribe
+            }
+            sendDialogTaskJob.cancel()
+            updateDialogTaskJob.cancel()
+        }
+    } else {
+        logger.info("Integration with Dialogporten is not enabled. Skipping background tasks")
     }
 }

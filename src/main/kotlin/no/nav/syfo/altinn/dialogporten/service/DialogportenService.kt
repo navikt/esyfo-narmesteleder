@@ -197,7 +197,7 @@ class DialogportenService(
                     DialogportenClient.DialogportenPatch(
                         OPERATION.ADD,
                         PATH.EXPIRES_AT,
-                        OffsetDateTime.now().plusHours(1).toString()
+                        OffsetDateTime.now().plusMinutes(10).toString() // Must be set to a future time. Adding some slack for retries and processing.
                     )
                 )
             )

@@ -78,7 +78,6 @@ class DialogportenClient(
         return dialog
     }
 
-    // internal for access in tests
     data class DialogportenPatch(
         val operation: OPERATION,
         val path: PATH,

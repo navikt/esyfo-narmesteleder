@@ -232,7 +232,7 @@ class NarmestelederService(
 
         do {
             count = nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
-                tomBefore = Instant.now().plus(Duration.ofDays(validDaysAfterTom)),
+                tomBefore = Instant.now().minus(Duration.ofDays(validDaysAfterTom)),
                 fromStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
                 newStatus = BehovStatus.BEHOV_EXPIRED,
             )

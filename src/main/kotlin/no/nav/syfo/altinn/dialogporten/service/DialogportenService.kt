@@ -5,6 +5,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient.DialogportenPatch.OPERATION
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient.DialogportenPatch.PATH
 import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Attachment
 import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
@@ -133,10 +136,14 @@ class DialogportenService(
         behov.dialogId?.let { dialogId ->
             try {
                 dialogportenClient.getDialogById(dialogId).let { existingDialog ->
-                    dialogportenClient.updateDialogStatus(
+                    dialogportenClient.patchDialog(
                         dialogId = dialogId,
                         revisionNumber = existingDialog.revision,
-                        dialogStatus = DialogStatus.Completed
+                        patch = DialogportenClient.DialogportenPatch(
+                            operation = DialogportenClient.DialogportenPatch.OPERATION.REPLACE,
+                            path = PATH.STATUS,
+                            value = DialogStatus.Completed.name
+                        )
                     )
                 }
                 narmestelederDb.updateNlBehov(
@@ -178,11 +185,21 @@ class DialogportenService(
 
     suspend fun setToExpiredAndCompletedInDialogporten(dialogId: UUID) {
         dialogportenClient.getDialogById(dialogId).let { existingDialog ->
-            dialogportenClient.updateDialogStatusAndExpirationDate(
+            dialogportenClient.patchDialog(
                 dialogId = dialogId,
                 revisionNumber = existingDialog.revision,
-                dialogStatus = DialogStatus.Completed,
-                expiresAt = OffsetDateTime.now().plusHours(1) // The API only allows expiresAt set in the future. Might need adjustments
+                patch = listOf(
+                    DialogportenClient.DialogportenPatch(
+                        OPERATION.REPLACE,
+                        PATH.STATUS,
+                        DialogStatus.Completed.name
+                    ),
+                    DialogportenClient.DialogportenPatch(
+                        OPERATION.ADD,
+                        PATH.EXPIRES_AT,
+                        OffsetDateTime.now().plusHours(1).toString()
+                    )
+                )
             )
         }
         logger.info("Successfully updated dialog $dialogId to expired and completed in Dialogporten")

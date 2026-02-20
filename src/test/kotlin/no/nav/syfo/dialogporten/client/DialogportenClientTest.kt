@@ -38,10 +38,10 @@ class DialogportenClientTest :
                                     val patchValues: List<DialogportenClient.DialogportenPatch> =
                                         jacksonObjectMapper().readValue(request.body.toByteArray())
 
-                                    patchValues.first().path shouldBe "/status"
+                                    patchValues.first().path shouldBe DialogportenClient.DialogportenPatch.PATH.STATUS
                                     patchValues.first().value shouldBe DialogStatus.Completed.name
-                                    patchValues.first().op shouldBe DialogportenClient.DialogportenPatch.OPERATION.REPLACE
-                                    patchValues.first().op.jsonValue shouldBe "Replace"
+                                    patchValues.first().operation shouldBe DialogportenClient.DialogportenPatch.OPERATION.REPLACE
+                                    patchValues.first().operation.jsonValue shouldBe "Replace"
 
                                     respond(
                                         content = "",
@@ -78,17 +78,22 @@ class DialogportenClientTest :
                         "scope"
                     )
 
-                    dialogportenClient.updateDialogStatus(
+                    val patch = DialogportenClient.DialogportenPatch(
+                        path = DialogportenClient.DialogportenPatch.PATH.STATUS,
+                        operation = DialogportenClient.DialogportenPatch.OPERATION.REPLACE,
+                        value = DialogStatus.Completed.name,
+                    )
+                    dialogportenClient.patchDialog(
                         dialogId = dialogId,
                         revisionNumber = UUID.randomUUID(),
-                        dialogStatus = DialogStatus.Completed,
+                        patch = patch,
                     )
 
                     coVerify {
-                        dialogportenClient.updateDialogStatus(
-                            eq(dialogId),
-                            any(),
-                            DialogStatus.Completed
+                        dialogportenClient.patchDialog(
+                            dialogId = dialogId,
+                            revisionNumber = any<UUID>(),
+                            patch = patch
                         )
                     }
                 }

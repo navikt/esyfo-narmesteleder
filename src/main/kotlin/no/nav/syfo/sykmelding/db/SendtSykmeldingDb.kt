@@ -17,9 +17,9 @@ interface ISykmeldingDb {
 }
 
 interface ISykmeldingTransaction {
-    fun insertSykmeldingBatch(entities: List<SendtSykmeldingEntity>): Int
-    fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int
-    fun deleteAllByFnrAndOrgnr(toDelete: List<Pair<String, String>>): Int
+    fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>): Int
+    fun batchRevokeSykmelding(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int
+    fun batchDeleteAllBySykmeldingIds(sykmeldingIds: List<UUID>): Int
 }
 
 class SykmeldingDbException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -30,7 +30,7 @@ class SykmeldingDb(
 ) : ISykmeldingDb {
 
     private class TransactionImpl(private val connection: Connection) : ISykmeldingTransaction {
-        override fun insertSykmeldingBatch(entities: List<SendtSykmeldingEntity>): Int {
+        override fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>): Int {
             if (entities.isEmpty()) return 0
 
             return connection
@@ -45,6 +45,14 @@ class SykmeldingDb(
                                          tom
                     )
                     VALUES (?, ?, ?, ?, ?, ?) 
+                    ON CONFLICT (fnr, orgnummer) DO UPDATE SET
+                        sykmelding_id = EXCLUDED.sykmelding_id,
+                        syketilfelle_startdato = EXCLUDED.syketilfelle_startdato,
+                        fom = EXCLUDED.fom,
+                        tom = EXCLUDED.tom,
+                        revoked_date = NULL,
+                        updated = now() 
+                    WHERE EXCLUDED.tom >= sendt_sykmelding.tom
                     """.trimIndent()
                 ).use { preparedStatement ->
                     entities.forEach { sykmeldingEntity ->
@@ -64,7 +72,7 @@ class SykmeldingDb(
                 }
         }
 
-        override fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int {
+        override fun batchRevokeSykmelding(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int {
             if (sykmeldingIds.isEmpty()) return 0
 
             return connection
@@ -88,23 +96,24 @@ class SykmeldingDb(
                 }
         }
 
-        override fun deleteAllByFnrAndOrgnr(toDelete: List<Pair<String, String>>): Int {
-            if (toDelete.isEmpty()) return 0
+        override fun batchDeleteAllBySykmeldingIds(sykmeldingIds: List<UUID>): Int {
+            if (sykmeldingIds.isEmpty()) return 0
 
             return connection
                 .prepareStatement(
                     """
                     DELETE FROM sendt_sykmelding 
-                    WHERE fnr = ? and orgnummer = ?
+                    WHERE sykmelding_id = ? 
                     """.trimIndent()
                 ).use { preparedStatement ->
-                    toDelete.forEach { (fnr, orgnr) ->
-                        preparedStatement.setObject(1, fnr)
-                        preparedStatement.setObject(2, orgnr)
+                    sykmeldingIds.forEach { sykmeldingId ->
+                        preparedStatement.setObject(1, sykmeldingId)
                         preparedStatement.addBatch()
                     }
+
                     val results = preparedStatement.executeBatch()
-                    results.sum()
+                    val totalDeleted = results.sum()
+                    totalDeleted
                 }
         }
     }

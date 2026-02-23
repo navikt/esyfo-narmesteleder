@@ -8,18 +8,21 @@ import kotlin.also
 class FakeSykmeldingDb : ISykmeldingDb {
     private val store = CopyOnWriteArrayList<SendtSykmeldingEntity>()
 
-    private fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity): Int {
-        val existingIndex = store.indexOfFirst { it.sykmeldingId == sykmeldingEntity.sykmeldingId }
+    private fun upsertSykmelding(entity: SendtSykmeldingEntity): Int {
+        val existingIndex = store.indexOfFirst { it.fnr == entity.fnr && it.orgnummer == entity.orgnummer }
         if (existingIndex >= 0) {
             val existing = store[existingIndex]
-            store[existingIndex] = existing.copy(
-                fnr = sykmeldingEntity.fnr,
-                fom = sykmeldingEntity.fom,
-                tom = sykmeldingEntity.tom,
-                updated = sykmeldingEntity.updated
-            )
+            if (entity.tom >= existing.tom) {
+                store[existingIndex] = existing.copy(
+                    sykmeldingId = entity.sykmeldingId,
+                    syketilfelleStartDato = entity.syketilfelleStartDato,
+                    fom = entity.fom,
+                    tom = entity.tom,
+                    updated = entity.updated
+                )
+            }
         } else {
-            store += sykmeldingEntity
+            store += entity
         }
         return 1
     }
@@ -34,18 +37,20 @@ class FakeSykmeldingDb : ISykmeldingDb {
     }
 
     private inner class FakeTransaction : ISykmeldingTransaction {
-        override fun insertSykmeldingBatch(entities: List<SendtSykmeldingEntity>): Int {
-            var removedCount = 0
-            entities.forEach { insertOrUpdateSykmelding(it).also { removedCount += it } }
-            return removedCount
+        override fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>): Int {
+            var count = 0
+            entities.forEach { upsertSykmelding(it).also { count += it } }
+            return count
         }
 
-        override fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int = sykmeldingIds.sumOf { revokeSykmelding(it, revokedDate) }
-
-        override fun deleteAllByFnrAndOrgnr(toDelete: List<Pair<String, String>>): Int {
-            var removedCount = 0
-            toDelete.forEach { (fnr, orgnummer) -> store.removeIf { it.fnr == fnr && it.orgnummer == orgnummer }.also { if (it) removedCount += 1 } }
-            return removedCount
+        override fun batchRevokeSykmelding(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int = sykmeldingIds.sumOf { revokeSykmelding(it, revokedDate) }
+        override fun batchDeleteAllBySykmeldingIds(sykmeldingIds: List<UUID>): Int {
+            var count = 0
+            sykmeldingIds.forEach { id ->
+                val removed = store.removeIf { it.sykmeldingId == id }
+                if (removed) count++
+            }
+            return count
         }
     }
 

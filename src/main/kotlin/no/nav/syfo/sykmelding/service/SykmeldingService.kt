@@ -2,7 +2,6 @@ package no.nav.syfo.sykmelding.service
 
 import no.nav.syfo.sykmelding.db.ISykmeldingDb
 import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
-import no.nav.syfo.sykmelding.db.fnrToOrgnummerPair
 import no.nav.syfo.sykmelding.kafka.SykmeldingRecord
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
@@ -26,35 +25,29 @@ class SykmeldingService(
         val (revokes, inserts) = finalStateByKey.partition { it.message == null }
 
         val entitiesToInsert = inserts.mapNotNull { record ->
-            record.message?.let { msg -> toEntityIfValid(msg)?.let { entity -> record.offset to entity } }
+            record.message?.let { msg -> toEntityIfValid(msg) }
         }
-            // When multiple sykmeldingIds map to the same fnr+orgnummer, keep only the highest offset
-            .groupBy { (_, entity) -> entity.fnr to entity.orgnummer }
-            .mapValues { (_, entries) -> entries.maxBy { (offset, _) -> offset }.second }
+            // When multiple sykmeldingIds map to the same fnr+orgnummer, keep only the highest tom date
+            // (sykmeldinger could be sent to arbeidsgiver in the wrong order)
+            .groupBy { entity -> entity.fnr to entity.orgnummer }
+            .mapValues { (_, entities) -> entities.maxBy { it.tom } }
             .values
             .toList()
 
         sykmeldingDb.transaction {
-            // Every sykmelding has its own id. We only need the most recent dates for a person in a given org, so
-            // we may delete the old sykmelding (if any) and insert the new one.
-            val (deletedRows, insertedRows) = if (entitiesToInsert.isNotEmpty()) {
-                Pair(
-                    deleteAllByFnrAndOrgnr(entitiesToInsert.map(SendtSykmeldingEntity::fnrToOrgnummerPair)),
-                    insertSykmeldingBatch(entitiesToInsert)
-                )
-            } else {
-                Pair(0, 0)
-            }
+            // We may receive sykmeldinger with the same sykmeldingId
+            // when a sykmelding is sent on paper and the veileder corrects something. This will not get
+            // caught by the (fnr,orgnummer) constraint if the correction is a change of employer or fnr (uncertain if this could happen)
+            val deletedDuplicateSykmeldingIds = batchDeleteAllBySykmeldingIds(entitiesToInsert.map { it.sykmeldingId })
 
-            val revokes = if (revokes.isNotEmpty()) {
-                val revokeIds = revokes.map { it.sykmeldingId }
-                revokeSykmeldingBatch(revokeIds, LocalDate.now())
-            } else {
-                0
-            }
+            // Upsert: inserts new rows, or updates existing rows only when the incoming tom >= existing tom.
+            // This is handled by the DB via ON CONFLICT (fnr, orgnummer) with a WHERE clause.
+            val upsertedRows = batchUpsertSykmeldingerIfMoreRecentTom(entitiesToInsert)
+
+            val revokedRows = batchRevokeSykmelding(revokes.map { it.sykmeldingId }, LocalDate.now())
 
             logger.info(
-                "Batch processed: $insertedRows inserts/updates, $revokes revokes, $deletedRows deletes " +
+                "Batch processed: $upsertedRows inserts/updates, $revokedRows revokes, $deletedDuplicateSykmeldingIds deleted duplicate sykmeldingId  " +
                     "(from ${records.size} total records, ${finalStateByKey.size} unique keys)"
             )
         }

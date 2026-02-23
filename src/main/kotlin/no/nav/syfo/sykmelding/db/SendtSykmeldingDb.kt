@@ -10,19 +10,16 @@ import java.sql.Date
 import java.sql.ResultSet
 import java.time.LocalDate
 import java.util.UUID
-import kotlin.collections.forEach
-import kotlin.use
 
 interface ISykmeldingDb {
     suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity?
     suspend fun transaction(block: suspend ISykmeldingTransaction.() -> Unit)
-    suspend fun findSykmeldingIdsByFnrAndOrgnr(map: List<Pair<String, String>>): List<UUID>
 }
 
 interface ISykmeldingTransaction {
-    fun insertOrUpdateSykmeldingBatch(entities: List<SendtSykmeldingEntity>)
+    fun insertSykmeldingBatch(entities: List<SendtSykmeldingEntity>): Int
     fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int
-    fun deleteAll(ids: List<UUID>)
+    fun deleteAllByFnrAndOrgnr(toDelete: List<Pair<String, String>>): Int
 }
 
 class SykmeldingDbException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -33,10 +30,10 @@ class SykmeldingDb(
 ) : ISykmeldingDb {
 
     private class TransactionImpl(private val connection: Connection) : ISykmeldingTransaction {
-        override fun insertOrUpdateSykmeldingBatch(entities: List<SendtSykmeldingEntity>) {
-            if (entities.isEmpty()) return
+        override fun insertSykmeldingBatch(entities: List<SendtSykmeldingEntity>): Int {
+            if (entities.isEmpty()) return 0
 
-            connection
+            return connection
                 .prepareStatement(
                     """
                     INSERT INTO sendt_sykmelding(
@@ -48,10 +45,6 @@ class SykmeldingDb(
                                          tom
                     )
                     VALUES (?, ?, ?, ?, ?, ?) 
-                    ON CONFLICT (sykmelding_id) DO UPDATE SET
-                        fnr = EXCLUDED.fnr,
-                        fom = EXCLUDED.fom,
-                        tom = EXCLUDED.tom
                     """.trimIndent()
                 ).use { preparedStatement ->
                     entities.forEach { sykmeldingEntity ->
@@ -67,8 +60,7 @@ class SykmeldingDb(
                         preparedStatement.setDate(++idx, Date.valueOf(sykmeldingEntity.tom))
                         preparedStatement.addBatch()
                     }
-                    preparedStatement.executeBatch()
-                    logger.info("Batch inserted/updated ${entities.size} sykmeldinger")
+                    preparedStatement.executeBatch().sum()
                 }
         }
 
@@ -92,28 +84,27 @@ class SykmeldingDb(
 
                     val results = preparedStatement.executeBatch()
                     val totalUpdated = results.sum()
-                    logger.info("Batch revoked $totalUpdated of ${sykmeldingIds.size} sykmeldinger")
                     totalUpdated
                 }
         }
 
-        override fun deleteAll(ids: List<UUID>) {
-            if (ids.isEmpty()) return
+        override fun deleteAllByFnrAndOrgnr(toDelete: List<Pair<String, String>>): Int {
+            if (toDelete.isEmpty()) return 0
 
-            connection
+            return connection
                 .prepareStatement(
                     """
                     DELETE FROM sendt_sykmelding 
-                    WHERE sykmelding_id = ?
+                    WHERE fnr = ? and orgnummer = ?
                     """.trimIndent()
                 ).use { preparedStatement ->
-                    ids.forEach { id ->
-                        preparedStatement.setObject(1, id)
+                    toDelete.forEach { (fnr, orgnr) ->
+                        preparedStatement.setObject(1, fnr)
+                        preparedStatement.setObject(2, orgnr)
                         preparedStatement.addBatch()
                     }
                     val results = preparedStatement.executeBatch()
-                    val totalDeleted = results.sum()
-                    logger.info("Batch deleted $totalDeleted of ${ids.size} sykmeldinger")
+                    results.sum()
                 }
         }
     }
@@ -128,36 +119,6 @@ class SykmeldingDb(
                 logger.info("Transaction failed. Rolling back", e)
                 connection.rollback()
                 throw SykmeldingDbException("Transaction failed", e)
-            }
-        }
-    }
-
-    override suspend fun findSykmeldingIdsByFnrAndOrgnr(map: List<Pair<String, String>>): List<UUID> {
-        if (map.isEmpty()) return emptyList()
-
-        database.connection.use { connection ->
-            try {
-                connection.prepareStatement(
-                    """
-                    SELECT sykmelding_id FROM sendt_sykmelding
-                    WHERE fnr = ? AND orgnummer = ? 
-                    """.trimIndent()
-                ).use { preparedStatement ->
-                    map.forEach { (fnr, orgnummer) ->
-                        preparedStatement.setString(1, fnr)
-                        preparedStatement.setString(2, orgnummer)
-                        preparedStatement.addBatch()
-                    }
-                    val resultSet = preparedStatement.executeQuery()
-                    return buildList {
-                        while (resultSet.next()) {
-                            add(resultSet.getObject("sykmelding_id") as UUID)
-                        }
-                    }
-                }
-            } catch (_: Exception) {
-                logger.error("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr")
-                throw SykmeldingDbException("Error preparing statement for findSykmeldingIdsByFnrAndOrgnr")
             }
         }
     }

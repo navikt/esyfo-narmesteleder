@@ -2,6 +2,7 @@ package no.nav.syfo.sykmelding.service
 
 import no.nav.syfo.sykmelding.db.ISykmeldingDb
 import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
+import no.nav.syfo.sykmelding.db.fnrToOrgnummerPair
 import no.nav.syfo.sykmelding.kafka.SykmeldingRecord
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
@@ -25,36 +26,38 @@ class SykmeldingService(
         val (revokes, inserts) = finalStateByKey.partition { it.message == null }
 
         val entitiesToInsert = inserts.mapNotNull { record ->
-            record.message?.let { toEntityIfValid(it) }
+            record.message?.let { msg -> toEntityIfValid(msg)?.let { entity -> record.offset to entity } }
         }
-
-        // Every sykmelding has its own id. We only need the most recent dates for a person in a given org, so
-        // we may delete the old sykmelding (if any) and insert the new one.
-        val sykmeldingerToLookUp = entitiesToInsert.map { it.fnr to it.orgnummer }
-
-        val existingSykmeldingIds = if (entitiesToInsert.isNotEmpty()) {
-            sykmeldingDb.findSykmeldingIdsByFnrAndOrgnr(sykmeldingerToLookUp)
-        } else {
-            emptyList()
-        }
+            // When multiple sykmeldingIds map to the same fnr+orgnummer, keep only the highest offset
+            .groupBy { (_, entity) -> entity.fnr to entity.orgnummer }
+            .mapValues { (_, entries) -> entries.maxBy { (offset, _) -> offset }.second }
+            .values
+            .toList()
 
         sykmeldingDb.transaction {
-            if (existingSykmeldingIds.isNotEmpty()) {
-                deleteAll(existingSykmeldingIds)
+            // Every sykmelding has its own id. We only need the most recent dates for a person in a given org, so
+            // we may delete the old sykmelding (if any) and insert the new one.
+            val (deletedRows, insertedRows) = if (entitiesToInsert.isNotEmpty()) {
+                Pair(
+                    deleteAllByFnrAndOrgnr(entitiesToInsert.map(SendtSykmeldingEntity::fnrToOrgnummerPair)),
+                    insertSykmeldingBatch(entitiesToInsert)
+                )
+            } else {
+                Pair(0, 0)
             }
-            if (entitiesToInsert.isNotEmpty()) {
-                insertOrUpdateSykmeldingBatch(entitiesToInsert)
-            }
-            if (revokes.isNotEmpty()) {
+
+            val revokes = if (revokes.isNotEmpty()) {
                 val revokeIds = revokes.map { it.sykmeldingId }
                 revokeSykmeldingBatch(revokeIds, LocalDate.now())
+            } else {
+                0
             }
-        }
 
-        logger.info(
-            "Batch processed: ${entitiesToInsert.size} inserts/updates, ${revokes.size} revokes, ${existingSykmeldingIds.size} deletes " +
-                "(from ${records.size} total records, ${finalStateByKey.size} unique keys)"
-        )
+            logger.info(
+                "Batch processed: $insertedRows inserts/updates, $revokes revokes, $deletedRows deletes " +
+                    "(from ${records.size} total records, ${finalStateByKey.size} unique keys)"
+            )
+        }
     }
 
     private fun toEntityIfValid(message: SendtSykmeldingKafkaMessage): SendtSykmeldingEntity? {

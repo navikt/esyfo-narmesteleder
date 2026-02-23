@@ -2,12 +2,12 @@ package no.nav.syfo.sykmelding.db
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.spyk
+import net.datafaker.Faker
 import no.nav.syfo.TestDB
 import java.time.Instant
 import java.time.LocalDate
@@ -15,7 +15,6 @@ import java.util.UUID
 
 class SykmeldingDbTest :
     DescribeSpec({
-
         val testDb = TestDB.database
         val db = SykmeldingDb(testDb)
 
@@ -25,8 +24,8 @@ class SykmeldingDbTest :
 
         fun entity(
             sykmeldingId: UUID = UUID.randomUUID(),
-            fnr: String = "12345678910",
-            orgnummer: String = "999999999",
+            fnr: String = Faker().numerify("###########"),
+            orgnummer: String = Faker().numerify("#########"),
             fom: LocalDate = LocalDate.of(2025, 1, 1),
             tom: LocalDate = LocalDate.of(2025, 1, 10),
             syketilfelleStartDato: LocalDate? = LocalDate.of(2025, 1, 1),
@@ -49,7 +48,7 @@ class SykmeldingDbTest :
                 val toInsert = entity(sykmeldingId = sykmeldingId)
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(toInsert))
+                    insertSykmeldingBatch(listOf(toInsert))
                 }
 
                 val retrieved = db.findBySykmeldingId(sykmeldingId)
@@ -77,7 +76,7 @@ class SykmeldingDbTest :
                 }
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(entities)
+                    insertSykmeldingBatch(entities)
                 }
 
                 ids.forEachIndexed { index, id ->
@@ -88,73 +87,9 @@ class SykmeldingDbTest :
                 }
             }
 
-            it("should update existing entry when inserting with same sykmeldingId") {
-                val sykmeldingId = UUID.randomUUID()
-
-                db.transaction {
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(
-                            entity(
-                                sykmeldingId = sykmeldingId,
-                                orgnummer = "111111111",
-                                fnr = "12345678901"
-                            )
-                        )
-                    )
-                }
-                db.transaction {
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(
-                            entity(
-                                sykmeldingId = sykmeldingId,
-                                orgnummer = "111111111",
-                                fnr = "98765432109"
-                            )
-                        )
-                    )
-                }
-
-                val retrieved = db.findBySykmeldingId(sykmeldingId)
-                retrieved shouldNotBe null
-                retrieved!!.fnr shouldBe "98765432109"
-            }
-
-            it("should handle mixed inserts and updates in one batch") {
-                val existingId = UUID.randomUUID()
-                val newId = UUID.randomUUID()
-
-                db.transaction {
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(
-                            entity(
-                                sykmeldingId = existingId,
-                                fnr = "11111111111"
-                            )
-                        )
-                    )
-                }
-
-                db.transaction {
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(
-                            entity(sykmeldingId = existingId, fnr = "22222222222"),
-                            entity(sykmeldingId = newId, fnr = "33333333333")
-                        )
-                    )
-                }
-
-                val existingRow = db.findBySykmeldingId(existingId)
-                existingRow shouldNotBe null
-                existingRow!!.fnr shouldBe "22222222222"
-
-                val newRow = db.findBySykmeldingId(newId)
-                newRow shouldNotBe null
-                newRow!!.fnr shouldBe "33333333333"
-            }
-
             it("should do nothing when batch is empty") {
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(emptyList())
+                    insertSykmeldingBatch(emptyList())
                 }
             }
         }
@@ -173,7 +108,7 @@ class SykmeldingDbTest :
                 val sykmeldingId = UUID.randomUUID()
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
+                    insertSykmeldingBatch(
                         listOf(
                             entity(
                                 sykmeldingId = sykmeldingId,
@@ -198,31 +133,27 @@ class SykmeldingDbTest :
             }
 
             it("should revoke multiple sykmeldinger in one batch") {
-                val id1 = UUID.randomUUID()
-                val id2 = UUID.randomUUID()
-                val id3 = UUID.randomUUID()
+                val entity1 = entity(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 5))
+                val entity2 = entity(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 10), orgnummer = "111111111")
+                val entity3 = entity(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 15), orgnummer = "222222222")
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(
-                            entity(sykmeldingId = id1, tom = LocalDate.of(2025, 1, 5)),
-                            entity(sykmeldingId = id2, tom = LocalDate.of(2025, 1, 10)),
-                            entity(sykmeldingId = id3, tom = LocalDate.of(2025, 1, 15))
-                        )
+                    insertSykmeldingBatch(
+                        listOf(entity1, entity2, entity3)
                     )
                 }
 
                 val revokedDate = LocalDate.of(2025, 1, 12)
                 var affectedRows = 0
                 db.transaction {
-                    affectedRows = revokeSykmeldingBatch(listOf(id1, id2, id3), revokedDate)
+                    affectedRows = revokeSykmeldingBatch(listOf(entity1.sykmeldingId, entity2.sykmeldingId, entity3.sykmeldingId), revokedDate)
                 }
 
                 affectedRows shouldBe 3
 
-                db.findBySykmeldingId(id1)!!.revokedDate shouldBe revokedDate
-                db.findBySykmeldingId(id2)!!.revokedDate shouldBe revokedDate
-                db.findBySykmeldingId(id3)!!.revokedDate shouldBe revokedDate
+                db.findBySykmeldingId(entity1.sykmeldingId)!!.revokedDate shouldBe revokedDate
+                db.findBySykmeldingId(entity2.sykmeldingId)!!.revokedDate shouldBe revokedDate
+                db.findBySykmeldingId(entity3.sykmeldingId)!!.revokedDate shouldBe revokedDate
             }
 
             it("should return 0 when batch is empty") {
@@ -241,36 +172,6 @@ class SykmeldingDbTest :
             }
         }
 
-        describe("findSykmeldingIdsByFnrAndOrgnr") {
-            it("should return empty list when no matches exist") {
-                val result = db.findSykmeldingIdsByFnrAndOrgnr(listOf(Pair("00000000000", "000000000")))
-                result shouldBe emptyList()
-            }
-
-            it("Should find matching sykmeldingIds for given fnr and orgnr") {
-                val id1 = UUID.randomUUID()
-                val id2 = UUID.randomUUID()
-
-                db.transaction {
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(
-                            entity(sykmeldingId = id1, fnr = "12345678910", orgnummer = "999999999"),
-                            entity(sykmeldingId = id2, fnr = "12345678910", orgnummer = "999999999")
-                        )
-                    )
-                }
-
-                val result = db.findSykmeldingIdsByFnrAndOrgnr(listOf(Pair("12345678910", "999999999")))
-                result shouldContain id1
-                result shouldContain id2
-            }
-
-            it("Should return an empty list when empty list is provided") {
-                val result = db.findSykmeldingIdsByFnrAndOrgnr(emptyList())
-                result shouldBe emptyList()
-            }
-        }
-
         describe("mapping correctness") {
             it("should correctly map all fields from ResultSet") {
                 val sykmeldingId = UUID.randomUUID()
@@ -279,7 +180,7 @@ class SykmeldingDbTest :
                 val syketilfelleStart = LocalDate.of(2025, 2, 28)
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
+                    insertSykmeldingBatch(
                         listOf(
                             entity(
                                 sykmeldingId = sykmeldingId,
@@ -339,7 +240,7 @@ class SykmeldingDbTest :
                 shouldThrow = true
                 val exception = shouldThrow<SykmeldingDbException> {
                     dbWithSpy.transaction {
-                        insertOrUpdateSykmeldingBatch(listOf(entity(sykmeldingId = sykmeldingId)))
+                        insertSykmeldingBatch(listOf(entity(sykmeldingId = sykmeldingId)))
                     }
                 }
 
@@ -360,7 +261,7 @@ class SykmeldingDbTest :
 
                 // First insert a row that we'll try to revoke
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
+                    insertSykmeldingBatch(
                         listOf(
                             entity(
                                 sykmeldingId = existingId,
@@ -388,7 +289,7 @@ class SykmeldingDbTest :
                 shouldThrow = true
                 val exception = shouldThrow<SykmeldingDbException> {
                     dbWithSpy.transaction {
-                        insertOrUpdateSykmeldingBatch(listOf(entity(sykmeldingId = newId)))
+                        insertSykmeldingBatch(listOf(entity(sykmeldingId = newId)))
                         revokeSykmeldingBatch(listOf(existingId), LocalDate.of(2025, 1, 15))
                     }
                 }
@@ -402,15 +303,20 @@ class SykmeldingDbTest :
                 existingRow!!.revokedDate shouldBe null
             }
 
-            it("should commit both insert and revoke when transaction succeeds") {
-                val insertId = UUID.randomUUID()
+            it("should commit both insert, delete and revoke when transaction succeeds") {
+                val insertedEntity = entity(
+                    tom = LocalDate.of(2025, 1, 10),
+                    orgnummer = "111111111",
+                )
                 val revokeId = UUID.randomUUID()
+                val newId = UUID.randomUUID()
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
+                    insertSykmeldingBatch(
                         listOf(
                             entity(
                                 sykmeldingId = revokeId,
+                                orgnummer = "222222222",
                                 tom = LocalDate.of(2025, 1, 10),
                             )
                         )
@@ -418,13 +324,15 @@ class SykmeldingDbTest :
                 }
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(entity(sykmeldingId = insertId)))
+                    deleteAllByFnrAndOrgnr(listOf(insertedEntity.fnrToOrgnummerPair()))
+                    insertSykmeldingBatch(listOf(entity(orgnummer = "111111111", fnr = insertedEntity.fnr, sykmeldingId = newId)))
                     revokeSykmeldingBatch(listOf(revokeId), LocalDate.of(2025, 1, 15))
                 }
 
-                val insertedRow = db.findBySykmeldingId(insertId)
-                insertedRow shouldNotBe null
-
+                val existingSykmelding = db.findBySykmeldingId(insertedEntity.sykmeldingId)
+                existingSykmelding shouldBe null
+                val newSykmelding = db.findBySykmeldingId(newId)
+                newSykmelding shouldNotBe null
                 val revokedRow = db.findBySykmeldingId(revokeId)
                 revokedRow shouldNotBe null
                 revokedRow!!.revokedDate shouldBe LocalDate.of(2025, 1, 15)
@@ -434,115 +342,120 @@ class SykmeldingDbTest :
         describe("transaction - deleteAll") {
             it("should do nothing when deleting empty list") {
                 db.transaction {
-                    deleteAll(emptyList())
+                    deleteAllByFnrAndOrgnr(emptyList())
                 }
             }
 
-            it("should delete a single sykmelding by id") {
-                val sykmeldingId = UUID.randomUUID()
+            it("should delete a single sykmelding by fnr and orgnr") {
+                val entity = entity()
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(entity(sykmeldingId = sykmeldingId)))
+                    insertSykmeldingBatch(listOf(entity))
                 }
 
-                db.findBySykmeldingId(sykmeldingId) shouldNotBe null
+                db.findBySykmeldingId(entity.sykmeldingId) shouldNotBe null
 
                 db.transaction {
-                    deleteAll(listOf(sykmeldingId))
+                    deleteAllByFnrAndOrgnr(listOf(entity.fnrToOrgnummerPair()))
                 }
 
-                db.findBySykmeldingId(sykmeldingId) shouldBe null
+                db.findBySykmeldingId(entity.sykmeldingId) shouldBe null
             }
 
             it("should delete multiple sykmeldinger in one batch") {
-                val id1 = UUID.randomUUID()
-                val id2 = UUID.randomUUID()
-                val id3 = UUID.randomUUID()
+                val entity1 = entity()
+                val entity2 = entity()
+                val entity3 = entity()
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
+                    insertSykmeldingBatch(
                         listOf(
-                            entity(sykmeldingId = id1),
-                            entity(sykmeldingId = id2),
-                            entity(sykmeldingId = id3)
+                            entity1,
+                            entity2,
+                            entity3
                         )
                     )
                 }
 
-                db.findBySykmeldingId(id1) shouldNotBe null
-                db.findBySykmeldingId(id2) shouldNotBe null
-                db.findBySykmeldingId(id3) shouldNotBe null
+                db.findBySykmeldingId(entity1.sykmeldingId) shouldNotBe null
+                db.findBySykmeldingId(entity2.sykmeldingId) shouldNotBe null
+                db.findBySykmeldingId(entity3.sykmeldingId) shouldNotBe null
 
                 db.transaction {
-                    deleteAll(listOf(id1, id2, id3))
+                    deleteAllByFnrAndOrgnr(
+                        listOf(entity1, entity2, entity3)
+                            .map(SendtSykmeldingEntity::fnrToOrgnummerPair)
+                    )
                 }
 
-                db.findBySykmeldingId(id1) shouldBe null
-                db.findBySykmeldingId(id2) shouldBe null
-                db.findBySykmeldingId(id3) shouldBe null
+                db.findBySykmeldingId(entity1.sykmeldingId) shouldBe null
+                db.findBySykmeldingId(entity2.sykmeldingId) shouldBe null
+                db.findBySykmeldingId(entity3.sykmeldingId) shouldBe null
             }
 
             it("should only delete specified sykmeldinger, leaving others intact") {
-                val toDeleteId = UUID.randomUUID()
-                val toKeepId = UUID.randomUUID()
+                val toDelete = entity()
+                val toKeep = entity(
+                    fnr = "22222222222",
+                )
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
+                    insertSykmeldingBatch(
                         listOf(
-                            entity(sykmeldingId = toDeleteId, fnr = "11111111111"),
-                            entity(sykmeldingId = toKeepId, fnr = "22222222222")
+                            toDelete,
+                            toKeep
                         )
                     )
                 }
 
                 db.transaction {
-                    deleteAll(listOf(toDeleteId))
+                    deleteAllByFnrAndOrgnr(listOf(toDelete.fnrToOrgnummerPair()))
                 }
 
-                db.findBySykmeldingId(toDeleteId) shouldBe null
-                db.findBySykmeldingId(toKeepId) shouldNotBe null
-                db.findBySykmeldingId(toKeepId)!!.fnr shouldBe "22222222222"
+                db.findBySykmeldingId(toDelete.sykmeldingId) shouldBe null
+                db.findBySykmeldingId(toKeep.sykmeldingId) shouldNotBe null
+                db.findBySykmeldingId(toKeep.sykmeldingId)!!.fnr shouldBe "22222222222"
             }
 
             it("should not throw when deleting non-existent ids") {
-                val unknownId = UUID.randomUUID()
+                val unknownEntity = entity(sykmeldingId = UUID.randomUUID())
 
                 db.transaction {
-                    deleteAll(listOf(unknownId))
+                    deleteAllByFnrAndOrgnr(listOf(unknownEntity.fnrToOrgnummerPair()))
                 }
             }
 
             it("should delete and insert in same transaction") {
-                val existingId = UUID.randomUUID()
-                val newId = UUID.randomUUID()
+                val existing = entity(fnr = "22222222222")
+                val new = entity(fnr = "22222222222")
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(entity(sykmeldingId = existingId, fnr = "11111111111"))
+                    insertSykmeldingBatch(
+                        listOf(existing)
                     )
                 }
 
                 db.transaction {
-                    deleteAll(listOf(existingId))
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(entity(sykmeldingId = newId, fnr = "22222222222"))
+                    deleteAllByFnrAndOrgnr(listOf(existing.fnrToOrgnummerPair()))
+                    insertSykmeldingBatch(
+                        listOf(new)
                     )
                 }
 
-                db.findBySykmeldingId(existingId) shouldBe null
-                db.findBySykmeldingId(newId) shouldNotBe null
-                db.findBySykmeldingId(newId)!!.fnr shouldBe "22222222222"
+                db.findBySykmeldingId(existing.sykmeldingId) shouldBe null
+                db.findBySykmeldingId(new.sykmeldingId) shouldNotBe null
+                db.findBySykmeldingId(new.sykmeldingId)!!.fnr shouldBe "22222222222"
             }
 
             it("should rollback delete when transaction fails") {
                 val spyDb = spyk(testDb)
                 val dbWithSpy = SykmeldingDb(spyDb)
 
-                val existingId = UUID.randomUUID()
+                val existing = entity()
 
                 db.transaction {
-                    insertOrUpdateSykmeldingBatch(
-                        listOf(entity(sykmeldingId = existingId))
+                    insertSykmeldingBatch(
+                        listOf(existing)
                     )
                 }
 
@@ -564,13 +477,13 @@ class SykmeldingDbTest :
                 shouldThrow = true
                 val exception = shouldThrow<SykmeldingDbException> {
                     dbWithSpy.transaction {
-                        deleteAll(listOf(existingId))
+                        deleteAllByFnrAndOrgnr(listOf(existing.fnrToOrgnummerPair()))
                     }
                 }
 
                 exception.message shouldContain "Transaction failed"
 
-                db.findBySykmeldingId(existingId) shouldNotBe null
+                db.findBySykmeldingId(existing.sykmeldingId) shouldNotBe null
             }
         }
     })

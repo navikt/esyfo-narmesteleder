@@ -3,11 +3,12 @@ package no.nav.syfo.sykmelding.db
 import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.also
 
 class FakeSykmeldingDb : ISykmeldingDb {
     private val store = CopyOnWriteArrayList<SendtSykmeldingEntity>()
 
-    private fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity) {
+    private fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity): Int {
         val existingIndex = store.indexOfFirst { it.sykmeldingId == sykmeldingEntity.sykmeldingId }
         if (existingIndex >= 0) {
             val existing = store[existingIndex]
@@ -20,6 +21,7 @@ class FakeSykmeldingDb : ISykmeldingDb {
         } else {
             store += sykmeldingEntity
         }
+        return 1
     }
 
     private fun revokeSykmelding(sykmeldingId: UUID, revokedDate: LocalDate): Int {
@@ -32,23 +34,24 @@ class FakeSykmeldingDb : ISykmeldingDb {
     }
 
     private inner class FakeTransaction : ISykmeldingTransaction {
-        override fun insertOrUpdateSykmeldingBatch(entities: List<SendtSykmeldingEntity>) {
-            entities.forEach { insertOrUpdateSykmelding(it) }
+        override fun insertSykmeldingBatch(entities: List<SendtSykmeldingEntity>): Int {
+            var removedCount = 0
+            entities.forEach { insertOrUpdateSykmelding(it).also { removedCount += it } }
+            return removedCount
         }
 
         override fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int = sykmeldingIds.sumOf { revokeSykmelding(it, revokedDate) }
 
-        override fun deleteAll(ids: List<UUID>) {
-            ids.forEach { id -> store.removeIf { it.sykmeldingId == id } }
+        override fun deleteAllByFnrAndOrgnr(toDelete: List<Pair<String, String>>): Int {
+            var removedCount = 0
+            toDelete.forEach { (fnr, orgnummer) -> store.removeIf { it.fnr == fnr && it.orgnummer == orgnummer }.also { if (it) removedCount += 1 } }
+            return removedCount
         }
     }
 
     override suspend fun transaction(block: suspend ISykmeldingTransaction.() -> Unit) {
         FakeTransaction().block()
     }
-
-    override suspend fun findSykmeldingIdsByFnrAndOrgnr(map: List<Pair<String, String>>): List<UUID> = store.filter { entity -> map.any { (fnr, orgnr) -> entity.fnr == fnr && entity.orgnummer == orgnr } }
-        .map { it.sykmeldingId }
 
     override suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity? = store.find { it.sykmeldingId == sykmeldingId }
 

@@ -16,3 +16,5 @@ data class SendtSykmeldingEntity(
     val created: Instant? = null,
     val updated: Instant = Instant.now(),
 )
+
+fun SendtSykmeldingEntity.fnrToOrgnummerPair() = Pair(this.fnr, this.orgnummer)

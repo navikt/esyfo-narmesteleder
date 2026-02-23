@@ -153,6 +153,6 @@ spec:
     - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
       value: "16"
     - name: BEHOV_MAINTENANCE_TASK_ENABLED
-      value: "true"
+      value: "false"
   envFrom:
     - secret: altinn-subscription-key

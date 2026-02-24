@@ -197,7 +197,7 @@ class SykmeldingServiceTest :
                     )
                 )
 
-                // Only the second message should be inserted (same fnr+orgnummer, higher offset)
+                // Only the second message should be inserted (same fnr+orgnummer, more recent tom date)
                 val stored = sykmeldingDb.findAll()
                 stored.size shouldBe 1
                 stored.first().sykmeldingId shouldBe id2

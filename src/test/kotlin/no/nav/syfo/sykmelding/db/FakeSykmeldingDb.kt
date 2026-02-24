@@ -20,7 +20,9 @@ class FakeSykmeldingDb : ISykmeldingDb {
                     updated = entity.updated,
                     revokedDate = null
                 )
+                return 1
             }
+            return 0
         } else {
             store += entity
         }

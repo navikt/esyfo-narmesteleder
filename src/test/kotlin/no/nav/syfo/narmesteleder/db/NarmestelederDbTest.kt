@@ -421,7 +421,7 @@ class NarmestelederDbTest :
                 val expiredTom = LocalDate.now().minusDays(10)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
+                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
                 }
 
                 val behov = db.insertNlBehov(
@@ -452,7 +452,7 @@ class NarmestelederDbTest :
                 val activeTom = LocalDate.now().plusDays(30)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = activeTom, orgnummer = orgnummer)))
+                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sykmeldingEntity(fnr = fnr, tom = activeTom, orgnummer = orgnummer)))
                 }
 
                 val behov = db.insertNlBehov(
@@ -483,7 +483,7 @@ class NarmestelederDbTest :
                 val expiredTom = LocalDate.now().minusDays(10)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
+                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
                 }
 
                 val behovCreated = db.insertNlBehov(
@@ -523,7 +523,7 @@ class NarmestelederDbTest :
                 val expiredTom = LocalDate.now().minusDays(10)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(
+                    batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
                             sykmeldingEntity(fnr = fnr1, tom = expiredTom, orgnummer = orgnummer1),
                             sykmeldingEntity(fnr = fnr2, tom = expiredTom, orgnummer = orgnummer2)
@@ -557,7 +557,7 @@ class NarmestelederDbTest :
                 val expiredTom = LocalDate.now().minusDays(10)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
+                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sykmeldingEntity(fnr = fnr, tom = expiredTom, orgnummer = orgnummer)))
                 }
 
                 db.insertNlBehov(
@@ -583,7 +583,7 @@ class NarmestelederDbTest :
                 val expiredTom = LocalDate.now().minusDays(17)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnrWithSykmelding, tom = expiredTom, orgnummer = orgnummer)))
+                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sykmeldingEntity(fnr = fnrWithSykmelding, tom = expiredTom, orgnummer = orgnummer)))
                 }
 
                 val behovWithSykmelding = db.insertNlBehov(
@@ -614,7 +614,7 @@ class NarmestelederDbTest :
                 val cutoffInstant = cutoffDate.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = cutoffDate, orgnummer = orgnummer)))
+                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sykmeldingEntity(fnr = fnr, tom = cutoffDate, orgnummer = orgnummer)))
                 }
 
                 val behov = db.insertNlBehov(
@@ -647,7 +647,7 @@ class NarmestelederDbTest :
                 val cutoffInstant = cutoffDate.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
 
                 sykmeldingDb.transaction {
-                    insertOrUpdateSykmeldingBatch(listOf(sykmeldingEntity(fnr = fnr, tom = tomDate, orgnummer = orgnummer)))
+                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sykmeldingEntity(fnr = fnr, tom = tomDate, orgnummer = orgnummer)))
                 }
 
                 val behov = db.insertNlBehov(

@@ -4,7 +4,9 @@ import defaultSendtSykmeldingMessage
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.syfo.sykmelding.db.FakeSykmeldingDb
+import no.nav.syfo.TestDB
+import no.nav.syfo.findAll
+import no.nav.syfo.sykmelding.db.SykmeldingDb
 import no.nav.syfo.sykmelding.kafka.SykmeldingRecord
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import java.time.LocalDate
@@ -12,12 +14,12 @@ import java.util.UUID
 
 class SykmeldingServiceTest :
     DescribeSpec({
-
-        val sykmeldingDb = FakeSykmeldingDb()
+        val testDb = TestDB.database
+        val sykmeldingDb = SykmeldingDb(testDb)
         val service = SykmeldingService(sykmeldingDb)
 
         beforeEach {
-            sykmeldingDb.clear()
+            TestDB.clearSendtSykmeldingData()
         }
 
         describe("processBatch - basic insert behavior") {
@@ -161,6 +163,44 @@ class SykmeldingServiceTest :
             it("should do nothing when batch is empty") {
                 service.processBatch(emptyList())
                 sykmeldingDb.findAll().size shouldBe 0
+            }
+
+            it("Should respect unique constraint on fnr+orgnummer") {
+                val today = LocalDate.now()
+                val id1 = UUID.randomUUID()
+                val id2 = UUID.randomUUID()
+                val fnr = "12345678901"
+                val orgnummer = "999999999"
+
+                val message1 = defaultSendtSykmeldingMessage(
+                    sykmeldingId = id1.toString(),
+                    fnr = fnr,
+                    orgnummer = orgnummer,
+                    sykmeldingsperioder = listOf(
+                        SykmeldingsperiodeAGDTO(fom = today.minusDays(30), tom = today.minusDays(20))
+                    )
+                )
+
+                val message2 = defaultSendtSykmeldingMessage(
+                    sykmeldingId = id2.toString(),
+                    fnr = fnr,
+                    orgnummer = orgnummer,
+                    sykmeldingsperioder = listOf(
+                        SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today)
+                    )
+                )
+
+                service.processBatch(
+                    listOf(
+                        SykmeldingRecord(offset = 0, sykmeldingId = id1, message = message1),
+                        SykmeldingRecord(offset = 1, sykmeldingId = id2, message = message2)
+                    )
+                )
+
+                // Only the second message should be inserted (same fnr+orgnummer, more recent tom date)
+                val stored = sykmeldingDb.findAll()
+                stored.size shouldBe 1
+                stored.first().sykmeldingId shouldBe id2
             }
         }
 
@@ -373,63 +413,62 @@ class SykmeldingServiceTest :
 
             it("should handle mixed inserts and revokes for different sykmeldingIds") {
                 val today = LocalDate.now()
-                val id1 = UUID.randomUUID()
+                val revokeId = UUID.randomUUID()
                 val id2 = UUID.randomUUID()
                 val id3 = UUID.randomUUID()
 
-                // First insert all
-                service.processBatch(
-                    listOf(
-                        SykmeldingRecord(
-                            offset = 0,
-                            sykmeldingId = id1,
-                            message = defaultSendtSykmeldingMessage(
-                                sykmeldingId = id1.toString(),
-                                fnr = "11111111111",
-                                sykmeldingsperioder = listOf(
-                                    SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
-                                )
-                            )
-                        ),
-                        SykmeldingRecord(
-                            offset = 1,
-                            sykmeldingId = id2,
-                            message = defaultSendtSykmeldingMessage(
-                                sykmeldingId = id2.toString(),
-                                fnr = "22222222222",
-                                sykmeldingsperioder = listOf(
-                                    SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
-                                )
-                            )
-                        ),
-                        SykmeldingRecord(
-                            offset = 2,
-                            sykmeldingId = id3,
-                            message = defaultSendtSykmeldingMessage(
-                                sykmeldingId = id3.toString(),
-                                fnr = "33333333333",
-                                sykmeldingsperioder = listOf(
-                                    SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
-                                )
-                            )
+                val record1 = SykmeldingRecord(
+                    offset = 0,
+                    sykmeldingId = revokeId,
+                    message = defaultSendtSykmeldingMessage(
+                        sykmeldingId = revokeId.toString(),
+                        fnr = "11111111111",
+                        sykmeldingsperioder = listOf(
+                            SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
+                        )
+                    )
+                )
+                val record2 = SykmeldingRecord(
+                    offset = 1,
+                    sykmeldingId = id2,
+                    message = defaultSendtSykmeldingMessage(
+                        sykmeldingId = id2.toString(),
+                        fnr = "22222222222",
+                        sykmeldingsperioder = listOf(
+                            SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
+                        )
+                    )
+                )
+                val record3 = SykmeldingRecord(
+                    offset = 2,
+                    sykmeldingId = id3,
+                    message = defaultSendtSykmeldingMessage(
+                        sykmeldingId = id3.toString(),
+                        fnr = "33333333333",
+                        sykmeldingsperioder = listOf(
+                            SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
                         )
                     )
                 )
 
+                // First insert all
+                service.processBatch(
+                    listOf(
+                        record1,
+                        record2,
+                        record3
+                    )
+                )
+
+                val unchangedId2Entity = sykmeldingDb.findBySykmeldingId(id2)
                 // Now batch with: revoke id1, update id2, leave id3 alone
                 service.processBatch(
                     listOf(
-                        SykmeldingRecord(offset = 3, sykmeldingId = id1, message = null),
+                        SykmeldingRecord(offset = 3, sykmeldingId = revokeId, message = null),
                         SykmeldingRecord(
                             offset = 4,
                             sykmeldingId = id2,
-                            message = defaultSendtSykmeldingMessage(
-                                sykmeldingId = id2.toString(),
-                                fnr = "44444444444",
-                                sykmeldingsperioder = listOf(
-                                    SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
-                                )
-                            )
+                            message = record2.message!!.copy()
                         )
                     )
                 )
@@ -438,12 +477,12 @@ class SykmeldingServiceTest :
                 stored.size shouldBe 3
 
                 // id1 should be revoked
-                sykmeldingDb.findBySykmeldingId(id1)!!.revokedDate shouldBe LocalDate.now()
+                sykmeldingDb.findBySykmeldingId(revokeId)!!.revokedDate shouldBe LocalDate.now()
 
-                // id2 should be updated
-                sykmeldingDb.findBySykmeldingId(id2)!!.fnr shouldBe "44444444444"
-                sykmeldingDb.findBySykmeldingId(id2)!!.revokedDate shouldBe null
-
+                // id2 should be re-created
+                val recreatedId2Entity = sykmeldingDb.findBySykmeldingId(id2)
+                recreatedId2Entity!!.fnr shouldBe "22222222222"
+                unchangedId2Entity!!.updated shouldNotBe recreatedId2Entity.updated
                 // id3 should be unchanged
                 sykmeldingDb.findBySykmeldingId(id3)!!.fnr shouldBe "33333333333"
                 sykmeldingDb.findBySykmeldingId(id3)!!.revokedDate shouldBe null
@@ -502,72 +541,6 @@ class SykmeldingServiceTest :
                 // New sykmelding should be inserted
                 sykmeldingDb.findBySykmeldingId(newId) shouldNotBe null
                 sykmeldingDb.findBySykmeldingId(newId)!!.fnr shouldBe fnr
-            }
-
-            it("should delete multiple existing sykmeldinger for same fnr and orgnummer") {
-                val today = LocalDate.now()
-                val existingId1 = UUID.randomUUID()
-                val existingId2 = UUID.randomUUID()
-                val newId = UUID.randomUUID()
-                val fnr = "12345678901"
-                val orgnummer = "999999999"
-
-                // First insert two existing sykmeldinger for same fnr/orgnummer
-                service.processBatch(
-                    listOf(
-                        SykmeldingRecord(
-                            offset = 0,
-                            sykmeldingId = existingId1,
-                            message = defaultSendtSykmeldingMessage(
-                                sykmeldingId = existingId1.toString(),
-                                fnr = fnr,
-                                orgnummer = orgnummer,
-                                sykmeldingsperioder = listOf(
-                                    SykmeldingsperiodeAGDTO(fom = today.minusDays(60), tom = today.minusDays(50))
-                                )
-                            )
-                        ),
-                        SykmeldingRecord(
-                            offset = 1,
-                            sykmeldingId = existingId2,
-                            message = defaultSendtSykmeldingMessage(
-                                sykmeldingId = existingId2.toString(),
-                                fnr = fnr,
-                                orgnummer = orgnummer,
-                                sykmeldingsperioder = listOf(
-                                    SykmeldingsperiodeAGDTO(fom = today.minusDays(40), tom = today.minusDays(30))
-                                )
-                            )
-                        )
-                    )
-                )
-
-                sykmeldingDb.findBySykmeldingId(existingId1) shouldNotBe null
-                sykmeldingDb.findBySykmeldingId(existingId2) shouldNotBe null
-
-                // Insert new sykmelding for same fnr and orgnummer
-                service.processBatch(
-                    listOf(
-                        SykmeldingRecord(
-                            offset = 2,
-                            sykmeldingId = newId,
-                            message = defaultSendtSykmeldingMessage(
-                                sykmeldingId = newId.toString(),
-                                fnr = fnr,
-                                orgnummer = orgnummer,
-                                sykmeldingsperioder = listOf(
-                                    SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today)
-                                )
-                            )
-                        )
-                    )
-                )
-
-                // Both old sykmeldinger should be deleted
-                sykmeldingDb.findBySykmeldingId(existingId1) shouldBe null
-                sykmeldingDb.findBySykmeldingId(existingId2) shouldBe null
-                // New sykmelding should be inserted
-                sykmeldingDb.findBySykmeldingId(newId) shouldNotBe null
             }
 
             it("should not delete sykmeldinger for different orgnummer") {

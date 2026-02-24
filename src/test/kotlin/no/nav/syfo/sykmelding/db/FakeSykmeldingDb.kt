@@ -7,19 +7,24 @@ import java.util.concurrent.CopyOnWriteArrayList
 class FakeSykmeldingDb : ISykmeldingDb {
     private val store = CopyOnWriteArrayList<SendtSykmeldingEntity>()
 
-    private fun insertOrUpdateSykmelding(sykmeldingEntity: SendtSykmeldingEntity) {
-        val existingIndex = store.indexOfFirst { it.sykmeldingId == sykmeldingEntity.sykmeldingId }
+    private fun upsertSykmelding(entity: SendtSykmeldingEntity): Int {
+        val existingIndex = store.indexOfFirst { it.fnr == entity.fnr && it.orgnummer == entity.orgnummer }
         if (existingIndex >= 0) {
             val existing = store[existingIndex]
+            if (entity.tom < existing.tom) return 0
+
             store[existingIndex] = existing.copy(
-                fnr = sykmeldingEntity.fnr,
-                fom = sykmeldingEntity.fom,
-                tom = sykmeldingEntity.tom,
-                updated = sykmeldingEntity.updated
+                sykmeldingId = entity.sykmeldingId,
+                syketilfelleStartDato = entity.syketilfelleStartDato,
+                fom = entity.fom,
+                tom = entity.tom,
+                updated = entity.updated,
+                revokedDate = null
             )
         } else {
-            store += sykmeldingEntity
+            store += entity
         }
+        return 1
     }
 
     private fun revokeSykmelding(sykmeldingId: UUID, revokedDate: LocalDate): Int {
@@ -32,23 +37,26 @@ class FakeSykmeldingDb : ISykmeldingDb {
     }
 
     private inner class FakeTransaction : ISykmeldingTransaction {
-        override fun insertOrUpdateSykmeldingBatch(entities: List<SendtSykmeldingEntity>) {
-            entities.forEach { insertOrUpdateSykmelding(it) }
+        override fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>): Int {
+            var count = 0
+            entities.forEach { upsertSykmelding(it).also { count += it } }
+            return count
         }
 
-        override fun revokeSykmeldingBatch(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int = sykmeldingIds.sumOf { revokeSykmelding(it, revokedDate) }
-
-        override fun deleteAll(ids: List<UUID>) {
-            ids.forEach { id -> store.removeIf { it.sykmeldingId == id } }
+        override fun batchRevokeSykmelding(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int = sykmeldingIds.sumOf { revokeSykmelding(it, revokedDate) }
+        override fun batchDeleteAllBySykmeldingIds(sykmeldingIds: List<UUID>): Int {
+            var count = 0
+            sykmeldingIds.forEach { id ->
+                val removed = store.removeIf { it.sykmeldingId == id }
+                if (removed) count++
+            }
+            return count
         }
     }
 
     override suspend fun transaction(block: suspend ISykmeldingTransaction.() -> Unit) {
         FakeTransaction().block()
     }
-
-    override suspend fun findSykmeldingIdsByFnrAndOrgnr(map: List<Pair<String, String>>): List<UUID> = store.filter { entity -> map.any { (fnr, orgnr) -> entity.fnr == fnr && entity.orgnummer == orgnr } }
-        .map { it.sykmeldingId }
 
     override suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity? = store.find { it.sykmeldingId == sykmeldingId }
 

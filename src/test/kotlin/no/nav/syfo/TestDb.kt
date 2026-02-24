@@ -3,6 +3,9 @@ package no.nav.syfo
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
+import no.nav.syfo.sykmelding.db.SykmeldingDb
+import no.nav.syfo.sykmelding.db.toSendtSykmeldingEntity
 import org.flywaydb.core.Flyway
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.PostgreSQLContainer
@@ -108,4 +111,21 @@ class TestDB private constructor() {
             it.commit()
         }
     }
+}
+
+fun SykmeldingDb.findAll(): List<SendtSykmeldingEntity> = TestDB.database.connection.use { connection ->
+    connection
+        .prepareStatement(
+            """
+            SELECT * 
+            FROM sendt_sykmelding
+            """.trimIndent()
+        ).use { preparedStatement ->
+            val resultSet = preparedStatement.executeQuery()
+            buildList {
+                while (resultSet.next()) {
+                    add(resultSet.toSendtSykmeldingEntity())
+                }
+            }
+        }
 }

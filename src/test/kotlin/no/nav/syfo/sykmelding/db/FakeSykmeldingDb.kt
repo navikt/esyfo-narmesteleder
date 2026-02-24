@@ -11,16 +11,16 @@ class FakeSykmeldingDb : ISykmeldingDb {
         val existingIndex = store.indexOfFirst { it.fnr == entity.fnr && it.orgnummer == entity.orgnummer }
         if (existingIndex >= 0) {
             val existing = store[existingIndex]
-            if (entity.tom >= existing.tom) {
-                store[existingIndex] = existing.copy(
-                    sykmeldingId = entity.sykmeldingId,
-                    syketilfelleStartDato = entity.syketilfelleStartDato,
-                    fom = entity.fom,
-                    tom = entity.tom,
-                    updated = entity.updated,
-                    revokedDate = null
-                )
-            }
+            if (entity.tom < existing.tom) return 0
+
+            store[existingIndex] = existing.copy(
+                sykmeldingId = entity.sykmeldingId,
+                syketilfelleStartDato = entity.syketilfelleStartDato,
+                fom = entity.fom,
+                tom = entity.tom,
+                updated = entity.updated,
+                revokedDate = null
+            )
         } else {
             store += entity
         }

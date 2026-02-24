@@ -17,7 +17,8 @@ class FakeSykmeldingDb : ISykmeldingDb {
                     syketilfelleStartDato = entity.syketilfelleStartDato,
                     fom = entity.fom,
                     tom = entity.tom,
-                    updated = entity.updated
+                    updated = entity.updated,
+                    revokedDate = null
                 )
             }
         } else {

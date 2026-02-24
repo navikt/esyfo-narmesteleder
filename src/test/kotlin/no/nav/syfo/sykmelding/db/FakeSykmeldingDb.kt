@@ -3,7 +3,6 @@ package no.nav.syfo.sykmelding.db
 import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.also
 
 class FakeSykmeldingDb : ISykmeldingDb {
     private val store = CopyOnWriteArrayList<SendtSykmeldingEntity>()

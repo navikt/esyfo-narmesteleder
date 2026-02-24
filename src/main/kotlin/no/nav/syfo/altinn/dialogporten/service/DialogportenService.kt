@@ -82,7 +82,6 @@ class DialogportenService(
             for (behov in behovToSend) {
                 sendToDialogporten(behov)
             }
-            delay(5000)
         } while (behovToSend.size >= BEHOV_BY_STATUS_LIMIT)
     }
 

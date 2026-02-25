@@ -124,7 +124,7 @@ class NarmestelederService(
             behovStatus = behovStatus,
         )
         val insertedEntity = nlDb.insertNlBehov(entity).also {
-            logger.info("Inserted NarmestelederBehovEntity with id: $it")
+            logger.info("Inserted NarmestelederBehovEntity with id: ${it.id}")
         }
         if (!BehovStatus.errorStatusList().contains(entity.behovStatus)) {
             dialogportenService.sendToDialogporten(insertedEntity)

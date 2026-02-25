@@ -239,6 +239,7 @@ private fun servicesModule() = module {
         )
     }
     single { PdlService(get(), get()) }
+
     single { AltinnTilgangerService(get()) }
     single { LeaderElection(get(), env().otherProperties.electorPath) }
     single {

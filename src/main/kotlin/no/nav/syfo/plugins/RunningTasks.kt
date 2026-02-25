@@ -3,6 +3,7 @@ package no.nav.syfo.plugins
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStarted
 import io.ktor.server.application.ApplicationStopping
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.kafka.consumerProperties
@@ -31,6 +32,8 @@ fun Application.configureKafkaConsumers() {
     }
     logger.info("Configuring Kafka consumers")
 
+    val kafkaDispatcher = Dispatchers.IO.limitedParallelism(3)
+
     val leesahConsumer = LeesahNLKafkaConsumer(
         handler = nlLeesahHandler,
         jacksonMapper = jacksonMapper(),
@@ -43,7 +46,7 @@ fun Application.configureKafkaConsumers() {
             StringDeserializer(),
             StringDeserializer(),
         ),
-        scope = this,
+        dispatcher = kafkaDispatcher,
     ).apply {
         commitOnAllErrors = environment.kafka.commitOnAllErrors
     }
@@ -60,7 +63,7 @@ fun Application.configureKafkaConsumers() {
             StringDeserializer(),
             StringDeserializer(),
         ),
-        scope = this
+        dispatcher = kafkaDispatcher,
     )
 
     val persistSendtSykmeldingConsumer = PersistSendtSykmeldingConsumer(
@@ -86,7 +89,7 @@ fun Application.configureKafkaConsumers() {
             StringDeserializer(),
             StringDeserializer(),
         ),
-        scope = this,
+        dispatcher = kafkaDispatcher,
         env = environment.otherProperties
     )
 

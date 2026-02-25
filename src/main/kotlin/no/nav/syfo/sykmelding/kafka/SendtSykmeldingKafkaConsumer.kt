@@ -2,9 +2,9 @@ package no.nav.syfo.sykmelding.kafka
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -24,13 +24,13 @@ class SendtSykmeldingKafkaConsumer(
     private val handler: SendtSykmeldingHandler,
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumer: KafkaConsumer<String, String>,
-    private val scope: CoroutineScope,
+    private val dispatcher: CoroutineDispatcher,
 ) : KafkaListener {
     private lateinit var job: Job
 
     override fun listen() {
         logger.info("Starting $SENDT_SYKMELDING_TOPIC consumer")
-        job = scope.launch(Dispatchers.IO + CoroutineName("sendt-sykmelding-consumer")) {
+        job = CoroutineScope(dispatcher + CoroutineName("sendt-sykmelding-consumer")).launch {
             kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
             while (isActive) {
                 try {

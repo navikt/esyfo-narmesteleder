@@ -3,9 +3,9 @@ package no.nav.syfo.narmesteleder.kafka
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -29,7 +29,7 @@ class LeesahNLKafkaConsumer(
     private val kafkaConsumer: KafkaConsumer<String, String>,
     private val jacksonMapper: ObjectMapper,
     private val handler: NlBehovLeesahHandler,
-    private val scope: CoroutineScope,
+    private val dispatcher: CoroutineDispatcher,
 ) : KafkaListener {
     private lateinit var job: Job
     private val processed = mutableMapOf<TopicPartition, Long>()
@@ -37,7 +37,7 @@ class LeesahNLKafkaConsumer(
 
     override fun listen() {
         logger.info("Starting leesah consumer")
-        job = scope.launch(Dispatchers.IO + CoroutineName("leesah-consumer")) {
+        job = CoroutineScope(dispatcher + CoroutineName("leesah-consumer")).launch {
             while (isActive) {
                 try {
                     kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))

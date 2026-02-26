@@ -49,9 +49,11 @@ class PdlService(
     suspend fun getPersonOrThrowApiErrorWithValkey(fnr: String): Person {
         pdlCache.getPerson(fnr).let { cachedPerson ->
             // TODO remove logs after test
-            logger.info("Found pdl cache hit")
             if (cachedPerson != null) {
+                logger.info("Found pdl cache hit")
                 return cachedPerson
+            } else {
+                logger.info("Pdl cache miss")
             }
         }
         return try {

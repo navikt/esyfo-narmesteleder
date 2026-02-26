@@ -5,7 +5,7 @@ docker-compose \
   -f docker-compose.yml \
   -f docker-compose.kafka.yml \
   up \
-  db authserver texas broker kafka-ui \
+  db authserver texas broker kafka-ui valkey \
   -d
 '''
 

@@ -650,6 +650,7 @@ components:
         * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
         * `MISSING_REQUIRED_PARAMETER`: A required parameter is missing from the request.
         * `ORGANIZATION_NOT_FOUND`: Failed to lookup the organization by orgnumber.
+        * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
       enum:
         - AUTHENTICATION_ERROR
         - AUTHORIZATION_ERROR
@@ -668,6 +669,7 @@ components:
         - NO_ACTIVE_SICK_LEAVE
         - MISSING_REQUIRED_PARAMETER
         - ORGANIZATION_NOT_FOUND
+        - UPSTREAM_SERVICE_UNAVAILABLE
     ApiError:
       type: object
       description: Standard error payload.

@@ -1,0 +1,42 @@
+meta {
+  name: namecheck
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrlEkstern}}/api/v1/person/namecheck
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "employeeIdentificationNumber": "21517519127",
+    "lastName": "Baumbach"
+  }
+  
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const http = require("axios");
+  
+  if (bru.getEnvName() === "nl_vars_local") {
+    if (!bru.hasEnvVar("token")) {
+      throw new Error("Kjør request 'mock maskinporten token' først for å teste lokalt");
+    }
+  } else {
+    const systembrukerOrgnr = bru.getEnvVar("systemKundeOrgnr");
+    const tokenrespons = await http.get("https://esyfo-token.intern.dev.nav.no/systembruker/" + systembrukerOrgnr + "?scope=nav%3Asyfo%2Fnarmesteleder%2Flps");
+    req.setHeader("Authorization", "Bearer "+ tokenrespons.data);
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

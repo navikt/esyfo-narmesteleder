@@ -35,10 +35,28 @@ class PdlService(
 //                return cachedPerson
 //            }
 //        }
-//        COUNT_CACHE_MISS_DINE_SYKMELDTE.increment()
         return try {
             val person: Person = getPersonFor(fnr)
 //            pdlCache.putPerson(fnr, person)
+            person
+        } catch (e: PdlResourceNotFoundException) {
+            throw ApiErrorException.BadRequestException("Fant ikke person i PDL", e)
+        } catch (e: PdlRequestException) {
+            throw ApiErrorException.InternalServerErrorException("Kunne ikke hente person fra PDL", e)
+        }
+    }
+
+    suspend fun getPersonOrThrowApiErrorWithValkey(fnr: String): Person {
+        pdlCache.getPerson(fnr).let { cachedPerson ->
+            // TODO remove logs after test
+            logger.info("Found pdl cache hit")
+            if (cachedPerson != null) {
+                return cachedPerson
+            }
+        }
+        return try {
+            val person: Person = getPersonFor(fnr)
+            pdlCache.putPerson(fnr, person)
             person
         } catch (e: PdlResourceNotFoundException) {
             throw ApiErrorException.BadRequestException("Fant ikke person i PDL", e)

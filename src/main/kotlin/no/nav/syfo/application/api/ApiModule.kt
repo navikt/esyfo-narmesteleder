@@ -14,7 +14,6 @@ import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
-import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -28,7 +27,6 @@ fun Application.configureRouting() {
     val validationService by inject<ValidationService>()
     val linemanagerRequirementRESTHandler by inject<LinemanagerRequirementRESTHandler>()
     val altinnTokenProvider by inject<AltinnTokenProvider>()
-    val pdlService by inject<PdlService>()
 
     installCallId()
     installContentNegotiation()
@@ -37,7 +35,7 @@ fun Application.configureRouting() {
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
-        registerApiV1(narmestelederKafkaService, texasHttpClient, validationService, linemanagerRequirementRESTHandler, pdlService)
+        registerApiV1(narmestelederKafkaService, texasHttpClient, validationService, linemanagerRequirementRESTHandler)
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")

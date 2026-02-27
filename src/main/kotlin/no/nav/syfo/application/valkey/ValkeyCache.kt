@@ -5,6 +5,7 @@ import io.valkey.DefaultJedisClientConfig
 import io.valkey.HostAndPort
 import io.valkey.JedisPool
 import io.valkey.JedisPoolConfig
+import io.valkey.exceptions.JedisConnectionException
 import no.nav.syfo.util.logger
 
 class ValkeyCache(
@@ -25,28 +26,26 @@ class ValkeyCache(
 
     fun <T> get(key: String, type: Class<T>): T? {
         try {
-            val jedis = jedisPool.resource
-            val json = jedis.get(key)
-            return json?.let {
-                jacksonObjectMapper().readValue(it, type)
+            jedisPool.resource.use { jedis ->
+                val json = jedis.get(key)
+                return json?.let {
+                    jacksonObjectMapper().readValue(it, type)
+                }
             }
-        } catch (e: Exception) {
-            logger.error("Failed to get from cache", e)
+        } catch (e: JedisConnectionException) {
+            logger.warn("Got connection error when fetching from valkey! Continuing without cached value", e)
             return null
-        } finally {
-            jedisPool.resource.close()
         }
     }
 
     fun <T> put(key: String, value: T, ttlSeconds: Long = CACHE_TTL_SECONDS) {
         try {
-            val jedis = jedisPool.resource
-            val json = jacksonObjectMapper().writeValueAsString(value)
-            jedis.setex(key, ttlSeconds, json)
-        } catch (e: Exception) {
-            logger.error("Failed to put in cache", e)
-        } finally {
-            jedisPool.resource.close()
+            jedisPool.resource.use { jedis ->
+                val json = jacksonObjectMapper().writeValueAsString(value)
+                jedis.setex(key, ttlSeconds, json)
+            }
+        } catch (e: JedisConnectionException) {
+            logger.warn("Got connection error when storing in valkey! Continue without caching", e)
         }
     }
 

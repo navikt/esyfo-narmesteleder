@@ -16,7 +16,7 @@ fun Route.registerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     texasHttpClient: TexasHttpClient,
     validationService: ValidationService,
-    linemanagerRequirementRESTHandler: LinemanagerRequirementRESTHandler
+    linemanagerRequirementRESTHandler: LinemanagerRequirementRESTHandler,
 ) {
     route(API_V1_PATH) {
         install(AddTokenIssuerPlugin)

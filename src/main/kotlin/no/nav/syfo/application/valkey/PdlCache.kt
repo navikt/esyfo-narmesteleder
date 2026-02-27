@@ -9,7 +9,9 @@ class PdlCache(
     fun getPerson(fnr: String): Person? {
         val person = valkeyCache.get("$PDL_CACHE_KEY_PREFIX-$fnr", Person::class.java)
         if (person != null) {
-            COUNT_CACHE_HIT_DINE_SYKMELDTE.increment()
+            COUNT_CACHE_HIT_PDL_GET_PERSON.increment()
+        } else {
+            COUNT_CACHE_MISS_PDL_GET_PERSON.increment()
         }
         return person
     }

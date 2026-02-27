@@ -548,7 +548,10 @@ class LinenmanagerApiV1Test :
             suspend fun seedLinemanagerRequirement(): UUID {
                 fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                 fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
-                narmesteLederService.createNewNlBehov(narmesteLederRelasjon.toNlBehovWrite(), behovSource = BehovSource(UUID.randomUUID().toString(), "test"))
+                narmesteLederService.createNewNlBehov(
+                    narmesteLederRelasjon.toNlBehovWrite(),
+                    behovSource = BehovSource(UUID.randomUUID().toString(), "test")
+                )
                 return fakeRepo.lastId() ?: error("No requirement seeded")
             }
             describe("GET /requirement/{id}") {

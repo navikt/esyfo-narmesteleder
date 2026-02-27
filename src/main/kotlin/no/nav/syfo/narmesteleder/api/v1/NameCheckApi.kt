@@ -26,7 +26,7 @@ fun Route.registerNameCheckApiV1(
                 return@post
             }
             val nameCheck = call.tryReceive<NameCheck>()
-            val person = pdlService.getPersonOrThrowApiErrorWithValkey(nameCheck.employeeIdentificationNumber)
+            val person = pdlService.getPersonOrThrowApiError(nameCheck.employeeIdentificationNumber)
             if (person.name.etternavn.uppercase() != nameCheck.lastName.uppercase()) {
                 call.respond(HttpStatusCode.BadRequest, "Last name does not match")
                 return@post

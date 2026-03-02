@@ -7,11 +7,13 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -26,7 +28,8 @@ class PersistSendtSykmeldingConsumer(
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumer: KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
-    private val env: OtherEnvironmentProperties
+    private val env: OtherEnvironmentProperties,
+    private val leaderElection: LeaderElection
 ) : KafkaListener {
     private lateinit var job: Job
     var commitOnAllErrors = false
@@ -39,27 +42,49 @@ class PersistSendtSykmeldingConsumer(
 
         logger.info("Starting persist $SENDT_SYKMELDING_TOPIC consumer")
         job = scope.launch(Dispatchers.IO + CoroutineName("persist-sendt-sykmelding-consumer")) {
-            kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
             while (isActive) {
                 try {
-                    val records = kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
-                    if (!records.isEmpty) {
-                        processBatch(records)
+                    if (leaderElection.isLeader()) {
+                        logger.info("This instance is the leader, starting to consume topic $SENDT_SYKMELDING_TOPIC")
+                        kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
+                        start()
+                    } else {
+                        logger.debug("This instance is not the leader. Skipping subscribing to $SENDT_SYKMELDING_TOPIC")
                     }
                 } catch (_: WakeupException) {
                     logger.info("Waked Kafka consumer")
                 } catch (e: Exception) {
                     logger.error(
-                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",
+                        "Error running kafka consumer. Waiting $CONSUMER_JOB_DELAY_SECONDS seconds for retry.",
                         e
                     )
                     kafkaConsumer.unsubscribe()
-                    delay(DELAY_ON_ERROR_SECONDS.seconds)
-                    kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
                 }
+                delay(CONSUMER_JOB_DELAY_SECONDS.seconds)
             }
             kafkaConsumer.close()
             logger.info("Exited $SENDT_SYKMELDING_TOPIC consumer loop")
+        }
+    }
+
+    private suspend fun start() = coroutineScope {
+        while (isActive) {
+            val isLeader = try {
+                leaderElection.isLeader()
+            } catch (_: Exception) {
+                logger.warn("Exception caught in leaderElection. Setting isLeader to false and will retry in next loop.")
+                false
+            }
+            if (!isLeader) {
+                logger.info("This instance is no longer the leader. Unsubscribing.")
+                kafkaConsumer.unsubscribe()
+                return@coroutineScope
+            }
+
+            val records = kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
+            if (!records.isEmpty) {
+                processBatch(records)
+            }
         }
     }
 
@@ -129,7 +154,7 @@ class PersistSendtSykmeldingConsumer(
 
     companion object {
         private val logger = LoggerFactory.getLogger(SendtSykmeldingKafkaConsumer::class.java)
-        private const val DELAY_ON_ERROR_SECONDS = 30L
+        private const val CONSUMER_JOB_DELAY_SECONDS = 30L
         private const val POLL_DURATION_SECONDS = 1L
         private val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
     }

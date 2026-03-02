@@ -32,20 +32,6 @@ fun Application.configureKafkaConsumers() {
         return
     }
 
-    val isLeader = try {
-        runBlocking {
-            leaderElection.isLeader()
-        }
-    } catch (e: Exception) {
-        logger.warn("Leader election failed, treating instance as non-leader and skipping Kafka consumer configuration", e)
-        false
-    }
-
-    if (!isLeader) {
-        logger.info("This instance is not the leader. Skipping configuration of Kafka consumers.")
-        return
-    }
-
     logger.info("Configuring Kafka consumers")
 
     val leesahConsumer = LeesahNLKafkaConsumer(
@@ -104,7 +90,8 @@ fun Application.configureKafkaConsumers() {
             StringDeserializer(),
         ),
         scope = this,
-        env = environment.otherProperties
+        env = environment.otherProperties,
+        leaderElection = leaderElection
     )
 
     monitor.subscribe(ApplicationStarted) {

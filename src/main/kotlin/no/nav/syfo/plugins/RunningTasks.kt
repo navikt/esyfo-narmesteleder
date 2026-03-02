@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
+import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
@@ -23,12 +24,23 @@ fun Application.configureKafkaConsumers() {
     val nlLeesahHandler by inject<NlBehovLeesahHandler>()
     val sendtSykmeldingHandler by inject<SendtSykmeldingHandler>()
     val environment by inject<Environment>()
-
+    val leaderElection by inject<LeaderElection>()
     val logger = logger()
+
     if (!environment.kafka.shouldConsumeTopics) {
         logger.info("Kafka consumers is not enabled, skipping configuration of consumers")
         return
     }
+
+    val isLeader = runBlocking {
+        leaderElection.isLeader()
+    }
+
+    if (!isLeader) {
+        logger.info("This instance is not the leader. Skipping configuration of Kafka consumers.")
+        return
+    }
+
     logger.info("Configuring Kafka consumers")
 
     val leesahConsumer = LeesahNLKafkaConsumer(

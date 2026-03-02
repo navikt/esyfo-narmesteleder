@@ -32,8 +32,13 @@ fun Application.configureKafkaConsumers() {
         return
     }
 
-    val isLeader = runBlocking {
-        leaderElection.isLeader()
+    val isLeader = try {
+        runBlocking {
+            leaderElection.isLeader()
+        }
+    } catch (e: Exception) {
+        logger.warn("Leader election failed, treating instance as non-leader and skipping Kafka consumer configuration", e)
+        false
     }
 
     if (!isLeader) {

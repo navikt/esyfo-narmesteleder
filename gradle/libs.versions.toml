@@ -2,7 +2,7 @@
 datafaker = "2.5.4"
 flyway = "12.0.2"
 hikaricp = "7.0.2"
-jackson-datatype-jsr = "2.21.0"
+jackson-datatype-jsr = "2.21.1"
 kafka = "4.2.0"
 koin = "4.1.1"
 kotest-extensions = "2.0.0"

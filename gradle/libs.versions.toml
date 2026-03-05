@@ -20,6 +20,7 @@ coroutines-test = "1.10.2"
 swagger = "3.4.2"
 ktlint = "14.2.0"
 valkey-version = "5.5.0"
+exposed-version = "1.0.0"
 
 [libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
@@ -59,7 +60,9 @@ testcontainers-postgres = { module = "org.testcontainers:postgresql", version.re
 logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstashEncoder" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines-test" }
 valkey-java = { module = "io.valkey:valkey-java", version.ref = "valkey-version" }
-
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed-version" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed-version" }
+exposed-java-time = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed-version" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }
@@ -68,7 +71,7 @@ flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
 
 [bundles]
 kotest = ["kotest-assertions-core", "kotest-junit", "kotest-property", "kotest-assertions-ktor"]
-database = ["database-flyway-core", "database-hikaricp", "database-postgresql"]
+database = ["database-flyway-core", "database-hikaricp", "database-postgresql", "exposed-core", "exposed-jdbc", "exposed-java-time"]
 testcontainers = ["testcontainers", "testcontainers-postgres"]
 ktor-client = ["ktor-client-core", "ktor-client-content-negotiation", "ktor-client-jackson", "ktor-client-apache5"]
 ktor-server = ["ktor-server-core", "ktor-server-config-yaml", "ktor-server-swagger", "ktor-server-openapi", "ktor-server-micrometer", "ktor-server-netty", "ktor-server-auth", "ktor-server-auth-jwt", "ktor-server-callid", "ktor-server-content-negotiation", "ktor-server-statuspages"]

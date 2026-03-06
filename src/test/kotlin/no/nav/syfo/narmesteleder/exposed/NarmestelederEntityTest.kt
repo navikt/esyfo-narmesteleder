@@ -10,8 +10,8 @@ import no.nav.syfo.TestDB
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.OffsetDateTime
+import java.util.UUID
 
-@OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 class NarmestelederEntityTest :
     DescribeSpec({
         beforeTest {
@@ -20,7 +20,7 @@ class NarmestelederEntityTest :
 
         describe("NarmestelederEntity") {
             it("should create and read back entity with all fields") {
-                val narmesteLederId = kotlin.uuid.Uuid.random()
+                val narmesteLederId = UUID.randomUUID()
                 val orgnummer = faker.numerify("#########")
                 val brukerFnr = faker.numerify("###########")
                 val brukerNavn = faker.name().firstName() + " " + faker.name().lastName()
@@ -70,7 +70,7 @@ class NarmestelederEntityTest :
             }
 
             it("should handle nullable fields correctly") {
-                val narmesteLederId = kotlin.uuid.Uuid.random()
+                val narmesteLederId = UUID.randomUUID()
                 val aktivFom = OffsetDateTime.now()
 
                 val entityId = transaction(TestDB.exposedDatabase) {
@@ -104,7 +104,7 @@ class NarmestelederEntityTest :
             it("should auto-generate id on insert") {
                 val entityId = transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.new {
-                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
                         this.brukerFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")
@@ -122,7 +122,7 @@ class NarmestelederEntityTest :
             it("should set created and updated defaults from database") {
                 val entityId = transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.new {
-                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
                         this.brukerFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")
@@ -145,7 +145,7 @@ class NarmestelederEntityTest :
             it("should update entity fields") {
                 val entityId = transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.new {
-                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
                         this.brukerFnr = faker.numerify("###########")
                         this.brukerNavn = faker.name().firstName() + " " + faker.name().lastName()
@@ -179,7 +179,7 @@ class NarmestelederEntityTest :
             }
 
             it("should find by narmesteleder_id") {
-                val narmesteLederId = kotlin.uuid.Uuid.random()
+                val narmesteLederId = UUID.randomUUID()
                 val orgnummer = faker.numerify("#########")
 
                 transaction(TestDB.exposedDatabase) {
@@ -209,7 +209,7 @@ class NarmestelederEntityTest :
 
                 transaction(TestDB.exposedDatabase) {
                     NarmestelederEntity.new {
-                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
                         this.brukerFnr = brukerFnr
                         this.narmestelederFnr = faker.numerify("###########")
@@ -233,7 +233,7 @@ class NarmestelederEntityTest :
 
                 transaction(TestDB.exposedDatabase) {
                     NarmestelederEntity.new {
-                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
                         this.brukerFnr = faker.numerify("###########")
                         this.narmestelederFnr = narmestelederFnr
@@ -255,7 +255,7 @@ class NarmestelederEntityTest :
             it("should delete entity") {
                 val entityId = transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.new {
-                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
                         this.brukerFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")

@@ -4,7 +4,6 @@ import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.dao.IntEntity
 import org.jetbrains.exposed.v1.dao.IntEntityClass
 
-@OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 class NarmestelederEntity(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<NarmestelederEntity>(NarmestelederTable)
 

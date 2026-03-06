@@ -1,0 +1,280 @@
+package no.nav.syfo.narmesteleder.exposed
+
+import faker
+import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import no.nav.syfo.TestDB
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import java.time.OffsetDateTime
+
+@OptIn(kotlin.uuid.ExperimentalUuidApi::class)
+class NarmestelederEntityTest :
+    DescribeSpec({
+        beforeTest {
+            TestDB.clearNarmestelederData()
+        }
+
+        describe("NarmestelederEntity") {
+            it("should create and read back entity with all fields") {
+                val narmesteLederId = kotlin.uuid.Uuid.random()
+                val orgnummer = faker.numerify("#########")
+                val brukerFnr = faker.numerify("###########")
+                val brukerNavn = faker.name().firstName() + " " + faker.name().lastName()
+                val narmestelederNavn = faker.name().firstName() + " " + faker.name().lastName()
+                val narmestelederFnr = faker.numerify("###########")
+                val narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                val narmestelederEpost = faker.internet().emailAddress()
+                val arbeidsgiverForskutterer = true
+                val aktivFom = OffsetDateTime.now().minusDays(30)
+                val aktivTom = OffsetDateTime.now().plusDays(30)
+
+                val entityId = transaction(TestDB.exposedDatabase) {
+                    val entity = NarmestelederEntity.new {
+                        this.narmesteLederId = narmesteLederId
+                        this.orgnummer = orgnummer
+                        this.brukerFnr = brukerFnr
+                        this.brukerNavn = brukerNavn
+                        this.narmestelederNavn = narmestelederNavn
+                        this.narmestelederFnr = narmestelederFnr
+                        this.narmestelederTelefonnummer = narmestelederTelefonnummer
+                        this.narmestelederEpost = narmestelederEpost
+                        this.arbeidsgiverForskutterer = arbeidsgiverForskutterer
+                        this.aktivFom = aktivFom
+                        this.aktivTom = aktivTom
+                    }
+                    entity.id.value
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val readBack = NarmestelederEntity.findById(entityId)
+                    readBack.shouldNotBeNull()
+
+                    readBack.narmesteLederId shouldBe narmesteLederId
+                    readBack.orgnummer shouldBe orgnummer
+                    readBack.brukerFnr shouldBe brukerFnr
+                    readBack.brukerNavn shouldBe brukerNavn
+                    readBack.narmestelederNavn shouldBe narmestelederNavn
+                    readBack.narmestelederFnr shouldBe narmestelederFnr
+                    readBack.narmestelederTelefonnummer shouldBe narmestelederTelefonnummer
+                    readBack.narmestelederEpost shouldBe narmestelederEpost
+                    readBack.arbeidsgiverForskutterer shouldBe arbeidsgiverForskutterer
+                    readBack.aktivFom.toInstant() shouldBe aktivFom.toInstant()
+                    readBack.aktivTom.shouldNotBeNull().toInstant() shouldBe aktivTom.toInstant()
+                    readBack.created.shouldNotBeNull()
+                    readBack.updated.shouldNotBeNull()
+                }
+            }
+
+            it("should handle nullable fields correctly") {
+                val narmesteLederId = kotlin.uuid.Uuid.random()
+                val aktivFom = OffsetDateTime.now()
+
+                val entityId = transaction(TestDB.exposedDatabase) {
+                    val entity = NarmestelederEntity.new {
+                        this.narmesteLederId = narmesteLederId
+                        this.orgnummer = faker.numerify("#########")
+                        this.brukerFnr = faker.numerify("###########")
+                        this.brukerNavn = null
+                        this.narmestelederNavn = null
+                        this.narmestelederFnr = faker.numerify("###########")
+                        this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                        this.narmestelederEpost = faker.internet().emailAddress()
+                        this.arbeidsgiverForskutterer = null
+                        this.aktivFom = aktivFom
+                        this.aktivTom = null
+                    }
+                    entity.id.value
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val readBack = NarmestelederEntity.findById(entityId)
+                    readBack.shouldNotBeNull()
+
+                    readBack.brukerNavn.shouldBeNull()
+                    readBack.narmestelederNavn.shouldBeNull()
+                    readBack.arbeidsgiverForskutterer.shouldBeNull()
+                    readBack.aktivTom.shouldBeNull()
+                }
+            }
+
+            it("should auto-generate id on insert") {
+                val entityId = transaction(TestDB.exposedDatabase) {
+                    val entity = NarmestelederEntity.new {
+                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.orgnummer = faker.numerify("#########")
+                        this.brukerFnr = faker.numerify("###########")
+                        this.narmestelederFnr = faker.numerify("###########")
+                        this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                        this.narmestelederEpost = faker.internet().emailAddress()
+                        this.aktivFom = OffsetDateTime.now()
+                    }
+                    entity.id.value
+                }
+
+                entityId shouldNotBe null
+                entityId shouldNotBe 0
+            }
+
+            it("should set created and updated defaults from database") {
+                val entityId = transaction(TestDB.exposedDatabase) {
+                    val entity = NarmestelederEntity.new {
+                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.orgnummer = faker.numerify("#########")
+                        this.brukerFnr = faker.numerify("###########")
+                        this.narmestelederFnr = faker.numerify("###########")
+                        this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                        this.narmestelederEpost = faker.internet().emailAddress()
+                        this.aktivFom = OffsetDateTime.now()
+                    }
+                    entity.refresh(flush = true)
+                    entity.id.value
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val readBack = NarmestelederEntity.findById(entityId)
+                    readBack.shouldNotBeNull()
+                    readBack.created.shouldNotBeNull()
+                    readBack.updated.shouldNotBeNull()
+                }
+            }
+
+            it("should update entity fields") {
+                val entityId = transaction(TestDB.exposedDatabase) {
+                    val entity = NarmestelederEntity.new {
+                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.orgnummer = faker.numerify("#########")
+                        this.brukerFnr = faker.numerify("###########")
+                        this.brukerNavn = faker.name().firstName() + " " + faker.name().lastName()
+                        this.narmestelederFnr = faker.numerify("###########")
+                        this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                        this.narmestelederEpost = faker.internet().emailAddress()
+                        this.aktivFom = OffsetDateTime.now()
+                    }
+                    entity.id.value
+                }
+
+                val updatedOrgnummer = faker.numerify("#########")
+                val updatedEpost = faker.internet().emailAddress()
+                val updatedBrukerNavn = faker.name().firstName() + " " + faker.name().lastName()
+
+                transaction(TestDB.exposedDatabase) {
+                    val entity = NarmestelederEntity.findById(entityId)
+                    entity.shouldNotBeNull()
+                    entity.orgnummer = updatedOrgnummer
+                    entity.narmestelederEpost = updatedEpost
+                    entity.brukerNavn = updatedBrukerNavn
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val readBack = NarmestelederEntity.findById(entityId)
+                    readBack.shouldNotBeNull()
+                    readBack.orgnummer shouldBe updatedOrgnummer
+                    readBack.narmestelederEpost shouldBe updatedEpost
+                    readBack.brukerNavn shouldBe updatedBrukerNavn
+                }
+            }
+
+            it("should find by narmesteleder_id") {
+                val narmesteLederId = kotlin.uuid.Uuid.random()
+                val orgnummer = faker.numerify("#########")
+
+                transaction(TestDB.exposedDatabase) {
+                    NarmestelederEntity.new {
+                        this.narmesteLederId = narmesteLederId
+                        this.orgnummer = orgnummer
+                        this.brukerFnr = faker.numerify("###########")
+                        this.narmestelederFnr = faker.numerify("###########")
+                        this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                        this.narmestelederEpost = faker.internet().emailAddress()
+                        this.aktivFom = OffsetDateTime.now()
+                    }
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val results = NarmestelederEntity.find {
+                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                    }
+                    results.count() shouldBe 1
+                    results.first().narmesteLederId shouldBe narmesteLederId
+                    results.first().orgnummer shouldBe orgnummer
+                }
+            }
+
+            it("should find by bruker_fnr") {
+                val brukerFnr = faker.numerify("###########")
+
+                transaction(TestDB.exposedDatabase) {
+                    NarmestelederEntity.new {
+                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.orgnummer = faker.numerify("#########")
+                        this.brukerFnr = brukerFnr
+                        this.narmestelederFnr = faker.numerify("###########")
+                        this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                        this.narmestelederEpost = faker.internet().emailAddress()
+                        this.aktivFom = OffsetDateTime.now()
+                    }
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val results = NarmestelederEntity.find {
+                        NarmestelederTable.brukerFnr eq brukerFnr
+                    }
+                    results.count() shouldBe 1
+                    results.first().brukerFnr shouldBe brukerFnr
+                }
+            }
+
+            it("should find by narmesteleder_fnr") {
+                val narmestelederFnr = faker.numerify("###########")
+
+                transaction(TestDB.exposedDatabase) {
+                    NarmestelederEntity.new {
+                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.orgnummer = faker.numerify("#########")
+                        this.brukerFnr = faker.numerify("###########")
+                        this.narmestelederFnr = narmestelederFnr
+                        this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                        this.narmestelederEpost = faker.internet().emailAddress()
+                        this.aktivFom = OffsetDateTime.now()
+                    }
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val results = NarmestelederEntity.find {
+                        NarmestelederTable.narmestelederFnr eq narmestelederFnr
+                    }
+                    results.count() shouldBe 1
+                    results.first().narmestelederFnr shouldBe narmestelederFnr
+                }
+            }
+
+            it("should delete entity") {
+                val entityId = transaction(TestDB.exposedDatabase) {
+                    val entity = NarmestelederEntity.new {
+                        this.narmesteLederId = kotlin.uuid.Uuid.random()
+                        this.orgnummer = faker.numerify("#########")
+                        this.brukerFnr = faker.numerify("###########")
+                        this.narmestelederFnr = faker.numerify("###########")
+                        this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
+                        this.narmestelederEpost = faker.internet().emailAddress()
+                        this.aktivFom = OffsetDateTime.now()
+                    }
+                    entity.id.value
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val entity = NarmestelederEntity.findById(entityId)
+                    entity.shouldNotBeNull()
+                    entity.delete()
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    NarmestelederEntity.findById(entityId).shouldBeNull()
+                }
+            }
+        }
+    })

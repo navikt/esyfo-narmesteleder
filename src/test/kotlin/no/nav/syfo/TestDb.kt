@@ -16,6 +16,7 @@ import java.time.Instant
 import java.util.UUID
 import kotlin.time.ExperimentalTime
 import kotlin.use
+import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
 class PsqlContainer : PostgreSQLContainer<PsqlContainer>("postgres:17-alpine")
 
@@ -58,6 +59,14 @@ class TestDatabase(
 class TestDB private constructor() {
     companion object {
         val database: DatabaseInterface
+        val exposedDatabase: ExposedDatabase by lazy {
+            ExposedDatabase.connect(
+                url = psqlContainer.jdbcUrl,
+                user = "username",
+                password = "password",
+                driver = "org.postgresql.Driver",
+            )
+        }
 
         private val psqlContainer: PsqlContainer
 
@@ -107,6 +116,13 @@ class TestDB private constructor() {
         fun clearSendtSykmeldingData() = database.connection.use {
             it.prepareStatement(
                 "DELETE FROM sendt_sykmelding;"
+            ).use { ps -> ps.executeUpdate() }
+            it.commit()
+        }
+
+        fun clearNarmestelederData() = database.connection.use {
+            it.prepareStatement(
+                "DELETE FROM narmesteleder;"
             ).use { ps -> ps.executeUpdate() }
             it.commit()
         }

@@ -1,11 +1,35 @@
 package no.nav.syfo.narmesteleder.exposed
 
+import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.dao.IntEntity
 import org.jetbrains.exposed.v1.dao.IntEntityClass
+import java.time.ZoneOffset
 
 class NarmestelederEntity(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<NarmestelederEntity>(NarmestelederTable)
+    companion object : IntEntityClass<NarmestelederEntity>(NarmestelederTable) {
+
+        /**
+         * Creates a new [NarmestelederEntity] from a [NarmestelederLeesahKafkaMessage].
+         *
+         * Must be called within an Exposed `transaction` block.
+         */
+        fun fromLeesahKafkaMessage(
+            kafkaMessage: NarmestelederLeesahKafkaMessage,
+        ): NarmestelederEntity = NarmestelederEntity.new {
+            narmesteLederId = kafkaMessage.narmesteLederId
+            orgnummer = kafkaMessage.orgnummer
+            brukerFnr = kafkaMessage.fnr
+            brukerNavn = null
+            narmestelederNavn = null
+            narmestelederFnr = kafkaMessage.narmesteLederFnr
+            narmestelederTelefonnummer = kafkaMessage.narmesteLederTelefonnummer
+            narmestelederEpost = kafkaMessage.narmesteLederEpost
+            arbeidsgiverForskutterer = kafkaMessage.arbeidsgiverForskutterer
+            aktivFom = kafkaMessage.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC)
+            aktivTom = kafkaMessage.aktivTom?.atStartOfDay()?.atOffset(ZoneOffset.UTC)
+        }
+    }
 
     var narmesteLederId by NarmestelederTable.narmesteLederId
     var orgnummer by NarmestelederTable.orgnummer

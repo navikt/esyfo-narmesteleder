@@ -35,7 +35,7 @@ fun httpClientDefault(httpClient: HttpClient = HttpClient(Apache5)): HttpClient 
     }
 }
 
-fun httpClientSSE(httpClient: HttpClient = HttpClient(Apache5)): HttpClient = httpClient.config {
+fun httpClientSSE(httpClient: HttpClient = HttpClient(Apache5) { engine { socketTimeout = 0 } }): HttpClient = httpClient.config {
     install(SSE) {
         maxReconnectionAttempts = 10
         reconnectionTime = 2.seconds

@@ -10,9 +10,11 @@ import io.ktor.client.request.url
 import io.ktor.server.util.url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.util.logger
@@ -55,29 +57,37 @@ class LeaderChangeSSEListener(
         log.info("Starting SSE leader election listener for hostname: $hostname")
 
         val sseUrl = getHttpPath(electorPath)
-        log.info("Connecting to leader elector SSE endpoint: $sseUrl")
 
-        sseHttpClient.sse(sseUrl) {
-            incoming.collect { event ->
-                val data = event.data
-                if (data != null) {
-                    try {
-                        val leaderResponse = objectMapper.readValue<LeaderElectorResponse>(data)
-                        val wasLeader = _isLeader.value
-                        val isNowLeader = leaderResponse.name == hostname
-                        _isLeader.value = isNowLeader
+        while (isActive) {
+            log.info("Connecting to leader elector SSE endpoint: $sseUrl")
+            try {
+                sseHttpClient.sse(sseUrl) {
+                    log.info("Connected to leader election listener for hostname: $hostname")
+                    incoming.collect { event ->
+                        val data = event.data
+                        if (data != null) {
+                            try {
+                                val leaderResponse = objectMapper.readValue<LeaderElectorResponse>(data)
+                                val wasLeader = _isLeader.value
+                                val isNowLeader = leaderResponse.name == hostname
+                                _isLeader.value = isNowLeader
 
-                        if (wasLeader != isNowLeader) {
-                            log.info(
-                                "Leader status changed: isLeader=$isNowLeader " +
-                                    "(current leader: ${leaderResponse.name}, this pod: $hostname)"
-                            )
+                                if (wasLeader != isNowLeader) {
+                                    log.info(
+                                        "Leader status changed: isLeader=$isNowLeader " +
+                                            "(current leader: ${leaderResponse.name}, this pod: $hostname)"
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                log.warn("Error parsing leader elector response: $data", e)
+                            }
                         }
-                    } catch (e: Exception) {
-                        log.warn("Failed to parse leader election SSE event: $data", e)
                     }
                 }
+            } catch (e: Exception) {
+                log.warn("Error connecting to leader elector SSE endpoint. Will retry in 5 seconds.", e)
             }
+            delay(5000)
         }
     }
 

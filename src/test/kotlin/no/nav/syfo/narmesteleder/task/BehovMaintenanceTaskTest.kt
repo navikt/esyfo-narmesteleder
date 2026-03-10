@@ -23,6 +23,7 @@ class BehovMaintenanceTaskTest :
 
         val env = OtherEnvironmentProperties(
             electorPath = "elector",
+            electorSSEPath = "not.applicable",
             frontendBaseUrl = "https://frontend.test.nav.no",
             publicIngressUrl = "https://test.nav.no",
             persistLeesahNlBehov = true,

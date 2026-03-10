@@ -3,6 +3,7 @@ package no.nav.syfo.application.leaderelection
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.jsonMapper
+import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.sse.sse
@@ -33,6 +34,7 @@ class LeaderChangeSSEListener(
     private val log = logger()
 
     private val jsonMapper = jsonMapper {
+        addModule(kotlinModule())
         configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     }
 

@@ -60,6 +60,7 @@ class PersistSendtSykmeldingConsumer(
                         "Error running kafka consumer. Waiting $CONSUMER_JOB_DELAY_SECONDS seconds for retry.",
                         e
                     )
+
                     kafkaConsumer.unsubscribe()
                     delay(CONSUMER_JOB_DELAY_SECONDS.seconds)
                     kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))

@@ -3,12 +3,10 @@ package no.nav.syfo.sykmelding.kafka
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import io.ktor.utils.io.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -21,6 +19,7 @@ import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.UUID
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
 class PersistSendtSykmeldingConsumer(

@@ -245,7 +245,7 @@ private fun servicesModule() = module {
     single { AltinnTilgangerService(get()) }
     single { LeaderElection(get(), env().otherProperties.electorPath) }
     single {
-        LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEPath)
+        LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl)
     }
     single {
         val sykemeldingNLKafkaProducer = SykemeldingNLKafkaProducer(

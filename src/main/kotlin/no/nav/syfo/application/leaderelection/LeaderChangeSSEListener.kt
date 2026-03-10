@@ -2,12 +2,11 @@ package no.nav.syfo.application.leaderelection
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.jsonMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.sse.sse
-import io.ktor.client.request.url
-import io.ktor.server.util.url
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -24,15 +23,16 @@ import java.net.InetAddress
  * Leader election implementation using Server-Sent Events (SSE).
  * Listens to the NAIS leader elector sidecar SSE endpoint for leader changes.
  *
+ * An elected leader pod retains its status during the entire lifecycle
  * See: https://docs.nais.io/services/leader-election/
  */
 class LeaderChangeSSEListener(
     private val sseHttpClient: HttpClient,
-    private val electorPath: String,
+    private val electorSseUrl: String,
 ) {
     private val log = logger()
 
-    private val objectMapper = jacksonObjectMapper().apply {
+    private val jsonMapper = jsonMapper {
         configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     }
 
@@ -54,52 +54,40 @@ class LeaderChangeSSEListener(
         }
 
         hostname = withContext(Dispatchers.IO) { InetAddress.getLocalHost().hostName }
-        log.info("Starting SSE leader election listener for hostname: $hostname")
-
-        val sseUrl = getHttpPath(electorPath)
 
         while (isActive) {
-            log.info("Connecting to leader elector SSE endpoint: $sseUrl")
-            try {
-                sseHttpClient.sse(sseUrl) {
+            runCatching {
+                sseHttpClient.sse(electorSseUrl) {
                     log.info("Connected to leader election listener for hostname: $hostname")
                     incoming.collect { event ->
                         val data = event.data
                         if (data != null) {
                             try {
-                                val leaderResponse = objectMapper.readValue<LeaderElectorResponse>(data)
-                                val wasLeader = _isLeader.value
+                                val leaderResponse = jsonMapper.readValue<LeaderElectorResponse>(data)
                                 val isNowLeader = leaderResponse.name == hostname
                                 _isLeader.value = isNowLeader
 
-                                if (wasLeader != isNowLeader) {
-                                    log.info(
-                                        "Leader status changed: isLeader=$isNowLeader " +
-                                            "(current leader: ${leaderResponse.name}, this pod: $hostname)"
-                                    )
-                                }
+                                log.info(
+                                    "Leader status changed: isLeader=$isNowLeader " +
+                                        "(current leader: ${leaderResponse.name}, this pod: $hostname)"
+                                )
                             } catch (e: Exception) {
                                 log.warn("Error parsing leader elector response: $data", e)
                             }
                         }
                     }
                 }
-            } catch (e: Exception) {
-                log.warn("Error connecting to leader elector SSE endpoint. Will retry in 5 seconds.", e)
+            }.onFailure {
+                if (it is CancellationException) break
+
+                log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS / 1000} seconds...", it)
+                delay(SSE_CLIENT_RETRY_DELAY_MS)
             }
-            delay(5000)
         }
     }
 
-    /**
-     * Checks if this instance is currently the leader.
-     * Uses the cached state from SSE events.
-     */
-    fun isLeader(): Boolean = _isLeader.value
-
-    private fun getHttpPath(url: String): String = when (url.startsWith("http://")) {
-        true -> url
-        else -> "http://$url"
+    companion object {
+        private const val SSE_CLIENT_RETRY_DELAY_MS = 5000L
     }
 }
 

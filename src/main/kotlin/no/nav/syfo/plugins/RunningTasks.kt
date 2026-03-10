@@ -116,7 +116,7 @@ fun Application.configureKafkaConsumers() {
                     logger.info("This instance is now the leader. Starting persistSendtSykmeldingConsumer.")
                     consumer.listen()
                     monitor.subscribe(ApplicationStopPreparing) {
-                        launch { consumer.stop() }
+                        runBlocking { consumer.stop() }
                     }
                 }
             }

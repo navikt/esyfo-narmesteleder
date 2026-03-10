@@ -58,7 +58,7 @@ class DialogportenServiceTest :
                     otherEnvironmentProperties =
                     OtherEnvironmentProperties(
                         electorPath = "elector",
-                        electorSSEPath = "not.applicable",
+                        electorSSEUrl = "not.applicable",
                         publicIngressUrl = publicIngressUrl,
                         frontendBaseUrl = frontendBaseUrl,
                         persistLeesahNlBehov = true,

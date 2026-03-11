@@ -1,17 +1,15 @@
 package no.nav.syfo.narmesteleder.exposed
 
+import defaultLeesahKafkaMessage
 import faker
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
-import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.LocalDate
-import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -23,28 +21,8 @@ class NarmestelederTableUpsertTest :
 
         describe("NarmestelederTable.upsertFromLeesahKafkaMessage") {
             it("should insert new entity when no existing row") {
-                val narmesteLederId = UUID.randomUUID()
-                val fnr = faker.numerify("###########")
-                val orgnummer = faker.numerify("#########")
-                val narmesteLederFnr = faker.numerify("###########")
-                val narmesteLederTelefonnummer = faker.phoneNumber().cellPhone()
-                val narmesteLederEpost = faker.internet().emailAddress()
-                val aktivFom = LocalDate.of(2024, 3, 15)
-                val aktivTom = LocalDate.of(2024, 12, 31)
-                val arbeidsgiverForskutterer = true
-
-                val message = NarmestelederLeesahKafkaMessage(
-                    narmesteLederId = narmesteLederId,
-                    fnr = fnr,
-                    orgnummer = orgnummer,
-                    narmesteLederFnr = narmesteLederFnr,
-                    narmesteLederTelefonnummer = narmesteLederTelefonnummer,
-                    narmesteLederEpost = narmesteLederEpost,
-                    aktivFom = aktivFom,
-                    aktivTom = aktivTom,
-                    arbeidsgiverForskutterer = arbeidsgiverForskutterer,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
+                val message = defaultLeesahKafkaMessage().copy(
+                    aktivTom = LocalDate.of(2024, 12, 31),
                 )
 
                 transaction(TestDB.exposedDatabase) {
@@ -53,20 +31,20 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val results = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmesteLederId eq message.narmesteLederId
                     }
                     results.count() shouldBe 1
 
                     val entity = results.first()
-                    entity.narmesteLederId shouldBe narmesteLederId
-                    entity.orgnummer shouldBe orgnummer
-                    entity.brukerFnr shouldBe fnr
-                    entity.narmestelederFnr shouldBe narmesteLederFnr
-                    entity.narmestelederTelefonnummer shouldBe narmesteLederTelefonnummer
-                    entity.narmestelederEpost shouldBe narmesteLederEpost
-                    entity.arbeidsgiverForskutterer shouldBe arbeidsgiverForskutterer
-                    entity.aktivFom.toInstant() shouldBe aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
-                    entity.aktivTom.shouldNotBeNull().toInstant() shouldBe aktivTom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
+                    entity.narmesteLederId shouldBe message.narmesteLederId
+                    entity.orgnummer shouldBe message.orgnummer
+                    entity.brukerFnr shouldBe message.fnr
+                    entity.narmestelederFnr shouldBe message.narmesteLederFnr
+                    entity.narmestelederTelefonnummer shouldBe message.narmesteLederTelefonnummer
+                    entity.narmestelederEpost shouldBe message.narmesteLederEpost
+                    entity.arbeidsgiverForskutterer shouldBe message.arbeidsgiverForskutterer
+                    entity.aktivFom.toInstant() shouldBe message.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
+                    entity.aktivTom.shouldNotBeNull().toInstant() shouldBe message.aktivTom!!.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
                     entity.brukerNavn.shouldBeNull()
                     entity.narmestelederNavn.shouldBeNull()
                     entity.created.shouldNotBeNull()
@@ -77,18 +55,8 @@ class NarmestelederTableUpsertTest :
             it("should update mutable fields when row with same narmesteLederId exists") {
                 val narmesteLederId = UUID.randomUUID()
 
-                val originalMessage = NarmestelederLeesahKafkaMessage(
+                val originalMessage = defaultLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
-                    fnr = faker.numerify("###########"),
-                    orgnummer = faker.numerify("#########"),
-                    narmesteLederFnr = faker.numerify("###########"),
-                    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
-                    narmesteLederEpost = faker.internet().emailAddress(),
-                    aktivFom = LocalDate.of(2024, 1, 1),
-                    aktivTom = LocalDate.of(2024, 6, 30),
-                    arbeidsgiverForskutterer = false,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
                 )
 
                 transaction(TestDB.exposedDatabase) {
@@ -104,24 +72,9 @@ class NarmestelederTableUpsertTest :
                 val originalId = originalEntity.first
                 val originalCreated = originalEntity.second
 
-                val updatedOrgnummer = faker.numerify("#########")
-                val updatedTelefonnummer = faker.phoneNumber().cellPhone()
-                val updatedEpost = faker.internet().emailAddress()
-                val updatedAktivFom = LocalDate.of(2024, 7, 1)
-                val updatedAktivTom = LocalDate.of(2025, 1, 31)
-
-                val updatedMessage = NarmestelederLeesahKafkaMessage(
+                val updatedMessage = defaultLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
-                    fnr = faker.numerify("###########"),
-                    orgnummer = updatedOrgnummer,
-                    narmesteLederFnr = faker.numerify("###########"),
-                    narmesteLederTelefonnummer = updatedTelefonnummer,
-                    narmesteLederEpost = updatedEpost,
-                    aktivFom = updatedAktivFom,
-                    aktivTom = updatedAktivTom,
-                    arbeidsgiverForskutterer = true,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
+                    aktivTom = LocalDate.of(2025, 1, 31),
                 )
 
                 transaction(TestDB.exposedDatabase) {
@@ -137,30 +90,20 @@ class NarmestelederTableUpsertTest :
                     val entity = results.first()
                     entity.id.value shouldBe originalId
                     entity.created.shouldNotBeNull().toInstant() shouldBe originalCreated.shouldNotBeNull().toInstant()
-                    entity.orgnummer shouldBe updatedOrgnummer
-                    entity.narmestelederTelefonnummer shouldBe updatedTelefonnummer
-                    entity.narmestelederEpost shouldBe updatedEpost
-                    entity.arbeidsgiverForskutterer shouldBe true
-                    entity.aktivFom.toInstant() shouldBe updatedAktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
-                    entity.aktivTom.shouldNotBeNull().toInstant() shouldBe updatedAktivTom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
+                    entity.orgnummer shouldBe updatedMessage.orgnummer
+                    entity.narmestelederTelefonnummer shouldBe updatedMessage.narmesteLederTelefonnummer
+                    entity.narmestelederEpost shouldBe updatedMessage.narmesteLederEpost
+                    entity.arbeidsgiverForskutterer shouldBe updatedMessage.arbeidsgiverForskutterer
+                    entity.aktivFom.toInstant() shouldBe updatedMessage.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
+                    entity.aktivTom.shouldNotBeNull().toInstant() shouldBe updatedMessage.aktivTom!!.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
                 }
             }
 
             it("should not overwrite PDL-owned name fields on update") {
                 val narmesteLederId = UUID.randomUUID()
 
-                val message = NarmestelederLeesahKafkaMessage(
+                val message = defaultLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
-                    fnr = faker.numerify("###########"),
-                    orgnummer = faker.numerify("#########"),
-                    narmesteLederFnr = faker.numerify("###########"),
-                    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
-                    narmesteLederEpost = faker.internet().emailAddress(),
-                    aktivFom = LocalDate.of(2024, 1, 1),
-                    aktivTom = null,
-                    arbeidsgiverForskutterer = true,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
                 )
 
                 transaction(TestDB.exposedDatabase) {
@@ -193,39 +136,17 @@ class NarmestelederTableUpsertTest :
 
             it("should not overwrite brukerFnr and narmestelederFnr on update") {
                 val narmesteLederId = UUID.randomUUID()
-                val originalBrukerFnr = faker.numerify("###########")
-                val originalNarmestelederFnr = faker.numerify("###########")
 
-                val originalMessage = NarmestelederLeesahKafkaMessage(
+                val originalMessage = defaultLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
-                    fnr = originalBrukerFnr,
-                    orgnummer = faker.numerify("#########"),
-                    narmesteLederFnr = originalNarmestelederFnr,
-                    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
-                    narmesteLederEpost = faker.internet().emailAddress(),
-                    aktivFom = LocalDate.of(2024, 1, 1),
-                    aktivTom = null,
-                    arbeidsgiverForskutterer = true,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
                 )
 
                 transaction(TestDB.exposedDatabase) {
                     NarmestelederTable.upsertFromLeesahKafkaMessage(originalMessage)
                 }
 
-                val messageWithDifferentFnr = NarmestelederLeesahKafkaMessage(
+                val messageWithDifferentFnr = defaultLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
-                    fnr = faker.numerify("###########"),
-                    orgnummer = faker.numerify("#########"),
-                    narmesteLederFnr = faker.numerify("###########"),
-                    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
-                    narmesteLederEpost = faker.internet().emailAddress(),
-                    aktivFom = LocalDate.of(2024, 7, 1),
-                    aktivTom = null,
-                    arbeidsgiverForskutterer = false,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
                 )
 
                 transaction(TestDB.exposedDatabase) {
@@ -236,8 +157,8 @@ class NarmestelederTableUpsertTest :
                     val entity = NarmestelederEntity.find {
                         NarmestelederTable.narmesteLederId eq narmesteLederId
                     }.first()
-                    entity.brukerFnr shouldBe originalBrukerFnr
-                    entity.narmestelederFnr shouldBe originalNarmestelederFnr
+                    entity.brukerFnr shouldBe originalMessage.fnr
+                    entity.narmestelederFnr shouldBe originalMessage.narmesteLederFnr
                 }
             }
 
@@ -245,18 +166,10 @@ class NarmestelederTableUpsertTest :
                 val narmesteLederId = UUID.randomUUID()
 
                 // Step a: Insert with nulls
-                val messageWithNulls = NarmestelederLeesahKafkaMessage(
+                val messageWithNulls = defaultLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
-                    fnr = faker.numerify("###########"),
-                    orgnummer = faker.numerify("#########"),
-                    narmesteLederFnr = faker.numerify("###########"),
-                    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
-                    narmesteLederEpost = faker.internet().emailAddress(),
-                    aktivFom = LocalDate.of(2024, 1, 1),
                     aktivTom = null,
                     arbeidsgiverForskutterer = null,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
                 )
 
                 transaction(TestDB.exposedDatabase) {
@@ -272,18 +185,10 @@ class NarmestelederTableUpsertTest :
                 }
 
                 // Step b: Update with non-null values
-                val messageWithValues = NarmestelederLeesahKafkaMessage(
+                val messageWithValues = defaultLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
-                    fnr = faker.numerify("###########"),
-                    orgnummer = faker.numerify("#########"),
-                    narmesteLederFnr = faker.numerify("###########"),
-                    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
-                    narmesteLederEpost = faker.internet().emailAddress(),
-                    aktivFom = LocalDate.of(2024, 3, 1),
                     aktivTom = LocalDate.of(2024, 12, 31),
                     arbeidsgiverForskutterer = true,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
                 )
 
                 transaction(TestDB.exposedDatabase) {
@@ -299,18 +204,10 @@ class NarmestelederTableUpsertTest :
                 }
 
                 // Step c: Update back to nulls
-                val messageBackToNulls = NarmestelederLeesahKafkaMessage(
+                val messageBackToNulls = defaultLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
-                    fnr = faker.numerify("###########"),
-                    orgnummer = faker.numerify("#########"),
-                    narmesteLederFnr = faker.numerify("###########"),
-                    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
-                    narmesteLederEpost = faker.internet().emailAddress(),
-                    aktivFom = LocalDate.of(2024, 6, 1),
                     aktivTom = null,
                     arbeidsgiverForskutterer = null,
-                    timestamp = OffsetDateTime.now(),
-                    status = LeesahStatus.NY_LEDER,
                 )
 
                 transaction(TestDB.exposedDatabase) {

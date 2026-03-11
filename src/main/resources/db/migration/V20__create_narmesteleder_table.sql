@@ -18,7 +18,7 @@ CREATE TABLE narmesteleder
     updated                      TIMESTAMP WITH TIME ZONE   NOT NULL DEFAULT now()
 );
 
-CREATE INDEX narmesteleder_id_idx ON narmesteleder (narmesteleder_id);
+CREATE UNIQUE INDEX narmesteleder_id_idx ON narmesteleder (narmesteleder_id);
 CREATE INDEX narmesteleder_fnr_idx ON narmesteleder (bruker_fnr);
 CREATE INDEX narmesteleder_nlfnr_idx ON narmesteleder (narmesteleder_fnr);
 

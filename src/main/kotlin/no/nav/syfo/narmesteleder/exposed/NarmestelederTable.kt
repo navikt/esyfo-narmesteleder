@@ -6,7 +6,7 @@ import org.jetbrains.exposed.v1.javatime.CurrentTimestampWithTimeZone
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 
 object NarmestelederTable : IntIdTable("narmesteleder") {
-    val narmesteLederId = javaUUID("narmesteleder_id")
+    val narmesteLederId = javaUUID("narmesteleder_id").uniqueIndex()
     val orgnummer = varchar("orgnummer", 9)
     val brukerFnr = varchar("bruker_fnr", 11)
     val brukerNavn = varchar("bruker_navn", 255).nullable()

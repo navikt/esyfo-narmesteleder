@@ -49,7 +49,6 @@ class PersistSendtSykmeldingConsumer(
                     if (!records.isEmpty) {
                         processBatch(records)
                     }
-                    logger.debug("This instance is not the leader. Skipping subscribing to $SENDT_SYKMELDING_TOPIC")
                 } catch (_: WakeupException) {
                     logger.info("Waked Kafka consumer")
                     break
@@ -60,7 +59,6 @@ class PersistSendtSykmeldingConsumer(
                         "Error running kafka consumer. Waiting $CONSUMER_JOB_DELAY_SECONDS seconds for retry.",
                         e
                     )
-
                     kafkaConsumer.unsubscribe()
                     delay(CONSUMER_JOB_DELAY_SECONDS.seconds)
                     kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))

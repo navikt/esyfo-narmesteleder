@@ -14,6 +14,11 @@ applyTo: "**/*.kt"
 - Use sealed classes for representing restricted hierarchies
 - Use extension functions for utility operations
 
+## Dependency Management
+- Use Gradle Version Catalog (`gradle/libs.versions.toml`) for dependency versions
+- Reference dependencies via catalog aliases in `build.gradle.kts` (e.g., `libs.ktor.server.core`)
+- Never hardcode dependency versions directly in `build.gradle.kts` — check the version catalog first
+
 ## Configuration Pattern
 
 Follow the existing configuration approach in the codebase. Common patterns:
@@ -27,7 +32,7 @@ Follow the existing configuration approach in the codebase. Common patterns:
 
 ## Database Access
 
-- Check `build.gradle.kts` for actual dependencies — do not assume any specific ORM (verify with Context7 if available)
+- Check `build.gradle.kts` for actual dependencies — do not assume any specific ORM
 - Parameterized queries always — never string interpolation in SQL
 - Use Flyway for all schema migrations
 - **Follow the repo's existing data access pattern** (Repository interfaces, extension functions, etc.)
@@ -80,3 +85,4 @@ val requestCounter = Counter.builder("http_requests_total")
 - Use `!!` operator without null checks
 - Commit configuration secrets
 - Use string interpolation in SQL
+- Hardcode dependency versions in `build.gradle.kts` (use version catalog)

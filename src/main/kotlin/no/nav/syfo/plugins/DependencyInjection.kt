@@ -29,6 +29,7 @@ import no.nav.syfo.application.environment.NaisEnvironment
 import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
+import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
 import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.application.valkey.ValkeyCache
@@ -59,6 +60,7 @@ import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
 import no.nav.syfo.util.httpClientDefault
+import no.nav.syfo.util.httpClientSSE
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.koin.core.scope.Scope
@@ -242,6 +244,9 @@ private fun servicesModule() = module {
 
     single { AltinnTilgangerService(get()) }
     single { LeaderElection(get(), env().otherProperties.electorPath) }
+    single {
+        LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl)
+    }
     single {
         val sykemeldingNLKafkaProducer = SykemeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(

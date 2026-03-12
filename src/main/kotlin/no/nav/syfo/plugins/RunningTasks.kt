@@ -1,12 +1,15 @@
 package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationStarted
-import io.ktor.server.application.ApplicationStopping
+import io.ktor.server.application.ApplicationStopPreparing
+import io.ktor.server.application.ServerReady
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
+import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
@@ -23,12 +26,14 @@ fun Application.configureKafkaConsumers() {
     val nlLeesahHandler by inject<NlBehovLeesahHandler>()
     val sendtSykmeldingHandler by inject<SendtSykmeldingHandler>()
     val environment by inject<Environment>()
-
+    val leaderChangeSSEListener by inject<LeaderChangeSSEListener>()
     val logger = logger()
+
     if (!environment.kafka.shouldConsumeTopics) {
         logger.info("Kafka consumers is not enabled, skipping configuration of consumers")
         return
     }
+
     logger.info("Configuring Kafka consumers")
 
     val leesahConsumer = LeesahNLKafkaConsumer(
@@ -87,20 +92,34 @@ fun Application.configureKafkaConsumers() {
             StringDeserializer(),
         ),
         scope = this,
-        env = environment.otherProperties
+        env = environment.otherProperties,
     )
 
-    monitor.subscribe(ApplicationStarted) {
+    monitor.subscribe(ServerReady) {
+        val sseListenerJob = launch { leaderChangeSSEListener.listenForLeaderChanges() }
         leesahConsumer.listen()
         sendtSykmeldingConsumer.listen()
-        persistSendtSykmeldingConsumer.listen()
+
+        monitor.subscribe(ApplicationStopPreparing) {
+            runBlocking {
+                sseListenerJob.cancel()
+                sendtSykmeldingConsumer.stop()
+                leesahConsumer.stop()
+            }
+        }
     }
 
-    monitor.subscribe(ApplicationStopping) {
-        runBlocking {
-            leesahConsumer.stop()
-            sendtSykmeldingConsumer.stop()
-            persistSendtSykmeldingConsumer.stop()
+    launch(Dispatchers.IO) {
+        persistSendtSykmeldingConsumer.use { consumer ->
+            leaderChangeSSEListener.isLeader.collect { isLeader ->
+                if (isLeader) {
+                    logger.info("This instance is now the leader. Starting persistSendtSykmeldingConsumer.")
+                    consumer.listen()
+                    monitor.subscribe(ApplicationStopPreparing) {
+                        runBlocking { consumer.stop() }
+                    }
+                }
+            }
         }
     }
 }

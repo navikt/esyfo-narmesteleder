@@ -10,8 +10,10 @@ import io.ktor.client.engine.apache5.Apache5
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.sse.SSE
 import io.ktor.serialization.jackson.JacksonConverter
 import io.ktor.serialization.jackson.jackson
+import kotlin.time.Duration.Companion.seconds
 
 fun httpClientDefault(httpClient: HttpClient = HttpClient(Apache5)): HttpClient = httpClient.config {
     expectSuccess = true
@@ -30,5 +32,12 @@ fun httpClientDefault(httpClient: HttpClient = HttpClient(Apache5)): HttpClient 
             cause !is ClientRequestException
         }
         constantDelay(500L)
+    }
+}
+
+fun httpClientSSE(httpClient: HttpClient = HttpClient(Apache5) { engine { socketTimeout = 0 } }): HttpClient = httpClient.config {
+    install(SSE) {
+        maxReconnectionAttempts = 10
+        reconnectionTime = 2.seconds
     }
 }

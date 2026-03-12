@@ -19,6 +19,7 @@ import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.UUID
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
 class PersistSendtSykmeldingConsumer(
@@ -26,8 +27,9 @@ class PersistSendtSykmeldingConsumer(
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumer: KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
-    private val env: OtherEnvironmentProperties
-) : KafkaListener {
+    private val env: OtherEnvironmentProperties,
+) : KafkaListener,
+    AutoCloseable {
     private lateinit var job: Job
     var commitOnAllErrors = false
 
@@ -40,6 +42,7 @@ class PersistSendtSykmeldingConsumer(
         logger.info("Starting persist $SENDT_SYKMELDING_TOPIC consumer")
         job = scope.launch(Dispatchers.IO + CoroutineName("persist-sendt-sykmelding-consumer")) {
             kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
+
             while (isActive) {
                 try {
                     val records = kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
@@ -48,17 +51,19 @@ class PersistSendtSykmeldingConsumer(
                     }
                 } catch (_: WakeupException) {
                     logger.info("Waked Kafka consumer")
+                    break
+                } catch (e: CancellationException) {
+                    break
                 } catch (e: Exception) {
                     logger.error(
-                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",
+                        "Error running kafka consumer. Waiting $CONSUMER_JOB_DELAY_SECONDS seconds for retry.",
                         e
                     )
                     kafkaConsumer.unsubscribe()
-                    delay(DELAY_ON_ERROR_SECONDS.seconds)
+                    delay(CONSUMER_JOB_DELAY_SECONDS.seconds)
                     kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
                 }
             }
-            kafkaConsumer.close()
             logger.info("Exited $SENDT_SYKMELDING_TOPIC consumer loop")
         }
     }
@@ -117,6 +122,11 @@ class PersistSendtSykmeldingConsumer(
         }
     }
 
+    override fun close() {
+        logger.info("Closing Kafka consumer")
+        kafkaConsumer.close()
+    }
+
     override suspend fun stop() {
         if (!::job.isInitialized) error("persist $SENDT_SYKMELDING_TOPIC consumer not started!")
 
@@ -129,7 +139,7 @@ class PersistSendtSykmeldingConsumer(
 
     companion object {
         private val logger = LoggerFactory.getLogger(SendtSykmeldingKafkaConsumer::class.java)
-        private const val DELAY_ON_ERROR_SECONDS = 30L
+        private const val CONSUMER_JOB_DELAY_SECONDS = 30L
         private const val POLL_DURATION_SECONDS = 1L
         private val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
     }

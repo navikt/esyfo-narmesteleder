@@ -2,6 +2,7 @@ package no.nav.syfo.application.environment
 
 data class OtherEnvironmentProperties(
     val electorPath: String,
+    val electorSSEUrl: String,
     val frontendBaseUrl: String,
     val publicIngressUrl: String,
     val updateDialogportenTaskProperties: UpdateDialogportenTaskProperties,
@@ -17,6 +18,7 @@ data class OtherEnvironmentProperties(
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
             electorPath = getEnvVar("ELECTOR_PATH"),
+            electorSSEUrl = getEnvVar("ELECTOR_SSE_URL"),
             frontendBaseUrl = getEnvVar("FRONTEND_BASE_URL"),
             publicIngressUrl = getEnvVar("PUBLIC_INGRESS_URL"),
             persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
@@ -45,7 +47,8 @@ data class OtherEnvironmentProperties(
             persistSendtSykmelding = true,
             daysAfterTomToExpireBehovs = 0,
             maintenanceTaskDelay = "1m",
-            maintenanceTaskEnabled = true
+            maintenanceTaskEnabled = true,
+            electorSSEUrl = "not.applicable"
         )
     }
 }

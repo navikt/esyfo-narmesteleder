@@ -27,7 +27,7 @@ applyTo: "**/*"
 ### Priority 3: Secure Development
 - Chainguard/Distroless base images
 - Validate all input
-- No sensitive data in logs (FNR, JWT tokens)
+- No sensitive data in logs (FNR, JWT tokens, database connection strings)
 - Prefer OAuth/Maskinporten for new M2M integrations (service users are legacy — avoid in new code)
 
 ## Network Policies
@@ -70,5 +70,5 @@ accessPolicy:
 ### 🚫 Never
 - Bypass security controls
 - Commit secrets to git
-- Log FNR, JWT tokens, or passwords
+- Log FNR, JWT tokens, passwords, or database connection strings
 - Skip input validation

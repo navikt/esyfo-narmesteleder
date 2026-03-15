@@ -24,7 +24,7 @@ class EregClient(
 ) : IEregClient {
     override suspend fun getOrganisasjon(orgnummer: String): Organisasjon? {
         val response = try {
-            val response = httpClient.get("$eregBaseUrl/ereg/api/v1/organisasjon/$orgnummer") {
+            val response = httpClient.get("$eregBaseUrl/ereg/api/v2/organisasjon/$orgnummer") {
                 parameter("inkluderHierarki", true)
                 contentType(ContentType.Application.Json)
             }.body<Organisasjon>()

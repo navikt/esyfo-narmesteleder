@@ -1,14 +1,22 @@
 [
   {
     "organisasjonsnummer": "111111111",
+    "type": "JuridiskEnhet",
     "driverVirksomheter": [
-      { "organisasjonsnummer": "222222222" }
+      {
+        "organisasjonsnummer": "222222222",
+        "type": "Virksomhet"
+      }
     ]
   },
   {
     "organisasjonsnummer": "222222222",
+    "type": "Virksomhet",
     "inngaarIJuridiskEnheter": [
-      { "organisasjonsnummer": "111111111" }
+      {
+        "organisasjonsnummer": "111111111",
+        "type": "JuridiskEnhet"
+      }
     ]
   }
 ]

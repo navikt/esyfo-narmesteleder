@@ -25,14 +25,14 @@ class EregClientTest :
             clearAllMocks()
         }
 
-        val eregPath = "/ereg/api/v1/organisasjon"
+        val eregPath = "/ereg/api/v2/organisasjon"
 
         describe("Successfull responses from Ereg") {
             val organization = organisasjon()
             val mockEngine = getMockEngine(
                 path = "$eregPath/${organization.organisasjonsnummer}?inkluderHierarki=true",
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                status = HttpStatusCode.Companion.OK,
+                status = HttpStatusCode.OK,
                 content = jacksonObjectMapper().writeValueAsString(organization)
             )
 
@@ -54,7 +54,7 @@ class EregClientTest :
                 val mockEngine = getMockEngine(
                     path = "$eregPath/${organization.organisasjonsnummer}?inkluderHierarki=true",
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                    status = HttpStatusCode.Companion.BadRequest,
+                    status = HttpStatusCode.BadRequest,
                     content = ""
                 )
                 val client = httpClientDefault(HttpClient(mockEngine))
@@ -72,7 +72,7 @@ class EregClientTest :
                 val mockEngine = getMockEngine(
                     path = "$eregPath/${organization.organisasjonsnummer}?inkluderHierarki=true",
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                    status = HttpStatusCode.Companion.NotFound,
+                    status = HttpStatusCode.NotFound,
                     content = ""
                 )
                 val client = httpClientDefault(HttpClient(mockEngine))

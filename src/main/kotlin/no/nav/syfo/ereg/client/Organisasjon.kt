@@ -7,6 +7,11 @@ data class Organisasjon(
     val driverVirksomheter: List<Organisasjon>? = null,
     val bestaarAvOrganisasjonsledd: List<OrganisasjonsLeddWrapper>? = null,
 ) {
+
+    /**
+     * Henter ut alle organisasjonsnummer for organisasjon, inkludert organisasjonsnummer for juridiske enheter,
+     * organisasjonsledd og deres juridiske enheter.
+     */
     fun orgnummerSet(): Set<String> {
         val juridiskeEnheter = inngaarIJuridiskEnheter?.map { enhet -> enhet.organisasjonsnummer } ?: emptyList()
         return juridiskeEnheter.plus(organisasjonsnummer).toSet()

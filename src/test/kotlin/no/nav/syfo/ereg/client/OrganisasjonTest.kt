@@ -26,4 +26,26 @@ class OrganisasjonTest :
                 organization?.bestaarAvOrganisasjonsledd shouldNotBe null
             }
         }
+
+        describe("orgnummerSet") {
+            it("Fetches all orgnummer for organisasjon, including juridiske enheter and organisasjonsledd") {
+                val organization = fixtureLoader.loadOrNull<Organisasjon>("314602374.json")
+                val orgnummerSet = organization?.orgnummerSet()
+                orgnummerSet shouldNotBe null
+                orgnummerSet!!.sorted() shouldBe listOf("314602374", "310525790", "210259902").sorted()
+            }
+
+            it("Fetches all orgnummer for organisasjon with nested organisasjonsledd, including juridiske enheter and organisasjonsledd") {
+                val organization = fixtureLoader.loadOrNull<Organisasjon>("987926279.json")
+                val orgnummerSet = organization?.orgnummerSet()
+                orgnummerSet shouldNotBe null
+                orgnummerSet!!.sorted() shouldBe listOf(
+                    "987926279",
+                    "991076573",
+                    "991012206",
+                    "889640782",
+                    "983887457"
+                ).sorted()
+            }
+        }
     })

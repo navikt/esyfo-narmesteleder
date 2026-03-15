@@ -58,7 +58,11 @@ fun linemanager(): Linemanager = Linemanager(
 
 fun organisasjon() = Organisasjon(
     organisasjonsnummer = faker.numerify("#########"),
-    inngaarIJuridiskEnheter = listOf(Organisasjon(organisasjonsnummer = faker.numerify("#########")))
+    inngaarIJuridiskEnheter = listOf(
+        Organisasjon(
+            organisasjonsnummer = faker.numerify("#########"),
+        )
+    ),
 )
 
 fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(

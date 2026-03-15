@@ -48,4 +48,94 @@ class OrganisasjonTest :
                 ).sorted()
             }
         }
+
+        describe("orgnummerSet edge cases") {
+            it("Returns only own orgnummer for a simple organisasjon without juridiske enheter and organisasjonsledd") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000001",
+                )
+
+                organization.orgnummerSet() shouldBe setOf("100000001")
+            }
+
+            it("Returns own orgnummer and juridiske enheter when organisasjonsledd is missing") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000002",
+                    inngaarIJuridiskEnheter = listOf(
+                        Organisasjon(organisasjonsnummer = "200000001"),
+                        Organisasjon(organisasjonsnummer = "200000002"),
+                    ),
+                )
+
+                organization.orgnummerSet() shouldBe setOf("100000002", "200000001", "200000002")
+            }
+
+            it("Includes organisasjonsledd orgnummer when organisasjonsledd has no juridiske enheter") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000003",
+                    bestaarAvOrganisasjonsledd = listOf(
+                        OrganisasjonsLeddWrapper(
+                            organisasjonsledd = OrganisasjonsLedd(
+                                organisasjonsnummer = "300000001",
+                            ),
+                        ),
+                    ),
+                )
+
+                organization.orgnummerSet() shouldBe setOf("100000003", "300000001")
+            }
+
+            it("Includes all juridiske enheter from an organisasjonsledd with multiple juridiske enheter") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000004",
+                    bestaarAvOrganisasjonsledd = listOf(
+                        OrganisasjonsLeddWrapper(
+                            organisasjonsledd = OrganisasjonsLedd(
+                                organisasjonsnummer = "300000002",
+                                inngaarIJuridiskEnheter = listOf(
+                                    Organisasjon(organisasjonsnummer = "200000003"),
+                                    Organisasjon(organisasjonsnummer = "200000004"),
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+
+                organization.orgnummerSet() shouldBe setOf("100000004", "300000002", "200000003", "200000004")
+            }
+
+            it("Includes orgnummer from multiple organisasjonsledd on the same level") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000005",
+                    bestaarAvOrganisasjonsledd = listOf(
+                        OrganisasjonsLeddWrapper(
+                            organisasjonsledd = OrganisasjonsLedd(
+                                organisasjonsnummer = "300000003",
+                            ),
+                        ),
+                        OrganisasjonsLeddWrapper(
+                            organisasjonsledd = OrganisasjonsLedd(
+                                organisasjonsnummer = "300000004",
+                            ),
+                        ),
+                    ),
+                )
+
+                organization.orgnummerSet() shouldBe setOf("100000005", "300000003", "300000004")
+            }
+
+            it("Returns only own orgnummer when bestaarAvOrganisasjonsledd is empty list or null") {
+                val organizationWithEmptyList = Organisasjon(
+                    organisasjonsnummer = "100000006",
+                    bestaarAvOrganisasjonsledd = emptyList(),
+                )
+                val organizationWithNull = Organisasjon(
+                    organisasjonsnummer = "100000007",
+                    bestaarAvOrganisasjonsledd = null,
+                )
+
+                organizationWithEmptyList.orgnummerSet() shouldBe setOf("100000006")
+                organizationWithNull.orgnummerSet() shouldBe setOf("100000007")
+            }
+        }
     })

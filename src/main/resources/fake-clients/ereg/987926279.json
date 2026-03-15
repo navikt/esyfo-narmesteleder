@@ -1,0 +1,229 @@
+{
+  "organisasjonsnummer": "987926279",
+  "type": "Virksomhet",
+  "navn": {
+    "navnelinje1": "NAV REGISTERFORVALTNING",
+    "bruksperiode": {
+      "fom": "2017-03-22T04:01:28.607"
+    },
+    "gyldighetsperiode": {
+      "fom": "2017-03-21"
+    }
+  },
+  "organisasjonDetaljer": {
+    "registreringsdato": "2005-02-24T00:00:00",
+    "enhetstyper": [
+      {
+        "enhetstype": "BEDR",
+        "bruksperiode": {
+          "fom": "2014-05-21T15:40:19.637"
+        },
+        "gyldighetsperiode": {
+          "fom": "2005-02-24"
+        }
+      }
+    ],
+    "navn": [
+      {
+        "navnelinje1": "NAV REGISTERFORVALTNING",
+        "bruksperiode": {
+          "fom": "2017-03-22T04:01:28.607"
+        },
+        "gyldighetsperiode": {
+          "fom": "2017-03-21"
+        }
+      }
+    ],
+    "naeringer": [
+      {
+        "naeringskode": "84.300",
+        "hjelpeenhet": false,
+        "bruksperiode": {
+          "fom": "2014-05-22T01:12:50.064"
+        },
+        "gyldighetsperiode": {
+          "fom": "2005-03-01"
+        }
+      }
+    ],
+    "forretningsadresser": [
+      {
+        "type": "Forretningsadresse",
+        "adresselinje1": "Torggata 63-65",
+        "postnummer": "2317",
+        "landkode": "NO",
+        "kommunenummer": "3403",
+        "bruksperiode": {
+          "fom": "2021-01-22T04:02:34.848"
+        },
+        "gyldighetsperiode": {
+          "fom": "2021-01-21"
+        }
+      }
+    ],
+    "postadresser": [
+      {
+        "type": "Postadresse",
+        "adresselinje1": "Postboks 4330",
+        "postnummer": "2308",
+        "landkode": "NO",
+        "kommunenummer": "3403",
+        "bruksperiode": {
+          "fom": "2020-01-03T03:39:13.275"
+        },
+        "gyldighetsperiode": {
+          "fom": "2019-12-31"
+        }
+      }
+    ],
+    "epostadresser": [
+      {
+        "adresse": "nav.registerforvaltning@nav.no",
+        "bruksperiode": {
+          "fom": "2017-08-23T04:02:31.452"
+        },
+        "gyldighetsperiode": {
+          "fom": "2017-08-22"
+        }
+      }
+    ],
+    "internettadresser": [
+      {
+        "adresse": "www.nav.no",
+        "bruksperiode": {
+          "fom": "2017-08-23T04:02:31.455"
+        },
+        "gyldighetsperiode": {
+          "fom": "2017-08-22"
+        }
+      }
+    ],
+    "mobiltelefonnummer": [
+      {
+        "nummer": "40 00 57 70",
+        "telefontype": "MTLF",
+        "bruksperiode": {
+          "fom": "2019-04-21T04:00:49.049"
+        },
+        "gyldighetsperiode": {
+          "fom": "2019-04-20"
+        }
+      }
+    ],
+    "ansatte": [
+      {
+        "antall": 27,
+        "bruksperiode": {
+          "fom": "2025-12-16T00:39:29.308"
+        },
+        "gyldighetsperiode": {
+          "fom": "2025-12-11"
+        }
+      }
+    ],
+    "navSpesifikkInformasjon": {
+      "erIA": true,
+      "bruksperiode": {
+        "fom": "2014-08-21T00:00:00"
+      },
+      "gyldighetsperiode": {
+        "fom": "2014-08-21"
+      }
+    },
+    "sistEndret": "2025-12-11"
+  },
+  "virksomhetDetaljer": {
+    "enhetstype": "BEDR",
+    "eierskiftedato": "2011-09-01"
+  },
+  "bestaarAvOrganisasjonsledd": [
+    {
+      "organisasjonsledd": {
+        "organisasjonsnummer": "991076573",
+        "type": "Organisasjonsledd",
+        "navn": {
+          "navnelinje1": "NAV KONTROLL STYRINGSENHET",
+          "bruksperiode": {
+            "fom": "2014-07-25T04:01:53.421"
+          },
+          "gyldighetsperiode": {
+            "fom": "2014-07-24"
+          }
+        },
+        "organisasjonsleddOver": [
+          {
+            "organisasjonsledd": {
+              "organisasjonsnummer": "991012206",
+              "type": "Organisasjonsledd",
+              "navn": {
+                "navnelinje1": "NAV YTELSESLINJEN",
+                "bruksperiode": {
+                  "fom": "2014-05-21T16:53:56.633"
+                },
+                "gyldighetsperiode": {
+                  "fom": "2014-01-07"
+                }
+              },
+              "organisasjonsleddOver": [
+                {
+                  "organisasjonsledd": {
+                    "organisasjonsnummer": "889640782",
+                    "type": "Organisasjonsledd",
+                    "navn": {
+                      "navnelinje1": "ARBEIDS- OG VELFERDSETATEN",
+                      "bruksperiode": {
+                        "fom": "2015-02-23T08:04:53.2"
+                      },
+                      "gyldighetsperiode": {
+                        "fom": "2006-03-23"
+                      }
+                    },
+                    "inngaarIJuridiskEnheter": [
+                      {
+                        "organisasjonsnummer": "983887457",
+                        "navn": {
+                          "navnelinje1": "ARBEIDS- OG",
+                          "navnelinje2": "INKLUDERINGSDEPARTEMENTET",
+                          "bruksperiode": {
+                            "fom": "2022-01-04T04:02:16.52"
+                          },
+                          "gyldighetsperiode": {
+                            "fom": "2022-01-03"
+                          }
+                        },
+                        "bruksperiode": {
+                          "fom": "2014-05-23T15:42:14.826"
+                        },
+                        "gyldighetsperiode": {
+                          "fom": "2006-03-23"
+                        }
+                      }
+                    ]
+                  },
+                  "bruksperiode": {
+                    "fom": "2014-05-23T20:17:58.91"
+                  },
+                  "gyldighetsperiode": {
+                    "fom": "2007-03-12"
+                  }
+                }
+              ]
+            },
+            "bruksperiode": {
+              "fom": "2014-05-23T20:18:35.462"
+            },
+            "gyldighetsperiode": {
+              "fom": "2007-03-27"
+            }
+          }
+        ]
+      },
+      "bruksperiode": {
+        "fom": "2014-05-23T19:47:47.682"
+      },
+      "gyldighetsperiode": {
+        "fom": "2012-01-06"
+      }
+    }
+  ]
+}

@@ -17,7 +17,6 @@ class FakeEregClient(
      * Pre-populated from the fixture file.
      */
     val organisasjoner: MutableMap<String, Organisasjon> = loadOrganisasjoner(fixtureLoader).toMutableMap()
-
     private val failureRef = AtomicReference<Throwable?>(null)
 
     fun setFailure(failure: Throwable) {
@@ -30,7 +29,10 @@ class FakeEregClient(
         orgnummer: String
     ): Organisasjon? {
         failureRef.get()?.let { throw it }
-        return organisasjoner[orgnummer]
+        return when (orgnummer) {
+            "314602374", "987926279" -> defaultFixtureLoader.loadOrNull<Organisasjon>("$orgnummer.json")
+            else -> organisasjoner[orgnummer]
+        }
     }
 
     companion object {

@@ -1,0 +1,152 @@
+{
+  "organisasjonsnummer": "314602374",
+  "type": "Virksomhet",
+  "navn": {
+    "sammensattnavn": "MUNTER GREI PIGGSVIN",
+    "navnelinje1": "MUNTER GREI PIGGSVIN",
+    "bruksperiode": {
+      "fom": "2021-09-21T12:09:11.731"
+    },
+    "gyldighetsperiode": {
+      "fom": "2021-03-19"
+    }
+  },
+  "organisasjonDetaljer": {
+    "registreringsdato": "2021-03-19T00:00:00",
+    "enhetstyper": [
+      {
+        "enhetstype": "BEDR",
+        "bruksperiode": {
+          "fom": "2021-09-21T12:09:11.729"
+        },
+        "gyldighetsperiode": {
+          "fom": "2021-03-19"
+        }
+      }
+    ],
+    "navn": [
+      {
+        "sammensattnavn": "MUNTER GREI PIGGSVIN",
+        "navnelinje1": "MUNTER GREI PIGGSVIN",
+        "bruksperiode": {
+          "fom": "2021-09-21T12:09:11.731"
+        },
+        "gyldighetsperiode": {
+          "fom": "2021-03-19"
+        }
+      }
+    ],
+    "naeringer": [
+      {
+        "naeringskode": "81.109",
+        "hjelpeenhet": false,
+        "bruksperiode": {
+          "fom": "2021-09-21T12:09:11.731"
+        },
+        "gyldighetsperiode": {
+          "fom": "2009-02-25"
+        }
+      }
+    ],
+    "forretningsadresser": [
+      {
+        "type": "Forretningsadresse",
+        "adresselinje1": "Storgata 93B",
+        "postnummer": "9008",
+        "landkode": "NO",
+        "kommunenummer": "5401",
+        "bruksperiode": {
+          "fom": "2021-09-21T12:09:11.729"
+        },
+        "gyldighetsperiode": {
+          "fom": "2021-03-19"
+        }
+      }
+    ],
+    "postadresser": [
+      {
+        "type": "Postadresse",
+        "adresselinje1": "Postboks 9122 Postboksanlegg",
+        "postnummer": "9240",
+        "landkode": "NO",
+        "kommunenummer": "5401",
+        "bruksperiode": {
+          "fom": "2021-09-21T12:09:11.729"
+        },
+        "gyldighetsperiode": {
+          "fom": "2021-03-19"
+        }
+      }
+    ],
+    "ansatte": [
+      {
+        "antall": 629,
+        "bruksperiode": {
+          "fom": "2021-09-22T09:12:13.712"
+        },
+        "gyldighetsperiode": {
+          "fom": "2021-03-19"
+        }
+      }
+    ],
+    "navSpesifikkInformasjon": {
+      "erIA": false,
+      "bruksperiode": {
+        "fom": "1900-01-01T00:00:00"
+      },
+      "gyldighetsperiode": {
+        "fom": "1900-01-01"
+      }
+    },
+    "sistEndret": "2021-03-19"
+  },
+  "virksomhetDetaljer": {
+    "enhetstype": "BEDR"
+  },
+  "bestaarAvOrganisasjonsledd": [
+    {
+      "organisasjonsledd": {
+        "organisasjonsnummer": "310525790",
+        "type": "Organisasjonsledd",
+        "navn": {
+          "sammensattnavn": "MUNTER GREI PIGGSVIN",
+          "navnelinje1": "MUNTER GREI PIGGSVIN",
+          "bruksperiode": {
+            "fom": "2021-09-18T14:56:45.484"
+          },
+          "gyldighetsperiode": {
+            "fom": "2021-03-17"
+          }
+        },
+        "inngaarIJuridiskEnheter": [
+          {
+            "organisasjonsnummer": "210259902",
+            "navn": {
+              "sammensattnavn": "ANSVARSFULL UMUSIKALSK BJØRN KOMMUNE",
+              "navnelinje1": "ANSVARSFULL UMUSIKALSK BJØRN",
+              "navnelinje2": "KOMMUNE",
+              "bruksperiode": {
+                "fom": "2021-09-17T08:15:34.62"
+              },
+              "gyldighetsperiode": {
+                "fom": "2021-03-17"
+              }
+            },
+            "bruksperiode": {
+              "fom": "2021-09-18T14:56:45.483"
+            },
+            "gyldighetsperiode": {
+              "fom": "2021-03-17"
+            }
+          }
+        ]
+      },
+      "bruksperiode": {
+        "fom": "2021-09-21T12:09:11.731"
+      },
+      "gyldighetsperiode": {
+        "fom": "2021-03-19"
+      }
+    }
+  ]
+}

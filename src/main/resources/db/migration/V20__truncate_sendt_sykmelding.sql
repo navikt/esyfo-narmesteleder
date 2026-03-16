@@ -1,0 +1,1 @@
+TRUNCATE sendt_sykmelding;

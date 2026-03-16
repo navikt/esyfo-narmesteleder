@@ -18,7 +18,7 @@ class OrganisasjonTest :
                 organization?.bestaarAvOrganisasjonsledd shouldNotBe null
             }
 
-            it("Deserializes Organisasjon with organisasjonsledd") {
+            it("Deserializes Organisasjon with nested organisasjonsledd") {
                 val organization = fixtureLoader.loadOrNull<Organisasjon>("987926279.json")
                 organization?.organisasjonsnummer shouldBe "987926279"
                 organization?.inngaarIJuridiskEnheter shouldBe null

@@ -120,7 +120,7 @@ class ValidationService(
                     setOf(orgNumber)
                 } else {
                     logger.info("Fetching organizations from Ereg")
-                    eregService.getOrganization(orgNumber).orgnummerSet()
+                    eregService.getOrganization(orgNumber).aggregerOrgnummereFraHierarki()
                 }
                 validateSystemPrincipal(organizationSet, principal)
             }

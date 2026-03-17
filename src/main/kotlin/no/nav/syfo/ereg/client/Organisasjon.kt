@@ -12,7 +12,7 @@ data class Organisasjon(
      * Henter ut alle organisasjonsnummer for organisasjon, inkludert organisasjonsnummer for juridiske enheter,
      * organisasjonsledd og deres juridiske enheter.
      */
-    fun orgnummerSet(): Set<String> {
+    fun aggregerOrgnummereFraHierarki(): Set<String> {
         val orgnummerSet = mutableSetOf(organisasjonsnummer)
         inngaarIJuridiskEnheter
             ?.mapTo(orgnummerSet) { enhet -> enhet.organisasjonsnummer }

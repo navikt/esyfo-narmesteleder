@@ -75,7 +75,7 @@ fun Application.configureKafkaConsumers() {
             consumerProperties(
                 env = environment.kafka,
                 valueDeserializer = StringDeserializer::class,
-                groupId = "esyfo-narmesteleder-sendt-sykmelding-consumer-persistence"
+                groupId = "esyfo-narmesteleder-persist-sendt-sykmelding-consumer"
             ).apply {
                 put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
                 put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500")

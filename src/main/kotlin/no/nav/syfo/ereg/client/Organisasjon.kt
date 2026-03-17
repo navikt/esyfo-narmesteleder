@@ -32,8 +32,6 @@ data class OrganisasjonsLedd(
     val driverVirksomheter: List<Organisasjon>? = null,
     // Liste av hvilke(n) juridisk enhet organisasjonsledd inngår i
     val inngaarIJuridiskEnheter: List<Organisasjon>? = null,
-    // Liste av hvilke organisasjonsledd som ligger under organisasjonsledd
-    val organisasjonsleddUnder: List<OrganisasjonsLeddWrapper>? = null,
     // Liste av hvilke organisasjonsledd som ligger over organisasjonsledd
     val organisasjonsleddOver: List<OrganisasjonsLeddWrapper>? = null,
 ) {

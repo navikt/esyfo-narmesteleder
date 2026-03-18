@@ -31,6 +31,7 @@ import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
 import no.nav.syfo.application.leaderelection.LeaderElection
+import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -217,6 +218,9 @@ private fun valkeyModule() = module {
     single {
         PdlCache(get())
     }
+    single {
+        EregCache(get())
+    }
 }
 
 private fun servicesModule() = module {
@@ -276,7 +280,8 @@ private fun servicesModule() = module {
     }
     single {
         EregService(
-            eregClient = get()
+            eregClient = get(),
+            eregCache = get()
         )
     }
 }

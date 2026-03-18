@@ -4,8 +4,10 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
-import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.spyk
 import io.mockk.verify
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
@@ -19,9 +21,25 @@ class EregServiceTest :
         val eregCache = mockk<EregCache>(relaxed = true)
         beforeTest {
             clearAllMocks()
-            coEvery { eregCache.getOrganisasjon(any()) } returns null
+            every { eregCache.getOrganisasjon(any()) } returns null
         }
         describe("getOrganization") {
+            it("Should return organization from cache without calling ereg client") {
+                // Arrange
+                val fakeEregClient = spyk(FakeEregClient())
+                val organization = organisasjon()
+                every { eregCache.getOrganisasjon(organization.organisasjonsnummer) } returns organization
+                val service = EregService(fakeEregClient, eregCache)
+
+                // Act
+                val result = service.getOrganization(organization.organisasjonsnummer)
+
+                // Assert
+                result shouldBe organization
+                verify { eregCache.getOrganisasjon(organization.organisasjonsnummer) }
+                coVerify(exactly = 0) { fakeEregClient.getOrganisasjon(any()) }
+                verify(exactly = 0) { eregCache.putOrganisasjon(any(), any()) }
+            }
 
             it("Should return organization when found") {
                 // Arrange

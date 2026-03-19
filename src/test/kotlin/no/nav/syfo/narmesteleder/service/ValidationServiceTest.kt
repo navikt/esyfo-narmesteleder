@@ -93,8 +93,8 @@ class ValidationServiceTest :
                     )
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
@@ -121,8 +121,8 @@ class ValidationServiceTest :
                     )
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
@@ -183,8 +183,8 @@ class ValidationServiceTest :
                         eq(setOf(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr, "systemowner")),
                         eq("nav_syfo_oppgi-narmesteleder")
                     )
-                    aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                    aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
+                    aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
+                    aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                     pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
                     pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 }

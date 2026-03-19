@@ -97,7 +97,7 @@ class LinemanagerRequirementRESTHandler(
         orgNumber: String,
         principal: Principal
     ): List<LinemanagerRequirementRead> {
-        validationService.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
+        validationService.validatePrincipalAccessToOrgnumber(principal, orgNumber)
         logger.info("Validation successful for fetching LinemanagerRequirement collection for orgNumber: $orgNumber")
         return narmesteLederService.getNlBehovList(
             pageSize = pageSize,

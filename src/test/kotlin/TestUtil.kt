@@ -38,6 +38,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
+import no.nav.syfo.ereg.client.Navn as EregNavn
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
@@ -58,9 +59,11 @@ fun linemanager(): Linemanager = Linemanager(
 
 fun organisasjon() = Organisasjon(
     organisasjonsnummer = faker.numerify("#########"),
+    navn = EregNavn(sammensattnavn = faker.name().fullName()),
     inngaarIJuridiskEnheter = listOf(
         Organisasjon(
             organisasjonsnummer = faker.numerify("#########"),
+            navn = EregNavn(sammensattnavn = faker.name().fullName()),
         )
     ),
 )

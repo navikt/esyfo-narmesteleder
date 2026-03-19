@@ -152,4 +152,75 @@ class OrganisasjonTest :
                 organizationWithNull.aggregerOrgnummereFraHierarki() shouldBe setOf("100000007")
             }
         }
+
+        describe("finnOverordnetJuridiskEnhet") {
+            it("should find overordnet juridisk enhet for organisasjon with simple organisasjonsledd") {
+                val organization = fixtureLoader.loadOrNull<Organisasjon>("314602374.json")
+                val overordnet = organization?.finnOverordnetJuridiskEnhet()
+                overordnet shouldNotBe null
+                overordnet!!.organisasjonsnummer shouldBe "210259902"
+            }
+
+            it("should find overordnet juridisk enhet for organisasjon with deeply nested organisasjonsledd") {
+                val organization = fixtureLoader.loadOrNull<Organisasjon>("987926279.json")
+                val overordnet = organization?.finnOverordnetJuridiskEnhet()
+                overordnet shouldNotBe null
+                overordnet!!.organisasjonsnummer shouldBe "983887457"
+            }
+
+            it("should return null for organisasjon without juridiske enheter or organisasjonsledd") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000001",
+                )
+                organization.finnOverordnetJuridiskEnhet() shouldBe null
+            }
+
+            it("should return direct juridisk enhet when no organisasjonsledd exists") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000002",
+                    inngaarIJuridiskEnheter = listOf(
+                        Organisasjon(organisasjonsnummer = "200000001"),
+                    ),
+                )
+                val overordnet = organization.finnOverordnetJuridiskEnhet()
+                overordnet shouldNotBe null
+                overordnet!!.organisasjonsnummer shouldBe "200000001"
+            }
+
+            it("should return null when organisasjonsledd has no juridisk enhet at the top") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000003",
+                    bestaarAvOrganisasjonsledd = listOf(
+                        OrganisasjonsLeddWrapper(
+                            organisasjonsledd = OrganisasjonsLedd(
+                                organisasjonsnummer = "300000001",
+                            ),
+                        ),
+                    ),
+                )
+                organization.finnOverordnetJuridiskEnhet() shouldBe null
+            }
+
+            it("should find juridisk enhet from organisasjonsledd even when organisasjon also has direct juridisk enhet") {
+                val organization = Organisasjon(
+                    organisasjonsnummer = "100000004",
+                    inngaarIJuridiskEnheter = listOf(
+                        Organisasjon(organisasjonsnummer = "200000010"),
+                    ),
+                    bestaarAvOrganisasjonsledd = listOf(
+                        OrganisasjonsLeddWrapper(
+                            organisasjonsledd = OrganisasjonsLedd(
+                                organisasjonsnummer = "300000002",
+                                inngaarIJuridiskEnheter = listOf(
+                                    Organisasjon(organisasjonsnummer = "200000020"),
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+                val overordnet = organization.finnOverordnetJuridiskEnhet()
+                overordnet shouldNotBe null
+                overordnet!!.organisasjonsnummer shouldBe "200000020"
+            }
+        }
     })

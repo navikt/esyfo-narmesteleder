@@ -38,7 +38,7 @@ class ValidationService(
         principal: Principal,
         validateEmployeeLastName: Boolean = true,
     ): LinemanagerActors {
-        validateAltinnTilgang(principal, linemanager.orgNumber)
+        validatePrincipalAccessToOrgnumber(principal, linemanager.orgNumber)
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
         val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
         val nlArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(leder.nationalIdentificationNumber)
@@ -78,7 +78,7 @@ class ValidationService(
         linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
     ): Person {
-        validateAltinnTilgang(principal, linemanagerRevoke.orgNumber)
+        validatePrincipalAccessToOrgnumber(principal, linemanagerRevoke.orgNumber)
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
         val sykemeldtArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
         validateNarmesteLederAvkreft(
@@ -136,29 +136,6 @@ class ValidationService(
                 errorMessage = message,
                 type = ErrorType.NO_ACTIVE_SICK_LEAVE
             )
-        }
-    }
-
-    private suspend fun validateAltinnTilgang(principal: Principal, orgNumber: String) {
-        when (principal) {
-            is UserPrincipal -> altinnTilgangerService.validateTilgangToOrganization(
-                principal,
-                orgNumber
-            )
-
-            is SystemPrincipal -> {
-                val hasAccess = pdpService.hasAccessToResource(
-                    System(principal.systemUserId),
-                    setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
-                    OPPGI_NARMESTELEDER_RESOURCE
-                )
-                if (!hasAccess) {
-                    throw ApiErrorException.ForbiddenException(
-                        errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                        type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
-                    )
-                }
-            }
         }
     }
 }

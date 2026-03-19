@@ -160,7 +160,7 @@ class ValidationServiceTest :
                 val userWithAccess = altinnTilgangerClient.accessPolicy.first()
                 val narmestelederRelasjonerWrite = linemanager().copy(
                     employeeIdentificationNumber = userWithAccess.hasAccess.first(),
-                    orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.last().orgnr
+                    orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
                 )
                 val principal = DefaultSystemPrincipal.copy(
                     ident = "0192:${userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr}",
@@ -291,8 +291,6 @@ class ValidationServiceTest :
                             any<AltinnTilgang>(),
                             any()
                         )
-                    }
-                    coVerify(exactly = 1) {
                         pdpService.hasAccessToResource(
                             match<System> { it.id == "systemId" },
                             eq(setOf(orgNumber.reversed(), "systemowner")),

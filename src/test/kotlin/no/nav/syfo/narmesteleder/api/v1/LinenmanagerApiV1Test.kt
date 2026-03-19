@@ -82,9 +82,9 @@ class LinenmanagerApiV1Test :
         val narmesteLederRelasjon = linemanager()
         val fakeAaregClient = FakeAaregClient()
         val aaregService = AaregService(fakeAaregClient)
-        val fakseEregClient = FakeEregClient()
+        val fakeEregClient = FakeEregClient()
         val eregCache = mockk<EregCache>(relaxed = true)
-        val eregService = EregService(fakseEregClient, eregCache)
+        val eregService = EregService(fakeEregClient, eregCache)
         val narmestelederKafkaService =
             NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
         val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)

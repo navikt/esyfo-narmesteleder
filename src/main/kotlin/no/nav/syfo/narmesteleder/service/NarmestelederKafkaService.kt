@@ -21,9 +21,13 @@ class NarmestelederKafkaService(
             NlResponse(
                 sykmeldt = Sykmeldt.from(linemanagerActors.employee),
                 leder = linemanager.manager.toLeder(linemanagerActors.manager),
-                orgnummer = linemanager.orgNumber
+                orgnummer = linemanager.orgNumber,
+                // I den tidligere nærmeste leder-løsningen ble det rapportert hvorvidt arbeidsgiver forskutterer lønn i samme skjema som
+                // nærmeste leder. Ved overgangen til Altinn 3 og overføringen av NL til esyfo, gikk man bort fra dette.
+                // Denne settes til true for bakoverkompabilitet på Kafka-meldingene fram til helseytelser er ute av Altinn 2.
+                utbetalesLonn = true
             ),
-            source = source
+            source = source,
         )
     }
 

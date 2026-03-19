@@ -5,7 +5,6 @@ import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.SystemPrincipal
@@ -15,7 +14,6 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
@@ -51,27 +49,11 @@ class ValidationService(
             orgNumberInRequest = linemanager.orgNumber,
             sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
             narmesteLederOrgNumbers = nlArbeidsforhold,
-            systemPrincipal = principal as? SystemPrincipal,
         )
         return LinemanagerActors(
             employee = sykmeldt,
             manager = leder,
         )
-    }
-
-    suspend fun validateGetNlBehov(
-        principal: Principal,
-        linemanagerRead: LinemanagerRequirementRead,
-        altinnTilgang: AltinnTilgang?
-    ) {
-        val sykemeldtOrgs = setOf(linemanagerRead.orgNumber, linemanagerRead.mainOrgNumber)
-        when (principal) {
-            is UserPrincipal -> {
-                altinnTilgangerService.validateTilgangToOrganization(altinnTilgang, linemanagerRead.orgNumber)
-            }
-
-            is SystemPrincipal -> validateSystemPrincipal(sykemeldtOrgs, principal)
-        }
     }
 
     suspend fun validateLinemanagerRevoke(
@@ -84,7 +66,6 @@ class ValidationService(
         validateNarmesteLederAvkreft(
             orgNumberInRequest = linemanagerRevoke.orgNumber,
             sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
-            systemPrincipal = principal as? SystemPrincipal,
         )
         validateEmployeeLastName(sykmeldt, linemanagerRevoke)
 

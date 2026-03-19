@@ -1,7 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
@@ -54,7 +53,6 @@ fun validateEmployeeLastName(
 fun validateNarmesteLeder(
     sykemeldtOrgNumbers: Map<String, String>,
     narmesteLederOrgNumbers: Map<String, String>,
-    systemPrincipal: SystemPrincipal?,
     orgNumberInRequest: String,
 ) {
     nlrequire(
@@ -68,18 +66,11 @@ fun validateNarmesteLeder(
         allNlOrgNumbers.any { it in allSykmeldtOrgNumbers },
         type = ErrorType.LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
     ) { "Linemanager is missing employment in any branch under the parent organization of the employee on sick leave" }
-    systemPrincipal?.let {
-        nlrequireOrForbidden(
-            type = ErrorType.MISSING_ORG_ACCESS,
-            value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
-        ) { "Systemuser is missing access to the organization" }
-    }
 }
 
 fun validateNarmesteLederAvkreft(
     sykemeldtOrgNumbers: Map<String, String>,
     orgNumberInRequest: String,
-    systemPrincipal: SystemPrincipal?,
 ) {
     nlrequire(
         sykemeldtOrgNumbers.isNotEmpty(),
@@ -89,11 +80,4 @@ fun validateNarmesteLederAvkreft(
         sykemeldtOrgNumbers.contains(orgNumberInRequest),
         ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
     ) { "Employee on sick leave does not have employment in the organization indicated in the request" }
-    val allSykmeldtOrgNumbers = sykemeldtOrgNumbers.map { listOf(it.key, it.value) }.flatten()
-    systemPrincipal?.let {
-        nlrequireOrForbidden(
-            type = ErrorType.MISSING_ORG_ACCESS,
-            value = allSykmeldtOrgNumbers.contains(systemPrincipal.getSystemUserOrgNumber())
-        ) { "Systemuser is missing access to the organization" }
-    }
 }

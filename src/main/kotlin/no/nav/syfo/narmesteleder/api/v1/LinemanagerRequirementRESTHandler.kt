@@ -76,8 +76,8 @@ class LinemanagerRequirementRESTHandler(
             } else {
                 null
             }
-
-            validationService.validateGetNlBehov(principal, it, altinnTilgang)
+            validationService.validatePrincipalAccessToOrgnumber(principal, it.orgNumber)
+//            validationService.validateGetNlBehov(principal, it, altinnTilgang)
             it.copy(orgName = altinnTilgang?.navn)
         }
     } catch (e: LinemanagerRequirementNotFoundException) {

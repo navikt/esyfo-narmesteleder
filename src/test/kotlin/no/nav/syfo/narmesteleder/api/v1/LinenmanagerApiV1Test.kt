@@ -598,6 +598,10 @@ class LinenmanagerApiV1Test :
                             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
+                        fakeEregClient.organisasjoner[narmesteLederRelasjon.orgNumber] = Organisasjon(
+                            organisasjonsnummer = narmesteLederRelasjon.orgNumber,
+                            inngaarIJuridiskEnheter = emptyList()
+                        )
                         val requirementId = seedLinemanagerRequirement()
                         val response =
                             client.get("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {

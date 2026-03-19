@@ -1,6 +1,5 @@
 package no.nav.syfo.narmesteleder.util
 
-import addMaskinportenOrgPrefix
 import createRandomValidOrgNumbers
 import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -20,16 +19,9 @@ class NarmesteLederValidatorTest :
     DescribeSpec({
         lateinit var randomOrgNumbers: List<String>
         lateinit var nlOrgNumbers: Map<String, String>
-        lateinit var organizationPrincipal: SystemPrincipal
         beforeTest {
             randomOrgNumbers = createRandomValidOrgNumbers(prefix = "")
             nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
-            organizationPrincipal = SystemPrincipal(
-                addMaskinportenOrgPrefix(nlOrgNumbers.keys.first()),
-                "token",
-                "0192:systemOwner",
-                "systemUserId"
-            )
         }
         describe("validateNarmesteLeder") {
             describe("organization number matches for sykemeldt, nl and innsender") {
@@ -38,7 +30,6 @@ class NarmesteLederValidatorTest :
                         validateNarmesteLeder(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = nlOrgNumbers.keys.first(),
                         )
                     }
@@ -50,7 +41,6 @@ class NarmesteLederValidatorTest :
                             sykemeldtOrgNumbers = mapOf(randomOrgNumbers.first() to createRandomValidOrgNumbers(prefix = "").first()),
                             // nlOrgNumbers also contains randomOrgNumbers.first()
                             narmesteLederOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = nlOrgNumbers.keys.first()
                         )
                     }
@@ -69,7 +59,6 @@ class NarmesteLederValidatorTest :
                         validateNarmesteLeder(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = randomOrgNumbers.first(),
                         )
                     }
@@ -86,24 +75,7 @@ class NarmesteLederValidatorTest :
                         validateNarmesteLeder(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = randomOrgNumbers[2],
-                        )
-                    }
-                }
-
-                it("Should throw BadRequestException if innsender is not within NL org") {
-                    shouldThrow<ApiErrorException.ForbiddenException> {
-                        validateNarmesteLeder(
-                            sykemeldtOrgNumbers = nlOrgNumbers,
-                            narmesteLederOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = SystemPrincipal(
-                                addMaskinportenOrgPrefix(randomOrgNumbers[2]),
-                                "token",
-                                "0192:systemOwner",
-                                "systemUserId"
-                            ),
-                            orgNumberInRequest = nlOrgNumbers.keys.first()
                         )
                     }
                 }
@@ -113,7 +85,6 @@ class NarmesteLederValidatorTest :
                         validateNarmesteLeder(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = randomOrgNumbers[3],
                         )
                     }
@@ -124,7 +95,6 @@ class NarmesteLederValidatorTest :
                         validateNarmesteLeder(
                             sykemeldtOrgNumbers = emptyMap(),
                             narmesteLederOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = nlOrgNumbers.keys.first(),
                         )
                     }
@@ -135,7 +105,6 @@ class NarmesteLederValidatorTest :
                         validateNarmesteLeder(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = emptyMap(),
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = nlOrgNumbers.keys.first(),
                         )
                     }
@@ -149,7 +118,6 @@ class NarmesteLederValidatorTest :
                     shouldNotThrowAny {
                         validateNarmesteLederAvkreft(
                             sykemeldtOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = nlOrgNumbers.keys.first(),
                         )
                     }
@@ -159,7 +127,6 @@ class NarmesteLederValidatorTest :
                     shouldNotThrowAny {
                         validateNarmesteLederAvkreft(
                             sykemeldtOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = nlOrgNumbers.keys.first()
                         )
                     }
@@ -171,23 +138,7 @@ class NarmesteLederValidatorTest :
                     shouldThrow<ApiErrorException.BadRequestException> {
                         validateNarmesteLederAvkreft(
                             sykemeldtOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = randomOrgNumbers[2],
-                        )
-                    }
-                }
-
-                it("Should throw BadRequestException if innsender is not within sykmeldt org") {
-                    shouldThrow<ApiErrorException.ForbiddenException> {
-                        validateNarmesteLederAvkreft(
-                            sykemeldtOrgNumbers = nlOrgNumbers,
-                            systemPrincipal = SystemPrincipal(
-                                addMaskinportenOrgPrefix(randomOrgNumbers[2]),
-                                "token",
-                                "0192:systemOwner",
-                                "systemUserId"
-                            ),
-                            orgNumberInRequest = nlOrgNumbers.keys.first()
                         )
                     }
                 }
@@ -196,7 +147,6 @@ class NarmesteLederValidatorTest :
                     shouldThrow<ApiErrorException.BadRequestException> {
                         validateNarmesteLederAvkreft(
                             sykemeldtOrgNumbers = emptyMap(),
-                            systemPrincipal = organizationPrincipal,
                             orgNumberInRequest = nlOrgNumbers.keys.first(),
                         )
                     }

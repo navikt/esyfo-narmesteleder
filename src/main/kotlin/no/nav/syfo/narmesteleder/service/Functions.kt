@@ -1,5 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
+import no.nav.syfo.aareg.Arbeidsforhold
+import no.nav.syfo.aareg.toOrgNumberList
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.Linemanager
@@ -64,6 +66,23 @@ fun validateNarmesteLeder(
 
     nlrequire(
         allNlOrgNumbers.any { it in allSykmeldtOrgNumbers },
+        type = ErrorType.LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
+    ) { "Linemanager is missing employment in any branch under the parent organization of the employee on sick leave" }
+}
+fun validateNarmesteLeder(
+    sykemeldtArbeidsforhold: List<Arbeidsforhold>,
+    narmesteLederArbeidsforhold: List<Arbeidsforhold>,
+    orgNumberInRequest: String,
+) {
+    val matchingArbeidsforhold = sykemeldtArbeidsforhold.firstOrNull { it.orgnummer == orgNumberInRequest }
+    nlrequire(
+        matchingArbeidsforhold != null,
+        type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+    ) { "Employee on sick leave is missing employment in any organization" }
+    val allNlOrgNumbers = narmesteLederArbeidsforhold.toOrgNumberList()
+
+    nlrequire(
+        allNlOrgNumbers.any { matchingArbeidsforhold?.toOrgnummerList()?.contains(it) == true },
         type = ErrorType.LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
     ) { "Linemanager is missing employment in any branch under the parent organization of the employee on sick leave" }
 }

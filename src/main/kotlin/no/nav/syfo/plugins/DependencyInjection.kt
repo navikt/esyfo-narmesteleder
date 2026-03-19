@@ -121,7 +121,7 @@ private fun handlerModule() = module {
     single { NlBehovLeesahHandler(get()) }
     single { SendtSykmeldingHandler(get(), get()) }
     single {
-        LinemanagerRequirementRESTHandler(get(), get(), get(), get())
+        LinemanagerRequirementRESTHandler(get(), get(), get())
     }
 }
 

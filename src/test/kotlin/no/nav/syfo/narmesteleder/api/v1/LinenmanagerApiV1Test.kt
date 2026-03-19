@@ -131,7 +131,6 @@ class LinenmanagerApiV1Test :
                     narmesteLederService = narmesteLederService,
                     validationService = validationServiceSpy,
                     narmestelederKafkaService = narmestelederKafkaServiceSpy,
-                    altinnTilgangerService = altinnTilgangerServiceSpy,
                 )
             fakeRepo.clear()
         }

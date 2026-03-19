@@ -1,4 +1,5 @@
 ---
+description: 'Ktor-spesifikke mønstre — routing, plugins, StatusPages, Koin DI'
 applyTo: "**/*.kt"
 ---
 <!-- Managed by esyfo-cli. Do not edit manually. Changes will be overwritten.

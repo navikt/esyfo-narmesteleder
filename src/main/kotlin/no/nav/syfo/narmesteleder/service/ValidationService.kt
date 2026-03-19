@@ -72,23 +72,39 @@ class ValidationService(
         return sykmeldt
     }
 
-    suspend fun validatePrincipalAccessToOrgnumber(principal: Principal, orgNumber: String) {
-        when (principal) {
-            is SystemPrincipal -> {
-                val organizationSet = if (principal.getSystemUserOrgNumber() == orgNumber) {
-                    setOf(orgNumber)
-                } else {
-                    logger.info("Fetching organizations from Ereg")
-                    eregService.getOrganization(orgNumber).aggregerOrgnummereFraHierarki()
-                }
-                validateSystemPrincipal(organizationSet, principal)
+    /**
+     * Validated if the principal from authorization token, has access to the organization related to the request.
+     * For system principals, this is done by checking if the organization number in the token matches the organization number in the request,
+     * or if the organization number in the request is part of the hierarchy of organizations related to the system principal.
+     *
+     * For user principals, this is done by checking if the user has access to the organization number in the request
+     * through Altinn by checking with service AltinnTilganger.
+     *
+     * It returns the name of the organization if the principal is a user principal,
+     * and null if the principal is a system principal,
+     * as this information is not available in the token and we do not fetchit from Ereg.
+     */
+    suspend fun validatePrincipalAccessToOrgnumber(principal: Principal, orgNumber: String): String? = when (principal) {
+        is SystemPrincipal -> {
+            val organizationSet = if (principal.getSystemUserOrgNumber() == orgNumber) {
+                setOf(orgNumber)
+            } else {
+                logger.info("Fetching organizations from Ereg")
+                eregService.getOrganization(orgNumber).aggregerOrgnummereFraHierarki()
             }
+            validateSystemPrincipal(organizationSet, principal)
+            null
+        }
 
-            is UserPrincipal -> {
-                altinnTilgangerService.validateTilgangToOrganization(userPrincipal = principal, orgnummer = orgNumber)
-            }
+        is UserPrincipal -> {
+            val altinnTilgang = altinnTilgangerService.validateTilgangToOrganization(
+                userPrincipal = principal,
+                orgnummer = orgNumber
+            )
+            altinnTilgang.navn.trim()
         }
     }
+
     private suspend fun validateSystemPrincipal(validOrgnumbers: Set<String>, principal: SystemPrincipal) {
         if (!validOrgnumbers.contains(principal.getSystemUserOrgNumber())) {
             throw ApiErrorException.ForbiddenException(

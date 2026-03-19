@@ -75,7 +75,6 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             narmesteLederService = narmestelederServiceSpyk,
             validationService = validationServiceSpyk,
             narmestelederKafkaService = narmestelederKafkaServiceSpyk,
-            altinnTilgangerService = altinnTilgangerServiceSpyk,
         )
     )
     val nlBehovLeesahHandlerSpyk = spyk(

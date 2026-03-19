@@ -19,12 +19,7 @@ const val NAIS_DATABASE_ENV_PREFIX = "NARMESTELEDER_DB"
 data class NaisEnvironment(
     override val database: DatabaseEnvironment = DatabaseEnvironment.createFromEnvVars(),
     override val texas: TexasEnvironment = TexasEnvironment.createFromEnvVars(),
-    override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment(
-        host = getEnvVar("VALKEY_HOST_FELLES_CACHE"),
-        port = getEnvVar("VALKEY_PORT_FELLES_CACHE").toInt(),
-        username = getEnvVar("VALKEY_USERNAME_FELLES_CACHE"),
-        password = getEnvVar("VALKEY_PASSWORD_FELLES_CACHE")
-    ),
+    override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createFromEnvVars(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createFromEnvVars(),
     override val clientProperties: ClientProperties = ClientProperties.createFromEnvVars(),
     override val otherProperties: OtherEnvironmentProperties = OtherEnvironmentProperties.createFromEnvVars()
@@ -39,13 +34,7 @@ fun isProdEnv(): Boolean = getEnvVar("NAIS_CLUSTER_NAME", "local") == "prod-gcp"
 data class LocalEnvironment(
     override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
     override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),
-    override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment(
-        host = "localhost",
-        port = 6379,
-        username = "default",
-        password = "test",
-        ssl = false
-    ),
+    override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createForLocal(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal(),
     override val clientProperties: ClientProperties = ClientProperties.createForLocal(),
     override val otherProperties: OtherEnvironmentProperties = OtherEnvironmentProperties.createForLocal()

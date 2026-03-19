@@ -22,6 +22,6 @@ class EregCache(
 
     companion object {
         const val EREG_CACHE_KEY_PREFIX =
-            "ereg_v2_h_ol" // Key for ereg v2 response with hierarchy and organisasjonsledd
+            "ereg_v2_hierarchy_orgledd" // Key for ereg v2 response with hierarchy and organisasjonsledd
     }
 }

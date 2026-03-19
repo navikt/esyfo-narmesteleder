@@ -155,12 +155,12 @@ class ValidationServiceTest :
                 }
             }
 
-            it("should not call AltinnTilgangerService when principal is OrganizationPrincipal") {
+            it("should not call AltinnTilgangerService when principal is SystemPrincipal") {
                 // Arrange
                 val userWithAccess = altinnTilgangerClient.accessPolicy.first()
                 val narmestelederRelasjonerWrite = linemanager().copy(
                     employeeIdentificationNumber = userWithAccess.hasAccess.first(),
-                    orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
+                    orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.last().orgnr
                 )
                 val principal = DefaultSystemPrincipal.copy(
                     ident = "0192:${userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr}",
@@ -249,7 +249,7 @@ class ValidationServiceTest :
                 }
             }
 
-            describe("validateLinemanagerCollectionAccess") {
+            describe("validatePrincipalAccessToOrgnumber") {
                 it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
                     // Arrange
                     val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
@@ -258,7 +258,7 @@ class ValidationServiceTest :
 
                     // Act
                     shouldThrow<ApiErrorException.ForbiddenException> {
-                        service.validateLinemanagerRequirementCollectionAccess(principal = principal, orgNumber = orgNumber)
+                        service.validatePrincipalAccessToOrgnumber(principal = principal, orgNumber = orgNumber)
                     }
                     // Assert
                     coVerify(exactly = 1) {
@@ -283,7 +283,7 @@ class ValidationServiceTest :
 
                     // Act
                     shouldThrow<ApiErrorException.ForbiddenException> {
-                        service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
+                        service.validatePrincipalAccessToOrgnumber(principal, orgNumber)
                     }
                     // Assert
                     coVerify(exactly = 0) {
@@ -310,7 +310,7 @@ class ValidationServiceTest :
 
                     // Act
                     shouldNotThrow<ApiErrorException.ForbiddenException> {
-                        service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
+                        service.validatePrincipalAccessToOrgnumber(principal, orgNumber)
                     }
                     // Assert
                     coVerify(exactly = 0) {
@@ -340,7 +340,7 @@ class ValidationServiceTest :
 
                     // Act
                     shouldNotThrow<ApiErrorException.ForbiddenException> {
-                        service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
+                        service.validatePrincipalAccessToOrgnumber(principal, orgNumber)
                     }
                     // Assert
                     coVerify(exactly = 0) {

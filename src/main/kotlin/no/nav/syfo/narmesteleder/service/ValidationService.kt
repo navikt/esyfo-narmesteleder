@@ -74,27 +74,6 @@ class ValidationService(
         }
     }
 
-    suspend fun validateSystemPrincipal(validOrgnumbers: Set<String>, principal: SystemPrincipal) {
-        val hasAccess = pdpService.hasAccessToResource(
-            System(principal.systemUserId),
-            setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
-            OPPGI_NARMESTELEDER_RESOURCE
-        )
-        if (hasAccess) {
-            if (!validOrgnumbers.contains(principal.getSystemUserOrgNumber())) {
-                throw ApiErrorException.ForbiddenException(
-                    errorMessage = "System ${principal.systemUserId} is not registered in the same organization as employee on sick leave",
-                    type = ErrorType.MISSING_ORG_ACCESS
-                )
-            }
-        } else {
-            throw ApiErrorException.ForbiddenException(
-                errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
-            )
-        }
-    }
-
     suspend fun validateLinemanagerRevoke(
         linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
@@ -112,10 +91,9 @@ class ValidationService(
         return sykmeldt
     }
 
-    suspend fun validateLinemanagerRequirementCollectionAccess(principal: Principal, orgNumber: String) {
+    suspend fun validatePrincipalAccessToOrgnumber(principal: Principal, orgNumber: String) {
         when (principal) {
             is SystemPrincipal -> {
-                logger.info("Validating LinemanagerRequirement collection access for system principal")
                 val organizationSet = if (principal.getSystemUserOrgNumber() == orgNumber) {
                     setOf(orgNumber)
                 } else {
@@ -126,9 +104,27 @@ class ValidationService(
             }
 
             is UserPrincipal -> {
-                logger.info("Validating LinemanagerRequirement collection access for user principal")
                 altinnTilgangerService.validateTilgangToOrganization(userPrincipal = principal, orgnummer = orgNumber)
             }
+        }
+    }
+    private suspend fun validateSystemPrincipal(validOrgnumbers: Set<String>, principal: SystemPrincipal) {
+        if (!validOrgnumbers.contains(principal.getSystemUserOrgNumber())) {
+            throw ApiErrorException.ForbiddenException(
+                errorMessage = "System ${principal.systemUserId} is not registered in the same organization as the context of the request",
+                type = ErrorType.MISSING_ORG_ACCESS
+            )
+        }
+        val hasAccess = pdpService.hasAccessToResource(
+            System(principal.systemUserId),
+            setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
+            OPPGI_NARMESTELEDER_RESOURCE
+        )
+        if (!hasAccess) {
+            throw ApiErrorException.ForbiddenException(
+                errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+                type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
+            )
         }
     }
 

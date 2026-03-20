@@ -9,7 +9,6 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.util.*
 
-class NarmestelederGeneratedIDException(message: String) : RuntimeException(message)
 interface INarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)

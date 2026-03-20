@@ -74,11 +74,12 @@ data class OrganisasjonsLedd(
             }
         return orgnummerSet
     }
+
     /**
-    * Finner den overordnede juridiske enheten i organisasjonshierarkiet ved å traversere
-    * bestaarAvOrganisasjonsledd og organisasjonsleddOver oppover til toppen, og returnerer
-    * den juridiske enheten (inngaarIJuridiskEnheter) som finnes på det høyeste nivået.
-    */
+     * Finner den overordnede juridiske enheten i organisasjonshierarkiet ved å traversere
+     * bestaarAvOrganisasjonsledd og organisasjonsleddOver oppover til toppen, og returnerer
+     * den juridiske enheten (inngaarIJuridiskEnheter) som finnes på det høyeste nivået.
+     */
     fun finnOverordnetJuridiskEnhetFraToppniva(
         visitedOrgnummere: MutableSet<String> = mutableSetOf(),
     ): Organisasjon? {

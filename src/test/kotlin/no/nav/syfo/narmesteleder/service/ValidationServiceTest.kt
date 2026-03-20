@@ -244,7 +244,7 @@ class ValidationServiceTest :
                         eq(setOf(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr, "systemowner")),
                         eq("nav_syfo_oppgi-narmesteleder")
                     )
-                    aaregService.findOrgNumbersByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
+                    aaregService.findArbeidsforholdByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                     pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 }
             }

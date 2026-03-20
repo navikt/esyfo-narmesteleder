@@ -51,6 +51,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
+import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -478,17 +479,16 @@ class LinenmanagerApiV1Test :
             }
 
             it("should return 400 if sykmeldt lacks arbeidsforhold for organization number") {
-
                 withTestApplication {
                     // Arrange
+                    val narmesteLederAvkreft = linemanagerRevoke()
                     texasHttpClientMock.defaultMocks(
-                        consumer =
-                        DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederAvkreft.orgNumber}",
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val narmesteLederAvkreft = linemanagerRevoke()
+
                     // Act
                     val response =
                         client.post("$API_V1_PATH/$REVOKE_PATH") {
@@ -499,6 +499,7 @@ class LinenmanagerApiV1Test :
 
                     // Assert
                     response.status shouldBe HttpStatusCode.BadRequest
+                    response.body<ApiError>().message shouldBe "Employee on sick leave is missing employment in any organization"
                     coVerify(exactly = 0) {
                         narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                             narmesteLederAvkreft,

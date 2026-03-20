@@ -1,6 +1,8 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.aareg.Arbeidsforhold
+import no.nav.syfo.aareg.getForOrgnummer
 import no.nav.syfo.aareg.toOrgNumberList
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
@@ -37,21 +39,25 @@ class ValidationService(
         principal: Principal,
         validateEmployeeLastName: Boolean = true,
     ): LinemanagerActors {
-        validatePrincipalAccessToOrgnumber(principal, linemanager.orgNumber)
+        val sykemeldtArbeidsforhold =
+            aaregService.findArbeidsforholdByPersonIdent(linemanager.employeeIdentificationNumber)
+        validatePrincipalAccessToOrgnumber(
+            principal,
+            linemanager.orgNumber,
+            sykemeldtArbeidsforhold.getForOrgnummer(linemanager.orgNumber)
+        )
+        validateActiveSickLeave(linemanager.employeeIdentificationNumber, linemanager.orgNumber)
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
         val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
 
 //        validateArbeidsforhold(sykmeldt, leder, linemanager.orgNumber)
 
         val nlArbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(leder.nationalIdentificationNumber)
-        val sykemeldtArbeidsforhold =
-            aaregService.findArbeidsforholdByPersonIdent(sykmeldt.nationalIdentificationNumber)
-        validateActiveSickLeave(sykmeldt.nationalIdentificationNumber, linemanager.orgNumber)
         validateLinemanagerLastName(leder, linemanager)
         if (validateEmployeeLastName) validateEmployeeLastName(sykmeldt, linemanager)
 
-        validateNarmesteLeder(
-            sykemeldtArbeidsforhold = sykemeldtArbeidsforhold,
+        validateSmAndNlArbeidsforhold(
+            sykmeldtArbeidsforhold = sykemeldtArbeidsforhold,
             narmesteLederArbeidsforhold = nlArbeidsforhold,
             orgNumberInRequest = linemanager.orgNumber
         )
@@ -100,12 +106,17 @@ class ValidationService(
         linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
     ): Person {
-        validatePrincipalAccessToOrgnumber(principal, linemanagerRevoke.orgNumber)
+        val abeidsforhold =
+            aaregService.findArbeidsforholdByPersonIdent(linemanagerRevoke.employeeIdentificationNumber)
+        validatePrincipalAccessToOrgnumber(
+            principal,
+            linemanagerRevoke.orgNumber,
+            abeidsforhold.getForOrgnummer(linemanagerRevoke.orgNumber)
+        )
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
-        val sykemeldtArbeidsforhold = aaregService.findOrgNumbersByPersonIdent(sykmeldt.nationalIdentificationNumber)
         validateNarmesteLederAvkreft(
             orgNumberInRequest = linemanagerRevoke.orgNumber,
-            sykemeldtOrgNumbers = sykemeldtArbeidsforhold,
+            sykmeltArbeidsforhold = abeidsforhold,
         )
         validateEmployeeLastName(sykmeldt, linemanagerRevoke)
 
@@ -122,17 +133,23 @@ class ValidationService(
      *
      * It returns the name of the organization if the principal is a user principal,
      * and null if the principal is a system principal,
-     * as this information is not available in the token and we do not fetch it from Ereg.
+     * as this information is not available in the token, and we do not fetch it from Ereg.
      */
-    suspend fun validatePrincipalAccessToOrgnumber(principal: Principal, orgNumber: String): String? = when (principal) {
+    suspend fun validatePrincipalAccessToOrgnumber(
+        principal: Principal,
+        orgNumber: String,
+        arbeidsforhold: Arbeidsforhold? = null
+    ): String? = when (principal) {
         is SystemPrincipal -> {
-            val organizationSet = if (principal.getSystemUserOrgNumber() == orgNumber) {
-                setOf(orgNumber)
-            } else {
-                logger.info("Fetching organizations from Ereg")
-                eregService.getOrganization(orgNumber).aggregerOrgnummereFraHierarki()
+            val orgnumbersToValidate = when {
+                principal.getSystemUserOrgNumber() == orgNumber -> setOf(orgNumber)
+                arbeidsforhold?.opplysningspliktigOrgnummer != null -> arbeidsforhold.toOrgnummerList().toSet()
+                else -> {
+                    logger.info("System principal does not have direct access to the organization number in the request, checking Ereg for org hierarchy")
+                    eregService.getOrganization(orgNumber).aggregerOrgnummereFraHierarki()
+                }
             }
-            validateSystemPrincipal(organizationSet, principal)
+            validateSystemPrincipal(orgnumbersToValidate, principal)
             null
         }
 

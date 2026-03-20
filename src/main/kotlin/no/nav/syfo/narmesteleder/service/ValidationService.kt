@@ -122,7 +122,7 @@ class ValidationService(
      *
      * It returns the name of the organization if the principal is a user principal,
      * and null if the principal is a system principal,
-     * as this information is not available in the token and we do not fetchit from Ereg.
+     * as this information is not available in the token and we do not fetch it from Ereg.
      */
     suspend fun validatePrincipalAccessToOrgnumber(principal: Principal, orgNumber: String): String? = when (principal) {
         is SystemPrincipal -> {

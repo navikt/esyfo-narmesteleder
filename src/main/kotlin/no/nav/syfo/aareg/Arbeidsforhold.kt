@@ -11,3 +11,5 @@ data class Arbeidsforhold(
 ) {
     fun toOrgnummerList(): List<String> = listOfNotNull(orgnummer, opplysningspliktigOrgnummer).distinct()
 }
+
+fun List<Arbeidsforhold>.getForOrgnummer(orgnummer: String): Arbeidsforhold? = this.firstOrNull { it.orgnummer == orgnummer }

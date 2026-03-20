@@ -7,11 +7,14 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import linemanager
+import no.nav.syfo.aareg.Arbeidsforhold
+import no.nav.syfo.aareg.client.ArbeidsstedType
+import no.nav.syfo.aareg.client.OpplysningspliktigType
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.service.validateLinemanagerLastName
-import no.nav.syfo.narmesteleder.service.validateNarmesteLeder
 import no.nav.syfo.narmesteleder.service.validateNarmesteLederAvkreft
+import no.nav.syfo.narmesteleder.service.validateSmAndNlArbeidsforhold
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
 
@@ -19,15 +22,22 @@ class NarmesteLederValidatorTest :
     DescribeSpec({
         lateinit var randomOrgNumbers: List<String>
         lateinit var nlOrgNumbers: Map<String, String>
+        lateinit var arbeidsforhold: Arbeidsforhold
         beforeTest {
             randomOrgNumbers = createRandomValidOrgNumbers(prefix = "")
             nlOrgNumbers = mapOf(randomOrgNumbers.first() to randomOrgNumbers.last())
+            arbeidsforhold = Arbeidsforhold(
+                orgnummer = randomOrgNumbers.first(),
+                arbeidsstedType = ArbeidsstedType.Underenhet,
+                opplysningspliktigOrgnummer = randomOrgNumbers.last(),
+                opplysningspliktigType = OpplysningspliktigType.Hovedenhet,
+            )
         }
         describe("validateNarmesteLeder") {
             describe("organization number matches for sykemeldt, nl and innsender") {
                 it("It should not throw when sykmeldt is only org number used for all parties") {
                     shouldNotThrowAny {
-                        validateNarmesteLeder(
+                        validateSmAndNlArbeidsforhold(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = nlOrgNumbers,
                             orgNumberInRequest = nlOrgNumbers.keys.first(),
@@ -37,7 +47,7 @@ class NarmesteLederValidatorTest :
 
                 it("Should not throw when sykmeldt has at least one matching org number with the other parties") {
                     shouldNotThrowAny {
-                        validateNarmesteLeder(
+                        validateSmAndNlArbeidsforhold(
                             sykemeldtOrgNumbers = mapOf(randomOrgNumbers.first() to createRandomValidOrgNumbers(prefix = "").first()),
                             // nlOrgNumbers also contains randomOrgNumbers.first()
                             narmesteLederOrgNumbers = nlOrgNumbers,
@@ -56,7 +66,7 @@ class NarmesteLederValidatorTest :
                         "systemUserId"
                     )
                     shouldThrow<ApiErrorException.BadRequestException> {
-                        validateNarmesteLeder(
+                        validateSmAndNlArbeidsforhold(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
                             orgNumberInRequest = randomOrgNumbers.first(),
@@ -72,7 +82,7 @@ class NarmesteLederValidatorTest :
                         "systemUserId"
                     )
                     shouldThrow<ApiErrorException.BadRequestException> {
-                        validateNarmesteLeder(
+                        validateSmAndNlArbeidsforhold(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = nlOrgNumbers,
                             orgNumberInRequest = randomOrgNumbers[2],
@@ -82,7 +92,7 @@ class NarmesteLederValidatorTest :
 
                 it("Should throw BadRequestException if no one is within the same org") {
                     shouldThrow<ApiErrorException.BadRequestException> {
-                        validateNarmesteLeder(
+                        validateSmAndNlArbeidsforhold(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = mapOf(randomOrgNumbers[2] to randomOrgNumbers[3]),
                             orgNumberInRequest = randomOrgNumbers[3],
@@ -92,7 +102,7 @@ class NarmesteLederValidatorTest :
 
                 it("Should throw BadRequestException exception if no organizations are found for sykemeldt") {
                     shouldThrow<ApiErrorException.BadRequestException> {
-                        validateNarmesteLeder(
+                        validateSmAndNlArbeidsforhold(
                             sykemeldtOrgNumbers = emptyMap(),
                             narmesteLederOrgNumbers = nlOrgNumbers,
                             orgNumberInRequest = nlOrgNumbers.keys.first(),
@@ -102,7 +112,7 @@ class NarmesteLederValidatorTest :
 
                 it("Should throw BadRequestException exception if no organizations are found for nærmeste leder") {
                     shouldThrow<ApiErrorException.BadRequestException> {
-                        validateNarmesteLeder(
+                        validateSmAndNlArbeidsforhold(
                             sykemeldtOrgNumbers = nlOrgNumbers,
                             narmesteLederOrgNumbers = emptyMap(),
                             orgNumberInRequest = nlOrgNumbers.keys.first(),
@@ -117,8 +127,8 @@ class NarmesteLederValidatorTest :
                 it("It should not throw when sykemeldt is only org number used for all parties") {
                     shouldNotThrowAny {
                         validateNarmesteLederAvkreft(
-                            sykemeldtOrgNumbers = nlOrgNumbers,
-                            orgNumberInRequest = nlOrgNumbers.keys.first(),
+                            sykmeltArbeidsforhold = listOf(arbeidsforhold),
+                            orgNumberInRequest = arbeidsforhold.orgnummer
                         )
                     }
                 }
@@ -126,8 +136,14 @@ class NarmesteLederValidatorTest :
                 it("Should not throw when sykemeldt has at least one matching org number with the other parties") {
                     shouldNotThrowAny {
                         validateNarmesteLederAvkreft(
-                            sykemeldtOrgNumbers = nlOrgNumbers,
-                            orgNumberInRequest = nlOrgNumbers.keys.first()
+                            sykmeltArbeidsforhold = listOf(
+                                arbeidsforhold,
+                                arbeidsforhold.copy(
+                                    orgnummer = randomOrgNumbers[2],
+                                    opplysningspliktigOrgnummer = randomOrgNumbers[3],
+                                ),
+                            ),
+                            orgNumberInRequest = arbeidsforhold.orgnummer
                         )
                     }
                 }
@@ -137,7 +153,7 @@ class NarmesteLederValidatorTest :
                 it("Should throw BadRequestException if payload org is not within sykemeldt orgs") {
                     shouldThrow<ApiErrorException.BadRequestException> {
                         validateNarmesteLederAvkreft(
-                            sykemeldtOrgNumbers = nlOrgNumbers,
+                            sykmeltArbeidsforhold = listOf(arbeidsforhold),
                             orgNumberInRequest = randomOrgNumbers[2],
                         )
                     }
@@ -146,8 +162,8 @@ class NarmesteLederValidatorTest :
                 it("Should throw BadRequestException exception if no organizations are found for sykemeldt") {
                     shouldThrow<ApiErrorException.BadRequestException> {
                         validateNarmesteLederAvkreft(
-                            sykemeldtOrgNumbers = emptyMap(),
-                            orgNumberInRequest = nlOrgNumbers.keys.first(),
+                            sykmeltArbeidsforhold = emptyList<Arbeidsforhold>(),
+                            orgNumberInRequest = arbeidsforhold.orgnummer,
                         )
                     }
                 }

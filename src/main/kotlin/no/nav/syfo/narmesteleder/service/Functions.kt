@@ -1,6 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.Arbeidsforhold
+import no.nav.syfo.aareg.getForOrgnummer
 import no.nav.syfo.aareg.toOrgNumberList
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
@@ -52,7 +53,7 @@ fun validateEmployeeLastName(
     }
 }
 
-fun validateNarmesteLeder(
+fun validateSmAndNlArbeidsforhold(
     sykemeldtOrgNumbers: Map<String, String>,
     narmesteLederOrgNumbers: Map<String, String>,
     orgNumberInRequest: String,
@@ -69,12 +70,16 @@ fun validateNarmesteLeder(
         type = ErrorType.LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG
     ) { "Linemanager is missing employment in any branch under the parent organization of the employee on sick leave" }
 }
-fun validateNarmesteLeder(
-    sykemeldtArbeidsforhold: List<Arbeidsforhold>,
+fun validateSmAndNlArbeidsforhold(
+    sykmeldtArbeidsforhold: List<Arbeidsforhold>,
     narmesteLederArbeidsforhold: List<Arbeidsforhold>,
     orgNumberInRequest: String,
 ) {
-    val matchingArbeidsforhold = sykemeldtArbeidsforhold.firstOrNull { it.orgnummer == orgNumberInRequest }
+    nlrequire(
+        sykmeldtArbeidsforhold.isNotEmpty(),
+        ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+    ) { "Employee on sick leave is missing employment in any organization" }
+    val matchingArbeidsforhold = sykmeldtArbeidsforhold.getForOrgnummer(orgNumberInRequest)
     nlrequire(
         matchingArbeidsforhold != null,
         type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
@@ -88,15 +93,15 @@ fun validateNarmesteLeder(
 }
 
 fun validateNarmesteLederAvkreft(
-    sykemeldtOrgNumbers: Map<String, String>,
+    sykmeltArbeidsforhold: List<Arbeidsforhold>,
     orgNumberInRequest: String,
 ) {
     nlrequire(
-        sykemeldtOrgNumbers.isNotEmpty(),
+        sykmeltArbeidsforhold.isNotEmpty(),
         ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
     ) { "Employee on sick leave is missing employment in any organization" }
     nlrequire(
-        sykemeldtOrgNumbers.contains(orgNumberInRequest),
+        sykmeltArbeidsforhold.getForOrgnummer(orgNumberInRequest) != null,
         ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
     ) { "Employee on sick leave does not have employment in the organization indicated in the request" }
 }

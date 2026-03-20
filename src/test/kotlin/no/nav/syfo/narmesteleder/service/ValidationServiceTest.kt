@@ -23,6 +23,7 @@ import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -42,7 +43,8 @@ class ValidationServiceTest :
         val aaregClient = FakeAaregClient()
         val aaregService = spyk(AaregService(aaregClient))
         val eregClient = FakeEregClient()
-        val eregService = spyk(EregService(eregClient))
+        val eregCache = mockk<EregCache>(relaxed = true)
+        val eregService = spyk(EregService(eregClient, eregCache))
         val pdlClient = FakePdlClient()
         val pdlCacheMock = mockk<PdlCache>(relaxed = true)
         val pdlService = spyk(PdlService(pdlClient, pdlCacheMock))
@@ -59,8 +61,8 @@ class ValidationServiceTest :
         beforeTest {
             clearAllMocks()
             coEvery { pdlCacheMock.getPerson(any()) } returns null
+            coEvery { eregCache.getOrganisasjon(any()) } returns null
         }
-
         describe("validateNarmesteleder") {
             it("should not thrown when all validation passes and principal is BrukerPrincipal") {
                 // Arrange

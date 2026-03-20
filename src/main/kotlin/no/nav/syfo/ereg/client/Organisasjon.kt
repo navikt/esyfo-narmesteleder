@@ -2,6 +2,8 @@ package no.nav.syfo.ereg.client
 
 data class Organisasjon(
     val organisasjonsnummer: String,
+    val navn: Navn? = null,
+    // Liste av hvilke(n) juridisk enhet organisasjonsledd inngår i
     val inngaarIJuridiskEnheter: List<Organisasjon>? = null,
     // Liste av virksomhet(er) som drives av organisasjonsledd
     val driverVirksomheter: List<Organisasjon>? = null,
@@ -22,7 +24,12 @@ data class Organisasjon(
             }
         return orgnummerSet
     }
+    fun getForetrukketNavn(): String? = navn?.sammensattnavn ?: navn?.navnelinje1
 }
+data class Navn(
+    val sammensattnavn: String? = null,
+    val navnelinje1: String? = null,
+)
 data class OrganisasjonsLeddWrapper(
     val organisasjonsledd: OrganisasjonsLedd,
 )

@@ -23,6 +23,7 @@ data class NarmestelederBehovEntity(
     val created: Instant = Instant.now(),
     val updated: Instant = Instant.now(),
     val dialogDeletePerformed: Instant? = null,
+    val expiredInDialogporten: Instant? = null,
 ) {
     companion object {
         fun fromLinemanagerRequirementWrite(
@@ -60,5 +61,6 @@ fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity = Narmestel
     etternavn = this.getString("etternavn"),
     created = getTimestamp("created").toInstant(),
     updated = getTimestamp("updated").toInstant(),
-    dialogDeletePerformed = getTimestamp("dialog_delete_performed")?.toInstant()
+    dialogDeletePerformed = getTimestamp("dialog_delete_performed")?.toInstant(),
+    expiredInDialogporten = getTimestamp("expired_in_dialogporten")?.toInstant(),
 )

@@ -86,12 +86,12 @@ class LinemanagerRequirementRESTHandler(
         orgNumber: String,
         principal: Principal
     ): List<LinemanagerRequirementRead> {
-        validationService.validatePrincipalAccessToOrgnumber(principal, orgNumber)
+        val orgName = validationService.validatePrincipalAccessToOrgnumber(principal, orgNumber)
         logger.info("Validation successful for fetching LinemanagerRequirement collection for orgNumber: $orgNumber")
         return narmesteLederService.getNlBehovList(
             pageSize = pageSize,
             createdAfter = createdAfter,
             orgNumber = orgNumber
-        )
+        ).map { it.copy(orgName = orgName) }
     }
 }

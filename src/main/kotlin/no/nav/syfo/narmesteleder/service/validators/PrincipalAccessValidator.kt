@@ -41,18 +41,23 @@ class PrincipalAccessValidator(
         arbeidsforhold: Arbeidsforhold? = null,
     ): String? = when (principal) {
         is SystemPrincipal -> {
-            val orgnumbersToValidate = when {
-                principal.getSystemUserOrgNumber() == orgNumber -> setOf(orgNumber)
-                arbeidsforhold?.opplysningspliktigOrgnummer != null -> arbeidsforhold.toOrgnummerList().toSet()
+            val (orgnumbersToValidate, navn) = when {
+                principal.getSystemUserOrgNumber() == orgNumber -> Pair(setOf(orgNumber), null)
+                arbeidsforhold?.opplysningspliktigOrgnummer != null -> Pair(
+                    arbeidsforhold.toOrgnummerList().toSet(),
+                    null
+                )
+
                 else -> {
                     logger.info(
                         "System principal does not have direct access to the organization number in the request, checking Ereg for org hierarchy",
                     )
-                    eregService.getOrganization(orgNumber).aggregerOrgnummereFraHierarki()
+                    val organisasjon = eregService.getOrganization(orgNumber)
+                    Pair(organisasjon.aggregerOrgnummereFraHierarki(), organisasjon.getForetrukketNavn())
                 }
             }
             validateSystemPrincipal(orgnumbersToValidate, principal)
-            null
+            navn
         }
 
         is UserPrincipal -> {

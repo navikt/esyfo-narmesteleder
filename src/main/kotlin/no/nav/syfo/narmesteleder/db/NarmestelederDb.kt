@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.util.logger
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.*
@@ -43,6 +44,8 @@ interface INarmestelederDb {
     ): Int
 
     suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int = 100): List<NarmestelederBehovEntity>
+
+    suspend fun getNlBehovForExpireInDialogporten(limit: Int = 100, vararg status: BehovStatus): List<NarmestelederBehovEntity>
 }
 
 class NarmestelederDb(
@@ -393,6 +396,48 @@ class NarmestelederDb(
                     nlBehov
                 }
         }
+    }
+
+    override suspend fun getNlBehovForExpireInDialogporten(
+        limit: Int,
+        vararg status: BehovStatus,
+    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
+        if (status.isEmpty()) error("At least one BehovStatus must be set")
+
+        val placeholders = status.joinToString(", ") { "?" }
+        return@withContext database.connection.use { connection ->
+            connection
+                .prepareStatement(
+                    """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE expired_in_dialogporten IS NULL AND dialog_id IS NOT NULL 
+                        AND behov_status IN ($placeholders)
+                        ORDER BY created
+                        LIMIT ?
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    var idx = 0
+                    status.forEach { s ->
+                        preparedStatement.setObject(++idx, s, java.sql.Types.OTHER)
+                    }
+                    limit.coerceIn(1, MAX_LIMIT).also {
+                        if (it != limit) {
+                            logger().warn("Overriding limit value. Provided limit: $limit, used limit: $it. Allowed range is: 1 - $MAX_LIMIT")
+                        }
+                        preparedStatement.setInt(++idx, it)
+                    }
+                    val resultSet = preparedStatement.executeQuery()
+                    buildList {
+                        while (resultSet.next()) {
+                            add(resultSet.toNarmestelederBehovEntity())
+                        }
+                    }
+                }
+        }
+    }
+    companion object {
+        const val MAX_LIMIT = 500
     }
 }
 

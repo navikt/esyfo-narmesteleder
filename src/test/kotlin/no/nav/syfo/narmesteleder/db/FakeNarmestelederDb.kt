@@ -87,4 +87,13 @@ class FakeNarmestelederDb : INarmestelederDb {
         store.clear()
         order.clear()
     }
+    override suspend fun getNlBehovForExpireInDialogporten(
+        limit: Int,
+        vararg status: BehovStatus
+    ): List<NarmestelederBehovEntity> {
+        val statusList = status.toList()
+        return store.values.filter { it.behovStatus in statusList && it.expiredInDialogporten == null }
+            .sortedBy { it.created }
+            .take(limit)
+    }
 }

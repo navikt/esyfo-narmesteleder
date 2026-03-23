@@ -49,6 +49,8 @@ import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
+import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
@@ -260,14 +262,14 @@ private fun servicesModule() = module {
         NarmestelederKafkaService(sykemeldingNLKafkaProducer)
     }
     single { PdpService(get()) }
+    single { PrincipalAccessValidator(get(), get(), get()) }
+    single { SickLeaveValidator(get()) }
     single {
         ValidationService(
             pdlService = get(),
             aaregService = get(),
-            altinnTilgangerService = get(),
-            dinesykmeldteService = get(),
-            pdpService = get(),
-            eregService = get()
+            principalAccessValidator = get(),
+            sickLeaveValidator = get(),
         )
     }
     single {

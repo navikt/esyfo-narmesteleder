@@ -25,6 +25,8 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
+import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 
@@ -50,14 +52,24 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val narmestelederKafkaServiceSpyk = spyk(
         NarmestelederKafkaService(kafkaSykemeldingProducer = fakeKafkaProducerSpyk),
     )
+    val principalAccessValidatorSpyk = spyk(
+        PrincipalAccessValidator(
+            altinnTilgangerService = altinnTilgangerServiceSpyk,
+            pdpService = pdpServiceSpyk,
+            eregService = eregServiceSpyk,
+        )
+    )
+    val sickLeaveValidatorSpyk = spyk(
+        SickLeaveValidator(
+            dinesykmeldteService = dinesykemeldteServiceSpyk,
+        )
+    )
     val validationServiceSpyk = spyk(
         ValidationService(
             pdlService = pdlServiceSpyk,
             aaregService = aaregServiceSpyk,
-            altinnTilgangerService = altinnTilgangerServiceSpyk,
-            dinesykmeldteService = dinesykemeldteServiceSpyk,
-            pdpService = pdpServiceSpyk,
-            eregService = eregServiceSpyk,
+            principalAccessValidator = principalAccessValidatorSpyk,
+            sickLeaveValidator = sickLeaveValidatorSpyk,
         )
     )
     val narmestelederServiceSpyk = spyk(

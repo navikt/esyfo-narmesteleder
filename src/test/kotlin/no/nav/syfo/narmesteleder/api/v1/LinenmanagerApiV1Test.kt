@@ -66,6 +66,8 @@ import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
+import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
@@ -96,14 +98,20 @@ class LinenmanagerApiV1Test :
         val dineSykmelteService = DinesykmeldteService(fakeDinesykmeldteClient)
         val fakePdpClient = FakePdpClient()
         val pdpService = PdpService(fakePdpClient)
+        val principalAccessValidator = PrincipalAccessValidator(
+            altinnTilgangerService = altinnTilgangerServiceSpy,
+            pdpService = pdpService,
+            eregService = eregService,
+        )
+        val sickLeaveValidator = SickLeaveValidator(
+            dinesykmeldteService = dineSykmelteService,
+        )
         val validationService =
             ValidationService(
                 pdlService = pdlService,
                 aaregService = aaregService,
-                altinnTilgangerService = altinnTilgangerServiceSpy,
-                dinesykmeldteService = dineSykmelteService,
-                pdpService = pdpService,
-                eregService = eregService,
+                principalAccessValidator = principalAccessValidator,
+                sickLeaveValidator = sickLeaveValidator,
             )
         val validationServiceSpy = spyk(validationService)
         val tokenXIssuer = "https://tokenx.nav.no"

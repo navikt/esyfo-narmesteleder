@@ -147,10 +147,10 @@ class ValidationServiceTest :
                         eq(principal),
                         eq(narmestelederRelasjonerWrite.orgNumber)
                     )
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
-                    aaregService.findOrgNumbersByPersonIdent(any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
             }
@@ -208,10 +208,10 @@ class ValidationServiceTest :
                         eq(principal),
                         eq(narmesteLederAvkreft.orgNumber)
                     )
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
-                    aaregService.findOrgNumbersByPersonIdent(any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
             }
@@ -269,7 +269,7 @@ class ValidationServiceTest :
                     }
                     coVerify(exactly = 0) {
                         pdpService.hasAccessToResource(any(), any(), any())
-                        aaregService.findOrgNumbersByPersonIdent(any())
+                        aaregService.findArbeidsforholdByPersonIdent(any())
                         pdlService.getPersonOrThrowApiError(any())
                     }
                 }

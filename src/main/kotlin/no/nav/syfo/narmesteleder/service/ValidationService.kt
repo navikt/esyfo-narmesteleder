@@ -50,6 +50,8 @@ class ValidationService(
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
         val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
 
+        // @TODO Move to order around. We should do validateSmAndNlArbeidsforhold before fetching names from pdl and validating names.
+        // Or we validate the names earlier, before we even fetch nl arbeidsforhold.
 //        validateArbeidsforhold(sykmeldt, leder, linemanager.orgNumber)
 
         val nlArbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(leder.nationalIdentificationNumber)

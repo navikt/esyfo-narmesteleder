@@ -125,7 +125,7 @@ class NarmestelederServiceTest :
                     "insertNlBehov should not be called when persistLeesahNlBehov=false"
                 )
                 coEvery {
-                    aaregService.findOrgNumbersByPersonIdent(any())
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                 } throws AssertionError(
                     "AaregService should not be called when persistLeesahNlBehov=false"
                 )
@@ -138,7 +138,7 @@ class NarmestelederServiceTest :
 
                 // Assert
                 coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
-                coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
+                coVerify(exactly = 0) { aaregService.findArbeidsforholdByPersonIdent(any()) }
             }
 
             it("persists with status ARBEIDSFORHOLD_NOT_FOUND when arbeidsforhold missing") {
@@ -302,7 +302,7 @@ class NarmestelederServiceTest :
 
                 // Assert
                 coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
-                coVerify(exactly = 0) { aaregService.findOrgNumbersByPersonIdent(any()) }
+                coVerify(exactly = 0) { aaregService.findArbeidsforholdByPersonIdent(any()) }
             }
         }
 

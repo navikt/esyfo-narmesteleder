@@ -69,6 +69,7 @@ class ValidationServiceTest :
             clearAllMocks()
             coEvery { pdlCacheMock.getPerson(any()) } returns null
             coEvery { eregCache.getOrganisasjon(any()) } returns null
+            aaregClient.arbeidsForholdForIdent.clear()
         }
         describe("validateNarmesteleder") {
             it("should not thrown when all validation passes and principal is BrukerPrincipal") {
@@ -114,12 +115,18 @@ class ValidationServiceTest :
                 val principal = UserPrincipal(fnr, "token")
                 val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
 
+                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.manager.nationalIdentificationNumber] =
+                    listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
+                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.employeeIdentificationNumber] =
+                    listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
+
                 altinnTilgangerClient.accessPolicy.clear()
                 altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber)
                 // Act
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
                 }
+
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
@@ -183,6 +190,8 @@ class ValidationServiceTest :
                         any<AltinnTilgang>(),
                         eq(narmestelederRelasjonerWrite.orgNumber)
                     )
+                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
+                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 }
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
@@ -192,8 +201,6 @@ class ValidationServiceTest :
                     )
                     aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
                     aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
-                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 }
             }
         }
@@ -244,6 +251,7 @@ class ValidationServiceTest :
                         any<AltinnTilgang>(),
                         eq(narmesteLederAvkreft.orgNumber)
                     )
+                    pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 }
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
@@ -252,7 +260,6 @@ class ValidationServiceTest :
                         eq("nav_syfo_oppgi-narmesteleder")
                     )
                     aaregService.findArbeidsforholdByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
-                    pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 }
             }
         }

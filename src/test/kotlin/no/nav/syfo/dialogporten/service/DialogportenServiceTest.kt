@@ -93,7 +93,10 @@ class DialogportenServiceTest :
             context("when there is one behov to send") {
                 it("should send document to dialogporten and update status to DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION") {
                     // Arrange
-                    val behovEntity = spyNarmestelederDb.insertNlBehov(nlBehovEntity())
+                    // Use a deterministic FNR where month digits (index 2-3) are >12,
+                    // ensuring ninToInfoString() always falls back to the d-nummer format.
+                    val deterministicFnr = "12991234567"
+                    val behovEntity = spyNarmestelederDb.insertNlBehov(nlBehovEntity().copy(sykmeldtFnr = deterministicFnr))
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
@@ -137,7 +140,7 @@ class DialogportenServiceTest :
                         .value shouldStartWith "Oppgi nærmeste leder for"
                     capturedDialog.content.title.value
                         .first()
-                        .value shouldEndWith " (d-nummer: ${behovEntity.sykmeldtFnr})"
+                        .value shouldEndWith " (d-nummer: $deterministicFnr)"
                 }
             }
             context("when there are multiple documents to send") {

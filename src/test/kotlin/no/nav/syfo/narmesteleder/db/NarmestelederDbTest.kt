@@ -74,7 +74,7 @@ class NarmestelederDbTest :
                     fornavn = faker.name().firstName(),
                     mellomnavn = faker.name().nameWithMiddle().split(" ")[1],
                     etternavn = faker.name().lastName(),
-                    expiredInDialogporten = Instant.now(),
+                    expiredInDialogporten = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
                 )
                 // Act
                 db.updateNlBehov(mutatedEntity)

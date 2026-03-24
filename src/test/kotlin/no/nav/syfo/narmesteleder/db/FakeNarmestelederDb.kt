@@ -26,6 +26,12 @@ class FakeNarmestelederDb : INarmestelederDb {
             sykmeldtFnr = nlBehov.sykmeldtFnr,
             narmestelederFnr = nlBehov.narmestelederFnr,
             behovStatus = nlBehov.behovStatus,
+            dialogId = nlBehov.dialogId,
+            fornavn = nlBehov.fornavn,
+            mellomnavn = nlBehov.mellomnavn,
+            etternavn = nlBehov.etternavn,
+            dialogDeletePerformed = nlBehov.dialogDeletePerformed,
+            expiredInDialogporten = nlBehov.expiredInDialogporten,
         )
         store[id] = toStore
     }

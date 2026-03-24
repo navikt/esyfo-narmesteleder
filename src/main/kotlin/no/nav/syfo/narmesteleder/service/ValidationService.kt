@@ -3,7 +3,6 @@ package no.nav.syfo.narmesteleder.service
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.Arbeidsforhold
 import no.nav.syfo.aareg.getForOrgnummer
-import no.nav.syfo.aareg.toOrgNumberList
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
@@ -50,10 +49,6 @@ class ValidationService(
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
         val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
 
-        // @TODO Move to order around. We should do validateSmAndNlArbeidsforhold before fetching names from pdl and validating names.
-        // Or we validate the names earlier, before we even fetch nl arbeidsforhold.
-//        validateArbeidsforhold(sykmeldt, leder, linemanager.orgNumber)
-
         val nlArbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(leder.nationalIdentificationNumber)
         validateLinemanagerLastName(leder, linemanager)
         if (validateEmployeeLastName) validateEmployeeLastName(sykmeldt, linemanager)
@@ -67,41 +62,6 @@ class ValidationService(
             employee = sykmeldt,
             manager = leder,
         )
-    }
-
-    suspend fun validateArbeidsforhold(
-        sykmeldt: Person,
-        leder: Person,
-        orgNumber: String,
-    ) {
-        val nlArbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(leder.nationalIdentificationNumber)
-        val sykemeldtArbeidsforhold =
-            aaregService.findArbeidsforholdByPersonIdent(sykmeldt.nationalIdentificationNumber)
-                .filter { it.orgnummer == orgNumber }
-
-        nlrequire(
-            sykemeldtArbeidsforhold.isNotEmpty(),
-            type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
-        ) { "Employee on sick leave is missing employment in any organization" }
-
-        /*
-            If there is a match on orgnummer or opplysningspliktigOrgnummer between the sykemeldt and the leder,
-            indicates that the sykmeldt and the leder are connected through the same underenhet, or the closest parent,
-            and we not need to check the rest of the org hierarchy for a match,
-            as this is sufficient to validate the connection between the sykmeldt and the leder,
-            and avoid unnecessary calls to Ereg for fetching the org hierarchy.
-         */
-        if (sykemeldtArbeidsforhold.toOrgNumberList().any { it in nlArbeidsforhold.toOrgNumberList() }) {
-            return
-        }
-        // @TODO Find overordnet orgnummer for sykmeldt.
-
-        /*  Loop over arbeidsforhold for nærmeste leder to find a match in the org hierarchy with the sykmeldt,
-            by checking if any of the orgnummers in the sykmeldt's org hierarchy matches with any of the orgnumbers
-            in the nærmeste leder's arbeidsforhold.
-            Return if a match is found, otherwise throw an exception after the loop if no match is found.
-         */
-        // @TODO see above
     }
 
     suspend fun validateLinemanagerRevoke(

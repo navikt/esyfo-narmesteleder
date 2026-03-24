@@ -176,7 +176,7 @@ class DialogportenService(
                         expiredInDialogporten = expirationTime.toInstant()
                     )
                 )
-                logger.info("Successfully updated expired behov ${behov.id} to completed")
+                logger.info("Successfully updated expired behov ${behov.id} with expired date: ${expirationTime.toInstant()}")
             } catch (ex: Exception) {
                 logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
             }

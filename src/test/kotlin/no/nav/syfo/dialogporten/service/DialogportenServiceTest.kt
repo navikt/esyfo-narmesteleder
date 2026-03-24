@@ -885,7 +885,10 @@ class DialogportenServiceTest :
                     // Should only update behov with dialog id
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.updateNlBehov(
-                            match { it.behovStatus == BehovStatus.BEHOV_EXPIRED }
+                            match {
+                                it.id == behovWithDialogId.id!! &&
+                                    it.behovStatus == BehovStatus.BEHOV_EXPIRED
+                            }
                         )
                     }
                 }

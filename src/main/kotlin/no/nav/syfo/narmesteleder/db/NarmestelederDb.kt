@@ -114,7 +114,9 @@ class NarmestelederDb(
                         fornavn              = ?,
                         mellomnavn           = ?,
                         etternavn            = ?,
-                        dialog_delete_performed = ?
+                        dialog_delete_performed = ?,
+                        expired_in_dialogporten = ?
+                        
                         WHERE id = ?;
                     """.trimIndent()
                 ).use { preparedStatement ->
@@ -131,7 +133,10 @@ class NarmestelederDb(
                         dialogDeletePerformed?.let {
                             preparedStatement.setTimestamp(10, Timestamp.from(dialogDeletePerformed))
                         } ?: preparedStatement.setObject(10, null)
-                        preparedStatement.setObject(11, id)
+                        expiredInDialogporten?.let {
+                            preparedStatement.setTimestamp(11, Timestamp.from(expiredInDialogporten))
+                        } ?: preparedStatement.setObject(11, null)
+                        preparedStatement.setObject(12, id)
                     }
                     preparedStatement.executeUpdate()
                 }.also {

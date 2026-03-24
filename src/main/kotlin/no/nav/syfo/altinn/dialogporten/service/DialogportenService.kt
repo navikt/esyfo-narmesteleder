@@ -202,7 +202,6 @@ class DialogportenService(
                 )
             )
         }
-        logger.info("Successfully updated dialog $dialogId to expired and completed in Dialogporten")
     }
 
     suspend fun deleteDialogsInDialogporten() {

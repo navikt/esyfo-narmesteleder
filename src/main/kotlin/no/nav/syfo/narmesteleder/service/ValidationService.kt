@@ -33,18 +33,22 @@ class ValidationService(
             sykemeldtArbeidsforhold.getForOrgnummer(linemanager.orgNumber),
         )
         sickLeaveValidator.validateActiveSickLeave(linemanager.employeeIdentificationNumber, linemanager.orgNumber)
-        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
-        val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
-        val nlArbeidsforhold = aaregService.findArbeidsforholdByPersonIdent(leder.nationalIdentificationNumber)
-        NameValidator.validateLinemanagerLastName(leder, linemanager)
-        if (validateEmployeeLastName) {
-            NameValidator.validateEmployeeLastName(sykmeldt, linemanager)
-        }
+
+        val nlArbeidsforhold =
+            aaregService.findArbeidsforholdByPersonIdent(linemanager.manager.nationalIdentificationNumber)
         ArbeidsforholdValidator.validateSmAndNlArbeidsforhold(
             sykmeldtArbeidsforhold = sykemeldtArbeidsforhold,
             narmesteLederArbeidsforhold = nlArbeidsforhold,
             orgNumberInRequest = linemanager.orgNumber,
         )
+
+        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
+        val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
+        NameValidator.validateLinemanagerLastName(leder, linemanager)
+        if (validateEmployeeLastName) {
+            NameValidator.validateEmployeeLastName(sykmeldt, linemanager)
+        }
+
         return LinemanagerActors(
             employee = sykmeldt,
             manager = leder,
@@ -62,11 +66,11 @@ class ValidationService(
             linemanagerRevoke.orgNumber,
             arbeidsforhold.getForOrgnummer(linemanagerRevoke.orgNumber),
         )
-        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
         ArbeidsforholdValidator.validateNarmesteLederAvkreft(
             orgNumberInRequest = linemanagerRevoke.orgNumber,
             sykmeldtArbeidsforhold = arbeidsforhold,
         )
+        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
         NameValidator.validateEmployeeLastName(sykmeldt, linemanagerRevoke)
 
         return sykmeldt

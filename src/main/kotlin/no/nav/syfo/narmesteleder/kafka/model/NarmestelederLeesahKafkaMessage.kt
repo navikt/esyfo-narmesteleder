@@ -15,6 +15,8 @@ enum class LeesahStatus {
     DEAKTIVERT_ARBEIDSFORHOLD,
     DEAKTIVERT_NY_LEDER,
     IDENTENDRING,
+    DEAKTIVERT_PERSONALLEDER,
+    DEAKTIVERT_LPS,
 
     @JsonEnumDefaultValue
     UKJENT

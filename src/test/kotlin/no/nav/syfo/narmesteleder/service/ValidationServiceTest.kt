@@ -10,6 +10,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import io.mockk.verify
 import linemanager
 import linemanagerRevoke
 import no.nav.syfo.aareg.AaregService
@@ -96,8 +97,8 @@ class ValidationServiceTest :
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        eq(principal),
-                        eq(narmestelederRelasjonerWrite.orgNumber)
+                        userPrincipal = eq(principal),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
@@ -130,8 +131,8 @@ class ValidationServiceTest :
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        eq(principal),
-                        eq(narmestelederRelasjonerWrite.orgNumber)
+                        userPrincipal = eq(principal),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
@@ -158,8 +159,8 @@ class ValidationServiceTest :
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        eq(principal),
-                        eq(narmestelederRelasjonerWrite.orgNumber)
+                        userPrincipal = eq(principal),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
                     aaregService.findArbeidsforholdByPersonIdent(any())
                 }
@@ -185,11 +186,13 @@ class ValidationServiceTest :
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
                 }
                 // Assert
-                coVerify(exactly = 0) {
+                verify(exactly = 0) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        any<AltinnTilgang>(),
-                        eq(narmestelederRelasjonerWrite.orgNumber)
+                        altinnTilgang = any<AltinnTilgang>(),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
+                }
+                coVerify(exactly = 0) {
                     pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
                     pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 }
@@ -219,8 +222,8 @@ class ValidationServiceTest :
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        eq(principal),
-                        eq(narmesteLederAvkreft.orgNumber)
+                        userPrincipal = eq(principal),
+                        orgnummer = eq(narmesteLederAvkreft.orgNumber)
                     )
                     aaregService.findArbeidsforholdByPersonIdent(any())
                 }
@@ -246,10 +249,16 @@ class ValidationServiceTest :
                     service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
                 }
                 // Assert
+                verify(exactly = 0) {
+                    altinnTilgangerService.validateTilgangToOrganization(
+                        altinnTilgang = any<AltinnTilgang>(),
+                        orgnummer = eq(narmesteLederAvkreft.orgNumber)
+                    )
+                }
                 coVerify(exactly = 0) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        any<AltinnTilgang>(),
-                        eq(narmesteLederAvkreft.orgNumber)
+                        userPrincipal = any<UserPrincipal>(),
+                        orgnummer = eq(narmesteLederAvkreft.orgNumber)
                     )
                     pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 }

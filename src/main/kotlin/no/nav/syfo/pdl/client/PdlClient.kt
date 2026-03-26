@@ -29,6 +29,7 @@ private val getPersonQuery =
           mellomnavn
           etternavn
         }
+        foedselsdato { foedselsdato }
       }
       identer: hentIdenter(ident: ${'$'}ident, historikk: false) {
           identer {
@@ -92,6 +93,7 @@ class FakePdlClient : IPdlClient {
     override suspend fun getPerson(fnr: String): GetPersonResponse {
         val faker = Faker(Random(fnr.toLong()))
         val navn = faker.name()
+        val foedselsdato = faker.timeAndDate().birthday()
         return GetPersonResponse(
             data = ResponseData(
                 person = PersonResponse(
@@ -102,6 +104,7 @@ class FakePdlClient : IPdlClient {
                             etternavn = navn.lastName(),
                         ),
                     ),
+                    foedselsdato = listOf(Foedselsdato(foedselsdato))
                 ),
                 identer = IdentResponse(
                     identer = listOf(

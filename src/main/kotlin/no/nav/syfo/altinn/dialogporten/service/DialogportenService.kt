@@ -23,6 +23,7 @@ import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.pdl.client.Foedselsdato
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.util.logger
 import java.time.Instant
@@ -94,7 +95,7 @@ class DialogportenService(
                 logger.error("Failed to get person info for behov ${behov.id}", ex)
                 null
             }
-            val dialog = behov.toDialog(personInfo?.name)
+            val dialog = behov.toDialog(personInfo?.name, personInfo?.)
             dialog.attachments?.firstOrNull()?.let {
                 logger.info("Sending behov ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
             }
@@ -253,8 +254,10 @@ class DialogportenService(
         } while (dialogsToDeleteInDialogporten.size == otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
     }
 
-    private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String): String = name?.let {
-        "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${ninToInfoString(nationalIdentityNumber)}"
+    private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String, foedselsdato: Foedselsdato?): String =
+        name?.let {
+        "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${ninToInfoString(
+            nationalIdentityNumber, foedselsdato?.foedselsdato)}"
     } ?: DIALOG_TITLE_NO_NAME
 
     private fun getSummary(name: Navn?): String = name?.let {
@@ -275,7 +278,7 @@ class DialogportenService(
     private fun createGuiLink(id: UUID): String = "${otherEnvironmentProperties.frontendBaseUrl}/ansatte/narmesteleder/$id"
     // https://www.ekstern.dev.nav.no/arbeidsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
 
-    private fun NarmestelederBehovEntity.toDialog(name: Navn?): Dialog {
+    private fun NarmestelederBehovEntity.toDialog(name: Navn?, foedselsdato: Foedselsdato?): Dialog {
         require(id != null) { "Cannot create Dialogporten Dialog without id" }
         return Dialog(
             serviceResource = "urn:altinn:resource:$NARMESTE_LEDER_RESOURCE",
@@ -283,7 +286,7 @@ class DialogportenService(
             party = "urn:altinn:organization:identifier-no:$orgnummer",
             externalReference = id.toString(),
             content = Content.create(
-                title = getDialogTitle(name, sykmeldtFnr),
+                title = getDialogTitle(name, sykmeldtFnr, foedselsdato),
                 summary = getSummary(name),
             ),
             isApiOnly = otherEnvironmentProperties.dialogportenIsApiOnly,
@@ -318,8 +321,8 @@ class DialogportenService(
         )
     }
 
-    private fun ninToInfoString(nationalIdentityNumber: String): String {
-        val birthDate = ninToBirthDate(nationalIdentityNumber)
+    private fun ninToInfoString(nationalIdentityNumber: String, foedselsdato: LocalDate?= null): String {
+        val birthDate = foedselsdato?: ninToBirthDate(nationalIdentityNumber)
         return if (birthDate != null) {
             "(f. ${birthDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))})"
         } else {

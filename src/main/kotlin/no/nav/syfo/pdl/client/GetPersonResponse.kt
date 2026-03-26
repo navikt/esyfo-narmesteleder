@@ -1,5 +1,7 @@
 package no.nav.syfo.pdl.client
 
+import java.time.LocalDate
+
 data class GetPersonResponse(
     val data: ResponseData?,
     val errors: List<ResponseError>?,
@@ -23,8 +25,13 @@ data class Ident(
     }
 }
 
+data class Foedselsdato(
+    val foedselsdato: LocalDate ?,
+)
+
 data class PersonResponse(
     val navn: List<Navn>?,
+    val foedselsdato: List<Foedselsdato>?,
 )
 
 data class Navn(

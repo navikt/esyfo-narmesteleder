@@ -19,7 +19,7 @@ object ArbeidsforholdValidator {
         nlrequire(
             matchingArbeidsforhold != null,
             type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
-        ) { "Employee on sick leave is missing employment in any organization" }
+        ) { "Employee on sick leave is missing employment in the organization indicated in the request" }
         val allNlOrgNumbers = narmesteLederArbeidsforhold.toOrgNumberList()
 
         nlrequire(

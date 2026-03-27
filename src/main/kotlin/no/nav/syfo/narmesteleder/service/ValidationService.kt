@@ -25,19 +25,19 @@ class ValidationService(
         principal: Principal,
         validateEmployeeLastName: Boolean = true,
     ): LinemanagerActors {
-        val sykemeldtArbeidsforhold =
+        val sykmeldtArbeidsforhold =
             aaregService.findArbeidsforholdByPersonIdent(linemanager.employeeIdentificationNumber)
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
             linemanager.orgNumber,
-            sykemeldtArbeidsforhold.getForOrgnummer(linemanager.orgNumber),
+            sykmeldtArbeidsforhold.getForOrgnummer(linemanager.orgNumber),
         )
         sickLeaveValidator.validateActiveSickLeave(linemanager.employeeIdentificationNumber, linemanager.orgNumber)
 
         val nlArbeidsforhold =
             aaregService.findArbeidsforholdByPersonIdent(linemanager.manager.nationalIdentificationNumber)
         ArbeidsforholdValidator.validateSmAndNlArbeidsforhold(
-            sykmeldtArbeidsforhold = sykemeldtArbeidsforhold,
+            sykmeldtArbeidsforhold = sykmeldtArbeidsforhold,
             narmesteLederArbeidsforhold = nlArbeidsforhold,
             orgNumberInRequest = linemanager.orgNumber,
         )

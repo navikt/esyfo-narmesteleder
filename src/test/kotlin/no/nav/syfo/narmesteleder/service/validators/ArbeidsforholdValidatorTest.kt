@@ -85,8 +85,8 @@ class ArbeidsforholdValidatorTest :
         }
 
         describe("validateNarmesteLederAvkreft") {
-            describe("organization number matches for sykemeldt and innsender") {
-                it("It should not throw when sykemeldt is only org number used for all parties") {
+            describe("organization number matches for sykmeldt and innsender") {
+                it("It should not throw when sykmeldt is only org number used for all parties") {
                     shouldNotThrowAny {
                         ArbeidsforholdValidator.validateNarmesteLederAvkreft(
                             sykmeldtArbeidsforhold = listOf(sykmeldtArbeidsforhold),
@@ -95,7 +95,7 @@ class ArbeidsforholdValidatorTest :
                     }
                 }
 
-                it("Should not throw when sykemeldt has at least one matching org number with the other parties") {
+                it("Should not throw when sykmeldt has at least one matching org number with the other parties") {
                     shouldNotThrowAny {
                         ArbeidsforholdValidator.validateNarmesteLederAvkreft(
                             sykmeldtArbeidsforhold = listOf(
@@ -112,7 +112,7 @@ class ArbeidsforholdValidatorTest :
             }
 
             describe("Mismatch in organization number between parties") {
-                it("Should throw BadRequestException if payload org is not within sykemeldt orgs") {
+                it("Should throw BadRequestException if payload org is not within sykmeldt orgs") {
                     shouldThrow<ApiErrorException.BadRequestException> {
                         ArbeidsforholdValidator.validateNarmesteLederAvkreft(
                             sykmeldtArbeidsforhold = listOf(sykmeldtArbeidsforhold),
@@ -121,7 +121,7 @@ class ArbeidsforholdValidatorTest :
                     }
                 }
 
-                it("Should throw BadRequestException exception if no organizations are found for sykemeldt") {
+                it("Should throw BadRequestException exception if no organizations are found for sykmeldt") {
                     shouldThrow<ApiErrorException.BadRequestException> {
                         ArbeidsforholdValidator.validateNarmesteLederAvkreft(
                             sykmeldtArbeidsforhold = emptyList(),

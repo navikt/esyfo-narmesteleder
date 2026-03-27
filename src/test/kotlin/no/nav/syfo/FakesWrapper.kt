@@ -35,7 +35,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeAaregClientSpyk = spyk(FakeAaregClient())
     val fakeEregClientSpyk = spyk(FakeEregClient())
     val fakePdlClientSpyk = spyk(FakePdlClient())
-    val fakeDinesykemeldteClientSpyk = spyk(FakeDinesykmeldteClient())
+    val fakeDinesykmeldteClientSpyk = spyk(FakeDinesykmeldteClient())
     val fakeKafkaProducerSpyk = spyk(FakeSykemeldingNLKafkaProducer())
     val fakeAltinnTilgangerClientSpyk = spyk(FakeAltinnTilgangerClient())
     val fakePdpClientSpyk = spyk(FakePdpClient())
@@ -46,7 +46,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val eregServiceSpyk = spyk(EregService(fakeEregClientSpyk, eregCacheSpyk))
     val pdlCacheMock = mockk<PdlCache>(relaxed = true)
     val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk, pdlCacheMock))
-    val dinesykemeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykemeldteClientSpyk))
+    val dinesykmeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykmeldteClientSpyk))
     val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
     val pdpServiceSpyk = spyk(PdpService(fakePdpClientSpyk))
     val narmestelederKafkaServiceSpyk = spyk(
@@ -61,7 +61,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     )
     val sickLeaveValidatorSpyk = spyk(
         SickLeaveValidator(
-            dinesykmeldteService = dinesykemeldteServiceSpyk,
+            dinesykmeldteService = dinesykmeldteServiceSpyk,
         )
     )
     val validationServiceSpyk = spyk(
@@ -78,7 +78,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             persistLeesahNlBehov = true,
             aaregService = aaregServiceSpyk,
             pdlService = pdlServiceSpyk,
-            dinesykmeldteService = dinesykemeldteServiceSpyk,
+            dinesykmeldteService = dinesykmeldteServiceSpyk,
             dialogportenService = dialogportenService
         )
     )

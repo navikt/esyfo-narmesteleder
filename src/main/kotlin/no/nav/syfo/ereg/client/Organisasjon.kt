@@ -49,6 +49,12 @@ data class Navn(
 data class OrganisasjonsLeddWrapper(
     val organisasjonsledd: OrganisasjonsLedd,
 )
+    /**
+     * Et organisasjonsledd benyttes av offentlig sektor for å gruppere underenheter, og fungerer på en liknende
+     * måte som juridisk enhet/hovedenhet ved at en ikke kan ansettes direkte på denne.
+     * Organisasjonsledd ligger mellom juridisk enhet og underenhet i organisasjonshierarkiet, 
+     * men kan også ha andre organisasjonsledd registrert. Eks hovedenhet -> orgledd -> orgledd -> underenhet 
+     */
 data class OrganisasjonsLedd(
     val organisasjonsnummer: String,
     // Liste av virksomhet(er) som drives av organisasjonsledd

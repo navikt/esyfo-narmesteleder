@@ -95,7 +95,7 @@ class DialogportenService(
                 logger.error("Failed to get person info for behov ${behov.id}", ex)
                 null
             }
-            val dialog = behov.toDialog(personInfo?.name, personInfo?.)
+            val dialog = behov.toDialog(personInfo?.name, personInfo?.foedselsdato)
             dialog.attachments?.firstOrNull()?.let {
                 logger.info("Sending behov ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
             }
@@ -254,10 +254,17 @@ class DialogportenService(
         } while (dialogsToDeleteInDialogporten.size == otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
     }
 
-    private fun getDialogTitle(name: Navn?, nationalIdentityNumber: String, foedselsdato: Foedselsdato?): String =
-        name?.let {
-        "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${ninToInfoString(
-            nationalIdentityNumber, foedselsdato?.foedselsdato)}"
+    private fun getDialogTitle(
+        name: Navn?,
+        nationalIdentityNumber: String,
+        foedselsdato: Foedselsdato?,
+    ): String = name?.let {
+        "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${
+            ninToInfoString(
+                nationalIdentityNumber,
+                foedselsdato?.foedselsdato,
+            )
+        }"
     } ?: DIALOG_TITLE_NO_NAME
 
     private fun getSummary(name: Navn?): String = name?.let {
@@ -321,8 +328,8 @@ class DialogportenService(
         )
     }
 
-    private fun ninToInfoString(nationalIdentityNumber: String, foedselsdato: LocalDate?= null): String {
-        val birthDate = foedselsdato?: ninToBirthDate(nationalIdentityNumber)
+    private fun ninToInfoString(nationalIdentityNumber: String, foedselsdato: LocalDate? = null): String {
+        val birthDate = foedselsdato ?: ninToBirthDate(nationalIdentityNumber)
         return if (birthDate != null) {
             "(f. ${birthDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))})"
         } else {

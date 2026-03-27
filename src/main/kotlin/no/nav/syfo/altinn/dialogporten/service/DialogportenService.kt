@@ -161,8 +161,10 @@ class DialogportenService(
     suspend fun setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() {
         narmestelederDb.getNlBehovForExpireInDialogporten(
             BEHOV_BY_STATUS_LIMIT,
-            BehovStatus.BEHOV_EXPIRED,
-            BehovStatus.ERROR
+            listOf(
+                BehovStatus.BEHOV_EXPIRED,
+                BehovStatus.ERROR
+            )
         ).also {
             logger.info("Found ${it.size} expired behovs to complete in dialogporten")
         }.forEach { behov ->

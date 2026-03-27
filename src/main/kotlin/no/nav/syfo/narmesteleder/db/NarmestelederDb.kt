@@ -45,7 +45,8 @@ interface INarmestelederDb {
 
     suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int = 100): List<NarmestelederBehovEntity>
 
-    suspend fun getNlBehovForExpireInDialogporten(limit: Int = 100, vararg status: BehovStatus): List<NarmestelederBehovEntity>
+    suspend fun getNlBehovForExpireInDialogporten(limit: Int = 100, status: List<BehovStatus>): List<NarmestelederBehovEntity>
+    suspend fun getNlBehovForExpireInDialogporten(limit: Int = 100, status: BehovStatus) = getNlBehovForExpireInDialogporten(limit, listOf(status))
 }
 
 class NarmestelederDb(
@@ -405,7 +406,7 @@ class NarmestelederDb(
 
     override suspend fun getNlBehovForExpireInDialogporten(
         limit: Int,
-        vararg status: BehovStatus,
+        status: List<BehovStatus>,
     ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
         if (status.isEmpty()) error("At least one BehovStatus must be set")
 

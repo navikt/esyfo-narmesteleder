@@ -560,14 +560,14 @@ class DialogportenServiceTest :
         }
 
         describe("setAllExpiredBehovsAsExpiredAndCompletedInDialogporten") {
-            val expireableBehovs = listOf(BehovStatus.ERROR, BehovStatus.BEHOV_EXPIRED)
+            val expireableBehovs = setOf(BehovStatus.ERROR, BehovStatus.BEHOV_EXPIRED)
             context("when there are no expired behovs") {
                 it("should not call dialogporten client") {
                     // Arrange
                     coEvery {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns emptyList()
 
@@ -578,7 +578,7 @@ class DialogportenServiceTest :
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs },
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     }
                     coVerify(exactly = 0) { dialogportenClient.getDialogById(any()) }
@@ -598,7 +598,7 @@ class DialogportenServiceTest :
                     coEvery {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns listOf(behovEntity)
                     coEvery { dialogportenClient.patchDialog(any(), any(), any<List<DialogportenClient.DialogportenPatch>>()) } just Runs
@@ -627,7 +627,7 @@ class DialogportenServiceTest :
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     }
                     coVerify(exactly = 1) { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) }
@@ -669,7 +669,7 @@ class DialogportenServiceTest :
                     coEvery {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
@@ -692,7 +692,7 @@ class DialogportenServiceTest :
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     }
                     coVerify(exactly = 2) { dialogportenClient.getDialogById(any()) }
@@ -729,7 +729,7 @@ class DialogportenServiceTest :
                     coEvery {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.getDialogById(any()) } returns behovEntity1.toExtendedDialog()
@@ -748,7 +748,7 @@ class DialogportenServiceTest :
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     }
                     coVerify(exactly = 1) {
@@ -782,7 +782,7 @@ class DialogportenServiceTest :
                     coEvery {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
@@ -812,7 +812,7 @@ class DialogportenServiceTest :
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     }
 
@@ -856,7 +856,7 @@ class DialogportenServiceTest :
                     coEvery {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns listOf(behovWithoutDialogId, behovWithDialogId)
                     coEvery { dialogportenClient.getDialogById(any()) } returns behovWithDialogId.toExtendedDialog()
@@ -870,7 +870,7 @@ class DialogportenServiceTest :
                     coVerify(exactly = 1) {
                         spyNarmestelederDb.getNlBehovForExpireInDialogporten(
                             DialogportenService.BEHOV_BY_STATUS_LIMIT,
-                            *varargAll { it in expireableBehovs }
+                            match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     }
                     // Should only call dialogporten for the behov with dialogId

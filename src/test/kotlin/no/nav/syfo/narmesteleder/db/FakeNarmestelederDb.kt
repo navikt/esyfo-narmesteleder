@@ -98,7 +98,7 @@ class FakeNarmestelederDb : INarmestelederDb {
         vararg status: BehovStatus
     ): List<NarmestelederBehovEntity> {
         val statusList = status.toList()
-        return store.values.filter { it.behovStatus in statusList && it.expiredInDialogporten == null }
+        return store.values.filter { it.behovStatus in statusList && it.expiredInDialogporten == null && it.dialogId != null }
             .sortedBy { it.created }
             .take(limit)
     }

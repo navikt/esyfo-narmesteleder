@@ -20,7 +20,7 @@ import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
@@ -36,7 +36,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeEregClientSpyk = spyk(FakeEregClient())
     val fakePdlClientSpyk = spyk(FakePdlClient())
     val fakeDinesykmeldteClientSpyk = spyk(FakeDinesykmeldteClient())
-    val fakeKafkaProducerSpyk = spyk(FakeSykemeldingNLKafkaProducer())
+    val fakeKafkaProducerSpyk = spyk(FakeSykmeldingNLKafkaProducer())
     val fakeAltinnTilgangerClientSpyk = spyk(FakeAltinnTilgangerClient())
     val fakePdpClientSpyk = spyk(FakePdpClient())
     val fakeDialogportenClient = FakeDialogportenClient()

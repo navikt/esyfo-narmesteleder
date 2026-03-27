@@ -44,7 +44,7 @@ import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
@@ -254,12 +254,12 @@ private fun servicesModule() = module {
         LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl)
     }
     single {
-        val sykemeldingNLKafkaProducer = SykemeldingNLKafkaProducer(
+        val sykmeldingNLKafkaProducer = SykmeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )
         )
-        NarmestelederKafkaService(sykemeldingNLKafkaProducer)
+        NarmestelederKafkaService(sykmeldingNLKafkaProducer)
     }
     single { PdpService(get()) }
     single { PrincipalAccessValidator(get(), get(), get()) }

@@ -60,7 +60,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -89,7 +89,7 @@ class LinenmanagerApiV1Test :
         val eregCache = mockk<EregCache>(relaxed = true)
         val eregService = EregService(fakeEregClient, eregCache)
         val narmestelederKafkaService =
-            NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
+            NarmestelederKafkaService(FakeSykmeldingNLKafkaProducer())
         val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
         val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
         val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)

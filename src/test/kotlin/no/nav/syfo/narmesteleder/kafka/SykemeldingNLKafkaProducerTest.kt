@@ -32,7 +32,7 @@ import java.time.ZoneOffset
 class SykemeldingNLKafkaProducerTest :
     DescribeSpec({
         val kafkaProducerMock = mockk<KafkaProducer<String, INlResponseKafkaMessage>>()
-        val producer = SykemeldingNLKafkaProducer(kafkaProducerMock)
+        val producer = SykmeldingNLKafkaProducer(kafkaProducerMock)
 
         beforeTest {
             clearAllMocks()

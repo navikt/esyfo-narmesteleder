@@ -20,11 +20,13 @@ import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
+import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 
@@ -33,8 +35,8 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeAaregClientSpyk = spyk(FakeAaregClient())
     val fakeEregClientSpyk = spyk(FakeEregClient())
     val fakePdlClientSpyk = spyk(FakePdlClient())
-    val fakeDinesykemeldteClientSpyk = spyk(FakeDinesykmeldteClient())
-    val fakeKafkaProducerSpyk = spyk(FakeSykemeldingNLKafkaProducer())
+    val fakeDinesykmeldteClientSpyk = spyk(FakeDinesykmeldteClient())
+    val fakeKafkaProducerSpyk = spyk(FakeSykmeldingNLKafkaProducer())
     val fakeAltinnTilgangerClientSpyk = spyk(FakeAltinnTilgangerClient())
     val fakePdpClientSpyk = spyk(FakePdpClient())
     val fakeDialogportenClient = FakeDialogportenClient()
@@ -44,20 +46,30 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val eregServiceSpyk = spyk(EregService(fakeEregClientSpyk, eregCacheSpyk))
     val pdlCacheMock = mockk<PdlCache>(relaxed = true)
     val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk, pdlCacheMock))
-    val dinesykemeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykemeldteClientSpyk))
+    val dinesykmeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykmeldteClientSpyk))
     val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
     val pdpServiceSpyk = spyk(PdpService(fakePdpClientSpyk))
     val narmestelederKafkaServiceSpyk = spyk(
         NarmestelederKafkaService(kafkaSykemeldingProducer = fakeKafkaProducerSpyk),
     )
+    val principalAccessValidatorSpyk = spyk(
+        PrincipalAccessValidator(
+            altinnTilgangerService = altinnTilgangerServiceSpyk,
+            pdpService = pdpServiceSpyk,
+            eregService = eregServiceSpyk,
+        )
+    )
+    val sickLeaveValidatorSpyk = spyk(
+        SickLeaveValidator(
+            dinesykmeldteService = dinesykmeldteServiceSpyk,
+        )
+    )
     val validationServiceSpyk = spyk(
         ValidationService(
             pdlService = pdlServiceSpyk,
             aaregService = aaregServiceSpyk,
-            altinnTilgangerService = altinnTilgangerServiceSpyk,
-            dinesykmeldteService = dinesykemeldteServiceSpyk,
-            pdpService = pdpServiceSpyk,
-            eregService = eregServiceSpyk,
+            principalAccessValidator = principalAccessValidatorSpyk,
+            sickLeaveValidator = sickLeaveValidatorSpyk,
         )
     )
     val narmestelederServiceSpyk = spyk(
@@ -66,7 +78,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             persistLeesahNlBehov = true,
             aaregService = aaregServiceSpyk,
             pdlService = pdlServiceSpyk,
-            dinesykmeldteService = dinesykemeldteServiceSpyk,
+            dinesykmeldteService = dinesykmeldteServiceSpyk,
             dialogportenService = dialogportenService
         )
     )
@@ -75,7 +87,6 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             narmesteLederService = narmestelederServiceSpyk,
             validationService = validationServiceSpyk,
             narmestelederKafkaService = narmestelederKafkaServiceSpyk,
-            altinnTilgangerService = altinnTilgangerServiceSpyk,
         )
     )
     val nlBehovLeesahHandlerSpyk = spyk(

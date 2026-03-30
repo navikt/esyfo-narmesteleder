@@ -6,7 +6,7 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.util.logger
 import java.security.MessageDigest
 
-class FakeSykemeldingNLKafkaProducer : ISykemeldingNLKafkaProducer {
+class FakeSykmeldingNLKafkaProducer : ISykmeldingNLKafkaProducer {
     val logger = logger()
     override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) {
         logger.info("FakeSykemeldingNLKafkaProducer sendSykemeldingNLRelasjon to orgnumber: ${sykmeldingNL.orgnummer}")

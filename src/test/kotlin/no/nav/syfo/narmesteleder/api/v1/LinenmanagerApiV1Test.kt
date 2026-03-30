@@ -51,6 +51,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
+import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -59,12 +60,14 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.kafka.FakeSykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
+import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
@@ -82,11 +85,11 @@ class LinenmanagerApiV1Test :
         val narmesteLederRelasjon = linemanager()
         val fakeAaregClient = FakeAaregClient()
         val aaregService = AaregService(fakeAaregClient)
-        val fakseEregClient = FakeEregClient()
+        val fakeEregClient = FakeEregClient()
         val eregCache = mockk<EregCache>(relaxed = true)
-        val eregService = EregService(fakseEregClient, eregCache)
+        val eregService = EregService(fakeEregClient, eregCache)
         val narmestelederKafkaService =
-            NarmestelederKafkaService(FakeSykemeldingNLKafkaProducer())
+            NarmestelederKafkaService(FakeSykmeldingNLKafkaProducer())
         val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
         val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
         val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
@@ -95,14 +98,20 @@ class LinenmanagerApiV1Test :
         val dineSykmelteService = DinesykmeldteService(fakeDinesykmeldteClient)
         val fakePdpClient = FakePdpClient()
         val pdpService = PdpService(fakePdpClient)
+        val principalAccessValidator = PrincipalAccessValidator(
+            altinnTilgangerService = altinnTilgangerServiceSpy,
+            pdpService = pdpService,
+            eregService = eregService,
+        )
+        val sickLeaveValidator = SickLeaveValidator(
+            dinesykmeldteService = dineSykmelteService,
+        )
         val validationService =
             ValidationService(
                 pdlService = pdlService,
                 aaregService = aaregService,
-                altinnTilgangerService = altinnTilgangerServiceSpy,
-                dinesykmeldteService = dineSykmelteService,
-                pdpService = pdpService,
-                eregService = eregService,
+                principalAccessValidator = principalAccessValidator,
+                sickLeaveValidator = sickLeaveValidator,
             )
         val validationServiceSpy = spyk(validationService)
         val tokenXIssuer = "https://tokenx.nav.no"
@@ -131,7 +140,6 @@ class LinenmanagerApiV1Test :
                     narmesteLederService = narmesteLederService,
                     validationService = validationServiceSpy,
                     narmestelederKafkaService = narmestelederKafkaServiceSpy,
-                    altinnTilgangerService = altinnTilgangerServiceSpy,
                 )
             fakeRepo.clear()
         }
@@ -479,17 +487,16 @@ class LinenmanagerApiV1Test :
             }
 
             it("should return 400 if sykmeldt lacks arbeidsforhold for organization number") {
-
                 withTestApplication {
                     // Arrange
+                    val narmesteLederAvkreft = linemanagerRevoke()
                     texasHttpClientMock.defaultMocks(
-                        consumer =
-                        DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederAvkreft.orgNumber}",
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    val narmesteLederAvkreft = linemanagerRevoke()
+
                     // Act
                     val response =
                         client.post("$API_V1_PATH/$REVOKE_PATH") {
@@ -500,6 +507,7 @@ class LinenmanagerApiV1Test :
 
                     // Assert
                     response.status shouldBe HttpStatusCode.BadRequest
+                    response.body<ApiError>().message shouldBe "Employee on sick leave is missing employment in any organization"
                     coVerify(exactly = 0) {
                         narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                             narmesteLederAvkreft,
@@ -597,6 +605,10 @@ class LinenmanagerApiV1Test :
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
                             scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        fakeEregClient.organisasjoner[narmesteLederRelasjon.orgNumber] = Organisasjon(
+                            organisasjonsnummer = narmesteLederRelasjon.orgNumber,
+                            inngaarIJuridiskEnheter = emptyList()
                         )
                         val requirementId = seedLinemanagerRequirement()
                         val response =

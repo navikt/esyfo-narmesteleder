@@ -8,4 +8,8 @@ data class Arbeidsforhold(
     val arbeidsstedType: ArbeidsstedType,
     val opplysningspliktigOrgnummer: String?,
     val opplysningspliktigType: OpplysningspliktigType
-)
+) {
+    fun toOrgnummerList(): List<String> = listOfNotNull(orgnummer, opplysningspliktigOrgnummer).distinct()
+}
+
+fun List<Arbeidsforhold>.getForOrgnummer(orgnummer: String): Arbeidsforhold? = this.firstOrNull { it.orgnummer == orgnummer }

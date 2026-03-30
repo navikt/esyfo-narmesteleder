@@ -1,7 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
 import DefaultSystemPrincipal
-import faker
 import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
@@ -11,6 +10,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import io.mockk.verify
 import linemanager
 import linemanagerRevoke
 import no.nav.syfo.aareg.AaregService
@@ -29,6 +29,8 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
+import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
+import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import prepareGetPersonResponse
@@ -50,18 +52,25 @@ class ValidationServiceTest :
         val pdlService = spyk(PdlService(pdlClient, pdlCacheMock))
         val pdpClient = FakePdpClient()
         val pdpService = spyk(PdpService(pdpClient))
+        val principalAccessValidator = PrincipalAccessValidator(
+            altinnTilgangerService = altinnTilgangerService,
+            pdpService = pdpService,
+            eregService = eregService,
+        )
+        val sickLeaveValidator = SickLeaveValidator(
+            dinesykmeldteService = dinesykmeldteService,
+        )
         val service = ValidationService(
             pdlService = pdlService,
             aaregService = aaregService,
-            altinnTilgangerService = altinnTilgangerService,
-            dinesykmeldteService = dinesykmeldteService,
-            pdpService = pdpService,
-            eregService = eregService,
+            principalAccessValidator = principalAccessValidator,
+            sickLeaveValidator = sickLeaveValidator,
         )
         beforeTest {
             clearAllMocks()
             coEvery { pdlCacheMock.getPerson(any()) } returns null
             coEvery { eregCache.getOrganisasjon(any()) } returns null
+            aaregClient.arbeidsForholdForIdent.clear()
         }
         describe("validateNarmesteleder") {
             it("should not thrown when all validation passes and principal is BrukerPrincipal") {
@@ -88,13 +97,13 @@ class ValidationServiceTest :
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        eq(principal),
-                        eq(narmestelederRelasjonerWrite.orgNumber)
+                        userPrincipal = eq(principal),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
@@ -107,22 +116,28 @@ class ValidationServiceTest :
                 val principal = UserPrincipal(fnr, "token")
                 val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
 
+                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.manager.nationalIdentificationNumber] =
+                    listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
+                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.employeeIdentificationNumber] =
+                    listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
+
                 altinnTilgangerClient.accessPolicy.clear()
                 altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber)
                 // Act
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
                 }
+
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        eq(principal),
-                        eq(narmestelederRelasjonerWrite.orgNumber)
+                        userPrincipal = eq(principal),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findOrgNumbersByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
@@ -144,18 +159,18 @@ class ValidationServiceTest :
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        eq(principal),
-                        eq(narmestelederRelasjonerWrite.orgNumber)
+                        userPrincipal = eq(principal),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
-                    aaregService.findOrgNumbersByPersonIdent(any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
             }
 
-            it("should not call AltinnTilgangerService when principal is OrganizationPrincipal") {
+            it("should not call AltinnTilgangerService when principal is SystemPrincipal") {
                 // Arrange
                 val userWithAccess = altinnTilgangerClient.accessPolicy.first()
                 val narmestelederRelasjonerWrite = linemanager().copy(
@@ -171,11 +186,15 @@ class ValidationServiceTest :
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
                 }
                 // Assert
-                coVerify(exactly = 0) {
+                verify(exactly = 0) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        any<AltinnTilgang>(),
-                        eq(narmestelederRelasjonerWrite.orgNumber)
+                        altinnTilgang = any<AltinnTilgang>(),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
+                }
+                coVerify(exactly = 0) {
+                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
+                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 }
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
@@ -183,10 +202,8 @@ class ValidationServiceTest :
                         eq(setOf(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr, "systemowner")),
                         eq("nav_syfo_oppgi-narmesteleder")
                     )
-                    aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                    aaregService.findOrgNumbersByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
-                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
+                    aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
+                    aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 }
             }
         }
@@ -205,13 +222,13 @@ class ValidationServiceTest :
                 // Assert
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        eq(principal),
-                        eq(narmesteLederAvkreft.orgNumber)
+                        userPrincipal = eq(principal),
+                        orgnummer = eq(narmesteLederAvkreft.orgNumber)
                     )
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
-                    aaregService.findOrgNumbersByPersonIdent(any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
             }
@@ -232,11 +249,18 @@ class ValidationServiceTest :
                     service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
                 }
                 // Assert
+                verify(exactly = 0) {
+                    altinnTilgangerService.validateTilgangToOrganization(
+                        altinnTilgang = any<AltinnTilgang>(),
+                        orgnummer = eq(narmesteLederAvkreft.orgNumber)
+                    )
+                }
                 coVerify(exactly = 0) {
                     altinnTilgangerService.validateTilgangToOrganization(
-                        any<AltinnTilgang>(),
-                        eq(narmesteLederAvkreft.orgNumber)
+                        userPrincipal = any<UserPrincipal>(),
+                        orgnummer = eq(narmesteLederAvkreft.orgNumber)
                     )
+                    pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 }
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
@@ -244,123 +268,7 @@ class ValidationServiceTest :
                         eq(setOf(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr, "systemowner")),
                         eq("nav_syfo_oppgi-narmesteleder")
                     )
-                    aaregService.findOrgNumbersByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
-                    pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
-                }
-            }
-
-            describe("validateLinemanagerCollectionAccess") {
-                it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
-                    // Arrange
-                    val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
-                    val orgNumber = faker.numerify("#########")
-                    val principal = UserPrincipal(fnr, "token")
-
-                    // Act
-                    shouldThrow<ApiErrorException.ForbiddenException> {
-                        service.validateLinemanagerRequirementCollectionAccess(principal = principal, orgNumber = orgNumber)
-                    }
-                    // Assert
-                    coVerify(exactly = 1) {
-                        altinnTilgangerService.validateTilgangToOrganization(
-                            eq(principal),
-                            eq(orgNumber)
-                        )
-                    }
-                    coVerify(exactly = 0) {
-                        pdpService.hasAccessToResource(any(), any(), any())
-                        aaregService.findOrgNumbersByPersonIdent(any())
-                        pdlService.getPersonOrThrowApiError(any())
-                    }
-                }
-
-                it("should not call AltinnTilgangerService when principal is Systemprincipal") {
-                    // Arrange
-                    val orgNumber = eregClient.organisasjoner.keys.first()
-                    val principal = DefaultSystemPrincipal.copy(
-                        ident = "0192:${orgNumber.reversed()}",
-                    )
-
-                    // Act
-                    shouldThrow<ApiErrorException.ForbiddenException> {
-                        service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
-                    }
-                    // Assert
-                    coVerify(exactly = 0) {
-                        altinnTilgangerService.validateTilgangToOrganization(
-                            any<AltinnTilgang>(),
-                            any()
-                        )
-                    }
-                    coVerify(exactly = 1) {
-                        pdpService.hasAccessToResource(
-                            match<System> { it.id == "systemId" },
-                            eq(setOf(orgNumber.reversed(), "systemowner")),
-                            eq("nav_syfo_oppgi-narmesteleder")
-                        )
-                    }
-                }
-
-                it("should not throw when access is OK") {
-                    // Arrange
-                    val orgNumber = faker.numerify("#########")
-                    val principal = DefaultSystemPrincipal.copy(
-                        ident = "0192:$orgNumber",
-                    )
-
-                    // Act
-                    shouldNotThrow<ApiErrorException.ForbiddenException> {
-                        service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
-                    }
-                    // Assert
-                    coVerify(exactly = 0) {
-                        altinnTilgangerService.validateTilgangToOrganization(
-                            any<AltinnTilgang>(),
-                            eq(orgNumber)
-                        )
-                    }
-                    coVerify(exactly = 1) {
-                        pdpService.hasAccessToResource(
-                            match<System> { it.id == "systemId" },
-                            eq(setOf(orgNumber, "systemowner")),
-                            eq("nav_syfo_oppgi-narmesteleder")
-                        )
-                    }
-                }
-
-                it("should not throw when access is OK due to system user on parent orgnumber") {
-                    // Arrange
-                    val organization =
-                        eregClient.organisasjoner.filter { it.value.inngaarIJuridiskEnheter != null }.values.first()
-                    val orgNumber = organization.organisasjonsnummer
-                    val systemUserOrgnumber = organization.inngaarIJuridiskEnheter!!.first().organisasjonsnummer
-                    val principal = DefaultSystemPrincipal.copy(
-                        ident = "0192:$systemUserOrgnumber",
-                    )
-
-                    // Act
-                    shouldNotThrow<ApiErrorException.ForbiddenException> {
-                        service.validateLinemanagerRequirementCollectionAccess(principal, orgNumber)
-                    }
-                    // Assert
-                    coVerify(exactly = 0) {
-                        altinnTilgangerService.validateTilgangToOrganization(
-                            any<AltinnTilgang>(),
-                            eq(orgNumber)
-                        )
-                    }
-                    coVerify(exactly = 1) {
-                        pdpService.hasAccessToResource(
-                            match<System> { it.id == "systemId" },
-                            eq(setOf(systemUserOrgnumber, "systemowner")),
-                            eq("nav_syfo_oppgi-narmesteleder")
-                        )
-                    }
-                    coVerify(exactly = 1) {
-                        eregService.getOrganization(
-                            match<String> { it == orgNumber },
-                        )
-                    }
+                    aaregService.findArbeidsforholdByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 }
             }
         }

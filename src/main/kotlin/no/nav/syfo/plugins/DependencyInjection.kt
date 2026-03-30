@@ -44,11 +44,13 @@ import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.kafka.SykemeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
+import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
@@ -121,7 +123,7 @@ private fun handlerModule() = module {
     single { NlBehovLeesahHandler(get()) }
     single { SendtSykmeldingHandler(get(), get()) }
     single {
-        LinemanagerRequirementRESTHandler(get(), get(), get(), get())
+        LinemanagerRequirementRESTHandler(get(), get(), get())
     }
 }
 
@@ -252,22 +254,22 @@ private fun servicesModule() = module {
         LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl)
     }
     single {
-        val sykemeldingNLKafkaProducer = SykemeldingNLKafkaProducer(
+        val sykmeldingNLKafkaProducer = SykmeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )
         )
-        NarmestelederKafkaService(sykemeldingNLKafkaProducer)
+        NarmestelederKafkaService(sykmeldingNLKafkaProducer)
     }
     single { PdpService(get()) }
+    single { PrincipalAccessValidator(get(), get(), get()) }
+    single { SickLeaveValidator(get()) }
     single {
         ValidationService(
             pdlService = get(),
             aaregService = get(),
-            altinnTilgangerService = get(),
-            dinesykmeldteService = get(),
-            pdpService = get(),
-            eregService = get()
+            principalAccessValidator = get(),
+            sickLeaveValidator = get(),
         )
     }
     single {

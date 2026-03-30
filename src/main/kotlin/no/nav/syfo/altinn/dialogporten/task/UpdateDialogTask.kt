@@ -23,7 +23,7 @@ class UpdateDialogTask(
                     try {
                         logger.info("Starting task for updating dialog statuses")
                         dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
-                        dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+                        // dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
                     } catch (ex: Exception) {
                         logger.error("Could not update dialogs in dialogporten", ex)
                     }

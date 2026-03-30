@@ -78,7 +78,7 @@ class NarmestelederService(
             behovStatus = behovStatus,
         )
         nlDb.updateNlBehov(updatedBehov)
-        logger.info("Updated NarmestelederBehovEntity with id: $updatedBehov.id with status: $behovStatus")
+        logger.info("Updated NarmestelederBehovEntity with id: ${updatedBehov.id} with status: $behovStatus")
         dialogportenService.setToCompletedInDialogporten(updatedBehov)
     }
 

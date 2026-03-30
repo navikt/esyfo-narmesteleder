@@ -74,6 +74,7 @@ class NarmestelederDbTest :
                     fornavn = faker.name().firstName(),
                     mellomnavn = faker.name().nameWithMiddle().split(" ")[1],
                     etternavn = faker.name().lastName(),
+                    expiredInDialogporten = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
                 )
                 // Act
                 db.updateNlBehov(mutatedEntity)
@@ -669,6 +670,150 @@ class NarmestelederDbTest :
                 updated shouldBe 1
                 val retrieved = db.findBehovById(behov.id!!)
                 retrieved?.behovStatus shouldBe BehovStatus.BEHOV_EXPIRED
+            }
+        }
+
+        describe("getNlBehovForExpireInDialogporten") {
+            suspend fun insertBehovWithDialogId(
+                behovStatus: BehovStatus = BehovStatus.BEHOV_FULFILLED,
+                dialogId: UUID? = UUID.randomUUID(),
+                expiredInDialogporten: Instant? = null,
+            ): NarmestelederBehovEntity {
+                val inserted = db.insertNlBehov(nlBehovEntity().copy(behovStatus = behovStatus))
+                val withDialog = inserted.copy(
+                    dialogId = dialogId,
+                    expiredInDialogporten = expiredInDialogporten,
+                )
+                db.updateNlBehov(withDialog)
+                return db.findBehovById(inserted.id!!)!!
+            }
+
+            it("should filter out rows where expired_in_dialogporten is not null") {
+                // Arrange
+                val eligible = insertBehovWithDialogId(
+                    behovStatus = BehovStatus.BEHOV_FULFILLED,
+                    dialogId = UUID.randomUUID(),
+                    expiredInDialogporten = null,
+                )
+                insertBehovWithDialogId(
+                    behovStatus = BehovStatus.BEHOV_FULFILLED,
+                    dialogId = UUID.randomUUID(),
+                    expiredInDialogporten = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
+                )
+
+                // Act
+                val result = db.getNlBehovForExpireInDialogporten(
+                    limit = 100,
+                    BehovStatus.BEHOV_FULFILLED,
+                )
+
+                // Assert
+                result.size shouldBe 1
+                result.first().id shouldBe eligible.id
+            }
+
+            it("should filter out rows where dialog_id is null") {
+                // Arrange
+                val withDialogId = insertBehovWithDialogId(
+                    behovStatus = BehovStatus.BEHOV_FULFILLED,
+                    dialogId = UUID.randomUUID(),
+                )
+                insertBehovWithDialogId(
+                    behovStatus = BehovStatus.BEHOV_FULFILLED,
+                    dialogId = null,
+                )
+
+                // Act
+                val result = db.getNlBehovForExpireInDialogporten(
+                    limit = 100,
+                    BehovStatus.BEHOV_FULFILLED,
+                )
+
+                // Assert
+                result.size shouldBe 1
+                result.first().id shouldBe withDialogId.id
+            }
+
+            it("should filter by matching statuses only") {
+                // Arrange
+                val fulfilled = insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_FULFILLED)
+                val expired = insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_EXPIRED)
+                insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_CREATED)
+
+                // Act
+                val result = db.getNlBehovForExpireInDialogporten(
+                    limit = 100,
+                    listOf(
+                        BehovStatus.BEHOV_FULFILLED,
+                        BehovStatus.BEHOV_EXPIRED,
+                    )
+                )
+
+                // Assert
+                result.size shouldBe 2
+                result.map { it.id }.toSet() shouldBe setOf(fulfilled.id, expired.id)
+            }
+
+            it("should order results by created ascending") {
+                // Arrange
+                val older = insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_FULFILLED)
+                val newer = insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_FULFILLED)
+                updateCreated(older.id!!, Instant.now().minusSeconds(600))
+                updateCreated(newer.id!!, Instant.now().minusSeconds(60))
+
+                // Act
+                val result = db.getNlBehovForExpireInDialogporten(
+                    limit = 100,
+                    BehovStatus.BEHOV_FULFILLED,
+                )
+
+                // Assert
+                result.size shouldBe 2
+                result[0].id shouldBe older.id
+                result[1].id shouldBe newer.id
+            }
+
+            it("should respect limit parameter") {
+                // Arrange
+                val first = insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_FULFILLED)
+                updateCreated(first.id!!, Instant.now().minusSeconds(600))
+                val second = insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_FULFILLED)
+                updateCreated(second.id!!, Instant.now().minusSeconds(300))
+                insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_FULFILLED)
+
+                // Act
+                val result = db.getNlBehovForExpireInDialogporten(
+                    limit = 2,
+                    BehovStatus.BEHOV_FULFILLED,
+                )
+
+                // Assert
+                result.size shouldBe 2
+                result.map { it.id } shouldBe listOf(first.id, second.id)
+            }
+
+            it("should coerce limit above MAX_LIMIT without error") {
+                // Arrange
+                val entity = insertBehovWithDialogId(behovStatus = BehovStatus.BEHOV_FULFILLED)
+
+                // Act
+                val result = db.getNlBehovForExpireInDialogporten(
+                    limit = 600,
+                    BehovStatus.BEHOV_FULFILLED,
+                )
+
+                // Assert
+                result.size shouldBe 1
+                result.first().id shouldBe entity.id
+            }
+
+            it("should throw when no statuses are provided") {
+                // Act & Assert
+                val exception = runCatching {
+                    db.getNlBehovForExpireInDialogporten(limit = 100, emptyList())
+                }
+                exception.isFailure shouldBe true
+                (exception.exceptionOrNull() is IllegalStateException) shouldBe true
             }
         }
     })

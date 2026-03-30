@@ -5,11 +5,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.util.logger
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.*
 
-class NarmestelederGeneratedIDException(message: String) : RuntimeException(message)
 interface INarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
@@ -44,6 +44,9 @@ interface INarmestelederDb {
     ): Int
 
     suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int = 100): List<NarmestelederBehovEntity>
+
+    suspend fun getNlBehovForExpireInDialogporten(limit: Int = 100, status: List<BehovStatus>): List<NarmestelederBehovEntity>
+    suspend fun getNlBehovForExpireInDialogporten(limit: Int = 100, status: BehovStatus) = getNlBehovForExpireInDialogporten(limit, listOf(status))
 }
 
 class NarmestelederDb(
@@ -112,7 +115,9 @@ class NarmestelederDb(
                         fornavn              = ?,
                         mellomnavn           = ?,
                         etternavn            = ?,
-                        dialog_delete_performed = ?
+                        dialog_delete_performed = ?,
+                        expired_in_dialogporten = ?
+                        
                         WHERE id = ?;
                     """.trimIndent()
                 ).use { preparedStatement ->
@@ -129,7 +134,10 @@ class NarmestelederDb(
                         dialogDeletePerformed?.let {
                             preparedStatement.setTimestamp(10, Timestamp.from(dialogDeletePerformed))
                         } ?: preparedStatement.setObject(10, null)
-                        preparedStatement.setObject(11, id)
+                        expiredInDialogporten?.let {
+                            preparedStatement.setTimestamp(11, Timestamp.from(expiredInDialogporten))
+                        } ?: preparedStatement.setObject(11, null)
+                        preparedStatement.setObject(12, id)
                     }
                     preparedStatement.executeUpdate()
                 }.also {
@@ -394,6 +402,48 @@ class NarmestelederDb(
                     nlBehov
                 }
         }
+    }
+
+    override suspend fun getNlBehovForExpireInDialogporten(
+        limit: Int,
+        status: List<BehovStatus>,
+    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
+        if (status.isEmpty()) error("At least one BehovStatus must be set")
+
+        val placeholders = status.joinToString(", ") { "?" }
+        return@withContext database.connection.use { connection ->
+            connection
+                .prepareStatement(
+                    """
+                        SELECT *
+                        FROM nl_behov
+                        WHERE expired_in_dialogporten IS NULL AND dialog_id IS NOT NULL 
+                        AND behov_status IN ($placeholders)
+                        ORDER BY created
+                        LIMIT ?
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    var idx = 0
+                    status.forEach { s ->
+                        preparedStatement.setObject(++idx, s, java.sql.Types.OTHER)
+                    }
+                    limit.coerceIn(1, MAX_LIMIT).also {
+                        if (it != limit) {
+                            logger().warn("Overriding limit value. Provided limit: $limit, used limit: $it. Allowed range is: 1 - $MAX_LIMIT")
+                        }
+                        preparedStatement.setInt(++idx, it)
+                    }
+                    val resultSet = preparedStatement.executeQuery()
+                    buildList {
+                        while (resultSet.next()) {
+                            add(resultSet.toNarmestelederBehovEntity())
+                        }
+                    }
+                }
+        }
+    }
+    companion object {
+        const val MAX_LIMIT = 500
     }
 }
 

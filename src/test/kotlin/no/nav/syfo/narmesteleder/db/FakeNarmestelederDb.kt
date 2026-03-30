@@ -26,6 +26,12 @@ class FakeNarmestelederDb : INarmestelederDb {
             sykmeldtFnr = nlBehov.sykmeldtFnr,
             narmestelederFnr = nlBehov.narmestelederFnr,
             behovStatus = nlBehov.behovStatus,
+            dialogId = nlBehov.dialogId,
+            fornavn = nlBehov.fornavn,
+            mellomnavn = nlBehov.mellomnavn,
+            etternavn = nlBehov.etternavn,
+            dialogDeletePerformed = nlBehov.dialogDeletePerformed,
+            expiredInDialogporten = nlBehov.expiredInDialogporten,
         )
         store[id] = toStore
     }
@@ -86,5 +92,14 @@ class FakeNarmestelederDb : INarmestelederDb {
     fun clear() {
         store.clear()
         order.clear()
+    }
+    override suspend fun getNlBehovForExpireInDialogporten(
+        limit: Int,
+        status: List<BehovStatus>
+    ): List<NarmestelederBehovEntity> {
+        val statusList = status.toList()
+        return store.values.filter { it.behovStatus in statusList && it.expiredInDialogporten == null && it.dialogId != null }
+            .sortedBy { it.created }
+            .take(limit)
     }
 }

@@ -29,7 +29,7 @@ import java.time.ZoneOffset
  */
 fun NarmestelederTable.upsertFromLeesahKafkaMessage(kafkaMessage: NarmestelederLeesahKafkaMessage) {
     NarmestelederTable.upsert(
-        NarmestelederTable.narmesteLederId,
+        NarmestelederTable.narmestelederId,
         onUpdate = {
             it[orgnummer] = insertValue(orgnummer)
             it[narmestelederTelefonnummer] = insertValue(narmestelederTelefonnummer)
@@ -39,7 +39,7 @@ fun NarmestelederTable.upsertFromLeesahKafkaMessage(kafkaMessage: NarmestelederL
             it[aktivTom] = insertValue(aktivTom)
         },
     ) {
-        it[narmesteLederId] = kafkaMessage.narmesteLederId
+        it[narmestelederId] = kafkaMessage.narmesteLederId
         it[orgnummer] = kafkaMessage.orgnummer
         it[brukerFnr] = kafkaMessage.fnr
         it[brukerNavn] = null

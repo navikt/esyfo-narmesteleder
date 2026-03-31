@@ -200,7 +200,7 @@ class NarmestelederEntityTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val results = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }
                     results.count() shouldBe 1
                     results.first().narmesteLederId shouldBe narmesteLederId

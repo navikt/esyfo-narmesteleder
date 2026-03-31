@@ -31,7 +31,7 @@ class NarmestelederEntity(id: EntityID<Int>) : IntEntity(id) {
         }
     }
 
-    var narmesteLederId by NarmestelederTable.narmesteLederId
+    var narmesteLederId by NarmestelederTable.narmestelederId
     var orgnummer by NarmestelederTable.orgnummer
     var brukerFnr by NarmestelederTable.brukerFnr
     var brukerNavn by NarmestelederTable.brukerNavn

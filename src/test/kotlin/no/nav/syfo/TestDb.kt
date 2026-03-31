@@ -122,7 +122,7 @@ class TestDB private constructor() {
 
         fun clearNarmestelederData() = database.connection.use {
             it.prepareStatement(
-                "DELETE FROM narmesteleder;"
+                "DELETE FROM narmeste_leder;"
             ).use { ps -> ps.executeUpdate() }
             it.commit()
         }

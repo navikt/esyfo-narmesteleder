@@ -31,7 +31,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val results = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq message.narmesteLederId
+                        NarmestelederTable.narmestelederId eq message.narmesteLederId
                     }
                     results.count() shouldBe 1
 
@@ -65,7 +65,7 @@ class NarmestelederTableUpsertTest :
 
                 val originalEntity = transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }.first()
                     Triple(entity.id.value, entity.created, entity.updated)
                 }
@@ -83,7 +83,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val results = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }
                     results.count() shouldBe 1
 
@@ -115,7 +115,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }.first()
                     entity.brukerNavn = brukerNavn
                     entity.narmestelederNavn = narmestelederNavn
@@ -127,7 +127,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }.first()
                     entity.brukerNavn shouldBe brukerNavn
                     entity.narmestelederNavn shouldBe narmestelederNavn
@@ -155,7 +155,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }.first()
                     entity.brukerFnr shouldBe originalMessage.fnr
                     entity.narmestelederFnr shouldBe originalMessage.narmesteLederFnr
@@ -178,7 +178,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }.first()
                     entity.aktivTom.shouldBeNull()
                     entity.arbeidsgiverForskutterer.shouldBeNull()
@@ -197,7 +197,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }.first()
                     entity.aktivTom.shouldNotBeNull()
                     entity.arbeidsgiverForskutterer shouldBe true
@@ -216,7 +216,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmesteLederId eq narmesteLederId
+                        NarmestelederTable.narmestelederId eq narmesteLederId
                     }.first()
                     entity.aktivTom.shouldBeNull()
                     entity.arbeidsgiverForskutterer.shouldBeNull()

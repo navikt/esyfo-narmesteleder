@@ -32,6 +32,7 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 
 const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
 
@@ -160,30 +161,35 @@ class DialogportenService(
     }
 
     suspend fun setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() {
-        narmestelederDb.getNlBehovForExpireInDialogporten(
-            BEHOV_BY_STATUS_LIMIT,
-            listOf(
-                BehovStatus.BEHOV_EXPIRED,
-                BehovStatus.ERROR
-            )
-        ).also {
-            logger.info("Found ${it.size} expired behovs to complete in dialogporten")
-        }.forEach { behov ->
-            try {
-                val expirationTime = OffsetDateTime.now().plusMinutes(10) // Must be set to a future time. Adding some slack for retries and processing.
-                val dialogId = requireNotNull(behov.dialogId)
-
-                setToExpiredAndCompletedInDialogporten(dialogId, expirationTime)
-                narmestelederDb.updateNlBehov(
-                    behov.copy(
-                        expiredInDialogporten = expirationTime.toInstant()
-                    )
+        var batchNum = 0
+        do {
+            val behovsToExpire = narmestelederDb.getNlBehovForExpireInDialogporten(
+                BEHOV_BY_STATUS_LIMIT,
+                listOf(
+                    BehovStatus.BEHOV_EXPIRED,
+                    BehovStatus.ERROR
                 )
-                logger.info("Successfully updated expired behov ${behov.id} with expired date: ${expirationTime.toInstant()}")
-            } catch (ex: Exception) {
-                logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
+            ).also {
+                logger.info("Batch: ${++batchNum}:: Found ${it.size} expired behovs to expire in dialogporten")
             }
-        }
+            behovsToExpire.forEach { behov ->
+                try {
+                    val expirationTime = OffsetDateTime.now().plusMinutes(10) // Must be set to a future time. Adding some slack for retries and processing.
+                    val dialogId = requireNotNull(behov.dialogId)
+
+                    setToExpiredAndCompletedInDialogporten(dialogId, expirationTime)
+                    narmestelederDb.updateNlBehov(
+                        behov.copy(
+                            expiredInDialogporten = expirationTime.toInstant()
+                        )
+                    )
+                    logger.info("Successfully updated expired behov ${behov.id} with expired date: ${expirationTime.toInstant()}")
+                } catch (ex: Exception) {
+                    logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
+                }
+            }
+            delay(100.milliseconds)
+        } while (behovsToExpire.size >= BEHOV_BY_STATUS_LIMIT)
     }
 
     suspend fun setToExpiredAndCompletedInDialogporten(dialogId: UUID, expirationTime: OffsetDateTime) {

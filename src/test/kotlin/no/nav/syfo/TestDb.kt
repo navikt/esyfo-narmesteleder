@@ -126,6 +126,13 @@ class TestDB private constructor() {
             ).use { ps -> ps.executeUpdate() }
             it.commit()
         }
+
+        fun clearPersonData() = database.connection.use {
+            it.prepareStatement(
+                "DELETE FROM person;"
+            ).use { ps -> ps.executeUpdate() }
+            it.commit()
+        }
     }
 }
 

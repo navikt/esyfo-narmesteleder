@@ -19,9 +19,11 @@ class PdlService(
                 ?: throw PdlResourceNotFoundException("Could not find name for person")
             val fnr = response.data.identer?.identer?.firstOrNull { it.gruppe == GRUPPE_IDENT_FNR }?.ident
                 ?: throw PdlResourceNotFoundException("Could not find national identification number for person")
+            val foedselsdato = response.data.person.foedselsdato?.firstOrNull()
             return Person(
                 name = navn,
-                nationalIdentificationNumber = fnr
+                nationalIdentificationNumber = fnr,
+                foedselsdato = foedselsdato,
             )
         }
     }

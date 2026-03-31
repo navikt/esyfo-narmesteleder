@@ -2,7 +2,7 @@ package no.nav.syfo.dialogporten.service
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldEndWith
+import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldStartWith
 import io.mockk.Runs
 import io.mockk.clearAllMocks
@@ -140,7 +140,7 @@ class DialogportenServiceTest :
                         .value shouldStartWith "Oppgi nærmeste leder for"
                     capturedDialog.content.title.value
                         .first()
-                        .value shouldEndWith " (d-nummer: $deterministicFnr)"
+                        .value shouldMatch Regex(""".+\(f\. \d{2}\.\d{2}\.\d{4}\)""")
                 }
             }
             context("when there are multiple documents to send") {

@@ -17,7 +17,7 @@ testcontainers = "2.0.4"
 testcontainers-postgres = "1.21.4"
 logstashEncoder = "9.0"
 coroutines-test = "1.10.2"
-swagger = "3.4.1"
+swagger = "3.4.2"
 ktlint = "14.2.0"
 valkey-version = "5.5.0"
 

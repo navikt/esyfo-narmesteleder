@@ -188,8 +188,8 @@ class DialogportenService(
                     logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
                 }
             }
-            delay(100.milliseconds)
-        } while (behovsToExpire.size >= BEHOV_BY_STATUS_LIMIT)
+            delay(EXPIRE_BEHOV_LOOP_DELAY_MS.milliseconds)
+        } while (behovsToExpire.size >= BEHOV_BY_STATUS_LIMIT || batchNum == MAX_EXPIRE_BEHOV_BATCHES)
     }
 
     suspend fun setToExpiredAndCompletedInDialogporten(dialogId: UUID, expirationTime: OffsetDateTime) {
@@ -361,7 +361,8 @@ class DialogportenService(
             "er sykmeldt. Nav trenger informasjon om hvem som er nærmeste leder for å kunne gi tilgang til oppfølginstjenestene på \"Dine sykmeldte\" hos Nav"
         const val URL_TITLE_GUI = "Naviger til nærmeste leder skjema"
         const val URL_TITLE_API = "Endpoint for LinemanagerRequirement request"
-
+        const val EXPIRE_BEHOV_LOOP_DELAY_MS = 100
         const val BEHOV_BY_STATUS_LIMIT = 100
+        const val MAX_EXPIRE_BEHOV_BATCHES = 1000
     }
 }

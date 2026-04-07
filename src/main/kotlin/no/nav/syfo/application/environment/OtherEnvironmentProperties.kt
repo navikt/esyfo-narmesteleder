@@ -7,7 +7,6 @@ data class OtherEnvironmentProperties(
     val publicIngressUrl: String,
     val updateDialogportenTaskProperties: UpdateDialogportenTaskProperties,
     val maintenanceTaskDelay: String,
-    val deleteDialogportenDialogsTaskProperties: DeleteDialogportenDialogsTaskProperties,
     val persistLeesahNlBehov: Boolean,
     val isDialogportenBackgroundTaskEnabled: Boolean,
     val dialogportenIsApiOnly: Boolean,
@@ -25,7 +24,6 @@ data class OtherEnvironmentProperties(
             isDialogportenBackgroundTaskEnabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
             dialogportenIsApiOnly = getEnvVar("DIALOGPORTEN_API_ONLY").toBoolean(),
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars(),
-            deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createFromEnvVars(),
             persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
             daysAfterTomToExpireBehovs = getEnvVar(
                 "DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS",
@@ -43,38 +41,11 @@ data class OtherEnvironmentProperties(
             persistLeesahNlBehov = true,
             isDialogportenBackgroundTaskEnabled = true,
             dialogportenIsApiOnly = false,
-            deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
             persistSendtSykmelding = true,
             daysAfterTomToExpireBehovs = 0,
             maintenanceTaskDelay = "1m",
             maintenanceTaskEnabled = true,
             electorSSEUrl = "not.applicable"
-        )
-    }
-}
-
-data class DeleteDialogportenDialogsTaskProperties(
-    val pollingDelay: String,
-    val deleteDialogerTaskEnabled: Boolean,
-    val deleteDialogerLimit: Int = 100,
-    val deleteDialogerSleepAfterPage: Long = 5000,
-    val resendDialogTaskEnabled: Boolean,
-) {
-    companion object {
-        fun createFromEnvVars() = DeleteDialogportenDialogsTaskProperties(
-            pollingDelay = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_POLLING_DELAY", "5m"),
-            deleteDialogerLimit = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_PAGE_LIMIT", "100").toInt(),
-            deleteDialogerSleepAfterPage = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_SLEEP_AFTER_PAGE", "5").toLong(),
-            deleteDialogerTaskEnabled = getEnvVar("DIALOGPORTEN_DELETE_DIALOGER_TASK_ENABLED", "false").toBoolean(),
-            resendDialogTaskEnabled = getEnvVar("DIALOGPORTEN_RESEND_DIALOGER_TASK_ENABLED", "false").toBoolean(),
-        )
-
-        fun createForLocal() = DeleteDialogportenDialogsTaskProperties(
-            pollingDelay = "30s",
-            deleteDialogerLimit = 3,
-            deleteDialogerSleepAfterPage = 2000L,
-            deleteDialogerTaskEnabled = false,
-            resendDialogTaskEnabled = true,
         )
     }
 }

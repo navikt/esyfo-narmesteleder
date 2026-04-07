@@ -32,7 +32,6 @@ class BehovMaintenanceTaskTest :
             dialogportenIsApiOnly = false,
             daysAfterTomToExpireBehovs = 16,
             maintenanceTaskDelay = "100ms",
-            deleteDialogportenDialogsTaskProperties = mockk(relaxed = true),
             persistSendtSykmelding = mockk(relaxed = true),
             maintenanceTaskEnabled = true,
         )

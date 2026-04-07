@@ -38,8 +38,6 @@ class FakeNarmestelederDb : INarmestelederDb {
 
     override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = getNlBehovByStatus(listOf(status), limit)
 
-    override suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus == status && it.dialogDeletePerformed != null && it.dialogId == null }.take(limit)
-
     /**
      * Note: This fake implementation does NOT join with sendt_sykmelding like the real implementation.
      * It simply filters on created time. Use the real NarmestelederDb with TestDB for integration tests
@@ -61,10 +59,6 @@ class FakeNarmestelederDb : INarmestelederDb {
         }
         return toUpdate.size
     }
-
-    override suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.dialogDeletePerformed == null }
-        .sortedBy { it.created }
-        .take(limit)
 
     override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
     override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity> = store.values.filter {

@@ -28,14 +28,6 @@ interface INarmestelederDb {
         limit: Int
     ): List<NarmestelederBehovEntity>
 
-    suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity>
-
-    /**
-     * This function can be removed after we have fixed requirements and dialogs due to incorrect url in
-     * dialog attachment
-     */
-    suspend fun getNlBehovForResendToDialogporten(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity>
-
     suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
         tomBefore: Instant,
         newStatus: BehovStatus,
@@ -218,64 +210,6 @@ class NarmestelederDb(
                 ).use { preparedStatement ->
                     preparedStatement.setObject(1, status, java.sql.Types.OTHER)
                     preparedStatement.setInt(2, limit)
-                    val resultSet = preparedStatement.executeQuery()
-                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                    while (resultSet.next()) {
-                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                    }
-                    nlBehov
-                }
-        }
-    }
-
-    /**
-     * This function can be removed after we have fixed requirements and dialogs due to incorrect url in
-     * dialog attachment
-     */
-    override suspend fun getNlBehovForResendToDialogporten(
-        status: BehovStatus,
-        limit: Int
-    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
-        return@withContext database.connection.use { connection ->
-            connection
-                // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
-                .prepareStatement(
-                    """
-                        SELECT *
-                        FROM nl_behov
-                        WHERE behov_status = ?
-                        AND dialog_id IS NULL
-                        AND dialog_delete_performed IS NOT NULL
-                        ORDER BY created
-                        LIMIT ?
-                    """.trimIndent()
-                ).use { preparedStatement ->
-                    preparedStatement.setObject(1, status, java.sql.Types.OTHER)
-                    preparedStatement.setInt(2, limit)
-                    val resultSet = preparedStatement.executeQuery()
-                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                    while (resultSet.next()) {
-                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                    }
-                    nlBehov
-                }
-        }
-    }
-
-    override suspend fun getNlBehovForDelete(limit: Int): List<NarmestelederBehovEntity> = withContext(dispatcher) {
-        return@withContext database.connection.use { connection ->
-            connection
-                // Add AND created < NOW() - INTERVAL '1 minute' in where clause if we add something that triggers sending immediately after insert
-                .prepareStatement(
-                    """
-                        SELECT *
-                        FROM nl_behov
-                        WHERE dialog_delete_performed IS NULL AND dialog_id IS NOT NULL
-                        ORDER BY created
-                        LIMIT ?
-                    """.trimIndent()
-                ).use { preparedStatement ->
-                    preparedStatement.setInt(1, limit)
                     val resultSet = preparedStatement.executeQuery()
                     val nlBehov = mutableListOf<NarmestelederBehovEntity>()
                     while (resultSet.next()) {

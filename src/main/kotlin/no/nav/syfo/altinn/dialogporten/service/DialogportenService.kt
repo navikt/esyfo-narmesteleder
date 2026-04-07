@@ -1,6 +1,7 @@
 package no.nav.syfo.altinn.dialogporten.service
 
 import io.ktor.http.ContentType
+import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient.DialogportenPatch.OPERATION

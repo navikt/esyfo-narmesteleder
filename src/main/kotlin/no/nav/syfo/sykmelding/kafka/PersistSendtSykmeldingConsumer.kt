@@ -28,8 +28,7 @@ class PersistSendtSykmeldingConsumer(
     private val kafkaConsumer: KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
     private val env: OtherEnvironmentProperties,
-) : KafkaListener,
-    AutoCloseable {
+) : KafkaListener {
     private lateinit var job: Job
     var commitOnAllErrors = false
 
@@ -65,6 +64,7 @@ class PersistSendtSykmeldingConsumer(
                 }
             }
             logger.info("Exited $SENDT_SYKMELDING_TOPIC consumer loop")
+            kafkaConsumer.close()
         }
     }
 
@@ -122,23 +122,19 @@ class PersistSendtSykmeldingConsumer(
         }
     }
 
-    override fun close() {
-        logger.info("Closing Kafka consumer")
-        kafkaConsumer.close()
-    }
-
     override suspend fun stop() {
-        if (!::job.isInitialized) error("persist $SENDT_SYKMELDING_TOPIC consumer not started!")
+        if (!::job.isInitialized) {
+            logger.info("Consumer for $SENDT_SYKMELDING_TOPIC was never started, nothing to stop")
+            return
+        }
 
-        logger.info("Preparing shutdown")
         logger.info("Stopping consuming topic $SENDT_SYKMELDING_TOPIC")
-
         job.cancel()
         kafkaConsumer.wakeup()
     }
 
     companion object {
-        private val logger = LoggerFactory.getLogger(SendtSykmeldingKafkaConsumer::class.java)
+        private val logger = LoggerFactory.getLogger(PersistSendtSykmeldingConsumer::class.java)
         private const val CONSUMER_JOB_DELAY_SECONDS = 30L
         private const val POLL_DURATION_SECONDS = 1L
         private val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"

@@ -3,15 +3,12 @@ package no.nav.syfo.plugins
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
 import io.ktor.server.application.ServerReady
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.events.LeaderChange
 import no.nav.syfo.application.events.LeaderChangeEvent
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
-import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
@@ -28,7 +25,6 @@ fun Application.configureKafkaConsumers() {
     val nlLeesahHandler by inject<NlBehovLeesahHandler>()
     val sendtSykmeldingHandler by inject<SendtSykmeldingHandler>()
     val environment by inject<Environment>()
-    val leaderChangeSSEListener by inject<LeaderChangeSSEListener>()
     val logger = logger()
 
     if (!environment.kafka.shouldConsumeTopics) {
@@ -97,29 +93,51 @@ fun Application.configureKafkaConsumers() {
         env = environment.otherProperties,
     )
 
+    // ---- Leader-dependent consumer ----
+    val leaderConsumerLock = Any()
+    var leaderConsumerStarted = false
+
     monitor.subscribe(LeaderChangeEvent) { event ->
-        if (event is LeaderChange.ElectedLeader) {
-            launch(Dispatchers.IO) {
-                persistSendtSykmeldingConsumer.use { consumer ->
-                    logger.info("This instance is now the leader. Starting persistSendtSykmeldingConsumer.")
-                    consumer.listen()
-                    monitor.subscribe(ApplicationStopPreparing) {
-                        runBlocking { consumer.stop() }
+        when (event) {
+            is LeaderChange.ElectedLeader -> {
+                synchronized(leaderConsumerLock) {
+                    if (leaderConsumerStarted) {
+                        runBlocking { persistSendtSykmeldingConsumer.stop() }
+                    }
+                    logger.info("Elected leader — starting persist sendt sykmelding consumer")
+                    persistSendtSykmeldingConsumer.listen()
+                    leaderConsumerStarted = true
+                }
+            }
+            is LeaderChange.NotLeader -> {
+                synchronized(leaderConsumerLock) {
+                    if (leaderConsumerStarted) {
+                        logger.info("No longer leader — stopping persist sendt sykmelding consumer")
+                        runBlocking { persistSendtSykmeldingConsumer.stop() }
+                        leaderConsumerStarted = false
                     }
                 }
             }
         }
     }
 
+    // ---- Always-on consumers ----
     monitor.subscribe(ServerReady) {
         leesahConsumer.listen()
         sendtSykmeldingConsumer.listen()
+    }
 
-        monitor.subscribe(ApplicationStopPreparing) {
-            runBlocking {
-                sendtSykmeldingConsumer.stop()
-                leesahConsumer.stop()
+    // ---- Shutdown (top-level, not nested) ----
+    monitor.subscribe(ApplicationStopPreparing) {
+        synchronized(leaderConsumerLock) {
+            if (leaderConsumerStarted) {
+                runBlocking { persistSendtSykmeldingConsumer.stop() }
+                leaderConsumerStarted = false
             }
+        }
+        runBlocking {
+            sendtSykmeldingConsumer.stop()
+            leesahConsumer.stop()
         }
     }
 }

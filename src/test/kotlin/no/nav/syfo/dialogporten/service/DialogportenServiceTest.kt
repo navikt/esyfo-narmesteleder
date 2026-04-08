@@ -23,7 +23,6 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.application.environment.DeleteDialogportenDialogsTaskProperties
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
 import no.nav.syfo.application.valkey.PdlCache
@@ -66,7 +65,6 @@ class DialogportenServiceTest :
                         updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
                         isDialogportenBackgroundTaskEnabled = true,
                         dialogportenIsApiOnly = false,
-                        deleteDialogportenDialogsTaskProperties = DeleteDialogportenDialogsTaskProperties.createForLocal(),
                         persistSendtSykmelding = false,
                         daysAfterTomToExpireBehovs = 7,
                         maintenanceTaskDelay = "1s",

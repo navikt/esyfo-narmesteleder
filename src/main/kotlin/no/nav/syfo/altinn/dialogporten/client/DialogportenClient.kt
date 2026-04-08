@@ -12,7 +12,6 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import no.nav.syfo.altinn.dialogporten.domain.Content
 import no.nav.syfo.altinn.dialogporten.domain.ContentValue
@@ -28,7 +27,6 @@ import java.util.UUID
 interface IDialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
     suspend fun getDialogById(dialogId: UUID): ExtendedDialog
-    suspend fun deleteDialog(dialogId: UUID): HttpStatusCode
     suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: DialogportenClient.DialogportenPatch) = patchDialog(dialogId, revisionNumber, listOf(patch))
     suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<DialogportenClient.DialogportenPatch>)
 }
@@ -101,22 +99,6 @@ class DialogportenClient(
         }
     }
 
-    override suspend fun deleteDialog(dialogId: UUID): HttpStatusCode {
-        val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)
-            .accessToken
-
-        return runCatching<DialogportenClient, HttpStatusCode> {
-            httpClient
-                .post("$dialogportenUrl/$dialogId/actions/purge") {
-                    header(HttpHeaders.Accept, ContentType.Application.Json)
-                    bearerAuth(token)
-                }.status
-        }.getOrElse { e ->
-            logger.error("Feil ved kall til Dialogporten for å slette dialog", e)
-            throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten:  actions-purge")
-        }
-    }
-
     override suspend fun patchDialog(
         dialogId: UUID,
         revisionNumber: UUID,
@@ -164,11 +146,6 @@ class FakeDialogportenClient : IDialogportenClient {
         serviceResource = "service:resource",
         transmissions = listOf(),
     )
-
-    override suspend fun deleteDialog(dialogId: UUID): HttpStatusCode {
-        logger.info("Deleting dialog with id: $dialogId")
-        return HttpStatusCode.NoContent
-    }
 
     override suspend fun patchDialog(
         dialogId: UUID,

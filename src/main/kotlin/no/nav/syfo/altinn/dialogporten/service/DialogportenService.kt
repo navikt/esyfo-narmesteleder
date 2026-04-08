@@ -1,8 +1,6 @@
 package no.nav.syfo.altinn.dialogporten.service
 
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.isSuccess
 import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
@@ -31,7 +29,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
-import java.util.*
+import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
 const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
@@ -43,30 +41,6 @@ class DialogportenService(
     private val pdlService: PdlService,
 ) {
     private val logger = logger()
-
-    /**
-     * This function can be removed after we have fixed requirements and dialogs due to incorrect url in
-     * dialog attachment
-     */
-    suspend fun resendDocumentsToDialogporten() {
-        var batchNum = 0
-        var firstCreatedTimestamp: Instant?
-        do {
-            val behovToSend = getRequirementsToResend()
-            batchNum += 1
-            firstCreatedTimestamp = if (!behovToSend.isEmpty()) {
-                behovToSend.first().created
-            } else {
-                null
-            }
-            logger.info("Batch: $batchNum: Found ${behovToSend.size} behov to resend to dialogporten. First created at ${firstCreatedTimestamp ?: "N/A"}")
-
-            for (behov in behovToSend) {
-                sendToDialogporten(behov)
-            }
-            delay(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerSleepAfterPage)
-        } while (behovToSend.size >= BEHOV_BY_STATUS_LIMIT)
-    }
 
     suspend fun sendDocumentsToDialogporten() {
         var batchNum = 0
@@ -213,53 +187,6 @@ class DialogportenService(
         }
     }
 
-    suspend fun deleteDialogsInDialogporten() {
-        var batchNum = 0
-        var firstCreatedTimestamp: Instant?
-        do {
-            val dialogsToDeleteInDialogporten = getDialogsToDelete()
-            batchNum += 1
-            firstCreatedTimestamp = if (!dialogsToDeleteInDialogporten.isEmpty()) {
-                dialogsToDeleteInDialogporten.first().created
-            } else {
-                null
-            }
-            logger.info("Batch: $batchNum: Found ${dialogsToDeleteInDialogporten.size} dialogs to delete from dialogporten. First behov created at ${firstCreatedTimestamp ?: "N/A"}")
-
-            for (dialog in dialogsToDeleteInDialogporten) {
-                dialog.dialogId?.let { uuid ->
-                    try {
-                        val status = dialogportenClient.deleteDialog(uuid)
-                        if (status.isSuccess()) {
-                            narmestelederDb.updateNlBehov(
-                                dialog.copy(
-                                    dialogId = null,
-                                    updated = Instant.now(),
-                                    dialogDeletePerformed = Instant.now(),
-                                )
-                            )
-                        } else if (listOf(HttpStatusCode.Gone, HttpStatusCode.NotFound).contains(status)) {
-                            logger.info("Skipping setting properties to null, dialog ${dialog.id} with dialogportenUUID $uuid already deleted in dialogporten")
-                            narmestelederDb.updateNlBehov(
-                                dialog.copy(
-                                    updated = Instant.now(),
-                                    dialogDeletePerformed = Instant.now(),
-                                )
-                            )
-                        } else {
-                            logger.error("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid from dialogporten, received status $status")
-                            throw RuntimeException("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid")
-                        }
-                    } catch (ex: Exception) {
-                        logger.error("Failed to delete dialog ${dialog.id} from dialogporten", ex)
-                        throw ex
-                    }
-                }
-            }
-            delay(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerSleepAfterPage) // small delay to avoid hammering dialogporten
-        } while (dialogsToDeleteInDialogporten.size == otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
-    }
-
     private fun getDialogTitle(
         name: Navn?,
         nationalIdentityNumber: String,
@@ -278,13 +205,6 @@ class DialogportenService(
     } ?: "En ansatt $DIALOG_SUMMARY"
 
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED, BEHOV_BY_STATUS_LIMIT)
-
-    private suspend fun getDialogsToDelete() = narmestelederDb.getNlBehovForDelete(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
-
-    private suspend fun getRequirementsToResend() = narmestelederDb.getNlBehovForResendToDialogporten(
-        BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
-        BEHOV_BY_STATUS_LIMIT
-    )
 
     private fun createApiLink(id: UUID): String = "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
 

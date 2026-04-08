@@ -9,20 +9,40 @@ data class PersonBatchInsertRow(
     val etternavn: String? = null,
 )
 
-fun PersonTable.batchInsertIgnoreExisting(rows: Iterable<PersonBatchInsertRow>) {
+data class InsertedPerson(
+    val id: Int,
+    val fnr: String,
+    val status: String,
+    val fornavn: String?,
+    val etternavn: String?,
+)
+
+fun PersonTable.batchInsertIgnoreExisting(rows: Iterable<PersonBatchInsertRow>): List<InsertedPerson> {
     val rowsToInsert = rows.toList()
     if (rowsToInsert.isEmpty()) {
-        return
+        return emptyList()
     }
 
-    batchInsert(
+    return batchInsert(
         data = rowsToInsert,
         ignore = true,
-        shouldReturnGeneratedValues = false,
+        shouldReturnGeneratedValues = true,
     ) { row ->
         this[PersonTable.fnr] = row.fnr
         this[PersonTable.status] = row.status
         this[PersonTable.fornavn] = row.fornavn
         this[PersonTable.etternavn] = row.etternavn
+    }.mapNotNull { insertedRow ->
+        if (!insertedRow.hasValue(PersonTable.id)) {
+            return@mapNotNull null
+        }
+
+        InsertedPerson(
+            id = insertedRow[PersonTable.id].value,
+            fnr = insertedRow[PersonTable.fnr],
+            status = insertedRow[PersonTable.status],
+            fornavn = insertedRow[PersonTable.fornavn],
+            etternavn = insertedRow[PersonTable.etternavn],
+        )
     }
 }

@@ -28,7 +28,7 @@ class PersonTableBatchInsertTest :
                     ),
                 )
 
-                transaction(TestDB.exposedDatabase) {
+                val insertedPersons = transaction(TestDB.exposedDatabase) {
                     PersonTable.batchInsertIgnoreExisting(rows)
                 }
 
@@ -36,8 +36,25 @@ class PersonTableBatchInsertTest :
                 val firstPerson = personsByFnr["12345678901"].shouldNotBeNull()
                 val secondPerson = personsByFnr["10987654321"].shouldNotBeNull()
 
+                insertedPersons shouldBe listOf(
+                    InsertedPerson(
+                        id = firstPerson.id,
+                        fnr = "12345678901",
+                        fornavn = "Ada",
+                        etternavn = "Lovelace",
+                        status = "ACTIVE",
+                    ),
+                    InsertedPerson(
+                        id = secondPerson.id,
+                        fnr = "10987654321",
+                        fornavn = null,
+                        etternavn = null,
+                        status = "INACTIVE",
+                    ),
+                )
                 personsByFnr.keys shouldBe setOf("12345678901", "10987654321")
                 firstPerson shouldBe PersistedPerson(
+                    id = firstPerson.id,
                     fnr = "12345678901",
                     fornavn = "Ada",
                     etternavn = "Lovelace",
@@ -46,6 +63,7 @@ class PersonTableBatchInsertTest :
                     updated = firstPerson.updated,
                 )
                 secondPerson shouldBe PersistedPerson(
+                    id = secondPerson.id,
                     fnr = "10987654321",
                     fornavn = null,
                     etternavn = null,
@@ -56,7 +74,7 @@ class PersonTableBatchInsertTest :
             }
 
             it("should ignore fnr that already exists in database") {
-                transaction(TestDB.exposedDatabase) {
+                val initiallyInserted = transaction(TestDB.exposedDatabase) {
                     PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
@@ -67,7 +85,7 @@ class PersonTableBatchInsertTest :
                     )
                 }
 
-                transaction(TestDB.exposedDatabase) {
+                val insertedPersons = transaction(TestDB.exposedDatabase) {
                     PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
@@ -80,8 +98,19 @@ class PersonTableBatchInsertTest :
 
                 val persistedPerson = fetchPersons().single()
 
+                initiallyInserted shouldBe listOf(
+                    InsertedPerson(
+                        id = persistedPerson.id,
+                        fnr = "12345678901",
+                        fornavn = null,
+                        etternavn = null,
+                        status = "ACTIVE",
+                    ),
+                )
+                insertedPersons shouldBe emptyList()
                 listOf(persistedPerson) shouldBe listOf(
                     PersistedPerson(
+                        id = persistedPerson.id,
                         fnr = "12345678901",
                         fornavn = null,
                         etternavn = null,
@@ -93,7 +122,7 @@ class PersonTableBatchInsertTest :
             }
 
             it("should ignore duplicate fnr values within the same batch") {
-                transaction(TestDB.exposedDatabase) {
+                val insertedPersons = transaction(TestDB.exposedDatabase) {
                     PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
@@ -115,9 +144,26 @@ class PersonTableBatchInsertTest :
                 }
 
                 val persons = fetchPersons()
+                val personsByFnr = persons.associateBy { it.fnr }
                 persons.size shouldBe 2
                 persons.count { it.fnr == "12345678901" } shouldBe 1
                 persons.count { it.fnr == "10987654321" } shouldBe 1
+                insertedPersons shouldBe listOf(
+                    InsertedPerson(
+                        id = personsByFnr.getValue("12345678901").id,
+                        fnr = "12345678901",
+                        status = "ACTIVE",
+                        fornavn = "Ada",
+                        etternavn = null,
+                    ),
+                    InsertedPerson(
+                        id = personsByFnr.getValue("10987654321").id,
+                        fnr = "10987654321",
+                        status = "PENDING",
+                        fornavn = null,
+                        etternavn = null,
+                    ),
+                )
                 fetchPerson("12345678901")?.status shouldBe "ACTIVE"
             }
 
@@ -137,7 +183,7 @@ class PersonTableBatchInsertTest :
 
                 val original = fetchPerson("12345678901").shouldNotBeNull()
 
-                transaction(TestDB.exposedDatabase) {
+                val insertedPersons = transaction(TestDB.exposedDatabase) {
                     PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
@@ -150,20 +196,23 @@ class PersonTableBatchInsertTest :
                     )
                 }
 
+                insertedPersons shouldBe emptyList()
                 fetchPerson("12345678901") shouldBe original
             }
 
             it("should handle empty input safely") {
-                transaction(TestDB.exposedDatabase) {
+                val insertedPersons = transaction(TestDB.exposedDatabase) {
                     PersonTable.batchInsertIgnoreExisting(emptyList())
                 }
 
+                insertedPersons shouldBe emptyList()
                 fetchPersons() shouldBe emptyList()
             }
         }
     })
 
 private data class PersistedPerson(
+    val id: Int,
     val fnr: String,
     val fornavn: String?,
     val etternavn: String?,
@@ -175,7 +224,7 @@ private data class PersistedPerson(
 private fun fetchPersons(): List<PersistedPerson> = TestDB.database.connection.use { connection ->
     connection.prepareStatement(
         """
-        SELECT fnr, fornavn, etternavn, status, created, updated
+        SELECT id, fnr, fornavn, etternavn, status, created, updated
         FROM person
         ORDER BY fnr
         """.trimIndent(),
@@ -185,6 +234,7 @@ private fun fetchPersons(): List<PersistedPerson> = TestDB.database.connection.u
                 while (resultSet.next()) {
                     add(
                         PersistedPerson(
+                            id = resultSet.getInt("id"),
                             fnr = resultSet.getString("fnr"),
                             fornavn = resultSet.getString("fornavn"),
                             etternavn = resultSet.getString("etternavn"),
@@ -202,7 +252,7 @@ private fun fetchPersons(): List<PersistedPerson> = TestDB.database.connection.u
 private fun fetchPerson(fnr: String): PersistedPerson? = TestDB.database.connection.use { connection ->
     connection.prepareStatement(
         """
-        SELECT fnr, fornavn, etternavn, status, created, updated
+        SELECT id, fnr, fornavn, etternavn, status, created, updated
         FROM person
         WHERE fnr = ?
         """.trimIndent(),
@@ -211,6 +261,7 @@ private fun fetchPerson(fnr: String): PersistedPerson? = TestDB.database.connect
         preparedStatement.executeQuery().use { resultSet ->
             if (resultSet.next()) {
                 PersistedPerson(
+                    id = resultSet.getInt("id"),
                     fnr = resultSet.getString("fnr"),
                     fornavn = resultSet.getString("fornavn"),
                     etternavn = resultSet.getString("etternavn"),

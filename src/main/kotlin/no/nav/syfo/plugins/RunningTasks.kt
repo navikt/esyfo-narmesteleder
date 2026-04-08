@@ -77,37 +77,41 @@ fun Application.configureKafkaConsumers() {
     val persistSendtSykmeldingConsumer = PersistSendtSykmeldingConsumer(
         handler = sendtSykmeldingHandler,
         jacksonMapper = jacksonMapper(),
-        kafkaConsumer = KafkaConsumer(
-            consumerProperties(
-                env = environment.kafka,
-                valueDeserializer = StringDeserializer::class,
-                groupId = "esyfo-narmesteleder-persist-sendt-sykmelding-consumer"
-            ).apply {
-                put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-                put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500")
-                put(
-                    ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG,
-                    5.minutes
-                        .inWholeMilliseconds
-                        .toString()
-                )
-                put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "1048576")
-                put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "500")
-            },
-            StringDeserializer(),
-            StringDeserializer(),
-        ),
+        kafkaConsumerFactory = {
+            KafkaConsumer(
+                consumerProperties(
+                    env = environment.kafka,
+                    valueDeserializer = StringDeserializer::class,
+                    groupId = "esyfo-narmesteleder-persist-sendt-sykmelding-consumer"
+                ).apply {
+                    put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+                    put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500")
+                    put(
+                        ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG,
+                        5.minutes
+                            .inWholeMilliseconds
+                            .toString()
+                    )
+                    put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "1048576")
+                    put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "500")
+                },
+                StringDeserializer(),
+                StringDeserializer(),
+            )
+        },
         scope = this,
         env = environment.otherProperties,
     )
     val leesahNarmestelederReplayConsumer = LeesahNarmestelederReplayKafkaConsumer(
         handler = narmestelederRegisterService,
         jacksonMapper = jacksonMapper(),
-        kafkaConsumer = KafkaConsumer(
-            leesahNarmestelederReplayConsumerProperties(environment.kafka),
-            StringDeserializer(),
-            StringDeserializer(),
-        ),
+        kafkaConsumerFactory = {
+            KafkaConsumer(
+                leesahNarmestelederReplayConsumerProperties(environment.kafka),
+                StringDeserializer(),
+                StringDeserializer(),
+            )
+        },
         scope = this,
     ).apply {
         commitOnAllErrors = environment.kafka.commitOnAllErrors

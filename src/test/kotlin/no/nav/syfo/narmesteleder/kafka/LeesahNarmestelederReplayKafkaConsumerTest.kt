@@ -4,11 +4,16 @@ import defaultLeesahKafkaMessage
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.Runs
 import io.mockk.clearMocks
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -51,7 +56,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                 every { registerService.upsertBatch(capture(capturedRecords)) } returns Unit
                 every { kafkaConsumer.commitSync() } returns Unit
 
-                consumer.processBatch(records)
+                consumer.processBatch(records, kafkaConsumer)
 
                 capturedRecords.captured.size shouldBe 1
                 capturedRecords.captured.single().message.narmesteLederId shouldBe validMessage.narmesteLederId
@@ -69,10 +74,42 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                 every { registerService.upsertBatch(any()) } throws IllegalStateException("boom")
 
                 shouldThrow<IllegalStateException> {
-                    consumer.processBatch(records)
+                    consumer.processBatch(records, kafkaConsumer)
                 }
 
                 verify(exactly = 0) { kafkaConsumer.commitSync() }
+            }
+        }
+
+        describe("stop") {
+            it("should wake up, unsubscribe and close the consumer before returning") {
+                val subscribeStarted = CompletableDeferred<Unit>()
+                val pollReleased = CompletableDeferred<Unit>()
+
+                every { kafkaConsumer.subscribe(any<List<String>>()) } answers {
+                    subscribeStarted.complete(Unit)
+                }
+                every { kafkaConsumer.poll(any()) } answers {
+                    runBlocking {
+                        pollReleased.await()
+                    }
+                    throw org.apache.kafka.common.errors.WakeupException()
+                }
+                every { kafkaConsumer.wakeup() } answers {
+                    pollReleased.complete(Unit)
+                }
+                every { kafkaConsumer.unsubscribe() } just Runs
+                every { kafkaConsumer.close(any<java.time.Duration>()) } returns Unit
+
+                runTest {
+                    consumer.listen()
+                    subscribeStarted.await()
+                    consumer.stop()
+                }
+
+                verify(exactly = 1) { kafkaConsumer.wakeup() }
+                verify(exactly = 1) { kafkaConsumer.unsubscribe() }
+                verify(exactly = 1) { kafkaConsumer.close(any<java.time.Duration>()) }
             }
         }
     })

@@ -12,7 +12,11 @@ import no.nav.syfo.util.logger
 fun Application.configureLeaderMonitoring(leaderChangeSSEListener: LeaderChangeSSEListener) {
     monitor.subscribe(ServerReady) {
         logger().info("Starting leader monitoring")
-        val job = launch {
+        val listenerJob = launch {
+            leaderChangeSSEListener.listenForLeaderChanges()
+        }
+
+        val collectorJob = launch {
             val monitor = this@configureLeaderMonitoring.monitor
             leaderChangeSSEListener.isLeader.collect { isLeader ->
                 if (isLeader) {
@@ -25,7 +29,8 @@ fun Application.configureLeaderMonitoring(leaderChangeSSEListener: LeaderChangeS
         }
 
         monitor.subscribe(ApplicationStopPreparing) {
-            job.cancel()
+            listenerJob.cancel()
+            collectorJob.cancel()
         }
     }
 }

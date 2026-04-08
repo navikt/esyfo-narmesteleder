@@ -28,8 +28,8 @@ abstract class ScheduledLeaderTask(
                 }
                 delay(interval)
             }
-        } catch (ex: CancellationException) {
-            logger.info("Cancelled $taskName", ex)
+        } catch (_: CancellationException) {
+            logger.info("$taskName stopped gracefully")
         }
     }
 }

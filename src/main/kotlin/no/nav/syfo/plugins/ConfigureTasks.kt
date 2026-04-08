@@ -13,6 +13,7 @@ import no.nav.syfo.application.events.LeaderChangeEvent
 import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
 import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject
+import java.util.Collections
 import kotlin.getValue
 
 fun Application.configureBackgroundTasks() {
@@ -20,8 +21,7 @@ fun Application.configureBackgroundTasks() {
     val environment by inject<Environment>()
 
 
-    // Leader-dependent tasks — started when elected, cancelled when leadership is lost
-    val leaderTaskJobs = mutableListOf<Job>()
+    val leaderTaskJobs: MutableList<Job> = Collections.synchronizedList(mutableListOf())
 
     monitor.subscribe(LeaderChangeEvent) { event ->
         when (event) {
@@ -41,14 +41,18 @@ fun Application.configureBackgroundTasks() {
             }
             is LeaderChange.NotLeader -> {
                 logger.info("No longer leader — cancelling background tasks")
-                leaderTaskJobs.forEach { it.cancel() }
-                leaderTaskJobs.clear()
+                synchronized(leaderTaskJobs) {
+                    leaderTaskJobs.forEach { it.cancel() }
+                    leaderTaskJobs.clear()
+                }
             }
         }
     }
 
     monitor.subscribe(ApplicationStopPreparing) {
-        leaderTaskJobs.forEach { it.cancel() }
-        leaderTaskJobs.clear()
+        synchronized(leaderTaskJobs) {
+            leaderTaskJobs.forEach { it.cancel() }
+            leaderTaskJobs.clear()
+        }
     }
 }

@@ -290,14 +290,13 @@ private fun tasksModule() = module {
     single {
         BehovMaintenanceTask(
             narmestelederService = get(),
-            leaderElection = get(),
-            env = env().otherProperties
+            env = env().otherProperties,
         )
     }
-    single { SendDialogTask(get(), get()) }
+    single { SendDialogTask(get()) }
     single {
         val pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay)
-        UpdateDialogTask(get(), get(), pollingInterval)
+        UpdateDialogTask(get(), pollingInterval)
     }
 }
 

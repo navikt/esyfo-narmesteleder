@@ -1,7 +1,6 @@
 package no.nav.syfo.narmesteleder.exposed
 
 import defaultLeesahKafkaMessage
-import faker
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -45,8 +44,6 @@ class NarmestelederTableUpsertTest :
                     entity.arbeidsgiverForskutterer shouldBe message.arbeidsgiverForskutterer
                     entity.aktivFom.toInstant() shouldBe message.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
                     entity.aktivTom.shouldNotBeNull().toInstant() shouldBe message.aktivTom!!.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
-                    entity.brukerNavn.shouldBeNull()
-                    entity.narmestelederNavn.shouldBeNull()
                     entity.created.shouldNotBeNull()
                     entity.updated.shouldNotBeNull()
                 }
@@ -96,41 +93,6 @@ class NarmestelederTableUpsertTest :
                     entity.arbeidsgiverForskutterer shouldBe updatedMessage.arbeidsgiverForskutterer
                     entity.aktivFom.toInstant() shouldBe updatedMessage.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
                     entity.aktivTom.shouldNotBeNull().toInstant() shouldBe updatedMessage.aktivTom!!.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
-                }
-            }
-
-            it("should not overwrite PDL-owned name fields on update") {
-                val narmesteLederId = UUID.randomUUID()
-
-                val message = defaultLeesahKafkaMessage().copy(
-                    narmesteLederId = narmesteLederId,
-                )
-
-                transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(message)
-                }
-
-                val brukerNavn = faker.name().firstName() + " " + faker.name().lastName()
-                val narmestelederNavn = faker.name().firstName() + " " + faker.name().lastName()
-
-                transaction(TestDB.exposedDatabase) {
-                    val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmestelederId eq narmesteLederId
-                    }.first()
-                    entity.brukerNavn = brukerNavn
-                    entity.narmestelederNavn = narmestelederNavn
-                }
-
-                transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(message)
-                }
-
-                transaction(TestDB.exposedDatabase) {
-                    val entity = NarmestelederEntity.find {
-                        NarmestelederTable.narmestelederId eq narmesteLederId
-                    }.first()
-                    entity.brukerNavn shouldBe brukerNavn
-                    entity.narmestelederNavn shouldBe narmestelederNavn
                 }
             }
 

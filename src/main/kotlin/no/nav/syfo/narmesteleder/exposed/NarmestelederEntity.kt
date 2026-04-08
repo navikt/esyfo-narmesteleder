@@ -20,8 +20,6 @@ class NarmestelederEntity(id: EntityID<Int>) : IntEntity(id) {
             narmesteLederId = kafkaMessage.narmesteLederId
             orgnummer = kafkaMessage.orgnummer
             brukerFnr = kafkaMessage.fnr
-            brukerNavn = null
-            narmestelederNavn = null
             narmestelederFnr = kafkaMessage.narmesteLederFnr
             narmestelederTelefonnummer = kafkaMessage.narmesteLederTelefonnummer
             narmestelederEpost = kafkaMessage.narmesteLederEpost
@@ -34,8 +32,6 @@ class NarmestelederEntity(id: EntityID<Int>) : IntEntity(id) {
     var narmesteLederId by NarmestelederTable.narmestelederId
     var orgnummer by NarmestelederTable.orgnummer
     var brukerFnr by NarmestelederTable.brukerFnr
-    var brukerNavn by NarmestelederTable.brukerNavn
-    var narmestelederNavn by NarmestelederTable.narmestelederNavn
     var narmestelederFnr by NarmestelederTable.narmestelederFnr
     var narmestelederTelefonnummer by NarmestelederTable.narmestelederTelefonnummer
     var narmestelederEpost by NarmestelederTable.narmestelederEpost

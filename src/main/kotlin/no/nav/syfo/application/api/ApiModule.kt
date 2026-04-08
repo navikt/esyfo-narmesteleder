@@ -7,7 +7,7 @@ import io.ktor.server.response.respondRedirect
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
-import no.nav.syfo.application.ApplicationState
+import no.nav.syfo.application.HealthState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
@@ -20,7 +20,7 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {
-    val applicationState by inject<ApplicationState>()
+    val healthState by inject<HealthState>()
     val database by inject<DatabaseInterface>()
     val narmestelederKafkaService by inject<NarmestelederKafkaService>()
     val texasHttpClient by inject<TexasHttpClient>()
@@ -33,7 +33,7 @@ fun Application.configureRouting() {
     installStatusPages()
 
     routing {
-        registerPodApi(applicationState, database)
+        registerPodApi(healthState, database)
         registerMetricApi()
         registerApiV1(narmestelederKafkaService, texasHttpClient, validationService, linemanagerRequirementRESTHandler)
         // Static openAPI spec + swagger

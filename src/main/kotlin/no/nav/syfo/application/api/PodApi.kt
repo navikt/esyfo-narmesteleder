@@ -4,22 +4,22 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
-import no.nav.syfo.application.ApplicationState
+import no.nav.syfo.application.HealthState
 import no.nav.syfo.application.database.DatabaseInterface
 
 fun Routing.registerPodApi(
-    applicationState: ApplicationState,
+    healthState: HealthState,
     database: DatabaseInterface
 ) {
     get("/internal/is_alive") {
-        if (applicationState.alive) {
+        if (healthState.alive) {
             call.respondText("I'm alive! :)")
         } else {
             call.respondText("I'm dead x_x", status = HttpStatusCode.InternalServerError)
         }
     }
     get("/internal/is_ready") {
-        if (isReady(applicationState, database)) {
+        if (isReady(healthState, database)) {
             call.respondText("I'm ready! :)")
         } else {
             call.respondText("Please wait! I'm not ready :(", status = HttpStatusCode.InternalServerError)
@@ -27,7 +27,7 @@ fun Routing.registerPodApi(
     }
 }
 
-private fun isReady(applicationState: ApplicationState, database: DatabaseInterface): Boolean = applicationState.ready && database.isOk()
+private fun isReady(healthState: HealthState, database: DatabaseInterface): Boolean = healthState.ready && database.isOk()
 
 private fun DatabaseInterface.isOk(): Boolean = try {
     connection.use {

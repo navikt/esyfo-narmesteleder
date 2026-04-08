@@ -17,7 +17,7 @@ import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
-import no.nav.syfo.application.ApplicationState
+import no.nav.syfo.application.HealthState
 import no.nav.syfo.application.database.Database
 import no.nav.syfo.application.database.DatabaseConfig
 import no.nav.syfo.application.database.DatabaseInterface
@@ -87,7 +87,7 @@ fun Application.configureDependencies() {
     }
 }
 
-private fun applicationStateModule() = module { single { ApplicationState() } }
+private fun applicationStateModule() = module { single { HealthState() } }
 
 private fun environmentModule(isLocalEnv: Boolean) = module {
     single {
@@ -290,7 +290,7 @@ private fun tasksModule() = module {
     single {
         BehovMaintenanceTask(
             narmestelederService = get(),
-            env = env().otherProperties,
+            env = env().otherProperties
         )
     }
     single { SendDialogTask(get()) }

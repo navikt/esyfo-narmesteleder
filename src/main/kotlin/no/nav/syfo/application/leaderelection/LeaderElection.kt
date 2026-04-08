@@ -13,6 +13,10 @@ import java.net.InetAddress
  * Leader election implementation that queries endpoint in a sidecar
  * to determine if the current instance/pod is the leader or not
  */
+@Deprecated(
+    message = "Use LeaderChangeSSEListener with LeaderChangeEvent instead. Will be removed when ResendDialogTask is deleted.",
+    level = DeprecationLevel.WARNING,
+)
 class LeaderElection(
     private val httpClient: HttpClient,
     private val electorPath: String,

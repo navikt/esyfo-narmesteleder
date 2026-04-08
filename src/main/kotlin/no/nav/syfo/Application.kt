@@ -8,6 +8,7 @@ import no.nav.syfo.application.api.configureRouting
 import no.nav.syfo.plugins.configureBackgroundTasks
 import no.nav.syfo.plugins.configureDependencies
 import no.nav.syfo.plugins.configureKafkaConsumers
+import no.nav.syfo.plugins.configureLeaderMonitoring
 import no.nav.syfo.plugins.configureLifecycleHooks
 import org.koin.ktor.ext.get
 import java.util.concurrent.TimeUnit
@@ -38,6 +39,7 @@ fun main() {
 fun Application.module() {
     configureDependencies()
     configureLifecycleHooks(get())
+    configureLeaderMonitoring(get())
     configureRouting()
     configureKafkaConsumers()
     configureBackgroundTasks()

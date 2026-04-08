@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.syfo.application.environment.Environment
+import no.nav.syfo.application.events.LeaderChange
+import no.nav.syfo.application.events.LeaderChangeEvent
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
@@ -95,30 +97,28 @@ fun Application.configureKafkaConsumers() {
         env = environment.otherProperties,
     )
 
-    monitor.subscribe(ServerReady) {
-        val sseListenerJob = launch { leaderChangeSSEListener.listenForLeaderChanges() }
-        leesahConsumer.listen()
-        sendtSykmeldingConsumer.listen()
-
-        monitor.subscribe(ApplicationStopPreparing) {
-            runBlocking {
-                sseListenerJob.cancel()
-                sendtSykmeldingConsumer.stop()
-                leesahConsumer.stop()
-            }
-        }
-    }
-
-    launch(Dispatchers.IO) {
-        persistSendtSykmeldingConsumer.use { consumer ->
-            leaderChangeSSEListener.isLeader.collect { isLeader ->
-                if (isLeader) {
+    monitor.subscribe(LeaderChangeEvent) { event ->
+        if (event is LeaderChange.ElectedLeader) {
+            launch(Dispatchers.IO) {
+                persistSendtSykmeldingConsumer.use { consumer ->
                     logger.info("This instance is now the leader. Starting persistSendtSykmeldingConsumer.")
                     consumer.listen()
                     monitor.subscribe(ApplicationStopPreparing) {
                         runBlocking { consumer.stop() }
                     }
                 }
+            }
+        }
+    }
+
+    monitor.subscribe(ServerReady) {
+        leesahConsumer.listen()
+        sendtSykmeldingConsumer.listen()
+
+        monitor.subscribe(ApplicationStopPreparing) {
+            runBlocking {
+                sendtSykmeldingConsumer.stop()
+                leesahConsumer.stop()
             }
         }
     }

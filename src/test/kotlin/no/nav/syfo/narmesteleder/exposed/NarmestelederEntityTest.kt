@@ -27,8 +27,6 @@ class NarmestelederEntityTest :
                 val narmesteLederId = UUID.randomUUID()
                 val orgnummer = faker.numerify("#########")
                 val brukerFnr = faker.numerify("###########")
-                val brukerNavn = faker.name().firstName() + " " + faker.name().lastName()
-                val narmestelederNavn = faker.name().firstName() + " " + faker.name().lastName()
                 val narmestelederFnr = faker.numerify("###########")
                 val narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                 val narmestelederEpost = faker.internet().emailAddress()
@@ -41,8 +39,6 @@ class NarmestelederEntityTest :
                         this.narmesteLederId = narmesteLederId
                         this.orgnummer = orgnummer
                         this.brukerFnr = brukerFnr
-                        this.brukerNavn = brukerNavn
-                        this.narmestelederNavn = narmestelederNavn
                         this.narmestelederFnr = narmestelederFnr
                         this.narmestelederTelefonnummer = narmestelederTelefonnummer
                         this.narmestelederEpost = narmestelederEpost
@@ -60,8 +56,6 @@ class NarmestelederEntityTest :
                     readBack.narmesteLederId shouldBe narmesteLederId
                     readBack.orgnummer shouldBe orgnummer
                     readBack.brukerFnr shouldBe brukerFnr
-                    readBack.brukerNavn shouldBe brukerNavn
-                    readBack.narmestelederNavn shouldBe narmestelederNavn
                     readBack.narmestelederFnr shouldBe narmestelederFnr
                     readBack.narmestelederTelefonnummer shouldBe narmestelederTelefonnummer
                     readBack.narmestelederEpost shouldBe narmestelederEpost
@@ -82,8 +76,6 @@ class NarmestelederEntityTest :
                         this.narmesteLederId = narmesteLederId
                         this.orgnummer = faker.numerify("#########")
                         this.brukerFnr = faker.numerify("###########")
-                        this.brukerNavn = null
-                        this.narmestelederNavn = null
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -98,8 +90,6 @@ class NarmestelederEntityTest :
                     val readBack = NarmestelederEntity.findById(entityId)
                     readBack.shouldNotBeNull()
 
-                    readBack.brukerNavn.shouldBeNull()
-                    readBack.narmestelederNavn.shouldBeNull()
                     readBack.arbeidsgiverForskutterer.shouldBeNull()
                     readBack.aktivTom.shouldBeNull()
                 }
@@ -152,7 +142,6 @@ class NarmestelederEntityTest :
                         this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
                         this.brukerFnr = faker.numerify("###########")
-                        this.brukerNavn = faker.name().firstName() + " " + faker.name().lastName()
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -170,7 +159,6 @@ class NarmestelederEntityTest :
                     entity.shouldNotBeNull()
                     entity.orgnummer = updatedOrgnummer
                     entity.narmestelederEpost = updatedEpost
-                    entity.brukerNavn = updatedBrukerNavn
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -178,7 +166,6 @@ class NarmestelederEntityTest :
                     readBack.shouldNotBeNull()
                     readBack.orgnummer shouldBe updatedOrgnummer
                     readBack.narmestelederEpost shouldBe updatedEpost
-                    readBack.brukerNavn shouldBe updatedBrukerNavn
                 }
             }
 
@@ -325,8 +312,6 @@ class NarmestelederEntityTest :
                         readBack.arbeidsgiverForskutterer shouldBe arbeidsgiverForskutterer
                         readBack.aktivFom.toInstant() shouldBe aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
                         readBack.aktivTom.shouldNotBeNull().toInstant() shouldBe aktivTom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
-                        readBack.brukerNavn.shouldBeNull()
-                        readBack.narmestelederNavn.shouldBeNull()
                         readBack.created.shouldNotBeNull()
                         readBack.updated.shouldNotBeNull()
                     }

@@ -6,8 +6,6 @@ CREATE TABLE narmeste_leder
     narmeste_leder_id            UUID                     NOT NULL,
     orgnummer                    VARCHAR(9)               NOT NULL,
     bruker_fnr                   VARCHAR(11)              NOT NULL,
-    bruker_navn                  VARCHAR,
-    narmeste_leder_navn          VARCHAR,
     narmeste_leder_fnr           VARCHAR(11)              NOT NULL,
     narmeste_leder_telefonnummer VARCHAR                  NOT NULL,
     narmeste_leder_epost         VARCHAR                  NOT NULL,

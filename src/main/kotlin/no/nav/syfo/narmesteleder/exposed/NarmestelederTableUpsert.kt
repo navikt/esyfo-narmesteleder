@@ -42,8 +42,6 @@ fun NarmestelederTable.upsertFromLeesahKafkaMessage(kafkaMessage: NarmestelederL
         it[narmestelederId] = kafkaMessage.narmesteLederId
         it[orgnummer] = kafkaMessage.orgnummer
         it[brukerFnr] = kafkaMessage.fnr
-        it[brukerNavn] = null
-        it[narmestelederNavn] = null
         it[narmestelederFnr] = kafkaMessage.narmesteLederFnr
         it[narmestelederTelefonnummer] = kafkaMessage.narmesteLederTelefonnummer
         it[narmestelederEpost] = kafkaMessage.narmesteLederEpost

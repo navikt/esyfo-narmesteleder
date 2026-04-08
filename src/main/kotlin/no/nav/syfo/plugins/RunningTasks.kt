@@ -4,6 +4,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
 import io.ktor.server.application.ServerReady
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.syfo.application.environment.Environment
@@ -11,7 +12,11 @@ import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
+import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederReplayKafkaConsumer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
+import no.nav.syfo.narmesteleder.kafka.leesahNarmestelederReplayConsumerProperties
+import no.nav.syfo.narmesteleder.service.LeaderControlledKafkaConsumer
+import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingKafkaConsumer
@@ -25,6 +30,7 @@ import kotlin.time.Duration.Companion.minutes
 fun Application.configureKafkaConsumers() {
     val nlLeesahHandler by inject<NlBehovLeesahHandler>()
     val sendtSykmeldingHandler by inject<SendtSykmeldingHandler>()
+    val narmestelederRegisterService by inject<NarmestelederRegisterService>()
     val environment by inject<Environment>()
     val leaderChangeSSEListener by inject<LeaderChangeSSEListener>()
     val logger = logger()
@@ -94,29 +100,55 @@ fun Application.configureKafkaConsumers() {
         scope = this,
         env = environment.otherProperties,
     )
+    val leesahNarmestelederReplayConsumer = LeesahNarmestelederReplayKafkaConsumer(
+        handler = narmestelederRegisterService,
+        jacksonMapper = jacksonMapper(),
+        kafkaConsumer = KafkaConsumer(
+            leesahNarmestelederReplayConsumerProperties(environment.kafka),
+            StringDeserializer(),
+            StringDeserializer(),
+        ),
+        scope = this,
+    ).apply {
+        commitOnAllErrors = environment.kafka.commitOnAllErrors
+    }
+
+    val leaderControlledConsumers = listOf(
+        LeaderControlledKafkaConsumer(
+            consumerName = "persistSendtSykmeldingConsumer",
+            consumer = persistSendtSykmeldingConsumer,
+            enabled = environment.otherProperties.persistSendtSykmelding,
+            closeable = persistSendtSykmeldingConsumer,
+        ),
+        LeaderControlledKafkaConsumer(
+            consumerName = "leesahNarmestelederReplayConsumer",
+            consumer = leesahNarmestelederReplayConsumer,
+            closeable = leesahNarmestelederReplayConsumer,
+        ),
+    )
 
     monitor.subscribe(ServerReady) {
+        val sseListenerJob = launch { leaderChangeSSEListener.listenForLeaderChanges() }
+        val leaderControlledConsumersJob = launch(Dispatchers.IO) {
+            leaderChangeSSEListener.isLeader.collect { isLeader ->
+                leaderControlledConsumers.forEach { consumer ->
+                    consumer.onLeaderChange(isLeader)
+                }
+            }
+        }
         leesahConsumer.listen()
         sendtSykmeldingConsumer.listen()
 
         monitor.subscribe(ApplicationStopPreparing) {
             runBlocking {
+                leaderControlledConsumersJob.cancelAndJoin()
+                sseListenerJob.cancelAndJoin()
+                leaderControlledConsumers.forEach { consumer ->
+                    consumer.stop()
+                    consumer.close()
+                }
                 sendtSykmeldingConsumer.stop()
                 leesahConsumer.stop()
-            }
-        }
-    }
-
-    launch(Dispatchers.IO) {
-        persistSendtSykmeldingConsumer.use { consumer ->
-            leaderChangeSSEListener.isLeader.collect { isLeader ->
-                if (isLeader) {
-                    logger.info("This instance is now the leader. Starting persistSendtSykmeldingConsumer.")
-                    consumer.listen()
-                    monitor.subscribe(ApplicationStopPreparing) {
-                        runBlocking { consumer.stop() }
-                    }
-                }
             }
         }
     }

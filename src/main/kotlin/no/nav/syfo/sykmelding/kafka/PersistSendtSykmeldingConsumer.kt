@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
+import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
@@ -187,7 +188,7 @@ class PersistSendtSykmeldingConsumer(
     private fun closeKafkaConsumer(consumer: KafkaConsumer<String, String?>) {
         logger.info("Closing Kafka consumer")
         consumer.unsubscribe()
-        consumer.close(Duration.ofSeconds(CLOSE_DURATION_SECONDS))
+        consumer.close(CloseOptions.timeout(Duration.ofSeconds(CLOSE_DURATION_SECONDS)))
     }
 
     companion object {

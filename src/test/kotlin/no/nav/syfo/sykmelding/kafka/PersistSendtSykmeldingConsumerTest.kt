@@ -12,9 +12,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.jacksonMapper
+import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
-import java.time.Duration
 import kotlin.coroutines.EmptyCoroutineContext
 
 class PersistSendtSykmeldingConsumerTest :
@@ -51,7 +51,7 @@ class PersistSendtSykmeldingConsumerTest :
                     pollReleased.complete(Unit)
                 }
                 every { kafkaConsumer.unsubscribe() } just Runs
-                every { kafkaConsumer.close(any<Duration>()) } returns Unit
+                every { kafkaConsumer.close(any<CloseOptions>()) } returns Unit
 
                 runTest {
                     consumer.listen()
@@ -61,7 +61,7 @@ class PersistSendtSykmeldingConsumerTest :
 
                 verify(exactly = 1) { kafkaConsumer.wakeup() }
                 verify(exactly = 1) { kafkaConsumer.unsubscribe() }
-                verify(exactly = 1) { kafkaConsumer.close(any<Duration>()) }
+                verify(exactly = 1) { kafkaConsumer.close(any<CloseOptions>()) }
             }
         }
     })

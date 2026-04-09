@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
+import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
@@ -74,7 +75,7 @@ class LeesahNarmestelederReplayKafkaConsumer(
                     } catch (_: WakeupException) {
                         logger.info("Wakeup received for replay consumer")
                         break
-                    } catch (e: CancellationException) {
+                    } catch (_: CancellationException) {
                         break
                     } catch (e: Exception) {
                         logger.error(
@@ -187,7 +188,7 @@ class LeesahNarmestelederReplayKafkaConsumer(
     private fun closeKafkaConsumer(consumer: KafkaConsumer<String, String?>) {
         logger.info("Closing replay consumer for {}", SYKMELDING_NL_TOPIC)
         consumer.unsubscribe()
-        consumer.close(Duration.ofSeconds(CLOSE_DURATION_SECONDS))
+        consumer.close(CloseOptions.timeout(Duration.ofSeconds(CLOSE_DURATION_SECONDS)))
     }
 
     companion object {

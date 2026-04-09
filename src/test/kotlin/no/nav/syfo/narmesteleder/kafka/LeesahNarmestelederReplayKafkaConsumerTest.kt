@@ -16,6 +16,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
+import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -99,7 +100,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                     pollReleased.complete(Unit)
                 }
                 every { kafkaConsumer.unsubscribe() } just Runs
-                every { kafkaConsumer.close(any<java.time.Duration>()) } returns Unit
+                every { kafkaConsumer.close(any<CloseOptions>()) } returns Unit
 
                 runTest {
                     consumer.listen()
@@ -109,7 +110,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
 
                 verify(exactly = 1) { kafkaConsumer.wakeup() }
                 verify(exactly = 1) { kafkaConsumer.unsubscribe() }
-                verify(exactly = 1) { kafkaConsumer.close(any<java.time.Duration>()) }
+                verify(exactly = 1) { kafkaConsumer.close(any<CloseOptions>()) }
             }
         }
     })

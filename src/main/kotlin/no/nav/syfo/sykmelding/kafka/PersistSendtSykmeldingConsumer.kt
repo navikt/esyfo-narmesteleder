@@ -3,72 +3,26 @@ package no.nav.syfo.sykmelding.kafka
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import no.nav.syfo.application.environment.OtherEnvironmentProperties
-import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.LeaderKafkaConsumerTask
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
-import java.time.Duration
 import java.util.UUID
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
 class PersistSendtSykmeldingConsumer(
     private val handler: SendtSykmeldingHandler,
     private val jacksonMapper: ObjectMapper,
-    private val kafkaConsumer: KafkaConsumer<String, String?>,
-    private val scope: CoroutineScope,
-    private val env: OtherEnvironmentProperties,
-) : KafkaListener {
-    private lateinit var job: Job
-    var commitOnAllErrors = false
-
-    override fun listen() {
-        if (!env.persistSendtSykmelding) {
-            logger.info("Persisting of sendt sykmelding is disabled, not starting consumer for $SENDT_SYKMELDING_TOPIC")
-            return
-        }
-
-        logger.info("Starting persist $SENDT_SYKMELDING_TOPIC consumer")
-        job = scope.launch(Dispatchers.IO + CoroutineName("persist-sendt-sykmelding-consumer")) {
-            kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
-
-            while (isActive) {
-                try {
-                    val records = kafkaConsumer.poll(Duration.ofSeconds(POLL_DURATION_SECONDS))
-                    if (!records.isEmpty) {
-                        processBatch(records)
-                    }
-                } catch (_: WakeupException) {
-                    logger.info("Waked Kafka consumer")
-                    break
-                } catch (e: CancellationException) {
-                    break
-                } catch (e: Exception) {
-                    logger.error(
-                        "Error running kafka consumer. Waiting $CONSUMER_JOB_DELAY_SECONDS seconds for retry.",
-                        e
-                    )
-                    kafkaConsumer.unsubscribe()
-                    delay(CONSUMER_JOB_DELAY_SECONDS.seconds)
-                    kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
-                }
-            }
-            logger.info("Exited $SENDT_SYKMELDING_TOPIC consumer loop")
-            kafkaConsumer.close()
-        }
-    }
-
-    private suspend fun processBatch(records: ConsumerRecords<String, String?>) {
+    kafkaConsumer: KafkaConsumer<String, String?>,
+    private val commitOnAllErrors: Boolean = false,
+) : LeaderKafkaConsumerTask<String, String?>(
+    name = "PersistSendtSykmeldingConsumer",
+    kafkaConsumer = kafkaConsumer,
+    topics = listOf(SENDT_SYKMELDING_TOPIC),
+    retryDelay = CONSUMER_RETRY_DELAY,
+) {
+    override suspend fun processRecords(records: ConsumerRecords<String, String?>) {
         runCatching {
             val sykmeldingRecords = deserializeRecords(records)
             handler.handleSykmeldingBatch(sykmeldingRecords)
@@ -94,13 +48,13 @@ class PersistSendtSykmeldingConsumer(
                 "Error while deserializing record with key ${record.key()} and offset ${record.offset()}. Skipping record.",
                 e
             )
-            null // Skip malformed records
+            null
         } catch (e: IllegalArgumentException) {
             logger.error(
                 "Invalid UUID format for key ${record.key()} at offset ${record.offset()}. Skipping record.",
                 e
             )
-            null // Skip records with invalid UUID keys
+            null
         }
     }
 
@@ -122,21 +76,8 @@ class PersistSendtSykmeldingConsumer(
         }
     }
 
-    override suspend fun stop() {
-        if (!::job.isInitialized) {
-            logger.info("Consumer for $SENDT_SYKMELDING_TOPIC was never started, nothing to stop")
-            return
-        }
-
-        logger.info("Stopping consuming topic $SENDT_SYKMELDING_TOPIC")
-        job.cancel()
-        kafkaConsumer.wakeup()
-    }
-
     companion object {
         private val logger = LoggerFactory.getLogger(PersistSendtSykmeldingConsumer::class.java)
-        private const val CONSUMER_JOB_DELAY_SECONDS = 30L
-        private const val POLL_DURATION_SECONDS = 1L
-        private val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
+        private val CONSUMER_RETRY_DELAY = 30.seconds
     }
 }

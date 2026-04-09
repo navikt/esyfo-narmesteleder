@@ -2,7 +2,6 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
-import io.ktor.server.application.ApplicationStopping
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
@@ -25,11 +24,17 @@ fun Application.configureBackgroundTasks() {
 
     monitor.subscribe(LeaderChangeEvent) { event ->
         when (event) {
-            is LeaderChange.ElectedLeader -> {
+            is LeaderChange.Unaffected -> {
+                logger.debug("Unaffected by leader election. Skipping background tasks")
+            }
+
+            is LeaderChange.Promoted -> {
                 logger.info("Elected leader — starting background tasks")
-                if (environment.otherProperties.maintenanceTaskEnabled) {
-                    val behovMaintenanceTask by inject<BehovMaintenanceTask>()
-                    leaderTaskJobs += launch { behovMaintenanceTask.runTask() }
+
+                // Cancel any still-running tasks from a previous election
+                synchronized(leaderTaskJobs) {
+                    leaderTaskJobs.forEach { it.cancel() }
+                    leaderTaskJobs.clear()
                 }
 
                 if (environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
@@ -38,8 +43,14 @@ fun Application.configureBackgroundTasks() {
                     leaderTaskJobs += launch { sendDialogTask.runTask() }
                     leaderTaskJobs += launch { updateDialogTask.runTask() }
                 }
+
+                if (environment.otherProperties.maintenanceTaskEnabled) {
+                    val behovMaintenanceTask by inject<BehovMaintenanceTask>()
+                    leaderTaskJobs += launch { behovMaintenanceTask.runTask() }
+                }
             }
-            is LeaderChange.NotLeader -> {
+
+            is LeaderChange.Demoted -> {
                 logger.info("No longer leader — cancelling background tasks")
                 synchronized(leaderTaskJobs) {
                     leaderTaskJobs.forEach { it.cancel() }

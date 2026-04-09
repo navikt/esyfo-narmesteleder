@@ -5,6 +5,7 @@ import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import no.nav.syfo.application.api.configureRouting
+import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.plugins.configureBackgroundTasks
 import no.nav.syfo.plugins.configureDependencies
 import no.nav.syfo.plugins.configureKafkaConsumers
@@ -29,7 +30,8 @@ fun main() {
 
     Runtime.getRuntime().addShutdownHook(
         Thread {
-            server.stop(10, 10, TimeUnit.SECONDS)
+            val gracePeriod: Long = if (isLocalEnv()) 0 else 10
+            server.stop(gracePeriod, 10, TimeUnit.SECONDS)
         }
     )
 
@@ -41,6 +43,10 @@ fun Application.module() {
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get())
     configureRouting()
-    configureKafkaConsumers()
+    configureKafkaConsumers(
+        get(),
+        get(),
+        get()
+    )
     configureBackgroundTasks()
 }

@@ -69,8 +69,3 @@ fun consumerProperties(
         put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.java)
     }
 }
-
-interface KafkaListener {
-    fun listen()
-    suspend fun stop()
-}

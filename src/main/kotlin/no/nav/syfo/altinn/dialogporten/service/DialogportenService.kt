@@ -66,6 +66,8 @@ class DialogportenService(
             require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
             val personInfo = try {
                 pdlService.getPersonFor(behov.sykmeldtFnr)
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
                 logger.error("Failed to get person info for behov ${behov.id}", ex)
                 null
@@ -88,6 +90,7 @@ class DialogportenService(
             )
         } catch (ex: Exception) {
             logger.error("Failed to send behov ${behov.id} to dialogporten", ex)
+            if (ex is CancellationException) throw ex
         }
     }
 
@@ -127,6 +130,8 @@ class DialogportenService(
                     )
                 )
                 logger.info("Successfully updated Dialogporten for dialog $dialogId")
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
                 logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
             }
@@ -158,6 +163,8 @@ class DialogportenService(
                         )
                     )
                     logger.info("Successfully updated expired behov ${behov.id} with expired date: ${expirationTime.toInstant()}")
+                } catch (ex: CancellationException) {
+                    throw ex
                 } catch (ex: Exception) {
                     logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
                 }
@@ -185,6 +192,55 @@ class DialogportenService(
                 )
             )
         }
+    }
+
+    suspend fun deleteDialogsInDialogporten() {
+        var batchNum = 0
+        var firstCreatedTimestamp: Instant?
+        do {
+            val dialogsToDeleteInDialogporten = getDialogsToDelete()
+            batchNum += 1
+            firstCreatedTimestamp = if (!dialogsToDeleteInDialogporten.isEmpty()) {
+                dialogsToDeleteInDialogporten.first().created
+            } else {
+                null
+            }
+            logger.info("Batch: $batchNum: Found ${dialogsToDeleteInDialogporten.size} dialogs to delete from dialogporten. First behov created at ${firstCreatedTimestamp ?: "N/A"}")
+
+            for (dialog in dialogsToDeleteInDialogporten) {
+                dialog.dialogId?.let { uuid ->
+                    try {
+                        val status = dialogportenClient.deleteDialog(uuid)
+                        if (status.isSuccess()) {
+                            narmestelederDb.updateNlBehov(
+                                dialog.copy(
+                                    dialogId = null,
+                                    updated = Instant.now(),
+                                    dialogDeletePerformed = Instant.now(),
+                                )
+                            )
+                        } else if (listOf(HttpStatusCode.Gone, HttpStatusCode.NotFound).contains(status)) {
+                            logger.info("Skipping setting properties to null, dialog ${dialog.id} with dialogportenUUID $uuid already deleted in dialogporten")
+                            narmestelederDb.updateNlBehov(
+                                dialog.copy(
+                                    updated = Instant.now(),
+                                    dialogDeletePerformed = Instant.now(),
+                                )
+                            )
+                        } else {
+                            logger.error("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid from dialogporten, received status $status")
+                            throw RuntimeException("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid")
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        logger.error("Failed to delete dialog ${dialog.id} from dialogporten", ex)
+                        throw ex
+                    }
+                }
+            }
+            delay(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerSleepAfterPage) // small delay to avoid hammering dialogporten
+        } while (dialogsToDeleteInDialogporten.size == otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
     }
 
     private fun getDialogTitle(

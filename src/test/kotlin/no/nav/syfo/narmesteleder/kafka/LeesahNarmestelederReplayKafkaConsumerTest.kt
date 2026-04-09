@@ -55,6 +55,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                 val capturedRecords = slot<List<LeesahNarmestelederRecord>>()
 
                 every { registerService.upsertBatch(capture(capturedRecords)) } returns Unit
+                every { registerService.insertPersons(capture(capturedRecords)) } returns emptyList()
                 every { kafkaConsumer.commitSync() } returns Unit
 
                 consumer.processBatch(records, kafkaConsumer)

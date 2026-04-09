@@ -136,6 +136,7 @@ class LeesahNarmestelederReplayKafkaConsumer(
         runCatching {
             val leesahRecords = deserializeRecords(records)
             handler.upsertBatch(leesahRecords)
+            handler.insertPersons(leesahRecords)
             kafkaConsumer.commitSync()
         }.getOrElse { error ->
             handleBatchError(records, kafkaConsumer, error)

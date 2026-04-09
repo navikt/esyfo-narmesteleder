@@ -11,5 +11,5 @@ val COUNT_NARMESTELEDER_REGISTER_UPSERTED: Counter = Counter.builder(NARMESTELED
 
 const val NARMESTELEDER_REGISTER_INVALID_MESSAGE = "${METRICS_NS}_narmesteleder_register_invalid_message"
 val COUNT_NARMESTELEDER_REGISTER_INVALID_MESSAGE: Counter = Counter.builder(NARMESTELEDER_REGISTER_INVALID_MESSAGE)
-    .description("Counts the number of invalid leesah records skipped during register replay")
+    .description("Counts the number of invalid leesah records skipped during register population")
     .register(METRICS_REGISTRY)

@@ -1,6 +1,10 @@
 package no.nav.syfo.narmesteleder.service
 
+import no.nav.syfo.narmesteleder.exposed.InsertedPerson
 import no.nav.syfo.narmesteleder.exposed.NarmestelederTable
+import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
+import no.nav.syfo.narmesteleder.exposed.PersonTable
+import no.nav.syfo.narmesteleder.exposed.batchInsertIgnoreExisting
 import no.nav.syfo.narmesteleder.exposed.upsertFromLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederRecord
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
@@ -30,11 +34,39 @@ class NarmestelederRegisterService(
         COUNT_NARMESTELEDER_REGISTER_UPSERTED.increment(validRecords.size.toDouble())
     }
 
-    private fun isValidForRegister(record: LeesahNarmestelederRecord): Boolean {
-        val validationError = record.message.validateForRegister()
-        if (validationError == null) {
-            return true
+    fun insertPersons(records: List<LeesahNarmestelederRecord>): List<InsertedPerson> {
+        val validRecords = records.filter(::isValidForPersonRegister)
+        if (validRecords.isEmpty()) {
+            return emptyList()
         }
+        val personFnrs = mutableSetOf<PersonBatchInsertRow>()
+        validRecords.forEach { record ->
+            personFnrs.add(
+                PersonBatchInsertRow(
+                    fnr = record.message.fnr,
+                    status = "PENDING"
+                )
+            )
+            personFnrs.add(
+                PersonBatchInsertRow(
+                    fnr = record.message.narmesteLederFnr,
+                    status = "PENDING"
+                )
+            )
+        }
+
+        val insertedPersons = transaction(database) {
+            PersonTable.batchInsertIgnoreExisting(
+                personFnrs
+                    .filter { it.fnr.isDigitsWithLength(FNR_LENGTH) }
+                    .distinctBy { it.fnr }
+            )
+        }
+        return insertedPersons
+    }
+
+    private fun isValidForRegister(record: LeesahNarmestelederRecord): Boolean {
+        val validationError = record.message.validateForRegister() ?: return true
 
         logger.warn(
             "Skipping invalid leesah record for register with narmesteLederId={} and offset={}: {}",
@@ -52,6 +84,17 @@ class NarmestelederRegisterService(
         !narmesteLederFnr.isDigitsWithLength(FNR_LENGTH) -> "narmesteLederFnr must be exactly $FNR_LENGTH digits"
         narmesteLederTelefonnummer.length > TEXT_FIELD_MAX_LENGTH -> "narmesteLederTelefonnummer exceeds max length"
         narmesteLederEpost.length > TEXT_FIELD_MAX_LENGTH -> "narmesteLederEpost exceeds max length"
+        else -> null
+    }
+
+    private fun isValidForPersonRegister(record: LeesahNarmestelederRecord): Boolean {
+        record.message.validateForPersonRegister() ?: return true
+        return false
+    }
+
+    private fun NarmestelederLeesahKafkaMessage.validateForPersonRegister(): String? = when {
+        !fnr.isDigitsWithLength(FNR_LENGTH) -> "fnr must be exactly $FNR_LENGTH digits"
+        !narmesteLederFnr.isDigitsWithLength(FNR_LENGTH) -> "narmesteLederFnr must be exactly $FNR_LENGTH digits"
         else -> null
     }
 

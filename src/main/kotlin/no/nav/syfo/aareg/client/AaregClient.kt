@@ -9,6 +9,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import no.nav.syfo.application.exception.runCatchingCancellable
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import org.slf4j.LoggerFactory
@@ -39,7 +40,7 @@ class AaregClient(
 
     override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt = getArbeidsforholdInAareg(personIdent, getSystemToken())
 
-    private suspend fun getSystemToken() = runCatching {
+    private suspend fun getSystemToken() = runCatchingCancellable {
         texasHttpClient.systemToken(
             TexasHttpClient.IDENTITY_PROVIDER_AZUREAD,
             TexasHttpClient.getTarget(scope)
@@ -56,7 +57,7 @@ class AaregClient(
         personIdent: String,
         token: String
     ): AaregArbeidsforholdOversikt {
-        val res = runCatching<AaregArbeidsforholdOversikt> {
+        val res = runCatchingCancellable<AaregArbeidsforholdOversikt> {
             httpClient.post(arbeidsforholdOversiktPath) {
                 bearerAuth(token)
                 contentType(ContentType.Application.Json)

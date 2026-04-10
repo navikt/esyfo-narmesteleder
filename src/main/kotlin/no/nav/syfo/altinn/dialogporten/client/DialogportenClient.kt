@@ -19,11 +19,11 @@ import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.application.exception.runCatchingCancellable
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger
 import java.util.UUID
-import kotlin.coroutines.cancellation.CancellationException
 
 interface IDialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
@@ -42,7 +42,7 @@ class DialogportenClient(
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
     private val logger = logger()
 
-    override suspend fun createDialog(dialog: Dialog): UUID = try {
+    override suspend fun createDialog(dialog: Dialog): UUID = runCatchingCancellable<UUID> {
         val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
         val response =
             httpClient
@@ -53,32 +53,24 @@ class DialogportenClient(
                     setBody(dialog)
                 }.body<String>()
         UUID.fromString(response.removeSurrounding("\""))
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        logger.error("Error in create dialog request", e)
-        throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
+    }.getOrElse {
+        logger.error("Error in create dialog request", it)
+        throw DialogportenClientException(it.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
     }
 
     override suspend fun getDialogById(
         dialogId: UUID
-    ): ExtendedDialog {
-        val dialog = try {
-            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
-            httpClient
-                .get("$dialogportenUrl/$dialogId") {
-                    header(HttpHeaders.ContentType, ContentType.Application.Json)
-                    header(HttpHeaders.Accept, ContentType.Application.Json)
-                    bearerAuth(token)
-                }.body<ExtendedDialog>()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Error on request to Dialogporten on dialog id: $dialogId", e)
-            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
-        }
-
-        return dialog
+    ): ExtendedDialog = runCatchingCancellable<ExtendedDialog> {
+        val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+        httpClient
+            .get("$dialogportenUrl/$dialogId") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                header(HttpHeaders.Accept, ContentType.Application.Json)
+                bearerAuth(token)
+            }.body()
+    }.getOrElse {
+        logger.error("Error on request to Dialogporten on dialog id: $dialogId", it)
+        throw DialogportenClientException(it.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
     }
 
     data class DialogportenPatch(
@@ -108,23 +100,19 @@ class DialogportenClient(
         dialogId: UUID,
         revisionNumber: UUID,
         patch: List<DialogportenPatch>
-    ) {
-        try {
-            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
-            httpClient
-                .patch("$dialogportenUrl/$dialogId") {
-                    header(HttpHeaders.Accept, ContentType.Application.Json)
-                    header(HttpHeaders.IfMatch, revisionNumber.toString())
-                    contentType(JSON_PATCH_CONTENT_TYPE)
-                    bearerAuth(token)
-                    setBody(patch)
-                }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Error on patch request to Dialogporten on dialogId: $dialogId", e)
-            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
-        }
+    ) = runCatchingCancellable<Unit> {
+        val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+        httpClient
+            .patch("$dialogportenUrl/$dialogId") {
+                header(HttpHeaders.Accept, ContentType.Application.Json)
+                header(HttpHeaders.IfMatch, revisionNumber.toString())
+                contentType(JSON_PATCH_CONTENT_TYPE)
+                bearerAuth(token)
+                setBody(patch)
+            }
+    }.getOrElse {
+        logger.error("Error on patch request to Dialogporten on dialogId: $dialogId", it)
+        throw DialogportenClientException(it.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
     }
 }
 

@@ -1,7 +1,6 @@
 package no.nav.syfo.altinn.dialogporten.service
 
 import io.ktor.http.ContentType
-import io.ktor.utils.io.CancellationException
 import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
@@ -17,6 +16,7 @@ import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.Url
 import no.nav.syfo.altinn.dialogporten.domain.create
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
+import no.nav.syfo.application.exception.runCatchingCancellable
 import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
@@ -62,37 +62,32 @@ class DialogportenService(
         } while (behovToSend.size >= BEHOV_BY_STATUS_LIMIT)
     }
 
-    suspend fun sendToDialogporten(behov: NarmestelederBehovEntity) {
-        try {
-            require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
-            val personInfo = try {
-                pdlService.getPersonFor(behov.sykmeldtFnr)
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                logger.error("Failed to get person info for behov ${behov.id}", ex)
-                null
-            }
-            val dialog = behov.toDialog(personInfo?.name, personInfo?.foedselsdato)
-            dialog.attachments?.firstOrNull()?.let {
-                logger.info("Sending behov ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
-            }
-
-            val dialogId = dialogportenClient.createDialog(dialog)
-            narmestelederDb.updateNlBehov(
-                behov.copy(
-                    dialogId = dialogId,
-                    behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
-                    fornavn = personInfo?.name?.fornavn,
-                    mellomnavn = personInfo?.name?.mellomnavn,
-
-                    etternavn = personInfo?.name?.etternavn,
-                )
-            )
-        } catch (ex: Exception) {
-            logger.error("Failed to send behov ${behov.id} to dialogporten", ex)
-            if (ex is CancellationException) throw ex
+    suspend fun sendToDialogporten(behov: NarmestelederBehovEntity) = runCatchingCancellable {
+        require(behov.id != null) { "Cannot create Dialogporten Dialog without id" }
+        val personInfo = runCatchingCancellable {
+            pdlService.getPersonFor(behov.sykmeldtFnr)
+        }.getOrElse { ex ->
+            logger.warn("Failed to get person info for behov ${behov.id}", ex)
+            null
         }
+        val dialog = behov.toDialog(personInfo?.name, personInfo?.foedselsdato)
+        dialog.attachments?.firstOrNull()?.let {
+            logger.info("Sending behov ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
+        }
+
+        val dialogId = dialogportenClient.createDialog(dialog)
+        narmestelederDb.updateNlBehov(
+            behov.copy(
+                dialogId = dialogId,
+                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                fornavn = personInfo?.name?.fornavn,
+                mellomnavn = personInfo?.name?.mellomnavn,
+
+                etternavn = personInfo?.name?.etternavn,
+            )
+        )
+    }.onFailure { ex ->
+        logger.error("Failed to send behov ${behov.id} to dialogporten", ex)
     }
 
     suspend fun setAllFulfilledBehovsAsCompletedInDialogporten() {
@@ -113,7 +108,7 @@ class DialogportenService(
             return
         }
         behov.dialogId?.let { dialogId ->
-            try {
+            runCatchingCancellable {
                 dialogportenClient.getDialogById(dialogId).let { existingDialog ->
                     dialogportenClient.patchDialog(
                         dialogId = dialogId,
@@ -131,9 +126,7 @@ class DialogportenService(
                     )
                 )
                 logger.info("Successfully updated Dialogporten for dialog $dialogId")
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
+            }.onFailure { ex ->
                 logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
             }
         }
@@ -153,7 +146,7 @@ class DialogportenService(
                 logger.info("Batch: ${++batchNum}:: Found ${it.size} expired behovs to expire in dialogporten")
             }
             behovsToExpire.forEach { behov ->
-                try {
+                runCatchingCancellable {
                     val expirationTime = OffsetDateTime.now().plusMinutes(10) // Must be set to a future time. Adding some slack for retries and processing.
                     val dialogId = requireNotNull(behov.dialogId)
 
@@ -164,9 +157,7 @@ class DialogportenService(
                         )
                     )
                     logger.info("Successfully updated expired behov ${behov.id} with expired date: ${expirationTime.toInstant()}")
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
+                }.onFailure { ex ->
                     logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
                 }
             }

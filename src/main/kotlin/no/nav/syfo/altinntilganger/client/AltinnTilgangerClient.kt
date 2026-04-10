@@ -8,6 +8,7 @@ import io.ktor.client.request.post
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.application.exception.runCatchingCancellable
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
 import no.nav.syfo.util.logger
@@ -35,7 +36,7 @@ class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = d
     ): AltinnTilgangerResponse {
         failure?.let { throw it }
 
-        val userIdent = runCatching { bruker.ident }.getOrNull()
+        val userIdent = runCatchingCancellable { bruker.ident }.getOrNull()
             ?: return emptyResponse()
 
         val orgsUserHasAccessTo = accessPolicy
@@ -134,17 +135,18 @@ class AltinnTilgangerClient(
 ) : IAltinnTilgangerClient {
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
-    ): AltinnTilgangerResponse? {
+    ): AltinnTilgangerResponse {
         val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token).accessToken
-        try {
+        return runCatchingCancellable<AltinnTilgangerResponse> {
             val response = httpClient.post("$baseUrl/altinn-tilganger") {
                 bearerAuth(oboToken)
             }.body<AltinnTilgangerResponse>()
             return response
-        } catch (e: ResponseException) {
-            logger.error("Feil ved henting av altinn-tilganger, status: ${e.response.status}", e)
-            throw UpstreamRequestException("Feil ved henting av altinn-tilganger", e)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
+            if (e is ResponseException) {
+                throw UpstreamRequestException("Feil ved henting av altinn-tilganger", e)
+                logger.error("Feil ved henting av altinn-tilganger, status: ${e.response.status}", e)
+            }
             logger.error("Uventet feil ved henting av altinn-tilganger", e)
             throw UpstreamRequestException("Uventet feil ved henting av altinn-tilganger")
         }

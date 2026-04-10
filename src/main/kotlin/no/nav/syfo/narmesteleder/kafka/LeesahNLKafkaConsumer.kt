@@ -3,6 +3,7 @@ package no.nav.syfo.narmesteleder.kafka
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import no.nav.syfo.application.exception.runCatchingCancellable
 import no.nav.syfo.application.kafka.LeaderKafkaConsumerTask
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.BehovSource
@@ -36,7 +37,7 @@ class LeesahNLKafkaConsumer(
     }
 
     private suspend fun processRecord(record: ConsumerRecord<String, String>) {
-        runCatching {
+        runCatchingCancellable {
             val nlKafkaMessage =
                 jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(record.value())
 

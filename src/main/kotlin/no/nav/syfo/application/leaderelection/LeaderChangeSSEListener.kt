@@ -7,7 +7,6 @@ import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.sse.sse
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.environment.isLocalEnv
+import no.nav.syfo.application.exception.runCatchingCancellable
 import no.nav.syfo.util.logger
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicBoolean
@@ -66,7 +66,7 @@ class LeaderChangeSSEListener(
         hostname = withContext(Dispatchers.IO) { InetAddress.getLocalHost().hostName }
 
         while (isActive) {
-            runCatching {
+            runCatchingCancellable {
                 sseHttpClient.sse(electorSseUrl) {
                     log.info("Connected to leader election listener for hostname: $hostname")
                     incoming.collect { event ->
@@ -88,8 +88,6 @@ class LeaderChangeSSEListener(
                     }
                 }
             }.onFailure {
-                if (it is CancellationException) break
-
                 log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS / 1000} seconds...", it)
                 delay(SSE_CLIENT_RETRY_DELAY_MS)
             }

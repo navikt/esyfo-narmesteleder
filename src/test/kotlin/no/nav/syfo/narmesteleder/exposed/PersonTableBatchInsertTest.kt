@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Instant
 
@@ -12,7 +13,13 @@ class PersonTableBatchInsertTest :
         beforeTest {
             TestDB.clearPersonData()
         }
-
+        describe("PersonTable") {
+            it("should not find issues with indexes in table") {
+                transaction(TestDB.exposedDatabase) {
+                    checkMappingConsistence(PersonTable, withLogs = true) shouldBe emptyList()
+                }
+            }
+        }
         describe("PersonTable.batchInsertIgnoreExisting") {
             it("should insert new persons") {
                 val rows = listOf(

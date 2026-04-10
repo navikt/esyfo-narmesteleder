@@ -7,6 +7,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -17,7 +18,13 @@ class NarmestelederTableUpsertTest :
         beforeTest {
             TestDB.clearNarmestelederData()
         }
-
+        describe("NarmestelederTable") {
+            it("should not find issues with indexes in table") {
+                transaction(TestDB.exposedDatabase) {
+                    checkMappingConsistence(NarmestelederTable, withLogs = true) shouldBe emptyList()
+                }
+            }
+        }
         describe("NarmestelederTable.upsertFromLeesahKafkaMessage") {
             it("should insert new entity when no existing row") {
                 val message = defaultLeesahKafkaMessage().copy(
@@ -42,8 +49,10 @@ class NarmestelederTableUpsertTest :
                     entity.narmestelederTelefonnummer shouldBe message.narmesteLederTelefonnummer
                     entity.narmestelederEpost shouldBe message.narmesteLederEpost
                     entity.arbeidsgiverForskutterer shouldBe message.arbeidsgiverForskutterer
-                    entity.aktivFom.toInstant() shouldBe message.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
-                    entity.aktivTom.shouldNotBeNull().toInstant() shouldBe message.aktivTom!!.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
+                    entity.aktivFom.toInstant() shouldBe message.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC)
+                        .toInstant()
+                    entity.aktivTom.shouldNotBeNull().toInstant() shouldBe message.aktivTom!!.atStartOfDay()
+                        .atOffset(ZoneOffset.UTC).toInstant()
                     entity.created.shouldNotBeNull()
                     entity.updated.shouldNotBeNull()
                 }
@@ -91,8 +100,10 @@ class NarmestelederTableUpsertTest :
                     entity.narmestelederTelefonnummer shouldBe updatedMessage.narmesteLederTelefonnummer
                     entity.narmestelederEpost shouldBe updatedMessage.narmesteLederEpost
                     entity.arbeidsgiverForskutterer shouldBe updatedMessage.arbeidsgiverForskutterer
-                    entity.aktivFom.toInstant() shouldBe updatedMessage.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
-                    entity.aktivTom.shouldNotBeNull().toInstant() shouldBe updatedMessage.aktivTom!!.atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()
+                    entity.aktivFom.toInstant() shouldBe updatedMessage.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC)
+                        .toInstant()
+                    entity.aktivTom.shouldNotBeNull().toInstant() shouldBe updatedMessage.aktivTom!!.atStartOfDay()
+                        .atOffset(ZoneOffset.UTC).toInstant()
                 }
             }
 

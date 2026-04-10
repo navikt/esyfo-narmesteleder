@@ -17,7 +17,7 @@ import java.util.UUID
 import kotlin.time.ExperimentalTime
 import kotlin.use
 
-class PsqlContainer : PostgreSQLContainer<PsqlContainer>("postgres:17-alpine")
+class PsqlContainer : PostgreSQLContainer<PsqlContainer>("postgres:18-alpine")
 
 private val log = LoggerFactory.getLogger(TestDB::class.qualifiedName)
 

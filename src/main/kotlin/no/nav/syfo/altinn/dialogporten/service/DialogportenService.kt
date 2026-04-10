@@ -1,6 +1,7 @@
 package no.nav.syfo.altinn.dialogporten.service
 
 import io.ktor.http.ContentType
+import io.ktor.utils.io.CancellationException
 import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
@@ -194,55 +195,6 @@ class DialogportenService(
         }
     }
 
-    suspend fun deleteDialogsInDialogporten() {
-        var batchNum = 0
-        var firstCreatedTimestamp: Instant?
-        do {
-            val dialogsToDeleteInDialogporten = getDialogsToDelete()
-            batchNum += 1
-            firstCreatedTimestamp = if (!dialogsToDeleteInDialogporten.isEmpty()) {
-                dialogsToDeleteInDialogporten.first().created
-            } else {
-                null
-            }
-            logger.info("Batch: $batchNum: Found ${dialogsToDeleteInDialogporten.size} dialogs to delete from dialogporten. First behov created at ${firstCreatedTimestamp ?: "N/A"}")
-
-            for (dialog in dialogsToDeleteInDialogporten) {
-                dialog.dialogId?.let { uuid ->
-                    try {
-                        val status = dialogportenClient.deleteDialog(uuid)
-                        if (status.isSuccess()) {
-                            narmestelederDb.updateNlBehov(
-                                dialog.copy(
-                                    dialogId = null,
-                                    updated = Instant.now(),
-                                    dialogDeletePerformed = Instant.now(),
-                                )
-                            )
-                        } else if (listOf(HttpStatusCode.Gone, HttpStatusCode.NotFound).contains(status)) {
-                            logger.info("Skipping setting properties to null, dialog ${dialog.id} with dialogportenUUID $uuid already deleted in dialogporten")
-                            narmestelederDb.updateNlBehov(
-                                dialog.copy(
-                                    updated = Instant.now(),
-                                    dialogDeletePerformed = Instant.now(),
-                                )
-                            )
-                        } else {
-                            logger.error("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid from dialogporten, received status $status")
-                            throw RuntimeException("Failed to delete dialog ${dialog.id} with dialogportenUUID $uuid")
-                        }
-                    } catch (ex: CancellationException) {
-                        throw ex
-                    } catch (ex: Exception) {
-                        logger.error("Failed to delete dialog ${dialog.id} from dialogporten", ex)
-                        throw ex
-                    }
-                }
-            }
-            delay(otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerSleepAfterPage) // small delay to avoid hammering dialogporten
-        } while (dialogsToDeleteInDialogporten.size == otherEnvironmentProperties.deleteDialogportenDialogsTaskProperties.deleteDialogerLimit)
-    }
-
     private fun getDialogTitle(
         name: Navn?,
         nationalIdentityNumber: String,
@@ -325,7 +277,7 @@ class DialogportenService(
             val month = nationalIdentityNumber.substring(2, 4)
             val year = nationalIdentityNumber.substring(4, 8)
             return LocalDate.parse("$year-$month-$day")
-        } catch (e: DateTimeParseException) {
+        } catch (_: DateTimeParseException) {
             return null
         }
     }

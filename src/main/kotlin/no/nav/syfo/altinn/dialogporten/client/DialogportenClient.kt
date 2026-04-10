@@ -104,24 +104,6 @@ class DialogportenClient(
         }
     }
 
-    override suspend fun deleteDialog(dialogId: UUID): HttpStatusCode {
-        val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)
-            .accessToken
-
-        return try {
-            httpClient
-                .post("$dialogportenUrl/$dialogId/actions/purge") {
-                    header(HttpHeaders.Accept, ContentType.Application.Json)
-                    bearerAuth(token)
-                }.status
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Feil ved kall til Dialogporten for å slette dialog", e)
-            throw DialogportenClientException(e.message ?: "Feil ved kall til Dialogporten:  actions-purge")
-        }
-    }
-
     override suspend fun patchDialog(
         dialogId: UUID,
         revisionNumber: UUID,

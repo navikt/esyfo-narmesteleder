@@ -19,7 +19,6 @@ fun Application.configureBackgroundTasks() {
     val logger = logger()
     val environment by inject<Environment>()
 
-
     val leaderTaskJobs: MutableList<Job> = Collections.synchronizedList(mutableListOf())
 
     monitor.subscribe(LeaderChangeEvent) { event ->

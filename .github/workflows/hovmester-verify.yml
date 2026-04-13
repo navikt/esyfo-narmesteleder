@@ -27,6 +27,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [[ "$GITHUB_EVENT_NAME" == "merge_group" ]]; then
+            echo "✅ Merge queue — verification already completed on pull_request_target"
+            exit 0
+          fi
+
           if [[ "$HEAD_REF" != "hovmester-sync" ]] || [[ "$HEAD_REPO" != "$REPO" ]]; then
             echo "Not a hovmester sync PR — skipping"
             exit 0

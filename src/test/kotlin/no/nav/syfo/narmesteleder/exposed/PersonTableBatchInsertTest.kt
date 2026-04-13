@@ -6,7 +6,6 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.time.Instant
 
 class PersonTableBatchInsertTest :
     DescribeSpec({
@@ -27,6 +26,7 @@ class PersonTableBatchInsertTest :
                         fnr = "12345678901",
                         status = "ACTIVE",
                         fornavn = "Ada",
+                        mellomnavn = "Augusta",
                         etternavn = "Lovelace",
                     ),
                     PersonBatchInsertRow(
@@ -48,6 +48,7 @@ class PersonTableBatchInsertTest :
                         id = firstPerson.id,
                         fnr = "12345678901",
                         fornavn = "Ada",
+                        mellomnavn = "Augusta",
                         etternavn = "Lovelace",
                         status = "ACTIVE",
                     ),
@@ -55,6 +56,7 @@ class PersonTableBatchInsertTest :
                         id = secondPerson.id,
                         fnr = "10987654321",
                         fornavn = null,
+                        mellomnavn = null,
                         etternavn = null,
                         status = "INACTIVE",
                     ),
@@ -64,6 +66,7 @@ class PersonTableBatchInsertTest :
                     id = firstPerson.id,
                     fnr = "12345678901",
                     fornavn = "Ada",
+                    mellomnavn = "Augusta",
                     etternavn = "Lovelace",
                     status = "ACTIVE",
                     created = firstPerson.created,
@@ -73,6 +76,7 @@ class PersonTableBatchInsertTest :
                     id = secondPerson.id,
                     fnr = "10987654321",
                     fornavn = null,
+                    mellomnavn = null,
                     etternavn = null,
                     status = "INACTIVE",
                     created = secondPerson.created,
@@ -103,29 +107,62 @@ class PersonTableBatchInsertTest :
                     )
                 }
 
+                insertedPersons shouldBe emptyList()
                 val persistedPerson = fetchPersons().single()
-
                 initiallyInserted shouldBe listOf(
                     InsertedPerson(
                         id = persistedPerson.id,
                         fnr = "12345678901",
                         fornavn = null,
+                        mellomnavn = null,
                         etternavn = null,
                         status = "ACTIVE",
                     ),
                 )
-                insertedPersons shouldBe emptyList()
-                listOf(persistedPerson) shouldBe listOf(
-                    PersistedPerson(
-                        id = persistedPerson.id,
-                        fnr = "12345678901",
-                        fornavn = null,
-                        etternavn = null,
-                        status = "ACTIVE",
-                        created = persistedPerson.created,
-                        updated = persistedPerson.updated,
-                    ),
-                )
+            }
+
+            it("should return only newly inserted rows when batch contains both existing and new fnr values") {
+                transaction(TestDB.exposedDatabase) {
+                    PersonTable.batchInsertIgnoreExisting(
+                        listOf(
+                            PersonBatchInsertRow(
+                                fnr = "12345678901",
+                                status = "ACTIVE",
+                                fornavn = "Ada",
+                                etternavn = "Lovelace",
+                            ),
+                        ),
+                    )
+                }
+                val existingPerson = fetchPerson("12345678901").shouldNotBeNull()
+
+                val insertedPersons = transaction(TestDB.exposedDatabase) {
+                    PersonTable.batchInsertIgnoreExisting(
+                        listOf(
+                            PersonBatchInsertRow(
+                                fnr = "12345678901",
+                                status = "INACTIVE",
+                                fornavn = "Changed",
+                            ),
+                            PersonBatchInsertRow(
+                                fnr = "10987654321",
+                                status = "PENDING",
+                            ),
+                            PersonBatchInsertRow(
+                                fnr = "11111111111",
+                                status = "PENDING",
+                                fornavn = "Grace",
+                            ),
+                        ),
+                    )
+                }
+
+                val persistedByFnr = fetchPersons().associateBy { it.fnr }
+                insertedPersons.map(InsertedPerson::fnr) shouldBe listOf("10987654321", "11111111111")
+                insertedPersons.forEach { insertedPerson ->
+                    insertedPerson.id shouldBe persistedByFnr.getValue(insertedPerson.fnr).id
+                }
+                fetchPerson("12345678901") shouldBe existingPerson
             }
 
             it("should ignore duplicate fnr values within the same batch") {
@@ -136,6 +173,7 @@ class PersonTableBatchInsertTest :
                                 fnr = "12345678901",
                                 status = "ACTIVE",
                                 fornavn = "Ada",
+                                mellomnavn = "Augusta",
                             ),
                             PersonBatchInsertRow(
                                 fnr = "12345678901",
@@ -152,6 +190,7 @@ class PersonTableBatchInsertTest :
 
                 val persons = fetchPersons()
                 val personsByFnr = persons.associateBy { it.fnr }
+                val insertedPersonsByFnr = insertedPersons.associateBy { it.fnr }
                 persons.size shouldBe 2
                 persons.count { it.fnr == "12345678901" } shouldBe 1
                 persons.count { it.fnr == "10987654321" } shouldBe 1
@@ -161,6 +200,7 @@ class PersonTableBatchInsertTest :
                         fnr = "12345678901",
                         status = "ACTIVE",
                         fornavn = "Ada",
+                        mellomnavn = "Augusta",
                         etternavn = null,
                     ),
                     InsertedPerson(
@@ -168,9 +208,14 @@ class PersonTableBatchInsertTest :
                         fnr = "10987654321",
                         status = "PENDING",
                         fornavn = null,
+                        mellomnavn = null,
                         etternavn = null,
                     ),
                 )
+                insertedPersonsByFnr.keys shouldBe personsByFnr.keys
+                insertedPersons.forEach { insertedPerson ->
+                    insertedPerson.id shouldBe personsByFnr.getValue(insertedPerson.fnr).id
+                }
                 fetchPerson("12345678901")?.status shouldBe "ACTIVE"
             }
 
@@ -182,6 +227,7 @@ class PersonTableBatchInsertTest :
                                 fnr = "12345678901",
                                 status = "ACTIVE",
                                 fornavn = "Ada",
+                                mellomnavn = "Augusta",
                                 etternavn = "Lovelace",
                             ),
                         ),
@@ -197,6 +243,7 @@ class PersonTableBatchInsertTest :
                                 fnr = "12345678901",
                                 status = "INACTIVE",
                                 fornavn = "Grace",
+                                mellomnavn = "Brewster",
                                 etternavn = "Hopper",
                             ),
                         ),
@@ -217,68 +264,3 @@ class PersonTableBatchInsertTest :
             }
         }
     })
-
-private data class PersistedPerson(
-    val id: Int,
-    val fnr: String,
-    val fornavn: String?,
-    val etternavn: String?,
-    val status: String,
-    val created: Instant,
-    val updated: Instant,
-)
-
-private fun fetchPersons(): List<PersistedPerson> = TestDB.database.connection.use { connection ->
-    connection.prepareStatement(
-        """
-        SELECT id, fnr, fornavn, etternavn, status, created, updated
-        FROM person
-        ORDER BY fnr
-        """.trimIndent(),
-    ).use { preparedStatement ->
-        preparedStatement.executeQuery().use { resultSet ->
-            buildList {
-                while (resultSet.next()) {
-                    add(
-                        PersistedPerson(
-                            id = resultSet.getInt("id"),
-                            fnr = resultSet.getString("fnr"),
-                            fornavn = resultSet.getString("fornavn"),
-                            etternavn = resultSet.getString("etternavn"),
-                            status = resultSet.getString("status"),
-                            created = resultSet.getTimestamp("created").toInstant(),
-                            updated = resultSet.getTimestamp("updated").toInstant(),
-                        ),
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun fetchPerson(fnr: String): PersistedPerson? = TestDB.database.connection.use { connection ->
-    connection.prepareStatement(
-        """
-        SELECT id, fnr, fornavn, etternavn, status, created, updated
-        FROM person
-        WHERE fnr = ?
-        """.trimIndent(),
-    ).use { preparedStatement ->
-        preparedStatement.setString(1, fnr)
-        preparedStatement.executeQuery().use { resultSet ->
-            if (resultSet.next()) {
-                PersistedPerson(
-                    id = resultSet.getInt("id"),
-                    fnr = resultSet.getString("fnr"),
-                    fornavn = resultSet.getString("fornavn"),
-                    etternavn = resultSet.getString("etternavn"),
-                    status = resultSet.getString("status"),
-                    created = resultSet.getTimestamp("created").toInstant(),
-                    updated = resultSet.getTimestamp("updated").toInstant(),
-                )
-            } else {
-                null
-            }
-        }
-    }
-}

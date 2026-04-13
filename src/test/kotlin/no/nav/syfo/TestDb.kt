@@ -65,6 +65,9 @@ class TestDB private constructor() {
                 user = "username",
                 password = "password",
                 driver = "org.postgresql.Driver",
+                setupConnection = { connection ->
+                    connection.transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ
+                },
             )
         }
 

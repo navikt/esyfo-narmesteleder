@@ -4,10 +4,11 @@ name: Verify and merge hovmester sync
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
+  merge_group:
 
 jobs:
   verify-hovmester-sync:
-    if: github.head_ref == 'hovmester-sync' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'merge_group' || (github.head_ref == 'hovmester-sync' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

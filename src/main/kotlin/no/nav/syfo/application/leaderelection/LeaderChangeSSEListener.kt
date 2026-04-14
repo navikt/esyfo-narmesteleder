@@ -52,12 +52,10 @@ class LeaderChangeSSEListener(
      * Should be launched in a coroutine scope that manages the lifecycle.
      */
     suspend fun listenForLeaderChanges() = coroutineScope {
-        if (isListening.get()) {
+        if (!isListening.compareAndSet(false, true)) {
             log.warn("Already listening for leader changes, ignoring duplicate call")
             return@coroutineScope
         }
-
-        isListening.set(true)
 
         if (isLocalEnv()) {
             log.info("Running in local environment, setting isLeader to true")

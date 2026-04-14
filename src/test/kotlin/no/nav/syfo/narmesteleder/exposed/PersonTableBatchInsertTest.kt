@@ -21,7 +21,7 @@ class PersonTableBatchInsertTest :
                 }
             }
         }
-        describe("PersonTable.batchInsertIgnoreExisting") {
+        describe("PersonTable batchInsertIgnoreExisting") {
             it("should insert new persons") {
                 val rows = listOf(
                     PersonBatchInsertRow(

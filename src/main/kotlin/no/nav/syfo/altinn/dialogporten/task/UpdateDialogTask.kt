@@ -1,37 +1,18 @@
 package no.nav.syfo.altinn.dialogporten.task
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.application.leaderelection.LeaderElection
-import no.nav.syfo.util.logger
+import no.nav.syfo.application.task.ScheduledLeaderTask
 import kotlin.time.Duration
 
 class UpdateDialogTask(
-    private val leaderElection: LeaderElection,
     private val dialogportenService: DialogportenService,
-    private val pollingInterval: Duration
+    pollingInterval: Duration,
+) : ScheduledLeaderTask(
+    name = "UpdateDialogTask",
+    interval = pollingInterval,
 ) {
-    private val logger = logger()
-
-    suspend fun runTask() = coroutineScope {
-        try {
-            while (isActive) {
-                if (leaderElection.isLeader()) {
-                    try {
-                        logger.info("Starting task for updating dialog statuses")
-                        dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
-                        dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
-                    } catch (ex: Exception) {
-                        logger.error("Could not update dialogs in dialogporten", ex)
-                    }
-                }
-                delay(pollingInterval)
-            }
-        } catch (ex: CancellationException) {
-            logger.info("Cancelled UpdateDialogTask", ex)
-        }
+    override suspend fun execute() {
+        dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
+        dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
     }
 }

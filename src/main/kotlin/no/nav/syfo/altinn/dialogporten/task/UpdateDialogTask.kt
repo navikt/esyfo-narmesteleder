@@ -5,12 +5,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.util.logger
 import kotlin.time.Duration
 
 class UpdateDialogTask(
-    private val leaderElection: LeaderElection,
     private val dialogportenService: DialogportenService,
     private val pollingInterval: Duration
 ) {
@@ -19,14 +17,12 @@ class UpdateDialogTask(
     suspend fun runTask() = coroutineScope {
         try {
             while (isActive) {
-                if (leaderElection.isLeader()) {
-                    try {
-                        logger.info("Starting task for updating dialog statuses")
-                        dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
-                        dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
-                    } catch (ex: Exception) {
-                        logger.error("Could not update dialogs in dialogporten", ex)
-                    }
+                try {
+                    logger.info("Starting task for updating dialog statuses")
+                    dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten()
+                    dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
+                } catch (ex: Exception) {
+                    logger.error("Could not update dialogs in dialogporten", ex)
                 }
                 delay(pollingInterval)
             }

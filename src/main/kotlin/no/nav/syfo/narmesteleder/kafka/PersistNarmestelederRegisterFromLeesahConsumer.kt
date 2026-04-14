@@ -28,7 +28,7 @@ data class LeesahNarmestelederRecord(
     val message: NarmestelederLeesahKafkaMessage,
 )
 
-class LeesahNarmestelederReplayKafkaConsumer(
+class PersistNarmestelederRegisterFromLeesahKafkaConsumer(
     private val handler: NarmestelederRegisterService,
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
@@ -201,7 +201,7 @@ class LeesahNarmestelederReplayKafkaConsumer(
     }
 
     companion object {
-        private val logger = LoggerFactory.getLogger(LeesahNarmestelederReplayKafkaConsumer::class.java)
+        private val logger = LoggerFactory.getLogger(PersistNarmestelederRegisterFromLeesahKafkaConsumer::class.java)
         private const val CONSUMER_JOB_DELAY_SECONDS = 30L
         private const val CLOSE_DURATION_SECONDS = 10L
         private const val POLL_DURATION_SECONDS = 1L

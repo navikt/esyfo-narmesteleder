@@ -29,7 +29,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
         val kafkaConsumer = mockk<KafkaConsumer<String, String?>>(relaxed = true)
         val registerService = mockk<NarmestelederRegisterService>()
         val objectMapper = jacksonMapper()
-        val consumer = LeesahNarmestelederReplayKafkaConsumer(
+        val consumer = PersistNarmestelederRegisterFromLeesahKafkaConsumer(
             handler = registerService,
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,

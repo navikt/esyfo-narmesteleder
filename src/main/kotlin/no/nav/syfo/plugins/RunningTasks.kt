@@ -96,13 +96,11 @@ fun Application.configureKafkaConsumers() {
     )
 
     monitor.subscribe(ServerReady) {
-        val sseListenerJob = launch { leaderChangeSSEListener.listenForLeaderChanges() }
         leesahConsumer.listen()
         sendtSykmeldingConsumer.listen()
 
         monitor.subscribe(ApplicationStopPreparing) {
             runBlocking {
-                sseListenerJob.cancel()
                 sendtSykmeldingConsumer.stop()
                 leesahConsumer.stop()
             }

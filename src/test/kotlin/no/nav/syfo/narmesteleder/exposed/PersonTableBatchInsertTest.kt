@@ -4,6 +4,9 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
+import no.nav.syfo.narmesteleder.PersistedPerson
+import no.nav.syfo.narmesteleder.fetchPerson
+import no.nav.syfo.narmesteleder.fetchPersons
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 

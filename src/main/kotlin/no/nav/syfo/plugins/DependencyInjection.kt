@@ -28,6 +28,7 @@ import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
+import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.application.valkey.ValkeyCache
@@ -246,6 +247,7 @@ private fun servicesModule() = module {
     single { PdlService(get(), get()) }
 
     single { AltinnTilgangerService(get()) }
+    single { LeaderElection(get(), env().otherProperties.electorPath) }
     single {
         LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl)
     }
@@ -288,13 +290,14 @@ private fun tasksModule() = module {
     single {
         BehovMaintenanceTask(
             narmestelederService = get(),
+            leaderElection = get(),
             env = env().otherProperties
         )
     }
-    single { SendDialogTask(get()) }
+    single { SendDialogTask(get(), get()) }
     single {
         val pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay)
-        UpdateDialogTask(get(), pollingInterval)
+        UpdateDialogTask(get(), get(), pollingInterval)
     }
 }
 

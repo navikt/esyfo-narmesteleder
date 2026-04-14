@@ -2,7 +2,6 @@ package no.nav.syfo.plugins
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.syfo.application.events.LeaderChange
 
 class LeaderMonitoringPluginTest :
@@ -27,12 +26,6 @@ class LeaderMonitoringPluginTest :
         }
 
         describe("LeaderChange sealed interface") {
-            it("should have three distinct types") {
-                LeaderChange.Promoted.shouldBeInstanceOf<LeaderChange>()
-                LeaderChange.Demoted.shouldBeInstanceOf<LeaderChange>()
-                LeaderChange.Unaffected.shouldBeInstanceOf<LeaderChange>()
-            }
-
             it("should support exhaustive when matching") {
                 val results =
                     listOf(

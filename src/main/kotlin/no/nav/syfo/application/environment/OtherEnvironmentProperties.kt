@@ -13,6 +13,7 @@ data class OtherEnvironmentProperties(
     val daysAfterTomToExpireBehovs: Long,
     val persistSendtSykmelding: Boolean,
     val maintenanceTaskEnabled: Boolean,
+    val persistNarmestelederRegister: Boolean,
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -31,6 +32,7 @@ data class OtherEnvironmentProperties(
             ).toLong(),
             maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
             maintenanceTaskEnabled = getEnvVar("BEHOV_MAINTENANCE_TASK_ENABLED", "false").toBoolean(),
+            persistNarmestelederRegister = getEnvVar("PERSIST_NARMESTELEDER_REGISTER", "false").toBoolean(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -45,7 +47,8 @@ data class OtherEnvironmentProperties(
             daysAfterTomToExpireBehovs = 0,
             maintenanceTaskDelay = "1m",
             maintenanceTaskEnabled = true,
-            electorSSEUrl = "not.applicable"
+            electorSSEUrl = "not.applicable",
+            persistNarmestelederRegister = true,
         )
     }
 }

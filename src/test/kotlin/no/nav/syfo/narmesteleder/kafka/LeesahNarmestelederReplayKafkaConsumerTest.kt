@@ -14,6 +14,7 @@ import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import org.apache.kafka.clients.consumer.CloseOptions
@@ -33,6 +34,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,
             scope = kotlinx.coroutines.CoroutineScope(EmptyCoroutineContext),
+            env = OtherEnvironmentProperties.createForLocal(),
         )
 
         beforeTest {
@@ -124,7 +126,7 @@ private fun consumerRecord(
     offset: Long,
     value: String?,
 ): ConsumerRecord<String, String?> = ConsumerRecord(
-    SYKMELDING_NL_TOPIC,
+    TEAMSYKMELDING_NL_LEESAH_TOPIC,
     0,
     offset,
     "key-$offset",

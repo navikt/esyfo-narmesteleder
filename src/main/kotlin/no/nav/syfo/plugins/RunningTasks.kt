@@ -113,6 +113,7 @@ fun Application.configureKafkaConsumers() {
             )
         },
         scope = this,
+        env = environment.otherProperties,
     ).apply {
         commitOnAllErrors = environment.kafka.commitOnAllErrors
     }

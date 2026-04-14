@@ -144,5 +144,7 @@ spec:
       value: "16"
     - name: BEHOV_MAINTENANCE_TASK_ENABLED
       value: "true"
+    - name: PERSIST_NARMESTELEDER_REGISTER
+      value: "false"
   envFrom:
     - secret: altinn-subscription-key

@@ -10,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
@@ -32,6 +33,7 @@ class LeesahNarmestelederReplayKafkaConsumer(
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
+    private val env: OtherEnvironmentProperties,
 ) : KafkaListener,
     AutoCloseable {
     constructor(
@@ -39,11 +41,13 @@ class LeesahNarmestelederReplayKafkaConsumer(
         jacksonMapper: ObjectMapper,
         kafkaConsumer: KafkaConsumer<String, String?>,
         scope: CoroutineScope,
+        env: OtherEnvironmentProperties,
     ) : this(
         handler = handler,
         jacksonMapper = jacksonMapper,
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
+        env = env,
     )
 
     private var job: Job? = null
@@ -53,18 +57,22 @@ class LeesahNarmestelederReplayKafkaConsumer(
     var commitOnAllErrors = false
 
     override fun listen() {
+        if (!env.persistNarmestelederRegister) {
+            logger.info("Persisting of narmesteleder from leesah topic is disabled, not starting consumer for $TEAMSYKMELDING_NL_LEESAH_TOPIC")
+            return
+        }
         if (job?.isActive == true) {
-            logger.info("Replay consumer for {} is already running", SYKMELDING_NL_TOPIC)
+            logger.info("Replay consumer for {} is already running", TEAMSYKMELDING_NL_LEESAH_TOPIC)
             return
         }
 
         val consumer = kafkaConsumerFactory()
         kafkaConsumer = consumer
 
-        logger.info("Starting replay consumer for {}", SYKMELDING_NL_TOPIC)
+        logger.info("Starting replay consumer for {}", TEAMSYKMELDING_NL_LEESAH_TOPIC)
         job = scope.launch(Dispatchers.IO + CoroutineName("leesah-narmesteleder-replay-consumer")) {
             try {
-                consumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
+                consumer.subscribe(listOf(TEAMSYKMELDING_NL_LEESAH_TOPIC))
 
                 while (isActive) {
                     try {
@@ -80,13 +88,13 @@ class LeesahNarmestelederReplayKafkaConsumer(
                     } catch (e: Exception) {
                         logger.error(
                             "Error running replay consumer for {}. Waiting {} seconds for retry.",
-                            SYKMELDING_NL_TOPIC,
+                            TEAMSYKMELDING_NL_LEESAH_TOPIC,
                             CONSUMER_JOB_DELAY_SECONDS,
                             e
                         )
                         consumer.unsubscribe()
                         delay(CONSUMER_JOB_DELAY_SECONDS.seconds)
-                        consumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
+                        consumer.subscribe(listOf(TEAMSYKMELDING_NL_LEESAH_TOPIC))
                     }
                 }
             } finally {
@@ -95,7 +103,7 @@ class LeesahNarmestelederReplayKafkaConsumer(
                     kafkaConsumer = null
                 }
                 job = null
-                logger.info("Exited replay consumer loop for {}", SYKMELDING_NL_TOPIC)
+                logger.info("Exited replay consumer loop for {}", TEAMSYKMELDING_NL_LEESAH_TOPIC)
             }
         }
     }
@@ -151,7 +159,7 @@ class LeesahNarmestelederReplayKafkaConsumer(
         logger.error(
             "Error while processing replay batch of {} records from {}. Entire batch will be retried on next poll.",
             records.count(),
-            SYKMELDING_NL_TOPIC,
+            TEAMSYKMELDING_NL_LEESAH_TOPIC,
             error
         )
 
@@ -176,18 +184,18 @@ class LeesahNarmestelederReplayKafkaConsumer(
         val currentJob = job
         val currentConsumer = kafkaConsumer
         if (currentJob == null || !currentJob.isActive) {
-            logger.info("Replay consumer for {} is already stopped", SYKMELDING_NL_TOPIC)
+            logger.info("Replay consumer for {} is already stopped", TEAMSYKMELDING_NL_LEESAH_TOPIC)
             return
         }
 
-        logger.info("Stopping replay consumer for {}", SYKMELDING_NL_TOPIC)
+        logger.info("Stopping replay consumer for {}", TEAMSYKMELDING_NL_LEESAH_TOPIC)
         currentJob.cancel()
         currentConsumer?.wakeup()
         currentJob.join()
     }
 
     private fun closeKafkaConsumer(consumer: KafkaConsumer<String, String?>) {
-        logger.info("Closing replay consumer for {}", SYKMELDING_NL_TOPIC)
+        logger.info("Closing replay consumer for {}", TEAMSYKMELDING_NL_LEESAH_TOPIC)
         consumer.unsubscribe()
         consumer.close(CloseOptions.timeout(Duration.ofSeconds(CLOSE_DURATION_SECONDS)))
     }

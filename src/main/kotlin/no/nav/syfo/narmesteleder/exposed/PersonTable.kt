@@ -1,12 +1,13 @@
 package no.nav.syfo.narmesteleder.exposed
 
-import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.javatime.CurrentTimestampWithTimeZone
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
+import java.util.UUID
 
-object PersonTable : Table("person") {
-    val id = javaUUID("id").databaseGenerated()
+object PersonTable : IdTable<UUID>("person") {
+    override val id = javaUUID("id").databaseGenerated().entityId()
     val fnr = varchar("fnr", 11).uniqueIndex()
     val fornavn = varchar("fornavn", 255).nullable()
     val mellomnavn = varchar("mellomnavn", 255).nullable()

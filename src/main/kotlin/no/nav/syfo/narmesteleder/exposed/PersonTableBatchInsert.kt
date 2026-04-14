@@ -42,7 +42,7 @@ fun PersonTable.batchInsertIgnoreExisting(rows: Iterable<PersonBatchInsertRow>):
         }
 
         InsertedPerson(
-            id = insertedRow[PersonTable.id],
+            id = insertedRow[PersonTable.id].value,
             fnr = insertedRow[PersonTable.fnr],
             status = insertedRow[PersonTable.status],
             fornavn = insertedRow[PersonTable.fornavn],

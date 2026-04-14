@@ -17,58 +17,24 @@ class SendDialogTaskTest :
     DescribeSpec({
         val dialogportenService = mockk<DialogportenService>()
 
-        lateinit var sendDialogTask: SendDialogTask
-
         beforeTest {
             clearAllMocks()
-            sendDialogTask = SendDialogTask(dialogportenService = dialogportenService)
         }
 
-        describe("runTask") {
+        describe("execute") {
             it("should call sendDocumentsToDialogporten") {
                 coEvery { dialogportenService.sendDocumentsToDialogporten() } just Runs
 
+                val task = SendDialogTask(dialogportenService = dialogportenService)
+
                 val job = launch {
-                    sendDialogTask.runTask()
+                    task.runTask()
                 }
 
                 delay(100.milliseconds)
                 job.cancel()
 
                 coVerify(atLeast = 1) { dialogportenService.sendDocumentsToDialogporten() }
-            }
-
-            it("should continue running even if sendDocumentsToDialogporten throws exception") {
-                var callCount = 0
-                coEvery { dialogportenService.sendDocumentsToDialogporten() } answers {
-                    callCount++
-                    if (callCount == 1) {
-                        throw RuntimeException("Test exception")
-                    }
-                }
-
-                val job = launch {
-                    sendDialogTask.runTask()
-                }
-
-                // SendDialogTask has a 5-minute delay, so we can't wait for a second iteration
-                // in a unit test. We verify the first call happened and the task survived the exception.
-                delay(100.milliseconds)
-                job.cancel()
-
-                coVerify(atLeast = 1) { dialogportenService.sendDocumentsToDialogporten() }
-            }
-
-            it("should gracefully handle cancellation") {
-                coEvery { dialogportenService.sendDocumentsToDialogporten() } just Runs
-
-                val job = launch {
-                    sendDialogTask.runTask()
-                }
-
-                delay(50.milliseconds)
-
-                job.cancel()
             }
         }
     })

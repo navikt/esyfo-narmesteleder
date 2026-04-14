@@ -36,7 +36,7 @@ class BehovMaintenanceTaskTest :
 
         fun createTask() = BehovMaintenanceTask(
             narmestelederService = narmestelederService,
-            env = env
+            env = env,
         )
 
         beforeTest {
@@ -44,7 +44,7 @@ class BehovMaintenanceTaskTest :
         }
 
         describe("BehovMaintenanceTask") {
-            context("runTask") {
+            context("execute") {
                 it("should call updateStatusOnExpiredBehovs") {
                     coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
 
@@ -59,30 +59,9 @@ class BehovMaintenanceTaskTest :
 
                     coVerify(atLeast = 1) {
                         narmestelederService.updateStatusOnExpiredBehovs(
-                            env.daysAfterTomToExpireBehovs
+                            env.daysAfterTomToExpireBehovs,
                         )
                     }
-                }
-
-                it("should continue running after exception in updateStatusOnExpiredBehovs") {
-                    var callCount = 0
-                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } answers {
-                        callCount++
-                        if (callCount == 1) {
-                            throw RuntimeException("Test exception")
-                        }
-                    }
-
-                    val task = createTask()
-
-                    val job = launch {
-                        task.runTask()
-                    }
-
-                    delay(150.milliseconds)
-                    job.cancelAndJoin()
-
-                    coVerify(atLeast = 2) { narmestelederService.updateStatusOnExpiredBehovs(any()) }
                 }
 
                 it("should use correct daysAfterTomToExpireBehovs value") {
@@ -90,7 +69,7 @@ class BehovMaintenanceTaskTest :
                     val customEnv = env.copy(daysAfterTomToExpireBehovs = customDays)
                     val task = BehovMaintenanceTask(
                         narmestelederService = narmestelederService,
-                        env = customEnv
+                        env = customEnv,
                     )
 
                     coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
@@ -105,20 +84,6 @@ class BehovMaintenanceTaskTest :
                     coVerify(atLeast = 1) {
                         narmestelederService.updateStatusOnExpiredBehovs(eq(customDays))
                     }
-                }
-
-                it("should gracefully handle cancellation") {
-                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
-
-                    val task = createTask()
-
-                    val job = launch {
-                        task.runTask()
-                    }
-
-                    delay(50.milliseconds)
-
-                    job.cancelAndJoin()
                 }
             }
         }

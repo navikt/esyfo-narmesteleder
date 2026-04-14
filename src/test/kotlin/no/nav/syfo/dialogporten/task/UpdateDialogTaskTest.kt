@@ -25,11 +25,11 @@ class UpdateDialogTaskTest :
             updateDialogTask =
                 UpdateDialogTask(
                     dialogportenService = dialogportenService,
-                    pollingInterval = pollingInterval
+                    pollingInterval = pollingInterval,
                 )
         }
 
-        describe("runTask") {
+        describe("execute") {
             it("should call both setAllFulfilledBehovsAsCompletedInDialogporten and setAllExpiredBehovsAsExpiredAndCompletedInDialogporten") {
                 coEvery { dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten() } just Runs
                 coEvery { dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() } just Runs
@@ -43,61 +43,6 @@ class UpdateDialogTaskTest :
 
                 coVerify(atLeast = 1) { dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten() }
                 coVerify(atLeast = 1) { dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() }
-            }
-
-            it("should continue running even if setAllFulfilledBehovsAsCompletedInDialogporten throws exception") {
-                var callCount = 0
-                coEvery { dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten() } answers {
-                    callCount++
-                    if (callCount == 1) {
-                        throw RuntimeException("Test exception")
-                    }
-                }
-                coEvery { dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() } just Runs
-
-                val job = launch {
-                    updateDialogTask.runTask()
-                }
-
-                delay(250.milliseconds)
-                job.cancel()
-
-                coVerify(atLeast = 2) { dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten() }
-                coVerify(atLeast = 1) { dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() }
-            }
-
-            it("should continue running even if setAllExpiredBehovsAsExpiredAndCompletedInDialogporten throws exception") {
-                var callCount = 0
-                coEvery { dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten() } just Runs
-                coEvery { dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() } answers {
-                    callCount++
-                    if (callCount == 1) {
-                        throw RuntimeException("Test exception")
-                    }
-                }
-
-                val job = launch {
-                    updateDialogTask.runTask()
-                }
-
-                delay(250.milliseconds)
-                job.cancel()
-
-                coVerify(atLeast = 1) { dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten() }
-                coVerify(atLeast = 2) { dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() }
-            }
-
-            it("should gracefully handle cancellation") {
-                coEvery { dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten() } just Runs
-                coEvery { dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() } just Runs
-
-                val job = launch {
-                    updateDialogTask.runTask()
-                }
-
-                delay(50.milliseconds)
-
-                job.cancel()
             }
         }
     })

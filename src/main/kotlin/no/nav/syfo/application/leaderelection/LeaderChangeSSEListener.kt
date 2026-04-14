@@ -20,6 +20,7 @@ import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.util.logger
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Leader election implementation using Server-Sent Events (SSE).
@@ -51,10 +52,12 @@ class LeaderChangeSSEListener(
      * Should be launched in a coroutine scope that manages the lifecycle.
      */
     suspend fun listenForLeaderChanges() = coroutineScope {
-        if (!isListening.compareAndSet(false, true)) {
+        if (isListening.get()) {
             log.warn("Already listening for leader changes, ignoring duplicate call")
             return@coroutineScope
         }
+
+        isListening.set(true)
 
         if (isLocalEnv()) {
             log.info("Running in local environment, setting isLeader to true")
@@ -89,8 +92,8 @@ class LeaderChangeSSEListener(
             }.onFailure {
                 if (it is CancellationException) break
 
-                log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS / 1000} seconds...", it)
-                delay(SSE_CLIENT_RETRY_DELAY_MS)
+                log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS.milliseconds.inWholeSeconds} seconds...", it)
+                delay(SSE_CLIENT_RETRY_DELAY_MS.milliseconds)
             }
         }
     }

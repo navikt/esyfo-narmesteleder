@@ -10,7 +10,7 @@ import no.nav.syfo.narmesteleder.exposed.NarmestelederTable
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
-import no.nav.syfo.narmesteleder.exposed.batchInsertIgnoreExisting
+import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederRecord
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -234,7 +234,7 @@ class NarmestelederRegisterServiceTest :
 
             it("should ignore conflicts for existing persons without overwriting the existing row") {
                 transaction(TestDB.exposedDatabase) {
-                    PersonTable.batchInsertIgnoreExisting(
+                    personTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",

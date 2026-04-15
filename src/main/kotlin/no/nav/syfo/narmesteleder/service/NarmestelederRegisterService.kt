@@ -1,11 +1,9 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.narmesteleder.exposed.InsertedPerson
-import no.nav.syfo.narmesteleder.exposed.NarmestelederTable
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
-import no.nav.syfo.narmesteleder.exposed.PersonTable
-import no.nav.syfo.narmesteleder.exposed.batchInsertIgnoreExisting
-import no.nav.syfo.narmesteleder.exposed.upsertFromLeesahKafkaMessage
+import no.nav.syfo.narmesteleder.exposed.narmestelederTable
+import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederRecord
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -27,7 +25,7 @@ class NarmestelederRegisterService(
 
         transaction(database) {
             validRecords.forEach { record ->
-                NarmestelederTable.upsertFromLeesahKafkaMessage(record.message)
+                narmestelederTable.upsertFromLeesahKafkaMessage(record.message)
             }
         }
 
@@ -56,7 +54,7 @@ class NarmestelederRegisterService(
         }
 
         val insertedPersons = transaction(database) {
-            PersonTable.batchInsertIgnoreExisting(
+            personTable.batchInsertIgnoreExisting(
                 personFnrs
                     .filter { it.fnr.isDigitsWithLength(FNR_LENGTH) }
                     .distinctBy { it.fnr }

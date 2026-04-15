@@ -54,7 +54,7 @@ class LeaderChangeSSEListener(
     suspend fun listenForLeaderChanges() = coroutineScope {
         if (!isListening.compareAndSet(false, true)) {
             log.warn("Already listening for leader changes, ignoring duplicate call")
-            return@coroutineScope
+            throw LeaderChangeSSEException("Already listening for leader changes. Only one connection allowed per instance.")
         }
 
         if (isLocalEnv) {
@@ -94,11 +94,14 @@ class LeaderChangeSSEListener(
                 delay(SSE_CLIENT_RETRY_DELAY_MS.milliseconds)
             }
         }
+        isListening.set(false)
     }
 
     companion object {
         private const val SSE_CLIENT_RETRY_DELAY_MS = 5000L
     }
+
+    class LeaderChangeSSEException(override val message: String) : IllegalStateException(message)
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)

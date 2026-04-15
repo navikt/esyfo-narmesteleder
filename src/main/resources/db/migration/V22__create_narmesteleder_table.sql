@@ -19,6 +19,8 @@ CREATE TABLE narmeste_leder
 CREATE UNIQUE INDEX narmeste_leder_id_idx ON narmeste_leder (narmeste_leder_id);
 CREATE INDEX narmeste_leder_fnr_idx ON narmeste_leder (bruker_fnr);
 CREATE INDEX narmeste_leder_nlfnr_idx ON narmeste_leder (narmeste_leder_fnr);
+CREATE INDEX narmeste_leder_orgnr_idx ON narmeste_leder (orgnummer);
+CREATE INDEX narmeste_leder_tom_idx ON narmeste_leder (aktiv_tom);
 
 -- Create a function to update the updated column
 CREATE OR REPLACE FUNCTION update_updated_column()

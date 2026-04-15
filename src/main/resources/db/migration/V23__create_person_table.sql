@@ -16,3 +16,6 @@ CREATE TRIGGER update_person_updated
     ON person
     FOR EACH ROW
 EXECUTE FUNCTION update_updated_column();
+
+CREATE INDEX person_fnr_idx ON person (fnr);
+CREATE INDEX status_idx ON person (status);

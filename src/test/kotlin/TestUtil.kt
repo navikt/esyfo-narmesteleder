@@ -18,6 +18,7 @@ import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
+import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
@@ -263,6 +264,20 @@ fun defaultSendtSykmeldingMessage(
         sykmeldingsperioder = sykmeldingsperioder,
         syketilfelleStartDato = sykmeldingsperioder.first().fom
     )
+)
+
+fun defaultLeesahKafkaMessage() = NarmestelederLeesahKafkaMessage(
+    narmesteLederId = UUID.randomUUID(),
+    fnr = faker.numerify("###########"),
+    orgnummer = faker.numerify("#########"),
+    narmesteLederFnr = faker.numerify("###########"),
+    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
+    narmesteLederEpost = faker.internet().emailAddress(),
+    aktivFom = LocalDate.now(),
+    aktivTom = null,
+    arbeidsgiverForskutterer = true,
+    timestamp = OffsetDateTime.now(),
+    status = LeesahStatus.NY_LEDER,
 )
 
 fun TexasHttpClient.defaultMocks(pid: String = "userIdentifier", acr: String = "Level4", navident: String? = null) {

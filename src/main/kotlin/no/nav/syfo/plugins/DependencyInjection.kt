@@ -68,6 +68,7 @@ import org.koin.dsl.module
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
 import kotlin.time.Duration
+import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
 fun Application.configureDependencies() {
     install(Koin) {
@@ -107,6 +108,10 @@ private fun databaseModule() = module {
                 password = env().database.password,
             )
         )
+    }
+    single<ExposedDatabase> {
+        val db = get<DatabaseInterface>() as Database
+        ExposedDatabase.connect(datasource = db.dataSource)
     }
     single<INarmestelederDb> {
         NarmestelederDb(get(), Dispatchers.IO)

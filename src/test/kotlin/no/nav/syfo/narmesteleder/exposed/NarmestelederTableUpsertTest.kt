@@ -25,14 +25,14 @@ class NarmestelederTableUpsertTest :
                 }
             }
         }
-        describe("NarmestelederTable upsertFromLeesahKafkaMessage") {
+        describe("NarmestelederTable narmestelederTable.upsertFromLeesahKafkaMessage") {
             it("should insert new entity when no existing row") {
                 val message = defaultLeesahKafkaMessage().copy(
                     aktivTom = LocalDate.of(2024, 12, 31),
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(message)
+                    narmestelederTable.upsertFromLeesahKafkaMessage(message)
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -66,7 +66,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(originalMessage)
+                    narmestelederTable.upsertFromLeesahKafkaMessage(originalMessage)
                 }
 
                 val originalEntity = transaction(TestDB.exposedDatabase) {
@@ -84,7 +84,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(updatedMessage)
+                    narmestelederTable.upsertFromLeesahKafkaMessage(updatedMessage)
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -115,7 +115,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(originalMessage)
+                    narmestelederTable.upsertFromLeesahKafkaMessage(originalMessage)
                 }
 
                 val messageWithDifferentFnr = defaultLeesahKafkaMessage().copy(
@@ -123,7 +123,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(messageWithDifferentFnr)
+                    narmestelederTable.upsertFromLeesahKafkaMessage(messageWithDifferentFnr)
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -146,7 +146,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(messageWithNulls)
+                    narmestelederTable.upsertFromLeesahKafkaMessage(messageWithNulls)
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -165,7 +165,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(messageWithValues)
+                    narmestelederTable.upsertFromLeesahKafkaMessage(messageWithValues)
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -184,7 +184,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederTable.upsertFromLeesahKafkaMessage(messageBackToNulls)
+                    narmestelederTable.upsertFromLeesahKafkaMessage(messageBackToNulls)
                 }
 
                 transaction(TestDB.exposedDatabase) {

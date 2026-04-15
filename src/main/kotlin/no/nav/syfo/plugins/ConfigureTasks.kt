@@ -1,7 +1,7 @@
 package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationStopping
+import io.ktor.server.application.ApplicationStopPreparing
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
@@ -12,6 +12,7 @@ import no.nav.syfo.application.events.LeaderChangeEvent
 import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
 import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject
+import java.util.Collections
 import kotlin.getValue
 
 fun Application.configureBackgroundTasks() {
@@ -27,36 +28,36 @@ fun Application.configureBackgroundTasks() {
     val updateDialogTask by inject<UpdateDialogTask>()
     val behovMaintenanceTask by inject<BehovMaintenanceTask>()
 
-    var sendDialogTaskJob: Job? = null
-    var updateDialogTaskJob: Job? = null
-    var behovMaintenanceTaskJob: Job? = null
+    val taskJobs: MutableList<Job> = Collections.synchronizedList(mutableListOf())
 
     monitor.subscribe(LeaderChangeEvent) { event ->
         when (event) {
             is LeaderChange.Promoted -> {
                 logger.info("Promoted to leader — starting background tasks")
-                sendDialogTaskJob = launch { sendDialogTask.runTask() }
-                updateDialogTaskJob = launch { updateDialogTask.runTask() }
+                taskJobs.cancelAndClear()
+
+                taskJobs += launch { sendDialogTask.runTask() }
+                taskJobs += launch { updateDialogTask.runTask() }
 
                 if (environment.otherProperties.maintenanceTaskEnabled) {
-                    behovMaintenanceTaskJob = launch { behovMaintenanceTask.runTask() }
+                    taskJobs += launch { behovMaintenanceTask.runTask() }
                 }
             }
 
             is LeaderChange.Demoted -> {
-                logger.info("Demoted from leader — cancelling background tasks")
-                sendDialogTaskJob?.cancel()
-                updateDialogTaskJob?.cancel()
-                behovMaintenanceTaskJob?.cancel()
+                taskJobs.cancelAndClear()
             }
 
             is LeaderChange.Unaffected -> {}
         }
     }
 
-    monitor.subscribe(ApplicationStopping) {
-        sendDialogTaskJob?.cancel()
-        updateDialogTaskJob?.cancel()
-        behovMaintenanceTaskJob?.cancel()
+    monitor.subscribe(ApplicationStopPreparing) {
+        taskJobs.cancelAndClear()
     }
+}
+
+private fun MutableList<Job>.cancelAndClear() {
+    forEach(Job::cancel)
+    clear()
 }

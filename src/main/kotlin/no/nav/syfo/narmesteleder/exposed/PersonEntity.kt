@@ -12,6 +12,7 @@ class PersonEntity(id: EntityID<UUID>) : UUIDEntity(id) {
     var fornavn by PersonTable.fornavn
     var mellomnavn by PersonTable.mellomnavn
     var etternavn by PersonTable.etternavn
+    var foedselsdato by PersonTable.foedselsdato
     var status by PersonTable.status
     var created by PersonTable.created
     var updated by PersonTable.updated

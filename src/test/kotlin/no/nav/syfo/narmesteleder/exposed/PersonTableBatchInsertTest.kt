@@ -8,6 +8,7 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import java.time.LocalDate
 
 class PersonTableBatchInsertTest :
     DescribeSpec({
@@ -30,6 +31,7 @@ class PersonTableBatchInsertTest :
                         fornavn = "Ada",
                         mellomnavn = "Augusta",
                         etternavn = "Lovelace",
+                        foedselsdato = LocalDate.now(),
                     ),
                     PersonBatchInsertRow(
                         fnr = "10987654321",
@@ -56,6 +58,7 @@ class PersonTableBatchInsertTest :
                             mellomnavn = "Augusta",
                             etternavn = "Lovelace",
                             status = "ACTIVE",
+                            foedselsdato = LocalDate.now(),
                         ),
                         InsertedPerson(
                             id = secondPerson.id.value,
@@ -64,6 +67,7 @@ class PersonTableBatchInsertTest :
                             mellomnavn = null,
                             etternavn = null,
                             status = "INACTIVE",
+                            foedselsdato = null
                         ),
                     )
                     personsByFnr.keys shouldBe setOf("12345678901", "10987654321")
@@ -114,6 +118,7 @@ class PersonTableBatchInsertTest :
                             mellomnavn = null,
                             etternavn = null,
                             status = "ACTIVE",
+                            foedselsdato = null,
                         ),
                     )
                     persistedPerson.status shouldBe "ACTIVE"
@@ -214,6 +219,7 @@ class PersonTableBatchInsertTest :
                             fornavn = "Ada",
                             mellomnavn = "Augusta",
                             etternavn = null,
+                            foedselsdato = null,
                         ),
                         InsertedPerson(
                             id = personsByFnr.getValue("10987654321").id.value,
@@ -222,6 +228,7 @@ class PersonTableBatchInsertTest :
                             fornavn = null,
                             mellomnavn = null,
                             etternavn = null,
+                            foedselsdato = null,
                         ),
                     )
                     insertedPersonsByFnr.keys shouldBe personsByFnr.keys

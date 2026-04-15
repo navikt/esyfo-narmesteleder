@@ -14,6 +14,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class NarmestelederEntityTest :
@@ -31,8 +32,8 @@ class NarmestelederEntityTest :
                 val narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                 val narmestelederEpost = faker.internet().emailAddress()
                 val arbeidsgiverForskutterer = true
-                val aktivFom = OffsetDateTime.now().minusDays(30)
-                val aktivTom = OffsetDateTime.now().plusDays(30)
+                val aktivFom = OffsetDateTime.now().minusDays(30).truncatedTo(ChronoUnit.MICROS)
+                val aktivTom = OffsetDateTime.now().plusDays(30).truncatedTo(ChronoUnit.MICROS)
 
                 val entityId = transaction(TestDB.exposedDatabase) {
                     val entity = NarmestelederEntity.new {

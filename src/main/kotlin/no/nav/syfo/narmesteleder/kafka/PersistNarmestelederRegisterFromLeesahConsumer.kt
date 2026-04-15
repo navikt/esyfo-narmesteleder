@@ -11,16 +11,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
+import no.nav.syfo.application.kafka.KafkaEnvironment
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import org.apache.kafka.clients.consumer.CloseOptions
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.util.Properties
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 data class LeesahNarmestelederRecord(
@@ -28,7 +34,7 @@ data class LeesahNarmestelederRecord(
     val message: NarmestelederLeesahKafkaMessage,
 )
 
-class PersistNarmestelederRegisterFromLeesahKafkaConsumer(
+class PersistNarmestelederRegisterFromLeesahConsumer(
     private val handler: NarmestelederRegisterService,
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
@@ -201,9 +207,24 @@ class PersistNarmestelederRegisterFromLeesahKafkaConsumer(
     }
 
     companion object {
-        private val logger = LoggerFactory.getLogger(PersistNarmestelederRegisterFromLeesahKafkaConsumer::class.java)
+        private val logger = LoggerFactory.getLogger(PersistNarmestelederRegisterFromLeesahConsumer::class.java)
         private const val CONSUMER_JOB_DELAY_SECONDS = 30L
         private const val CLOSE_DURATION_SECONDS = 10L
         private const val POLL_DURATION_SECONDS = 1L
+        val NARMESTELEDER_LEESAH_PERSIST_GROUP_ID = "esyfo-narmesteleder-leesah-persist-consumer"
+        fun persistNarmestelederRegisterFromLeesahConsumerProperties(env: KafkaEnvironment): Properties = consumerProperties(
+            env = env,
+            valueDeserializer = StringDeserializer::class,
+            groupId = NARMESTELEDER_LEESAH_PERSIST_GROUP_ID,
+        ).apply {
+            put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+            put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500")
+            put(
+                ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG,
+                5.minutes.inWholeMilliseconds.toString()
+            )
+            put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "1048576")
+            put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "500")
+        }
     }
 }

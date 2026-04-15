@@ -13,8 +13,7 @@ import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.kafka.PersistNarmestelederRegisterFromLeesahKafkaConsumer
-import no.nav.syfo.narmesteleder.kafka.leesahNarmestelederReplayConsumerProperties
+import no.nav.syfo.narmesteleder.kafka.PersistNarmestelederRegisterFromLeesahConsumer
 import no.nav.syfo.narmesteleder.service.LeaderControlledKafkaConsumer
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
@@ -102,12 +101,14 @@ fun Application.configureKafkaConsumers() {
         scope = this,
         env = environment.otherProperties,
     )
-    val leesahNarmestelederReplayConsumer = PersistNarmestelederRegisterFromLeesahKafkaConsumer(
+    val leesahNarmestelederReplayConsumer = PersistNarmestelederRegisterFromLeesahConsumer(
         handler = narmestelederRegisterService,
         jacksonMapper = jacksonMapper(),
         kafkaConsumerFactory = {
             KafkaConsumer(
-                leesahNarmestelederReplayConsumerProperties(environment.kafka),
+                PersistNarmestelederRegisterFromLeesahConsumer.persistNarmestelederRegisterFromLeesahConsumerProperties(
+                    environment.kafka
+                ),
                 StringDeserializer(),
                 StringDeserializer(),
             )

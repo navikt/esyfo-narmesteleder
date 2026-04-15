@@ -16,9 +16,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
-import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.util.logger
 import java.net.InetAddress
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Leader election implementation using Server-Sent Events (SSE).
@@ -30,6 +31,7 @@ import java.net.InetAddress
 class LeaderChangeSSEListener(
     private val sseHttpClient: HttpClient,
     private val electorSseUrl: String,
+    private val isLocalEnv: Boolean,
 ) {
     private val log = logger()
 
@@ -39,6 +41,7 @@ class LeaderChangeSSEListener(
     }
 
     private val _isLeader = MutableStateFlow(false)
+    private val isListening = AtomicBoolean(false)
     val isLeader: StateFlow<Boolean> = _isLeader.asStateFlow()
 
     private var hostname: String? = null
@@ -49,7 +52,12 @@ class LeaderChangeSSEListener(
      * Should be launched in a coroutine scope that manages the lifecycle.
      */
     suspend fun listenForLeaderChanges() = coroutineScope {
-        if (isLocalEnv()) {
+        if (!isListening.compareAndSet(false, true)) {
+            log.warn("Already listening for leader changes, ignoring duplicate call")
+            throw LeaderChangeSSEException("Already listening for leader changes. Only one connection allowed per instance.")
+        }
+
+        if (isLocalEnv) {
             log.info("Running in local environment, setting isLeader to true")
             _isLeader.value = true
             return@coroutineScope
@@ -82,15 +90,18 @@ class LeaderChangeSSEListener(
             }.onFailure {
                 if (it is CancellationException) break
 
-                log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS / 1000} seconds...", it)
-                delay(SSE_CLIENT_RETRY_DELAY_MS)
+                log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS.milliseconds.inWholeSeconds} seconds...", it)
+                delay(SSE_CLIENT_RETRY_DELAY_MS.milliseconds)
             }
         }
+        isListening.set(false)
     }
 
     companion object {
         private const val SSE_CLIENT_RETRY_DELAY_MS = 5000L
     }
+
+    class LeaderChangeSSEException(override val message: String) : IllegalStateException(message)
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)

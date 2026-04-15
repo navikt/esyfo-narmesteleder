@@ -252,7 +252,7 @@ private fun servicesModule() = module {
 
     single { AltinnTilgangerService(get()) }
     single {
-        LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl)
+        LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl, isLocalEnv())
     }
     single {
         val sykmeldingNLKafkaProducer = SykmeldingNLKafkaProducer(

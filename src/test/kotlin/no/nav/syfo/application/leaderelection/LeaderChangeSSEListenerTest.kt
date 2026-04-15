@@ -1,5 +1,6 @@
 package no.nav.syfo.application.leaderelection
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
@@ -8,10 +9,10 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class LeaderChangeSSEListenerTest :
     DescribeSpec({
-
         describe("idempotency guard") {
             it("should prevent duplicate listener starts") {
                 val mockEngine =
@@ -19,23 +20,18 @@ class LeaderChangeSSEListenerTest :
                         respond("", HttpStatusCode.InternalServerError)
                     }
                 val httpClient = HttpClient(mockEngine)
-                val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector")
-
-                var secondCallCompleted = false
-
+                val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector", false)
+                val timeToWait = 20.milliseconds
                 val job =
                     launch {
                         listener.listenForLeaderChanges()
                     }
 
                 // Give the first call a moment to set the AtomicBoolean
-                delay(100)
+                delay(timeToWait)
 
-                // Second call should return immediately due to idempotency guard
-                listener.listenForLeaderChanges()
-                secondCallCompleted = true
-
-                secondCallCompleted shouldBe true
+                // Second call should throw an exception to avoid opening multiple connections across the instance
+                shouldThrow<LeaderChangeSSEListener.LeaderChangeSSEException> { listener.listenForLeaderChanges() }
                 job.cancel()
             }
 
@@ -45,7 +41,7 @@ class LeaderChangeSSEListenerTest :
                         respond("", HttpStatusCode.InternalServerError)
                     }
                 val httpClient = HttpClient(mockEngine)
-                val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector")
+                val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector", false)
 
                 listener.isLeader.value shouldBe false
             }

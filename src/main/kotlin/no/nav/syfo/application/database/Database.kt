@@ -20,7 +20,7 @@ class Database(
     override val connection: Connection
         get() = dataSource.connection
 
-    private var dataSource: HikariDataSource = HikariDataSource(
+    val dataSource: HikariDataSource = HikariDataSource(
         HikariConfig().apply {
             jdbcUrl = config.jdbcUrl
             username = config.username

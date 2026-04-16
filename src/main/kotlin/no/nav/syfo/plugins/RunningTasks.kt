@@ -102,15 +102,12 @@ fun Application.configureKafkaConsumers() {
 
     val leaderControlledConsumers = listOf(
         LeaderControlledKafkaConsumer(
-            consumerName = "persistSendtSykmeldingConsumer",
             consumer = persistSendtSykmeldingConsumer,
             enabled = environment.otherProperties.persistSendtSykmelding,
-            closeable = persistSendtSykmeldingConsumer,
         ),
         LeaderControlledKafkaConsumer(
-            consumerName = "leesahNarmestelederReplayConsumer",
             consumer = leesahNarmestelederReplayConsumer,
-            closeable = leesahNarmestelederReplayConsumer,
+            enabled = environment.otherProperties.persistNarmestelederRegister,
         ),
     )
 

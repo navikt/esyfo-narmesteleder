@@ -6,7 +6,6 @@ import no.nav.syfo.application.kafka.KafkaListener
 import org.slf4j.LoggerFactory
 
 class LeaderControlledKafkaConsumer(
-    private val consumerName: String,
     private val consumer: KafkaListener,
     private val enabled: Boolean = true,
     private val closeable: AutoCloseable? = consumer as? AutoCloseable,
@@ -22,13 +21,13 @@ class LeaderControlledKafkaConsumer(
         lifecycleMutex.withLock {
             when {
                 isLeader && !running -> {
-                    logger.info("This instance is now the leader. Starting {}.", consumerName)
+                    logger.info("This instance is now the leader. Starting {}.", consumer.javaClass.simpleName)
                     consumer.listen()
                     running = true
                 }
 
                 !isLeader && running -> {
-                    logger.info("This instance lost leadership. Stopping {}.", consumerName)
+                    logger.info("This instance lost leadership. Stopping {}.", consumer.javaClass.simpleName)
                     consumer.stop()
                     running = false
                 }

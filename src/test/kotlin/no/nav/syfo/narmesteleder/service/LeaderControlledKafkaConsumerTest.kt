@@ -13,7 +13,6 @@ class LeaderControlledKafkaConsumerTest :
             it("should only start the consumer when leadership is acquired") {
                 val consumer = TestKafkaListener()
                 val leaderControlledConsumer = LeaderControlledKafkaConsumer(
-                    consumerName = "test-consumer",
                     consumer = consumer,
                 )
 
@@ -29,7 +28,6 @@ class LeaderControlledKafkaConsumerTest :
             it("should stop the consumer when leadership is lost") {
                 val consumer = TestKafkaListener()
                 val leaderControlledConsumer = LeaderControlledKafkaConsumer(
-                    consumerName = "test-consumer",
                     consumer = consumer,
                 )
 
@@ -45,7 +43,6 @@ class LeaderControlledKafkaConsumerTest :
             it("should not start the consumer twice for repeated leader events") {
                 val consumer = TestKafkaListener()
                 val leaderControlledConsumer = LeaderControlledKafkaConsumer(
-                    consumerName = "test-consumer",
                     consumer = consumer,
                 )
 
@@ -68,7 +65,6 @@ class LeaderControlledKafkaConsumerTest :
                     allowStopToFinish = allowStopToFinish,
                 )
                 val leaderControlledConsumer = LeaderControlledKafkaConsumer(
-                    consumerName = "test-consumer",
                     consumer = consumer,
                 )
 

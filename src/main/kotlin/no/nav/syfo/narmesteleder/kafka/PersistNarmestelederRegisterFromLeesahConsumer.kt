@@ -64,19 +64,23 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
 
     override fun listen() {
         if (!env.persistNarmestelederRegister) {
-            logger.info("Persisting of narmesteleder from leesah topic is disabled, not starting consumer for $TEAMSYKMELDING_NL_LEESAH_TOPIC")
+            logger.info(
+                "Persisting of narmesteleder from leesah topic is disabled, not starting {} consumer for {}",
+                this::class.simpleName,
+                TEAMSYKMELDING_NL_LEESAH_TOPIC
+            )
             return
         }
         if (job?.isActive == true) {
-            logger.info("Replay consumer for {} is already running", TEAMSYKMELDING_NL_LEESAH_TOPIC)
+            logger.info("{} consumer for {} is already running", this::class.simpleName, TEAMSYKMELDING_NL_LEESAH_TOPIC)
             return
         }
 
         val consumer = kafkaConsumerFactory()
         kafkaConsumer = consumer
 
-        logger.info("Starting replay consumer for {}", TEAMSYKMELDING_NL_LEESAH_TOPIC)
-        job = scope.launch(Dispatchers.IO + CoroutineName("leesah-narmesteleder-replay-consumer")) {
+        logger.info("Starting {} consumer for {}", this::class.simpleName, TEAMSYKMELDING_NL_LEESAH_TOPIC)
+        job = scope.launch(Dispatchers.IO + CoroutineName("${this::class.simpleName}-coroutine")) {
             try {
                 consumer.subscribe(listOf(TEAMSYKMELDING_NL_LEESAH_TOPIC))
 
@@ -109,7 +113,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
                     kafkaConsumer = null
                 }
                 job = null
-                logger.info("Exited replay consumer loop for {}", TEAMSYKMELDING_NL_LEESAH_TOPIC)
+                logger.info("Exited {} consumer loop for {}", this::class.simpleName, TEAMSYKMELDING_NL_LEESAH_TOPIC)
             }
         }
     }
@@ -144,7 +148,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     internal fun processBatch(
         records: ConsumerRecords<String, String?>,
         kafkaConsumer: KafkaConsumer<String, String?> = requireNotNull(this.kafkaConsumer) {
-            "Replay consumer is not started"
+            "${this::class.simpleName} consumer is not started"
         },
     ) {
         runCatching {
@@ -162,14 +166,14 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         error: Throwable,
     ) {
         logger.error(
-            "Error while processing replay batch of {} records from {}. Entire batch will be retried on next poll.",
+            "Error while processing batch of {} records from {}. Entire batch will be retried on next poll.",
             records.count(),
             TEAMSYKMELDING_NL_LEESAH_TOPIC,
             error
         )
 
         if (commitOnAllErrors) {
-            logger.info("commitOnAllErrors is enabled, committing offsets despite replay batch error.")
+            logger.info("commitOnAllErrors is enabled, committing offsets despite batch error.")
             kafkaConsumer.commitSync()
         } else {
             throw error
@@ -189,18 +193,18 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         val currentJob = job
         val currentConsumer = kafkaConsumer
         if (currentJob == null || !currentJob.isActive) {
-            logger.info("Replay consumer for {} is already stopped", TEAMSYKMELDING_NL_LEESAH_TOPIC)
+            logger.info("{} consumer for {} is already stopped", this::class.simpleName, TEAMSYKMELDING_NL_LEESAH_TOPIC)
             return
         }
 
-        logger.info("Stopping replay consumer for {}", TEAMSYKMELDING_NL_LEESAH_TOPIC)
+        logger.info("Stopping {} consumer for {}", this::class.simpleName, TEAMSYKMELDING_NL_LEESAH_TOPIC)
         currentJob.cancel()
         currentConsumer?.wakeup()
         currentJob.join()
     }
 
     private fun closeKafkaConsumer(consumer: KafkaConsumer<String, String?>) {
-        logger.info("Closing replay consumer for {}", TEAMSYKMELDING_NL_LEESAH_TOPIC)
+        logger.info("Closing {} consumer for {}", this::class.simpleName, TEAMSYKMELDING_NL_LEESAH_TOPIC)
         consumer.unsubscribe()
         consumer.close(CloseOptions.timeout(Duration.ofSeconds(CLOSE_DURATION_SECONDS)))
     }

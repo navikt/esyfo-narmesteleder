@@ -212,7 +212,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         private const val CLOSE_DURATION_SECONDS = 10L
         private const val POLL_DURATION_SECONDS = 1L
         val NARMESTELEDER_LEESAH_PERSIST_GROUP_ID = "esyfo-narmesteleder-leesah-persist-consumer"
-        fun persistNarmestelederRegisterFromLeesahConsumerProperties(env: KafkaEnvironment): Properties = consumerProperties(
+        fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = consumerProperties(
             env = env,
             valueDeserializer = StringDeserializer::class,
             groupId = NARMESTELEDER_LEESAH_PERSIST_GROUP_ID,

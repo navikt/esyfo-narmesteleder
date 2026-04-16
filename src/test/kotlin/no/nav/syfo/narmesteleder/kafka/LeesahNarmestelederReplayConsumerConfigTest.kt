@@ -10,7 +10,7 @@ class LeesahNarmestelederReplayConsumerConfigTest :
     DescribeSpec({
         describe("leesahNarmestelederReplayConsumerProperties") {
             it("should configure dedicated replay consumer group from earliest offsets") {
-                val properties = PersistNarmestelederRegisterFromLeesahConsumer.persistNarmestelederRegisterFromLeesahConsumerProperties(KafkaEnvironment.createForLocal())
+                val properties = PersistNarmestelederRegisterFromLeesahConsumer.kafkaConsumerProperties(KafkaEnvironment.createForLocal())
 
                 properties[CommonClientConfigs.GROUP_ID_CONFIG] shouldBe PersistNarmestelederRegisterFromLeesahConsumer.NARMESTELEDER_LEESAH_PERSIST_GROUP_ID
                 properties[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] shouldBe "earliest"

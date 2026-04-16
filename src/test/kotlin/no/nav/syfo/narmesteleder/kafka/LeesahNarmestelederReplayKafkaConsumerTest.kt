@@ -55,9 +55,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                     ),
                 )
                 val capturedRecords = slot<List<LeesahNarmestelederRecord>>()
-
-                every { registerService.upsertBatch(capture(capturedRecords)) } returns Unit
-                every { registerService.insertPersons(capture(capturedRecords)) } returns emptyList()
+                every { registerService.processLeesahBatch(capture(capturedRecords)) } returns emptyList()
                 every { kafkaConsumer.commitSync() } returns Unit
 
                 consumer.processBatch(records, kafkaConsumer)
@@ -75,7 +73,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                     ),
                 )
 
-                every { registerService.upsertBatch(any()) } throws IllegalStateException("boom")
+                every { registerService.processLeesahBatch(any()) } throws IllegalStateException("boom")
 
                 shouldThrow<IllegalStateException> {
                     consumer.processBatch(records, kafkaConsumer)

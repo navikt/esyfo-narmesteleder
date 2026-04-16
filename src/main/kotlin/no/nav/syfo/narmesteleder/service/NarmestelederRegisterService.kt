@@ -6,6 +6,7 @@ import no.nav.syfo.narmesteleder.exposed.narmestelederTable
 import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederRecord
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
+import org.jetbrains.exposed.v1.core.Transaction
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -13,7 +14,17 @@ import org.slf4j.LoggerFactory
 class NarmestelederRegisterService(
     private val database: Database,
 ) {
-    fun upsertBatch(records: List<LeesahNarmestelederRecord>) {
+    fun processLeesahBatch(records: List<LeesahNarmestelederRecord>): List<InsertedPerson> {
+        if (records.isEmpty()) {
+            return emptyList()
+        }
+        return transaction(database) {
+            upsertBatch(records, this)
+            insertPersons(records, this)
+        }
+    }
+
+    private fun upsertBatch(records: List<LeesahNarmestelederRecord>, transaction: Transaction) {
         if (records.isEmpty()) {
             return
         }
@@ -23,16 +34,14 @@ class NarmestelederRegisterService(
             return
         }
 
-        transaction(database) {
-            validRecords.forEach { record ->
-                narmestelederTable.upsertFromLeesahKafkaMessage(record.message)
-            }
+        validRecords.forEach { record ->
+            transaction.narmestelederTable.upsertFromLeesahKafkaMessage(record.message)
         }
 
         COUNT_NARMESTELEDER_REGISTER_UPSERTED.increment(validRecords.size.toDouble())
     }
 
-    fun insertPersons(records: List<LeesahNarmestelederRecord>): List<InsertedPerson> {
+    private fun insertPersons(records: List<LeesahNarmestelederRecord>, transaction: Transaction): List<InsertedPerson> {
         val validRecords = records.filter(::isValidForPersonRegister)
         if (validRecords.isEmpty()) {
             return emptyList()
@@ -53,13 +62,12 @@ class NarmestelederRegisterService(
             )
         }
 
-        val insertedPersons = transaction(database) {
-            personTable.batchInsertIgnoreExisting(
+        val insertedPersons =
+            transaction.personTable.batchInsertIgnoreExisting(
                 personFnrs
                     .filter { it.fnr.isDigitsWithLength(FNR_LENGTH) }
                     .distinctBy { it.fnr }
             )
-        }
         return insertedPersons
     }
 

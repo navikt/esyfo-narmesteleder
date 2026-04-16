@@ -11,16 +11,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
+import no.nav.syfo.application.kafka.KafkaEnvironment
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.CloseOptions
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.util.Properties
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class PersistSendtSykmeldingConsumer(
@@ -197,5 +203,22 @@ class PersistSendtSykmeldingConsumer(
         private const val CLOSE_DURATION_SECONDS = 10L
         private const val POLL_DURATION_SECONDS = 1L
         private val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
+
+        fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = consumerProperties(
+            env = env,
+            valueDeserializer = StringDeserializer::class,
+            groupId = "esyfo-narmesteleder-persist-sendt-sykmelding-consumer"
+        ).apply {
+            put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+            put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500")
+            put(
+                ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG,
+                5.minutes
+                    .inWholeMilliseconds
+                    .toString()
+            )
+            put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "1048576")
+            put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "500")
+        }
     }
 }

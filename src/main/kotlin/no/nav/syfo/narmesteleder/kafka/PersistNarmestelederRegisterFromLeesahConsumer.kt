@@ -135,7 +135,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
                 )
             }
         } catch (e: JsonProcessingException) {
-            logger.error(
+            logger.warn(
                 "Error while deserializing record from {} at offset {}. Skipping record.",
                 record.topic(),
                 record.offset(),

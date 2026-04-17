@@ -34,18 +34,21 @@ fun Application.configureBackgroundTasks() {
         when (event) {
             is LeaderChange.Promoted -> {
                 logger.info("Promoted to leader — starting background tasks")
-                taskJobs.cancelAndClear()
 
-                taskJobs += launch { sendDialogTask.runTask() }
-                taskJobs += launch { updateDialogTask.runTask() }
-
-                if (environment.otherProperties.maintenanceTaskEnabled) {
-                    taskJobs += launch { behovMaintenanceTask.runTask() }
+                taskJobs.lock { jobs ->
+                    jobs.cancelAndClear()
+                    jobs += launch { sendDialogTask.runTask() }
+                    jobs += launch { updateDialogTask.runTask() }
+                    if (environment.otherProperties.maintenanceTaskEnabled) {
+                        jobs += launch { behovMaintenanceTask.runTask() }
+                    }
                 }
             }
 
             is LeaderChange.Demoted -> {
-                taskJobs.cancelAndClear()
+                taskJobs.lock { jobs ->
+                    jobs.cancelAndClear()
+                }
             }
 
             is LeaderChange.Unaffected -> {}
@@ -53,8 +56,14 @@ fun Application.configureBackgroundTasks() {
     }
 
     monitor.subscribe(ApplicationStopPreparing) {
-        taskJobs.cancelAndClear()
+        taskJobs.lock { jobs ->
+            jobs.cancelAndClear()
+        }
     }
+}
+
+private inline fun MutableList<Job>.lock(block: (MutableList<Job>) -> Unit) = synchronized(this) {
+    block(this)
 }
 
 private fun MutableList<Job>.cancelAndClear() {

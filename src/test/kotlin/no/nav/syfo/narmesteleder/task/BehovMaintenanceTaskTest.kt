@@ -30,7 +30,7 @@ class BehovMaintenanceTaskTest :
             dialogportenIsApiOnly = false,
             daysAfterTomToExpireBehovs = 16,
             maintenanceTaskDelay = "100ms",
-            persistSendtSykmelding = mockk(relaxed = true),
+            persistSendtSykmelding = true,
             maintenanceTaskEnabled = true,
         )
 

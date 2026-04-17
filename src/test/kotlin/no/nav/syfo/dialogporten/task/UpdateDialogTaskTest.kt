@@ -7,6 +7,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
@@ -39,7 +40,7 @@ class UpdateDialogTaskTest :
                 }
 
                 delay(150.milliseconds)
-                job.cancel()
+                job.cancelAndJoin()
 
                 coVerify(atLeast = 1) { dialogportenService.setAllFulfilledBehovsAsCompletedInDialogporten() }
                 coVerify(atLeast = 1) { dialogportenService.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() }

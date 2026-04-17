@@ -20,7 +20,7 @@ coroutines-test = "1.10.2"
 swagger = "3.4.2"
 ktlint = "14.2.0"
 valkey-version = "5.5.0"
-exposed-version = "1.0.0"
+exposed-version = "1.2.0"
 
 [libraries]
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }

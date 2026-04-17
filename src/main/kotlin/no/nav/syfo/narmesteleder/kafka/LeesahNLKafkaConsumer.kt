@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-const val SYKMELDING_NL_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
+const val TEAMSYKMELDING_NL_LEESAH_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
 
 class LeesahNLKafkaConsumer(
     private val kafkaConsumer: KafkaConsumer<String, String>,
@@ -40,7 +40,7 @@ class LeesahNLKafkaConsumer(
         job = scope.launch(Dispatchers.IO + CoroutineName("leesah-consumer")) {
             while (isActive) {
                 try {
-                    kafkaConsumer.subscribe(listOf(SYKMELDING_NL_TOPIC))
+                    kafkaConsumer.subscribe(listOf(TEAMSYKMELDING_NL_LEESAH_TOPIC))
                     start()
                 } catch (_: WakeupException) {
                 } catch (e: Exception) {
@@ -83,7 +83,7 @@ class LeesahNLKafkaConsumer(
                         nlKafkaMessage.status,
                         behovSource = BehovSource(
                             nlKafkaMessage.narmesteLederId.toString(),
-                            source = SYKMELDING_NL_TOPIC
+                            source = TEAMSYKMELDING_NL_LEESAH_TOPIC
                         )
                     )
                 }
@@ -108,7 +108,7 @@ class LeesahNLKafkaConsumer(
         if (!::job.isInitialized) error("Consumer not started!")
 
         logger.info("Preparing shutdown")
-        logger.info("Stopping consuming topic $SYKMELDING_NL_TOPIC")
+        logger.info("Stopping consuming topic $TEAMSYKMELDING_NL_LEESAH_TOPIC")
 
         job.cancel()
         kafkaConsumer.wakeup()

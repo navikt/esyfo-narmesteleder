@@ -69,6 +69,7 @@ class DialogportenServiceTest :
                         daysAfterTomToExpireBehovs = 7,
                         maintenanceTaskDelay = "1s",
                         maintenanceTaskEnabled = true,
+                        persistNarmestelederRegister = false,
                     ),
                     pdlService = pdlService,
                 )

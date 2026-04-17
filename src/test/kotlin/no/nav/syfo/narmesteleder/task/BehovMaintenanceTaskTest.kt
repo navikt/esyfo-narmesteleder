@@ -32,6 +32,7 @@ class BehovMaintenanceTaskTest :
             maintenanceTaskDelay = "100ms",
             persistSendtSykmelding = true,
             maintenanceTaskEnabled = true,
+            persistNarmestelederRegister = false
         )
 
         fun createTask() = BehovMaintenanceTask(

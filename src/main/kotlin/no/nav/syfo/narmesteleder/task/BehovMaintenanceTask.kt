@@ -9,7 +9,7 @@ class BehovMaintenanceTask(
     private val narmestelederService: NarmestelederService,
     private val env: OtherEnvironmentProperties,
 ) : ScheduledLeaderTask(
-    name = "BehovMaintenanceTask",
+    name = BehovMaintenanceTask::class.simpleName!!,
     interval = Duration.parse(env.maintenanceTaskDelay),
 ) {
     override suspend fun execute() {

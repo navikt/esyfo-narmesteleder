@@ -7,7 +7,7 @@ import kotlin.time.Duration.Companion.minutes
 class SendDialogTask(
     private val dialogportenService: DialogportenService,
 ) : ScheduledLeaderTask(
-    name = "SendDialogTask",
+    name = SendDialogTask::class.simpleName!!,
     interval = 5.minutes,
 ) {
     override suspend fun execute() {

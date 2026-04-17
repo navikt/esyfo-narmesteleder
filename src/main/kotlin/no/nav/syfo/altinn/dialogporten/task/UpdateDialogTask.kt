@@ -8,7 +8,7 @@ class UpdateDialogTask(
     private val dialogportenService: DialogportenService,
     pollingInterval: Duration,
 ) : ScheduledLeaderTask(
-    name = "UpdateDialogTask",
+    name = UpdateDialogTask::class.simpleName!!,
     interval = pollingInterval,
 ) {
     override suspend fun execute() {

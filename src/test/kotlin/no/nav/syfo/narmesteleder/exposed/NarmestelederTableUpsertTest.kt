@@ -107,6 +107,50 @@ class NarmestelederTableUpsertTest :
                 }
             }
 
+            it("should persist last mutable field update after repeated upserts in same transaction") {
+                val narmesteLederId = UUID.randomUUID()
+                val baseMessage = defaultLeesahKafkaMessage().copy(
+                    narmesteLederId = narmesteLederId,
+                )
+                val messages = listOf(
+                    baseMessage.copy(
+                        aktivTom = LocalDate.of(2025, 1, 31),
+                        narmesteLederEpost = "first@example.com",
+                        narmesteLederTelefonnummer = "11111111",
+                    ),
+                    baseMessage.copy(
+                        aktivTom = LocalDate.of(2025, 2, 28),
+                        narmesteLederEpost = "second@example.com",
+                        narmesteLederTelefonnummer = "22222222",
+                    ),
+                    baseMessage.copy(
+                        aktivTom = null,
+                        narmesteLederEpost = "last@example.com",
+                        narmesteLederTelefonnummer = "33333333",
+                    ),
+                )
+                val lastMessage = messages.last()
+
+                transaction(TestDB.exposedDatabase) {
+                    messages.forEach { message ->
+                        narmestelederTable.upsertFromLeesahKafkaMessage(message)
+                    }
+                }
+
+                transaction(TestDB.exposedDatabase) {
+                    val results = NarmestelederEntity.find {
+                        NarmestelederTable.narmestelederId eq narmesteLederId
+                    }
+                    results.count() shouldBe 1
+
+                    val entity = results.first()
+                    entity.narmestelederTelefonnummer shouldBe lastMessage.narmesteLederTelefonnummer
+                    entity.narmestelederEpost shouldBe lastMessage.narmesteLederEpost
+                    entity.aktivTom?.toInstant() shouldBe lastMessage.aktivTom?.atStartOfDay()?.atOffset(ZoneOffset.UTC)
+                        ?.toInstant()
+                }
+            }
+
             it("should not overwrite brukerFnr and narmestelederFnr on update") {
                 val narmesteLederId = UUID.randomUUID()
 

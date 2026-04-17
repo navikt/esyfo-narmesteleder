@@ -12,6 +12,7 @@ import no.nav.syfo.application.events.LeaderChangeEvent
 import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
 import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject
+import java.util.Collections
 import kotlin.getValue
 
 fun Application.configureBackgroundTasks() {
@@ -27,34 +28,24 @@ fun Application.configureBackgroundTasks() {
     val updateDialogTask by inject<UpdateDialogTask>()
     val behovMaintenanceTask by inject<BehovMaintenanceTask>()
 
-    val taskLock = Any()
-    var taskJob: Job? = null
-
-    fun replaceTaskJob(newJob: Job?) {
-        synchronized(taskLock) {
-            taskJob?.cancel()
-            taskJob = newJob
-        }
-    }
+    val taskJobs: MutableList<Job> = Collections.synchronizedList(mutableListOf())
 
     monitor.subscribe(LeaderChangeEvent) { event ->
         when (event) {
             is LeaderChange.Promoted -> {
                 logger.info("Promoted to leader — starting background tasks")
-                synchronized(taskLock) {
-                    taskJob?.cancel()
-                    taskJob = launch {
-                        launch { sendDialogTask.runTask() }
-                        launch { updateDialogTask.runTask() }
-                        if (environment.otherProperties.maintenanceTaskEnabled) {
-                            launch { behovMaintenanceTask.runTask() }
-                        }
-                    }
+                taskJobs.cancelAndClear()
+
+                taskJobs += launch { sendDialogTask.runTask() }
+                taskJobs += launch { updateDialogTask.runTask() }
+
+                if (environment.otherProperties.maintenanceTaskEnabled) {
+                    taskJobs += launch { behovMaintenanceTask.runTask() }
                 }
             }
 
             is LeaderChange.Demoted -> {
-                replaceTaskJob(null)
+                taskJobs.cancelAndClear()
             }
 
             is LeaderChange.Unaffected -> {}
@@ -62,6 +53,11 @@ fun Application.configureBackgroundTasks() {
     }
 
     monitor.subscribe(ApplicationStopPreparing) {
-        replaceTaskJob(null)
+        taskJobs.cancelAndClear()
     }
+}
+
+private fun MutableList<Job>.cancelAndClear() {
+    forEach(Job::cancel)
+    clear()
 }

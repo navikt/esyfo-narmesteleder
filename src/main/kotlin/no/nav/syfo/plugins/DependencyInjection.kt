@@ -45,6 +45,7 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
@@ -242,6 +243,7 @@ private fun servicesModule() = module {
             dialogportenService = get(),
         )
     }
+    single { NarmestelederRegisterService(get()) }
     single {
         AltinnTokenProvider(
             texasHttpClient = get(),

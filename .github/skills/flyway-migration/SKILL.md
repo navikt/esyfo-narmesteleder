@@ -1,12 +1,11 @@
 ---
+name: flyway-migration
 description: Opprett en Flyway-databasemigrering etter riktige konvensjoner
 ---
-<!-- Managed by esyfo-cli. Do not edit manually. Changes will be overwritten.
-     For repo-specific customizations, create your own files without this header. -->
 
 # Flyway-migrering
 
-Opprett en ny Flyway-migreringsfil etter team-esyfos konvensjoner.
+Opprett en ny Flyway-migreringsfil etter teamets konvensjoner.
 
 ## Steg
 

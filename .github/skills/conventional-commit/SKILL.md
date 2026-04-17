@@ -1,8 +1,7 @@
 ---
+name: conventional-commit
 description: Generer conventional commit-meldinger med Nav-relevante scopes og breaking change-format
 ---
-<!-- Managed by esyfo-cli. Do not edit manually. Changes will be overwritten.
-     For repo-specific customizations, create your own files without this header. -->
 
 # Conventional commit
 

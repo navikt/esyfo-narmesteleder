@@ -33,6 +33,9 @@ that will contain an url endpoints that can be used with GET to retrieve details
 
 ## Diagrams
 An always up-to-date diagram can be views in the excellent service from [Flex Arkitektur](https://flex-arkitektur.nav.no/?apper=prod-gcp.team-esyfo.esyfo-narmesteleder).
+
+### Validation flow
+The [validateLinemanager flow diagram](documentation/validate-linemanager-flow.md) documents the validation pipeline executed when assigning a linemanager, including all validators, external service calls, and error types.
 ### C4 Container diagram
 ```mermaid
     C4Container

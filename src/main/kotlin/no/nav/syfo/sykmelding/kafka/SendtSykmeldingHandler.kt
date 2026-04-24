@@ -44,7 +44,7 @@ class SendtSykmeldingHandler(
             )
             behovId?.let {
                 logger.info("Created NL behov with id: $it for sykmeldingId: ${message.event.sykmeldingId}")
-            } ?: logger.error("Failed to create NL behov for sykmeldingId: ${message.event.sykmeldingId}")
+            }
         } else {
             logger.info("Employee has answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")
         }

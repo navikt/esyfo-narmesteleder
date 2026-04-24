@@ -31,7 +31,7 @@ class SendtSykmeldingHandler(
                     return
                 }
 
-            narmesteLederService.createNewNlBehov(
+            val behovId = narmesteLederService.createNewNlBehov(
                 nlBehov = LinemanagerRequirementWrite(
                     employeeIdentificationNumber = message.kafkaMetadata.fnr,
                     orgNumber = arbeidsgiver.orgnummer,
@@ -42,6 +42,9 @@ class SendtSykmeldingHandler(
                 behovSource = BehovSource(message.kafkaMetadata.sykmeldingId, source = SENDT_SYKMELDING_TOPIC),
                 arbeidsgiver = arbeidsgiver,
             )
+            behovId?.let {
+                logger.info("Created NL behov with id: $it for sykmeldingId: ${message.event.sykmeldingId}")
+            } ?: logger.error("Failed to create NL behov for sykmeldingId: ${message.event.sykmeldingId}")
         } else {
             logger.info("Employee has answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")
         }

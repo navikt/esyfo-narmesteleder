@@ -27,8 +27,6 @@ import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.ereg.EregService
-import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
@@ -44,9 +42,7 @@ class ValidationServiceTest :
 
         val aaregClient = FakeAaregClient()
         val aaregService = spyk(AaregService(aaregClient))
-        val eregClient = FakeEregClient()
         val eregCache = mockk<EregCache>(relaxed = true)
-        val eregService = spyk(EregService(eregClient, eregCache))
         val pdlClient = FakePdlClient()
         val pdlCacheMock = mockk<PdlCache>(relaxed = true)
         val pdlService = spyk(PdlService(pdlClient, pdlCacheMock))
@@ -55,7 +51,6 @@ class ValidationServiceTest :
         val principalAccessValidator = PrincipalAccessValidator(
             altinnTilgangerService = altinnTilgangerService,
             pdpService = pdpService,
-            eregService = eregService,
         )
         val sickLeaveValidator = SickLeaveValidator(
             dinesykmeldteService = dinesykmeldteService,
@@ -146,7 +141,7 @@ class ValidationServiceTest :
                 exception.message shouldBe "Last name for linemanager does not correspond with registered value for the given national identification number"
             }
 
-            it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
+            it("should call AltinnTilgangerService first when principal is BrukerPrincipal") {
                 // Arrange
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
@@ -162,9 +157,9 @@ class ValidationServiceTest :
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber)
                     )
-                    aaregService.findArbeidsforholdByPersonIdent(any())
                 }
                 coVerify(exactly = 0) {
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                     pdpService.hasAccessToResource(any(), any(), any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
@@ -198,9 +193,9 @@ class ValidationServiceTest :
                 }
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
-                        match<System> { it.id == "systemId" },
-                        eq(setOf(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr, "systemowner")),
-                        eq("nav_syfo_oppgi-narmesteleder")
+                        user = match<System> { it.id == "systemId" },
+                        orgNumberSet = eq(setOf(narmestelederRelasjonerWrite.orgNumber)),
+                        resource = eq("nav_syfo_oppgi-narmesteleder")
                     )
                     aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
                     aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
@@ -230,45 +225,6 @@ class ValidationServiceTest :
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
                     pdlService.getPersonOrThrowApiError(any())
-                }
-            }
-
-            it("should not call AltinnTilgangerService when principal is OrganizationPrincipal") {
-                // Arrange
-                val userWithAccess = altinnTilgangerClient.accessPolicy.first()
-                val narmesteLederAvkreft = linemanagerRevoke().copy(
-                    employeeIdentificationNumber = userWithAccess.hasAccess.first(),
-                    orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
-                )
-                val principal = DefaultSystemPrincipal.copy(
-                    ident = "0192:${userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr}",
-                )
-
-                // Act
-                shouldThrow<ApiErrorException.BadRequestException> {
-                    service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
-                }
-                // Assert
-                verify(exactly = 0) {
-                    altinnTilgangerService.validateTilgangToOrganization(
-                        altinnTilgang = any<AltinnTilgang>(),
-                        orgnummer = eq(narmesteLederAvkreft.orgNumber)
-                    )
-                }
-                coVerify(exactly = 0) {
-                    altinnTilgangerService.validateTilgangToOrganization(
-                        userPrincipal = any<UserPrincipal>(),
-                        orgnummer = eq(narmesteLederAvkreft.orgNumber)
-                    )
-                    pdlService.getPersonOrThrowApiError(eq(narmesteLederAvkreft.employeeIdentificationNumber))
-                }
-                coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
-                        match<System> { it.id == "systemId" },
-                        eq(setOf(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr, "systemowner")),
-                        eq("nav_syfo_oppgi-narmesteleder")
-                    )
-                    aaregService.findArbeidsforholdByPersonIdent(eq(narmesteLederAvkreft.employeeIdentificationNumber))
                 }
             }
         }

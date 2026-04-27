@@ -265,7 +265,7 @@ private fun servicesModule() = module {
         NarmestelederKafkaService(sykmeldingNLKafkaProducer)
     }
     single { PdpService(get()) }
-    single { PrincipalAccessValidator(get(), get(), get()) }
+    single { PrincipalAccessValidator(get(), get()) }
     single { SickLeaveValidator(get()) }
     single {
         ValidationService(

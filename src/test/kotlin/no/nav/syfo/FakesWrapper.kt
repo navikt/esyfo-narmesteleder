@@ -56,6 +56,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
         PrincipalAccessValidator(
             altinnTilgangerService = altinnTilgangerServiceSpyk,
             pdpService = pdpServiceSpyk,
+            eregService = eregServiceSpyk,
         )
     )
     val sickLeaveValidatorSpyk = spyk(

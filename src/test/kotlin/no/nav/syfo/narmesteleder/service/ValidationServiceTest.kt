@@ -27,6 +27,8 @@ import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.ereg.EregService
+import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
@@ -42,7 +44,9 @@ class ValidationServiceTest :
 
         val aaregClient = FakeAaregClient()
         val aaregService = spyk(AaregService(aaregClient))
+        val eregClient = FakeEregClient()
         val eregCache = mockk<EregCache>(relaxed = true)
+        val eregService = spyk(EregService(eregClient, eregCache))
         val pdlClient = FakePdlClient()
         val pdlCacheMock = mockk<PdlCache>(relaxed = true)
         val pdlService = spyk(PdlService(pdlClient, pdlCacheMock))
@@ -51,6 +55,7 @@ class ValidationServiceTest :
         val principalAccessValidator = PrincipalAccessValidator(
             altinnTilgangerService = altinnTilgangerService,
             pdpService = pdpService,
+            eregService = eregService,
         )
         val sickLeaveValidator = SickLeaveValidator(
             dinesykmeldteService = dinesykmeldteService,
@@ -168,12 +173,14 @@ class ValidationServiceTest :
             it("should not call AltinnTilgangerService when principal is SystemPrincipal") {
                 // Arrange
                 val userWithAccess = altinnTilgangerClient.accessPolicy.first()
+                val requestOrgnumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
+                val systemUserOrgnumber = requestOrgnumber.reversed()
                 val narmestelederRelasjonerWrite = linemanager().copy(
                     employeeIdentificationNumber = userWithAccess.hasAccess.first(),
                     orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
                 )
                 val principal = DefaultSystemPrincipal.copy(
-                    ident = "0192:${userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr}",
+                    ident = "0192:$systemUserOrgnumber",
                 )
 
                 // Act

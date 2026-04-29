@@ -44,9 +44,11 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
+import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
@@ -83,6 +85,8 @@ class LinenmanagerApiV1Test :
         val fakeAaregClient = FakeAaregClient()
         val aaregService = AaregService(fakeAaregClient)
         val fakeEregClient = FakeEregClient()
+        val eregCache = mockk<EregCache>(relaxed = true)
+        val eregService = EregService(fakeEregClient, eregCache)
         val narmestelederKafkaService =
             NarmestelederKafkaService(FakeSykmeldingNLKafkaProducer())
         val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
@@ -95,6 +99,7 @@ class LinenmanagerApiV1Test :
         val principalAccessValidator = PrincipalAccessValidator(
             altinnTilgangerService = altinnTilgangerServiceSpy,
             pdpService = pdpService,
+            eregService = eregService,
         )
         val sickLeaveValidator = SickLeaveValidator(
             dinesykmeldteService = dineSykmelteService,

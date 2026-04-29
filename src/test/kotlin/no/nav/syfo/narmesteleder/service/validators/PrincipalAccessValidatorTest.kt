@@ -6,6 +6,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
+import io.mockk.mockk
 import io.mockk.spyk
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.System
@@ -15,6 +16,9 @@ import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.valkey.EregCache
+import no.nav.syfo.ereg.EregService
+import no.nav.syfo.ereg.client.FakeEregClient
 
 class PrincipalAccessValidatorTest :
     DescribeSpec({
@@ -22,7 +26,10 @@ class PrincipalAccessValidatorTest :
         val altinnTilgangerService = spyk(AltinnTilgangerService(altinnTilgangerClient))
         val pdpClient = FakePdpClient()
         val pdpService = spyk(PdpService(pdpClient))
-        val validator = PrincipalAccessValidator(altinnTilgangerService, pdpService)
+        val eregClient = FakeEregClient()
+        val eregCache = mockk<EregCache>(relaxed = true)
+        val eregService = spyk(EregService(eregClient, eregCache))
+        val validator = PrincipalAccessValidator(altinnTilgangerService, pdpService, eregService = eregService)
 
         beforeTest {
             clearAllMocks()

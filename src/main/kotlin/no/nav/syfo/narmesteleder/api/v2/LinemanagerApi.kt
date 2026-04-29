@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.api.v1
+package no.nav.syfo.narmesteleder.api.v2
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
@@ -15,6 +15,13 @@ import no.nav.syfo.narmesteleder.api.getPageSize
 import no.nav.syfo.narmesteleder.api.getRequiredQueryParameter
 import no.nav.syfo.narmesteleder.api.getUUIDFromPathVariable
 import no.nav.syfo.narmesteleder.api.tryReceive
+import no.nav.syfo.narmesteleder.api.v1.COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
+import no.nav.syfo.narmesteleder.api.v1.COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
+import no.nav.syfo.narmesteleder.api.v1.COUNT_FULFILL_LINEMANAGER_BY_PERSONNEL_MANAGER
+import no.nav.syfo.narmesteleder.api.v1.COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS
+import no.nav.syfo.narmesteleder.api.v1.COUNT_REVOKE_LINEMANAGER_BY_LPS
+import no.nav.syfo.narmesteleder.api.v1.COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER
+import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
@@ -28,7 +35,7 @@ import no.nav.syfo.texas.client.TexasHttpClient
 const val LINEMANAGER_API_PATH = "/linemanager"
 const val REVOKE_PATH = "$LINEMANAGER_API_PATH/revoke"
 const val RECUIREMENT_PATH = "$LINEMANAGER_API_PATH/requirement"
-fun Route.registerLinemanagerApiV1(
+fun Route.registerLinemanagerApiV2(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,

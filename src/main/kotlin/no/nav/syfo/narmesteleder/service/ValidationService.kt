@@ -12,6 +12,7 @@ import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 
+enum class ApiVersion { V1, V2 }
 class ValidationService(
     private val pdlService: PdlService,
     private val aaregService: AaregService,
@@ -22,10 +23,12 @@ class ValidationService(
         linemanager: Linemanager,
         principal: Principal,
         validateEmployeeLastName: Boolean = true,
+        apiVersion: ApiVersion = ApiVersion.V1,
     ): LinemanagerActors {
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
             linemanager.orgNumber,
+            apiVersion,
         )
         sickLeaveValidator.validateActiveSickLeave(linemanager.employeeIdentificationNumber, linemanager.orgNumber)
         val sykmeldtArbeidsforhold =
@@ -55,12 +58,14 @@ class ValidationService(
     suspend fun validateLinemanagerRevoke(
         linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
+        apiVersion: ApiVersion = ApiVersion.V1,
     ): Person {
         val arbeidsforhold =
             aaregService.findArbeidsforholdByPersonIdent(linemanagerRevoke.employeeIdentificationNumber)
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
             linemanagerRevoke.orgNumber,
+            apiVersion,
         )
         ArbeidsforholdValidator.validateNarmesteLederAvkreft(
             orgNumberInRequest = linemanagerRevoke.orgNumber,
@@ -75,8 +80,10 @@ class ValidationService(
     suspend fun validatePrincipalAccessToOrgnumber(
         principal: Principal,
         orgNumber: String,
+        apiVersion: ApiVersion = ApiVersion.V1,
     ): String? = principalAccessValidator.validatePrincipalAccessToOrgnumber(
         principal,
         orgNumber,
+        apiVersion = apiVersion,
     )
 }

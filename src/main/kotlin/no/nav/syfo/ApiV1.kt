@@ -5,11 +5,13 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
+import no.nav.syfo.narmesteleder.api.v2.registerLinemanagerApiV2
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.client.TexasHttpClient
 
 const val API_V1_PATH = "/api/v1"
+const val API_V2_PATH = "/api/v2"
 
 @Suppress("LongParameterList")
 fun Route.registerApiV1(
@@ -21,5 +23,9 @@ fun Route.registerApiV1(
     route(API_V1_PATH) {
         install(AddTokenIssuerPlugin)
         registerLinemanagerApiV1(narmestelederKafkaService, validationService, texasHttpClient, linemanagerRequirementRESTHandler)
+    }
+    route(API_V2_PATH) {
+        install(AddTokenIssuerPlugin)
+        registerLinemanagerApiV2(narmestelederKafkaService, validationService, texasHttpClient, linemanagerRequirementRESTHandler)
     }
 }

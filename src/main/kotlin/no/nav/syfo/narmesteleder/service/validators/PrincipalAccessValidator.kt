@@ -10,6 +10,7 @@ import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ereg.EregService
+import no.nav.syfo.narmesteleder.service.ApiVersion
 import no.nav.syfo.util.logger
 
 class PrincipalAccessValidator(
@@ -24,9 +25,20 @@ class PrincipalAccessValidator(
     suspend fun validatePrincipalAccessToOrgnumber(
         principal: Principal,
         orgNumber: String,
+        apiVersion: ApiVersion,
     ): String? = when (principal) {
         is SystemPrincipal -> {
-            validateSystemPrincipal(orgNumber, principal)
+            val hasAccess = when (apiVersion) {
+                ApiVersion.V1 -> accessThroughPrincipalOrgnumber(orgNumber, principal)
+                ApiVersion.V2 -> validateSystemPrincipalV2(orgNumber, principal)
+//                ApiVersion.V1 -> validateSystemPrincipalV2(orgNumber, principal)
+            }
+            if (!hasAccess) {
+                throw ApiErrorException.ForbiddenException(
+                    errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+                    type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
+                )
+            }
             null
         }
 
@@ -39,23 +51,38 @@ class PrincipalAccessValidator(
         }
     }
 
-    private suspend fun validateSystemPrincipal(
+    //    private suspend fun validateSystemPrincipal(
+//        requestedOrgnumber: String,
+//        principal: SystemPrincipal,
+//    ) {
+//        val hasAccess = pdpService.hasAccessToResource(
+//            user = System(principal.systemUserId),
+//            orgNumberSet = setOf(requestedOrgnumber.trim()),
+//            resource = OPPGI_NARMESTELEDER_RESOURCE,
+//        )
+//        if (!hasAccess) {
+//            val hasAccessThroughPrincipal = accessThroughPrincipalOrgnumber(requestedOrgnumber, principal)
+//            if (!hasAccessThroughPrincipal) {
+//                throw ApiErrorException.ForbiddenException(
+//                    errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+//                    type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
+//                )
+//            }
+//        }
+//    }
+    private suspend fun validateSystemPrincipalV2(
         requestedOrgnumber: String,
         principal: SystemPrincipal,
-    ) {
+    ): Boolean {
         val hasAccess = pdpService.hasAccessToResource(
             user = System(principal.systemUserId),
             orgNumberSet = setOf(requestedOrgnumber.trim()),
             resource = OPPGI_NARMESTELEDER_RESOURCE,
         )
-        if (!hasAccess) {
-            val hasAccessThroughPrincipal = accessThroughPrincipalOrgnumber(requestedOrgnumber, principal)
-            if (!hasAccessThroughPrincipal) {
-                throw ApiErrorException.ForbiddenException(
-                    errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                    type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-                )
-            }
+        return if (hasAccess) {
+            hasAccess
+        } else {
+            accessThroughPrincipalOrgnumber(requestedOrgnumber, principal)
         }
     }
 

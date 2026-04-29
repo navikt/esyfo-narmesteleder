@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.api.v1
+package no.nav.syfo.narmesteleder.api
 
 import io.ktor.serialization.JsonConvertException
 import io.ktor.server.auth.authentication

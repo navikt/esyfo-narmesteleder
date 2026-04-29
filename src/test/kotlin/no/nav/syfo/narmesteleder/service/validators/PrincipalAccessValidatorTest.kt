@@ -19,6 +19,7 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
+import no.nav.syfo.narmesteleder.service.ApiVersion
 
 class PrincipalAccessValidatorTest :
     DescribeSpec({
@@ -42,7 +43,11 @@ class PrincipalAccessValidatorTest :
                 val principal = UserPrincipal(fnr, "token")
 
                 shouldThrow<ApiErrorException.ForbiddenException> {
-                    validator.validatePrincipalAccessToOrgnumber(principal = principal, orgNumber = orgNumber)
+                    validator.validatePrincipalAccessToOrgnumber(
+                        principal = principal,
+                        orgNumber = orgNumber,
+                        apiVersion = ApiVersion.V1
+                    )
                 }
 
                 coVerify(exactly = 1) {
@@ -62,7 +67,7 @@ class PrincipalAccessValidatorTest :
                     ident = "0192:${orgNumber.reversed()}",
                 )
 
-                validator.validatePrincipalAccessToOrgnumber(principal, orgNumber)
+                validator.validatePrincipalAccessToOrgnumber(principal, orgNumber, apiVersion = ApiVersion.V1)
                 coVerify(exactly = 0) {
                     altinnTilgangerService.validateTilgangToOrganization(
                         any<AltinnTilgang>(),

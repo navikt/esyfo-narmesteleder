@@ -9,11 +9,13 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.ereg.EregService
 import no.nav.syfo.util.logger
 
 class PrincipalAccessValidator(
     private val altinnTilgangerService: AltinnTilgangerService,
     private val pdpService: PdpService,
+    private val eregService: EregService,
 ) {
     companion object {
         val logger = logger()
@@ -47,10 +49,25 @@ class PrincipalAccessValidator(
             resource = OPPGI_NARMESTELEDER_RESOURCE,
         )
         if (!hasAccess) {
-            throw ApiErrorException.ForbiddenException(
-                errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-            )
+            val organisasjon = eregService.getOrganization(requestedOrgnumber)
+            val orgnummerList = organisasjon.aggregerOrgnummereFraHierarki()
+            val matchesPrincipal = orgnummerList.contains(principal.getSystemUserOrgNumber())
+
+            val hasAccessThroughPrinipal = if (matchesPrincipal) {
+                pdpService.hasAccessToResource(
+                    user = System(principal.systemUserId),
+                    orgNumberSet = setOf(principal.getSystemUserOrgNumber()),
+                    resource = OPPGI_NARMESTELEDER_RESOURCE,
+                )
+            } else {
+                false
+            }
+            if (!hasAccessThroughPrinipal) {
+                throw ApiErrorException.ForbiddenException(
+                    errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+                    type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
+                )
+            }
         }
     }
 }

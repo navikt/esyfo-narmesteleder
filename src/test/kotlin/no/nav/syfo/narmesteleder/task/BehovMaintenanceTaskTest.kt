@@ -27,7 +27,6 @@ class BehovMaintenanceTaskTest :
             persistLeesahNlBehov = true,
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
             isDialogportenBackgroundTaskEnabled = true,
-            dialogportenIsApiOnly = false,
             daysAfterTomToExpireBehovs = 16,
             maintenanceTaskDelay = "100ms",
             persistSendtSykmelding = true,

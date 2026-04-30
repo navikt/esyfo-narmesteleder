@@ -64,7 +64,6 @@ class DialogportenServiceTest :
                         persistLeesahNlBehov = true,
                         updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
                         isDialogportenBackgroundTaskEnabled = true,
-                        dialogportenIsApiOnly = false,
                         persistSendtSykmelding = false,
                         daysAfterTomToExpireBehovs = 7,
                         maintenanceTaskDelay = "1s",

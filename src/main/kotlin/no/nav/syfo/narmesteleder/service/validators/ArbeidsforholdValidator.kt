@@ -2,13 +2,11 @@ package no.nav.syfo.narmesteleder.service.validators
 
 import no.nav.syfo.aareg.Arbeidsforhold
 import no.nav.syfo.aareg.getForOrgnummer
-import no.nav.syfo.aareg.toOrgNumberList
 import no.nav.syfo.application.api.ErrorType
 
 object ArbeidsforholdValidator {
-    fun validateSmAndNlArbeidsforhold(
+    fun validateSmArbeidsforhold(
         sykmeldtArbeidsforhold: List<Arbeidsforhold>,
-        narmesteLederArbeidsforhold: List<Arbeidsforhold>,
         orgNumberInRequest: String,
     ) {
         nlrequire(
@@ -20,14 +18,6 @@ object ArbeidsforholdValidator {
             matchingArbeidsforhold != null,
             type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
         ) { "Employee on sick leave is missing employment in the organization indicated in the request" }
-        val allNlOrgNumbers = narmesteLederArbeidsforhold.toOrgNumberList()
-
-        nlrequire(
-            allNlOrgNumbers.any { matchingArbeidsforhold?.toOrgnummerList()?.contains(it) == true },
-            type = ErrorType.LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG,
-        ) {
-            "Linemanager is missing employment in any branch under the parent organization of the employee on sick leave"
-        }
     }
 
     fun validateNarmesteLederAvkreft(

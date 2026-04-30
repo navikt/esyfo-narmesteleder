@@ -142,7 +142,6 @@ class ValidationServiceTest :
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
                     aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
@@ -172,7 +171,6 @@ class ValidationServiceTest :
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                     pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
                     aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
@@ -291,7 +289,6 @@ class ValidationServiceTest :
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
                     )
                     aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                    aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
                 }
             }
         }

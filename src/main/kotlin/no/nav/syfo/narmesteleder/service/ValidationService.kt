@@ -31,11 +31,8 @@ class ValidationService(
         val sykmeldtArbeidsforhold =
             aaregService.findArbeidsforholdByPersonIdent(linemanager.employeeIdentificationNumber)
 
-        val nlArbeidsforhold =
-            aaregService.findArbeidsforholdByPersonIdent(linemanager.manager.nationalIdentificationNumber)
-        ArbeidsforholdValidator.validateSmAndNlArbeidsforhold(
+        ArbeidsforholdValidator.validateSmArbeidsforhold(
             sykmeldtArbeidsforhold = sykmeldtArbeidsforhold,
-            narmesteLederArbeidsforhold = nlArbeidsforhold,
             orgNumberInRequest = linemanager.orgNumber,
         )
 

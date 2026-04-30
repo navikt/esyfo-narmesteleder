@@ -35,14 +35,8 @@ class ArbeidsforholdValidatorTest :
         describe("validateSmAndNlArbeidsforhold") {
             it("should not throw when sykmeldt and nearest leader have overlapping organization numbers") {
                 shouldNotThrowAny {
-                    ArbeidsforholdValidator.validateSmAndNlArbeidsforhold(
+                    ArbeidsforholdValidator.validateSmArbeidsforhold(
                         sykmeldtArbeidsforhold = listOf(sykmeldtArbeidsforhold),
-                        narmesteLederArbeidsforhold = listOf(
-                            arbeidsforhold(
-                                orgnummer = sykmeldtArbeidsforhold.orgnummer,
-                                opplysningspliktigOrgnummer = requireNotNull(sykmeldtArbeidsforhold.opplysningspliktigOrgnummer),
-                            ),
-                        ),
                         orgNumberInRequest = sykmeldtArbeidsforhold.orgnummer,
                     )
                 }
@@ -50,9 +44,8 @@ class ArbeidsforholdValidatorTest :
 
             it("should throw BadRequestException when sykmeldt has no arbeidsforhold") {
                 shouldThrow<ApiErrorException.BadRequestException> {
-                    ArbeidsforholdValidator.validateSmAndNlArbeidsforhold(
+                    ArbeidsforholdValidator.validateSmArbeidsforhold(
                         sykmeldtArbeidsforhold = emptyList(),
-                        narmesteLederArbeidsforhold = listOf(sykmeldtArbeidsforhold),
                         orgNumberInRequest = sykmeldtArbeidsforhold.orgnummer,
                     )
                 }
@@ -60,25 +53,9 @@ class ArbeidsforholdValidatorTest :
 
             it("should throw BadRequestException when sykmeldt is missing arbeidsforhold for request org") {
                 shouldThrow<ApiErrorException.BadRequestException> {
-                    ArbeidsforholdValidator.validateSmAndNlArbeidsforhold(
+                    ArbeidsforholdValidator.validateSmArbeidsforhold(
                         sykmeldtArbeidsforhold = listOf(sykmeldtArbeidsforhold),
-                        narmesteLederArbeidsforhold = listOf(sykmeldtArbeidsforhold),
                         orgNumberInRequest = randomOrgNumbers[2],
-                    )
-                }
-            }
-
-            it("should throw BadRequestException when nearest leader has no matching organization with sykmeldt") {
-                shouldThrow<ApiErrorException.BadRequestException> {
-                    ArbeidsforholdValidator.validateSmAndNlArbeidsforhold(
-                        sykmeldtArbeidsforhold = listOf(sykmeldtArbeidsforhold),
-                        narmesteLederArbeidsforhold = listOf(
-                            arbeidsforhold(
-                                orgnummer = randomOrgNumbers[2],
-                                opplysningspliktigOrgnummer = randomOrgNumbers[3],
-                            ),
-                        ),
-                        orgNumberInRequest = sykmeldtArbeidsforhold.orgnummer,
                     )
                 }
             }

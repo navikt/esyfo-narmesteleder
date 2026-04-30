@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Esyfo Narmesteleder API
-  version: 1.0.3
+  version: 1.0.4
   description: |
     API v1 for assigning line manager for employees on sick leave, removing existing line managers
     and to retrieve requirements for line managers for employees on sick leave.
@@ -71,7 +71,6 @@ paths:
             * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also occur if we fail to lookup the person linked to the provided national identification number.
             * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
             * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
-            * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The line manager does not have an active employment in any sub organization under the parent of the specified organization.
             * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the line manager does not match the name registered with the provided national identification number.
             * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
           content:
@@ -284,7 +283,6 @@ paths:
         - The employee must have an active sick leave, with a grace period of 16 additional days after the end of the sick leave.
           We will automatically close the requirement due to en expired sick leave,
           but it is done by a scheduled job so there might be a delay between the sick leave expiring and the requirement being closed in the system.
-        - The line manager must have an active employment in any sub organization under the parent of the specified organization.
         - The lastname provided for the line manager must match the name registered with the provided national identification number.
       tags: [ requirement ]
       security:
@@ -314,7 +312,6 @@ paths:
             * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also occur if we fail to lookup the person linked to the provided national identification number.
             * `NO_ACTIVE_SICK_LEAVE`: The employee does not have an active sick leave.
             * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
-            * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The line manager does not have an active employment in any sub organization under the parent of the specified organization.
             * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the line manager does not match the name registered with the provided national identification number.
           content:
             application/json:
@@ -641,7 +638,7 @@ components:
         * `BAD_REQUEST`: The request was malformed or contained invalid data.
         * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
         * `CONFLICT`: The request could not be completed due to a conflict with the current state of the resource.
-        * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: The linemanager does not have an active employment in any sub organization under the parent of the specified organization.
+        * `LINEMANAGER_MISSING_EMPLOYMENT_IN_ORG`: Deprecated: The linemanager does not have an active employment in any sub organization under the parent of the specified organization.
         * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
         * `LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the linemanager does not match the name registered with the provided national identification number.
         * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.

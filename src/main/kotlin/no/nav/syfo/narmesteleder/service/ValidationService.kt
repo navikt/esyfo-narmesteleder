@@ -1,8 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.aareg.Arbeidsforhold
-import no.nav.syfo.aareg.getForOrgnummer
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
@@ -25,14 +23,13 @@ class ValidationService(
         principal: Principal,
         validateEmployeeLastName: Boolean = true,
     ): LinemanagerActors {
-        val sykmeldtArbeidsforhold =
-            aaregService.findArbeidsforholdByPersonIdent(linemanager.employeeIdentificationNumber)
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
             linemanager.orgNumber,
-            sykmeldtArbeidsforhold.getForOrgnummer(linemanager.orgNumber),
         )
         sickLeaveValidator.validateActiveSickLeave(linemanager.employeeIdentificationNumber, linemanager.orgNumber)
+        val sykmeldtArbeidsforhold =
+            aaregService.findArbeidsforholdByPersonIdent(linemanager.employeeIdentificationNumber)
 
         val nlArbeidsforhold =
             aaregService.findArbeidsforholdByPersonIdent(linemanager.manager.nationalIdentificationNumber)
@@ -64,7 +61,6 @@ class ValidationService(
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
             linemanagerRevoke.orgNumber,
-            arbeidsforhold.getForOrgnummer(linemanagerRevoke.orgNumber),
         )
         ArbeidsforholdValidator.validateNarmesteLederAvkreft(
             orgNumberInRequest = linemanagerRevoke.orgNumber,
@@ -79,10 +75,8 @@ class ValidationService(
     suspend fun validatePrincipalAccessToOrgnumber(
         principal: Principal,
         orgNumber: String,
-        arbeidsforhold: Arbeidsforhold? = null,
     ): String? = principalAccessValidator.validatePrincipalAccessToOrgnumber(
         principal,
         orgNumber,
-        arbeidsforhold,
     )
 }

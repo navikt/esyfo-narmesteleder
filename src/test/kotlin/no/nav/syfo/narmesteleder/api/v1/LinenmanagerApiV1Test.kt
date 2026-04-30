@@ -36,7 +36,6 @@ import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -75,7 +74,7 @@ import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import prepareGetPersonResponse
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 class LinenmanagerApiV1Test :
     DescribeSpec({
@@ -96,8 +95,7 @@ class LinenmanagerApiV1Test :
         val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
         val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
         val dineSykmelteService = DinesykmeldteService(fakeDinesykmeldteClient)
-        val fakePdpClient = FakePdpClient()
-        val pdpService = PdpService(fakePdpClient)
+        val pdpService = mockk<PdpService>(relaxed = true)
         val principalAccessValidator = PrincipalAccessValidator(
             altinnTilgangerService = altinnTilgangerServiceSpy,
             pdpService = pdpService,
@@ -141,6 +139,7 @@ class LinenmanagerApiV1Test :
                     validationService = validationServiceSpy,
                     narmestelederKafkaService = narmestelederKafkaServiceSpy,
                 )
+            coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns true
             fakeRepo.clear()
         }
 
@@ -600,7 +599,7 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
-                it("GET /requirement/{id} 403 when Maskinporten principal org mismatch") {
+                it("GET /requirement/{id} 403 when system principal lacks access to AltinnResource for orgnumber") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
@@ -611,12 +610,13 @@ class LinenmanagerApiV1Test :
                             inngaarIJuridiskEnheter = emptyList()
                         )
                         val requirementId = seedLinemanagerRequirement()
+                        coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
                         val response =
                             client.get("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
                                 bearerAuth(createMockToken("999999999"))
                             }
                         response.status shouldBe HttpStatusCode.Forbidden
-                        response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
+                        response.body<ApiError>().type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                     }
                 }
             }
@@ -702,7 +702,7 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
-                it("PUT /requirement/{id} 403 when principal lacks org access") {
+                it("PUT /requirement/{id} 403 when principal lacks Altinn resource access to orgnumber") {
                     withTestApplication {
                         pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                         val requirementId = seedLinemanagerRequirement()
@@ -710,6 +710,7 @@ class LinenmanagerApiV1Test :
                             consumer = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
+                        coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
                         fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                         fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
                         val response =
@@ -719,7 +720,7 @@ class LinenmanagerApiV1Test :
                                 bearerAuth(createMockToken("000000000"))
                             }
                         response.status shouldBe HttpStatusCode.Forbidden
-                        response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
+                        response.body<ApiError>().type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                     }
                 }
             }

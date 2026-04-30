@@ -1,6 +1,5 @@
 package no.nav.syfo.narmesteleder.service.validators
 
-import no.nav.syfo.aareg.Arbeidsforhold
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
@@ -22,42 +21,13 @@ class PrincipalAccessValidator(
         val logger = logger()
     }
 
-    /**
-     * Validated if the principal from authorization token, has access to the organization related to the request.
-     * For system principals, this is done by checking if the organization number in the token matches the organization number in the request,
-     * or if the organization number in the request is part of the hierarchy of organizations related to the system principal.
-     *
-     * For user principals, this is done by checking if the user has access to the organization number in the request
-     * through Altinn by checking with service AltinnTilganger.
-     *
-     * It returns the name of the organization if the principal is a user principal or if access is granted through
-     * Ereg for a system principal, and the name is available in Ereg.
-     * It returns the name of the organization if access is granted through Ereg for a system principal,
-     * and null if access is granted through matching orgnumber in token,
-     */
     suspend fun validatePrincipalAccessToOrgnumber(
         principal: Principal,
         orgNumber: String,
-        arbeidsforhold: Arbeidsforhold? = null,
     ): String? = when (principal) {
         is SystemPrincipal -> {
-            val (orgnumbersToValidate, navn) = when {
-                principal.getSystemUserOrgNumber() == orgNumber -> Pair(setOf(orgNumber), null)
-                arbeidsforhold?.opplysningspliktigOrgnummer != null -> Pair(
-                    arbeidsforhold.toOrgnummerList().toSet(),
-                    null
-                )
-
-                else -> {
-                    logger.info(
-                        "System principal does not have direct access to the organization number in the request, checking Ereg for org hierarchy",
-                    )
-                    val organisasjon = eregService.getOrganization(orgNumber)
-                    Pair(organisasjon.aggregerOrgnummereFraHierarki(), organisasjon.getForetrukketNavn())
-                }
-            }
-            validateSystemPrincipal(orgnumbersToValidate, principal)
-            navn
+            validateSystemPrincipal(orgNumber, principal)
+            null
         }
 
         is UserPrincipal -> {
@@ -70,25 +40,40 @@ class PrincipalAccessValidator(
     }
 
     private suspend fun validateSystemPrincipal(
-        validOrgnumbers: Set<String>,
+        requestedOrgnumber: String,
         principal: SystemPrincipal,
     ) {
-        if (!validOrgnumbers.contains(principal.getSystemUserOrgNumber())) {
-            throw ApiErrorException.ForbiddenException(
-                errorMessage = "System ${principal.systemUserId} is not registered in the same organization as the context of the request",
-                type = ErrorType.MISSING_ORG_ACCESS,
-            )
-        }
         val hasAccess = pdpService.hasAccessToResource(
-            System(principal.systemUserId),
-            setOf(principal.getSystemUserOrgNumber(), principal.getSystemOwnerOrgNumber()),
-            OPPGI_NARMESTELEDER_RESOURCE,
+            user = System(principal.systemUserId),
+            orgNumberSet = setOf(requestedOrgnumber.trim()),
+            resource = OPPGI_NARMESTELEDER_RESOURCE,
         )
         if (!hasAccess) {
-            throw ApiErrorException.ForbiddenException(
-                errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
+            val hasAccessThroughPrincipal = accessThroughPrincipalOrgnumber(requestedOrgnumber, principal)
+            if (!hasAccessThroughPrincipal) {
+                throw ApiErrorException.ForbiddenException(
+                    errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+                    type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
+                )
+            }
+        }
+    }
+
+    private suspend fun accessThroughPrincipalOrgnumber(
+        requestedOrgnumber: String,
+        principal: SystemPrincipal,
+    ): Boolean {
+        val organisasjon = eregService.getOrganization(requestedOrgnumber)
+        val orgnummerList = organisasjon.aggregerOrgnummereFraHierarki()
+        val matchesPrincipal = orgnummerList.contains(principal.getSystemUserOrgNumber())
+        return if (matchesPrincipal) {
+            pdpService.hasAccessToResource(
+                user = System(principal.systemUserId),
+                orgNumberSet = setOf(principal.getSystemUserOrgNumber()),
+                resource = OPPGI_NARMESTELEDER_RESOURCE,
             )
+        } else {
+            false
         }
     }
 }

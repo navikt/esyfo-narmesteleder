@@ -222,7 +222,7 @@ class DialogportenService(
                 title = getDialogTitle(name, sykmeldtFnr, foedselsdato),
                 summary = getSummary(name),
             ),
-            isApiOnly = otherEnvironmentProperties.dialogportenIsApiOnly,
+            isApiOnly = false,
             attachments = listOf(
                 createAttachement(AttachmentUrlConsumerType.Api, URL_TITLE_API, id),
                 createAttachement(AttachmentUrlConsumerType.Gui, URL_TITLE_GUI, id),

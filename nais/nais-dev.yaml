@@ -134,8 +134,6 @@ spec:
       value: "true"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
-    - name: DIALOGPORTEN_API_ONLY
-      value: "false"
     - name: PERSIST_SENDT_SYKMELDING
       value: "true"
     - name: MAINTENANCE_TASK_DELAY

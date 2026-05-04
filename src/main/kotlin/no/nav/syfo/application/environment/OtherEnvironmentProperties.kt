@@ -9,7 +9,6 @@ data class OtherEnvironmentProperties(
     val maintenanceTaskDelay: String,
     val persistLeesahNlBehov: Boolean,
     val isDialogportenBackgroundTaskEnabled: Boolean,
-    val dialogportenIsApiOnly: Boolean,
     val daysAfterTomToExpireBehovs: Long,
     val persistSendtSykmelding: Boolean,
     val maintenanceTaskEnabled: Boolean,
@@ -23,7 +22,6 @@ data class OtherEnvironmentProperties(
             publicIngressUrl = getEnvVar("PUBLIC_INGRESS_URL"),
             persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
             isDialogportenBackgroundTaskEnabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
-            dialogportenIsApiOnly = getEnvVar("DIALOGPORTEN_API_ONLY").toBoolean(),
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars(),
             persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
             daysAfterTomToExpireBehovs = getEnvVar(
@@ -42,7 +40,6 @@ data class OtherEnvironmentProperties(
             updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
             persistLeesahNlBehov = true,
             isDialogportenBackgroundTaskEnabled = true,
-            dialogportenIsApiOnly = false,
             persistSendtSykmelding = true,
             daysAfterTomToExpireBehovs = 0,
             maintenanceTaskDelay = "1m",

@@ -56,7 +56,7 @@ class PdlServiceTest :
 
                 val result = pdlService.getPersonFor(fnr)
 
-                result.nationalIdentificationNumber shouldBe fnr
+                result.nationalIdentificationNumber.value shouldBe fnr
                 result.name shouldBe navn
                 coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }
@@ -123,7 +123,7 @@ class PdlServiceTest :
 
                 val result = pdlService.getPersonOrThrowApiError(fnr)
 
-                result.nationalIdentificationNumber shouldBe fnr
+                result.nationalIdentificationNumber.value shouldBe fnr
                 result.name shouldBe navn
                 coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }

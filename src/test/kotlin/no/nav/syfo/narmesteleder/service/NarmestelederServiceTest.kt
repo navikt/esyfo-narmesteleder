@@ -21,6 +21,8 @@ import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.pdl.PdlService
@@ -56,9 +58,9 @@ class NarmestelederServiceTest :
                 val underenhetOrg = "123456789"
                 val hovedenhetOrg = "987654321"
                 val write = LinemanagerRequirementWrite(
-                    employeeIdentificationNumber = sykmeldtFnr,
-                    orgNumber = underenhetOrg,
-                    managerIdentificationNumber = "01987654321",
+                    employeeIdentificationNumber = PersonalIdentificationNumber(sykmeldtFnr),
+                    orgNumber = OrganizationNumber(underenhetOrg),
+                    managerIdentificationNumber = PersonalIdentificationNumber("01987654321"),
                     behovReason = BehovReason.DEAKTIVERT_LEDER,
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
@@ -82,8 +84,8 @@ class NarmestelederServiceTest :
                 }
                 coEvery {
                     dinesykmeldteService.getIsActiveSykmelding(
-                        eq(write.employeeIdentificationNumber),
-                        eq(write.orgNumber)
+                        eq(write.employeeIdentificationNumber.value),
+                        eq(write.orgNumber.value)
                     )
                 } returns true
 
@@ -95,14 +97,14 @@ class NarmestelederServiceTest :
 
                 // Assert
                 coVerify(exactly = 1) { nlDb.insertNlBehov(any()) }
-                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber)) }
+                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber.value)) }
 
                 captured.isCaptured shouldBe true
                 val entity = captured.captured
                 entity.sykmeldtFnr shouldBe sykmeldtFnr
                 entity.orgnummer shouldBe underenhetOrg
                 entity.hovedenhetOrgnummer shouldBe hovedenhetOrg
-                entity.narmestelederFnr shouldBe write.managerIdentificationNumber
+                entity.narmestelederFnr shouldBe write.managerIdentificationNumber?.value
                 entity.behovReason shouldBe write.behovReason
                 entity.behovStatus shouldBe BehovStatus.BEHOV_CREATED
             }
@@ -112,9 +114,9 @@ class NarmestelederServiceTest :
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
                 val write = LinemanagerRequirementWrite(
-                    employeeIdentificationNumber = sykmeldtFnr,
-                    orgNumber = underenhetOrg,
-                    managerIdentificationNumber = "01987654321",
+                    employeeIdentificationNumber = PersonalIdentificationNumber(sykmeldtFnr),
+                    orgNumber = OrganizationNumber(underenhetOrg),
+                    managerIdentificationNumber = PersonalIdentificationNumber("01987654321"),
                     behovReason = BehovReason.DEAKTIVERT_LEDER,
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
@@ -146,17 +148,17 @@ class NarmestelederServiceTest :
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
                 val write = LinemanagerRequirementWrite(
-                    employeeIdentificationNumber = sykmeldtFnr,
-                    orgNumber = underenhetOrg,
-                    managerIdentificationNumber = "01987654321",
+                    employeeIdentificationNumber = PersonalIdentificationNumber(sykmeldtFnr),
+                    orgNumber = OrganizationNumber(underenhetOrg),
+                    managerIdentificationNumber = PersonalIdentificationNumber("01987654321"),
                     behovReason = BehovReason.DEAKTIVERT_LEDER,
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
                 coEvery { aaregService.findArbeidsforholdByPersonIdent(sykmeldtFnr) } returns emptyList()
                 coEvery {
                     dinesykmeldteService.getIsActiveSykmelding(
-                        eq(write.employeeIdentificationNumber),
-                        eq(write.orgNumber)
+                        eq(write.employeeIdentificationNumber.value),
+                        eq(write.orgNumber.value)
                     )
                 } returns true
 
@@ -169,7 +171,7 @@ class NarmestelederServiceTest :
                 }
 
                 // Assert
-                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber)) }
+                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber.value)) }
                 coVerify(exactly = 1) {
                     nlDb.insertNlBehov(
                         withArg {
@@ -185,9 +187,9 @@ class NarmestelederServiceTest :
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
                 val write = LinemanagerRequirementWrite(
-                    employeeIdentificationNumber = sykmeldtFnr,
-                    orgNumber = underenhetOrg,
-                    managerIdentificationNumber = "01987654321",
+                    employeeIdentificationNumber = PersonalIdentificationNumber(sykmeldtFnr),
+                    orgNumber = OrganizationNumber(underenhetOrg),
+                    managerIdentificationNumber = PersonalIdentificationNumber("01987654321"),
                     behovReason = BehovReason.DEAKTIVERT_LEDER,
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
@@ -201,8 +203,8 @@ class NarmestelederServiceTest :
                 )
                 coEvery {
                     dinesykmeldteService.getIsActiveSykmelding(
-                        eq(write.employeeIdentificationNumber),
-                        eq(write.orgNumber)
+                        eq(write.employeeIdentificationNumber.value),
+                        eq(write.orgNumber.value)
                     )
                 } returns true
 
@@ -215,7 +217,7 @@ class NarmestelederServiceTest :
                 }
 
                 // Assert
-                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber)) }
+                coVerify(exactly = 1) { aaregService.findArbeidsforholdByPersonIdent(eq(write.employeeIdentificationNumber.value)) }
                 coVerify(exactly = 1) {
                     nlDb.insertNlBehov(
                         withArg {
@@ -231,9 +233,9 @@ class NarmestelederServiceTest :
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
                 val write = LinemanagerRequirementWrite(
-                    employeeIdentificationNumber = sykmeldtFnr,
-                    orgNumber = underenhetOrg,
-                    managerIdentificationNumber = "01987654321",
+                    employeeIdentificationNumber = PersonalIdentificationNumber(sykmeldtFnr),
+                    orgNumber = OrganizationNumber(underenhetOrg),
+                    managerIdentificationNumber = PersonalIdentificationNumber("01987654321"),
                     behovReason = BehovReason.DEAKTIVERT_LEDER,
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
@@ -246,8 +248,8 @@ class NarmestelederServiceTest :
 
                 coEvery {
                     dinesykmeldteService.getIsActiveSykmelding(
-                        eq(write.employeeIdentificationNumber),
-                        eq(write.orgNumber)
+                        eq(write.employeeIdentificationNumber.value),
+                        eq(write.orgNumber.value)
                     )
                 } returns true
 
@@ -280,17 +282,17 @@ class NarmestelederServiceTest :
                 val sykmeldtFnr = "12345678910"
                 val underenhetOrg = "123456789"
                 val write = LinemanagerRequirementWrite(
-                    employeeIdentificationNumber = sykmeldtFnr,
-                    orgNumber = underenhetOrg,
-                    managerIdentificationNumber = "01987654321",
+                    employeeIdentificationNumber = PersonalIdentificationNumber(sykmeldtFnr),
+                    orgNumber = OrganizationNumber(underenhetOrg),
+                    managerIdentificationNumber = PersonalIdentificationNumber("01987654321"),
                     behovReason = BehovReason.DEAKTIVERT_LEDER,
                     revokedLinemanagerId = UUID.randomUUID(),
                 )
 
                 coEvery {
                     dinesykmeldteService.getIsActiveSykmelding(
-                        eq(write.employeeIdentificationNumber),
-                        eq(write.orgNumber)
+                        eq(write.employeeIdentificationNumber.value),
+                        eq(write.orgNumber.value)
                     )
                 } returns false
 
@@ -327,10 +329,10 @@ class NarmestelederServiceTest :
                 coVerify(exactly = 0) { pdlService.getPersonFor(any()) }
                 val read = service().getLinemanagerRequirementReadById(id)
                 read.id shouldBe id
-                read.orgNumber shouldBe entity.orgnummer
-                read.mainOrgNumber shouldBe entity.hovedenhetOrgnummer
-                read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
-                read.managerIdentificationNumber shouldBe entity.narmestelederFnr
+                read.orgNumber.value shouldBe entity.orgnummer
+                read.mainOrgNumber.value shouldBe entity.hovedenhetOrgnummer
+                read.employeeIdentificationNumber.value shouldBe entity.sykmeldtFnr
+                read.managerIdentificationNumber?.value shouldBe entity.narmestelederFnr
                 read.name.firstName shouldBe entity.fornavn
                 read.name.middleName shouldBe entity.mellomnavn
                 read.name.lastName shouldBe entity.etternavn
@@ -362,7 +364,7 @@ class NarmestelederServiceTest :
                 coEvery { nlDb.findBehovById(id) } returns entity
                 coEvery { pdlService.getPersonFor(entity.sykmeldtFnr) } returns Person(
                     name = navn,
-                    nationalIdentificationNumber = entity.sykmeldtFnr
+                    nationalIdentificationNumber = PersonalIdentificationNumber(entity.sykmeldtFnr)
                 )
                 // Act
                 val read = service().getLinemanagerRequirementReadById(id)
@@ -371,10 +373,10 @@ class NarmestelederServiceTest :
                 coVerify(exactly = 1) { pdlService.getPersonFor(eq(entity.sykmeldtFnr)) }
                 coVerify(exactly = 1) { nlDb.updateNlBehov(any()) }
                 read.id shouldBe id
-                read.orgNumber shouldBe entity.orgnummer
-                read.mainOrgNumber shouldBe entity.hovedenhetOrgnummer
-                read.employeeIdentificationNumber shouldBe entity.sykmeldtFnr
-                read.managerIdentificationNumber shouldBe entity.narmestelederFnr
+                read.orgNumber.value shouldBe entity.orgnummer
+                read.mainOrgNumber.value shouldBe entity.hovedenhetOrgnummer
+                read.employeeIdentificationNumber.value shouldBe entity.sykmeldtFnr
+                read.managerIdentificationNumber?.value shouldBe entity.narmestelederFnr
                 read.name.firstName shouldBe navn.fornavn
                 read.name.lastName shouldBe navn.etternavn
                 read.name.middleName shouldBe navn.mellomnavn

@@ -2,6 +2,7 @@ package no.nav.syfo.application.api
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinInvalidNullException
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -72,19 +73,30 @@ fun Application.installStatusPages() {
 
 fun BadRequestException.toApiError(path: String?): ApiError {
     val rootCause = this.rootCause()
-    return if (rootCause is KotlinInvalidNullException) {
-        ApiErrorException.BadRequestException(
-            "Invalid request body. Missing required field: ${rootCause.propertyName}",
-            type = ErrorType.INVALID_FORMAT
-        )
-            .toApiError(path ?: "")
-    } else {
-        ApiError(
-            status = HttpStatusCode.BadRequest,
-            type = ErrorType.BAD_REQUEST,
-            message = this.message ?: "Bad request",
-            path = path
-        )
+    return when (rootCause) {
+        is KotlinInvalidNullException -> {
+            ApiErrorException.BadRequestException(
+                "Invalid request body. Missing required field: ${rootCause.propertyName}",
+                type = ErrorType.INVALID_FORMAT
+            ).toApiError(path ?: "")
+        }
+
+        is IllegalArgumentException,
+        is ValueInstantiationException -> {
+            ApiErrorException.BadRequestException(
+                rootCause.message ?: "Invalid request body",
+                type = ErrorType.INVALID_FORMAT
+            ).toApiError(path ?: "")
+        }
+
+        else -> {
+            ApiError(
+                status = HttpStatusCode.BadRequest,
+                type = ErrorType.BAD_REQUEST,
+                message = this.message ?: "Bad request",
+                path = path
+            )
+        }
     }
 }
 

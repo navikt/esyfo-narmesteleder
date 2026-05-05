@@ -264,8 +264,8 @@ class SendtSykmeldingHandlerTest :
                     )
                 }
 
-                assert(nlBehovSlot.captured.employeeIdentificationNumber == fnr)
-                assert(nlBehovSlot.captured.orgNumber == orgnummer)
+                assert(nlBehovSlot.captured.employeeIdentificationNumber.value == fnr)
+                assert(nlBehovSlot.captured.orgNumber.value == orgnummer)
                 assert(skipCheckSlot.captured)
             }
 

@@ -5,11 +5,11 @@ import java.util.UUID
 
 data class LinemanagerRequirementRead(
     val id: UUID,
-    val employeeIdentificationNumber: String,
-    val orgNumber: String,
+    val employeeIdentificationNumber: PersonalIdentificationNumber,
+    val orgNumber: OrganizationNumber,
     val orgName: String? = null,
-    val mainOrgNumber: String,
-    val managerIdentificationNumber: String? = null,
+    val mainOrgNumber: OrganizationNumber,
+    val managerIdentificationNumber: PersonalIdentificationNumber? = null,
     val name: Name,
     val created: Instant,
     val updated: Instant,

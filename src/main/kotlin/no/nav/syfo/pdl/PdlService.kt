@@ -6,6 +6,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.PdlCache
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
 import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
@@ -31,7 +32,7 @@ class PdlService(
             val foedselsdato = response.data.person.foedselsdato?.firstOrNull()
             return Person(
                 name = navn,
-                nationalIdentificationNumber = fnr,
+                nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
                 foedselsdato = foedselsdato,
             )
         }

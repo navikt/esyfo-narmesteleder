@@ -1,8 +1,8 @@
 package no.nav.syfo.narmesteleder.domain
 
 data class Linemanager(
-    val employeeIdentificationNumber: String,
+    val employeeIdentificationNumber: PersonalIdentificationNumber,
     val lastName: String,
-    val orgNumber: String,
+    val orgNumber: OrganizationNumber,
     val manager: Manager,
 )

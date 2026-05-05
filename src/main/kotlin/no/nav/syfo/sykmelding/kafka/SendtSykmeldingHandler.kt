@@ -2,6 +2,8 @@ package no.nav.syfo.sykmelding.kafka
 
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
@@ -33,8 +35,8 @@ class SendtSykmeldingHandler(
 
             narmesteLederService.createNewNlBehov(
                 nlBehov = LinemanagerRequirementWrite(
-                    employeeIdentificationNumber = message.kafkaMetadata.fnr,
-                    orgNumber = arbeidsgiver.orgnummer,
+                    employeeIdentificationNumber = PersonalIdentificationNumber(message.kafkaMetadata.fnr),
+                    orgNumber = OrganizationNumber(arbeidsgiver.orgnummer),
                     behovReason = BehovReason.INGEN_LEDER_REGISTRERT,
                 ),
                 skipSykmeldingCheck = message.sykmelding.sykmeldingsperioder

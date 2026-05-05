@@ -4,13 +4,13 @@ import no.nav.syfo.narmesteleder.kafka.model.Leder
 import no.nav.syfo.pdl.Person
 
 data class Manager(
-    val nationalIdentificationNumber: String,
+    val nationalIdentificationNumber: PersonalIdentificationNumber,
     val lastName: String,
     val email: String,
     val mobile: String,
 ) {
     fun toLeder(person: Person) = Leder(
-        fnr = nationalIdentificationNumber,
+        fnr = nationalIdentificationNumber.value,
         mobil = mobile,
         epost = email,
         fornavn = person.name.fornavn,

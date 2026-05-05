@@ -6,9 +6,9 @@ query($identer: [ID!]!){
                 fornavn
                 mellomnavn
                 etternavn
-            }
+            },
+            foedselsdato { foedselsdato }
         },
-        foedselsdato { foedselsdato }
         code
     },
     hentIdenterBolk(identer: $identer, historikk: false) {

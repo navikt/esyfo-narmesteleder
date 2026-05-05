@@ -59,7 +59,6 @@ import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.util.JsonFixtureLoader
 import no.nav.syfo.util.httpClientDefault
 import no.nav.syfo.util.httpClientSSE
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -135,7 +134,7 @@ private fun clientsModule() = module {
     single { TexasHttpClient(client = get(), environment = env().texas) }
     single {
         if (isLocalEnv()) {
-            FakeAaregClient(JsonFixtureLoader("fake-clients/aareg"))
+            FakeAaregClient()
         } else {
             AaregClient(
                 aaregBaseUrl = env().clientProperties.aaregBaseUrl,
@@ -194,7 +193,7 @@ private fun clientsModule() = module {
 
     single {
         if (isLocalEnv()) {
-            FakeEregClient(JsonFixtureLoader("fake-clients/ereg"))
+            FakeEregClient()
         } else {
             EregClient(
                 eregBaseUrl = env().clientProperties.eregBaseUrl,

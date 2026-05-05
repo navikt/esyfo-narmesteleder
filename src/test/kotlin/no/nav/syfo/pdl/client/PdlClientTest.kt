@@ -146,4 +146,87 @@ class PdlClientTest :
                 shouldThrow<PdlRequestException> { client.getPerson(fnr) }
             }
         }
+
+        describe("getPersonBolk") {
+            it("should return GetPersonBolkResponse when getPersonBolk responds with 200") {
+                val fnr1 = "12345678901"
+                val fnr2 = "98765432109"
+                val responseJson = """
+                {
+                  "data": {
+                    "hentPersonBolk": [
+                      {
+                        "ident": "$fnr1",
+                        "person": {
+                          "navn": [{"fornavn": "Ola", "mellomnavn": null, "etternavn": "Nordmann"}],
+                          "foedselsdato": []
+                        },
+                        "code": "ok"
+                      },
+                      {
+                        "ident": "$fnr2",
+                        "person": null,
+                        "code": "not_found"
+                      }
+                    ],
+                    "hentIdenterBolk": [
+                      {
+                        "ident": "$fnr1",
+                        "identer": [{"ident": "$fnr1", "gruppe": "FOLKEREGISTERIDENT"}],
+                        "code": "ok"
+                      },
+                      {
+                        "ident": "$fnr2",
+                        "identer": null,
+                        "code": "not_found"
+                      }
+                    ]
+                  }
+                }
+                """.trimIndent()
+                val mockEngine = getMockEngine(
+                    status = HttpStatusCode.OK,
+                    headers = Headers.build { append("Content-Type", "application/json") },
+                    content = responseJson,
+                )
+                coEvery {
+                    mockTexasClient.systemToken(any(), any())
+                } returns TexasResponse("token", 111, "tokenType")
+                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+
+                val result = client.getPersonBolk(listOf(fnr1, fnr2))
+
+                result.data?.hentPersonBolk?.find { it.ident == fnr1 }?.person?.navn?.firstOrNull()?.fornavn shouldBe "Ola"
+                result.data?.hentPersonBolk?.find { it.ident == fnr2 }?.code shouldBe "not_found"
+                result.data?.hentPersonBolk?.find { it.ident == fnr2 }?.person shouldBe null
+            }
+
+            it("should throw PdlRequestException when getPersonBolk responds with 4xx") {
+                val mockEngine = getMockEngine(
+                    status = HttpStatusCode.BadRequest,
+                    headers = Headers.build { append("Content-Type", "application/json") },
+                    content = "invalid request",
+                )
+                coEvery {
+                    mockTexasClient.systemToken(any(), any())
+                } returns TexasResponse("token", 111, "tokenType")
+                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+
+                shouldThrow<PdlRequestException> { client.getPersonBolk(listOf("12345678901")) }
+            }
+
+            it("should throw PdlRequestException when getPersonBolk responds with 5xx") {
+                val mockEngine = getMockEngine(
+                    status = HttpStatusCode.ServiceUnavailable,
+                    headers = Headers.build { append("Content-Type", "application/json") },
+                    content = "error",
+                )
+                coEvery {
+                    mockTexasClient.systemToken(any(), any())
+                } returns TexasResponse("token", 111, "tokenType")
+                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+
+                shouldThrow<PdlRequestException> { client.getPersonBolk(listOf("12345678901")) }
+            }
+        }
     })

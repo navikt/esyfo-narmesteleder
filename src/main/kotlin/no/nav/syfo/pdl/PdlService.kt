@@ -2,15 +2,18 @@ package no.nav.syfo.pdl
 
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.PdlCache
+import no.nav.syfo.pdl.client.GetPersonBolkResponse
 import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
+import no.nav.syfo.util.logger
 
 class PdlService(
     private val pdlClient: IPdlClient,
     private val pdlCache: PdlCache
 ) {
+    private val logger = logger()
 
     suspend fun getPersonFor(fnr: String): Person {
         val response = pdlClient.getPerson(fnr)
@@ -44,4 +47,28 @@ class PdlService(
             throw ApiErrorException.InternalServerErrorException("Error when fetching person from PDL", e)
         }
     }
+
+    suspend fun getPersonsBolk(fnrs: List<String>): Map<String, Person?> {
+        val response = pdlClient.getPersonBolk(fnrs)
+        if (!response.errors.isNullOrEmpty()) {
+            logger.error("Errors in getPersonsBolk response from PDL: ${response.errors}")
+        }
+        return response.toPersonMap()
+    }
+
+    private fun GetPersonBolkResponse.toPersonMap(): Map<String, Person?> = data?.hentPersonBolk
+        ?.associateBy { it.ident }
+        ?.mapValues { (_, bolk) ->
+            if (bolk.code == "ok" && bolk.person != null) {
+                val navn = bolk.person.navn?.firstOrNull() ?: return@mapValues null
+                Person(
+                    name = navn,
+                    nationalIdentificationNumber = bolk.ident,
+                    foedselsdato = bolk.person.foedselsdato?.firstOrNull(),
+                )
+            } else {
+                null
+            }
+        }
+        ?: emptyMap()
 }

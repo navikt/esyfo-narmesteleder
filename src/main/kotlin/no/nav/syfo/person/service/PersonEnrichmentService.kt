@@ -20,38 +20,42 @@ class PersonEnrichmentService(
     private val logger = LoggerFactory.getLogger(PersonEnrichmentService::class.java)
 
     suspend fun enrichPendingPersons() {
-        val pendingIdToFnr: Map<UUID, String> = transaction(database) {
-            PersonEntity
-                .find { PersonTable.status eq PersonStatus.PENDING.name }
-                .orderBy(PersonTable.created to SortOrder.ASC)
-                .limit(PERSON_ENRICHMENT_BATCH_SIZE)
-                .associate { it.id.value to it.fnr }
-        }
+        while (true) {
+            val pendingIdToFnr: Map<UUID, String> = transaction(database) {
+                PersonEntity
+                    .find { PersonTable.status eq PersonStatus.PENDING.name }
+                    .orderBy(PersonTable.created to SortOrder.ASC)
+                    .limit(PERSON_ENRICHMENT_BATCH_SIZE)
+                    .associate { it.id.value to it.fnr }
+            }
 
-        if (pendingIdToFnr.isEmpty()) return
+            if (pendingIdToFnr.isEmpty()) break
 
-        logger.info("Enriching ${pendingIdToFnr.size} pending persons from PDL")
+            logger.info("Enriching ${pendingIdToFnr.size} pending persons from PDL")
 
-        val pdlPersons = pdlService.getPersonsBolk(pendingIdToFnr.values.toList())
+            val pdlPersons = pdlService.getPersonsBolk(pendingIdToFnr.values.toList())
 
-        transaction(database) {
-            pendingIdToFnr.forEach { (id, fnr) ->
-                val entity = PersonEntity.findById(id) ?: return@forEach
-                val pdlPerson = pdlPersons[fnr]
-                if (pdlPerson != null) {
-                    entity.fornavn = pdlPerson.name.fornavn
-                    entity.mellomnavn = pdlPerson.name.mellomnavn
-                    entity.etternavn = pdlPerson.name.etternavn
-                    entity.foedselsdato = pdlPerson.foedselsdato?.foedselsdato
-                    entity.status = PersonStatus.ENRICHED.name
-                } else {
-                    entity.status = PersonStatus.NOT_FOUND.name
+            transaction(database) {
+                pendingIdToFnr.forEach { (id, fnr) ->
+                    val entity = PersonEntity.findById(id) ?: return@forEach
+                    val pdlPerson = pdlPersons[fnr]
+                    if (pdlPerson != null) {
+                        entity.fornavn = pdlPerson.name.fornavn
+                        entity.mellomnavn = pdlPerson.name.mellomnavn
+                        entity.etternavn = pdlPerson.name.etternavn
+                        entity.foedselsdato = pdlPerson.foedselsdato?.foedselsdato
+                        entity.status = PersonStatus.ENRICHED.name
+                    } else {
+                        entity.status = PersonStatus.NOT_FOUND.name
+                    }
                 }
             }
-        }
 
-        val enrichedCount = pdlPersons.values.count { it != null }
-        val notFoundCount = pendingIdToFnr.size - enrichedCount
-        logger.info("Enrichment done: $enrichedCount enriched, $notFoundCount not found")
+            val enrichedCount = pdlPersons.values.count { it != null }
+            val notFoundCount = pendingIdToFnr.size - enrichedCount
+            logger.info("Enrichment done: $enrichedCount enriched, $notFoundCount not found")
+
+            if (pendingIdToFnr.size < PERSON_ENRICHMENT_BATCH_SIZE) break
+        }
     }
 }

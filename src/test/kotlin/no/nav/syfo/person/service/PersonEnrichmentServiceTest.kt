@@ -131,7 +131,7 @@ class PersonEnrichmentServiceTest :
                 coVerify(exactly = 0) { pdlService.getPersonsBolk(any()) }
             }
 
-            it("should only process up to 100 pending persons per run") {
+            it("should process batches continuously until fewer than batch size persons remain") {
                 val fnrs = (1..101).map { i -> i.toString().padStart(11, '0') }
                 fnrs.forEach { insertPerson(it, PersonStatus.PENDING) }
 
@@ -140,9 +140,10 @@ class PersonEnrichmentServiceTest :
                 service().enrichPendingPersons()
 
                 coVerify(exactly = 1) {
-                    pdlService.getPersonsBolk(
-                        match { it.size == 100 },
-                    )
+                    pdlService.getPersonsBolk(match { it.size == 100 })
+                }
+                coVerify(exactly = 1) {
+                    pdlService.getPersonsBolk(match { it.size == 1 })
                 }
             }
         }

@@ -61,6 +61,37 @@ class AltinnTilgangerService(
         }
     }
 
+    suspend fun getFilteredOrganisasjoner(userPrincipal: UserPrincipal): List<TilgangerOrganisasjon> {
+        try {
+            val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
+                ?: return emptyList()
+            return response.hierarki.filterToTilgangerOrganisasjoner()
+        } catch (e: UpstreamRequestException) {
+            logger.error("Error when fetching altinn tilganger for organisasjon filtering", e)
+            throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn tilganger")
+        }
+    }
+
+    private fun List<AltinnTilgang>.filterToTilgangerOrganisasjoner(): List<TilgangerOrganisasjon> = mapNotNull { it.filterTilgang() }
+
+    private fun AltinnTilgang.filterTilgang(): TilgangerOrganisasjon? {
+        val filteredUnderenheter = underenheter.filterToTilgangerOrganisasjoner()
+        val hasAccess = hasNarmestelederTilgang()
+
+        return if (hasAccess || filteredUnderenheter.isNotEmpty()) {
+            TilgangerOrganisasjon(
+                orgnr = orgnr,
+                navn = navn,
+                underenheter = filteredUnderenheter,
+            )
+        } else {
+            null
+        }
+    }
+
+    private fun AltinnTilgang.hasNarmestelederTilgang(): Boolean = altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE) ||
+        altinn2Tilganger.contains(OPPRETT_NL_REALASJON_RESOURCE)
+
     private fun List<AltinnTilgang>.findByOrgnr(targetOrgnr: String): AltinnTilgang? {
         for (tilgang in this) {
             if (tilgang.orgnr == targetOrgnr) {

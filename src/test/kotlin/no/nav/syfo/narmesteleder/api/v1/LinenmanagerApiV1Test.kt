@@ -166,6 +166,7 @@ class LinenmanagerApiV1Test :
                             texasHttpClientMock,
                             validationServiceSpy,
                             nlBehovHandler,
+                            altinnTilgangerServiceSpy,
                         )
                     }
                 }

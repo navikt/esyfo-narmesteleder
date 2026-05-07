@@ -33,6 +33,15 @@ class SendtSykmeldingHandler(
                     return
                 }
 
+            if (!message.kafkaMetadata.fnr.isDigitsWithLength(FNR_LENGTH)) {
+                logger.warn("Invalid fnr in sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}. Skipping NL behov creation.")
+                return
+            }
+            if (!arbeidsgiver.orgnummer.isDigitsWithLength(ORGNUMMER_LENGTH)) {
+                logger.warn("Invalid orgnummer in sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}. Skipping NL behov creation.")
+                return
+            }
+
             narmesteLederService.createNewNlBehov(
                 nlBehov = LinemanagerRequirementWrite(
                     employeeIdentificationNumber = PersonalIdentificationNumber(message.kafkaMetadata.fnr),
@@ -47,5 +56,12 @@ class SendtSykmeldingHandler(
         } else {
             logger.info("Employee has answered riktigNarmesteLeder for sykmeldingId: ${message.event.sykmeldingId}. No NL behov created.")
         }
+    }
+
+    private fun String.isDigitsWithLength(length: Int): Boolean = this.length == length && all(Char::isDigit)
+
+    companion object {
+        private const val FNR_LENGTH = 11
+        private const val ORGNUMMER_LENGTH = 9
     }
 }

@@ -15,7 +15,7 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.Arbeidsforhold
 import no.nav.syfo.aareg.client.ArbeidsstedType
 import no.nav.syfo.aareg.client.OpplysningspliktigType
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
@@ -34,7 +34,7 @@ class NarmestelederServiceTest :
         val nlDb = mockk<INarmestelederDb>(relaxed = true)
         val aaregService = mockk<AaregService>()
         val pdlService = mockk<PdlService>()
-        val dinesykmeldteService = mockk<DinesykmeldteService>()
+        val dinesykmeldteService = mockk<IDinesykmeldteService>()
 
         beforeTest {
             clearMocks(nlDb, aaregService, pdlService, dinesykmeldteService)

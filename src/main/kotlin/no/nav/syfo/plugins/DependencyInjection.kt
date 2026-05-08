@@ -32,6 +32,8 @@ import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
+import no.nav.syfo.dinesykmeldte.ShadowActiveSykmeldingService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
@@ -55,6 +57,8 @@ import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.sykmelding.db.ISykmeldingDb
 import no.nav.syfo.sykmelding.db.SykmeldingDb
+import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
+import no.nav.syfo.sykmelding.exposed.SendtSykmeldingRepository
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.texas.AltinnTokenProvider
@@ -118,6 +122,9 @@ private fun databaseModule() = module {
     }
     single<ISykmeldingDb> {
         SykmeldingDb(get(), Dispatchers.IO)
+    }
+    single<IActiveSykmeldingRepository> {
+        SendtSykmeldingRepository(get())
     }
 }
 
@@ -230,6 +237,12 @@ private fun valkeyModule() = module {
 private fun servicesModule() = module {
     single { AaregService(arbeidsforholdOversiktClient = get()) }
     single { DinesykmeldteService(dinesykmeldteClient = get()) }
+    single<IDinesykmeldteService> {
+        ShadowActiveSykmeldingService(
+            dinesykmeldteService = get(),
+            repository = get(),
+        )
+    }
     single { SykmeldingService(sykmeldingDb = get()) }
     single {
         NarmestelederService(

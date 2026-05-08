@@ -7,9 +7,7 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import no.nav.syfo.aareg.client.AaregClientException
 import no.nav.syfo.texas.client.TexasHttpClient
 import org.slf4j.LoggerFactory
 
@@ -70,10 +68,6 @@ class DinesykmeldteClient(
 
         return res.getOrElse { ex ->
             when (ex) {
-                is ClientRequestException if ex.response.status == HttpStatusCode.NotFound -> {
-                    throw AaregClientException("Error when fetching sick leave status for person $personIdent", ex)
-                }
-
                 is ClientRequestException -> {
                     throw DinesykmeldteClientException(
                         "An error occurred when fetching sick leave status",

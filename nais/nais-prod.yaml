@@ -80,7 +80,6 @@ spec:
         - application: narmesteleder-frontend
     outbound:
       rules:
-        - application: dinesykmeldte-backend
         - application: arbeidsgiver-altinn-tilganger
           namespace: fager
       external:
@@ -106,10 +105,6 @@ spec:
       value: digdir:dialogporten.serviceprovider
     - name: ALTINN_3_BASE_URL
       value: https://platform.altinn.no
-    - name: DINESYMELDTE_BASEURL
-      value: http://dinesykmeldte-backend
-    - name: DINESYMELDTE_SCOPE
-      value: prod-gcp.team-esyfo.dinesykmeldte-backend
     - name: EREG_BASE_URL
       value: https://ereg-services.prod-fss-pub.nais.io
     - name: ALTINN_TILGANGER_BASE_URL

@@ -26,7 +26,7 @@ data class OtherEnvironmentProperties(
             persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
             daysAfterTomToExpireBehovs = getEnvVar(
                 "DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS",
-                "16"
+                "0"
             ).toLong(),
             maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
             maintenanceTaskEnabled = getEnvVar("BEHOV_MAINTENANCE_TASK_ENABLED", "false").toBoolean(),
@@ -41,7 +41,7 @@ data class OtherEnvironmentProperties(
             persistLeesahNlBehov = true,
             isDialogportenBackgroundTaskEnabled = true,
             persistSendtSykmelding = true,
-            daysAfterTomToExpireBehovs = 0,
+            daysAfterTomToExpireBehovs = 16,
             maintenanceTaskDelay = "1m",
             maintenanceTaskEnabled = true,
             electorSSEUrl = "not.applicable",

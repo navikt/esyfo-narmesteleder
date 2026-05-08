@@ -3,7 +3,6 @@ package no.nav.syfo.narmesteleder.service
 import kotlinx.coroutines.delay
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -16,6 +15,7 @@ import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -28,7 +28,7 @@ class NarmestelederService(
     private val persistLeesahNlBehov: Boolean,
     private val aaregService: AaregService,
     private val pdlService: PdlService,
-    private val dinesykmeldteService: DinesykmeldteService,
+    private val activeSykmeldingRepository: IActiveSykmeldingRepository,
     private val dialogportenService: DialogportenService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -137,7 +137,7 @@ class NarmestelederService(
         skipSykmeldingCheck: Boolean
     ): Boolean {
         val isActiveSykmelding = skipSykmeldingCheck ||
-            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+            activeSykmeldingRepository.hasActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
         return if (!isActiveSykmelding) {
             COUNT_CREATE_BEHOV_SKIPPED_NO_SICKLEAVE.increment()
             logger.info(

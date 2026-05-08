@@ -25,8 +25,6 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.domain.Linemanager
@@ -35,14 +33,14 @@ import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
+import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
 import prepareGetPersonResponse
 
 class ValidationServiceTest :
     DescribeSpec({
         val altinnTilgangerClient = FakeAltinnTilgangerClient()
         val altinnTilgangerService = spyk(AltinnTilgangerService(altinnTilgangerClient))
-        val dinesykmeldteClient = FakeDinesykmeldteClient()
-        val dinesykmeldteService = spyk(DinesykmeldteService(dinesykmeldteClient))
+        val activeSykmeldingRepository = mockk<IActiveSykmeldingRepository>()
 
         val aaregClient = FakeAaregClient()
         val aaregService = spyk(AaregService(aaregClient))
@@ -60,7 +58,7 @@ class ValidationServiceTest :
             eregService = eregService,
         )
         val sickLeaveValidator = SickLeaveValidator(
-            dinesykmeldteService = dinesykmeldteService,
+            activeSykmeldingRepository = activeSykmeldingRepository,
         )
         val service = ValidationService(
             pdlService = pdlService,
@@ -116,6 +114,7 @@ class ValidationServiceTest :
 
         beforeTest {
             clearAllMocks()
+            coEvery { activeSykmeldingRepository.hasActiveSykmelding(any(), any()) } returns true
             altinnTilgangerClient.reset()
             coEvery { pdlCacheMock.getPerson(any()) } returns null
             coEvery { eregCache.getOrganisasjon(any()) } returns null
@@ -187,7 +186,7 @@ class ValidationServiceTest :
                 altinnTilgangerClient.accessPolicy.clear()
                 altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber)
                 coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
+                    activeSykmeldingRepository.hasActiveSykmelding(
                         narmestelederRelasjonerWrite.employeeIdentificationNumber,
                         narmestelederRelasjonerWrite.orgNumber,
                     )

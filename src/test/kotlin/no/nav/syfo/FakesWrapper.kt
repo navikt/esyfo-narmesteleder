@@ -14,8 +14,6 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
@@ -29,13 +27,18 @@ import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
+import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
+
+private class FakeActiveSykmeldingRepository : IActiveSykmeldingRepository {
+    override suspend fun hasActiveSykmelding(fnr: String, orgnummer: String): Boolean = true
+}
 
 class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeDbSpyk = spyk(FakeNarmestelederDb())
     val fakeAaregClientSpyk = spyk(FakeAaregClient())
     val fakeEregClientSpyk = spyk(FakeEregClient())
     val fakePdlClientSpyk = spyk(FakePdlClient())
-    val fakeDinesykmeldteClientSpyk = spyk(FakeDinesykmeldteClient())
+    val activeSykmeldingRepositorySpyk: IActiveSykmeldingRepository = spyk(FakeActiveSykmeldingRepository())
     val fakeKafkaProducerSpyk = spyk(FakeSykmeldingNLKafkaProducer())
     val fakeAltinnTilgangerClientSpyk = spyk(FakeAltinnTilgangerClient())
     val fakePdpClientSpyk = spyk(FakePdpClient())
@@ -46,7 +49,6 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val eregServiceSpyk = spyk(EregService(fakeEregClientSpyk, eregCacheSpyk))
     val pdlCacheMock = mockk<PdlCache>(relaxed = true)
     val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk, pdlCacheMock))
-    val dinesykmeldteServiceSpyk = spyk(DinesykmeldteService(fakeDinesykmeldteClientSpyk))
     val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
     val pdpServiceSpyk = spyk(PdpService(fakePdpClientSpyk))
     val narmestelederKafkaServiceSpyk = spyk(
@@ -61,7 +63,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     )
     val sickLeaveValidatorSpyk = spyk(
         SickLeaveValidator(
-            dinesykmeldteService = dinesykmeldteServiceSpyk,
+            activeSykmeldingRepository = activeSykmeldingRepositorySpyk,
         )
     )
     val validationServiceSpyk = spyk(
@@ -78,7 +80,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
             persistLeesahNlBehov = true,
             aaregService = aaregServiceSpyk,
             pdlService = pdlServiceSpyk,
-            dinesykmeldteService = dinesykmeldteServiceSpyk,
+            activeSykmeldingRepository = activeSykmeldingRepositorySpyk,
             dialogportenService = dialogportenService
         )
     )

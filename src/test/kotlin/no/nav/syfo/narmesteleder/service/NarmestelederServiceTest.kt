@@ -15,7 +15,6 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.Arbeidsforhold
 import no.nav.syfo.aareg.client.ArbeidsstedType
 import no.nav.syfo.aareg.client.OpplysningspliktigType
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
@@ -26,6 +25,7 @@ import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundExcepti
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
+import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import java.util.*
 
@@ -34,10 +34,10 @@ class NarmestelederServiceTest :
         val nlDb = mockk<INarmestelederDb>(relaxed = true)
         val aaregService = mockk<AaregService>()
         val pdlService = mockk<PdlService>()
-        val dinesykmeldteService = mockk<DinesykmeldteService>()
+        val activeSykmeldingRepository = mockk<IActiveSykmeldingRepository>()
 
         beforeTest {
-            clearMocks(nlDb, aaregService, pdlService, dinesykmeldteService)
+            clearMocks(nlDb, aaregService, pdlService, activeSykmeldingRepository)
         }
 
         fun service(persist: Boolean = true) = NarmestelederService(
@@ -45,7 +45,7 @@ class NarmestelederServiceTest :
             persistLeesahNlBehov = persist,
             aaregService = aaregService,
             pdlService = pdlService,
-            dinesykmeldteService = dinesykmeldteService,
+            activeSykmeldingRepository = activeSykmeldingRepository,
             dialogportenService = mockk(relaxed = true)
         )
 
@@ -81,7 +81,7 @@ class NarmestelederServiceTest :
                         .copy(id = UUID.randomUUID())
                 }
                 coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
+                    activeSykmeldingRepository.hasActiveSykmelding(
                         eq(write.employeeIdentificationNumber),
                         eq(write.orgNumber)
                     )
@@ -154,7 +154,7 @@ class NarmestelederServiceTest :
                 )
                 coEvery { aaregService.findArbeidsforholdByPersonIdent(sykmeldtFnr) } returns emptyList()
                 coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
+                    activeSykmeldingRepository.hasActiveSykmelding(
                         eq(write.employeeIdentificationNumber),
                         eq(write.orgNumber)
                     )
@@ -200,7 +200,7 @@ class NarmestelederServiceTest :
                     )
                 )
                 coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
+                    activeSykmeldingRepository.hasActiveSykmelding(
                         eq(write.employeeIdentificationNumber),
                         eq(write.orgNumber)
                     )
@@ -245,7 +245,7 @@ class NarmestelederServiceTest :
                 )
 
                 coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
+                    activeSykmeldingRepository.hasActiveSykmelding(
                         eq(write.employeeIdentificationNumber),
                         eq(write.orgNumber)
                     )
@@ -288,7 +288,7 @@ class NarmestelederServiceTest :
                 )
 
                 coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
+                    activeSykmeldingRepository.hasActiveSykmelding(
                         eq(write.employeeIdentificationNumber),
                         eq(write.orgNumber)
                     )

@@ -46,8 +46,6 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
@@ -70,6 +68,7 @@ import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
+import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import prepareGetPersonResponse
@@ -93,8 +92,7 @@ class LinenmanagerApiV1Test :
         val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
         val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
         val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
-        val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
-        val dineSykmelteService = DinesykmeldteService(fakeDinesykmeldteClient)
+        val activeSykmeldingRepository = mockk<IActiveSykmeldingRepository>()
         val pdpService = mockk<PdpService>(relaxed = true)
         val principalAccessValidator = PrincipalAccessValidator(
             altinnTilgangerService = altinnTilgangerServiceSpy,
@@ -102,7 +100,7 @@ class LinenmanagerApiV1Test :
             eregService = eregService,
         )
         val sickLeaveValidator = SickLeaveValidator(
-            dinesykmeldteService = dineSykmelteService,
+            activeSykmeldingRepository = activeSykmeldingRepository,
         )
         val validationService =
             ValidationService(
@@ -130,7 +128,7 @@ class LinenmanagerApiV1Test :
                     persistLeesahNlBehov = true,
                     aaregService = aaregService,
                     pdlService = pdlService,
-                    dinesykmeldteService = dineSykmelteService,
+                    activeSykmeldingRepository = activeSykmeldingRepository,
                     dialogportenService = mockk<DialogportenService>(relaxed = true),
                 )
             nlBehovHandler =
@@ -140,6 +138,7 @@ class LinenmanagerApiV1Test :
                     narmestelederKafkaService = narmestelederKafkaServiceSpy,
                 )
             coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns true
+            coEvery { activeSykmeldingRepository.hasActiveSykmelding(any(), any()) } returns true
             fakeRepo.clear()
         }
 

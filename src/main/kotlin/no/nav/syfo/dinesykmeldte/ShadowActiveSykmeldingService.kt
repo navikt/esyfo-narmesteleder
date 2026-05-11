@@ -30,15 +30,15 @@ class ShadowActiveSykmeldingService(
     private val dinesykmeldteService: DinesykmeldteService,
     private val repository: IActiveSykmeldingRepository,
 ) : IDinesykmeldteService {
-    override suspend fun getIsActiveSykmelding(perontIdent: String, orgnummer: String): Boolean = coroutineScope {
+    override suspend fun getIsActiveSykmelding(personIdent: String, orgnummer: String): Boolean = coroutineScope {
         val clientResultDeferred = async {
             suspendRunCatching {
-                dinesykmeldteService.getIsActiveSykmelding(perontIdent, orgnummer)
+                dinesykmeldteService.getIsActiveSykmelding(personIdent, orgnummer)
             }
         }
         val localResultDeferred = async {
             suspendRunCatching {
-                repository.hasActiveSykmelding(perontIdent, orgnummer)
+                repository.hasActiveSykmelding(personIdent, orgnummer)
             }
         }
 
@@ -53,7 +53,7 @@ class ShadowActiveSykmeldingService(
                             countMismatch(clientValue, localValue).increment()
                             logger.warn(
                                 "Shadow mismatch for active sykmelding for fnr={} and orgnummer={}: client={}, local={}",
-                                maskFnr(perontIdent),
+                                maskFnr(personIdent),
                                 orgnummer,
                                 clientValue,
                                 localValue,
@@ -63,7 +63,7 @@ class ShadowActiveSykmeldingService(
                     .onFailure { localException ->
                         logger.warn(
                             "Local shadow query failed for fnr={} and orgnummer={}, ignoring local result. Exception type={}",
-                            maskFnr(perontIdent),
+                            maskFnr(personIdent),
                             orgnummer,
                             localException::class.simpleName ?: "UnknownException",
                         )
@@ -73,7 +73,7 @@ class ShadowActiveSykmeldingService(
             onFailure = { clientException ->
                 logger.warn(
                     "Dinesykmeldte client failed for fnr={} and orgnummer={}, using local fallback. Exception type={}",
-                    maskFnr(perontIdent),
+                    maskFnr(personIdent),
                     orgnummer,
                     clientException::class.simpleName ?: "UnknownException",
                 )
@@ -81,7 +81,7 @@ class ShadowActiveSykmeldingService(
                 localResult.getOrElse { localException ->
                     logger.warn(
                         "Local shadow query also failed for fnr={} and orgnummer={}, rethrowing client exception. Exception type={}",
-                        maskFnr(perontIdent),
+                        maskFnr(personIdent),
                         orgnummer,
                         localException::class.simpleName ?: "UnknownException",
                     )
@@ -97,7 +97,7 @@ class ShadowActiveSykmeldingService(
         else -> error("Unexpected shadow mismatch combination")
     }
 
-    private fun maskFnr(perontIdent: String): String = "****${perontIdent.takeLast(4)}"
+    private fun maskFnr(personIdent: String): String = "****${personIdent.takeLast(4)}"
 
     private inline fun <T> suspendRunCatching(block: () -> T): Result<T> = try {
         Result.success(block())

@@ -1,5 +1,8 @@
 package no.nav.syfo.pdl
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
@@ -8,6 +11,8 @@ import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.util.logger
+
+private const val PDL_CHUNK_SIZE = 100
 
 class PdlService(
     private val pdlClient: IPdlClient,
@@ -49,11 +54,28 @@ class PdlService(
     }
 
     suspend fun getPersonsBolk(fnrs: List<String>): Map<String, Person?> {
-        val response = pdlClient.getPersonBolk(fnrs)
-        if (!response.errors.isNullOrEmpty()) {
-            logger.error("Errors in getPersonsBolk response from PDL: ${response.errors}")
+        if (fnrs.isEmpty()) {
+            return emptyMap()
         }
-        return response.toPersonMap()
+
+        val token = pdlClient.getSystemToken()
+        val responses = coroutineScope {
+            fnrs.chunked(PDL_CHUNK_SIZE)
+                .map { fnrChunk ->
+                    async {
+                        pdlClient.getPersonBolk(fnrChunk, token)
+                    }
+                }
+                .awaitAll()
+        }
+        return responses
+            .onEach { response ->
+                if (!response.errors.isNullOrEmpty()) {
+                    logger.error("Errors in getPersonsBolk response from PDL: ${response.errors}")
+                }
+            }
+            .flatMap { it.toPersonMap().entries }
+            .associate { (fnr, person) -> fnr to person }
     }
 
     private fun GetPersonBolkResponse.toPersonMap(): Map<String, Person?> = data?.hentPersonBolk

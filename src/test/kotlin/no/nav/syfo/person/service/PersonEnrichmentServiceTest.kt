@@ -132,7 +132,7 @@ class PersonEnrichmentServiceTest :
             }
 
             it("should process batches continuously until fewer than batch size persons remain") {
-                val fnrs = (1..101).map { i -> i.toString().padStart(11, '0') }
+                val fnrs = (1..501).map { i -> i.toString().padStart(11, '0') }
                 fnrs.forEach { insertPerson(it, PersonStatus.PENDING) }
 
                 coEvery { pdlService.getPersonsBolk(any()) } returns emptyMap()
@@ -140,7 +140,7 @@ class PersonEnrichmentServiceTest :
                 service().enrichPendingPersons()
 
                 coVerify(exactly = 1) {
-                    pdlService.getPersonsBolk(match { it.size == 100 })
+                    pdlService.getPersonsBolk(match { it.size == 500 })
                 }
                 coVerify(exactly = 1) {
                     pdlService.getPersonsBolk(match { it.size == 1 })

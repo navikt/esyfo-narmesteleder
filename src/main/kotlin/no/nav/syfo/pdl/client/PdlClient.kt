@@ -39,8 +39,9 @@ private val getPersonQuery =
         .trimIndent()
 
 interface IPdlClient {
+    suspend fun getSystemToken(): String
     suspend fun getPerson(fnr: String): GetPersonResponse
-    suspend fun getPersonBolk(fnrs: List<String>): GetPersonBolkResponse
+    suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse
 }
 
 class PdlClient(
@@ -57,11 +58,13 @@ class PdlClient(
                 ?: throw IllegalStateException("Could not load hentPersonBolk.graphql")
     }
 
+    override suspend fun getSystemToken(): String = texasHttpClient.systemToken(
+        "azuread",
+        TexasHttpClient.getTarget(scope)
+    ).accessToken
+
     override suspend fun getPerson(fnr: String): GetPersonResponse {
-        val token = texasHttpClient.systemToken(
-            "azuread",
-            TexasHttpClient.getTarget(scope)
-        ).accessToken
+        val token = getSystemToken()
 
         val getPersonRequest =
             GetPersonRequest(
@@ -90,12 +93,7 @@ class PdlClient(
         }
     }
 
-    override suspend fun getPersonBolk(fnrs: List<String>): GetPersonBolkResponse {
-        val token = texasHttpClient.systemToken(
-            "azuread",
-            TexasHttpClient.getTarget(scope)
-        ).accessToken
-
+    override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse {
         val request = GetPersonBolkRequest(
             query = getPersonBolkQuery,
             variables = GetPersonBolkVariables(identer = fnrs),
@@ -109,9 +107,6 @@ class PdlClient(
                     header(HttpHeaders.ContentType, "application/json")
                 }
                 .body<GetPersonBolkResponse>()
-            if (!response.errors.isNullOrEmpty()) {
-                logger.error("Error when requesting persons in bolk from PDL. Got errors: ${response.errors}")
-            }
             return response
         } catch (e: ResponseException) {
             logger.error("Error on getPersonBolk query to PDL. Got status ${e.response.status} and message ${e.message}")

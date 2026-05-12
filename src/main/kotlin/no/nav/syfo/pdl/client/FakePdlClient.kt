@@ -5,6 +5,8 @@ import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import java.util.Random
 
 class FakePdlClient : IPdlClient {
+    override suspend fun getSystemToken(): String = "token"
+
     override suspend fun getPerson(fnr: String): GetPersonResponse {
         val faker = Faker(Random(fnr.toLong()))
         val navn = faker.name()
@@ -31,7 +33,7 @@ class FakePdlClient : IPdlClient {
         )
     }
 
-    override suspend fun getPersonBolk(fnrs: List<String>): GetPersonBolkResponse {
+    override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse {
         val hentPersonBolk = fnrs.map { fnr ->
             val faker = Faker(Random(fnr.toLong()))
             val navn = faker.name()

@@ -11,7 +11,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.util.UUID
 
-private const val PERSON_ENRICHMENT_BATCH_SIZE = 100
+private const val PERSON_ENRICHMENT_BATCH_SIZE = 500
 
 class PersonEnrichmentService(
     private val database: Database,

@@ -153,6 +153,7 @@ class PdlServiceTest :
         }
 
         describe("getPersonsBolk") {
+            val token = "token"
             fun bolkResponse(vararg entries: Triple<String, PdlClientPerson?, String>) = GetPersonBolkResponse(
                 data = PersonBolkResponseData(
                     hentPersonBolk = entries.map { (ident, person, code) ->
@@ -173,20 +174,23 @@ class PdlServiceTest :
                 val fnr = "12345678901"
                 val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
 
-                coEvery { pdlClient.getPersonBolk(listOf(fnr)) } returns
+                coEvery { pdlClient.getSystemToken() } returns token
+                coEvery { pdlClient.getPersonBolk(listOf(fnr), token) } returns
                     bolkResponse(Triple(fnr, PdlClientPerson(navn = listOf(navn)), "ok"))
 
                 val result = pdlService.getPersonsBolk(listOf(fnr))
 
                 result[fnr]?.name shouldBe navn
                 result[fnr]?.nationalIdentificationNumber shouldBe fnr
-                coVerify(exactly = 1) { pdlClient.getPersonBolk(listOf(fnr)) }
+                coVerify(exactly = 1) { pdlClient.getSystemToken() }
+                coVerify(exactly = 1) { pdlClient.getPersonBolk(listOf(fnr), token) }
             }
 
             it("should return null in map when bolk code is not ok") {
                 val fnr = "12345678901"
 
-                coEvery { pdlClient.getPersonBolk(listOf(fnr)) } returns
+                coEvery { pdlClient.getSystemToken() } returns token
+                coEvery { pdlClient.getPersonBolk(listOf(fnr), token) } returns
                     bolkResponse(Triple(fnr, null, "not_found"))
 
                 val result = pdlService.getPersonsBolk(listOf(fnr))
@@ -197,7 +201,8 @@ class PdlServiceTest :
             it("should return null in map when person is null despite ok code") {
                 val fnr = "12345678901"
 
-                coEvery { pdlClient.getPersonBolk(listOf(fnr)) } returns
+                coEvery { pdlClient.getSystemToken() } returns token
+                coEvery { pdlClient.getPersonBolk(listOf(fnr), token) } returns
                     bolkResponse(Triple(fnr, null, "ok"))
 
                 val result = pdlService.getPersonsBolk(listOf(fnr))
@@ -210,7 +215,8 @@ class PdlServiceTest :
                 val fnr2 = "98765432109"
                 val navn1 = Navn(fornavn = "Ola", mellomnavn = null, etternavn = "Nordmann")
 
-                coEvery { pdlClient.getPersonBolk(listOf(fnr1, fnr2)) } returns
+                coEvery { pdlClient.getSystemToken() } returns token
+                coEvery { pdlClient.getPersonBolk(listOf(fnr1, fnr2), token) } returns
                     bolkResponse(
                         Triple(fnr1, PdlClientPerson(navn = listOf(navn1)), "ok"),
                         Triple(fnr2, null, "not_found"),
@@ -225,11 +231,33 @@ class PdlServiceTest :
             it("should throw PdlRequestException when client throws") {
                 val fnrs = listOf("12345678901")
 
-                coEvery { pdlClient.getPersonBolk(fnrs) } throws PdlRequestException("PDL error")
+                coEvery { pdlClient.getSystemToken() } returns token
+                coEvery { pdlClient.getPersonBolk(fnrs, token) } throws PdlRequestException("PDL error")
 
                 shouldThrow<PdlRequestException> {
                     pdlService.getPersonsBolk(fnrs)
                 }
+            }
+
+            it("should fetch token once and chunk fnrs in groups of 100") {
+                val fnrs = (1..201).map { it.toString().padStart(11, '0') }
+                coEvery { pdlClient.getSystemToken() } returns token
+                coEvery { pdlClient.getPersonBolk(any<List<String>>(), token) } answers {
+                    val chunk = firstArg<List<String>>()
+                    bolkResponse(*chunk.map { Triple(it, null, "not_found") }.toTypedArray())
+                }
+
+                pdlService.getPersonsBolk(fnrs)
+
+                coVerify(exactly = 1) { pdlClient.getSystemToken() }
+                coVerify(exactly = 2) { pdlClient.getPersonBolk(match { it.size == 100 }, token) }
+                coVerify(exactly = 1) { pdlClient.getPersonBolk(match { it.size == 1 }, token) }
+            }
+
+            it("should return empty map when fnr-list is empty") {
+                pdlService.getPersonsBolk(emptyList()) shouldBe emptyMap()
+
+                coVerify(exactly = 0) { pdlClient.getSystemToken() }
             }
         }
     })

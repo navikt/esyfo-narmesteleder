@@ -422,6 +422,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tilganger:
+    get:
+      summary: Get organizations with narmesteleder access
+      description: |
+        Returns the organization hierarchy filtered to organizations and sub-organizations
+        where the authenticated user has access to the narmesteleder resource in Altinn.
+      tags: [ tilganger ]
+      security:
+        - tokenx_jwt: [ ]
+      responses:
+        '200':
+          description: Filtered organization hierarchy
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TilgangerOrganisasjon'
+        '401':
+          description: |
+            Unauthorized:
+            Possible reasons for unauthorized response include:
+            * `AUTHORIZATION_ERROR`: Invalid token issuer, invalid token, missing scope, missing or invalid system user id or organization number in the token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: |
+            Forbidden:
+            Possible reasons for forbidden response include:
+            * `AUTHORIZATION_ERROR`: The authenticated principal is not allowed to access this endpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: |
+            Internal Server Error:
+            Possible reasons for internal server error include:
+            * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+            * `UPSTREAM_SERVICE_UNAVAILABLE`: An upstream service required to process the request is currently unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 components:
   securitySchemes:
     maskinporten_jwt:
@@ -435,6 +481,28 @@ components:
       bearerFormat: JWT
       description: TokenX issued JWT.
   schemas:
+    TilgangerOrganisasjon:
+      type: object
+      description: Organization with narmesteleder access, filtered from the Altinn organization hierarchy.
+      properties:
+        orgnr:
+          type: string
+          description: Organization number.
+          example: "123456789"
+        navn:
+          type: string
+          description: Organization name.
+          example: "Test Org AS"
+        underenheter:
+          type: array
+          description: Sub-organizations with narmesteleder access.
+          items:
+            $ref: '#/components/schemas/TilgangerOrganisasjon'
+      required:
+        - orgnr
+        - navn
+        - underenheter
+      additionalProperties: false
     Linemanager:
       type: object
       properties:
@@ -715,3 +783,5 @@ tags:
       These endpoints are relevant when there is a requirement for line manager that needs to be fulfilled.
       "requirement" is the term we have coined for the situation when an employee on sick leave does not have a
       line manager assigned, so the employer is required to assign a line manager to the employee.
+  - name: tilganger
+    description: Endpoint to retrieve organization hierarchy filtered by narmesteleder access.

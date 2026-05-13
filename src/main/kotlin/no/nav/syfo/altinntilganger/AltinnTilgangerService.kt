@@ -65,6 +65,10 @@ class AltinnTilgangerService(
         try {
             val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
                 ?: return emptyList()
+            if (response.isError == true) {
+                logger.warn("Altinn tilganger proxy reported error - returning empty list")
+                return emptyList()
+            }
             return response.hierarki.filterToTilgangerOrganisasjoner()
         } catch (e: UpstreamRequestException) {
             logger.error("Error when fetching altinn tilganger for organisasjon filtering", e)

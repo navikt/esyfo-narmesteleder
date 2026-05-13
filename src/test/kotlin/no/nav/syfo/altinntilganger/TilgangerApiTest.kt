@@ -1,5 +1,6 @@
 package no.nav.syfo.altinntilganger
 
+import DefaultOrganization
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -24,10 +25,15 @@ import io.mockk.mockk
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
+import no.nav.syfo.altinntilganger.client.AltinnTilgang
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
+import no.nav.syfo.application.api.ApiError
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
+import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
 class TilgangerApiTest :
@@ -115,10 +121,10 @@ class TilgangerApiTest :
                     fakeAltinnTilgangerClient.accessPolicy.add(
                         FakeAltinnTilgangerClient.FakeArbeidsforholdOversikt(
                             hasAccess = mutableListOf(userFnr),
-                            altinnTilgangerResponse = no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse(
+                            altinnTilgangerResponse = AltinnTilgangerResponse(
                                 isError = false,
                                 hierarki = listOf(
-                                    no.nav.syfo.altinntilganger.client.AltinnTilgang(
+                                    AltinnTilgang(
                                         orgnr = orgNr,
                                         altinn3Tilganger = emptySet(),
                                         altinn2Tilganger = setOf(OPPRETT_NL_REALASJON_RESOURCE),
@@ -144,6 +150,115 @@ class TilgangerApiTest :
                     val body = response.body<List<TilgangerOrganisasjon>>()
                     body shouldHaveSize 1
                     body[0].orgnr shouldBe orgNr
+                }
+            }
+
+            // Avhengig av at brukeren har tilgang til overordnetenhet men ikke til underenhet
+            // TOD: sjekk om dette Skjer faktisk i praksis?
+            it("should keep hovedenhet when only underenhet has tilgang") {
+                withTestApp {
+                    fakeAltinnTilgangerClient.accessPolicy.add(
+                        FakeAltinnTilgangerClient.FakeArbeidsforholdOversikt(
+                            hasAccess = mutableListOf(userFnr),
+                            altinnTilgangerResponse = AltinnTilgangerResponse(
+                                isError = false,
+                                hierarki = listOf(
+                                    AltinnTilgang(
+                                        orgnr = "100000000",
+                                        altinn3Tilganger = emptySet(),
+                                        altinn2Tilganger = emptySet(),
+                                        underenheter = listOf(
+                                            AltinnTilgang(
+                                                orgnr = "200000001",
+                                                altinn3Tilganger = setOf(OPPGI_NARMESTELEDER_RESOURCE),
+                                                altinn2Tilganger = emptySet(),
+                                                underenheter = emptyList(),
+                                                navn = "Underenhet Med Tilgang",
+                                                organisasjonsform = "BEDR",
+                                            ),
+                                            AltinnTilgang(
+                                                orgnr = "200000002",
+                                                altinn3Tilganger = emptySet(),
+                                                altinn2Tilganger = emptySet(),
+                                                underenheter = emptyList(),
+                                                navn = "Underenhet Uten Tilgang",
+                                                organisasjonsform = "BEDR",
+                                            ),
+                                        ),
+                                        navn = "Hovedenhet Uten Tilgang",
+                                        organisasjonsform = "AS",
+                                    ),
+                                ),
+                                orgNrTilTilganger = mapOf("200000001" to setOf(OPPGI_NARMESTELEDER_RESOURCE)),
+                                tilgangTilOrgNr = mapOf(OPPGI_NARMESTELEDER_RESOURCE to setOf("200000001")),
+                            ),
+                        ),
+                    )
+                    texasHttpClientMock.defaultMocks(pid = userFnr, acr = "Level4")
+
+                    val response = client.get("$API_V1_PATH/tilganger") {
+                        bearerAuth(createMockToken(ident = userFnr, issuer = "https://tokenx.nav.no"))
+                    }
+
+                    response.status shouldBe HttpStatusCode.OK
+                    val body = response.body<List<TilgangerOrganisasjon>>()
+                    body shouldHaveSize 1
+                    body[0].orgnr shouldBe "100000000"
+                    body[0].navn shouldBe "Hovedenhet Uten Tilgang"
+                    body[0].underenheter shouldHaveSize 1
+                    body[0].underenheter[0].orgnr shouldBe "200000001"
+                    body[0].underenheter[0].navn shouldBe "Underenhet Med Tilgang"
+                    body[0].underenheter[0].underenheter.shouldBeEmpty()
+                }
+            }
+
+            it("should return empty list when altinn proxy reports isError") {
+                withTestApp {
+                    fakeAltinnTilgangerClient.accessPolicy.add(
+                        FakeAltinnTilgangerClient.FakeArbeidsforholdOversikt(
+                            hasAccess = mutableListOf(userFnr),
+                            altinnTilgangerResponse = AltinnTilgangerResponse(
+                                isError = true,
+                                hierarki = listOf(
+                                    AltinnTilgang(
+                                        orgnr = "999999999",
+                                        altinn3Tilganger = setOf(OPPGI_NARMESTELEDER_RESOURCE),
+                                        altinn2Tilganger = emptySet(),
+                                        underenheter = emptyList(),
+                                        navn = "Should Be Filtered",
+                                        organisasjonsform = "BEDR",
+                                    ),
+                                ),
+                                orgNrTilTilganger = mapOf("999999999" to setOf(OPPGI_NARMESTELEDER_RESOURCE)),
+                                tilgangTilOrgNr = mapOf(OPPGI_NARMESTELEDER_RESOURCE to setOf("999999999")),
+                            ),
+                        ),
+                    )
+                    texasHttpClientMock.defaultMocks(pid = userFnr, acr = "Level4")
+
+                    val response = client.get("$API_V1_PATH/tilganger") {
+                        bearerAuth(createMockToken(ident = userFnr, issuer = "https://tokenx.nav.no"))
+                    }
+
+                    response.status shouldBe HttpStatusCode.OK
+                    response.body<List<TilgangerOrganisasjon>>().shouldBeEmpty()
+                }
+            }
+
+            it("should return 403 for system principal token") {
+                withTestApp {
+                    texasHttpClientMock.defaultMocks(
+                        pid = null,
+                        consumer = DefaultOrganization,
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+
+                    val response = client.get("$API_V1_PATH/tilganger") {
+                        bearerAuth(createMockToken(ident = "0192:123456789"))
+                    }
+
+                    response.status shouldBe HttpStatusCode.Forbidden
+                    response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
                 }
             }
 

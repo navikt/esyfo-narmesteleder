@@ -45,49 +45,111 @@ class ShadowActiveSykmeldingService(
         val clientResult = clientResultDeferred.await()
         val localResult = localResultDeferred.await()
 
-        clientResult.fold(
-            onSuccess = { clientValue ->
-                localResult
-                    .onSuccess { localValue ->
-                        if (clientValue != localValue) {
-                            countMismatch(clientValue, localValue).increment()
-                            logger.warn(
-                                "Shadow mismatch for active sykmelding for fnr={} and orgnummer={}: client={}, local={}",
-                                maskFnr(personIdent),
-                                orgnummer,
-                                clientValue,
-                                localValue,
-                            )
-                        }
-                    }
-                    .onFailure { localException ->
-                        logger.warn(
-                            "Local shadow query failed for fnr={} and orgnummer={}, ignoring local result. Exception type={}",
-                            maskFnr(personIdent),
-                            orgnummer,
-                            localException::class.simpleName ?: "UnknownException",
-                        )
-                    }
-                clientValue
-            },
-            onFailure = { clientException ->
-                logger.warn(
-                    "Dinesykmeldte client failed for fnr={} and orgnummer={}, using local fallback. Exception type={}",
-                    maskFnr(personIdent),
-                    orgnummer,
-                    clientException::class.simpleName ?: "UnknownException",
-                )
+        if (clientResult.isSuccess) {
+            return@coroutineScope handleSuccessfulClientResult(
+                clientValue = clientResult.getOrThrow(),
+                localResult = localResult,
+                personIdent = personIdent,
+                orgnummer = orgnummer,
+            )
+        } else {
+            handleFailedClientResult(
+                clientException = clientResult.exceptionOrNull() ?: error("Missing client exception"),
+                localResult = localResult,
+                personIdent = personIdent,
+                orgnummer = orgnummer,
+            )
+        }
+    }
 
-                localResult.getOrElse { localException ->
-                    logger.warn(
-                        "Local shadow query also failed for fnr={} and orgnummer={}, rethrowing client exception. Exception type={}",
-                        maskFnr(personIdent),
-                        orgnummer,
-                        localException::class.simpleName ?: "UnknownException",
-                    )
-                    throw clientException
-                }
-            },
+    private fun handleSuccessfulClientResult(
+        clientValue: Boolean,
+        localResult: Result<Boolean>,
+        personIdent: String,
+        orgnummer: String,
+    ): Boolean {
+        localResult
+            .onSuccess { logMismatchIfAny(clientValue, localResult.getOrThrow(), personIdent, orgnummer) }
+            .onFailure { localException -> logLocalShadowQueryFailed(personIdent, orgnummer, localException) }
+        return clientValue
+    }
+
+    private fun handleFailedClientResult(
+        clientException: Throwable,
+        localResult: Result<Boolean>,
+        personIdent: String,
+        orgnummer: String,
+    ): Boolean {
+        logClientFailedUsingLocalFallback(
+            personIdent = personIdent,
+            orgnummer = orgnummer,
+            clientException = clientException,
+        )
+
+        return localResult.getOrElse { localException ->
+            logLocalShadowQueryAlsoFailed(
+                personIdent = personIdent,
+                orgnummer = orgnummer,
+                localException = localException,
+            )
+            throw clientException
+        }
+    }
+
+    private fun logMismatchIfAny(
+        clientValue: Boolean,
+        localValue: Boolean,
+        personIdent: String,
+        orgnummer: String,
+    ) {
+        if (clientValue != localValue) {
+            countMismatch(clientValue, localValue).increment()
+            logger.warn(
+                "Shadow mismatch for active sykmelding for fnr={} and orgnummer={}: client={}, local={}",
+                maskFnr(personIdent),
+                orgnummer,
+                clientValue,
+                localValue,
+            )
+        }
+    }
+
+    private fun logLocalShadowQueryFailed(
+        personIdent: String,
+        orgnummer: String,
+        localException: Throwable,
+    ) {
+        logger.warn(
+            "Local shadow query failed for fnr={} and orgnummer={}, ignoring local result. Exception type={}",
+            maskFnr(personIdent),
+            orgnummer,
+            localException::class.simpleName ?: "UnknownException",
+        )
+    }
+
+    private fun logClientFailedUsingLocalFallback(
+        personIdent: String,
+        orgnummer: String,
+        clientException: Throwable,
+    ) {
+        logger.warn(
+            "Dinesykmeldte client failed for fnr={} and orgnummer={}, using local fallback. Exception type={}",
+            maskFnr(personIdent),
+            orgnummer,
+            clientException::class.simpleName ?: "UnknownException",
+        )
+    }
+
+    private fun logLocalShadowQueryAlsoFailed(
+        personIdent: String,
+        orgnummer: String,
+        localException: Throwable,
+    ) {
+        logger.warn(
+            "Local shadow query also failed for fnr={} and orgnummer={}, rethrowing client exception. Exception type={}",
+            maskFnr(personIdent),
+            orgnummer,
+            localException::class.simpleName ?: "UnknownException",
         )
     }
 

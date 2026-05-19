@@ -1,5 +1,5 @@
 package no.nav.syfo.dinesykmeldte
 
-interface IDinesykmeldteService {
+fun interface IDinesykmeldteService {
     suspend fun getIsActiveSykmelding(personIdent: String, orgnummer: String): Boolean
 }

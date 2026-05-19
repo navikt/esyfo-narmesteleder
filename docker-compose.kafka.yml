@@ -74,7 +74,7 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "9000:8080" # Access Kafka-UI on http://localhost:9000
+      - "9080:8080" # Access Kafka-UI on http://localhost:9000
     environment:
       KAFKA_CLUSTERS_0_NAME: 'Local Kafka Cluster'
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'broker:29092'

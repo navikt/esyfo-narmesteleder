@@ -45,90 +45,98 @@ class ShadowActiveSykmeldingServiceTest :
         fun warningMessages(): List<String> = logAppender.list.map { it.formattedMessage }
         fun warningEvents(): List<ILoggingEvent> = logAppender.list.toList()
 
-        describe("getIsActiveSykmelding") {
-            it("returns client result and logs no warning when shadow matches") {
-                coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns true
-                coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns true
+        it("returns client result and logs no warning when shadow matches") {
+            coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns true
+            coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns true
 
-                service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
-                warningMessages() shouldHaveSize 0
+            service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
+            warningMessages() shouldHaveSize 0
+        }
+
+        it("returns client result and logs warning when client=true and local=false") {
+            coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns true
+            coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns false
+
+            service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
+
+            warningMessages() shouldHaveSize 1
+            warningMessages().single() shouldBe
+                "Shadow mismatch for active sykmelding for fnr=****8910 and orgnummer=123456789: client=true, local=false"
+        }
+
+        it("returns client result and logs warning when client=false and local=true") {
+            coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns false
+            coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns true
+
+            service.getIsActiveSykmelding(fnr, orgnummer) shouldBe false
+
+            warningMessages() shouldHaveSize 1
+            warningMessages().single() shouldBe
+                "Shadow mismatch for active sykmelding for fnr=****8910 and orgnummer=123456789: client=false, local=true"
+        }
+
+        it("falls back to local query when client fails") {
+            coEvery {
+                dinesykmeldteService.getIsActiveSykmelding(
+                    fnr,
+                    orgnummer
+                )
+            } throws RuntimeException("client failed")
+            coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns true
+
+            service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
+
+            warningMessages() shouldHaveSize 1
+            warningMessages().single() shouldBe
+                "Dinesykmeldte client failed for fnr=****8910 and orgnummer=123456789, using local fallback. Exception type=RuntimeException"
+            warningEvents().single().throwableProxy shouldBe null
+        }
+
+        it("rethrows the original client exception when both calls fail") {
+            val clientException = RuntimeException("client failed")
+            coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } throws clientException
+            coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } throws RuntimeException("local failed")
+
+            val exception = shouldThrow<RuntimeException> {
+                service.getIsActiveSykmelding(fnr, orgnummer)
             }
 
-            it("returns client result and logs warning when client=true and local=false") {
-                coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns true
-                coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns false
+            exception shouldBe clientException
+            warningMessages() shouldHaveSize 2
+        }
 
-                service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
+        it("uses client result when only local query fails") {
+            coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns true
+            coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } throws RuntimeException("local failed")
 
-                warningMessages() shouldHaveSize 1
-                warningMessages().single() shouldBe
-                    "Shadow mismatch for active sykmelding for fnr=****8910 and orgnummer=123456789: client=true, local=false"
+            service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
+
+            warningMessages() shouldHaveSize 1
+            warningMessages().single() shouldBe
+                "Local shadow query failed for fnr=****8910 and orgnummer=123456789, ignoring local result. Exception type=RuntimeException"
+            warningEvents().single().throwableProxy shouldBe null
+        }
+
+        it("propagates cancellation exception from client call") {
+            coEvery {
+                dinesykmeldteService.getIsActiveSykmelding(
+                    fnr,
+                    orgnummer
+                )
+            } throws CancellationException("cancelled")
+            coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns true
+
+            shouldThrow<CancellationException> {
+                service.getIsActiveSykmelding(fnr, orgnummer)
             }
+        }
 
-            it("returns client result and logs warning when client=false and local=true") {
-                coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns false
-                coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns true
+        it("propagates cancellation exception from local call") {
+            coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns true
+            coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } throws CancellationException("cancelled")
 
-                service.getIsActiveSykmelding(fnr, orgnummer) shouldBe false
-
-                warningMessages() shouldHaveSize 1
-                warningMessages().single() shouldBe
-                    "Shadow mismatch for active sykmelding for fnr=****8910 and orgnummer=123456789: client=false, local=true"
-            }
-
-            it("falls back to local query when client fails") {
-                coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } throws RuntimeException("client failed")
-                coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns true
-
-                service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
-
-                warningMessages() shouldHaveSize 1
-                warningMessages().single() shouldBe
-                    "Dinesykmeldte client failed for fnr=****8910 and orgnummer=123456789, using local fallback. Exception type=RuntimeException"
-                warningEvents().single().throwableProxy shouldBe null
-            }
-
-            it("rethrows the original client exception when both calls fail") {
-                val clientException = RuntimeException("client failed")
-                coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } throws clientException
-                coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } throws RuntimeException("local failed")
-
-                val exception = shouldThrow<RuntimeException> {
-                    service.getIsActiveSykmelding(fnr, orgnummer)
-                }
-
-                exception shouldBe clientException
-                warningMessages() shouldHaveSize 2
-            }
-
-            it("uses client result when only local query fails") {
-                coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns true
-                coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } throws RuntimeException("local failed")
-
-                service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
-
-                warningMessages() shouldHaveSize 1
-                warningMessages().single() shouldBe
-                    "Local shadow query failed for fnr=****8910 and orgnummer=123456789, ignoring local result. Exception type=RuntimeException"
-                warningEvents().single().throwableProxy shouldBe null
-            }
-
-            it("propagates cancellation exception from client call") {
-                coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } throws CancellationException("cancelled")
-                coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } returns true
-
-                shouldThrow<CancellationException> {
-                    service.getIsActiveSykmelding(fnr, orgnummer)
-                }
-            }
-
-            it("propagates cancellation exception from local call") {
-                coEvery { dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer) } returns true
-                coEvery { repository.hasActiveSykmelding(fnr, orgnummer) } throws CancellationException("cancelled")
-
-                shouldThrow<CancellationException> {
-                    service.getIsActiveSykmelding(fnr, orgnummer)
-                }
+            shouldThrow<CancellationException> {
+                service.getIsActiveSykmelding(fnr, orgnummer)
             }
         }
     })

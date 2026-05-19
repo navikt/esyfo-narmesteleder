@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: username
       POSTGRES_DB: esyfo-narmesteleder_dev
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
   valkey:
     image: valkey/valkey:latest
     container_name: valkey-server

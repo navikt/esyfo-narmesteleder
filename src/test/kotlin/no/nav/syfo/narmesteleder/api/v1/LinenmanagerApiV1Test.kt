@@ -47,6 +47,7 @@ import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
@@ -94,7 +95,7 @@ class LinenmanagerApiV1Test :
         val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
         val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
         val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
-        val dineSykmelteService = DinesykmeldteService(fakeDinesykmeldteClient)
+        val dineSykmelteService: IDinesykmeldteService = DinesykmeldteService(fakeDinesykmeldteClient)
         val pdpService = mockk<PdpService>(relaxed = true)
         val principalAccessValidator = PrincipalAccessValidator(
             altinnTilgangerService = altinnTilgangerServiceSpy,

@@ -2,11 +2,11 @@ package no.nav.syfo.narmesteleder.service.validators
 
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
 import no.nav.syfo.util.logger
 
 class SickLeaveValidator(
-    private val dinesykmeldteService: DinesykmeldteService,
+    private val dinesykmeldteService: IDinesykmeldteService,
 ) {
     companion object {
         val logger = logger()

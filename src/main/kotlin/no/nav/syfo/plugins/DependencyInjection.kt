@@ -33,7 +33,6 @@ import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
-import no.nav.syfo.dinesykmeldte.ShadowActiveSykmeldingService
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
@@ -238,10 +237,7 @@ private fun servicesModule() = module {
     single { AaregService(arbeidsforholdOversiktClient = get()) }
     single { DinesykmeldteService(dinesykmeldteClient = get()) }
     single<IDinesykmeldteService> {
-        ShadowActiveSykmeldingService(
-            dinesykmeldteService = get(),
-            repository = get(),
-        )
+        DinesykmeldteService(get())
     }
     single { SykmeldingService(sykmeldingDb = get()) }
     single {

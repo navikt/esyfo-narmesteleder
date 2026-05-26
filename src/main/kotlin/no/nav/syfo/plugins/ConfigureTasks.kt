@@ -40,7 +40,10 @@ fun Application.configureBackgroundTasks() {
                     jobs += launch { sendDialogTask.runTask() }
                     jobs += launch { updateDialogTask.runTask() }
                     if (environment.otherProperties.maintenanceTaskEnabled) {
+                        logger.info("Maintenance task is enabled. Starting behovMaintenanceTask.")
                         jobs += launch { behovMaintenanceTask.runTask() }
+                    } else {
+                        logger.info("Maintenance task is NOT enabled. Skipping behovMaintenanceTask.")
                     }
                 }
             }

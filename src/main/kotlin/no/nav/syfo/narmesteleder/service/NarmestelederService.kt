@@ -229,14 +229,16 @@ class NarmestelederService(
     suspend fun updateStatusOnExpiredBehovs(validDaysAfterTom: Long) {
         var count: Int
         var totalUpdated = 0
-
+        logger.info("Starting loop for setBehovStatusForSykmeldingWithTomBeforeAndStatus")
         do {
+            logger.info("Before call to setBehovStatusForSykmeldingWithTomBeforeAndStatus")
             count = nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
                 tomBefore = Instant.now().minus(Duration.ofDays(validDaysAfterTom)),
                 fromStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
                 newStatus = BehovStatus.BEHOV_EXPIRED,
             )
             totalUpdated += count
+            logger.info("Update $count in interation with setBehovStatusForSykmeldingWithTomBeforeAndStatus")
             delay(UPDATE_EXPIRED_BEHOVS_DELAY_MS.milliseconds)
         }
         while (count > 0)

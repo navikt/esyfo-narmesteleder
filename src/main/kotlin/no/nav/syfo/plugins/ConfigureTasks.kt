@@ -49,6 +49,7 @@ fun Application.configureBackgroundTasks() {
             }
 
             is LeaderChange.Demoted -> {
+                logger.info("Demoted from leader — stopping background tasks")
                 taskJobs.lock { jobs ->
                     jobs.cancelAndClear()
                 }
@@ -59,6 +60,7 @@ fun Application.configureBackgroundTasks() {
     }
 
     monitor.subscribe(ApplicationStopPreparing) {
+        logger.info("Received ApplicationStopPreparing — stopping background tasks")
         taskJobs.lock { jobs ->
             jobs.cancelAndClear()
         }

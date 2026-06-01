@@ -13,6 +13,7 @@ data class OtherEnvironmentProperties(
     val persistSendtSykmelding: Boolean,
     val maintenanceTaskEnabled: Boolean,
     val persistNarmestelederRegister: Boolean,
+    val pdlLeesahConsumerEnabled: Boolean,
     val personEnrichmentTaskDelay: String,
     val personEnrichmentTaskEnabled: Boolean,
 ) {
@@ -33,6 +34,7 @@ data class OtherEnvironmentProperties(
             maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
             maintenanceTaskEnabled = getEnvVar("BEHOV_MAINTENANCE_TASK_ENABLED", "false").toBoolean(),
             persistNarmestelederRegister = getEnvVar("PERSIST_NARMESTELEDER_REGISTER", "false").toBoolean(),
+            pdlLeesahConsumerEnabled = getEnvVar("PDL_LEESAH_CONSUMER_ENABLED", "false").toBoolean(),
             personEnrichmentTaskDelay = getEnvVar("PERSON_ENRICHMENT_TASK_DELAY", "5m"),
             personEnrichmentTaskEnabled = getEnvVar("PERSON_ENRICHMENT_TASK_ENABLED", "false").toBoolean(),
         )
@@ -50,6 +52,7 @@ data class OtherEnvironmentProperties(
             maintenanceTaskEnabled = true,
             electorSSEUrl = "not.applicable",
             persistNarmestelederRegister = true,
+            pdlLeesahConsumerEnabled = true,
             personEnrichmentTaskDelay = "1m",
             personEnrichmentTaskEnabled = true,
         )

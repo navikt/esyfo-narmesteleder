@@ -1,5 +1,8 @@
 package no.nav.syfo.application.kafka
 
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
+import io.confluent.kafka.serializers.KafkaAvroDeserializer
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -67,6 +70,32 @@ fun consumerProperties(
         put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
         put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer.java)
         put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.java)
+    }
+}
+
+fun avroConsumerProperties(
+    groupId: String,
+    env: KafkaEnvironment,
+): Properties {
+    val consumerProperties = commonProperties(env)
+    val schemaRegistryEnv = env.schemaRegistry
+
+    return consumerProperties.apply {
+        put(CommonClientConfigs.GROUP_ID_CONFIG, groupId)
+        put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
+        put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1")
+        put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
+        put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java)
+        put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer::class.java)
+        put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryEnv.url)
+        put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true")
+
+        val username = schemaRegistryEnv.username
+        val password = schemaRegistryEnv.password
+        if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
+            put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, "USER_INFO")
+            put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, "$username:$password")
+        }
     }
 }
 

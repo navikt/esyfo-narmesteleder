@@ -1,0 +1,315 @@
+package no.nav.syfo.pdl.leesah
+
+import io.micrometer.core.instrument.Counter
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import no.nav.person.pdl.leesah.Personhendelse
+import no.nav.person.pdl.leesah.navn.Navn
+import no.nav.syfo.application.environment.OtherEnvironmentProperties
+import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.metric.METRICS_NS
+import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.util.logger
+import org.apache.kafka.clients.consumer.CloseOptions
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecords
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.RecordDeserializationException
+import org.apache.kafka.common.errors.SerializationException
+import org.apache.kafka.common.errors.WakeupException
+import java.time.Duration
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.seconds
+
+class PdlLeesahConsumer(
+    private val kafkaConsumerFactory: () -> KafkaConsumer<String, Personhendelse>,
+    private val scope: CoroutineScope,
+    private val env: OtherEnvironmentProperties,
+    private val pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
+    private val retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
+) : KafkaListener,
+    AutoCloseable {
+    constructor(
+        kafkaConsumer: KafkaConsumer<String, Personhendelse>,
+        scope: CoroutineScope,
+        env: OtherEnvironmentProperties,
+        pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
+        retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
+    ) : this(
+        kafkaConsumerFactory = { kafkaConsumer },
+        scope = scope,
+        env = env,
+        pollDuration = pollDuration,
+        retryDelaySeconds = retryDelaySeconds,
+    )
+
+    private var job: Job? = null
+
+    @Volatile
+    private var kafkaConsumer: KafkaConsumer<String, Personhendelse>? = null
+
+    override fun listen() {
+        // Defensive guard: RunningTasks already avoids creating this consumer when disabled,
+        // but keep the check here for direct usage in tests or other callers outside that setup.
+        if (!env.pdlLeesahConsumerEnabled) {
+            logger.info("PDL Leesah consumer is disabled, not starting consumer for {}", PDL_LEESAH_TOPIC)
+            return
+        }
+
+        if (job?.isActive == true) {
+            logger.info("{} consumer for {} is already running", this::class.simpleName, PDL_LEESAH_TOPIC)
+            return
+        }
+
+        val consumer = kafkaConsumerFactory()
+        kafkaConsumer = consumer
+
+        logger.info("Starting {} consumer for {}", this::class.simpleName, PDL_LEESAH_TOPIC)
+        job = scope.launch(Dispatchers.IO + CoroutineName("${this::class.simpleName}-coroutine")) {
+            try {
+                consumer.subscribe(listOf(PDL_LEESAH_TOPIC))
+
+                while (isActive) {
+                    try {
+                        pollAndProcess(consumer)
+                    } catch (_: WakeupException) {
+                        logger.info("Wakeup received for {}", PDL_LEESAH_TOPIC)
+                        break
+                    } catch (exception: FatalPdlLeesahConsumerException) {
+                        logger.error(
+                            "Stopping {} consumer for {} after failing to handle deserialization error deterministically. exceptionType={}",
+                            this@PdlLeesahConsumer::class.simpleName,
+                            PDL_LEESAH_TOPIC,
+                            exception.cause?.javaClass?.simpleName ?: exception::class.simpleName,
+                        )
+                        break
+                    } catch (_: CancellationException) {
+                        break
+                    } catch (exception: Exception) {
+                        logger.error(
+                            "Unexpected error in {} for {}. Will retry in {} seconds. exceptionType={}",
+                            this@PdlLeesahConsumer::class.simpleName,
+                            PDL_LEESAH_TOPIC,
+                            retryDelaySeconds,
+                            exception::class.simpleName,
+                        )
+                        consumer.unsubscribe()
+                        delay(retryDelaySeconds.seconds)
+                        consumer.subscribe(listOf(PDL_LEESAH_TOPIC))
+                    }
+                }
+            } finally {
+                closeKafkaConsumer(consumer)
+                if (kafkaConsumer === consumer) {
+                    kafkaConsumer = null
+                }
+                job = null
+                logger.info("Exited {} consumer loop for {}", this::class.simpleName, PDL_LEESAH_TOPIC)
+            }
+        }
+    }
+
+    internal suspend fun pollAndProcess(
+        kafkaConsumer: KafkaConsumer<String, Personhendelse> = requireNotNull(this.kafkaConsumer) {
+            "${this::class.simpleName} consumer is not started"
+        },
+    ) {
+        try {
+            val records = kafkaConsumer.poll(pollDuration)
+            if (!records.isEmpty) {
+                processRecords(records, kafkaConsumer)
+            }
+        } catch (exception: RecordDeserializationException) {
+            handleRecordDeserializationException(kafkaConsumer, exception)
+        } catch (exception: SerializationException) {
+            incrementMetric(
+                opplysningstype = METRIC_UNKNOWN_VALUE,
+                endringstype = METRIC_UNKNOWN_VALUE,
+                result = RESULT_SERIALIZATION_ERROR,
+            )
+            // Do not log exception.message or Throwable here; deserialization failures may include
+            // persondata or raw message content from the poison-pill payload.
+            logger.error(
+                "Serialization error while polling {}. Will retry in {} seconds. exceptionType={}",
+                PDL_LEESAH_TOPIC,
+                retryDelaySeconds,
+                exception::class.simpleName,
+            )
+            delay(retryDelaySeconds.seconds)
+        }
+    }
+
+    internal fun processRecords(
+        records: ConsumerRecords<String, Personhendelse>,
+        kafkaConsumer: KafkaConsumer<String, Personhendelse> = requireNotNull(this.kafkaConsumer) {
+            "${this::class.simpleName} consumer is not started"
+        },
+    ) {
+        val processedOffsets = mutableMapOf<TopicPartition, OffsetAndMetadata>()
+        records.forEach { record ->
+            processRecord(record)
+            processedOffsets[TopicPartition(record.topic(), record.partition())] = OffsetAndMetadata(record.offset() + 1)
+        }
+        if (processedOffsets.isNotEmpty()) {
+            kafkaConsumer.commitSync(processedOffsets)
+        }
+    }
+
+    private fun handleRecordDeserializationException(
+        kafkaConsumer: KafkaConsumer<String, Personhendelse>,
+        exception: RecordDeserializationException,
+    ) {
+        val nextOffset = exception.offset() + 1
+        val topicPartition = exception.topicPartition()
+
+        try {
+            kafkaConsumer.seek(topicPartition, nextOffset)
+            kafkaConsumer.commitSync(mapOf(topicPartition to OffsetAndMetadata(nextOffset)))
+        } catch (seekOrCommitException: Exception) {
+            throw FatalPdlLeesahConsumerException(seekOrCommitException)
+        }
+
+        incrementMetric(
+            opplysningstype = METRIC_UNKNOWN_VALUE,
+            endringstype = METRIC_UNKNOWN_VALUE,
+            result = RESULT_RECORD_DESERIALIZATION_SKIPPED,
+        )
+        // Do not log exception.message or Throwable here; it can contain persondata or raw payload bytes.
+        logger.error(
+            "Skipped poison-pill record after deserialization failure for topic={}, partition={}, offset={}, exceptionType={}",
+            topicPartition.topic(),
+            topicPartition.partition(),
+            exception.offset(),
+            exception::class.simpleName,
+        )
+    }
+
+    private fun processRecord(record: ConsumerRecord<String, Personhendelse>) {
+        val personhendelse = record.value()
+        if (personhendelse == null) {
+            incrementMetric(
+                opplysningstype = METRIC_UNKNOWN_VALUE,
+                endringstype = METRIC_UNKNOWN_VALUE,
+                result = RESULT_TOMBSTONE,
+            )
+            logger.warn("Skipping tombstone record from {}", PDL_LEESAH_TOPIC)
+            return
+        }
+
+        val opplysningstype = personhendelse.opplysningstype ?: METRIC_UNKNOWN_VALUE
+        val endringstype = personhendelse.endringstype?.toString() ?: METRIC_UNKNOWN_VALUE
+        val navn = personhendelse.navn
+
+        if (!isRelevantNameEvent(personhendelse)) {
+            incrementMetric(
+                opplysningstype = opplysningstype,
+                endringstype = endringstype,
+                result = RESULT_IGNORED,
+            )
+            logger.info(
+                "Ignoring PDL Leesah event opplysningstype={}, endringstype={}",
+                opplysningstype,
+                endringstype,
+            )
+            return
+        }
+
+        incrementMetric(
+            opplysningstype = opplysningstype,
+            endringstype = endringstype,
+            result = RESULT_PROCESSED,
+        )
+        logger.info(
+            "Processed PDL Leesah name event opplysningstype={}, endringstype={}, hasFornavn={}, hasMellomnavn={}, hasEtternavn={}, hasOriginaltNavn={}",
+            opplysningstype,
+            endringstype,
+            hasFornavn(navn),
+            hasMellomnavn(navn),
+            hasEtternavn(navn),
+            hasOriginaltNavn(navn),
+        )
+
+        // TODO: Fase 2 skal oppdatere person-tabellen basert på relevante NAVN_V1-hendelser.
+    }
+
+    private fun isRelevantNameEvent(personhendelse: Personhendelse): Boolean = personhendelse.opplysningstype == NAVN_OPPLYSNINGSTYPE && personhendelse.navn != null
+
+    private fun incrementMetric(
+        opplysningstype: String,
+        endringstype: String,
+        result: String,
+    ) {
+        Counter.builder(PDL_LEESAH_HENDELSE_TOTAL)
+            .description("Counts processed PDL Leesah events without logging persondata")
+            .tag("opplysningstype", opplysningstype)
+            .tag("endringstype", endringstype)
+            .tag("result", result)
+            .register(METRICS_REGISTRY)
+            .increment()
+    }
+
+    override fun close() {
+        kafkaConsumer?.let { consumer ->
+            closeKafkaConsumer(consumer)
+            if (kafkaConsumer === consumer) {
+                kafkaConsumer = null
+            }
+        }
+    }
+
+    override suspend fun stop() {
+        val currentJob = job
+        val currentConsumer = kafkaConsumer
+        if (currentJob == null || !currentJob.isActive) {
+            logger.info("{} consumer for {} is already stopped", this::class.simpleName, PDL_LEESAH_TOPIC)
+            return
+        }
+
+        logger.info("Stopping {} consumer for {}", this::class.simpleName, PDL_LEESAH_TOPIC)
+        currentJob.cancel()
+        currentConsumer?.wakeup()
+        currentJob.join()
+    }
+
+    private fun closeKafkaConsumer(consumer: KafkaConsumer<String, Personhendelse>) {
+        logger.info("Closing {} consumer for {}", this::class.simpleName, PDL_LEESAH_TOPIC)
+        consumer.unsubscribe()
+        consumer.close(CloseOptions.timeout(Duration.ofSeconds(CLOSE_DURATION_SECONDS)))
+    }
+
+    companion object {
+        private val logger = logger("no.nav.syfo.pdl.leesah.PdlLeesahConsumer")
+        private const val CONSUMER_JOB_DELAY_SECONDS = 30L
+        private const val CLOSE_DURATION_SECONDS = 10L
+        private const val POLL_DURATION_SECONDS = 1L
+        internal const val PDL_LEESAH_TOPIC = "pdl.leesah-v1"
+        internal const val PDL_LEESAH_CONSUMER_GROUP = "esyfo-narmesteleder-pdl-leesah"
+        internal const val NAVN_OPPLYSNINGSTYPE = "NAVN_V1"
+        internal const val PDL_LEESAH_HENDELSE_TOTAL = "${METRICS_NS}_pdl_leesah_hendelse_total"
+        internal const val RESULT_IGNORED = "ignored"
+        internal const val RESULT_PROCESSED = "processed"
+        internal const val RESULT_SERIALIZATION_ERROR = "serialization_error"
+        internal const val RESULT_RECORD_DESERIALIZATION_SKIPPED = "record_deserialization_skipped"
+        internal const val RESULT_TOMBSTONE = "tombstone"
+        internal const val METRIC_UNKNOWN_VALUE = "unknown"
+    }
+}
+
+private class FatalPdlLeesahConsumerException(
+    cause: Throwable,
+) : RuntimeException(null, cause, false, false)
+
+private fun hasFornavn(navn: Navn?): Boolean = !navn?.fornavn.isNullOrBlank()
+
+private fun hasMellomnavn(navn: Navn?): Boolean = !navn?.mellomnavn.isNullOrBlank()
+
+private fun hasEtternavn(navn: Navn?): Boolean = !navn?.etternavn.isNullOrBlank()
+
+private fun hasOriginaltNavn(navn: Navn?): Boolean = navn?.originaltNavn != null

@@ -136,6 +136,8 @@ spec:
       value: "true"
     - name: PERSIST_NARMESTELEDER_REGISTER
       value: "false"
+    - name: PDL_LEESAH_CONSUMER_ENABLED
+      value: "false"
     - name: PERSON_ENRICHMENT_TASK_ENABLED
       value: "false"
   envFrom:

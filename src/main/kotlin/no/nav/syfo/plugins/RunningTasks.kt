@@ -7,7 +7,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.syfo.application.environment.Environment
+import no.nav.syfo.application.kafka.avroConsumerProperties
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
@@ -16,6 +18,7 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.PersistNarmestelederRegisterFromLeesahConsumer
 import no.nav.syfo.narmesteleder.service.LeaderControlledKafkaConsumer
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
+import no.nav.syfo.pdl.leesah.PdlLeesahConsumer
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingKafkaConsumer
@@ -100,16 +103,44 @@ fun Application.configureKafkaConsumers() {
         commitOnAllErrors = environment.kafka.commitOnAllErrors
     }
 
-    val leaderControlledConsumers = listOf(
-        LeaderControlledKafkaConsumer(
-            consumer = persistSendtSykmeldingConsumer,
-            enabled = environment.otherProperties.persistSendtSykmelding,
-        ),
-        LeaderControlledKafkaConsumer(
-            consumer = leesahNarmestelederReplayConsumer,
-            enabled = environment.otherProperties.persistNarmestelederRegister,
-        ),
-    )
+    val pdlLeesahConsumer = if (environment.otherProperties.pdlLeesahConsumerEnabled) {
+        PdlLeesahConsumer(
+            kafkaConsumer = KafkaConsumer<String, Personhendelse>(
+                avroConsumerProperties(
+                    groupId = PdlLeesahConsumer.PDL_LEESAH_CONSUMER_GROUP,
+                    env = environment.kafka,
+                )
+            ),
+            scope = this,
+            env = environment.otherProperties,
+        )
+    } else {
+        logger.info("PDL Leesah consumer is disabled, skipping configuration for {}", PdlLeesahConsumer.PDL_LEESAH_TOPIC)
+        null
+    }
+
+    val leaderControlledConsumers = buildList {
+        add(
+            LeaderControlledKafkaConsumer(
+                consumer = persistSendtSykmeldingConsumer,
+                enabled = environment.otherProperties.persistSendtSykmelding,
+            )
+        )
+        add(
+            LeaderControlledKafkaConsumer(
+                consumer = leesahNarmestelederReplayConsumer,
+                enabled = environment.otherProperties.persistNarmestelederRegister,
+            )
+        )
+        pdlLeesahConsumer?.let {
+            add(
+                LeaderControlledKafkaConsumer(
+                    consumer = it,
+                    enabled = environment.otherProperties.pdlLeesahConsumerEnabled,
+                )
+            )
+        }
+    }
 
     monitor.subscribe(ServerReady) {
         val leaderControlledConsumersJob = launch(Dispatchers.IO) {

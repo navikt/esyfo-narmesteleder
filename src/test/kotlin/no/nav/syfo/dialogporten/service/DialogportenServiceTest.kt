@@ -69,6 +69,7 @@ class DialogportenServiceTest :
                         maintenanceTaskDelay = "1s",
                         maintenanceTaskEnabled = true,
                         persistNarmestelederRegister = false,
+                        pdlLeesahConsumerEnabled = false,
                         personEnrichmentTaskDelay = "5m",
                         personEnrichmentTaskEnabled = false,
                     ),

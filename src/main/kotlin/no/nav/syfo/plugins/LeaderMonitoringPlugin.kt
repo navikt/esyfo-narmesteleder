@@ -16,6 +16,7 @@ fun Application.configureLeaderMonitoring(leaderChangeSSEListener: LeaderChangeS
     monitor.subscribe(ServerReady) {
         log.info("Starting leader monitoring")
         val job = launch {
+            log.info("Before listenForLeaderChanges - Application.configureLeaderMonitoring")
             launch { leaderChangeSSEListener.listenForLeaderChanges() }
 
             var wasLeader = false

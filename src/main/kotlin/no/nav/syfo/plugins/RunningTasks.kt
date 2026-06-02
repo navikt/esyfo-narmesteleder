@@ -112,8 +112,6 @@ fun Application.configureKafkaConsumers() {
     )
 
     monitor.subscribe(ServerReady) {
-        logger.info("Before listenForLeaderChanges - RunningTasks - Kafka consumers")
-        val sseListenerJob = launch { leaderChangeSSEListener.listenForLeaderChanges() }
         val leaderControlledConsumersJob = launch(Dispatchers.IO) {
             leaderChangeSSEListener.isLeader.collect { isLeader ->
                 leaderControlledConsumers.forEach { consumer ->
@@ -123,11 +121,9 @@ fun Application.configureKafkaConsumers() {
         }
         leesahConsumer.listen()
         sendtSykmeldingConsumer.listen()
-
         monitor.subscribe(ApplicationStopPreparing) {
             runBlocking {
                 leaderControlledConsumersJob.cancelAndJoin()
-                sseListenerJob.cancelAndJoin()
                 leaderControlledConsumers.forEach { consumer ->
                     consumer.stop()
                     consumer.close()

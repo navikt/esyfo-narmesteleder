@@ -28,6 +28,7 @@ import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
+import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.application.valkey.ValkeyCache
@@ -263,6 +264,9 @@ private fun servicesModule() = module {
     single { AltinnTilgangerService(get()) }
     single {
         LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl, isLocalEnv())
+    }
+    single {
+        LeaderElection(get(), env().otherProperties.electorPath)
     }
     single {
         val sykmeldingNLKafkaProducer = SykmeldingNLKafkaProducer(

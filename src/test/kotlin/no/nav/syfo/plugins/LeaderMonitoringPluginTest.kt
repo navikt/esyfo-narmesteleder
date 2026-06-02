@@ -42,4 +42,18 @@ class LeaderMonitoringPluginTest :
                 results shouldBe listOf("promoted", "demoted", "unaffected")
             }
         }
+
+        describe("deriveLeaderChangeEvent") {
+            it("should skip the initial default non-leader emission") {
+                deriveLeaderChangeEvent(index = 0, wasLeader = false, isLeader = false) shouldBe null
+            }
+
+            it("should emit promoted after the initial default non-leader emission") {
+                deriveLeaderChangeEvent(index = 1, wasLeader = false, isLeader = true) shouldBe LeaderChange.Promoted
+            }
+
+            it("should emit promoted when the pod is already leader on initial state") {
+                deriveLeaderChangeEvent(index = 0, wasLeader = false, isLeader = true) shouldBe LeaderChange.Promoted
+            }
+        }
     })

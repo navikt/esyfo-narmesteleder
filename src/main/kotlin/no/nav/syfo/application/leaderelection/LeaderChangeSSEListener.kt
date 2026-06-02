@@ -46,6 +46,10 @@ class LeaderChangeSSEListener(
 
     private var hostname: String? = null
 
+    fun initializeLeaderState(isLeader: Boolean) {
+        _isLeader.value = isLeader
+    }
+
     /**
      * Starts listening for leader change events from the NAIS elector sidecar.
      * This is a suspending function that will run indefinitely, collecting SSE events.
@@ -57,44 +61,47 @@ class LeaderChangeSSEListener(
             throw LeaderChangeSSEException("Already listening for leader changes. Only one connection allowed per instance.")
         }
 
-        if (isLocalEnv) {
-            log.info("Running in local environment, setting isLeader to true")
-            _isLeader.value = true
-            return@coroutineScope
-        }
+        try {
+            if (isLocalEnv) {
+                log.info("Running in local environment, setting isLeader to true")
+                initializeLeaderState(isLeader = true)
+                return@coroutineScope
+            }
 
-        hostname = withContext(Dispatchers.IO) { InetAddress.getLocalHost().hostName }
+            hostname = withContext(Dispatchers.IO) { InetAddress.getLocalHost().hostName }
 
-        while (isActive) {
-            runCatching {
-                sseHttpClient.sse(electorSseUrl) {
-                    log.info("Connected to leader election listener for hostname: $hostname")
-                    incoming.collect { event ->
-                        val data = event.data
-                        if (data != null) {
-                            try {
-                                val leaderResponse = jsonMapper.readValue<LeaderElectorResponse>(data)
-                                val isNowLeader = leaderResponse.name == hostname
-                                _isLeader.value = isNowLeader
+            while (isActive) {
+                runCatching {
+                    sseHttpClient.sse(electorSseUrl) {
+                        log.info("Connected to leader election listener for hostname: $hostname")
+                        incoming.collect { event ->
+                            val data = event.data
+                            if (data != null) {
+                                try {
+                                    val leaderResponse = jsonMapper.readValue<LeaderElectorResponse>(data)
+                                    val isNowLeader = leaderResponse.name == hostname
+                                    initializeLeaderState(isNowLeader)
 
-                                log.info(
-                                    "Leader status changed: isLeader=$isNowLeader " +
-                                        "(current leader: ${leaderResponse.name}, this pod: $hostname)"
-                                )
-                            } catch (e: Exception) {
-                                log.warn("Error parsing leader elector response: $data", e)
+                                    log.info(
+                                        "Leader status changed: isLeader=$isNowLeader " +
+                                            "(current leader: ${leaderResponse.name}, this pod: $hostname)"
+                                    )
+                                } catch (e: Exception) {
+                                    log.warn("Error parsing leader elector response: $data", e)
+                                }
                             }
                         }
                     }
-                }
-            }.onFailure {
-                if (it is CancellationException) break
+                }.onFailure {
+                    if (it is CancellationException) break
 
-                log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS.milliseconds.inWholeSeconds} seconds...", it)
-                delay(SSE_CLIENT_RETRY_DELAY_MS.milliseconds)
+                    log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS.milliseconds.inWholeSeconds} seconds...", it)
+                    delay(SSE_CLIENT_RETRY_DELAY_MS.milliseconds)
+                }
             }
+        } finally {
+            isListening.set(false)
         }
-        isListening.set(false)
     }
 
     companion object {

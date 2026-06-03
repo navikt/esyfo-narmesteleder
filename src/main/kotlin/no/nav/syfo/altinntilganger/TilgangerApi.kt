@@ -32,7 +32,7 @@ fun Route.registerTilgangerApi(
                 )
             }
             val organisasjoner = altinnTilgangerService.getFilteredOrganisasjoner(principal)
-            call.respond(HttpStatusCode.OK, organisasjoner)
+            call.respond(HttpStatusCode.OK, TilgangerResponse(organisasjoner = organisasjoner))
         }
     }
 }

@@ -89,7 +89,7 @@ class TilgangerApiTest :
 
                     // Assert
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<List<TilgangerOrganisasjon>>()
+                    val body = response.body<TilgangerResponse>().organisasjoner
                     body shouldHaveSize 1
                     body[0].orgnr shouldBe orgNr
                     body[0].navn shouldBe "Test Org"
@@ -109,7 +109,7 @@ class TilgangerApiTest :
 
                     // Assert
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<List<TilgangerOrganisasjon>>()
+                    val body = response.body<TilgangerResponse>().organisasjoner
                     body.shouldBeEmpty()
                 }
             }
@@ -147,7 +147,7 @@ class TilgangerApiTest :
 
                     // Assert
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<List<TilgangerOrganisasjon>>()
+                    val body = response.body<TilgangerResponse>().organisasjoner
                     body shouldHaveSize 1
                     body[0].orgnr shouldBe orgNr
                 }
@@ -201,7 +201,7 @@ class TilgangerApiTest :
                     }
 
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<List<TilgangerOrganisasjon>>()
+                    val body = response.body<TilgangerResponse>().organisasjoner
                     body shouldHaveSize 1
                     body[0].orgnr shouldBe "100000000"
                     body[0].navn shouldBe "Hovedenhet Uten Tilgang"
@@ -241,7 +241,7 @@ class TilgangerApiTest :
                     }
 
                     response.status shouldBe HttpStatusCode.OK
-                    response.body<List<TilgangerOrganisasjon>>().shouldBeEmpty()
+                    response.body<TilgangerResponse>().organisasjoner.shouldBeEmpty()
                 }
             }
 

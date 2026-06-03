@@ -12,25 +12,37 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 
+data class LeesahBatchProcessResult(
+    val insertedPersons: List<InsertedPerson>,
+    val validRecords: List<LeesahNarmestelederRecord>,
+)
+
 class NarmestelederRegisterService(
     private val database: Database,
 ) {
-    fun processLeesahBatch(records: List<LeesahNarmestelederRecord>): List<InsertedPerson> {
-        if (records.isEmpty()) {
-            return emptyList()
-        }
-        return transaction(database) {
-            upsertBatch(records, this)
-            insertPersons(records, this)
-        }
-    }
+    fun processLeesahBatch(records: List<LeesahNarmestelederRecord>): List<InsertedPerson> = processLeesahBatchWithResult(records).insertedPersons
 
-    private fun upsertBatch(records: List<LeesahNarmestelederRecord>, transaction: Transaction) {
+    internal fun processLeesahBatchWithResult(records: List<LeesahNarmestelederRecord>): LeesahBatchProcessResult {
         if (records.isEmpty()) {
-            return
+            return LeesahBatchProcessResult(
+                insertedPersons = emptyList(),
+                validRecords = emptyList(),
+            )
         }
 
         val validRecords = records.filter(::isValidForRegister)
+        val insertedPersons = transaction(database) {
+            upsertBatch(validRecords, this)
+            insertPersons(validRecords, this)
+        }
+
+        return LeesahBatchProcessResult(
+            insertedPersons = insertedPersons,
+            validRecords = validRecords,
+        )
+    }
+
+    private fun upsertBatch(validRecords: List<LeesahNarmestelederRecord>, transaction: Transaction) {
         if (validRecords.isEmpty()) {
             return
         }

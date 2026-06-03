@@ -31,11 +31,36 @@ import kotlin.time.Duration.Companion.seconds
 
 data class LeesahNarmestelederRecord(
     val offset: Long,
+    val partition: Int = 0,
     val message: NarmestelederLeesahKafkaMessage,
+)
+
+private data class LeesahRecordId(
+    val partition: Int,
+    val offset: Long,
+)
+
+private sealed interface LeesahRepublishCandidate {
+    val producerRecord: NarmestelederLeesahProducerRecord
+
+    data class Parsed(
+        val id: LeesahRecordId,
+        override val producerRecord: NarmestelederLeesahProducerRecord,
+    ) : LeesahRepublishCandidate
+
+    data class Tombstone(
+        override val producerRecord: NarmestelederLeesahProducerRecord,
+    ) : LeesahRepublishCandidate
+}
+
+private data class LeesahDeserializationResult(
+    val parsedRecords: List<LeesahNarmestelederRecord>,
+    val republishCandidates: List<LeesahRepublishCandidate>,
 )
 
 class PersistNarmestelederRegisterFromLeesahConsumer(
     private val handler: NarmestelederRegisterService,
+    private val narmestelederLeesahProducer: NarmestelederLeesahProducer,
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
@@ -44,12 +69,14 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     AutoCloseable {
     constructor(
         handler: NarmestelederRegisterService,
+        narmestelederLeesahProducer: NarmestelederLeesahProducer,
         jacksonMapper: ObjectMapper,
         kafkaConsumer: KafkaConsumer<String, String?>,
         scope: CoroutineScope,
         env: OtherEnvironmentProperties,
     ) : this(
         handler = handler,
+        narmestelederLeesahProducer = narmestelederLeesahProducer,
         jacksonMapper = jacksonMapper,
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
@@ -118,31 +145,55 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         }
     }
 
-    internal fun deserializeRecords(records: ConsumerRecords<String, String?>): List<LeesahNarmestelederRecord> = records.mapNotNull { record ->
-        try {
-            val value = record.value()
-            if (value == null) {
-                logger.warn(
-                    "Skipping tombstone record from {} at offset {}",
-                    record.topic(),
-                    record.offset()
+    private fun deserializeRecords(records: ConsumerRecords<String, String?>): LeesahDeserializationResult {
+        val parsedRecords = mutableListOf<LeesahNarmestelederRecord>()
+        val republishCandidates = mutableListOf<LeesahRepublishCandidate>()
+
+        records.forEach { record ->
+            try {
+                val value = record.value()
+                val producerRecord = NarmestelederLeesahProducerRecord(
+                    key = record.key(),
+                    value = value,
                 )
-                null
-            } else {
-                LeesahNarmestelederRecord(
-                    offset = record.offset(),
-                    message = jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(value),
+
+                if (value == null) {
+                    republishCandidates.add(
+                        LeesahRepublishCandidate.Tombstone(
+                            producerRecord = producerRecord,
+                        )
+                    )
+                } else {
+                    val parsedRecord = LeesahNarmestelederRecord(
+                        offset = record.offset(),
+                        partition = record.partition(),
+                        message = jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(value),
+                    )
+                    parsedRecords.add(parsedRecord)
+                    republishCandidates.add(
+                        LeesahRepublishCandidate.Parsed(
+                            id = LeesahRecordId(
+                                partition = record.partition(),
+                                offset = record.offset(),
+                            ),
+                            producerRecord = producerRecord,
+                        )
+                    )
+                }
+            } catch (e: JsonProcessingException) {
+                logger.warn(
+                    "Error while deserializing record from {} at offset {}. Skipping record.",
+                    record.topic(),
+                    record.offset(),
+                    e
                 )
             }
-        } catch (e: JsonProcessingException) {
-            logger.warn(
-                "Error while deserializing record from {} at offset {}. Skipping record.",
-                record.topic(),
-                record.offset(),
-                e
-            )
-            null
         }
+
+        return LeesahDeserializationResult(
+            parsedRecords = parsedRecords,
+            republishCandidates = republishCandidates,
+        )
     }
 
     internal fun processBatch(
@@ -151,12 +202,43 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
             "${this::class.simpleName} consumer is not started"
         },
     ) {
-        runCatching {
-            val leesahRecords = deserializeRecords(records)
-            handler.processLeesahBatch(leesahRecords)
-            kafkaConsumer.commitSync()
+        val recordsToRepublish = runCatching {
+            val deserializedRecords = deserializeRecords(records)
+            val batchResult = handler.processLeesahBatchWithResult(deserializedRecords.parsedRecords)
+            val validRecordIds = batchResult.validRecords.mapTo(mutableSetOf()) {
+                LeesahRecordId(
+                    partition = it.partition,
+                    offset = it.offset,
+                )
+            }
+            val recordsToRepublish = deserializedRecords.republishCandidates.mapNotNull { candidate ->
+                when (candidate) {
+                    is LeesahRepublishCandidate.Parsed -> {
+                        candidate.producerRecord.takeIf { candidate.id in validRecordIds }
+                    }
+
+                    is LeesahRepublishCandidate.Tombstone -> candidate.producerRecord
+                }
+            }
+            recordsToRepublish
         }.getOrElse { error ->
             handleBatchError(records, kafkaConsumer, error)
+            return
+        }
+
+        try {
+            // Publish happens after persistence and before commit. If publishing fails after a partial batch
+            // has been sent, the whole batch will be retried and downstream consumers must tolerate duplicates.
+            narmestelederLeesahProducer.sendLeesahBatch(recordsToRepublish)
+            kafkaConsumer.commitSync()
+        } catch (error: Throwable) {
+            logger.error(
+                "Error while republishing {} records to {}. Offsets will not be committed.",
+                recordsToRepublish.size,
+                NarmestelederLeesahProducer.NARMESTELEDER_LEESAH_TOPIC,
+                error,
+            )
+            throw error
         }
     }
 

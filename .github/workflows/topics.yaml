@@ -13,20 +13,25 @@ on:
   merge_group:
     types: [ checks_requested ]
   workflow_dispatch:
+concurrency:
+  group: deploy-topics-${{ github.ref }}
+  cancel-in-progress: true
 env:
-  TOPIC_FILES: nais/topics/syfo-narmestelder-leesah-dev.yaml
-  TOPIC_DEV_FILES: nais/topics/syfo-narmestelder-leesah-prod.yaml
+  TOPIC_DEV_FILES: nais/topics/syfo-narmestelder-leesah-dev.yaml
+  TOPIC_PROD_FILES: nais/topics/syfo-narmestelder-leesah-prod.yaml
 jobs:
   deploy-topic-to-dev:
     name: Deploy topic to dev
     permissions:
+      contents: read
       id-token: write
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Deploy topics to dev
-        uses: nais/deploy/actions/deploy@v2
+        uses: nais/deploy/actions/deploy@v2 # internal Nav action
         env:
           VAR: kafka-pool=nav-dev
           CLUSTER: dev-gcp
@@ -36,13 +41,15 @@ jobs:
     if: github.ref == 'refs/heads/main'
     name: Deploy topic to prod
     permissions:
+      contents: read
       id-token: write
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Deploy topics to prod
-        uses: nais/deploy/actions/deploy@v2
+        uses: nais/deploy/actions/deploy@v2 # internal Nav action
         env:
           VAR: kafka-pool=nav-prod
           CLUSTER: prod-gcp

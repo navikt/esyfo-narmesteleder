@@ -42,6 +42,7 @@ import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
+import no.nav.syfo.narmesteleder.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
@@ -279,6 +280,13 @@ private fun servicesModule() = module {
             )
         )
         NarmestelederKafkaService(sykmeldingNLKafkaProducer)
+    }
+    single {
+        NarmestelederLeesahProducer(
+            KafkaProducer<String, String?>(
+                producerProperties(env().kafka, StringSerializer::class, StringSerializer::class)
+            )
+        )
     }
     single { PdpService(get()) }
     single { PrincipalAccessValidator(get(), get(), get()) }

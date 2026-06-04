@@ -45,5 +45,18 @@ class LeaderChangeSSEListenerTest :
 
                 listener.isLeader.value shouldBe false
             }
+
+            it("should initialize leader state from simple API result") {
+                val mockEngine =
+                    MockEngine { _ ->
+                        respond("", HttpStatusCode.InternalServerError)
+                    }
+                val httpClient = HttpClient(mockEngine)
+                val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector", false)
+
+                listener.initializeLeaderState(isLeader = true)
+
+                listener.isLeader.value shouldBe true
+            }
         }
     })

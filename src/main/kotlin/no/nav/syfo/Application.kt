@@ -39,7 +39,7 @@ fun main() {
 fun Application.module() {
     configureDependencies()
     configureLifecycleHooks(get())
-    configureLeaderMonitoring(get())
+    configureLeaderMonitoring(get(), get())
     configureRouting()
     configureKafkaConsumers()
     configureBackgroundTasks()

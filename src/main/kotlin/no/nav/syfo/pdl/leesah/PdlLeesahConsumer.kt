@@ -32,6 +32,7 @@ class PdlLeesahConsumer(
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, Personhendelse>,
     private val scope: CoroutineScope,
     private val env: OtherEnvironmentProperties,
+    private val pdlLeesahNameUpdateService: PdlLeesahNameUpdateService,
     private val pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
     private val retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
 ) : KafkaListener,
@@ -40,12 +41,14 @@ class PdlLeesahConsumer(
         kafkaConsumer: KafkaConsumer<String, Personhendelse>,
         scope: CoroutineScope,
         env: OtherEnvironmentProperties,
+        pdlLeesahNameUpdateService: PdlLeesahNameUpdateService,
         pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
         retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
     ) : this(
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
         env = env,
+        pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
         pollDuration = pollDuration,
         retryDelaySeconds = retryDelaySeconds,
     )
@@ -146,7 +149,7 @@ class PdlLeesahConsumer(
         }
     }
 
-    internal fun processRecords(
+    internal suspend fun processRecords(
         records: ConsumerRecords<String, Personhendelse>,
         kafkaConsumer: KafkaConsumer<String, Personhendelse> = requireNotNull(this.kafkaConsumer) {
             "${this::class.simpleName} consumer is not started"
@@ -191,7 +194,7 @@ class PdlLeesahConsumer(
         )
     }
 
-    private fun processRecord(record: ConsumerRecord<String, Personhendelse>) {
+    private suspend fun processRecord(record: ConsumerRecord<String, Personhendelse>) {
         val personhendelse = record.value()
         if (personhendelse == null) {
             incrementMetric(
@@ -221,22 +224,25 @@ class PdlLeesahConsumer(
             return
         }
 
+        val updateResult = pdlLeesahNameUpdateService.processNameChange(personhendelse.personidenter.orEmpty())
+
         incrementMetric(
             opplysningstype = opplysningstype,
             endringstype = endringstype,
             result = RESULT_PROCESSED,
         )
         logger.info(
-            "Processed PDL Leesah name event opplysningstype={}, endringstype={}, hasFornavn={}, hasMellomnavn={}, hasEtternavn={}, hasOriginaltNavn={}",
+            "Processed PDL Leesah name event opplysningstype={}, endringstype={}, hasFornavn={}, hasMellomnavn={}, hasEtternavn={}, hasOriginaltNavn={}, updatedCount={}, notFoundInRegisterCount={}, pdlNotFoundCount={}",
             opplysningstype,
             endringstype,
             hasFornavn(navn),
             hasMellomnavn(navn),
             hasEtternavn(navn),
             hasOriginaltNavn(navn),
+            updateResult.updatedCount,
+            updateResult.notFoundInRegisterCount,
+            updateResult.pdlNotFoundCount,
         )
-
-        // TODO: Fase 2 skal oppdatere person-tabellen basert på relevante NAVN_V1-hendelser.
     }
 
     private fun isRelevantNameEvent(personhendelse: Personhendelse): Boolean = personhendelse.opplysningstype == NAVN_OPPLYSNINGSTYPE && personhendelse.navn != null

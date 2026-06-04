@@ -19,6 +19,7 @@ import no.nav.syfo.narmesteleder.kafka.PersistNarmestelederRegisterFromLeesahCon
 import no.nav.syfo.narmesteleder.service.LeaderControlledKafkaConsumer
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.pdl.leesah.PdlLeesahConsumer
+import no.nav.syfo.pdl.leesah.PdlLeesahNameUpdateService
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingKafkaConsumer
@@ -31,6 +32,7 @@ fun Application.configureKafkaConsumers() {
     val nlLeesahHandler by inject<NlBehovLeesahHandler>()
     val sendtSykmeldingHandler by inject<SendtSykmeldingHandler>()
     val narmestelederRegisterService by inject<NarmestelederRegisterService>()
+    val pdlLeesahNameUpdateService by inject<PdlLeesahNameUpdateService>()
     val environment by inject<Environment>()
     val leaderChangeSSEListener by inject<LeaderChangeSSEListener>()
     val logger = logger()
@@ -113,6 +115,7 @@ fun Application.configureKafkaConsumers() {
             ),
             scope = this,
             env = environment.otherProperties,
+            pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
         )
     } else {
         logger.info("PDL Leesah consumer is disabled, skipping configuration for {}", PdlLeesahConsumer.PDL_LEESAH_TOPIC)

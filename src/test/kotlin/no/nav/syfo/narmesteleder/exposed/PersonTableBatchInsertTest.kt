@@ -4,8 +4,12 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
+import no.nav.syfo.pdl.Person
+import no.nav.syfo.pdl.client.Foedselsdato
+import no.nav.syfo.pdl.client.Navn
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.LocalDate
@@ -287,6 +291,71 @@ class PersonTableBatchInsertTest :
                 insertedPersons shouldBe emptyList()
                 transaction(TestDB.exposedDatabase) {
                     PersonEntity.all().count() shouldBe 0
+                }
+            }
+        }
+
+        describe("PersonTable lookup and update operations") {
+            it("should find only fnr values that already exist in person table") {
+                transaction(TestDB.exposedDatabase) {
+                    personTable.batchInsertIgnoreExisting(
+                        listOf(
+                            PersonBatchInsertRow(fnr = "12345678901", status = "PENDING"),
+                            PersonBatchInsertRow(fnr = "10987654321", status = "PENDING"),
+                        ),
+                    )
+                }
+
+                val existingFnrs = transaction(TestDB.exposedDatabase) {
+                    personTable.findExistingFnrs(
+                        listOf(
+                            "12345678901",
+                            "10987654321",
+                            "11111111111",
+                        ),
+                    )
+                }
+
+                existingFnrs shouldBe setOf("12345678901", "10987654321")
+            }
+
+            it("should update name and birth date from PDL without changing status") {
+                transaction(TestDB.exposedDatabase) {
+                    personTable.batchInsertIgnoreExisting(
+                        listOf(
+                            PersonBatchInsertRow(
+                                fnr = "12345678901",
+                                status = "ACTIVE",
+                                fornavn = "Old",
+                                etternavn = "Name",
+                            ),
+                        ),
+                    )
+                }
+
+                val updatedRows = transaction(TestDB.exposedDatabase) {
+                    personTable.updatePersonFromPdl(
+                        fnr = "12345678901",
+                        person = Person(
+                            name = Navn(
+                                fornavn = "Ada",
+                                mellomnavn = "Augusta",
+                                etternavn = "Lovelace",
+                            ),
+                            nationalIdentificationNumber = "12345678901",
+                            foedselsdato = Foedselsdato(LocalDate.of(1985, 12, 10)),
+                        ),
+                    )
+                }
+
+                updatedRows shouldBe 1
+                transaction(TestDB.exposedDatabase) {
+                    val person = PersonEntity.find { PersonTable.fnr inList listOf("12345678901") }.single()
+                    person.fornavn shouldBe "Ada"
+                    person.mellomnavn shouldBe "Augusta"
+                    person.etternavn shouldBe "Lovelace"
+                    person.foedselsdato shouldBe LocalDate.of(1985, 12, 10)
+                    person.status shouldBe "ACTIVE"
                 }
             }
         }

@@ -44,7 +44,8 @@ Tjenesten konsumerer Kafka-topics for å opprette og vedlikeholde data som bruke
 - Konsumenten starter bare når `PDL_LEESAH_CONSUMER_ENABLED=true`.
 - Toggle er `false` i prod, og `false` i dev til tilgang til `pdl.leesah-v1` er bekreftet.
 - Logger og metrikker inneholder bare strukturell informasjon, aldri navn, fødselsnummer, personidenter eller rå meldingsinnhold.
-- Fase 1 filtrerer relevante `NAVN_V1`-hendelser og forbereder videre behandling. Oppdatering av `person`-tabellen kommer i fase 2.
+- Ved relevante `NAVN_V1`-hendelser brukes personidenter fra Leesah kun til å finne eksisterende personer i `person`-tabellen. For treff hentes korrekt nåværende navn og fødselsdato fra PDL før `person`-raden oppdateres.
+- Konsumenten oppretter fortsatt ikke nye personer fra `pdl.leesah-v1`; kun eksisterende personer i registeret oppdateres.
 - `Personhendelse.avsc` er hentet fra `navikt/narmesteleder` (`src/main/avro/no/nav/person/pdl/leesah/Personhendelse.avsc`, SHA `24c9a2cd2921e9cc423df8c343542ff0967564ae`).
 
 

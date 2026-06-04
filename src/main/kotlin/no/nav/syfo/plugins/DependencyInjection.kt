@@ -55,6 +55,7 @@ import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
+import no.nav.syfo.pdl.leesah.PdlLeesahNameUpdateService
 import no.nav.syfo.person.service.PersonEnrichmentService
 import no.nav.syfo.person.task.PersonEnrichmentTask
 import no.nav.syfo.sykmelding.db.ISykmeldingDb
@@ -262,6 +263,7 @@ private fun servicesModule() = module {
         )
     }
     single { PdlService(get(), get()) }
+    single { PdlLeesahNameUpdateService(get(), get()) }
 
     single { AltinnTilgangerService(get()) }
     single {

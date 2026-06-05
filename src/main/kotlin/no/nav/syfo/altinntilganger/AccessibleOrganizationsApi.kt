@@ -31,8 +31,8 @@ fun Route.registerTilgangerApi(
                     type = ErrorType.AUTHORIZATION_ERROR,
                 )
             }
-            val organisasjoner = altinnTilgangerService.getFilteredOrganisasjoner(principal)
-            call.respond(HttpStatusCode.OK, TilgangerResponse(organisasjoner = organisasjoner))
+            val organizations = altinnTilgangerService.getFilteredOrganizations(principal)
+            call.respond(HttpStatusCode.OK, AccessibleOrganizationsResponse(organizations = organizations))
         }
     }
 }

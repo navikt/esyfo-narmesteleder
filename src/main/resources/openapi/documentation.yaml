@@ -437,7 +437,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TilgangerResponse'
+                $ref: '#/components/schemas/AccessibleOrganizationsResponse'
         '401':
           description: |
             Unauthorized:
@@ -479,39 +479,39 @@ components:
       bearerFormat: JWT
       description: TokenX issued JWT.
   schemas:
-    TilgangerResponse:
+    AccessibleOrganizationsResponse:
       type: object
       description: Wrapper for organizations with narmesteleder access.
       properties:
-        organisasjoner:
+        organizations:
           type: array
           description: Organizations with narmesteleder access.
           items:
-            $ref: '#/components/schemas/TilgangerOrganisasjon'
+            $ref: '#/components/schemas/AccessibleOrganization'
       required:
-        - organisasjoner
+        - organizations
       additionalProperties: false
-    TilgangerOrganisasjon:
+    AccessibleOrganization:
       type: object
       description: Organization with narmesteleder access, filtered from the Altinn organization hierarchy.
       properties:
-        orgnr:
+        organizationNumber:
           type: string
           description: Organization number.
           example: "123456789"
-        navn:
+        name:
           type: string
           description: Organization name.
           example: "Test Org AS"
-        underenheter:
+        subOrganizations:
           type: array
           description: Sub-organizations with narmesteleder access.
           items:
-            $ref: '#/components/schemas/TilgangerOrganisasjon'
+            $ref: '#/components/schemas/AccessibleOrganization'
       required:
-        - orgnr
-        - navn
-        - underenheter
+        - organizationNumber
+        - name
+        - subOrganizations
       additionalProperties: false
     Linemanager:
       type: object

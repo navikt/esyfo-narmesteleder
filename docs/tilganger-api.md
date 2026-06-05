@@ -23,22 +23,22 @@ sequenceDiagram
 
     Note over API: Filtrerer hierarkiet:<br/>kun orger med nav_syfo_oppgi-narmesteleder<br/>eller 4596:1
 
-    API-->>FE: 200 OK<br/>{ organisasjoner: [{ orgnr, navn, underenheter[] }] }
+    API-->>FE: 200 OK<br/>{ organizations: [{ organizationNumber, name, subOrganizations[] }] }
 ```
 
 ## Respons
 
 ```json
 {
-  "organisasjoner": [
+  "organizations": [
     {
-      "orgnr": "123456789",
-      "navn": "Bedrift AS",
-      "underenheter": [
+      "organizationNumber": "123456789",
+      "name": "Bedrift AS",
+      "subOrganizations": [
         {
-          "orgnr": "987654321",
-          "navn": "Avdeling Oslo",
-          "underenheter": []
+          "organizationNumber": "987654321",
+          "name": "Avdeling Oslo",
+          "subOrganizations": []
         }
       ]
     }

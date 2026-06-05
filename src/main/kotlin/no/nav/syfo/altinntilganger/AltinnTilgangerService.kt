@@ -61,7 +61,7 @@ class AltinnTilgangerService(
         }
     }
 
-    suspend fun getFilteredOrganisasjoner(userPrincipal: UserPrincipal): List<TilgangerOrganisasjon> {
+    suspend fun getFilteredOrganizations(userPrincipal: UserPrincipal): List<AccessibleOrganization> {
         try {
             val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
                 ?: return emptyList()
@@ -69,24 +69,24 @@ class AltinnTilgangerService(
                 logger.warn("Altinn tilganger proxy reported error - returning empty list")
                 return emptyList()
             }
-            return response.hierarki.filterToTilgangerOrganisasjoner()
+            return response.hierarki.filterToOrganizations()
         } catch (e: UpstreamRequestException) {
             logger.error("Error when fetching altinn tilganger for organisasjon filtering", e)
             throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn tilganger")
         }
     }
 
-    private fun List<AltinnTilgang>.filterToTilgangerOrganisasjoner(): List<TilgangerOrganisasjon> = mapNotNull { it.filterTilgang() }
+    private fun List<AltinnTilgang>.filterToOrganizations(): List<AccessibleOrganization> = mapNotNull { it.filterAccess() }
 
-    private fun AltinnTilgang.filterTilgang(): TilgangerOrganisasjon? {
-        val filteredUnderenheter = underenheter.filterToTilgangerOrganisasjoner()
+    private fun AltinnTilgang.filterAccess(): AccessibleOrganization? {
+        val filteredSubOrganizations = underenheter.filterToOrganizations()
         val hasAccess = hasNarmestelederTilgang()
 
-        return if (hasAccess || filteredUnderenheter.isNotEmpty()) {
-            TilgangerOrganisasjon(
-                orgnr = orgnr,
-                navn = navn,
-                underenheter = filteredUnderenheter,
+        return if (hasAccess || filteredSubOrganizations.isNotEmpty()) {
+            AccessibleOrganization(
+                organizationNumber = orgnr,
+                name = navn,
+                subOrganizations = filteredSubOrganizations,
             )
         } else {
             null

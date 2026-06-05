@@ -36,7 +36,7 @@ import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
-class TilgangerApiTest :
+class AccessibleOrganizationsApiTest :
     DescribeSpec({
         val texasHttpClientMock = mockk<TexasHttpClient>()
         val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
@@ -75,7 +75,7 @@ class TilgangerApiTest :
         }
 
         describe("GET /api/v1/tilganger") {
-            it("should return filtered organisasjoner with narmesteleder tilgang") {
+            it("should return filtered organizations with narmesteleder tilgang") {
                 withTestApp {
                     // Arrange
                     val orgNr = "123456789"
@@ -89,11 +89,11 @@ class TilgangerApiTest :
 
                     // Assert
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<TilgangerResponse>().organisasjoner
+                    val body = response.body<AccessibleOrganizationsResponse>().organizations
                     body shouldHaveSize 1
-                    body[0].orgnr shouldBe orgNr
-                    body[0].navn shouldBe "Test Org"
-                    body[0].underenheter.shouldBeEmpty()
+                    body[0].organizationNumber shouldBe orgNr
+                    body[0].name shouldBe "Test Org"
+                    body[0].subOrganizations.shouldBeEmpty()
                 }
             }
 
@@ -109,14 +109,14 @@ class TilgangerApiTest :
 
                     // Assert
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<TilgangerResponse>().organisasjoner
+                    val body = response.body<AccessibleOrganizationsResponse>().organizations
                     body.shouldBeEmpty()
                 }
             }
 
             it("should include org with only altinn2 tilgang") {
                 withTestApp {
-                    // Arrange - directly set up a response with altinn2 tilgang in hierarki
+                    // Arrange - directly set up a response with altinn2 access in hierarchy
                     val orgNr = "987654321"
                     fakeAltinnTilgangerClient.accessPolicy.add(
                         FakeAltinnTilgangerClient.FakeArbeidsforholdOversikt(
@@ -147,15 +147,15 @@ class TilgangerApiTest :
 
                     // Assert
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<TilgangerResponse>().organisasjoner
+                    val body = response.body<AccessibleOrganizationsResponse>().organizations
                     body shouldHaveSize 1
-                    body[0].orgnr shouldBe orgNr
+                    body[0].organizationNumber shouldBe orgNr
                 }
             }
 
-            // Avhengig av at brukeren har tilgang til overordnetenhet men ikke til underenhet
-            // TOD: sjekk om dette Skjer faktisk i praksis?
-            it("should keep hovedenhet when only underenhet has tilgang") {
+            // Depends on the user having access to a sub-organization, but not the parent organization itself.
+            // TODO: Verify whether this actually happens in practice.
+            it("should keep parent organization when only sub-organization has tilgang") {
                 withTestApp {
                     fakeAltinnTilgangerClient.accessPolicy.add(
                         FakeAltinnTilgangerClient.FakeArbeidsforholdOversikt(
@@ -201,14 +201,14 @@ class TilgangerApiTest :
                     }
 
                     response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<TilgangerResponse>().organisasjoner
+                    val body = response.body<AccessibleOrganizationsResponse>().organizations
                     body shouldHaveSize 1
-                    body[0].orgnr shouldBe "100000000"
-                    body[0].navn shouldBe "Hovedenhet Uten Tilgang"
-                    body[0].underenheter shouldHaveSize 1
-                    body[0].underenheter[0].orgnr shouldBe "200000001"
-                    body[0].underenheter[0].navn shouldBe "Underenhet Med Tilgang"
-                    body[0].underenheter[0].underenheter.shouldBeEmpty()
+                    body[0].organizationNumber shouldBe "100000000"
+                    body[0].name shouldBe "Hovedenhet Uten Tilgang"
+                    body[0].subOrganizations shouldHaveSize 1
+                    body[0].subOrganizations[0].organizationNumber shouldBe "200000001"
+                    body[0].subOrganizations[0].name shouldBe "Underenhet Med Tilgang"
+                    body[0].subOrganizations[0].subOrganizations.shouldBeEmpty()
                 }
             }
 
@@ -241,7 +241,7 @@ class TilgangerApiTest :
                     }
 
                     response.status shouldBe HttpStatusCode.OK
-                    response.body<TilgangerResponse>().organisasjoner.shouldBeEmpty()
+                    response.body<AccessibleOrganizationsResponse>().organizations.shouldBeEmpty()
                 }
             }
 

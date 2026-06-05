@@ -3,6 +3,7 @@ package no.nav.syfo.pdl.client
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -75,7 +76,7 @@ class PdlClient(
             val pdlReponse = httpClient
                 .post(pdlBaseUrl) {
                     setBody(getPersonRequest)
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearerAuth(token)
                     header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_NARMESTELEDER)
                     header(HttpHeaders.ContentType, "application/json")
                 }
@@ -102,7 +103,7 @@ class PdlClient(
             val response = httpClient
                 .post(pdlBaseUrl) {
                     setBody(request)
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearerAuth(token)
                     header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_NARMESTELEDER)
                     header(HttpHeaders.ContentType, "application/json")
                 }

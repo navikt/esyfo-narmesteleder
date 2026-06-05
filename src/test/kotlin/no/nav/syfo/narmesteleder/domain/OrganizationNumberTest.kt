@@ -7,40 +7,38 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OrganizationNumberTest :
     DescribeSpec({
-        describe("OrganizationNumber") {
-            it("should accept valid 9-digit number") {
-                val orgNr = OrganizationNumber("123456789")
-                orgNr.value shouldBe "123456789"
-            }
+        it("should accept valid 9-digit number") {
+            val orgNr = OrganizationNumber("123456789")
+            orgNr.value shouldBe "123456789"
+        }
 
-            it("should reject number with fewer than 9 digits") {
-                shouldThrow<IllegalArgumentException> {
-                    OrganizationNumber("12345678")
-                }
+        it("should reject number with fewer than 9 digits") {
+            shouldThrow<IllegalArgumentException> {
+                OrganizationNumber("12345678")
             }
+        }
 
-            it("should reject number with more than 9 digits") {
-                shouldThrow<IllegalArgumentException> {
-                    OrganizationNumber("1234567890")
-                }
+        it("should reject number with more than 9 digits") {
+            shouldThrow<IllegalArgumentException> {
+                OrganizationNumber("1234567890")
             }
+        }
 
-            it("should reject non-digit characters") {
-                shouldThrow<IllegalArgumentException> {
-                    OrganizationNumber("12345678a")
-                }
+        it("should reject non-digit characters") {
+            shouldThrow<IllegalArgumentException> {
+                OrganizationNumber("12345678a")
             }
+        }
 
-            it("should reject empty string") {
-                shouldThrow<IllegalArgumentException> {
-                    OrganizationNumber("")
-                }
+        it("should reject empty string") {
+            shouldThrow<IllegalArgumentException> {
+                OrganizationNumber("")
             }
+        }
 
-            it("should reject string with spaces") {
-                shouldThrow<IllegalArgumentException> {
-                    OrganizationNumber("123 56789")
-                }
+        it("should reject string with spaces") {
+            shouldThrow<IllegalArgumentException> {
+                OrganizationNumber("123 56789")
             }
         }
 

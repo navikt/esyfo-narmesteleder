@@ -74,7 +74,7 @@ class PdlClientTest :
                 result.data?.identer?.identer?.firstOrNull()?.ident shouldBe fnr
             }
 
-            it("should throw exception when response contains error") {
+            it("should throw PdlResourceNotFoundException when response contains error") {
                 val fnr = "12345678901"
                 val getPersonResponse = """
                 {

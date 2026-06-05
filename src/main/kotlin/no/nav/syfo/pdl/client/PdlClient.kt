@@ -8,6 +8,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
+import io.ktor.utils.io.CancellationException
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -88,9 +89,17 @@ class PdlClient(
                 throw PdlResourceNotFoundException("Did not find person in PDL for given fnr")
             }
             return pdlReponse
-        } catch (e: ResponseException) {
-            logger.error("Error on findPerson query to PDL. Got status ${e.response.status} and message ${e.message}")
-            throw PdlRequestException("Error on findPerson query to PDL", e)
+        } catch (e: Exception) {
+            when (e) {
+                is PdlResourceNotFoundException -> throw e
+                is CancellationException -> throw e
+                is ResponseException -> {
+                    logger.error("Error on findPerson query to PDL. Got status ${e.response.status} and message ${e.message}")
+                    throw PdlRequestException("Error on findPerson query to PDL", e)
+                }
+
+                else -> throw PdlRequestException("Error when calling PDL", e)
+            }
         }
     }
 
@@ -109,9 +118,16 @@ class PdlClient(
                 }
                 .body<GetPersonBolkResponse>()
             return response
-        } catch (e: ResponseException) {
-            logger.error("Error on getPersonBolk query to PDL. Got status ${e.response.status} and message ${e.message}")
-            throw PdlRequestException("Error on getPersonBolk query to PDL", e)
+        } catch (e: Exception) {
+            when (e) {
+                is CancellationException -> throw e
+                is ResponseException -> {
+                    logger.error("Error on getPersonBolk query to PDL. Got status ${e.response.status} and message ${e.message}")
+                    throw PdlRequestException("Error on getPersonBolk query to PDL", e)
+                }
+
+                else -> throw PdlRequestException("Error when calling PDL", e)
+            }
         }
     }
 }

@@ -422,7 +422,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/tilganger:
+  /api/v1/access/organizations:
     get:
       summary: Get organizations with narmesteleder access
       description: |

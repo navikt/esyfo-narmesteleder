@@ -12,7 +12,7 @@ import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
-const val ACCESSIBLE_ORGANIZATIONS_API_PATH = "/tilganger"
+const val ACCESSIBLE_ORGANIZATIONS_API_PATH = "/access/organizations"
 
 fun Route.registerTilgangerApi(
     altinnAccessService: AltinnAccessService,
@@ -27,7 +27,7 @@ fun Route.registerTilgangerApi(
             val principal = call.getMyPrincipal()
             if (principal !is UserPrincipal) {
                 throw ApiErrorException.ForbiddenException(
-                    errorMessage = "Only user principals can access tilganger endpoint",
+                    errorMessage = "Only user principals can access accessible organizations endpoint",
                     type = ErrorType.AUTHORIZATION_ERROR,
                 )
             }

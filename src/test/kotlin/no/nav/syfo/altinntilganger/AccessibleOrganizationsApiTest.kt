@@ -74,7 +74,7 @@ class AccessibleOrganizationsApiTest :
             }
         }
 
-        describe("GET /api/v1/tilganger") {
+        describe("GET /api/v1/access/organizations") {
             it("should return filtered organizations with narmesteleder tilgang") {
                 withTestApp {
                     // Arrange
@@ -83,7 +83,7 @@ class AccessibleOrganizationsApiTest :
                     texasHttpClientMock.defaultMocks(pid = userFnr, acr = "Level4")
 
                     // Act
-                    val response = client.get("$API_V1_PATH/tilganger") {
+                    val response = client.get("$API_V1_PATH/access/organizations") {
                         bearerAuth(createMockToken(ident = userFnr, issuer = "https://tokenx.nav.no"))
                     }
 
@@ -103,7 +103,7 @@ class AccessibleOrganizationsApiTest :
                     texasHttpClientMock.defaultMocks(pid = userFnr, acr = "Level4")
 
                     // Act
-                    val response = client.get("$API_V1_PATH/tilganger") {
+                    val response = client.get("$API_V1_PATH/access/organizations") {
                         bearerAuth(createMockToken(ident = userFnr, issuer = "https://tokenx.nav.no"))
                     }
 
@@ -141,7 +141,7 @@ class AccessibleOrganizationsApiTest :
                     texasHttpClientMock.defaultMocks(pid = userFnr, acr = "Level4")
 
                     // Act
-                    val response = client.get("$API_V1_PATH/tilganger") {
+                    val response = client.get("$API_V1_PATH/access/organizations") {
                         bearerAuth(createMockToken(ident = userFnr, issuer = "https://tokenx.nav.no"))
                     }
 
@@ -196,7 +196,7 @@ class AccessibleOrganizationsApiTest :
                     )
                     texasHttpClientMock.defaultMocks(pid = userFnr, acr = "Level4")
 
-                    val response = client.get("$API_V1_PATH/tilganger") {
+                    val response = client.get("$API_V1_PATH/access/organizations") {
                         bearerAuth(createMockToken(ident = userFnr, issuer = "https://tokenx.nav.no"))
                     }
 
@@ -236,7 +236,7 @@ class AccessibleOrganizationsApiTest :
                     )
                     texasHttpClientMock.defaultMocks(pid = userFnr, acr = "Level4")
 
-                    val response = client.get("$API_V1_PATH/tilganger") {
+                    val response = client.get("$API_V1_PATH/access/organizations") {
                         bearerAuth(createMockToken(ident = userFnr, issuer = "https://tokenx.nav.no"))
                     }
 
@@ -253,7 +253,7 @@ class AccessibleOrganizationsApiTest :
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
 
-                    val response = client.get("$API_V1_PATH/tilganger") {
+                    val response = client.get("$API_V1_PATH/access/organizations") {
                         bearerAuth(createMockToken(ident = "0192:123456789"))
                     }
 
@@ -265,7 +265,7 @@ class AccessibleOrganizationsApiTest :
             it("should return 401 for unauthenticated request") {
                 withTestApp {
                     // Act
-                    val response = client.get("$API_V1_PATH/tilganger")
+                    val response = client.get("$API_V1_PATH/access/organizations")
 
                     // Assert
                     response.status shouldBe HttpStatusCode.Unauthorized

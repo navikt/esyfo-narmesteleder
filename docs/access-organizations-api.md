@@ -1,4 +1,4 @@
-# GET /api/v1/tilganger
+# GET /api/v1/access/organizations
 
 Endepunkt som returnerer organisasjoner den innloggede arbeidsgiveren har nærmeste leder-tilgang til. Responsen er kompatibel med [`@navikt/virksomhetsvelger`](https://github.com/navikt/virksomhetsvelger).
 
@@ -11,7 +11,7 @@ sequenceDiagram
     participant TX as Texas (NAIS TokenX)
     participant AT as arbeidsgiver-altinn-tilganger
 
-    FE->>API: GET /api/v1/tilganger<br/>Authorization: Bearer <idporten-token>
+    FE->>API: GET /api/v1/access/organizations<br/>Authorization: Bearer <idporten-token>
     API->>TX: introspect token (tokenx)
     TX-->>API: { active: true, pid: fnr, acr: Level4 }
 

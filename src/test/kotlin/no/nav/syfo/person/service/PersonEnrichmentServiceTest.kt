@@ -41,6 +41,16 @@ class PersonEnrichmentServiceTest :
             PersonEntity.find { PersonTable.fnr eq fnr }.firstOrNull()
         }
 
+        fun countPersons(status: PersonStatus): Long = transaction(TestDB.exposedDatabase) {
+            PersonEntity.find { PersonTable.status eq status.name }.count()
+        }
+
+        fun createPdlPerson(fnr: String, fornavn: String = "Ola") = Person(
+            name = Navn(fornavn = fornavn, mellomnavn = null, etternavn = "Nordmann"),
+            nationalIdentificationNumber = fnr,
+            foedselsdato = null,
+        )
+
         fun service() = PersonEnrichmentService(
             database = TestDB.exposedDatabase,
             pdlService = pdlService,
@@ -131,11 +141,29 @@ class PersonEnrichmentServiceTest :
                 coVerify(exactly = 0) { pdlService.getPersonsBolk(any()) }
             }
 
-            it("should process batches continuously until fewer than batch size persons remain") {
-                val fnrs = (1..501).map { i -> i.toString().padStart(11, '0') }
+            it("should stop when a batch does not update any pending persons") {
+                val fnrs = (1..500).map { i -> i.toString().padStart(11, '0') }
                 fnrs.forEach { insertPerson(it, PersonStatus.PENDING) }
 
                 coEvery { pdlService.getPersonsBolk(any()) } returns emptyMap()
+
+                service().enrichPendingPersons()
+
+                countPersons(PersonStatus.PENDING) shouldBe 500L
+                countPersons(PersonStatus.NOT_FOUND) shouldBe 0L
+                countPersons(PersonStatus.ENRICHED) shouldBe 0L
+                coVerify(exactly = 1) {
+                    pdlService.getPersonsBolk(match { it.size == 500 })
+                }
+            }
+
+            it("should process batches continuously while each batch makes progress") {
+                val fnrs = (1..501).map { i -> i.toString().padStart(11, '0') }
+                fnrs.forEach { insertPerson(it, PersonStatus.PENDING) }
+
+                coEvery { pdlService.getPersonsBolk(any()) } coAnswers {
+                    firstArg<List<String>>().associateWith { fnr -> createPdlPerson(fnr) }
+                }
 
                 service().enrichPendingPersons()
 
@@ -145,6 +173,7 @@ class PersonEnrichmentServiceTest :
                 coVerify(exactly = 1) {
                     pdlService.getPersonsBolk(match { it.size == 1 })
                 }
+                countPersons(PersonStatus.ENRICHED) shouldBe 501L
             }
         }
     })

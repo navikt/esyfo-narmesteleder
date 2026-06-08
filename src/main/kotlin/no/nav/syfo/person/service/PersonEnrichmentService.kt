@@ -32,25 +32,40 @@ class PersonEnrichmentService(
             logger.info("Enriching ${personEntities.size} pending persons from PDL")
 
             val pdlPersons = pdlService.getPersonsBolk(pendingFnr)
-
+            var enrichedCount = 0
+            var notFoundCount = 0
             transaction(database) {
                 personEntities.forEach { entity ->
                     val pdlPerson = pdlPersons[entity.fnr]
-                    if (pdlPerson != null) {
-                        entity.fornavn = pdlPerson.name.fornavn
-                        entity.mellomnavn = pdlPerson.name.mellomnavn
-                        entity.etternavn = pdlPerson.name.etternavn
-                        entity.foedselsdato = pdlPerson.foedselsdato?.foedselsdato
-                        entity.status = PersonStatus.ENRICHED.name
-                    } else {
-                        entity.status = PersonStatus.NOT_FOUND.name
+                    when {
+                        pdlPerson != null -> {
+                            entity.fornavn = pdlPerson.name.fornavn
+                            entity.mellomnavn = pdlPerson.name.mellomnavn
+                            entity.etternavn = pdlPerson.name.etternavn
+                            entity.foedselsdato = pdlPerson.foedselsdato?.foedselsdato
+                            entity.status = PersonStatus.ENRICHED.name
+                            enrichedCount++
+                        }
+
+                        pdlPersons.containsKey(entity.fnr) -> {
+                            entity.status = PersonStatus.NOT_FOUND.name
+                            notFoundCount++
+                        }
+
+                        else -> {
+                        }
                     }
                 }
             }
 
-            val enrichedCount = pdlPersons.values.count { it != null }
-            val notFoundCount = pendingFnr.size - enrichedCount
-            logger.info("Enrichment done: $enrichedCount enriched, $notFoundCount not found")
+            val updatedCount = enrichedCount + notFoundCount
+            val unchangedCount = pendingFnr.size - updatedCount
+            logger.info("Enrichment done: $enrichedCount enriched, $notFoundCount not found, $unchangedCount unchanged")
+
+            if (updatedCount == 0) {
+                logger.warn("Stopping person enrichment because the current batch did not update any pending persons")
+                break
+            }
 
             if (pendingFnr.size < PERSON_ENRICHMENT_BATCH_SIZE) break
         }

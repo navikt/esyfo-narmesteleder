@@ -97,7 +97,7 @@ class PdlService(
                 val navn = bolk.person.navn?.firstOrNull() ?: return@mapValues null
                 Person(
                     name = navn,
-                    nationalIdentificationNumber = bolk.ident,
+                    nationalIdentificationNumber = PersonalIdentificationNumber(bolk.ident),
                     foedselsdato = bolk.person.foedselsdato?.firstOrNull(),
                 )
             } else {

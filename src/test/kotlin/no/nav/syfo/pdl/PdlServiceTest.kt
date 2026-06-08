@@ -10,6 +10,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.PdlCache
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
 import no.nav.syfo.pdl.client.GetPersonResponse
 import no.nav.syfo.pdl.client.HentIdenterBolk
@@ -182,7 +183,7 @@ class PdlServiceTest :
                 val result = pdlService.getPersonsBolk(listOf(fnr))
 
                 result[fnr]?.name shouldBe navn
-                result[fnr]?.nationalIdentificationNumber shouldBe fnr
+                result[fnr]?.nationalIdentificationNumber shouldBe PersonalIdentificationNumber(fnr)
                 coVerify(exactly = 1) { pdlClient.getSystemToken() }
                 coVerify(exactly = 1) { pdlClient.getPersonBolk(listOf(fnr), token) }
             }
@@ -249,7 +250,7 @@ class PdlServiceTest :
 
                 result.size shouldBe 2
                 result[successfulFnr]?.name shouldBe navn
-                result[successfulFnr]?.nationalIdentificationNumber shouldBe successfulFnr
+                result[successfulFnr]?.nationalIdentificationNumber shouldBe PersonalIdentificationNumber(successfulFnr)
                 result.containsKey(notFoundFnr) shouldBe true
                 result[notFoundFnr] shouldBe null
                 failedChunkFnrs.any { result.containsKey(it) } shouldBe false

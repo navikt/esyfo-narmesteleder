@@ -82,7 +82,7 @@ class AltinnAccessService(
         val filteredSubOrganizations = underenheter.filterToOrganizations()
         val hasAccess = hasNarmestelederTilgang()
 
-        return if (hasAccess || filteredSubOrganizations.isNotEmpty()) {
+        return if (hasAccess && filteredSubOrganizations.isNotEmpty()) {
             AccessibleOrganization(
                 orgNumber = orgnr,
                 name = navn,

@@ -13,6 +13,8 @@ data class OtherEnvironmentProperties(
     val persistSendtSykmelding: Boolean,
     val maintenanceTaskEnabled: Boolean,
     val persistNarmestelederRegister: Boolean,
+    val personEnrichmentTaskDelay: String,
+    val personEnrichmentTaskEnabled: Boolean,
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -31,6 +33,8 @@ data class OtherEnvironmentProperties(
             maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
             maintenanceTaskEnabled = getEnvVar("BEHOV_MAINTENANCE_TASK_ENABLED", "false").toBoolean(),
             persistNarmestelederRegister = getEnvVar("PERSIST_NARMESTELEDER_REGISTER", "false").toBoolean(),
+            personEnrichmentTaskDelay = getEnvVar("PERSON_ENRICHMENT_TASK_DELAY", "5m"),
+            personEnrichmentTaskEnabled = getEnvVar("PERSON_ENRICHMENT_TASK_ENABLED", "false").toBoolean(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -46,6 +50,8 @@ data class OtherEnvironmentProperties(
             maintenanceTaskEnabled = true,
             electorSSEUrl = "not.applicable",
             persistNarmestelederRegister = true,
+            personEnrichmentTaskDelay = "1m",
+            personEnrichmentTaskEnabled = true,
         )
     }
 }

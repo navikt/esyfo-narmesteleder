@@ -6,6 +6,7 @@ import no.nav.syfo.narmesteleder.exposed.narmestelederTable
 import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederRecord
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
+import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.core.Transaction
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -51,13 +52,13 @@ class NarmestelederRegisterService(
             personFnrs.add(
                 PersonBatchInsertRow(
                     fnr = record.message.fnr,
-                    status = "PENDING"
+                    status = PersonStatus.PENDING.name
                 )
             )
             personFnrs.add(
                 PersonBatchInsertRow(
                     fnr = record.message.narmesteLederFnr,
-                    status = "PENDING"
+                    status = PersonStatus.PENDING.name
                 )
             )
         }

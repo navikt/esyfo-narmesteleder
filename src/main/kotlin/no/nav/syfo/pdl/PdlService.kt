@@ -1,5 +1,6 @@
 package no.nav.syfo.pdl
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -63,19 +64,29 @@ class PdlService(
             fnrs.chunked(PDL_CHUNK_SIZE)
                 .map { fnrChunk ->
                     async {
-                        pdlClient.getPersonBolk(fnrChunk, token)
+                        getPersonBolkChunk(fnrChunk = fnrChunk, token = token)
                     }
                 }
-                .awaitAll()
+                .awaitAll().filterNotNull()
         }
         return responses
             .onEach { response ->
-                if (!response.errors.isNullOrEmpty()) {
-                    logger.error("Errors in getPersonsBolk response from PDL: ${response.errors}")
+                val errorCount = response.errors?.size ?: 0
+                if (errorCount > 0) {
+                    logger.error("Errors in getPersonsBolk response from PDL, errorCount=$errorCount")
                 }
             }
             .flatMap { it.toPersonMap().entries }
             .associate { (fnr, person) -> fnr to person }
+    }
+
+    private suspend fun getPersonBolkChunk(fnrChunk: List<String>, token: String): GetPersonBolkResponse? = try {
+        pdlClient.getPersonBolk(fnrChunk, token)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: PdlRequestException) {
+        logger.error("Error when fetching person bulk from PDL for chunk of size ${fnrChunk.size}", e)
+        null
     }
 
     private fun GetPersonBolkResponse.toPersonMap(): Map<String, Person?> = data?.hentPersonBolk

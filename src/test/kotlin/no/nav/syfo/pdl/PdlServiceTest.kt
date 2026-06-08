@@ -7,6 +7,7 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
@@ -228,13 +229,53 @@ class PdlServiceTest :
                 result[fnr2] shouldBe null
             }
 
-            it("should throw PdlRequestException when client throws") {
+            it("should keep successful chunk results when another chunk fails") {
+                val failedChunkFnrs = (1..100).map { it.toString().padStart(11, '0') }
+                val successfulFnr = "90000000001"
+                val notFoundFnr = "90000000002"
+                val successfulChunkFnrs = listOf(successfulFnr, notFoundFnr)
+                val fnrs = failedChunkFnrs + successfulChunkFnrs
+                val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
+
+                coEvery { pdlClient.getSystemToken() } returns token
+                coEvery { pdlClient.getPersonBolk(failedChunkFnrs, token) } throws PdlRequestException("PDL error")
+                coEvery { pdlClient.getPersonBolk(successfulChunkFnrs, token) } returns
+                    bolkResponse(
+                        Triple(successfulFnr, PdlClientPerson(navn = listOf(navn)), "ok"),
+                        Triple(notFoundFnr, null, "not_found"),
+                    )
+
+                val result = pdlService.getPersonsBolk(fnrs)
+
+                result.size shouldBe 2
+                result[successfulFnr]?.name shouldBe navn
+                result[successfulFnr]?.nationalIdentificationNumber shouldBe successfulFnr
+                result.containsKey(notFoundFnr) shouldBe true
+                result[notFoundFnr] shouldBe null
+                failedChunkFnrs.any { result.containsKey(it) } shouldBe false
+            }
+
+            it("should return empty map when all chunks fail with PdlRequestException") {
+                val firstChunkFnrs = (1..100).map { it.toString().padStart(11, '0') }
+                val secondChunkFnrs = listOf("90000000001")
+                val fnrs = firstChunkFnrs + secondChunkFnrs
+
+                coEvery { pdlClient.getSystemToken() } returns token
+                coEvery { pdlClient.getPersonBolk(firstChunkFnrs, token) } throws PdlRequestException("PDL error")
+                coEvery { pdlClient.getPersonBolk(secondChunkFnrs, token) } throws PdlRequestException("PDL error")
+
+                val result = pdlService.getPersonsBolk(fnrs)
+
+                result shouldBe emptyMap()
+            }
+
+            it("should rethrow CancellationException when chunk fetch is cancelled") {
                 val fnrs = listOf("12345678901")
 
                 coEvery { pdlClient.getSystemToken() } returns token
-                coEvery { pdlClient.getPersonBolk(fnrs, token) } throws PdlRequestException("PDL error")
+                coEvery { pdlClient.getPersonBolk(fnrs, token) } throws CancellationException("cancelled")
 
-                shouldThrow<PdlRequestException> {
+                shouldThrow<CancellationException> {
                     pdlService.getPersonsBolk(fnrs)
                 }
             }

@@ -17,7 +17,7 @@ data class Sykmeldt(
         fun from(person: Person): Sykmeldt {
             with(person.name) {
                 return Sykmeldt(
-                    fnr = person.nationalIdentificationNumber,
+                    fnr = person.nationalIdentificationNumber.value,
                     navn = listOfNotNull(fornavn, mellomnavn, etternavn).joinToString(" "),
                 )
             }
@@ -35,7 +35,7 @@ data class Leder(
     fun updateFromPerson(person: Person): Leder {
         with(person.name) {
             return Leder(
-                fnr = person.nationalIdentificationNumber,
+                fnr = person.nationalIdentificationNumber.value,
                 fornavn = listOfNotNull(fornavn, mellomnavn).joinToString(" "),
                 etternavn = etternavn,
                 mobil = mobil,

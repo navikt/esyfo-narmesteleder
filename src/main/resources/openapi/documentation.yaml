@@ -214,7 +214,7 @@ paths:
           description: Organization number (digits only)
           schema:
             type: string
-            pattern: '^\d+$'
+            pattern: '^\d{9}$'
         - name: pageSize
           in: query
           required: false
@@ -442,6 +442,7 @@ components:
           type: string
           description: "A Norwegian national identity number or D number."
           example: "12345678901"
+          pattern: '^\d{11}$'
         lastName:
           type: string
           description: The last name of the employee. Used to validate against the registered value in folkeregisteret. Validation is case-insensitive.
@@ -450,6 +451,7 @@ components:
           type: string
           description: Organization number where the employee works
           example: "123456789"
+          pattern: '^\d{9}$'
         manager:
           $ref: '#/components/schemas/Manager'
       required:
@@ -467,10 +469,12 @@ components:
           type: string
           description: "A Norwegian national identity number or D number."
           example: "12345678901"
+          pattern: '^\d{11}$'
         orgNumber:
           type: string
           description: Organization number where the employee works
           example: "123456789"
+          pattern: '^\d{9}$'
         lastName:
           type: string
           description: The last name of the employee.
@@ -489,6 +493,7 @@ components:
           type: string
           description: Norwegian national identity number or D number of the manager.
           example: "10987654321"
+          pattern: '^\d{11}$'
         lastName:
           type: string
           description: The last name of the manager. Used to validate against the registered value in folkeregisteret. Validation is case-insensitive.
@@ -521,10 +526,12 @@ components:
           type: string
           description: Norwegian national identity number or D number of the employee.
           example: "12345678901"
+          pattern: '^\d{11}$'
         orgNumber:
           type: string
           description: Organization number where the employee works.
           example: "123456789"
+          pattern: '^\d{9}$'
         orgName:
           type: string
           nullable: true
@@ -534,11 +541,13 @@ components:
           type: string
           description: Main (parent) organization number.
           example: "987654321"
+          pattern: '^\d{9}$'
         managerIdentificationNumber:
           type: string
           nullable: true
           description: Norwegian national identity number or D number of the manager, for the previous linemanager the employee had, if any.
           example: "10987654321"
+          pattern: '^\d{11}$'
         name:
           type: object
           description: Name of the employee on sick leave.

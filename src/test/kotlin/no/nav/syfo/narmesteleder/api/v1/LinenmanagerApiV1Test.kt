@@ -60,6 +60,8 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.BehovSource
@@ -179,26 +181,26 @@ class LinenmanagerApiV1Test :
                         // Arrange
                         pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                         pdlService.prepareGetPersonResponse(
-                            narmesteLederRelasjon.employeeIdentificationNumber,
+                            narmesteLederRelasjon.employeeIdentificationNumber.value,
                             narmesteLederRelasjon.lastName,
                         )
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon =
                             DefaultOrganization.copy(
-                                ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                                ID = "0192:${narmesteLederRelasjon.orgNumber.value}",
                             ),
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
-                        fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.employeeIdentificationNumber] =
-                            listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
-                        fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.manager.nationalIdentificationNumber] =
-                            listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber)
+                        fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.employeeIdentificationNumber.value] =
+                            listOf(narmesteLederRelasjon.orgNumber.value to narmesteLederRelasjon.orgNumber.value)
+                        fakeAaregClient.arbeidsForholdForIdent[narmesteLederRelasjon.manager.nationalIdentificationNumber.value] =
+                            listOf(narmesteLederRelasjon.orgNumber.value to narmesteLederRelasjon.orgNumber.value)
                         // Act
                         val response =
                             client.post("/api/v1/linemanager") {
                                 contentType(ContentType.Application.Json)
                                 setBody(narmesteLederRelasjon)
-                                bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber))
+                                bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
                             }
 
                         // Assert
@@ -219,7 +221,7 @@ class LinenmanagerApiV1Test :
                         texasHttpClientMock.defaultMocks(
                             consumer =
                             DefaultOrganization.copy(
-                                ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                                ID = "0192:${narmesteLederRelasjon.orgNumber.value}",
                             ),
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
@@ -232,6 +234,42 @@ class LinenmanagerApiV1Test :
                             }
 
                         // Assert
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
+                        coVerify { narmestelederKafkaServiceSpy wasNot Called }
+                    }
+                }
+
+                it("should return 400 Bad Request for invalid organization number in request body") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            consumer = DefaultOrganization.copy(
+                                ID = "0192:${narmesteLederRelasjon.orgNumber.value}",
+                            ),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response =
+                            client.post("/api/v1/linemanager") {
+                                contentType(ContentType.Application.Json)
+                                setBody(
+                                    """
+                                    {
+                                      "employeeIdentificationNumber": "12345678901",
+                                      "lastName": "Hansen",
+                                      "orgNumber": "12345678",
+                                      "manager": {
+                                        "nationalIdentificationNumber": "10987654321",
+                                        "lastName": "Jensen",
+                                        "mobile": "+4790000000",
+                                        "email": "leder@example.com"
+                                      }
+                                    }
+                                    """.trimIndent(),
+                                )
+                                bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
+                            }
+
                         response.status shouldBe HttpStatusCode.BadRequest
                         response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                         coVerify { narmestelederKafkaServiceSpy wasNot Called }
@@ -262,7 +300,7 @@ class LinenmanagerApiV1Test :
                         texasHttpClientMock.defaultMocks(
                             consumer =
                             DefaultOrganization.copy(
-                                ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                                ID = "0192:${narmesteLederRelasjon.orgNumber.value}",
                             ),
                             scope = "invalid-scope",
                         )
@@ -305,7 +343,7 @@ class LinenmanagerApiV1Test :
                         // Arrange
                         pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                         pdlService.prepareGetPersonResponse(
-                            narmesteLederRelasjon.employeeIdentificationNumber,
+                            narmesteLederRelasjon.employeeIdentificationNumber.value,
                             narmesteLederRelasjon.lastName,
                         )
                         val callerPid = "11223344556"
@@ -314,14 +352,14 @@ class LinenmanagerApiV1Test :
                             pid = callerPid,
                         )
                         fakeAltinnTilgangerClient.accessPolicy.clear()
-                        fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber)
+                        fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber.value)
                         fakeAaregClient.arbeidsForholdForIdent.put(
-                            narmesteLederRelasjon.employeeIdentificationNumber,
-                            listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber),
+                            narmesteLederRelasjon.employeeIdentificationNumber.value,
+                            listOf(narmesteLederRelasjon.orgNumber.value to narmesteLederRelasjon.orgNumber.value),
                         )
                         fakeAaregClient.arbeidsForholdForIdent.put(
-                            narmesteLederRelasjon.manager.nationalIdentificationNumber,
-                            listOf(narmesteLederRelasjon.orgNumber to narmesteLederRelasjon.orgNumber),
+                            narmesteLederRelasjon.manager.nationalIdentificationNumber.value,
+                            listOf(narmesteLederRelasjon.orgNumber.value to narmesteLederRelasjon.orgNumber.value),
                         )
                         // Act
                         val response =
@@ -377,7 +415,7 @@ class LinenmanagerApiV1Test :
                             acr = "Level3",
                             pid = callerPid,
                         )
-                        fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber)
+                        fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber.value)
                         // Act
                         val response =
                             client.post("/api/v1/linemanager") {
@@ -401,18 +439,18 @@ class LinenmanagerApiV1Test :
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon =
                         DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederAvkreft.orgNumber}",
+                            ID = "0192:${narmesteLederAvkreft.orgNumber.value}",
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     pdlService.prepareGetPersonResponse(
-                        narmesteLederAvkreft.employeeIdentificationNumber,
+                        narmesteLederAvkreft.employeeIdentificationNumber.value,
                         narmesteLederAvkreft.lastName,
                     )
                     val narmesteLederAvkreft = narmesteLederAvkreft
                     fakeAaregClient.arbeidsForholdForIdent.clear()
-                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
-                        listOf(narmesteLederAvkreft.orgNumber to narmesteLederRelasjon.orgNumber)
+                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
+                        listOf(narmesteLederAvkreft.orgNumber.value to narmesteLederRelasjon.orgNumber.value)
                     // Act
                     val response =
                         client.post("$API_V1_PATH/$REVOKE_PATH") {
@@ -445,18 +483,18 @@ class LinenmanagerApiV1Test :
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon =
                         DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederAvkreft.orgNumber}",
+                            ID = "0192:${narmesteLederAvkreft.orgNumber.value}",
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
                     pdlService.prepareGetPersonResponse(
-                        narmesteLederAvkreft.employeeIdentificationNumber,
+                        narmesteLederAvkreft.employeeIdentificationNumber.value,
                         narmesteLederAvkreft.lastName.reversed(),
                     )
                     val narmesteLederAvkreft = narmesteLederAvkreft
                     fakeAaregClient.arbeidsForholdForIdent.clear()
-                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
-                        listOf(narmesteLederAvkreft.orgNumber to narmesteLederRelasjon.orgNumber)
+                    fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
+                        listOf(narmesteLederAvkreft.orgNumber.value to narmesteLederRelasjon.orgNumber.value)
                     // Act
                     val response =
                         client.post("$API_V1_PATH/$REVOKE_PATH") {
@@ -492,7 +530,7 @@ class LinenmanagerApiV1Test :
                     val narmesteLederAvkreft = linemanagerRevoke()
                     texasHttpClientMock.defaultMocks(
                         systemBrukerOrganisasjon = DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederAvkreft.orgNumber}",
+                            ID = "0192:${narmesteLederAvkreft.orgNumber.value}",
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
@@ -523,7 +561,7 @@ class LinenmanagerApiV1Test :
                     texasHttpClientMock.defaultMocks(
                         consumer =
                         DefaultOrganization.copy(
-                            ID = "0192:${narmesteLederRelasjon.orgNumber}",
+                            ID = "0192:${narmesteLederRelasjon.orgNumber.value}",
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
@@ -543,13 +581,13 @@ class LinenmanagerApiV1Test :
             }
         }
         describe("/linemanager/requirement endpoints") {
-            val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber
-            val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber
-            val orgnummer = narmesteLederRelasjon.orgNumber
+            val sykmeldtFnr = narmesteLederRelasjon.employeeIdentificationNumber.value
+            val lederFnr = narmesteLederRelasjon.manager.nationalIdentificationNumber.value
+            val orgnummer = narmesteLederRelasjon.orgNumber.value
 
             fun Linemanager.toNlBehovWrite(): LinemanagerRequirementWrite = LinemanagerRequirementWrite(
-                employeeIdentificationNumber = sykmeldtFnr,
-                orgNumber = orgNumber,
+                employeeIdentificationNumber = PersonalIdentificationNumber(sykmeldtFnr),
+                orgNumber = OrganizationNumber(orgNumber.value),
                 managerIdentificationNumber = manager.nationalIdentificationNumber,
                 behovReason = BehovReason.DEAKTIVERT_LEDER,
                 revokedLinemanagerId = UUID.randomUUID(),
@@ -579,8 +617,8 @@ class LinenmanagerApiV1Test :
                         response.status shouldBe HttpStatusCode.OK
                         val body = response.body<LinemanagerRequirementRead>()
                         body.id shouldBe requirementId
-                        body.orgNumber shouldBe orgnummer
-                        body.employeeIdentificationNumber shouldBe sykmeldtFnr
+                        body.orgNumber.value shouldBe orgnummer
+                        body.employeeIdentificationNumber.value shouldBe sykmeldtFnr
                     }
                 }
 
@@ -606,8 +644,8 @@ class LinenmanagerApiV1Test :
                             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
-                        fakeEregClient.organisasjoner[narmesteLederRelasjon.orgNumber] = Organisasjon(
-                            organisasjonsnummer = narmesteLederRelasjon.orgNumber,
+                        fakeEregClient.organisasjoner[narmesteLederRelasjon.orgNumber.value] = Organisasjon(
+                            organisasjonsnummer = narmesteLederRelasjon.orgNumber.value,
                             inngaarIJuridiskEnheter = emptyList()
                         )
                         val requirementId = seedLinemanagerRequirement()
@@ -633,13 +671,16 @@ class LinenmanagerApiV1Test :
                         val manager =
                             manager().copy(
                                 nationalIdentificationNumber =
-                                narmesteLederRelasjon
-                                    .manager
-                                    .nationalIdentificationNumber
-                                    .reversed(),
+                                PersonalIdentificationNumber(
+                                    narmesteLederRelasjon
+                                        .manager
+                                        .nationalIdentificationNumber
+                                        .value
+                                        .reversed(),
+                                ),
                             )
                         pdlService.prepareGetPersonResponse(manager)
-                        fakeAaregClient.arbeidsForholdForIdent[manager.nationalIdentificationNumber] =
+                        fakeAaregClient.arbeidsForholdForIdent[manager.nationalIdentificationNumber.value] =
                             listOf(orgnummer to orgnummer)
 
                         val response =
@@ -652,9 +693,9 @@ class LinenmanagerApiV1Test :
                         coVerify(exactly = 1) {
                             narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                                 match { linemanager ->
-                                    linemanager.employeeIdentificationNumber == sykmeldtFnr &&
-                                        linemanager.orgNumber == orgnummer &&
-                                        linemanager.manager.nationalIdentificationNumber == manager.nationalIdentificationNumber
+                                    linemanager.employeeIdentificationNumber.value == sykmeldtFnr &&
+                                        linemanager.orgNumber.value == orgnummer &&
+                                        linemanager.manager.nationalIdentificationNumber.value == manager.nationalIdentificationNumber.value
                                 },
                                 any(),
                                 any(),
@@ -729,7 +770,7 @@ class LinenmanagerApiV1Test :
                 it("GET /requirement should use provided query parameters to fetch results") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
-                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber}"),
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
                         val requirementId = seedLinemanagerRequirement()
@@ -737,11 +778,11 @@ class LinenmanagerApiV1Test :
                         val pageSize = 10
                         val response =
                             client.get(
-                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=${requirement.orgNumber}&createdAfter=${
+                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=${requirement.orgNumber.value}&createdAfter=${
                                     Instant.now().minusSeconds(60)
                                 }&pageSize=$pageSize",
                             ) {
-                                bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber))
+                                bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
                             }
                         response.status shouldBe HttpStatusCode.OK
                         val body = response.body<LinemanagerRequirementCollection>()
@@ -751,7 +792,7 @@ class LinenmanagerApiV1Test :
 
                         coVerify(exactly = 1) {
                             fakeRepo.findBehovByParameters(
-                                orgNumber = requirement.orgNumber,
+                                orgNumber = requirement.orgNumber.value,
                                 createdAfter = any(),
                                 status =
                                 listOf(
@@ -761,6 +802,44 @@ class LinenmanagerApiV1Test :
                                 limit = pageSize + 1, // +1 to check if there is more pages
                             )
                         }
+                    }
+                }
+
+                it("GET /requirement should return 400 for invalid orgNumber query parameter") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response =
+                            client.get(
+                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=12345678&createdAfter=${Instant.now().minusSeconds(60)}",
+                            ) {
+                                bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                            }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
+                    }
+                }
+
+                it("GET /requirement should return 400 for non-digit orgNumber query parameter") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response =
+                            client.get(
+                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=12345678a&createdAfter=${Instant.now().minusSeconds(60)}",
+                            ) {
+                                bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                            }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                     }
                 }
             }

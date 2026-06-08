@@ -27,7 +27,7 @@ class NlResponseSourceTest :
                 // Arrange
 
                 val linemanager = linemanager()
-                val principal = UserPrincipal(linemanager.employeeIdentificationNumber, "token")
+                val principal = UserPrincipal(linemanager.employeeIdentificationNumber.value, "token")
 
                 // Act
                 val source = NlResponseSource.getSourceFrom(principal, linemanager)
@@ -53,7 +53,7 @@ class NlResponseSourceTest :
                 // Arrange
 
                 val linemanager = linemanagerRevoke()
-                val principal = UserPrincipal(linemanager.employeeIdentificationNumber, "token")
+                val principal = UserPrincipal(linemanager.employeeIdentificationNumber.value, "token")
 
                 // Act
                 val source = NlResponseSource.getSourceFrom(principal, linemanager)

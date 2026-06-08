@@ -7,6 +7,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.TestDB
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
@@ -47,7 +48,7 @@ class PersonEnrichmentServiceTest :
 
         fun createPdlPerson(fnr: String, fornavn: String = "Ola") = Person(
             name = Navn(fornavn = fornavn, mellomnavn = null, etternavn = "Nordmann"),
-            nationalIdentificationNumber = fnr,
+            nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
             foedselsdato = null,
         )
 
@@ -74,7 +75,7 @@ class PersonEnrichmentServiceTest :
                 coEvery { pdlService.getPersonsBolk(listOf(fnr)) } returns mapOf(
                     fnr to Person(
                         name = navn,
-                        nationalIdentificationNumber = fnr,
+                        nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
                         foedselsdato = Foedselsdato(foedselsdato),
                     ),
                 )
@@ -112,7 +113,7 @@ class PersonEnrichmentServiceTest :
                 coEvery { pdlService.getPersonsBolk(any()) } returns mapOf(
                     fnr1 to Person(
                         name = navn1,
-                        nationalIdentificationNumber = fnr1,
+                        nationalIdentificationNumber = PersonalIdentificationNumber(fnr1),
                         foedselsdato = null,
                     ),
                     fnr2 to null,

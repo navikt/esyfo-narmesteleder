@@ -12,6 +12,8 @@ import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.Name
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
@@ -112,8 +114,8 @@ class NarmestelederService(
             getStatusAndHovedEnhetOrgnummerFromArbeidsgiver(arbeidsgiver, behovSource)
         } else {
             getStatusAndHovedEnhetOrgnummerFromArbeidsforhold(
-                fnr = nlBehov.employeeIdentificationNumber,
-                orgnummer = nlBehov.orgNumber,
+                fnr = nlBehov.employeeIdentificationNumber.value,
+                orgnummer = nlBehov.orgNumber.value,
                 behovSource = behovSource,
             )
         }
@@ -137,7 +139,7 @@ class NarmestelederService(
         skipSykmeldingCheck: Boolean
     ): Boolean {
         val isActiveSykmelding = skipSykmeldingCheck ||
-            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+            dinesykmeldteService.getIsActiveSykmelding(nlBehov.employeeIdentificationNumber.value, nlBehov.orgNumber.value)
         return if (!isActiveSykmelding) {
             COUNT_CREATE_BEHOV_SKIPPED_NO_SICKLEAVE.increment()
             logger.info(
@@ -151,7 +153,7 @@ class NarmestelederService(
     }
 
     private suspend fun skipDueToExistingBehov(nlBehov: LinemanagerRequirementWrite): Boolean {
-        val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber, nlBehov.orgNumber)
+        val registeredPreviousBehov = findClosableBehovs(nlBehov.employeeIdentificationNumber.value, nlBehov.orgNumber.value)
             .isNotEmpty()
 
         return if (registeredPreviousBehov) {
@@ -209,18 +211,18 @@ class NarmestelederService(
     suspend fun getEmployeeByRequirementId(id: UUID): Employee {
         val behovEntity = findBehovEntityById(id)
         return Employee(
-            nationalIdentificationNumber = behovEntity.sykmeldtFnr,
-            orgNumber = behovEntity.orgnummer,
+            nationalIdentificationNumber = PersonalIdentificationNumber(behovEntity.sykmeldtFnr),
+            orgNumber = OrganizationNumber(behovEntity.orgnummer),
             lastName = behovEntity.etternavn ?: "",
         )
     }
 
     suspend fun getNlBehovList(
-        orgNumber: String,
+        orgNumber: OrganizationNumber,
         createdAfter: Instant,
         pageSize: Int
     ): List<LinemanagerRequirementRead> = nlDb.findBehovByParameters(
-        orgNumber = orgNumber,
+        orgNumber = orgNumber.value,
         createdAfter = createdAfter,
         status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
         limit = pageSize + 1,
@@ -253,10 +255,10 @@ class NarmestelederService(
 
 fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead = LinemanagerRequirementRead(
     id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
-    employeeIdentificationNumber = this.sykmeldtFnr,
-    orgNumber = this.orgnummer,
-    mainOrgNumber = this.hovedenhetOrgnummer,
-    managerIdentificationNumber = this.narmestelederFnr,
+    employeeIdentificationNumber = PersonalIdentificationNumber(this.sykmeldtFnr),
+    orgNumber = OrganizationNumber(this.orgnummer),
+    mainOrgNumber = OrganizationNumber(this.hovedenhetOrgnummer),
+    managerIdentificationNumber = this.narmestelederFnr?.let(::PersonalIdentificationNumber),
     name = name,
     created = this.created,
     updated = this.updated,

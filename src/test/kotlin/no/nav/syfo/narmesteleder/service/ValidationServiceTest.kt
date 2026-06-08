@@ -32,6 +32,8 @@ import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
@@ -83,12 +85,12 @@ class ValidationServiceTest :
             principal: UserPrincipal,
         ) {
             altinnTilgangerClient.accessPolicy.clear()
-            altinnTilgangerClient.addAccess(principal.ident, linemanager.orgNumber)
-            aaregClient.arbeidsForholdForIdent[linemanager.manager.nationalIdentificationNumber] =
-                listOf(linemanager.orgNumber to "hovedenhet")
-            aaregClient.arbeidsForholdForIdent[linemanager.employeeIdentificationNumber] =
-                listOf(linemanager.orgNumber to "hovedenhet")
-            pdlService.prepareGetPersonResponse(linemanager.employeeIdentificationNumber, linemanager.lastName)
+            altinnTilgangerClient.addAccess(principal.ident, linemanager.orgNumber.value)
+            aaregClient.arbeidsForholdForIdent[linemanager.manager.nationalIdentificationNumber.value] =
+                listOf(linemanager.orgNumber.value to "hovedenhet")
+            aaregClient.arbeidsForholdForIdent[linemanager.employeeIdentificationNumber.value] =
+                listOf(linemanager.orgNumber.value to "hovedenhet")
+            pdlService.prepareGetPersonResponse(linemanager.employeeIdentificationNumber.value, linemanager.lastName)
             pdlService.prepareGetPersonResponse(linemanager.manager)
         }
 
@@ -97,20 +99,20 @@ class ValidationServiceTest :
             principal: UserPrincipal,
         ) {
             altinnTilgangerClient.accessPolicy.clear()
-            altinnTilgangerClient.addAccess(principal.ident, linemanagerRevoke.orgNumber)
-            aaregClient.arbeidsForholdForIdent[linemanagerRevoke.employeeIdentificationNumber] =
-                listOf(linemanagerRevoke.orgNumber to "hovedenhet")
+            altinnTilgangerClient.addAccess(principal.ident, linemanagerRevoke.orgNumber.value)
+            aaregClient.arbeidsForholdForIdent[linemanagerRevoke.employeeIdentificationNumber.value] =
+                listOf(linemanagerRevoke.orgNumber.value to "hovedenhet")
             pdlService.prepareGetPersonResponse(
-                linemanagerRevoke.employeeIdentificationNumber,
+                linemanagerRevoke.employeeIdentificationNumber.value,
                 linemanagerRevoke.lastName,
             )
         }
 
         fun prepareCommonValidLinemanagerRevoke(linemanagerRevoke: LinemanagerRevoke) {
-            aaregClient.arbeidsForholdForIdent[linemanagerRevoke.employeeIdentificationNumber] =
-                listOf(linemanagerRevoke.orgNumber to "hovedenhet")
+            aaregClient.arbeidsForholdForIdent[linemanagerRevoke.employeeIdentificationNumber.value] =
+                listOf(linemanagerRevoke.orgNumber.value to "hovedenhet")
             pdlService.prepareGetPersonResponse(
-                linemanagerRevoke.employeeIdentificationNumber,
+                linemanagerRevoke.employeeIdentificationNumber.value,
                 linemanagerRevoke.lastName,
             )
         }
@@ -127,22 +129,22 @@ class ValidationServiceTest :
             it("should not thrown when all validation passes and principal is BrukerPrincipal") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
+                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
 
                 prepareValidLinemanagerValidation(narmestelederRelasjonerWrite, principal)
 
                 val result = service.validateLinemanager(narmestelederRelasjonerWrite, principal)
 
-                result.employee.nationalIdentificationNumber shouldBe narmestelederRelasjonerWrite.employeeIdentificationNumber
-                result.manager.nationalIdentificationNumber shouldBe narmestelederRelasjonerWrite.manager.nationalIdentificationNumber
+                result.employee.nationalIdentificationNumber.value shouldBe narmestelederRelasjonerWrite.employeeIdentificationNumber.value
+                result.manager.nationalIdentificationNumber.value shouldBe narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
-                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
-                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value)
+                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
@@ -152,11 +154,11 @@ class ValidationServiceTest :
             it("should throw BadRequestException when lastName of manager does mot match value in PDL") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
+                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
 
                 prepareValidLinemanagerValidation(narmestelederRelasjonerWrite, principal)
                 pdlService.prepareGetPersonResponse(
-                    narmestelederRelasjonerWrite.manager.nationalIdentificationNumber,
+                    narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value,
                     differentLastName(narmestelederRelasjonerWrite.manager.lastName),
                 )
 
@@ -167,11 +169,11 @@ class ValidationServiceTest :
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
-                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber)
-                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber)
-                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber)
+                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value)
+                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
+                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
                 }
                 coVerify(exactly = 0) {
                     pdpService.hasAccessToResource(any(), any(), any())
@@ -183,14 +185,14 @@ class ValidationServiceTest :
             it("should throw BadRequestException with NO_ACTIVE_SICK_LEAVE when no active sick leave exists") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
+                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
 
                 altinnTilgangerClient.accessPolicy.clear()
-                altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber)
+                altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber.value)
                 coEvery {
                     dinesykmeldteService.getIsActiveSykmelding(
-                        narmestelederRelasjonerWrite.employeeIdentificationNumber,
-                        narmestelederRelasjonerWrite.orgNumber,
+                        narmestelederRelasjonerWrite.employeeIdentificationNumber.value,
+                        narmestelederRelasjonerWrite.orgNumber.value,
                     )
                 } returns false
 
@@ -202,7 +204,7 @@ class ValidationServiceTest :
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
                 }
                 coVerify(exactly = 0) {
@@ -214,16 +216,16 @@ class ValidationServiceTest :
             it("should skip employee last name validation when validateEmployeeLastName is false") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
+                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
 
                 altinnTilgangerClient.accessPolicy.clear()
-                altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber)
-                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.manager.nationalIdentificationNumber] =
-                    listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
-                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.employeeIdentificationNumber] =
-                    listOf(narmestelederRelasjonerWrite.orgNumber to "hovedenhet")
+                altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber.value)
+                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value] =
+                    listOf(narmestelederRelasjonerWrite.orgNumber.value to "hovedenhet")
+                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.employeeIdentificationNumber.value] =
+                    listOf(narmestelederRelasjonerWrite.orgNumber.value to "hovedenhet")
                 pdlService.prepareGetPersonResponse(
-                    narmestelederRelasjonerWrite.employeeIdentificationNumber,
+                    narmestelederRelasjonerWrite.employeeIdentificationNumber.value,
                     differentLastName(narmestelederRelasjonerWrite.lastName),
                 )
                 pdlService.prepareGetPersonResponse(narmestelederRelasjonerWrite.manager)
@@ -240,7 +242,7 @@ class ValidationServiceTest :
             it("should call AltinnTilgangerService first when principal is BrukerPrincipal") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
+                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
 
                 shouldThrow<ApiErrorException.ForbiddenException> {
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
@@ -248,7 +250,7 @@ class ValidationServiceTest :
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
                 }
                 coVerify(exactly = 0) {
@@ -263,8 +265,8 @@ class ValidationServiceTest :
                 val requestOrgnumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
                 val systemUserOrgnumber = requestOrgnumber.reversed()
                 val narmestelederRelasjonerWrite = linemanager().copy(
-                    employeeIdentificationNumber = userWithAccess.hasAccess.first(),
-                    orgNumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr,
+                    employeeIdentificationNumber = PersonalIdentificationNumber(userWithAccess.hasAccess.first()),
+                    orgNumber = OrganizationNumber(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr),
                 )
                 val principal = DefaultSystemPrincipal.copy(
                     ident = "0192:$systemUserOrgnumber",
@@ -276,20 +278,20 @@ class ValidationServiceTest :
                 coVerify(exactly = 0) {
                     altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = any<UserPrincipal>(),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
+                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
                 }
                 coVerify(exactly = 0) {
-                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
-                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber))
+                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber.value))
+                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value))
                 }
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
                         user = match<System> { it.id == "systemId" },
-                        orgNumberSet = eq(setOf(narmestelederRelasjonerWrite.orgNumber)),
+                        orgNumberSet = eq(setOf(narmestelederRelasjonerWrite.orgNumber.value)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
                     )
-                    aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber))
+                    aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber.value))
                 }
             }
         }
@@ -298,7 +300,7 @@ class ValidationServiceTest :
             it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
-                val narmesteLederAvkreft = linemanagerRevoke().copy(employeeIdentificationNumber = fnr)
+                val narmesteLederAvkreft = linemanagerRevoke().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
 
                 shouldThrow<ApiErrorException.ForbiddenException> {
                     service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
@@ -306,7 +308,7 @@ class ValidationServiceTest :
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
-                        orgnummer = eq(narmesteLederAvkreft.orgNumber),
+                        orgnummer = eq(narmesteLederAvkreft.orgNumber.value),
                     )
                     aaregService.findArbeidsforholdByPersonIdent(any())
                 }
@@ -325,12 +327,12 @@ class ValidationServiceTest :
 
                 val result = service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
 
-                result.nationalIdentificationNumber shouldBe narmesteLederAvkreft.employeeIdentificationNumber
+                result.nationalIdentificationNumber.value shouldBe narmesteLederAvkreft.employeeIdentificationNumber.value
                 result.name.etternavn shouldBe narmesteLederAvkreft.lastName
                 coVerify(exactly = 1) {
                     altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
-                        orgnummer = eq(narmesteLederAvkreft.orgNumber),
+                        orgnummer = eq(narmesteLederAvkreft.orgNumber.value),
                     )
                 }
                 coVerify(exactly = 0) {
@@ -346,12 +348,12 @@ class ValidationServiceTest :
 
                 val result = service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
 
-                result.nationalIdentificationNumber shouldBe narmesteLederAvkreft.employeeIdentificationNumber
+                result.nationalIdentificationNumber.value shouldBe narmesteLederAvkreft.employeeIdentificationNumber.value
                 result.name.etternavn shouldBe narmesteLederAvkreft.lastName
                 coVerify(exactly = 1) {
                     pdpService.hasAccessToResource(
                         user = match<System> { it.id == "systemId" },
-                        orgNumberSet = eq(setOf(narmesteLederAvkreft.orgNumber)),
+                        orgNumberSet = eq(setOf(narmesteLederAvkreft.orgNumber.value)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
                     )
                 }
@@ -369,11 +371,11 @@ class ValidationServiceTest :
                 val narmesteLederAvkreft = linemanagerRevoke()
 
                 altinnTilgangerClient.accessPolicy.clear()
-                altinnTilgangerClient.addAccess(principal.ident, narmesteLederAvkreft.orgNumber)
-                aaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
-                    listOf(narmesteLederAvkreft.orgNumber to "hovedenhet")
+                altinnTilgangerClient.addAccess(principal.ident, narmesteLederAvkreft.orgNumber.value)
+                aaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
+                    listOf(narmesteLederAvkreft.orgNumber.value to "hovedenhet")
                 pdlService.prepareGetPersonResponse(
-                    narmesteLederAvkreft.employeeIdentificationNumber,
+                    narmesteLederAvkreft.employeeIdentificationNumber.value,
                     differentLastName(narmesteLederAvkreft.lastName),
                 )
 
@@ -389,9 +391,9 @@ class ValidationServiceTest :
                 val narmesteLederAvkreft = linemanagerRevoke()
 
                 altinnTilgangerClient.accessPolicy.clear()
-                altinnTilgangerClient.addAccess(principal.ident, narmesteLederAvkreft.orgNumber)
-                aaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber] =
-                    listOf(differentOrgNumber(narmesteLederAvkreft.orgNumber) to "hovedenhet")
+                altinnTilgangerClient.addAccess(principal.ident, narmesteLederAvkreft.orgNumber.value)
+                aaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
+                    listOf(differentOrgNumber(narmesteLederAvkreft.orgNumber.value) to "hovedenhet")
 
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
                     service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)

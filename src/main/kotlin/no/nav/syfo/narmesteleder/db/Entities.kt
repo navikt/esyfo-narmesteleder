@@ -33,10 +33,10 @@ data class NarmestelederBehovEntity(
         ): NarmestelederBehovEntity {
             with(linemanagerRequirementWrite) {
                 return NarmestelederBehovEntity(
-                    orgnummer = orgNumber,
+                    orgnummer = orgNumber.value,
                     hovedenhetOrgnummer = hovedenhetOrgnummer,
-                    sykmeldtFnr = employeeIdentificationNumber,
-                    narmestelederFnr = managerIdentificationNumber,
+                    sykmeldtFnr = employeeIdentificationNumber.value,
+                    narmestelederFnr = managerIdentificationNumber?.value,
                     behovReason = behovReason,
                     avbruttNarmesteLederId = revokedLinemanagerId,
                     behovStatus = behovStatus,

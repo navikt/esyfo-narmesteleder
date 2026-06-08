@@ -7,7 +7,7 @@ import io.ktor.server.response.respondRedirect
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.AltinnAccessService
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.environment.isProdEnv
@@ -28,7 +28,7 @@ fun Application.configureRouting() {
     val validationService by inject<ValidationService>()
     val linemanagerRequirementRESTHandler by inject<LinemanagerRequirementRESTHandler>()
     val altinnTokenProvider by inject<AltinnTokenProvider>()
-    val altinnTilgangerService by inject<AltinnTilgangerService>()
+    val altinnAccessService by inject<AltinnAccessService>()
 
     installCallId()
     installContentNegotiation()
@@ -37,7 +37,13 @@ fun Application.configureRouting() {
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
-        registerApiV1(narmestelederKafkaService, texasHttpClient, validationService, linemanagerRequirementRESTHandler, altinnTilgangerService)
+        registerApiV1(
+            narmestelederKafkaService,
+            texasHttpClient,
+            validationService,
+            linemanagerRequirementRESTHandler,
+            altinnAccessService
+        )
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")

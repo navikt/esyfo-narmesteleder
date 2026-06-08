@@ -37,7 +37,7 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinn.pdp.service.PdpService
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.AltinnAccessService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
@@ -92,13 +92,13 @@ class LinenmanagerApiV1Test :
             NarmestelederKafkaService(FakeSykmeldingNLKafkaProducer())
         val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
         val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
-        val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
-        val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
+        val altinnAccessServiceMock = AltinnAccessService(fakeAltinnTilgangerClient)
+        val altinnAccessServiceSpy = spyk(altinnAccessServiceMock)
         val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
         val dineSykmelteService: IDinesykmeldteService = DinesykmeldteService(fakeDinesykmeldteClient)
         val pdpService = mockk<PdpService>(relaxed = true)
         val principalAccessValidator = PrincipalAccessValidator(
-            altinnTilgangerService = altinnTilgangerServiceSpy,
+            altinnAccessService = altinnAccessServiceSpy,
             pdpService = pdpService,
             eregService = eregService,
         )
@@ -166,7 +166,7 @@ class LinenmanagerApiV1Test :
                             texasHttpClientMock,
                             validationServiceSpy,
                             nlBehovHandler,
-                            altinnTilgangerServiceSpy,
+                            altinnAccessServiceSpy,
                         )
                     }
                 }

@@ -23,7 +23,7 @@ sequenceDiagram
 
     Note over API: Filtrerer hierarkiet:<br/>kun orger med nav_syfo_oppgi-narmesteleder<br/>eller 4596:1
 
-    API-->>FE: 200 OK<br/>{ organizations: [{ organizationNumber, name, subOrganizations[] }] }
+    API-->>FE: 200 OK<br/>{ organizations: [{ orgNumber, name, subOrganizations[] }] }
 ```
 
 ## Respons
@@ -32,11 +32,11 @@ sequenceDiagram
 {
   "organizations": [
     {
-      "organizationNumber": "123456789",
+      "orgNumber": "123456789",
       "name": "Bedrift AS",
       "subOrganizations": [
         {
-          "organizationNumber": "987654321",
+          "orgNumber": "987654321",
           "name": "Avdeling Oslo",
           "subOrganizations": []
         }

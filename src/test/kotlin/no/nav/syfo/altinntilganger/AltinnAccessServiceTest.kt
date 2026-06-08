@@ -7,17 +7,17 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.spyk
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPRETT_NL_REALASJON_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 
-class AltinnTilgangerServiceTest :
+class AltinnAccessServiceTest :
     DescribeSpec({
         val altinnTilgangerClient = spyk(FakeAltinnTilgangerClient())
-        val altinnTilgangerService = AltinnTilgangerService(altinnTilgangerClient)
+        val altinnAccessService = AltinnAccessService(altinnTilgangerClient)
 
         beforeTest {
             clearAllMocks()
@@ -30,7 +30,7 @@ class AltinnTilgangerServiceTest :
                 val orgnummer = altinnTilgangerClient.accessPolicy.first().altinnTilgangerResponse.hierarki.first().orgnr
                 val userPrincipal = UserPrincipal(fnr, "token")
                 shouldNotThrow<ApiErrorException.ForbiddenException> {
-                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, orgnummer)
+                    altinnAccessService.validateTilgangToOrganization(userPrincipal, orgnummer)
                 }
             }
 
@@ -50,7 +50,7 @@ class AltinnTilgangerServiceTest :
                     tilgangTilOrgNr = mapOf()
                 )
                 shouldNotThrow<ApiErrorException.ForbiddenException> {
-                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, orgnummer)
+                    altinnAccessService.validateTilgangToOrganization(userPrincipal, orgnummer)
                 }
             }
 
@@ -59,18 +59,18 @@ class AltinnTilgangerServiceTest :
                 val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
                 altinnTilgangerClient.accessPolicy.clear()
                 shouldThrow<ApiErrorException.ForbiddenException> {
-                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
+                    altinnAccessService.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
             }
 
             it("should throw Internal Server Error when client fails to make request") {
                 val mockAltinnTilgangerClient = mockk<FakeAltinnTilgangerClient>()
                 coEvery { mockAltinnTilgangerClient.fetchAltinnTilganger(any()) } throws UpstreamRequestException("Forced failure")
-                val altinnTilgangerServiceWithMock = AltinnTilgangerService(mockAltinnTilgangerClient)
+                val altinnAccessServiceWithMock = AltinnAccessService(mockAltinnTilgangerClient)
                 val accessPolicy = altinnTilgangerClient.accessPolicy.first()
                 val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
                 shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    altinnTilgangerServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
+                    altinnAccessServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
             }
         }

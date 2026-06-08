@@ -14,7 +14,7 @@ import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.PdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.AltinnAccessService
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.ApplicationState
@@ -261,7 +261,7 @@ private fun servicesModule() = module {
     }
     single { PdlService(get(), get()) }
 
-    single { AltinnTilgangerService(get()) }
+    single { AltinnAccessService(get()) }
     single {
         LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl, isLocalEnv())
     }

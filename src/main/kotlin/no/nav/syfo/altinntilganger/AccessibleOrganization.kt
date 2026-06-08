@@ -5,7 +5,7 @@ data class AccessibleOrganizationsResponse(
 )
 
 data class AccessibleOrganization(
-    val organizationNumber: String,
+    val orgNumber: String,
     val name: String,
     val subOrganizations: List<AccessibleOrganization>,
 )

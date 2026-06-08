@@ -2,8 +2,8 @@ package no.nav.syfo.narmesteleder.service.validators
 
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnAccessService
+import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.SystemPrincipal
@@ -13,7 +13,7 @@ import no.nav.syfo.ereg.EregService
 import no.nav.syfo.util.logger
 
 class PrincipalAccessValidator(
-    private val altinnTilgangerService: AltinnTilgangerService,
+    private val altinnAccessService: AltinnAccessService,
     private val pdpService: PdpService,
     private val eregService: EregService,
 ) {
@@ -31,7 +31,7 @@ class PrincipalAccessValidator(
         }
 
         is UserPrincipal -> {
-            val altinnTilgang = altinnTilgangerService.validateTilgangToOrganization(
+            val altinnTilgang = altinnAccessService.validateTilgangToOrganization(
                 userPrincipal = principal,
                 orgnummer = orgNumber,
             )

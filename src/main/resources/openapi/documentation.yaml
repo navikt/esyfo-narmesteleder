@@ -495,7 +495,7 @@ components:
       type: object
       description: Organization with narmesteleder access, filtered from the Altinn organization hierarchy.
       properties:
-        organizationNumber:
+        orgNumber:
           type: string
           description: Organization number.
           example: "123456789"
@@ -509,7 +509,7 @@ components:
           items:
             $ref: '#/components/schemas/AccessibleOrganization'
       required:
-        - organizationNumber
+        - orgNumber
         - name
         - subOrganizations
       additionalProperties: false

@@ -5,7 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient

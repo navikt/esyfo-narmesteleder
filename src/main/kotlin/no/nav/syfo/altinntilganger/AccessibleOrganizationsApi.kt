@@ -12,13 +12,13 @@ import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
-const val TILGANGER_API_PATH = "/tilganger"
+const val ACCESSIBLE_ORGANIZATIONS_API_PATH = "/tilganger"
 
 fun Route.registerTilgangerApi(
-    altinnTilgangerService: AltinnTilgangerService,
+    altinnAccessService: AltinnAccessService,
     texasHttpClient: TexasHttpClient,
 ) {
-    route(TILGANGER_API_PATH) {
+    route(ACCESSIBLE_ORGANIZATIONS_API_PATH) {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
             client = texasHttpClient
         }
@@ -31,7 +31,7 @@ fun Route.registerTilgangerApi(
                     type = ErrorType.AUTHORIZATION_ERROR,
                 )
             }
-            val organizations = altinnTilgangerService.getFilteredOrganizations(principal)
+            val organizations = altinnAccessService.getFilteredOrganizations(principal)
             call.respond(HttpStatusCode.OK, AccessibleOrganizationsResponse(organizations = organizations))
         }
     }

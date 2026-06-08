@@ -2,7 +2,7 @@ package no.nav.syfo
 
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.altinntilganger.AltinnAccessService
 import no.nav.syfo.altinntilganger.registerTilgangerApi
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
@@ -19,11 +19,11 @@ fun Route.registerApiV1(
     texasHttpClient: TexasHttpClient,
     validationService: ValidationService,
     linemanagerRequirementRESTHandler: LinemanagerRequirementRESTHandler,
-    altinnTilgangerService: AltinnTilgangerService,
+    altinnAccessService: AltinnAccessService,
 ) {
     route(API_V1_PATH) {
         install(AddTokenIssuerPlugin)
         registerLinemanagerApiV1(narmestelederKafkaService, validationService, texasHttpClient, linemanagerRequirementRESTHandler)
-        registerTilgangerApi(altinnTilgangerService, texasHttpClient)
+        registerTilgangerApi(altinnAccessService, texasHttpClient)
     }
 }

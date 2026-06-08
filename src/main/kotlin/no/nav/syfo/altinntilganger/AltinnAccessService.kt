@@ -8,7 +8,7 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.util.logger
 
-class AltinnTilgangerService(
+class AltinnAccessService(
     val altinnTilgangerClient: IAltinnTilgangerClient,
 ) {
     suspend fun validateTilgangToOrganization(
@@ -84,7 +84,7 @@ class AltinnTilgangerService(
 
         return if (hasAccess || filteredSubOrganizations.isNotEmpty()) {
             AccessibleOrganization(
-                organizationNumber = orgnr,
+                orgNumber = orgnr,
                 name = navn,
                 subOrganizations = filteredSubOrganizations,
             )

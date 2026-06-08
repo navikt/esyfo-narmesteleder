@@ -23,8 +23,8 @@ import io.ktor.server.testing.testApplication
 import io.mockk.clearAllMocks
 import io.mockk.mockk
 import no.nav.syfo.API_V1_PATH
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPRETT_NL_REALASJON_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -40,7 +40,7 @@ class AccessibleOrganizationsApiTest :
     DescribeSpec({
         val texasHttpClientMock = mockk<TexasHttpClient>()
         val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
-        val altinnTilgangerService = AltinnTilgangerService(fakeAltinnTilgangerClient)
+        val altinnAccessService = AltinnAccessService(fakeAltinnTilgangerClient)
         val userFnr = "12345678901"
 
         beforeTest {
@@ -66,7 +66,7 @@ class AccessibleOrganizationsApiTest :
                     routing {
                         route(API_V1_PATH) {
                             install(AddTokenIssuerPlugin)
-                            registerTilgangerApi(altinnTilgangerService, texasHttpClientMock)
+                            registerTilgangerApi(altinnAccessService, texasHttpClientMock)
                         }
                     }
                 }
@@ -91,7 +91,7 @@ class AccessibleOrganizationsApiTest :
                     response.status shouldBe HttpStatusCode.OK
                     val body = response.body<AccessibleOrganizationsResponse>().organizations
                     body shouldHaveSize 1
-                    body[0].organizationNumber shouldBe orgNr
+                    body[0].orgNumber shouldBe orgNr
                     body[0].name shouldBe "Test Org"
                     body[0].subOrganizations.shouldBeEmpty()
                 }
@@ -149,7 +149,7 @@ class AccessibleOrganizationsApiTest :
                     response.status shouldBe HttpStatusCode.OK
                     val body = response.body<AccessibleOrganizationsResponse>().organizations
                     body shouldHaveSize 1
-                    body[0].organizationNumber shouldBe orgNr
+                    body[0].orgNumber shouldBe orgNr
                 }
             }
 
@@ -203,10 +203,10 @@ class AccessibleOrganizationsApiTest :
                     response.status shouldBe HttpStatusCode.OK
                     val body = response.body<AccessibleOrganizationsResponse>().organizations
                     body shouldHaveSize 1
-                    body[0].organizationNumber shouldBe "100000000"
+                    body[0].orgNumber shouldBe "100000000"
                     body[0].name shouldBe "Hovedenhet Uten Tilgang"
                     body[0].subOrganizations shouldHaveSize 1
-                    body[0].subOrganizations[0].organizationNumber shouldBe "200000001"
+                    body[0].subOrganizations[0].orgNumber shouldBe "200000001"
                     body[0].subOrganizations[0].name shouldBe "Underenhet Med Tilgang"
                     body[0].subOrganizations[0].subOrganizations.shouldBeEmpty()
                 }

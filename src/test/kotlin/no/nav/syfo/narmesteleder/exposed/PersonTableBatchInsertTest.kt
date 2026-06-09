@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Foedselsdato
 import no.nav.syfo.pdl.client.Navn
@@ -342,7 +343,7 @@ class PersonTableBatchInsertTest :
                                 mellomnavn = "Augusta",
                                 etternavn = "Lovelace",
                             ),
-                            nationalIdentificationNumber = "12345678901",
+                            nationalIdentificationNumber = PersonalIdentificationNumber("12345678901"),
                             foedselsdato = Foedselsdato(LocalDate.of(1985, 12, 10)),
                         ),
                     )

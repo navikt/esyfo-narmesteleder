@@ -13,6 +13,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import no.nav.syfo.TestDB
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
@@ -227,6 +228,6 @@ private fun pdlPerson(
         mellomnavn = mellomnavn,
         etternavn = etternavn,
     ),
-    nationalIdentificationNumber = fnr,
+    nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
     foedselsdato = Foedselsdato(foedselsdato),
 )

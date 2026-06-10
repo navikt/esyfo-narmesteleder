@@ -9,7 +9,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.person.pdl.leesah.Personhendelse
-import no.nav.person.pdl.leesah.navn.Navn
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaEnvironment
 import no.nav.syfo.application.kafka.KafkaListener
@@ -159,18 +158,18 @@ class PdlLeesahConsumer(
         },
     ) {
         val processedOffsets = mutableMapOf<TopicPartition, OffsetAndMetadata>()
-        val relevantRecords = mutableListOf<RelevantNameEvent>()
+        val relevantRecords = mutableListOf<RecordProcessingResult.RelevantNameRecord>()
         val bufferedEventMetrics = mutableListOf<BufferedLeesahEventMetric>()
         records.forEach { record ->
             processedOffsets[TopicPartition(record.topic(), record.partition())] = OffsetAndMetadata(record.offset() + 1)
-            classifyRecord(record).also { classifiedRecord ->
-                classifiedRecord.bufferedEventMetric?.let(bufferedEventMetrics::add)
-                classifiedRecord.relevantNameEvent?.let(relevantRecords::add)
+            when (val classifiedRecord = classifyRecord(record)) {
+                is RecordProcessingResult.Metrics -> bufferedEventMetrics.add(classifiedRecord.bufferedEventMetric)
+                is RecordProcessingResult.RelevantNameRecord -> relevantRecords.add(classifiedRecord)
             }
         }
 
         val updateResult = if (relevantRecords.isNotEmpty()) {
-            pdlLeesahNameUpdateService.processNameChanges(relevantRecords.flatMap(RelevantNameEvent::personidenter))
+            pdlLeesahNameUpdateService.processNameChanges(relevantRecords.flatMap(RecordProcessingResult.RelevantNameRecord::personidenter))
         } else {
             null
         }
@@ -187,22 +186,18 @@ class PdlLeesahConsumer(
                 )
             }
 
+        if (processedOffsets.isNotEmpty()) {
+            kafkaConsumer.commitSync(processedOffsets)
+        }
+
         updateResult?.let { result ->
             logger.info(
-                "Processed PDL Leesah name event batch relevantRecordCount={}, updatedCount={}, notFoundInRegisterCount={}, pdlNotFoundCount={}, recordsWithFornavn={}, recordsWithMellomnavn={}, recordsWithEtternavn={}, recordsWithOriginaltNavn={}",
+                "Processed PDL Leesah name event batch relevantRecordCount={}, updatedCount={}, notFoundInRegisterCount={}, pdlNotFoundCount={}",
                 relevantRecords.size,
                 result.updatedCount,
                 result.notFoundInRegisterCount,
                 result.pdlNotFoundCount,
-                relevantRecords.count { it.hasFornavn },
-                relevantRecords.count { it.hasMellomnavn },
-                relevantRecords.count { it.hasEtternavn },
-                relevantRecords.count { it.hasOriginaltNavn },
             )
-        }
-
-        if (processedOffsets.isNotEmpty()) {
-            kafkaConsumer.commitSync(processedOffsets)
         }
 
         emitBufferedEventMetrics(bufferedEventMetrics)
@@ -238,22 +233,21 @@ class PdlLeesahConsumer(
         )
     }
 
-    private fun classifyRecord(record: ConsumerRecord<String, Personhendelse>): ClassifiedRecord {
+    private fun classifyRecord(record: ConsumerRecord<String, Personhendelse>): RecordProcessingResult {
         val personhendelse = record.value()
         if (personhendelse == null) {
             logger.warn("Skipping tombstone record from {}", PDL_LEESAH_TOPIC)
-            return ClassifiedRecord(
+            return RecordProcessingResult.Metrics(
                 bufferedEventMetric = BufferedLeesahEventMetric(
                     opplysningstype = METRIC_UNKNOWN_VALUE,
                     endringstype = METRIC_UNKNOWN_VALUE,
                     result = RESULT_TOMBSTONE,
-                ),
+                )
             )
         }
 
         val opplysningstype = personhendelse.opplysningstype ?: METRIC_UNKNOWN_VALUE
         val endringstype = personhendelse.endringstype?.toString() ?: METRIC_UNKNOWN_VALUE
-        val navn = personhendelse.navn
 
         if (!isRelevantNameEvent(personhendelse)) {
             logger.info(
@@ -261,26 +255,20 @@ class PdlLeesahConsumer(
                 opplysningstype,
                 endringstype,
             )
-            return ClassifiedRecord(
+            return RecordProcessingResult.Metrics(
                 bufferedEventMetric = BufferedLeesahEventMetric(
                     opplysningstype = opplysningstype,
                     endringstype = endringstype,
                     result = RESULT_IGNORED,
-                ),
+                )
             )
         }
 
-        return ClassifiedRecord(
-            relevantNameEvent = RelevantNameEvent(
-                personidenter = personhendelse.personidenter.orEmpty(),
-                metricKey = RelevantNameEventMetricKey(
-                    opplysningstype = opplysningstype,
-                    endringstype = endringstype,
-                ),
-                hasFornavn = hasFornavn(navn),
-                hasMellomnavn = hasMellomnavn(navn),
-                hasEtternavn = hasEtternavn(navn),
-                hasOriginaltNavn = hasOriginaltNavn(navn),
+        return RecordProcessingResult.RelevantNameRecord(
+            personidenter = personhendelse.personidenter.orEmpty(),
+            metricKey = RelevantNameEventMetricKey(
+                opplysningstype = opplysningstype,
+                endringstype = endringstype,
             ),
         )
     }
@@ -376,24 +364,21 @@ private class FatalPdlLeesahConsumerException(
     cause: Throwable,
 ) : RuntimeException(null, cause, false, false)
 
-private data class RelevantNameEvent(
-    val personidenter: List<String>,
-    val metricKey: RelevantNameEventMetricKey,
-    val hasFornavn: Boolean,
-    val hasMellomnavn: Boolean,
-    val hasEtternavn: Boolean,
-    val hasOriginaltNavn: Boolean,
-)
-
 private data class RelevantNameEventMetricKey(
     val opplysningstype: String,
     val endringstype: String,
 )
 
-private data class ClassifiedRecord(
-    val relevantNameEvent: RelevantNameEvent? = null,
-    val bufferedEventMetric: BufferedLeesahEventMetric? = null,
-)
+private sealed interface RecordProcessingResult {
+    data class RelevantNameRecord(
+        val personidenter: List<String>,
+        val metricKey: RelevantNameEventMetricKey,
+    ) : RecordProcessingResult
+
+    data class Metrics(
+        val bufferedEventMetric: BufferedLeesahEventMetric,
+    ) : RecordProcessingResult
+}
 
 private data class BufferedLeesahEventMetric(
     val opplysningstype: String,
@@ -407,11 +392,3 @@ private fun PdlLeesahNameUpdateResult.emitPersonUpdateMetrics() {
     countPdlLeesahPersonUpdate(PdlLeesahNameUpdateService.RESULT_NOT_FOUND_IN_REGISTER, notFoundInRegisterCount)
     countPdlLeesahPersonUpdate(PdlLeesahNameUpdateService.RESULT_PDL_NOT_FOUND, pdlNotFoundCount)
 }
-
-private fun hasFornavn(navn: Navn?): Boolean = !navn?.fornavn.isNullOrBlank()
-
-private fun hasMellomnavn(navn: Navn?): Boolean = !navn?.mellomnavn.isNullOrBlank()
-
-private fun hasEtternavn(navn: Navn?): Boolean = !navn?.etternavn.isNullOrBlank()
-
-private fun hasOriginaltNavn(navn: Navn?): Boolean = navn?.originaltNavn != null

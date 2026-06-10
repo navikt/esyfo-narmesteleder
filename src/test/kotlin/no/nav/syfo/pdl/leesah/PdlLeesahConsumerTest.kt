@@ -161,10 +161,12 @@ class PdlLeesahConsumerTest :
                 val logMessage = logAppender.list.joinToString("\n") { it.formattedMessage }
                 logMessage.contains("relevantRecordCount=2") shouldBe true
                 logMessage.contains("updatedCount=2") shouldBe true
-                logMessage.contains("recordsWithFornavn=2") shouldBe true
-                logMessage.contains("recordsWithMellomnavn=1") shouldBe true
-                logMessage.contains("recordsWithEtternavn=2") shouldBe true
-                logMessage.contains("recordsWithOriginaltNavn=1") shouldBe true
+                logMessage.contains("notFoundInRegisterCount=0") shouldBe true
+                logMessage.contains("pdlNotFoundCount=0") shouldBe true
+                logMessage.contains("recordsWithFornavn") shouldBe false
+                logMessage.contains("recordsWithMellomnavn") shouldBe false
+                logMessage.contains("recordsWithEtternavn") shouldBe false
+                logMessage.contains("recordsWithOriginaltNavn") shouldBe false
                 coVerify(exactly = 1) {
                     pdlLeesahNameUpdateService.processNameChanges(listOf(fnr1, fnr2, fnr2, fnr1))
                 }
@@ -310,6 +312,139 @@ class PdlLeesahConsumerTest :
                     endringstype = Endringstype.KORRIGERT.toString(),
                 ) shouldBeExactly 1.0
                 personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_UPDATED) shouldBeExactly 1.0
+            }
+
+            it("processes relevant name events with empty personidenter and still commits offsets") {
+                val consumer = createConsumer(
+                    kafkaConsumer = kafkaConsumer,
+                    pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
+                )
+                val records = consumerRecords(
+                    consumerRecord(
+                        offset = 9L,
+                        value = personhendelse(personidenter = emptyList()),
+                    ),
+                )
+                coEvery { pdlLeesahNameUpdateService.processNameChanges(emptyList()) } returns PdlLeesahNameUpdateResult()
+
+                runTest {
+                    consumer.processRecords(records, kafkaConsumer)
+                }
+
+                coVerify(exactly = 1) { pdlLeesahNameUpdateService.processNameChanges(emptyList()) }
+                verify(exactly = 1) {
+                    kafkaConsumer.commitSync(
+                        mapOf(TopicPartition(PdlLeesahConsumer.PDL_LEESAH_TOPIC, 0) to OffsetAndMetadata(10))
+                    )
+                }
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_PROCESSED,
+                    opplysningstype = PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE,
+                    endringstype = Endringstype.KORRIGERT.toString(),
+                ) shouldBeExactly 1.0
+            }
+
+            it("groups processed metrics by opplysningstype and endringstype while sending all personidenter in one service call") {
+                val consumer = createConsumer(
+                    kafkaConsumer = kafkaConsumer,
+                    pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
+                )
+                val fnr1 = "12345678910"
+                val fnr2 = "01987654321"
+                val records = consumerRecords(
+                    consumerRecord(
+                        offset = 10L,
+                        value = personhendelse(
+                            personidenter = listOf(fnr1),
+                            endringstype = Endringstype.KORRIGERT,
+                        ),
+                    ),
+                    consumerRecord(
+                        offset = 11L,
+                        value = personhendelse(
+                            personidenter = listOf(fnr2),
+                            endringstype = Endringstype.OPPRETTET,
+                        ),
+                    ),
+                )
+                coEvery {
+                    pdlLeesahNameUpdateService.processNameChanges(listOf(fnr1, fnr2))
+                } returns PdlLeesahNameUpdateResult(updatedCount = 2)
+
+                runTest {
+                    consumer.processRecords(records, kafkaConsumer)
+                }
+
+                coVerify(exactly = 1) {
+                    pdlLeesahNameUpdateService.processNameChanges(listOf(fnr1, fnr2))
+                }
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_PROCESSED,
+                    opplysningstype = PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE,
+                    endringstype = Endringstype.KORRIGERT.toString(),
+                ) shouldBeExactly 1.0
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_PROCESSED,
+                    opplysningstype = PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE,
+                    endringstype = Endringstype.OPPRETTET.toString(),
+                ) shouldBeExactly 1.0
+            }
+
+            it("propagates commit failures after successful service call without emitting success metrics") {
+                val fnr = "12345678910"
+                val consumer = createConsumer(
+                    kafkaConsumer = kafkaConsumer,
+                    pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
+                )
+                val records = consumerRecords(
+                    consumerRecord(offset = 12L, value = null),
+                    consumerRecord(
+                        offset = 13L,
+                        value = personhendelse(
+                            opplysningstype = "DOEDSFALL_V1",
+                            navn = null,
+                        ),
+                    ),
+                    consumerRecord(
+                        offset = 14L,
+                        value = personhendelse(personidenter = listOf(fnr)),
+                    ),
+                )
+                coEvery {
+                    pdlLeesahNameUpdateService.processNameChanges(listOf(fnr))
+                } returns PdlLeesahNameUpdateResult(updatedCount = 1)
+                every {
+                    kafkaConsumer.commitSync(any<Map<TopicPartition, OffsetAndMetadata>>())
+                } throws RuntimeException("commit failed for $fnr")
+
+                runTest {
+                    shouldThrow<RuntimeException> {
+                        consumer.processRecords(records, kafkaConsumer)
+                    }
+                }
+
+                coVerify(exactly = 1) { pdlLeesahNameUpdateService.processNameChanges(listOf(fnr)) }
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_TOMBSTONE,
+                    opplysningstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
+                    endringstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
+                ) shouldBeExactly 0.0
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_IGNORED,
+                    opplysningstype = "DOEDSFALL_V1",
+                    endringstype = Endringstype.KORRIGERT.toString(),
+                ) shouldBeExactly 0.0
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_PROCESSED,
+                    opplysningstype = PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE,
+                    endringstype = Endringstype.KORRIGERT.toString(),
+                ) shouldBeExactly 0.0
+                personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_UPDATED) shouldBeExactly 0.0
+                personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_NOT_FOUND_IN_REGISTER) shouldBeExactly 0.0
+                personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_PDL_NOT_FOUND) shouldBeExactly 0.0
+                logAppender.list.none {
+                    it.formattedMessage.contains("Processed PDL Leesah name event batch")
+                } shouldBe true
             }
         }
 
@@ -464,6 +599,7 @@ private fun consumerRecord(
 private fun personhendelse(
     opplysningstype: String = PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE,
     personidenter: List<String> = listOf("12345678910"),
+    endringstype: Endringstype = Endringstype.KORRIGERT,
     navn: Navn? = navn(),
 ): Personhendelse = Personhendelse(
     "hendelse-id",
@@ -471,7 +607,7 @@ private fun personhendelse(
     "PDL",
     Instant.parse("2026-01-01T12:00:00Z"),
     opplysningstype,
-    Endringstype.KORRIGERT,
+    endringstype,
     null,
     navn,
 )

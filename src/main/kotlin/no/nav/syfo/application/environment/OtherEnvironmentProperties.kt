@@ -13,6 +13,7 @@ data class OtherEnvironmentProperties(
     val persistSendtSykmelding: Boolean,
     val maintenanceTaskEnabled: Boolean,
     val persistNarmestelederRegister: Boolean,
+    val outboxTaskDelay: String,
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -31,6 +32,7 @@ data class OtherEnvironmentProperties(
             maintenanceTaskDelay = getEnvVar("MAINTENANCE_TASK_DELAY", "24h"),
             maintenanceTaskEnabled = getEnvVar("BEHOV_MAINTENANCE_TASK_ENABLED", "false").toBoolean(),
             persistNarmestelederRegister = getEnvVar("PERSIST_NARMESTELEDER_REGISTER", "false").toBoolean(),
+            outboxTaskDelay = getEnvVar("OUTBOX_TASK_DELAY", "30s"),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -46,6 +48,7 @@ data class OtherEnvironmentProperties(
             maintenanceTaskEnabled = true,
             electorSSEUrl = "not.applicable",
             persistNarmestelederRegister = true,
+            outboxTaskDelay = "10s",
         )
     }
 }

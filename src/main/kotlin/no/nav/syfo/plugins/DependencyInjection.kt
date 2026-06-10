@@ -1,5 +1,6 @@
 package no.nav.syfo.plugins
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ import no.nav.syfo.application.environment.LocalEnvironment
 import no.nav.syfo.application.environment.NaisEnvironment
 import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
+import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
 import no.nav.syfo.application.valkey.EregCache
@@ -41,6 +43,7 @@ import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
+import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
@@ -51,6 +54,13 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
+import no.nav.syfo.outbox.OutboxDirectSender
+import no.nav.syfo.outbox.OutboxDispatchTask
+import no.nav.syfo.outbox.OutboxDispatcher
+import no.nav.syfo.outbox.OutboxEventRepository
+import no.nav.syfo.outbox.OutboxMetrics
+import no.nav.syfo.outbox.SykmeldingNlAvbruttOutboxHandler
+import no.nav.syfo.outbox.SykmeldingNlRelasjonOutboxHandler
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
@@ -125,6 +135,7 @@ private fun databaseModule() = module {
     single<IActiveSykmeldingRepository> {
         SendtSykmeldingRepository(get())
     }
+    single { OutboxEventRepository(get()) }
 }
 
 private fun handlerModule() = module {
@@ -234,6 +245,7 @@ private fun valkeyModule() = module {
 }
 
 private fun servicesModule() = module {
+    single<ObjectMapper> { jacksonMapper() }
     single { AaregService(arbeidsforholdOversiktClient = get()) }
     single { DinesykmeldteService(dinesykmeldteClient = get()) }
     single<IDinesykmeldteService> {
@@ -264,13 +276,36 @@ private fun servicesModule() = module {
     single {
         LeaderChangeSSEListener(httpClientSSE(), env().otherProperties.electorSSEUrl, isLocalEnv())
     }
-    single {
-        val sykmeldingNLKafkaProducer = SykmeldingNLKafkaProducer(
+    single { OutboxMetrics() }
+    single<ISykmeldingNLKafkaProducer> {
+        SykmeldingNLKafkaProducer(
             KafkaProducer<String, INlResponseKafkaMessage>(
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )
         )
-        NarmestelederKafkaService(sykmeldingNLKafkaProducer)
+    }
+    single {
+        OutboxDispatcher(
+            handlers = listOf(
+                SykmeldingNlRelasjonOutboxHandler(get(), get()),
+                SykmeldingNlAvbruttOutboxHandler(get(), get()),
+            )
+        )
+    }
+    single {
+        OutboxDirectSender(
+            outboxEventRepository = get(),
+            outboxDispatcher = get(),
+            outboxMetrics = get(),
+        )
+    }
+    single {
+        NarmestelederKafkaService(
+            outboxEventRepository = get(),
+            outboxDirectSender = get(),
+            database = get(),
+            objectMapper = get(),
+        )
     }
     single { PdpService(get()) }
     single { PrincipalAccessValidator(get(), get(), get()) }
@@ -310,6 +345,12 @@ private fun tasksModule() = module {
     single {
         val pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay)
         UpdateDialogTask(get(), pollingInterval)
+    }
+    single {
+        OutboxDispatchTask(
+            outboxDirectSender = get(),
+            interval = Duration.parse(env().otherProperties.outboxTaskDelay),
+        )
     }
 }
 

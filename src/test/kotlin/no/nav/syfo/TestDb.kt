@@ -113,6 +113,9 @@ class TestDB private constructor() {
             it.prepareStatement(
                 "DELETE FROM nl_behov;"
             ).use { ps -> ps.executeUpdate() }
+            it.prepareStatement(
+                "DELETE FROM outbox_event;"
+            ).use { ps -> ps.executeUpdate() }
             it.commit()
         }
 
@@ -133,6 +136,13 @@ class TestDB private constructor() {
         fun clearPersonData() = database.connection.use {
             it.prepareStatement(
                 "DELETE FROM person;"
+            ).use { ps -> ps.executeUpdate() }
+            it.commit()
+        }
+
+        fun clearOutboxEventData() = database.connection.use {
+            it.prepareStatement(
+                "DELETE FROM outbox_event;"
             ).use { ps -> ps.executeUpdate() }
             it.commit()
         }

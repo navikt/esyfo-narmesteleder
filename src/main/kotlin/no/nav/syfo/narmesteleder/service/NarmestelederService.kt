@@ -82,6 +82,15 @@ class NarmestelederService(
         dialogportenService.setToCompletedInDialogporten(updatedBehov)
     }
 
+    suspend fun onRequirementFulfilled(requirementId: UUID) {
+        val behovEntity = findBehovEntityById(requirementId)
+        dialogportenService.setToCompletedInDialogporten(
+            behovEntity.copy(
+                behovStatus = BehovStatus.BEHOV_FULFILLED,
+            )
+        )
+    }
+
     suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String): List<NarmestelederBehovEntity> = nlDb.findBehovByParameters(
         sykmeldtFnr = sykmeldtFnr,
         orgnummer = orgnummer,

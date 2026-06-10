@@ -2,7 +2,6 @@ package no.nav.syfo.narmesteleder.api.v1
 
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.Manager
@@ -44,15 +43,13 @@ class LinemanagerRequirementRESTHandler(
                 validateEmployeeLastName = false
             )
 
-            narmestelederKafkaService.sendNarmesteLederRelasjon(
+            narmestelederKafkaService.fulfillRequirementAndSendNarmesteLederRelasjon(
+                requirementId = requirementId,
                 linemanager,
                 linemanagerActors,
-                NlResponseSource.getSourceFrom(principal, linemanager)
+                NlResponseSource.getSourceFrom(principal, linemanager),
             )
-            narmesteLederService.updateNlBehov(
-                requirementId = requirementId,
-                behovStatus = BehovStatus.BEHOV_FULFILLED
-            )
+            narmesteLederService.onRequirementFulfilled(requirementId)
         } catch (e: HovedenhetNotFoundException) {
             throw ApiErrorException.NotFoundException("Main entity not found", e)
         } catch (e: LinemanagerRequirementNotFoundException) {

@@ -10,6 +10,7 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.events.LeaderChange
 import no.nav.syfo.application.events.LeaderChangeEvent
 import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
+import no.nav.syfo.outbox.OutboxDispatchTask
 import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject
 import java.util.Collections
@@ -18,15 +19,12 @@ import kotlin.getValue
 fun Application.configureBackgroundTasks() {
     val logger = logger()
     val environment by inject<Environment>()
-    if (!environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
-        logger.info("Integration with Dialogporten is not enabled. Skipping background tasks")
-        return
-    }
-    logger.info("Integration with Dialogporten is enabled. Configuring background tasks")
+    logger.info("Configuring leader background tasks")
 
     val sendDialogTask by inject<SendDialogTask>()
     val updateDialogTask by inject<UpdateDialogTask>()
     val behovMaintenanceTask by inject<BehovMaintenanceTask>()
+    val outboxDispatchTask by inject<OutboxDispatchTask>()
 
     val taskJobs: MutableList<Job> = Collections.synchronizedList(mutableListOf())
 
@@ -37,8 +35,14 @@ fun Application.configureBackgroundTasks() {
 
                 taskJobs.lock { jobs ->
                     jobs.cancelAndClear()
-                    jobs += launch { sendDialogTask.runTask() }
-                    jobs += launch { updateDialogTask.runTask() }
+                    jobs += launch { outboxDispatchTask.runTask() }
+                    if (environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
+                        logger.info("Integration with Dialogporten is enabled. Starting Dialogporten background tasks")
+                        jobs += launch { sendDialogTask.runTask() }
+                        jobs += launch { updateDialogTask.runTask() }
+                    } else {
+                        logger.info("Integration with Dialogporten is not enabled. Skipping Dialogporten background tasks")
+                    }
                     if (environment.otherProperties.maintenanceTaskEnabled) {
                         logger.info("Maintenance task is enabled. Starting behovMaintenanceTask.")
                         jobs += launch { behovMaintenanceTask.runTask() }

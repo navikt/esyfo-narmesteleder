@@ -125,6 +125,14 @@ class LinenmanagerApiV1Test :
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
             coEvery { pdlCacheMock.getPerson(any()) } returns null
+            coEvery {
+                narmestelederKafkaServiceSpy.fulfillRequirementAndSendNarmesteLederRelasjon(
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                )
+            } returns Unit
             narmesteLederService =
                 NarmestelederService(
                     nlDb = fakeRepo,
@@ -623,7 +631,7 @@ class LinenmanagerApiV1Test :
             }
 
             describe("PUT /requirement/{id}") {
-                it("PUT /requirement/{id} 202 updates behov and sends kafka message") {
+                it("PUT /requirement/{id} 202 delegates fulfilled requirement to outbox flow") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgnummer"),
@@ -650,7 +658,8 @@ class LinenmanagerApiV1Test :
                             }
                         response.status shouldBe HttpStatusCode.Accepted
                         coVerify(exactly = 1) {
-                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
+                            narmestelederKafkaServiceSpy.fulfillRequirementAndSendNarmesteLederRelasjon(
+                                requirementId,
                                 match { linemanager ->
                                     linemanager.employeeIdentificationNumber == sykmeldtFnr &&
                                         linemanager.orgNumber == orgnummer &&
@@ -660,8 +669,6 @@ class LinenmanagerApiV1Test :
                                 any(),
                             )
                         }
-                        val stored = fakeRepo.findBehovById(requirementId) ?: error("Stored requirement missing")
-                        stored.behovStatus.name shouldBe BehovStatus.BEHOV_FULFILLED.name
                     }
                 }
 

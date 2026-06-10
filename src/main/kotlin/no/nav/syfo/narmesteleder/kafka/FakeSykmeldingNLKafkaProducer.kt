@@ -8,12 +8,25 @@ import java.security.MessageDigest
 
 class FakeSykmeldingNLKafkaProducer : ISykmeldingNLKafkaProducer {
     val logger = logger()
+    val sentRelasjoner = mutableListOf<Pair<NlResponse, NlResponseSource>>()
+    val sentBrudd = mutableListOf<Pair<NlAvbrutt, NlResponseSource>>()
+    var shouldFailRelasjon = false
+    var shouldFailBrudd = false
+
     override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) {
+        if (shouldFailRelasjon) {
+            throw RuntimeException("Simulated relation send failure")
+        }
+        sentRelasjoner += sykmeldingNL to source
         logger.info("FakeSykemeldingNLKafkaProducer sendSykemeldingNLRelasjon to orgnumber: ${sykmeldingNL.orgnummer}")
         logger.info(sykmeldingNL.hashFnrFields().toString())
     }
 
     override fun sendSykmldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource) {
+        if (shouldFailBrudd) {
+            throw RuntimeException("Simulated revoke send failure")
+        }
+        sentBrudd += nlAvbrutt to source
         logger.info("FakeSykemeldingNLKafkaProducer sendSykemeldingNLBrudd to orgnumber: ${nlAvbrutt.orgnummer} on behalf of source: ${source.name}")
         logger.info(nlAvbrutt.copy(sykmeldtFnr = nlAvbrutt.sykmeldtFnr.sha256()).toString())
     }

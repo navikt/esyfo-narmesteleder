@@ -11,7 +11,6 @@ import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import prepareGetPersonResponse
@@ -46,6 +45,14 @@ class LinemanagerRequirementRESTHandlerTest :
         beforeTest {
             clearAllMocks()
             servicesWrapper.fakeDbSpyk.clear()
+            coEvery {
+                servicesWrapper.narmestelederKafkaServiceSpyk.fulfillRequirementAndSendNarmesteLederRelasjon(
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                )
+            } returns Unit
 
             coEvery {
                 servicesWrapper.pdlCacheMock.getPerson(any())
@@ -53,7 +60,7 @@ class LinemanagerRequirementRESTHandlerTest :
         }
 
         describe("put") {
-            it("Should update status on NlBehov through NarmestelederService") {
+            it("Should complete fulfilled requirement through NarmestelederService") {
                 servicesWrapper.pdlServiceSpyk.prepareGetPersonResponse(defaultManager)
                 val handler = servicesWrapper.lnReqRESTHandlerSpyk
                 val db = servicesWrapper.fakeDbSpyk
@@ -74,14 +81,13 @@ class LinemanagerRequirementRESTHandlerTest :
                     principal = principal,
                 )
                 coVerify(exactly = 1) {
-                    servicesWrapper.narmestelederServiceSpyk.updateNlBehov(
+                    servicesWrapper.narmestelederServiceSpyk.onRequirementFulfilled(
                         match<UUID> { it == fixtureEntity.id },
-                        match<BehovStatus> { it == BehovStatus.BEHOV_FULFILLED }
                     )
                 }
             }
 
-            it("Should distribute new linemanager using NarmestelederKafkaService") {
+            it("Should enqueue and dispatch fulfilled requirement using NarmestelederKafkaService") {
                 servicesWrapper.pdlServiceSpyk.prepareGetPersonResponse(defaultManager)
                 val handler = servicesWrapper.lnReqRESTHandlerSpyk
                 val db = servicesWrapper.fakeDbSpyk
@@ -102,7 +108,8 @@ class LinemanagerRequirementRESTHandlerTest :
                     principal = principal,
                 )
                 coVerify(exactly = 1) {
-                    servicesWrapper.narmestelederKafkaServiceSpyk.sendNarmesteLederRelasjon(
+                    servicesWrapper.narmestelederKafkaServiceSpyk.fulfillRequirementAndSendNarmesteLederRelasjon(
+                        match { it == fixtureEntity.id },
                         match {
                             it.employeeIdentificationNumber == fixtureEntity.sykmeldtFnr &&
                                 it.orgNumber == fixtureEntity.orgnummer

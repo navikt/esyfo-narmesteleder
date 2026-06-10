@@ -119,7 +119,7 @@ class PdlLeesahNameUpdateService(
     private fun isRelevantFnr(personident: String): Boolean = personident.length == FNR_LENGTH && personident.all(Char::isDigit)
 
     companion object {
-        private val logger = logger("no.nav.syfo.pdl.leesah.PdlLeesahNameUpdateService")
+        private val logger = logger()
         internal const val RESULT_UPDATED = "updated"
         internal const val RESULT_NOT_FOUND_IN_REGISTER = "not_found_in_register"
         internal const val RESULT_PDL_NOT_FOUND = "pdl_not_found"

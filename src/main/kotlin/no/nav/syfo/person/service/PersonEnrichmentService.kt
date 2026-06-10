@@ -4,11 +4,11 @@ import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.person.domain.PersonStatus
+import no.nav.syfo.util.logger
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.slf4j.LoggerFactory
 
 private const val PERSON_ENRICHMENT_BATCH_SIZE = 500
 
@@ -16,7 +16,7 @@ class PersonEnrichmentService(
     private val database: Database,
     private val pdlService: PdlService,
 ) {
-    private val logger = LoggerFactory.getLogger(PersonEnrichmentService::class.java)
+    private val logger = logger()
 
     suspend fun enrichPendingPersons() {
         while (true) {

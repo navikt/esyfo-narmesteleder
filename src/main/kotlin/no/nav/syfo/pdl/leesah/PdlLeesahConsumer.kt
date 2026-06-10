@@ -335,7 +335,7 @@ class PdlLeesahConsumer(
     }
 
     companion object {
-        private val logger = logger("no.nav.syfo.pdl.leesah.PdlLeesahConsumer")
+        private val logger = logger()
         private const val CONSUMER_JOB_DELAY_SECONDS = 30L
         private const val CLOSE_DURATION_SECONDS = 10L
         private const val POLL_DURATION_SECONDS = 1L

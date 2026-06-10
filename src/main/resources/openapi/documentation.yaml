@@ -793,5 +793,5 @@ tags:
       These endpoints are relevant when there is a requirement for line manager that needs to be fulfilled.
       "requirement" is the term we have coined for the situation when an employee on sick leave does not have a
       line manager assigned, so the employer is required to assign a line manager to the employee.
-  - name: tilganger
-    description: Endpoint to retrieve organization hierarchy filtered by narmesteleder access.
+  - name: access/organizations
+    description: Endpoint to retrieve organization hierarchy filtered by oppgi narmesteleder access.

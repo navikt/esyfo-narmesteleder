@@ -1,4 +1,4 @@
-package no.nav.syfo.pdl.leesah
+package no.nav.syfo.pdl.kafka
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
@@ -43,7 +43,7 @@ class PdlLeesahConsumerTest :
         val pdlLeesahNameUpdateService = mockk<PdlLeesahNameUpdateService>()
         val testScope = CoroutineScope(EmptyCoroutineContext)
         val logAppender = ListAppender<ILoggingEvent>()
-        val logger = LoggerFactory.getLogger("no.nav.syfo.pdl.leesah.PdlLeesahConsumer") as Logger
+        val logger = LoggerFactory.getLogger(PdlLeesahConsumer::class.java.name) as Logger
 
         beforeSpec {
             logger.level = Level.INFO

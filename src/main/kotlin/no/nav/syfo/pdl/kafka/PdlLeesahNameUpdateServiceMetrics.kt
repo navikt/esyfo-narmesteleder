@@ -1,4 +1,4 @@
-package no.nav.syfo.pdl.leesah
+package no.nav.syfo.pdl.kafka
 
 import io.micrometer.core.instrument.Counter
 import no.nav.syfo.application.metric.METRICS_NS

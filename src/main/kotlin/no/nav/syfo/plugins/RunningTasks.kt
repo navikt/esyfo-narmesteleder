@@ -17,8 +17,8 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.PersistNarmestelederRegisterFromLeesahConsumer
 import no.nav.syfo.narmesteleder.service.LeaderControlledKafkaConsumer
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
-import no.nav.syfo.pdl.leesah.PdlLeesahConsumer
-import no.nav.syfo.pdl.leesah.PdlLeesahNameUpdateService
+import no.nav.syfo.pdl.kafka.PdlLeesahConsumer
+import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingKafkaConsumer

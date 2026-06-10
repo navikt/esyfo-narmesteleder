@@ -1,4 +1,4 @@
-package no.nav.syfo.pdl.leesah
+package no.nav.syfo.pdl.kafka
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe

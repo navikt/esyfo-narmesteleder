@@ -1,4 +1,4 @@
-package no.nav.syfo.pdl.leesah
+package no.nav.syfo.pdl.kafka
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

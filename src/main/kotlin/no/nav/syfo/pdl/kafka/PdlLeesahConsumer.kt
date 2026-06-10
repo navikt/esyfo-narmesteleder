@@ -1,4 +1,4 @@
-package no.nav.syfo.pdl.leesah
+package no.nav.syfo.pdl.kafka
 
 import io.micrometer.core.instrument.Counter
 import kotlinx.coroutines.CoroutineName
@@ -12,6 +12,7 @@ import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaEnvironment
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.avroConsumerProperties
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.util.logger
@@ -346,7 +347,7 @@ class PdlLeesahConsumer(
         internal const val RESULT_TOMBSTONE = "tombstone"
         internal const val METRIC_UNKNOWN_VALUE = "unknown"
 
-        fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = no.nav.syfo.application.kafka.avroConsumerProperties(
+        fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = avroConsumerProperties(
             groupId = PDL_LEESAH_CONSUMER_GROUP,
             env = env,
         ).apply {

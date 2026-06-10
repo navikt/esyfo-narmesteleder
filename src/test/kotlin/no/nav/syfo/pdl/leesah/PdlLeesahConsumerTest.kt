@@ -57,15 +57,20 @@ class PdlLeesahConsumerTest :
 
         beforeTest {
             clearMocks(kafkaConsumer, pdlLeesahNameUpdateService)
-            coEvery { pdlLeesahNameUpdateService.processNameChange(any()) } returns PdlLeesahNameUpdateResult()
+            coEvery { pdlLeesahNameUpdateService.processNameChanges(any()) } returns PdlLeesahNameUpdateResult()
             logAppender.list.clear()
             removePdlLeesahMetrics()
+            removePdlLeesahPersonUpdateMetrics()
         }
 
         describe("processRecords") {
-            it("ignores non-name events and commits offsets") {
+            it("counts tombstone and ignored records in polls without relevant events and commits offsets") {
                 val consumer = createConsumer(kafkaConsumer = kafkaConsumer)
                 val records = consumerRecords(
+                    consumerRecord(
+                        offset = 0L,
+                        value = null,
+                    ),
                     consumerRecord(
                         offset = 1L,
                         value = personhendelse(
@@ -85,26 +90,32 @@ class PdlLeesahConsumerTest :
                     )
                 }
                 metricCount(
+                    result = PdlLeesahConsumer.RESULT_TOMBSTONE,
+                    opplysningstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
+                    endringstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
+                ) shouldBeExactly 1.0
+                metricCount(
                     result = PdlLeesahConsumer.RESULT_IGNORED,
                     opplysningstype = "DOEDSFALL_V1",
                     endringstype = Endringstype.KORRIGERT.toString(),
                 ) shouldBeExactly 1.0
             }
 
-            it("processes relevant name events, logs only structural fields and commits offsets") {
+            it("processes relevant name events in one batch, logs only structural fields and commits offsets") {
                 val consumer = createConsumer(
                     kafkaConsumer = kafkaConsumer,
                     pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
                 )
-                val fnr = "12345678910"
+                val fnr1 = "12345678910"
+                val fnr2 = "01987654321"
                 val fornavn = "Ola"
                 val etternavn = "Nordmann"
                 val records = consumerRecords(
                     consumerRecord(
                         offset = 2L,
-                        key = fnr,
+                        key = fnr1,
                         value = personhendelse(
-                            personidenter = listOf(fnr),
+                            personidenter = listOf(fnr1, fnr2),
                             navn = navn(
                                 fornavn = fornavn,
                                 mellomnavn = "Mellom",
@@ -113,11 +124,23 @@ class PdlLeesahConsumerTest :
                             ),
                         ),
                     ),
+                    consumerRecord(
+                        offset = 3L,
+                        key = fnr2,
+                        value = personhendelse(
+                            personidenter = listOf(fnr2, fnr1),
+                            navn = navn(
+                                fornavn = "Kari",
+                                mellomnavn = null,
+                                etternavn = "Nordmann",
+                            ),
+                        ),
+                    ),
                 )
 
                 coEvery {
-                    pdlLeesahNameUpdateService.processNameChange(listOf(fnr))
-                } returns PdlLeesahNameUpdateResult(updatedCount = 1)
+                    pdlLeesahNameUpdateService.processNameChanges(listOf(fnr1, fnr2, fnr2, fnr1))
+                } returns PdlLeesahNameUpdateResult(updatedCount = 2)
 
                 runTest {
                     consumer.processRecords(records, kafkaConsumer)
@@ -125,25 +148,28 @@ class PdlLeesahConsumerTest :
 
                 verify(exactly = 1) {
                     kafkaConsumer.commitSync(
-                        mapOf(TopicPartition(PdlLeesahConsumer.PDL_LEESAH_TOPIC, 0) to OffsetAndMetadata(3))
+                        mapOf(TopicPartition(PdlLeesahConsumer.PDL_LEESAH_TOPIC, 0) to OffsetAndMetadata(4))
                     )
                 }
                 metricCount(
                     result = PdlLeesahConsumer.RESULT_PROCESSED,
                     opplysningstype = PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE,
                     endringstype = Endringstype.KORRIGERT.toString(),
-                ) shouldBeExactly 1.0
+                ) shouldBeExactly 2.0
+                personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_UPDATED) shouldBeExactly 2.0
 
                 val logMessage = logAppender.list.joinToString("\n") { it.formattedMessage }
-                logMessage.contains("opplysningstype=${PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE}") shouldBe true
-                logMessage.contains("endringstype=${Endringstype.KORRIGERT}") shouldBe true
-                logMessage.contains("hasFornavn=true") shouldBe true
-                logMessage.contains("hasMellomnavn=true") shouldBe true
-                logMessage.contains("hasEtternavn=true") shouldBe true
-                logMessage.contains("hasOriginaltNavn=true") shouldBe true
-                logMessage.contains("updatedCount=1") shouldBe true
-                coVerify(exactly = 1) { pdlLeesahNameUpdateService.processNameChange(listOf(fnr)) }
-                logMessage.contains(fnr) shouldBe false
+                logMessage.contains("relevantRecordCount=2") shouldBe true
+                logMessage.contains("updatedCount=2") shouldBe true
+                logMessage.contains("recordsWithFornavn=2") shouldBe true
+                logMessage.contains("recordsWithMellomnavn=1") shouldBe true
+                logMessage.contains("recordsWithEtternavn=2") shouldBe true
+                logMessage.contains("recordsWithOriginaltNavn=1") shouldBe true
+                coVerify(exactly = 1) {
+                    pdlLeesahNameUpdateService.processNameChanges(listOf(fnr1, fnr2, fnr2, fnr1))
+                }
+                logMessage.contains(fnr1) shouldBe false
+                logMessage.contains(fnr2) shouldBe false
                 logMessage.contains(fornavn) shouldBe false
                 logMessage.contains(etternavn) shouldBe false
                 logAppender.list.joinToString("\n") { it.formattedMessage }.contains("Zyxel") shouldBe false
@@ -174,15 +200,23 @@ class PdlLeesahConsumerTest :
                 ) shouldBeExactly 1.0
             }
 
-            it("does not commit offsets when name update processing fails with PDL request exception") {
+            it("does not emit success metrics or commit offsets when name update processing fails with PDL request exception") {
                 val fnr = "12345678910"
                 val consumer = createConsumer(
                     kafkaConsumer = kafkaConsumer,
                     pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
                 )
                 val records = consumerRecords(
+                    consumerRecord(offset = 4L, value = null),
                     consumerRecord(
                         offset = 5L,
+                        value = personhendelse(
+                            opplysningstype = "DOEDSFALL_V1",
+                            navn = null,
+                        ),
+                    ),
+                    consumerRecord(
+                        offset = 6L,
                         key = fnr,
                         value = personhendelse(
                             personidenter = listOf(fnr),
@@ -191,7 +225,7 @@ class PdlLeesahConsumerTest :
                     ),
                 )
                 coEvery {
-                    pdlLeesahNameUpdateService.processNameChange(listOf(fnr))
+                    pdlLeesahNameUpdateService.processNameChanges(listOf(fnr))
                 } throws PdlRequestException("PDL unavailable for $fnr")
 
                 runTest {
@@ -203,6 +237,79 @@ class PdlLeesahConsumerTest :
                 verify(exactly = 0) {
                     kafkaConsumer.commitSync(any<Map<TopicPartition, OffsetAndMetadata>>())
                 }
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_TOMBSTONE,
+                    opplysningstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
+                    endringstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
+                ) shouldBeExactly 0.0
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_IGNORED,
+                    opplysningstype = "DOEDSFALL_V1",
+                    endringstype = Endringstype.KORRIGERT.toString(),
+                ) shouldBeExactly 0.0
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_PROCESSED,
+                    opplysningstype = PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE,
+                    endringstype = Endringstype.KORRIGERT.toString(),
+                ) shouldBeExactly 0.0
+                personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_UPDATED) shouldBeExactly 0.0
+                personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_NOT_FOUND_IN_REGISTER) shouldBeExactly 0.0
+                personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_PDL_NOT_FOUND) shouldBeExactly 0.0
+            }
+
+            it("commits tombstones and ignored records together with relevant records only after batch success") {
+                val fnr = "12345678910"
+                val consumer = createConsumer(
+                    kafkaConsumer = kafkaConsumer,
+                    pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
+                )
+                val records = consumerRecords(
+                    consumerRecord(offset = 6L, value = null),
+                    consumerRecord(
+                        offset = 7L,
+                        value = personhendelse(
+                            opplysningstype = "DOEDSFALL_V1",
+                            navn = null,
+                        ),
+                    ),
+                    consumerRecord(
+                        offset = 8L,
+                        key = fnr,
+                        value = personhendelse(
+                            personidenter = listOf(fnr),
+                            navn = navn(),
+                        ),
+                    ),
+                )
+                coEvery {
+                    pdlLeesahNameUpdateService.processNameChanges(listOf(fnr))
+                } returns PdlLeesahNameUpdateResult(updatedCount = 1)
+
+                runTest {
+                    consumer.processRecords(records, kafkaConsumer)
+                }
+
+                verify(exactly = 1) {
+                    kafkaConsumer.commitSync(
+                        mapOf(TopicPartition(PdlLeesahConsumer.PDL_LEESAH_TOPIC, 0) to OffsetAndMetadata(9))
+                    )
+                }
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_TOMBSTONE,
+                    opplysningstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
+                    endringstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
+                ) shouldBeExactly 1.0
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_IGNORED,
+                    opplysningstype = "DOEDSFALL_V1",
+                    endringstype = Endringstype.KORRIGERT.toString(),
+                ) shouldBeExactly 1.0
+                metricCount(
+                    result = PdlLeesahConsumer.RESULT_PROCESSED,
+                    opplysningstype = PdlLeesahConsumer.NAVN_OPPLYSNINGSTYPE,
+                    endringstype = Endringstype.KORRIGERT.toString(),
+                ) shouldBeExactly 1.0
+                personUpdateMetricCount(PdlLeesahNameUpdateService.RESULT_UPDATED) shouldBeExactly 1.0
             }
         }
 
@@ -294,7 +401,7 @@ class PdlLeesahConsumerTest :
 private fun createConsumer(
     kafkaConsumer: KafkaConsumer<String, Personhendelse>,
     pdlLeesahNameUpdateService: PdlLeesahNameUpdateService = mockk<PdlLeesahNameUpdateService>().also {
-        coEvery { it.processNameChange(any()) } returns PdlLeesahNameUpdateResult()
+        coEvery { it.processNameChanges(any()) } returns PdlLeesahNameUpdateResult()
     },
     retryDelaySeconds: Long = 0,
 ): PdlLeesahConsumer = PdlLeesahConsumer(
@@ -307,6 +414,12 @@ private fun createConsumer(
 
 private fun removePdlLeesahMetrics() {
     METRICS_REGISTRY.find(PdlLeesahConsumer.PDL_LEESAH_HENDELSE_TOTAL)
+        .meters()
+        .forEach(METRICS_REGISTRY::remove)
+}
+
+private fun removePdlLeesahPersonUpdateMetrics() {
+    METRICS_REGISTRY.find(PDL_LEESAH_PERSON_UPDATE_TOTAL)
         .meters()
         .forEach(METRICS_REGISTRY::remove)
 }
@@ -324,6 +437,11 @@ private fun metricCount(
         "result",
         result,
     )
+    .counter()
+    ?.count() ?: 0.0
+
+private fun personUpdateMetricCount(result: String): Double = METRICS_REGISTRY.find(PDL_LEESAH_PERSON_UPDATE_TOTAL)
+    .tag("result", result)
     .counter()
     ?.count() ?: 0.0
 

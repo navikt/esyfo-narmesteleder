@@ -9,7 +9,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.syfo.application.environment.Environment
-import no.nav.syfo.application.kafka.avroConsumerProperties
 import no.nav.syfo.application.kafka.consumerProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
@@ -108,10 +107,7 @@ fun Application.configureKafkaConsumers() {
     val pdlLeesahConsumer = if (environment.otherProperties.pdlLeesahConsumerEnabled) {
         PdlLeesahConsumer(
             kafkaConsumer = KafkaConsumer<String, Personhendelse>(
-                avroConsumerProperties(
-                    groupId = PdlLeesahConsumer.PDL_LEESAH_CONSUMER_GROUP,
-                    env = environment.kafka,
-                )
+                PdlLeesahConsumer.kafkaConsumerProperties(environment.kafka)
             ),
             scope = this,
             env = environment.otherProperties,

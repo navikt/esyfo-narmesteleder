@@ -1,15 +1,8 @@
 package no.nav.syfo.narmesteleder.exposed
 
-import no.nav.syfo.pdl.Person
 import org.jetbrains.exposed.v1.core.Transaction
-import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.batchInsert
-import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.update
 import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 
 data class PersonBatchInsertRow(
@@ -32,29 +25,6 @@ data class InsertedPerson(
 )
 
 internal class PersonTableOps(private val transaction: Transaction) {
-    fun findExistingFnrs(fnrs: Iterable<String>): Set<String> {
-        val distinctFnrs = fnrs.distinct()
-        if (distinctFnrs.isEmpty()) {
-            return emptySet()
-        }
-
-        return PersonTable.selectAll()
-            .where { PersonTable.fnr inList distinctFnrs }
-            .map { it[PersonTable.fnr] }
-            .toSet()
-    }
-
-    fun updatePersonFromPdl(
-        fnr: String,
-        person: Person,
-    ): Int = PersonTable.update({ PersonTable.fnr eq fnr }) {
-        it[fornavn] = person.name.fornavn
-        it[mellomnavn] = person.name.mellomnavn
-        it[etternavn] = person.name.etternavn
-        it[foedselsdato] = person.foedselsdato?.foedselsdato
-        it[updated] = OffsetDateTime.now(ZoneOffset.UTC)
-    }
-
     fun batchInsertIgnoreExisting(rows: Iterable<PersonBatchInsertRow>): List<InsertedPerson> {
         val rowsToInsert = rows.toList()
         if (rowsToInsert.isEmpty()) {

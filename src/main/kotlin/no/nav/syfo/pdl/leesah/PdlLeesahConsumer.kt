@@ -250,11 +250,6 @@ class PdlLeesahConsumer(
         val endringstype = personhendelse.endringstype?.toString() ?: METRIC_UNKNOWN_VALUE
 
         if (!isRelevantNameEvent(personhendelse)) {
-            logger.info(
-                "Ignoring PDL Leesah event opplysningstype={}, endringstype={}",
-                opplysningstype,
-                endringstype,
-            )
             return RecordProcessingResult.Metrics(
                 bufferedEventMetric = BufferedLeesahEventMetric(
                     opplysningstype = opplysningstype,

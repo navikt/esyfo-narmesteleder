@@ -12,6 +12,7 @@ import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederRecord
+import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -282,7 +283,7 @@ class NarmestelederRegisterServiceTest :
                             "12345678901"
                         ).sorted()
                     }
-                    insertedPerson.status shouldBe "PENDING"
+                    insertedPerson.status shouldBe PersonStatus.PENDING.name
                 }
             }
         }

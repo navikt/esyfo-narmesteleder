@@ -1,5 +1,6 @@
 package no.nav.syfo.sykmelding.kafka
 
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.CoroutineName
@@ -49,6 +50,16 @@ class SendtSykmeldingKafkaConsumer(
                         }
                 } catch (_: WakeupException) {
                     logger.info("Waked Kafka consumer")
+                } catch (e: JsonProcessingException) {
+                    logger.error(
+                        "Failed to deserialize message from $SENDT_SYKMELDING_TOPIC. " +
+                            "The message will be retried in $DELAY_ON_ERROR_SECONDS seconds. " +
+                            "Manual inspection may be required if this persists. Cause: ${e.message}",
+                        e
+                    )
+                    kafkaConsumer.unsubscribe()
+                    delay(DELAY_ON_ERROR_SECONDS.seconds)
+                    kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
                 } catch (e: Exception) {
                     logger.error(
                         "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",

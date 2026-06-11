@@ -3,6 +3,8 @@ package no.nav.syfo.narmesteleder.kafka.model
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -37,9 +39,9 @@ data class NarmestelederLeesahKafkaMessage(
 ) {
 
     fun toNlBehovWrite() = LinemanagerRequirementWrite(
-        employeeIdentificationNumber = fnr,
-        orgNumber = orgnummer,
-        managerIdentificationNumber = narmesteLederFnr,
+        employeeIdentificationNumber = PersonalIdentificationNumber(fnr),
+        orgNumber = OrganizationNumber(orgnummer),
+        managerIdentificationNumber = PersonalIdentificationNumber(narmesteLederFnr),
         behovReason = status?.name?.let { BehovReason.valueOf(it) }
             ?: BehovReason.UKJENT,
         revokedLinemanagerId = narmesteLederId,

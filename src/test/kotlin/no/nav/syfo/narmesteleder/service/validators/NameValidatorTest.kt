@@ -9,6 +9,7 @@ import linemanager
 import linemanagerRevoke
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
 
@@ -20,7 +21,7 @@ class NameValidatorTest :
                 mellomnavn = null,
                 etternavn = lastName,
             ),
-            nationalIdentificationNumber = fnr,
+            nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
         )
 
         describe("validateLinemanagerLastName") {
@@ -28,7 +29,7 @@ class NameValidatorTest :
                 val linemanager = linemanager()
                 val manager = person(
                     lastName = linemanager.manager.lastName.reversed(),
-                    fnr = linemanager.manager.nationalIdentificationNumber,
+                    fnr = linemanager.manager.nationalIdentificationNumber.value,
                 )
 
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
@@ -43,7 +44,7 @@ class NameValidatorTest :
                 val linemanager = linemanager()
                 val manager = person(
                     lastName = linemanager.manager.lastName.lowercase(),
-                    fnr = linemanager.manager.nationalIdentificationNumber,
+                    fnr = linemanager.manager.nationalIdentificationNumber.value,
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
@@ -57,7 +58,7 @@ class NameValidatorTest :
                 val linemanager = linemanager()
                 val employee = person(
                     lastName = linemanager.lastName.lowercase(),
-                    fnr = linemanager.employeeIdentificationNumber,
+                    fnr = linemanager.employeeIdentificationNumber.value,
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
@@ -69,7 +70,7 @@ class NameValidatorTest :
                 val linemanager = linemanager()
                 val employee = person(
                     lastName = linemanager.lastName,
-                    fnr = linemanager.employeeIdentificationNumber,
+                    fnr = linemanager.employeeIdentificationNumber.value,
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
@@ -81,7 +82,7 @@ class NameValidatorTest :
                 val linemanager = linemanager()
                 val employee = person(
                     lastName = linemanager.lastName.reversed(),
-                    fnr = linemanager.employeeIdentificationNumber,
+                    fnr = linemanager.employeeIdentificationNumber.value,
                 )
 
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
@@ -98,7 +99,7 @@ class NameValidatorTest :
                 val linemanagerRevoke = linemanagerRevoke()
                 val employee = person(
                     lastName = linemanagerRevoke.lastName.lowercase(),
-                    fnr = linemanagerRevoke.employeeIdentificationNumber,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
@@ -110,7 +111,7 @@ class NameValidatorTest :
                 val linemanagerRevoke = linemanagerRevoke()
                 val employee = person(
                     lastName = linemanagerRevoke.lastName.reversed(),
-                    fnr = linemanagerRevoke.employeeIdentificationNumber,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
 
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {

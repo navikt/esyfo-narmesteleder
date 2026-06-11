@@ -17,6 +17,8 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.pdl.PdlService
@@ -45,7 +47,7 @@ val faker = Faker(Random(Instant.now().epochSecond))
 
 fun faker() = faker
 fun manager(): Manager = Manager(
-    nationalIdentificationNumber = faker.numerify("###########"),
+    nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
     mobile = faker.phoneNumber().cellPhone(),
     email = faker.internet().emailAddress(),
     lastName = faker.name().lastName(),
@@ -53,8 +55,8 @@ fun manager(): Manager = Manager(
 
 fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
-    employeeIdentificationNumber = faker.numerify("###########"),
-    orgNumber = faker.numerify("#########"),
+    employeeIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
+    orgNumber = OrganizationNumber(faker.numerify("#########")),
     lastName = faker.name().lastName(),
 )
 
@@ -70,8 +72,8 @@ fun organisasjon() = Organisasjon(
 )
 
 fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
-    employeeIdentificationNumber = faker.numerify("###########"),
-    orgNumber = faker.numerify("#########"),
+    employeeIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
+    orgNumber = OrganizationNumber(faker.numerify("#########")),
     lastName = faker.name().lastName(),
 )
 
@@ -166,7 +168,7 @@ fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, c
 }
 
 fun PdlService.prepareGetPersonResponse(manager: Manager) {
-    prepareGetPersonResponse(manager.nationalIdentificationNumber, manager.lastName)
+    prepareGetPersonResponse(manager.nationalIdentificationNumber.value, manager.lastName)
 }
 
 fun PdlService.prepareGetPersonResponse(fnr: String, lastName: String) {
@@ -179,7 +181,7 @@ fun PdlService.prepareGetPersonResponse(fnr: String, lastName: String) {
             mellomnavn = "",
             etternavn = lastName,
         ),
-        nationalIdentificationNumber = fnr,
+        nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
     )
 }
 

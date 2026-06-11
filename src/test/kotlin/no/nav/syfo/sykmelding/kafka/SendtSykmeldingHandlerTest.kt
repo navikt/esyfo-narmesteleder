@@ -264,8 +264,8 @@ class SendtSykmeldingHandlerTest :
                     )
                 }
 
-                assert(nlBehovSlot.captured.employeeIdentificationNumber == fnr)
-                assert(nlBehovSlot.captured.orgNumber == orgnummer)
+                assert(nlBehovSlot.captured.employeeIdentificationNumber.value == fnr)
+                assert(nlBehovSlot.captured.orgNumber.value == orgnummer)
                 assert(skipCheckSlot.captured)
             }
 
@@ -277,6 +277,26 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any())
+                }
+            }
+
+            it("should not create NL behov when fnr is invalid") {
+                val message = defaultSendtSykmeldingMessage(fnr = "123")
+
+                handler.handleNarmestelederbehov(message)
+
+                coVerify(exactly = 0) {
+                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
+                }
+            }
+
+            it("should not create NL behov when orgnummer is invalid") {
+                val message = defaultSendtSykmeldingMessage(orgnummer = "123")
+
+                handler.handleNarmestelederbehov(message)
+
+                coVerify(exactly = 0) {
+                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
                 }
             }
         }

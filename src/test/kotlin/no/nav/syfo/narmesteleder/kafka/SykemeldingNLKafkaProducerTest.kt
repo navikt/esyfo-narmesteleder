@@ -12,6 +12,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import linemanager
 import linemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbruddResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlRelationResponseKafkaMessage
@@ -42,7 +43,7 @@ class SykemeldingNLKafkaProducerTest :
                 // Arrange
                 val relasjon = linemanager()
                 val linemanagerPerson = Person(
-                    nationalIdentificationNumber = faker.numerify("###########"),
+                    nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
                     name =
                     Navn(faker.name().firstName(), null, faker.name().lastName())
                 )
@@ -57,7 +58,7 @@ class SykemeldingNLKafkaProducerTest :
                 coEvery { kafkaProducerMock.send(any<ProducerRecord<String, INlResponseKafkaMessage>>()) } returns futureMock
 
                 val sykmeldingNL = NlResponse(
-                    orgnummer = relasjon.orgNumber,
+                    orgnummer = relasjon.orgNumber.value,
                     leder = relasjon.manager.toLeder(linemanagerPerson),
                     sykmeldt = Sykmeldt.from(sykmeldtPerson),
                     utbetalesLonn = null,
@@ -100,8 +101,8 @@ class SykemeldingNLKafkaProducerTest :
                             it.shouldBeInstanceOf<ProducerRecord<String, NlAvbruddResponseKafkaMessage>>()
                             it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.source
                             it.value().nlAvbrutt shouldNotBe null
-                            it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgNumber
-                            it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.employeeIdentificationNumber
+                            it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgNumber.value
+                            it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.employeeIdentificationNumber.value
                             it.value().nlAvbrutt.aktivTom shouldBeAfter now
                         }
                     )

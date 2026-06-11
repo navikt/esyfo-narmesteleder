@@ -9,7 +9,6 @@ spec:
   ingresses:
     - https://narmesteleder-api.intern.nav.no
     - https://narmesteleder-api.nav.no/api/v1/linemanager
-    - https://narmesteleder-api.nav.no/api/v1/access/organizations
     - https://narmesteleder-api.nav.no/swagger
     - https://narmesteleder-api.nav.no/openapi
   image: {{image}} #

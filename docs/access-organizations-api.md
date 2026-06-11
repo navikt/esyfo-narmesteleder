@@ -1,5 +1,7 @@
 # GET /api/v1/access/organizations
 
+Dette er et internt endepunkt. Det er ikke eksponert i OpenAPI eller Swagger.
+
 Endepunkt som returnerer organisasjoner den innloggede arbeidsgiveren har nærmeste leder-tilgang til. Responsen er kompatibel med [`@navikt/virksomhetsvelger`](https://github.com/navikt/virksomhetsvelger).
 
 ## Sekvensdiagram
@@ -50,6 +52,7 @@ sequenceDiagram
 
 - **TokenX** (idporten) — kun `UserPrincipal` med `acr: Level4`
 - Token exchanged via Texas-sidecar mot `arbeidsgiver-altinn-tilganger`
+- Kalles internt fra `narmesteleder-frontend`
 
 ## Filtreringslogikk
 

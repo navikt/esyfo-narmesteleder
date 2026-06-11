@@ -13,7 +13,7 @@ import io.mockk.spyk
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
-import no.nav.syfo.altinntilganger.AltinnAccessService
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
@@ -27,13 +27,13 @@ import organisasjon
 class PrincipalAccessValidatorTest :
     DescribeSpec({
         val altinnTilgangerClient = FakeAltinnTilgangerClient()
-        val altinnAccessService = spyk(AltinnAccessService(altinnTilgangerClient))
+        val altinnTilgangerService = spyk(AltinnTilgangerService(altinnTilgangerClient))
         val pdpClient = FakePdpClient()
         val pdpService = spyk(PdpService(pdpClient))
         val eregClient = FakeEregClient()
         val eregCache = mockk<EregCache>(relaxed = true)
         val eregService = spyk(EregService(eregClient, eregCache))
-        val validator = PrincipalAccessValidator(altinnAccessService, pdpService, eregService = eregService)
+        val validator = PrincipalAccessValidator(altinnTilgangerService, pdpService, eregService = eregService)
 
         beforeTest {
             clearAllMocks()
@@ -55,14 +55,14 @@ class PrincipalAccessValidatorTest :
 
                 result shouldBe "Test Org"
                 coVerify(exactly = 1) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
                         orgnummer = eq(orgNumber),
                     )
                 }
             }
 
-            it("should call AltinnAccessService when principal is BrukerPrincipal") {
+            it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val orgNumber = faker.numerify("#########")
                 val principal = UserPrincipal(fnr, "token")
@@ -72,7 +72,7 @@ class PrincipalAccessValidatorTest :
                 }
 
                 coVerify(exactly = 1) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         eq(principal),
                         eq(orgNumber),
                     )
@@ -82,7 +82,7 @@ class PrincipalAccessValidatorTest :
                 }
             }
 
-            it("should not call AltinnAccessService when principal is Systemprincipal") {
+            it("should not call AltinnTilgangerService when principal is Systemprincipal") {
                 val orgNumber = faker.numerify("#########")
                 val principal = DefaultSystemPrincipal.copy(
                     ident = "0192:${orgNumber.reversed()}",
@@ -92,7 +92,7 @@ class PrincipalAccessValidatorTest :
 
                 result shouldBe null
                 coVerify(exactly = 0) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = any<UserPrincipal>(),
                         orgnummer = any(),
                     )

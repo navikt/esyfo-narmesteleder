@@ -14,8 +14,8 @@ import no.nav.syfo.texas.client.TexasHttpClient
 
 const val ACCESSIBLE_ORGANIZATIONS_API_PATH = "/access/organizations"
 
-fun Route.registerTilgangerApi(
-    altinnAccessService: AltinnAccessService,
+fun Route.registerAccessOrganizationsApi(
+    altinnTilgangerService: AltinnTilgangerService,
     texasHttpClient: TexasHttpClient,
 ) {
     route(ACCESSIBLE_ORGANIZATIONS_API_PATH) {
@@ -31,7 +31,7 @@ fun Route.registerTilgangerApi(
                     type = ErrorType.AUTHORIZATION_ERROR,
                 )
             }
-            val organizations = altinnAccessService.getFilteredOrganizations(principal)
+            val organizations = altinnTilgangerService.getFilteredOrganizations(principal)
             call.respond(HttpStatusCode.OK, AccessibleOrganizationsResponse(organizations = organizations))
         }
     }

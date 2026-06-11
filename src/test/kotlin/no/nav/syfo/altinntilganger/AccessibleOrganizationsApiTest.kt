@@ -23,8 +23,8 @@ import io.ktor.server.testing.testApplication
 import io.mockk.clearAllMocks
 import io.mockk.mockk
 import no.nav.syfo.API_V1_PATH
-import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPRETT_NL_REALASJON_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -40,7 +40,7 @@ class AccessibleOrganizationsApiTest :
     DescribeSpec({
         val texasHttpClientMock = mockk<TexasHttpClient>()
         val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
-        val altinnAccessService = AltinnAccessService(fakeAltinnTilgangerClient)
+        val altinnTilgangerService = AltinnTilgangerService(fakeAltinnTilgangerClient)
         val userFnr = "12345678901"
 
         beforeTest {
@@ -66,7 +66,7 @@ class AccessibleOrganizationsApiTest :
                     routing {
                         route(API_V1_PATH) {
                             install(AddTokenIssuerPlugin)
-                            registerTilgangerApi(altinnAccessService, texasHttpClientMock)
+                            registerAccessOrganizationsApi(altinnTilgangerService, texasHttpClientMock)
                         }
                     }
                 }
@@ -212,7 +212,7 @@ class AccessibleOrganizationsApiTest :
                 }
             }
 
-            it("should return empty list when altinn proxy reports isError") {
+            it("should return empty object when altinn proxy reports isError") {
                 withTestApp {
                     fakeAltinnTilgangerClient.accessPolicy.add(
                         FakeAltinnTilgangerClient.FakeArbeidsforholdOversikt(

@@ -18,7 +18,7 @@ import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
-import no.nav.syfo.altinntilganger.AltinnAccessService
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
@@ -41,7 +41,7 @@ import prepareGetPersonResponse
 class ValidationServiceTest :
     DescribeSpec({
         val altinnTilgangerClient = FakeAltinnTilgangerClient()
-        val altinnAccessService = spyk(AltinnAccessService(altinnTilgangerClient))
+        val altinnTilgangerService = spyk(AltinnTilgangerService(altinnTilgangerClient))
         val dinesykmeldteClient = FakeDinesykmeldteClient()
         val dinesykmeldteService: IDinesykmeldteService = spyk(DinesykmeldteService(dinesykmeldteClient))
 
@@ -56,7 +56,7 @@ class ValidationServiceTest :
         val pdpClient = FakePdpClient()
         val pdpService = spyk(PdpService(pdpClient))
         val principalAccessValidator = PrincipalAccessValidator(
-            altinnAccessService = altinnAccessService,
+            altinnTilgangerService = altinnTilgangerService,
             pdpService = pdpService,
             eregService = eregService,
         )
@@ -136,7 +136,7 @@ class ValidationServiceTest :
                 result.employee.nationalIdentificationNumber shouldBe narmestelederRelasjonerWrite.employeeIdentificationNumber
                 result.manager.nationalIdentificationNumber shouldBe narmestelederRelasjonerWrite.manager.nationalIdentificationNumber
                 coVerify(exactly = 1) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
                     )
@@ -165,7 +165,7 @@ class ValidationServiceTest :
                 }
 
                 coVerify(exactly = 1) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
                     )
@@ -200,7 +200,7 @@ class ValidationServiceTest :
 
                 exception.type shouldBe ErrorType.NO_ACTIVE_SICK_LEAVE
                 coVerify(exactly = 1) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
                     )
@@ -237,7 +237,7 @@ class ValidationServiceTest :
                 }
             }
 
-            it("should call AltinnAccessService first when principal is BrukerPrincipal") {
+            it("should call AltinnTilgangerService first when principal is BrukerPrincipal") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
                 val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = fnr)
@@ -246,7 +246,7 @@ class ValidationServiceTest :
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
                 }
                 coVerify(exactly = 1) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
                     )
@@ -258,7 +258,7 @@ class ValidationServiceTest :
                 }
             }
 
-            it("should not call AltinnAccessService when principal is SystemPrincipal") {
+            it("should not call AltinnTilgangerService when principal is SystemPrincipal") {
                 val userWithAccess = altinnTilgangerClient.accessPolicy.first()
                 val requestOrgnumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
                 val systemUserOrgnumber = requestOrgnumber.reversed()
@@ -274,7 +274,7 @@ class ValidationServiceTest :
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
                 }
                 coVerify(exactly = 0) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = any<UserPrincipal>(),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber),
                     )
@@ -295,7 +295,7 @@ class ValidationServiceTest :
         }
 
         describe("validateNarmestelederAvkreft") {
-            it("should call AltinnAccessService when principal is BrukerPrincipal") {
+            it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
                 val narmesteLederAvkreft = linemanagerRevoke().copy(employeeIdentificationNumber = fnr)
@@ -304,7 +304,7 @@ class ValidationServiceTest :
                     service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
                 }
                 coVerify(exactly = 1) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmesteLederAvkreft.orgNumber),
                     )
@@ -328,7 +328,7 @@ class ValidationServiceTest :
                 result.nationalIdentificationNumber shouldBe narmesteLederAvkreft.employeeIdentificationNumber
                 result.name.etternavn shouldBe narmesteLederAvkreft.lastName
                 coVerify(exactly = 1) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmesteLederAvkreft.orgNumber),
                     )
@@ -356,7 +356,7 @@ class ValidationServiceTest :
                     )
                 }
                 coVerify(exactly = 0) {
-                    altinnAccessService.validateTilgangToOrganization(
+                    altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = any<UserPrincipal>(),
                         orgnummer = any(),
                     )

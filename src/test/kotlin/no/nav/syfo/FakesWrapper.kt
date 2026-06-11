@@ -10,7 +10,7 @@ import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
-import no.nav.syfo.altinntilganger.AltinnAccessService
+import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
@@ -48,14 +48,14 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val pdlCacheMock = mockk<PdlCache>(relaxed = true)
     val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk, pdlCacheMock))
     val dinesykmeldteServiceSpyk: IDinesykmeldteService = spyk(DinesykmeldteService(fakeDinesykmeldteClientSpyk))
-    val altinnAccessServiceSpyk = spyk(AltinnAccessService(fakeAltinnTilgangerClientSpyk))
+    val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
     val pdpServiceSpyk = spyk(PdpService(fakePdpClientSpyk))
     val narmestelederKafkaServiceSpyk = spyk(
         NarmestelederKafkaService(kafkaSykemeldingProducer = fakeKafkaProducerSpyk),
     )
     val principalAccessValidatorSpyk = spyk(
         PrincipalAccessValidator(
-            altinnAccessService = altinnAccessServiceSpyk,
+            altinnTilgangerService = altinnTilgangerServiceSpyk,
             pdpService = pdpServiceSpyk,
             eregService = eregServiceSpyk,
         )

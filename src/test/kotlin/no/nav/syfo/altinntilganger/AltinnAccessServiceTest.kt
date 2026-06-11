@@ -8,8 +8,8 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.spyk
-import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.AltinnAccessService.Companion.OPPRETT_NL_REALASJON_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -20,7 +20,7 @@ import no.nav.syfo.application.exception.UpstreamRequestException
 class AltinnAccessServiceTest :
     DescribeSpec({
         val altinnTilgangerClient = spyk(FakeAltinnTilgangerClient())
-        val altinnAccessService = AltinnAccessService(altinnTilgangerClient)
+        val altinnTilgangerService = AltinnTilgangerService(altinnTilgangerClient)
 
         beforeTest {
             clearAllMocks()
@@ -55,7 +55,7 @@ class AltinnAccessServiceTest :
                 val orgnummer = altinnTilgangerClient.accessPolicy.first().altinnTilgangerResponse.hierarki.first().orgnr
                 val userPrincipal = UserPrincipal(fnr, "token")
                 shouldNotThrow<ApiErrorException.ForbiddenException> {
-                    altinnAccessService.validateTilgangToOrganization(userPrincipal, orgnummer)
+                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, orgnummer)
                 }
             }
 
@@ -75,7 +75,7 @@ class AltinnAccessServiceTest :
                     tilgangTilOrgNr = mapOf()
                 )
                 shouldNotThrow<ApiErrorException.ForbiddenException> {
-                    altinnAccessService.validateTilgangToOrganization(userPrincipal, orgnummer)
+                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, orgnummer)
                 }
             }
 
@@ -84,18 +84,18 @@ class AltinnAccessServiceTest :
                 val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
                 altinnTilgangerClient.accessPolicy.clear()
                 shouldThrow<ApiErrorException.ForbiddenException> {
-                    altinnAccessService.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
+                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
             }
 
             it("should throw Internal Server Error when client fails to make request") {
                 val mockAltinnTilgangerClient = mockk<FakeAltinnTilgangerClient>()
                 coEvery { mockAltinnTilgangerClient.fetchAltinnTilganger(any()) } throws UpstreamRequestException("Forced failure")
-                val altinnAccessServiceWithMock = AltinnAccessService(mockAltinnTilgangerClient)
+                val altinnTilgangerServiceWithMock = AltinnTilgangerService(mockAltinnTilgangerClient)
                 val accessPolicy = altinnTilgangerClient.accessPolicy.first()
                 val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
                 shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    altinnAccessServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
+                    altinnTilgangerServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
             }
         }
@@ -115,7 +115,7 @@ class AltinnAccessServiceTest :
 
                 coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(parentWithoutAccess)
 
-                altinnAccessService.getFilteredOrganizations(userPrincipal) shouldBe listOf(
+                altinnTilgangerService.getFilteredOrganizations(userPrincipal) shouldBe listOf(
                     AccessibleOrganization(
                         orgNumber = "111111111",
                         name = "Org 111111111",
@@ -138,7 +138,7 @@ class AltinnAccessServiceTest :
 
                 coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(leafWithAccess)
 
-                altinnAccessService.getFilteredOrganizations(userPrincipal) shouldBe listOf(
+                altinnTilgangerService.getFilteredOrganizations(userPrincipal) shouldBe listOf(
                     AccessibleOrganization(
                         orgNumber = "333333333",
                         name = "Org 333333333",
@@ -157,7 +157,7 @@ class AltinnAccessServiceTest :
 
                 coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(parentWithAccess)
 
-                altinnAccessService.getFilteredOrganizations(userPrincipal) shouldBe listOf(
+                altinnTilgangerService.getFilteredOrganizations(userPrincipal) shouldBe listOf(
                     AccessibleOrganization(
                         orgNumber = "444444444",
                         name = "Org 444444444",
@@ -175,7 +175,7 @@ class AltinnAccessServiceTest :
 
                 coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(parentWithoutAccess)
 
-                altinnAccessService.getFilteredOrganizations(userPrincipal) shouldBe emptyList()
+                altinnTilgangerService.getFilteredOrganizations(userPrincipal) shouldBe emptyList()
             }
         }
     })

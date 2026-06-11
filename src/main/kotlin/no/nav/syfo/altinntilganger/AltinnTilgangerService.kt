@@ -8,7 +8,7 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.util.logger
 
-class AltinnAccessService(
+class AltinnTilgangerService(
     val altinnTilgangerClient: IAltinnTilgangerClient,
 ) {
     suspend fun validateTilgangToOrganization(

@@ -5,6 +5,7 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.service.validators.ArbeidsforholdValidator
 import no.nav.syfo.narmesteleder.service.validators.NameValidator
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
@@ -25,19 +26,19 @@ class ValidationService(
     ): LinemanagerActors {
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
-            linemanager.orgNumber,
+            linemanager.orgNumber.value,
         )
-        sickLeaveValidator.validateActiveSickLeave(linemanager.employeeIdentificationNumber, linemanager.orgNumber)
+        sickLeaveValidator.validateActiveSickLeave(linemanager.employeeIdentificationNumber.value, linemanager.orgNumber.value)
         val sykmeldtArbeidsforhold =
-            aaregService.findArbeidsforholdByPersonIdent(linemanager.employeeIdentificationNumber)
+            aaregService.findArbeidsforholdByPersonIdent(linemanager.employeeIdentificationNumber.value)
 
         ArbeidsforholdValidator.validateSmArbeidsforhold(
             sykmeldtArbeidsforhold = sykmeldtArbeidsforhold,
-            orgNumberInRequest = linemanager.orgNumber,
+            orgNumberInRequest = linemanager.orgNumber.value,
         )
 
-        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber)
-        val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber)
+        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber.value)
+        val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber.value)
         NameValidator.validateLinemanagerLastName(leder, linemanager)
         if (validateEmployeeLastName) {
             NameValidator.validateEmployeeLastName(sykmeldt, linemanager)
@@ -54,16 +55,16 @@ class ValidationService(
         principal: Principal,
     ): Person {
         val arbeidsforhold =
-            aaregService.findArbeidsforholdByPersonIdent(linemanagerRevoke.employeeIdentificationNumber)
+            aaregService.findArbeidsforholdByPersonIdent(linemanagerRevoke.employeeIdentificationNumber.value)
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
-            linemanagerRevoke.orgNumber,
+            linemanagerRevoke.orgNumber.value,
         )
         ArbeidsforholdValidator.validateNarmesteLederAvkreft(
-            orgNumberInRequest = linemanagerRevoke.orgNumber,
+            orgNumberInRequest = linemanagerRevoke.orgNumber.value,
             sykmeldtArbeidsforhold = arbeidsforhold,
         )
-        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber)
+        val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber.value)
         NameValidator.validateEmployeeLastName(sykmeldt, linemanagerRevoke)
 
         return sykmeldt
@@ -71,9 +72,6 @@ class ValidationService(
 
     suspend fun validatePrincipalAccessToOrgnumber(
         principal: Principal,
-        orgNumber: String,
-    ): String? = principalAccessValidator.validatePrincipalAccessToOrgnumber(
-        principal,
-        orgNumber,
-    )
+        orgNumber: OrganizationNumber,
+    ): String? = principalAccessValidator.validatePrincipalAccessToOrgnumber(principal, orgNumber.value)
 }

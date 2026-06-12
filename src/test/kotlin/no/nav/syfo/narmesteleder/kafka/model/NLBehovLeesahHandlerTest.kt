@@ -13,6 +13,7 @@ import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
@@ -28,7 +29,7 @@ class NLBehovLeesahHandlerTest :
         val arbeidsforholdManagerAareg = fakeAaregClient.arbeidsForholdForIdent[defaultManagerFnr]!!.first()
 
         val defaultManager = Manager(
-            nationalIdentificationNumber = defaultManagerFnr,
+            nationalIdentificationNumber = PersonalIdentificationNumber(defaultManagerFnr),
             lastName = "ManagerLastName",
             mobile = "99999999",
             email = "mail@manager.no",

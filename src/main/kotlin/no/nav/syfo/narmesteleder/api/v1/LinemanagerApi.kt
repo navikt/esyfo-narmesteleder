@@ -100,7 +100,7 @@ fun Route.registerLinemanagerApiV1(
         get {
             val pageSize = call.getPageSize()
             val createAfter = call.getCreatedAfter()
-            val orgNumber = call.getRequiredQueryParameter("orgNumber")
+            val orgNumber = call.getRequiredOrganizationNumberQueryParameter("orgNumber")
             val principal = call.getMyPrincipal()
             val collection = linemanagerRequirementRestHandler.handleGetLinemanagerRequirementsCollection(
                 pageSize = pageSize,

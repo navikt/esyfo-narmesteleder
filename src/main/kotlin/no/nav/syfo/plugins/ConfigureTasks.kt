@@ -10,6 +10,7 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.events.LeaderChange
 import no.nav.syfo.application.events.LeaderChangeEvent
 import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
+import no.nav.syfo.person.task.PersonEnrichmentTask
 import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject
 import java.util.Collections
@@ -27,6 +28,7 @@ fun Application.configureBackgroundTasks() {
     val sendDialogTask by inject<SendDialogTask>()
     val updateDialogTask by inject<UpdateDialogTask>()
     val behovMaintenanceTask by inject<BehovMaintenanceTask>()
+    val personEnrichmentTask by inject<PersonEnrichmentTask>()
 
     val taskJobs: MutableList<Job> = Collections.synchronizedList(mutableListOf())
 
@@ -44,6 +46,9 @@ fun Application.configureBackgroundTasks() {
                         jobs += launch { behovMaintenanceTask.runTask() }
                     } else {
                         logger.info("Maintenance task is NOT enabled. Skipping behovMaintenanceTask.")
+                    }
+                    if (environment.otherProperties.personEnrichmentTaskEnabled) {
+                        jobs += launch { personEnrichmentTask.runTask() }
                     }
                 }
             }

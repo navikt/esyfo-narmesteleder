@@ -55,6 +55,8 @@ import no.nav.syfo.narmesteleder.task.BehovMaintenanceTask
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
+import no.nav.syfo.person.service.PersonEnrichmentService
+import no.nav.syfo.person.task.PersonEnrichmentTask
 import no.nav.syfo.sykmelding.db.ISykmeldingDb
 import no.nav.syfo.sykmelding.db.SykmeldingDb
 import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
@@ -301,6 +303,7 @@ private fun servicesModule() = module {
             eregCache = get()
         )
     }
+    single { PersonEnrichmentService(database = get(), pdlService = get()) }
 }
 
 private fun tasksModule() = module {
@@ -314,6 +317,10 @@ private fun tasksModule() = module {
     single {
         val pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay)
         UpdateDialogTask(get(), pollingInterval)
+    }
+    single {
+        val pollingInterval = Duration.parse(env().otherProperties.personEnrichmentTaskDelay)
+        PersonEnrichmentTask(get(), pollingInterval)
     }
 }
 

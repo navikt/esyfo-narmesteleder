@@ -24,7 +24,7 @@ enum class NlResponseSource(val source: String) {
             is SystemPrincipal -> LPS_REVOKE
             is UserPrincipal -> {
                 when (principal.ident) { // Can add option for NARMESTELEDER if we accept requests from them and can identity the caller as such
-                    linemanagerRevoke.employeeIdentificationNumber -> ARBEIDSTAGER_REVOKE
+                    linemanagerRevoke.employeeIdentificationNumber.value -> ARBEIDSTAGER_REVOKE
                     else -> PERSONALLEDER_REVOKE
                 }
             }

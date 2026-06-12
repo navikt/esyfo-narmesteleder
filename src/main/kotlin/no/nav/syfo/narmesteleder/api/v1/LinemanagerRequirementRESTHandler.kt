@@ -6,6 +6,7 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.Manager
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -83,11 +84,11 @@ class LinemanagerRequirementRESTHandler(
     suspend fun handleGetLinemanagerRequirementsCollection(
         pageSize: Int,
         createdAfter: Instant,
-        orgNumber: String,
+        orgNumber: OrganizationNumber,
         principal: Principal
     ): List<LinemanagerRequirementRead> {
         val orgName = validationService.validatePrincipalAccessToOrgnumber(principal, orgNumber)
-        logger.info("Validation successful for fetching LinemanagerRequirement collection for orgNumber: $orgNumber")
+        logger.info("Validation successful for fetching LinemanagerRequirement collection for orgNumber: ${orgNumber.value}")
         return narmesteLederService.getNlBehovList(
             pageSize = pageSize,
             createdAfter = createdAfter,

@@ -3,18 +3,17 @@ package no.nav.syfo.pdl.client
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
-import net.datafaker.Faker
-import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
+import io.ktor.utils.io.CancellationException
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
-import java.util.*
 
 private const val BEHANDLINGSNUMMER_NARMESTELEDER = "B506"
 private const val PDL_BEHANDLINGSNUMMER_HEADER = "behandlingsnummer"
@@ -42,7 +41,9 @@ private val getPersonQuery =
         .trimIndent()
 
 interface IPdlClient {
+    suspend fun getSystemToken(): String
     suspend fun getPerson(fnr: String): GetPersonResponse
+    suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse
 }
 
 class PdlClient(
@@ -53,13 +54,19 @@ class PdlClient(
 ) : IPdlClient {
     companion object {
         private val logger = logger()
+        private val getPersonBolkQuery =
+            PdlClient::class.java.getResource("/graphql/hentPersonBolk.graphql")
+                ?.readText()
+                ?: throw IllegalStateException("Could not load hentPersonBolk.graphql")
     }
 
+    override suspend fun getSystemToken(): String = texasHttpClient.systemToken(
+        "azuread",
+        TexasHttpClient.getTarget(scope)
+    ).accessToken
+
     override suspend fun getPerson(fnr: String): GetPersonResponse {
-        val token = texasHttpClient.systemToken(
-            "azuread",
-            TexasHttpClient.getTarget(scope)
-        ).accessToken
+        val token = getSystemToken()
 
         val getPersonRequest =
             GetPersonRequest(
@@ -70,7 +77,7 @@ class PdlClient(
             val pdlReponse = httpClient
                 .post(pdlBaseUrl) {
                     setBody(getPersonRequest)
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearerAuth(token)
                     header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_NARMESTELEDER)
                     header(HttpHeaders.ContentType, "application/json")
                 }
@@ -82,37 +89,45 @@ class PdlClient(
                 throw PdlResourceNotFoundException("Did not find person in PDL for given fnr")
             }
             return pdlReponse
-        } catch (e: ResponseException) {
-            logger.error("Error on findPerson query to PDL. Got status ${e.response.status} and message ${e.message}")
-            throw PdlRequestException("Error on findPerson query to PDL", e)
+        } catch (e: Exception) {
+            when (e) {
+                is PdlResourceNotFoundException -> throw e
+                is CancellationException -> throw e
+                is ResponseException -> {
+                    logger.error("Error on findPerson query to PDL. Got status ${e.response.status} and message ${e.message}")
+                    throw PdlRequestException("Error on findPerson query to PDL", e)
+                }
+
+                else -> throw PdlRequestException("Error when calling PDL", e)
+            }
         }
     }
-}
 
-class FakePdlClient : IPdlClient {
-    override suspend fun getPerson(fnr: String): GetPersonResponse {
-        val faker = Faker(Random(fnr.toLong()))
-        val navn = faker.name()
-        val foedselsdato = faker.timeAndDate().birthday()
-        return GetPersonResponse(
-            data = ResponseData(
-                person = PersonResponse(
-                    navn = listOf(
-                        Navn(
-                            fornavn = navn.firstName(),
-                            mellomnavn = navn.nameWithMiddle().split(" ").getOrNull(1),
-                            etternavn = navn.lastName(),
-                        ),
-                    ),
-                    foedselsdato = listOf(Foedselsdato(foedselsdato))
-                ),
-                identer = IdentResponse(
-                    identer = listOf(
-                        Ident(ident = fnr, gruppe = GRUPPE_IDENT_FNR),
-                    ),
-                ),
-            ),
-            errors = null,
+    override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse {
+        val request = GetPersonBolkRequest(
+            query = getPersonBolkQuery,
+            variables = GetPersonBolkVariables(identer = fnrs),
         )
+        try {
+            val response = httpClient
+                .post(pdlBaseUrl) {
+                    setBody(request)
+                    bearerAuth(token)
+                    header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_NARMESTELEDER)
+                    header(HttpHeaders.ContentType, "application/json")
+                }
+                .body<GetPersonBolkResponse>()
+            return response
+        } catch (e: Exception) {
+            when (e) {
+                is CancellationException -> throw e
+                is ResponseException -> {
+                    logger.error("Error on getPersonBolk query to PDL. Got status ${e.response.status} and message ${e.message}")
+                    throw PdlRequestException("Error on getPersonBolk query to PDL", e)
+                }
+
+                else -> throw PdlRequestException("Error when calling PDL", e)
+            }
+        }
     }
 }

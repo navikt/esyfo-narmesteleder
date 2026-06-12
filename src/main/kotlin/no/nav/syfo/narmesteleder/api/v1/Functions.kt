@@ -14,6 +14,7 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import java.time.Instant
 import java.time.format.DateTimeParseException
 import java.util.UUID
@@ -37,6 +38,14 @@ fun RoutingCall.getUUIDFromPathVariable(name: String): UUID {
 fun RoutingCall.getPathVariable(name: String): String = this.parameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 
 fun RoutingCall.getRequiredQueryParameter(name: String): String = this.queryParameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
+
+fun RoutingCall.getRequiredOrganizationNumberQueryParameter(name: String): OrganizationNumber = OrganizationNumber.parse(getRequiredQueryParameter(name))
+    .getOrElse {
+        throw ApiErrorException.BadRequestException(
+            it.message ?: "Invalid organization number format for $name parameter",
+            type = ErrorType.INVALID_FORMAT
+        )
+    }
 
 fun RoutingCall.getCreatedAfter(): Instant {
     val createdAfter = getRequiredQueryParameter("createdAfter")

@@ -65,3 +65,32 @@ data class ErrorDetails(
     val cause: String? = null,
     val policy: String? = null,
 )
+
+data class HentPersonBolk(
+    val ident: String,
+    val person: Person?,
+    val code: String,
+)
+
+data class Person(
+    val navn: List<Navn>?,
+    val foedselsdato: List<Foedselsdato>? = null,
+)
+
+data class HentIdenterBolk(
+    val ident: String,
+    val identer: List<PdlIdent>?,
+    val code: String,
+)
+
+data class PdlIdent(val ident: String, val gruppe: String)
+
+data class GetPersonBolkResponse(
+    val data: PersonBolkResponseData?,
+    val errors: List<ResponseError>?,
+)
+
+data class PersonBolkResponseData(
+    val hentPersonBolk: List<HentPersonBolk>?,
+    val hentIdenterBolk: List<HentIdenterBolk>?,
+)

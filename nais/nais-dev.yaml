@@ -144,5 +144,7 @@ spec:
       value: "true"
     - name: PERSIST_NARMESTELEDER_REGISTER
       value: "false"
+    - name: PERSON_ENRICHMENT_TASK_ENABLED
+      value: "true"
   envFrom:
     - secret: altinn-subscription-key

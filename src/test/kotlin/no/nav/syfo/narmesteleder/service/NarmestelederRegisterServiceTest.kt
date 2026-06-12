@@ -180,6 +180,24 @@ class NarmestelederRegisterServiceTest :
                     }
                 }
 
+                it("should not insert persons from records that are invalid for register validation") {
+                    val record = LeesahNarmestelederRecord(
+                        offset = 1L,
+                        message = defaultLeesahKafkaMessage().copy(
+                            fnr = "12345678901",
+                            narmesteLederFnr = "10987654321",
+                            orgnummer = "123",
+                        ),
+                    )
+
+                    val insertedPersons = service.processLeesahBatch(listOf(record))
+
+                    insertedPersons shouldBe emptyList()
+                    transaction(TestDB.exposedDatabase) {
+                        PersonEntity.all().count() shouldBe 0
+                    }
+                }
+
                 it("should not insert employee or nearest leader when employee fnr is invalid") {
                     val record = LeesahNarmestelederRecord(
                         offset = 1L,

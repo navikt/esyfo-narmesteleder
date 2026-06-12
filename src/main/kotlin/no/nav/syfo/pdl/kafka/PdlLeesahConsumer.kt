@@ -359,32 +359,3 @@ class PdlLeesahConsumer(
 private class FatalPdlLeesahConsumerException(
     cause: Throwable,
 ) : RuntimeException(null, cause, false, false)
-
-private data class RelevantNameEventMetricKey(
-    val opplysningstype: String,
-    val endringstype: String,
-)
-
-private sealed interface RecordProcessingResult {
-    data class RelevantNameRecord(
-        val personidenter: List<String>,
-        val metricKey: RelevantNameEventMetricKey,
-    ) : RecordProcessingResult
-
-    data class Metrics(
-        val bufferedEventMetric: BufferedLeesahEventMetric,
-    ) : RecordProcessingResult
-}
-
-private data class BufferedLeesahEventMetric(
-    val opplysningstype: String,
-    val endringstype: String,
-    val result: String,
-    val count: Int = 1,
-)
-
-private fun PdlLeesahNameUpdateResult.emitPersonUpdateMetrics() {
-    countPdlLeesahPersonUpdate(PdlLeesahNameUpdateService.RESULT_UPDATED, updatedCount)
-    countPdlLeesahPersonUpdate(PdlLeesahNameUpdateService.RESULT_NOT_FOUND_IN_REGISTER, notFoundInRegisterCount)
-    countPdlLeesahPersonUpdate(PdlLeesahNameUpdateService.RESULT_PDL_NOT_FOUND, pdlNotFoundCount)
-}

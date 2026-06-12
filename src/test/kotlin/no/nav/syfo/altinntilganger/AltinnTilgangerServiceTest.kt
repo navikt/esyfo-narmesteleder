@@ -17,7 +17,7 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 
-class AltinnAccessServiceTest :
+class AltinnTilgangerServiceTest :
     DescribeSpec({
         val altinnTilgangerClient = spyk(FakeAltinnTilgangerClient())
         val altinnTilgangerService = AltinnTilgangerService(altinnTilgangerClient)

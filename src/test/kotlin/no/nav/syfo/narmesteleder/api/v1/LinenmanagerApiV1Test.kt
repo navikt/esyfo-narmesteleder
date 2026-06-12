@@ -95,12 +95,12 @@ class LinenmanagerApiV1Test :
         val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
         val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
         val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
-        val altinnTilgangerServiceSpy = spyk(altinnTilgangerServiceMock)
+        val altinnAccessServiceSpy = spyk(altinnTilgangerServiceMock)
         val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
         val dineSykmelteService: IDinesykmeldteService = DinesykmeldteService(fakeDinesykmeldteClient)
         val pdpService = mockk<PdpService>(relaxed = true)
         val principalAccessValidator = PrincipalAccessValidator(
-            altinnTilgangerService = altinnTilgangerServiceSpy,
+            altinnTilgangerService = altinnAccessServiceSpy,
             pdpService = pdpService,
             eregService = eregService,
         )
@@ -168,6 +168,7 @@ class LinenmanagerApiV1Test :
                             texasHttpClientMock,
                             validationServiceSpy,
                             nlBehovHandler,
+                            altinnAccessServiceSpy,
                         )
                     }
                 }

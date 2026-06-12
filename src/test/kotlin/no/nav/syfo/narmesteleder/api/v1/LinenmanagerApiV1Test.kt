@@ -60,6 +60,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
+import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
@@ -177,7 +178,7 @@ class LinenmanagerApiV1Test :
         }
         describe("POST /linemanager") {
             context("Maskinporten token") {
-                it("should return 202 Accepted for valid payload") {
+                it("Maskinporten POST /linemanager should return 202 Accepted for valid payload") {
                     withTestApplication {
                         // Arrange
                         pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
@@ -339,7 +340,7 @@ class LinenmanagerApiV1Test :
                 }
             }
             context("TokenX token") {
-                it("should return 202 Accepted for valid payload") {
+                it("TokenX POST /linemanager should return 202 Accepted for valid payload") {
                     withTestApplication {
                         // Arrange
                         pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
@@ -433,8 +434,12 @@ class LinenmanagerApiV1Test :
         }
 
         describe("POST /linemanager/revoke") {
-            it("should return 202 Accepted for valid payload") {
-                val narmesteLederAvkreft = linemanagerRevoke()
+            it("Maskinporten POST /linemanager/revoke should return 202 Accepted for valid payload") {
+                val narmesteLederAvkreft = LinemanagerRevoke(
+                    employeeIdentificationNumber = PersonalIdentificationNumber("12345678901"),
+                    orgNumber = OrganizationNumber("123456789"),
+                    lastName = "Hansen",
+                )
                 withTestApplication {
                     // Arrange
                     texasHttpClientMock.defaultMocks(
@@ -448,16 +453,15 @@ class LinenmanagerApiV1Test :
                         narmesteLederAvkreft.employeeIdentificationNumber.value,
                         narmesteLederAvkreft.lastName,
                     )
-                    val narmesteLederAvkreft = narmesteLederAvkreft
                     fakeAaregClient.arbeidsForholdForIdent.clear()
                     fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
-                        listOf(narmesteLederAvkreft.orgNumber.value to narmesteLederRelasjon.orgNumber.value)
+                        listOf(narmesteLederAvkreft.orgNumber.value to narmesteLederAvkreft.orgNumber.value)
                     // Act
                     val response =
                         client.post("$API_V1_PATH/$REVOKE_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(narmesteLederAvkreft)
-                            bearerAuth(createMockToken(maskinportenIdToOrgnumber(DefaultOrganization.ID)))
+                            bearerAuth(createMockToken(narmesteLederAvkreft.orgNumber.value))
                         }
 
                     // Assert
@@ -492,7 +496,6 @@ class LinenmanagerApiV1Test :
                         narmesteLederAvkreft.employeeIdentificationNumber.value,
                         narmesteLederAvkreft.lastName.reversed(),
                     )
-                    val narmesteLederAvkreft = narmesteLederAvkreft
                     fakeAaregClient.arbeidsForholdForIdent.clear()
                     fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
                         listOf(narmesteLederAvkreft.orgNumber.value to narmesteLederRelasjon.orgNumber.value)

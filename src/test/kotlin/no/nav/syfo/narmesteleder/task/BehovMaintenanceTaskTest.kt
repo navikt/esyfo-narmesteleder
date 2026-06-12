@@ -32,6 +32,7 @@ class BehovMaintenanceTaskTest :
             persistSendtSykmelding = true,
             maintenanceTaskEnabled = true,
             persistNarmestelederRegister = false,
+            pdlLeesahConsumerEnabled = false,
             personEnrichmentTaskDelay = "5m",
             personEnrichmentTaskEnabled = false,
         )

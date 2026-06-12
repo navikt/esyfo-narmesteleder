@@ -30,6 +30,24 @@ It identifies when an employee has a need to be assigned a narmeste leder from t
 It will communicate this need to the employer by creating a dialog in Altinn Dialogporten,
 that will contain an url endpoints that can be used with GET to retrieve details about person on sick leave, and PUT to assign narmesteleder to the employee.
 
+## Kafka-consumenter
+
+Tjenesten konsumerer Kafka-topics for å opprette og vedlikeholde data som brukes i narmesteleder-flyten.
+
+- `teamsykmelding.syfo-sendt-sykmelding`
+- `teamsykmelding.syfo-narmesteleder-leesah`
+- `pdl.leesah-v1` (fase 1)
+
+### PDL Leesah i fase 1
+
+- Konsumenten bruker Avro og Schema Registry.
+- Konsumenten starter bare når `PDL_LEESAH_CONSUMER_ENABLED=true`.
+- Toggle er `false` i prod, og `false` i dev til tilgang til `pdl.leesah-v1` er bekreftet.
+- Logger og metrikker inneholder bare strukturell informasjon, aldri navn, fødselsnummer, personidenter eller rå meldingsinnhold.
+- Ved relevante `NAVN_V1`-hendelser brukes personidenter fra Leesah kun til å finne eksisterende personer i `person`-tabellen. For treff hentes korrekt nåværende navn og fødselsdato fra PDL før `person`-raden oppdateres.
+- Konsumenten oppretter fortsatt ikke nye personer fra `pdl.leesah-v1`; kun eksisterende personer i registeret oppdateres.
+- `Personhendelse.avsc` er hentet fra `navikt/narmesteleder` (`src/main/avro/no/nav/person/pdl/leesah/Personhendelse.avsc`, SHA `24c9a2cd2921e9cc423df8c343542ff0967564ae`).
+
 
 ## Diagrams
 An always up-to-date diagram can be views in the excellent service from [Flex Arkitektur](https://flex-arkitektur.nav.no/?apper=prod-gcp.team-esyfo.esyfo-narmesteleder).

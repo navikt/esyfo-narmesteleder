@@ -16,6 +16,7 @@ application {
 
 repositories {
     mavenCentral()
+    maven(url = "https://packages.confluent.io/maven/")
 }
 
 buildscript {
@@ -28,6 +29,10 @@ buildscript {
 }
 
 dependencies {
+    implementation(libs.apache.avro)
+    implementation(libs.confluent.kafka.avro.serializer) {
+        exclude(group = "org.apache.kafka", module = "kafka-clients")
+    }
     implementation(libs.datafaker)
     implementation(libs.logback.classic)
     implementation(libs.bundles.ktor.client)
@@ -58,7 +63,43 @@ kotlin {
     jvmToolchain(21)
 }
 
+val avroSchemasDir = "src/main/avro"
+val personhendelseSchema = "$avroSchemasDir/no/nav/person/pdl/leesah/Personhendelse.avsc"
+val avroCodeGenerationDir = "build/generated-main-avro-custom-java"
+val avroTools by configurations.creating
+
+dependencies {
+    avroTools(libs.apache.avro.tools)
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir(file(avroCodeGenerationDir))
+        }
+    }
+}
+
 tasks {
+    register<JavaExec>("customAvroCodeGeneration") {
+        inputs.file(personhendelseSchema)
+        outputs.dir(avroCodeGenerationDir)
+        classpath = avroTools
+        mainClass.set("org.apache.avro.tool.Main")
+        args(
+            "compile",
+            "schema",
+            "-encoding",
+            "UTF-8",
+            "-string",
+            "-fieldVisibility",
+            "private",
+            "-noSetters",
+            "$projectDir/$personhendelseSchema",
+            "$projectDir/$avroCodeGenerationDir",
+        )
+    }
+
     jar {
         manifest.attributes["Main-Class"] = "no.nav.syfo.ApplicationKt"
     }
@@ -70,6 +111,7 @@ tasks {
     }
 
     shadowJar {
+        dependsOn("customAvroCodeGeneration")
         filesMatching("META-INF/services/**") {
             duplicatesStrategy = DuplicatesStrategy.INCLUDE
         }
@@ -79,7 +121,24 @@ tasks {
         archiveVersion.set("")
     }
 
+    compileKotlin {
+        dependsOn("customAvroCodeGeneration")
+    }
+
+    compileTestKotlin {
+        dependsOn("customAvroCodeGeneration")
+    }
+
+    named("runKtlintCheckOverMainSourceSet") {
+        dependsOn("customAvroCodeGeneration")
+    }
+
+    named("runKtlintCheckOverTestSourceSet") {
+        dependsOn("customAvroCodeGeneration")
+    }
+
     test {
+        dependsOn("customAvroCodeGeneration")
         useJUnitPlatform()
     }
 

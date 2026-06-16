@@ -287,7 +287,8 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
     })
 
 private fun consumerRecords(vararg records: ConsumerRecord<String, String?>): ConsumerRecords<String, String?> = ConsumerRecords(
-    records.groupBy { TopicPartition(it.topic(), it.partition()) }
+    records.groupBy { TopicPartition(it.topic(), it.partition()) },
+    emptyMap(),
 )
 
 private fun consumerRecord(

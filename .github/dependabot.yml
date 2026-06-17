@@ -20,3 +20,7 @@ updates:
     open-pull-requests-limit: 20
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: "io.ktor:*"
+        versions:
+          - "3.5.x"

@@ -10,7 +10,7 @@ koin = "4.2.1"
 kotest-extensions = "2.0.0"
 kotest = "6.1.11"
 kotlin-version = "2.3.21"
-ktor-version = "3.5.0"
+ktor-version = "3.4.3"
 logback-version = "1.5.34"
 micrometer-prometheus = "1.17.0"
 mockk = "1.14.11"
@@ -23,6 +23,7 @@ swagger = "3.5.0"
 ktlint = "14.2.0"
 valkey-version = "5.5.0"
 exposed-version = "1.3.0"
+netty = "4.2.15.Final"
 
 [libraries]
 apache-avro = { module = "org.apache.avro:avro", version.ref = "avro" }
@@ -69,6 +70,7 @@ exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "e
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed-version" }
 exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed-version" }
 exposed-java-time = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed-version" }
+netty = { module = "io.netty:netty-bom", version.ref = "netty" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }

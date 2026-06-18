@@ -23,7 +23,7 @@ internal class NarmestelederTableOps(private val transaction: Transaction) {
      * - `aktivTom`
      *
      * The following fields are **preserved** (not updated on conflict):
-     * - `brukerFnr`, `narmestelederFnr` — domain-immutable identifiers
+     * - `sykmeldtFnr`, `narmestelederFnr` — domain-immutable identifiers
      * - `brukerNavn`, `narmestelederNavn` — owned by PDL enrichment
      * - `created` — insert-only timestamp
      * - `updated` — managed by a DB trigger

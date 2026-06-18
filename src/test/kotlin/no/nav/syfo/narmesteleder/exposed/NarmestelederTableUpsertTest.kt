@@ -151,7 +151,7 @@ class NarmestelederTableUpsertTest :
                 }
             }
 
-            it("should not overwrite brukerFnr and narmestelederFnr on update") {
+            it("should not overwrite sykmeldtFnr and narmestelederFnr on update") {
                 val narmesteLederId = UUID.randomUUID()
 
                 val originalMessage = defaultLeesahKafkaMessage().copy(

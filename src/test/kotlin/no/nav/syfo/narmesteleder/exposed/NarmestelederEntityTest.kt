@@ -27,7 +27,7 @@ class NarmestelederEntityTest :
             it("should create and read back entity with all fields") {
                 val narmesteLederId = UUID.randomUUID()
                 val orgnummer = faker.numerify("#########")
-                val brukerFnr = faker.numerify("###########")
+                val sykmeldtFnr = faker.numerify("###########")
                 val narmestelederFnr = faker.numerify("###########")
                 val narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                 val narmestelederEpost = faker.internet().emailAddress()
@@ -39,7 +39,7 @@ class NarmestelederEntityTest :
                     val entity = NarmestelederEntity.new {
                         this.narmesteLederId = narmesteLederId
                         this.orgnummer = orgnummer
-                        this.sykmeldtFnr = brukerFnr
+                        this.sykmeldtFnr = sykmeldtFnr
                         this.narmestelederFnr = narmestelederFnr
                         this.narmestelederTelefonnummer = narmestelederTelefonnummer
                         this.narmestelederEpost = narmestelederEpost
@@ -56,7 +56,7 @@ class NarmestelederEntityTest :
 
                     readBack.narmesteLederId shouldBe narmesteLederId
                     readBack.orgnummer shouldBe orgnummer
-                    readBack.sykmeldtFnr shouldBe brukerFnr
+                    readBack.sykmeldtFnr shouldBe sykmeldtFnr
                     readBack.narmestelederFnr shouldBe narmestelederFnr
                     readBack.narmestelederTelefonnummer shouldBe narmestelederTelefonnummer
                     readBack.narmestelederEpost shouldBe narmestelederEpost
@@ -196,14 +196,14 @@ class NarmestelederEntityTest :
                 }
             }
 
-            it("should find by bruker_fnr") {
-                val brukerFnr = faker.numerify("###########")
+            it("should find by sykmeldt_fnr") {
+                val sykmeldtFnr = faker.numerify("###########")
 
                 transaction(TestDB.exposedDatabase) {
                     NarmestelederEntity.new {
                         this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
-                        this.sykmeldtFnr = brukerFnr
+                        this.sykmeldtFnr = sykmeldtFnr
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -213,10 +213,10 @@ class NarmestelederEntityTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val results = NarmestelederEntity.find {
-                        NarmestelederTable.sykmeldtFnr eq brukerFnr
+                        NarmestelederTable.sykmeldtFnr eq sykmeldtFnr
                     }
                     results.count() shouldBe 1
-                    results.first().sykmeldtFnr shouldBe brukerFnr
+                    results.first().sykmeldtFnr shouldBe sykmeldtFnr
                 }
             }
 

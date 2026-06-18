@@ -22,3 +22,5 @@ updates:
       default-days: 7
     ignore:
       - dependency-name: "io.ktor:*"
+      - dependency-name: "ktor-version"
+      - dependency-name: "io.ktor.plugin"

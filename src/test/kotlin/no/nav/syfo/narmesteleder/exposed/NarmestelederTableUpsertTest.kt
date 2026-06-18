@@ -44,7 +44,7 @@ class NarmestelederTableUpsertTest :
                     val entity = results.first()
                     entity.narmesteLederId shouldBe message.narmesteLederId
                     entity.orgnummer shouldBe message.orgnummer
-                    entity.brukerFnr shouldBe message.fnr
+                    entity.sykmeldtFnr shouldBe message.fnr
                     entity.narmestelederFnr shouldBe message.narmesteLederFnr
                     entity.narmestelederTelefonnummer shouldBe message.narmesteLederTelefonnummer
                     entity.narmestelederEpost shouldBe message.narmesteLederEpost
@@ -174,7 +174,7 @@ class NarmestelederTableUpsertTest :
                     val entity = NarmestelederEntity.find {
                         NarmestelederTable.narmestelederId eq narmesteLederId
                     }.first()
-                    entity.brukerFnr shouldBe originalMessage.fnr
+                    entity.sykmeldtFnr shouldBe originalMessage.fnr
                     entity.narmestelederFnr shouldBe originalMessage.narmesteLederFnr
                 }
             }

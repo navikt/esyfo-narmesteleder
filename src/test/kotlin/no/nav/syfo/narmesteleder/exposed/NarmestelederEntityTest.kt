@@ -39,7 +39,7 @@ class NarmestelederEntityTest :
                     val entity = NarmestelederEntity.new {
                         this.narmesteLederId = narmesteLederId
                         this.orgnummer = orgnummer
-                        this.brukerFnr = brukerFnr
+                        this.sykmeldtFnr = brukerFnr
                         this.narmestelederFnr = narmestelederFnr
                         this.narmestelederTelefonnummer = narmestelederTelefonnummer
                         this.narmestelederEpost = narmestelederEpost
@@ -56,7 +56,7 @@ class NarmestelederEntityTest :
 
                     readBack.narmesteLederId shouldBe narmesteLederId
                     readBack.orgnummer shouldBe orgnummer
-                    readBack.brukerFnr shouldBe brukerFnr
+                    readBack.sykmeldtFnr shouldBe brukerFnr
                     readBack.narmestelederFnr shouldBe narmestelederFnr
                     readBack.narmestelederTelefonnummer shouldBe narmestelederTelefonnummer
                     readBack.narmestelederEpost shouldBe narmestelederEpost
@@ -76,7 +76,7 @@ class NarmestelederEntityTest :
                     val entity = NarmestelederEntity.new {
                         this.narmesteLederId = narmesteLederId
                         this.orgnummer = faker.numerify("#########")
-                        this.brukerFnr = faker.numerify("###########")
+                        this.sykmeldtFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -101,7 +101,7 @@ class NarmestelederEntityTest :
                     val entity = NarmestelederEntity.new {
                         this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
-                        this.brukerFnr = faker.numerify("###########")
+                        this.sykmeldtFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -119,7 +119,7 @@ class NarmestelederEntityTest :
                     val entity = NarmestelederEntity.new {
                         this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
-                        this.brukerFnr = faker.numerify("###########")
+                        this.sykmeldtFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -142,7 +142,7 @@ class NarmestelederEntityTest :
                     val entity = NarmestelederEntity.new {
                         this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
-                        this.brukerFnr = faker.numerify("###########")
+                        this.sykmeldtFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -178,7 +178,7 @@ class NarmestelederEntityTest :
                     NarmestelederEntity.new {
                         this.narmesteLederId = narmesteLederId
                         this.orgnummer = orgnummer
-                        this.brukerFnr = faker.numerify("###########")
+                        this.sykmeldtFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -203,7 +203,7 @@ class NarmestelederEntityTest :
                     NarmestelederEntity.new {
                         this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
-                        this.brukerFnr = brukerFnr
+                        this.sykmeldtFnr = brukerFnr
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -213,10 +213,10 @@ class NarmestelederEntityTest :
 
                 transaction(TestDB.exposedDatabase) {
                     val results = NarmestelederEntity.find {
-                        NarmestelederTable.brukerFnr eq brukerFnr
+                        NarmestelederTable.sykmeldtFnr eq brukerFnr
                     }
                     results.count() shouldBe 1
-                    results.first().brukerFnr shouldBe brukerFnr
+                    results.first().sykmeldtFnr shouldBe brukerFnr
                 }
             }
 
@@ -227,7 +227,7 @@ class NarmestelederEntityTest :
                     NarmestelederEntity.new {
                         this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
-                        this.brukerFnr = faker.numerify("###########")
+                        this.sykmeldtFnr = faker.numerify("###########")
                         this.narmestelederFnr = narmestelederFnr
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -249,7 +249,7 @@ class NarmestelederEntityTest :
                     val entity = NarmestelederEntity.new {
                         this.narmesteLederId = UUID.randomUUID()
                         this.orgnummer = faker.numerify("#########")
-                        this.brukerFnr = faker.numerify("###########")
+                        this.sykmeldtFnr = faker.numerify("###########")
                         this.narmestelederFnr = faker.numerify("###########")
                         this.narmestelederTelefonnummer = faker.phoneNumber().cellPhone()
                         this.narmestelederEpost = faker.internet().emailAddress()
@@ -306,7 +306,7 @@ class NarmestelederEntityTest :
 
                         readBack.narmesteLederId shouldBe narmesteLederId
                         readBack.orgnummer shouldBe orgnummer
-                        readBack.brukerFnr shouldBe fnr
+                        readBack.sykmeldtFnr shouldBe fnr
                         readBack.narmestelederFnr shouldBe narmesteLederFnr
                         readBack.narmestelederTelefonnummer shouldBe narmesteLederTelefonnummer
                         readBack.narmestelederEpost shouldBe narmesteLederEpost

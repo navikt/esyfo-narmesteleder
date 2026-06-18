@@ -8,7 +8,7 @@ import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 object NarmestelederTable : IntIdTable("narmeste_leder") {
     val narmestelederId = javaUUID("narmeste_leder_id").uniqueIndex()
     val orgnummer = varchar("orgnummer", 9)
-    val brukerFnr = varchar("bruker_fnr", 11)
+    val sykmeldtFnr = varchar("sykmeldt_fnr", 11)
     val narmestelederFnr = varchar("narmeste_leder_fnr", 11)
     val narmestelederTelefonnummer = varchar("narmeste_leder_telefonnummer", 255)
     val narmestelederEpost = varchar("narmeste_leder_epost", 255)

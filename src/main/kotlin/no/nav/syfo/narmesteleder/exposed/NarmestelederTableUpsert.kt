@@ -23,7 +23,7 @@ internal class NarmestelederTableOps(private val transaction: Transaction) {
      * - `aktivTom`
      *
      * The following fields are **preserved** (not updated on conflict):
-     * - `brukerFnr`, `narmestelederFnr` — domain-immutable identifiers
+     * - `sykmeldtFnr`, `narmestelederFnr` — domain-immutable identifiers
      * - `brukerNavn`, `narmestelederNavn` — owned by PDL enrichment
      * - `created` — insert-only timestamp
      * - `updated` — managed by a DB trigger
@@ -44,7 +44,7 @@ internal class NarmestelederTableOps(private val transaction: Transaction) {
         ) {
             it[NarmestelederTable.narmestelederId] = kafkaMessage.narmesteLederId
             it[NarmestelederTable.orgnummer] = kafkaMessage.orgnummer
-            it[NarmestelederTable.brukerFnr] = kafkaMessage.fnr
+            it[NarmestelederTable.sykmeldtFnr] = kafkaMessage.fnr
             it[NarmestelederTable.narmestelederFnr] = kafkaMessage.narmesteLederFnr
             it[NarmestelederTable.narmestelederTelefonnummer] = kafkaMessage.narmesteLederTelefonnummer
             it[NarmestelederTable.narmestelederEpost] = kafkaMessage.narmesteLederEpost

@@ -143,7 +143,7 @@ spec:
     - name: BEHOV_MAINTENANCE_TASK_ENABLED
       value: "true"
     - name: PERSIST_NARMESTELEDER_REGISTER
-      value: "false"
+      value: "true"
     - name: PDL_LEESAH_CONSUMER_ENABLED
       value: "true"
     - name: PERSON_ENRICHMENT_TASK_ENABLED

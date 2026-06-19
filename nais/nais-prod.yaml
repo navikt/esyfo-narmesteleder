@@ -139,6 +139,6 @@ spec:
     - name: PDL_LEESAH_CONSUMER_ENABLED
       value: "true"
     - name: PERSON_ENRICHMENT_TASK_ENABLED
-      value: "false"
+      value: "true"
   envFrom:
     - secret: altinn-subscription-key

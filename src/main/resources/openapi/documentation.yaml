@@ -500,12 +500,11 @@ components:
           example: "Jensen"
         mobile:
           type: string
-          description: Mobile phone number of the manager.
+          description: Mobile phone number of the manager. Spaces are accepted and removed before further use. A plus sign is only allowed as the first character.
           example: "+4790000000"
         email:
           type: string
-          format: email
-          description: Email address of the manager.
+          description: One or more email addresses for the manager. Addresses may be separated with semicolon. A plus sign and the Norwegian letters æ, ø and å are allowed in both the local-part and domain-part.
           example: "leder@example.com"
       required:
         - nationalIdentificationNumber

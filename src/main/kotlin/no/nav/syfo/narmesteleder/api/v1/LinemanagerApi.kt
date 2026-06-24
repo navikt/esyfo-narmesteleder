@@ -1,6 +1,8 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.callid.callId
+import io.ktor.server.request.path
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
@@ -35,8 +37,11 @@ fun Route.registerLinemanagerApiV1(
 
         post {
             val principal = call.getMyPrincipal()
-            val create = call.tryReceive<Linemanager>()
-            val actors = validationService.validateLinemanager(create, call.getMyPrincipal())
+            val create = validationService.normalizeLinemanagerPayload(
+                linemanager = call.tryReceive<Linemanager>(),
+                context = "path=${call.request.path()}, callId=${call.callId ?: "missing"}, principalType=${principal::class.simpleName}",
+            )
+            val actors = validationService.validateLinemanager(create, principal)
 
             narmestelederKafkaService.sendNarmesteLederRelasjon(
                 create,

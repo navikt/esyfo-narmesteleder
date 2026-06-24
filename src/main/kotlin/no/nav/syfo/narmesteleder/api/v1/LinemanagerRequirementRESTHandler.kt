@@ -32,12 +32,16 @@ class LinemanagerRequirementRESTHandler(
         principal: Principal
     ) {
         try {
+            val normalizedManager = validationService.normalizeManagerPayload(
+                manager = manager,
+                context = "operation=PUT /linemanager/requirement/{id}, requirementId=$requirementId, principalType=${principal::class.simpleName}",
+            )
             val employee = narmesteLederService.getEmployeeByRequirementId(requirementId)
             val linemanager = Linemanager(
                 employeeIdentificationNumber = employee.nationalIdentificationNumber,
                 orgNumber = employee.orgNumber,
                 lastName = employee.lastName,
-                manager = manager
+                manager = normalizedManager
             )
             val linemanagerActors = validationService.validateLinemanager(
                 linemanager = linemanager,

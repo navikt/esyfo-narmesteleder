@@ -2,6 +2,7 @@ package no.nav.syfo.narmesteleder.api.v1
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.plugins.callid.callId
+import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -39,7 +40,7 @@ fun Route.registerLinemanagerApiV1(
             val principal = call.getMyPrincipal()
             val create = validationService.normalizeLinemanagerPayload(
                 linemanager = call.tryReceive<Linemanager>(),
-                context = "path=${call.request.path()}, callId=${call.callId ?: "missing"}, principalType=${principal::class.simpleName}",
+                context = "operation=${call.request.httpMethod} ${call.request.path()}, callId=${call.callId ?: "missing"}, principalType=${principal::class.simpleName}",
             )
             val actors = validationService.validateLinemanager(create, principal)
 
@@ -80,11 +81,14 @@ fun Route.registerLinemanagerApiV1(
             val principal = call.getMyPrincipal()
             val id = call.getUUIDFromPathVariable(name = "id")
             val linemanager = call.tryReceive<Manager>()
+            val context =
+                "operation=${call.request.httpMethod} ${call.request.path()}, callId=${call.callId ?: "missing"}, principalType=${principal::class.simpleName}"
 
             linemanagerRequirementRestHandler.handleUpdatedRequirement(
                 linemanager,
                 requirementId = id,
-                principal = principal
+                principal = principal,
+                context = context,
             )
             when (principal) {
                 is SystemPrincipal -> COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS.increment()

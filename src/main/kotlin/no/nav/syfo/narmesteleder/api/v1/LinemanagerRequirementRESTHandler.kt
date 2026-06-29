@@ -29,12 +29,13 @@ class LinemanagerRequirementRESTHandler(
     suspend fun handleUpdatedRequirement(
         manager: Manager,
         requirementId: UUID,
-        principal: Principal
+        principal: Principal,
+        context: String,
     ) {
         try {
             val normalizedManager = validationService.normalizeManagerPayload(
                 manager = manager,
-                context = "operation=PUT /linemanager/requirement/{id}, requirementId=$requirementId, principalType=${principal::class.simpleName}",
+                context = context,
             )
             val employee = narmesteLederService.getEmployeeByRequirementId(requirementId)
             val linemanager = Linemanager(

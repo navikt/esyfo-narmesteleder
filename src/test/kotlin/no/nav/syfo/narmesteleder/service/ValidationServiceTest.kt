@@ -143,7 +143,7 @@ class ValidationServiceTest :
         }
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             altinnTilgangerClient.reset()
             coEvery { pdlCacheMock.getPerson(any()) } returns null
             coEvery { eregCache.getOrganisasjon(any()) } returns null

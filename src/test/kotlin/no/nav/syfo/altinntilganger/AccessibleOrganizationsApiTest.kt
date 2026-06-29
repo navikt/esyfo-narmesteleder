@@ -44,7 +44,7 @@ class AccessibleOrganizationsApiTest :
         val userFnr = "12345678901"
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             fakeAltinnTilgangerClient.reset()
         }
 

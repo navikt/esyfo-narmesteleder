@@ -21,7 +21,7 @@ class NarmestelederLeesahProducerTest :
         val producer = NarmestelederLeesahProducer(kafkaProducerMock)
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
 
         describe("sendLeesahBatch") {

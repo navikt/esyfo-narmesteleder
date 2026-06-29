@@ -123,7 +123,7 @@ class LinenmanagerApiV1Test :
         lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             fakeAltinnTilgangerClient.accessPolicy.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())

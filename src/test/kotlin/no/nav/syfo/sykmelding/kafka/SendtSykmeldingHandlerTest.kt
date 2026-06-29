@@ -25,7 +25,7 @@ class SendtSykmeldingHandlerTest :
         val handler = SendtSykmeldingHandler(narmesteLederService, sykmeldingService)
 
         beforeEach {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             coEvery { sykmeldingService.processBatch(any()) } just Runs
             coEvery { narmesteLederService.createNewNlBehov(any(), any(), any(), any()) } returns null
         }

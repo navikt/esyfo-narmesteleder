@@ -45,7 +45,7 @@ class LinemanagerRequirementRESTHandlerTest :
         )
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             servicesWrapper.fakeDbSpyk.clear()
 
             coEvery {

@@ -20,7 +20,7 @@ class EregServiceTest :
     DescribeSpec({
         val eregCache = mockk<EregCache>(relaxed = true)
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             every { eregCache.getOrganisasjon(any()) } returns null
         }
         describe("getOrganization") {

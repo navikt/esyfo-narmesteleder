@@ -24,7 +24,7 @@ class AltinnTilgangerClientTest :
 
         val mockTexasClient = mockk<TexasHttpClient>()
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
 
         fun getMockEngine(status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->

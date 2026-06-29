@@ -35,7 +35,7 @@ class PdlServiceTest :
         val pdlService = PdlService(pdlClient, pdlCache)
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
 
             coEvery { pdlCache.getPerson(any()) } returns null
         }

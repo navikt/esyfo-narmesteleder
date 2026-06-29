@@ -22,7 +22,7 @@ class UpdateDialogTaskTest :
         lateinit var updateDialogTask: UpdateDialogTask
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             updateDialogTask =
                 UpdateDialogTask(
                     dialogportenService = dialogportenService,

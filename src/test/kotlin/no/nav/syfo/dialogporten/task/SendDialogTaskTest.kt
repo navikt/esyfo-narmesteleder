@@ -19,7 +19,7 @@ class SendDialogTaskTest :
         val dialogportenService = mockk<DialogportenService>()
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
 
         describe("execute") {

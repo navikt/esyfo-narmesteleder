@@ -23,7 +23,7 @@ class AltinnTilgangerServiceTest :
         val altinnTilgangerService = AltinnTilgangerService(altinnTilgangerClient)
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             altinnTilgangerClient.reset()
         }
 

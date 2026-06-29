@@ -30,7 +30,7 @@ class AltinnTokenProviderTest :
         val altinnBaseUrl = "https://altinn.test"
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
 
         describe("AltinnTokenProvider") {

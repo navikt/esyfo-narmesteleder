@@ -26,7 +26,7 @@ class PersonEnrichmentServiceTest :
         val pdlService = mockk<PdlService>()
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             TestDB.clearPersonData()
         }
 

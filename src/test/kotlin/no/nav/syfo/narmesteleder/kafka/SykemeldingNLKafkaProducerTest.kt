@@ -36,7 +36,7 @@ class SykemeldingNLKafkaProducerTest :
         val producer = SykmeldingNLKafkaProducer(kafkaProducerMock)
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
         describe("sendSykemeldingNLRelasjon") {
             it("Calls send on Producer with ProducerRecord containing NlResponse") {

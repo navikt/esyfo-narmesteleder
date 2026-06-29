@@ -43,7 +43,7 @@ class BehovMaintenanceTaskTest :
         )
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
 
         describe("BehovMaintenanceTask") {

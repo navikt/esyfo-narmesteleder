@@ -57,7 +57,7 @@ class NameValidatorTest :
             it("should not throw when employee last name matches case insensitively") {
                 val linemanager = linemanager()
                 val employee = person(
-                    lastName = linemanager.lastName.lowercase(),
+                    lastName = linemanager.employeeLastName.lowercase(),
                     fnr = linemanager.employeeIdentificationNumber.value,
                 )
 
@@ -69,7 +69,7 @@ class NameValidatorTest :
             it("should not throw when employee last name matches exactly") {
                 val linemanager = linemanager()
                 val employee = person(
-                    lastName = linemanager.lastName,
+                    lastName = linemanager.employeeLastName,
                     fnr = linemanager.employeeIdentificationNumber.value,
                 )
 
@@ -81,7 +81,7 @@ class NameValidatorTest :
             it("should throw BadRequestException when employee last name does not match") {
                 val linemanager = linemanager()
                 val employee = person(
-                    lastName = linemanager.lastName.reversed(),
+                    lastName = linemanager.employeeLastName.reversed(),
                     fnr = linemanager.employeeIdentificationNumber.value,
                 )
 

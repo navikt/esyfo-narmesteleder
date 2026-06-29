@@ -36,7 +36,7 @@ class LinemanagerRequirementRESTHandler(
             val linemanager = Linemanager(
                 employeeIdentificationNumber = employee.nationalIdentificationNumber,
                 orgNumber = employee.orgNumber,
-                lastName = employee.lastName,
+                employeeLastName = employee.lastName,
                 manager = manager
             )
             val linemanagerActors = validationService.validateLinemanager(

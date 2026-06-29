@@ -57,7 +57,7 @@ fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
     employeeIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
     orgNumber = OrganizationNumber(faker.numerify("#########")),
-    lastName = faker.name().lastName(),
+    employeeLastName = faker.name().lastName(),
 )
 
 fun organisasjon() = Organisasjon(

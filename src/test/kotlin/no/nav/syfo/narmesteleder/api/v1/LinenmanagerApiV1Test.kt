@@ -184,7 +184,7 @@ class LinenmanagerApiV1Test :
                         pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                         pdlService.prepareGetPersonResponse(
                             narmesteLederRelasjon.employeeIdentificationNumber.value,
-                            narmesteLederRelasjon.lastName,
+                            narmesteLederRelasjon.employeeLastName,
                         )
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon =
@@ -346,7 +346,7 @@ class LinenmanagerApiV1Test :
                         pdlService.prepareGetPersonResponse(narmesteLederRelasjon.manager)
                         pdlService.prepareGetPersonResponse(
                             narmesteLederRelasjon.employeeIdentificationNumber.value,
-                            narmesteLederRelasjon.lastName,
+                            narmesteLederRelasjon.employeeLastName,
                         )
                         val callerPid = "11223344556"
                         texasHttpClientMock.defaultMocks(

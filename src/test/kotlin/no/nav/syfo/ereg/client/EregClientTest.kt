@@ -22,7 +22,7 @@ class EregClientTest :
     DescribeSpec({
         val texasHttpClient = mockk<TexasHttpClient>(relaxed = true)
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
 
         val eregPath = "/ereg/api/v2/organisasjon"

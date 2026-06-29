@@ -38,7 +38,7 @@ class ShadowActiveSykmeldingServiceTest :
         }
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             logAppender.list.clear()
         }
 

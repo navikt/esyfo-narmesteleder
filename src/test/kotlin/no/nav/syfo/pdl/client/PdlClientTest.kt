@@ -22,7 +22,7 @@ class PdlClientTest :
 
         val mockTexasClient = mockk<TexasHttpClient>()
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
 
         describe("getPerson") {

@@ -45,7 +45,7 @@ class LinemanagerRequirementRESTHandlerTest :
         )
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             servicesWrapper.fakeDbSpyk.clear()
 
             coEvery {
@@ -68,11 +68,14 @@ class LinemanagerRequirementRESTHandlerTest :
                     systemOwner = "0192:systemOwner",
                     systemUserId = "systemUserId",
                 )
+                val context =
+                    "operation=put thepath, principalType=${principal::class.simpleName}"
 
                 handler.handleUpdatedRequirement(
                     requirementId = fixtureEntity.id!!,
                     manager = defaultManager,
                     principal = principal,
+                    context = context,
                 )
                 coVerify(exactly = 1) {
                     servicesWrapper.narmestelederServiceSpyk.updateNlBehov(
@@ -96,11 +99,14 @@ class LinemanagerRequirementRESTHandlerTest :
                     systemOwner = "0192:systemOwner",
                     systemUserId = "systemUserId",
                 )
+                val context =
+                    "operation=put thepath, principalType=${principal::class.simpleName}"
 
                 handler.handleUpdatedRequirement(
                     requirementId = fixtureEntity.id!!,
                     manager = defaultManager,
                     principal = principal,
+                    context = context,
                 )
                 coVerify(exactly = 1) {
                     servicesWrapper.narmestelederKafkaServiceSpyk.sendNarmesteLederRelasjon(

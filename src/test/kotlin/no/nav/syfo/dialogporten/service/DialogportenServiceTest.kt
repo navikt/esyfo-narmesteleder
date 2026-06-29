@@ -48,7 +48,7 @@ class DialogportenServiceTest :
         lateinit var dialogportenService: DialogportenService
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             fakeNarmestelederDb = FakeNarmestelederDb()
             spyNarmestelederDb = spyk(fakeNarmestelederDb)
             dialogportenService =

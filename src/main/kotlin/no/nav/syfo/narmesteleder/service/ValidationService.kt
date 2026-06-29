@@ -2,16 +2,20 @@ package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.application.auth.Principal
+import no.nav.syfo.narmesteleder.domain.ContactValidationIssue
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.normalizeContactDetails
 import no.nav.syfo.narmesteleder.service.validators.ArbeidsforholdValidator
 import no.nav.syfo.narmesteleder.service.validators.NameValidator
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
+import no.nav.syfo.util.logger
 
 class ValidationService(
     private val pdlService: PdlService,
@@ -19,6 +23,27 @@ class ValidationService(
     private val principalAccessValidator: PrincipalAccessValidator,
     private val sickLeaveValidator: SickLeaveValidator,
 ) {
+    private val logger = logger()
+
+    fun normalizeLinemanagerPayload(
+        linemanager: Linemanager,
+        context: String,
+    ): Linemanager = linemanager.copy(
+        manager = normalizeManagerPayload(
+            manager = linemanager.manager,
+            context = context,
+        )
+    )
+
+    fun normalizeManagerPayload(
+        manager: Manager,
+        context: String,
+    ): Manager {
+        val validation = manager.normalizeContactDetails()
+        logContactValidationIssues(validation.issues, context)
+        return validation.manager
+    }
+
     suspend fun validateLinemanager(
         linemanager: Linemanager,
         principal: Principal,
@@ -74,4 +99,18 @@ class ValidationService(
         principal: Principal,
         orgNumber: OrganizationNumber,
     ): String? = principalAccessValidator.validatePrincipalAccessToOrgnumber(principal, orgNumber.value)
+
+    private fun logContactValidationIssues(
+        issues: List<ContactValidationIssue>,
+        context: String,
+    ) {
+        issues.forEach { issue ->
+            logger.warn(
+                "ContactValidationIssue: Received manager payload with invalid {} for {}. Keeping original value. Reason: {}",
+                issue.fieldName,
+                context,
+                issue.reason,
+            )
+        }
+    }
 }

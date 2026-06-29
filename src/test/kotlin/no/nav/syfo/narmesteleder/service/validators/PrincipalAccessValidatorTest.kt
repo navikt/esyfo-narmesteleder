@@ -36,7 +36,7 @@ class PrincipalAccessValidatorTest :
         val validator = PrincipalAccessValidator(altinnTilgangerService, pdpService, eregService = eregService)
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             altinnTilgangerClient.reset()
             eregClient.organisasjoner.clear()
             coEvery { eregCache.getOrganisasjon(any()) } returns null

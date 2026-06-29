@@ -123,7 +123,7 @@ class LinenmanagerApiV1Test :
         lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             fakeAltinnTilgangerClient.accessPolicy.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
@@ -211,6 +211,98 @@ class LinenmanagerApiV1Test :
                             narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
                                 narmesteLederRelasjon,
                                 linemanagerActors = any<LinemanagerActors>(),
+                                NlResponseSource.LPS,
+                            )
+                        }
+                    }
+                }
+
+                it("Maskinporten POST /linemanager should normalize spaces in valid phone numbers") {
+                    withTestApplication {
+                        val linemanagerWithSpacedPhone = narmesteLederRelasjon.copy(
+                            manager = narmesteLederRelasjon.manager.copy(
+                                mobile = "+47 90 00 00 00",
+                                email = "leder+ø@eksempelø.no; annen@domene.no ",
+                            ),
+                        )
+                        pdlService.prepareGetPersonResponse(linemanagerWithSpacedPhone.manager)
+                        pdlService.prepareGetPersonResponse(
+                            linemanagerWithSpacedPhone.employeeIdentificationNumber.value,
+                            linemanagerWithSpacedPhone.lastName,
+                        )
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon =
+                            DefaultOrganization.copy(
+                                ID = "0192:${linemanagerWithSpacedPhone.orgNumber.value}",
+                            ),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        fakeAaregClient.arbeidsForholdForIdent[linemanagerWithSpacedPhone.employeeIdentificationNumber.value] =
+                            listOf(linemanagerWithSpacedPhone.orgNumber.value to linemanagerWithSpacedPhone.orgNumber.value)
+                        fakeAaregClient.arbeidsForholdForIdent[linemanagerWithSpacedPhone.manager.nationalIdentificationNumber.value] =
+                            listOf(linemanagerWithSpacedPhone.orgNumber.value to linemanagerWithSpacedPhone.orgNumber.value)
+
+                        val response =
+                            client.post("/api/v1/linemanager") {
+                                contentType(ContentType.Application.Json)
+                                setBody(linemanagerWithSpacedPhone)
+                                bearerAuth(createMockToken(linemanagerWithSpacedPhone.orgNumber.value))
+                            }
+
+                        response.status shouldBe HttpStatusCode.Accepted
+                        coVerify(exactly = 1) {
+                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
+                                match {
+                                    it.manager.mobile == "+4790000000" &&
+                                        it.manager.email == "leder+ø@eksempelø.no;annen@domene.no"
+                                },
+                                any(),
+                                NlResponseSource.LPS,
+                            )
+                        }
+                    }
+                }
+
+                it("Maskinporten POST /linemanager should accept invalid phone and email without rejecting payload") {
+                    withTestApplication {
+                        val linemanagerWithInvalidContacts = narmesteLederRelasjon.copy(
+                            manager = narmesteLederRelasjon.manager.copy(
+                                mobile = "90-00-00-00",
+                                email = "gyldig@example.com; invalid @example.com",
+                            ),
+                        )
+                        pdlService.prepareGetPersonResponse(linemanagerWithInvalidContacts.manager)
+                        pdlService.prepareGetPersonResponse(
+                            linemanagerWithInvalidContacts.employeeIdentificationNumber.value,
+                            linemanagerWithInvalidContacts.lastName,
+                        )
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon =
+                            DefaultOrganization.copy(
+                                ID = "0192:${linemanagerWithInvalidContacts.orgNumber.value}",
+                            ),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        fakeAaregClient.arbeidsForholdForIdent[linemanagerWithInvalidContacts.employeeIdentificationNumber.value] =
+                            listOf(linemanagerWithInvalidContacts.orgNumber.value to linemanagerWithInvalidContacts.orgNumber.value)
+                        fakeAaregClient.arbeidsForholdForIdent[linemanagerWithInvalidContacts.manager.nationalIdentificationNumber.value] =
+                            listOf(linemanagerWithInvalidContacts.orgNumber.value to linemanagerWithInvalidContacts.orgNumber.value)
+
+                        val response =
+                            client.post("/api/v1/linemanager") {
+                                contentType(ContentType.Application.Json)
+                                setBody(linemanagerWithInvalidContacts)
+                                bearerAuth(createMockToken(linemanagerWithInvalidContacts.orgNumber.value))
+                            }
+
+                        response.status shouldBe HttpStatusCode.Accepted
+                        coVerify(exactly = 1) {
+                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
+                                match {
+                                    it.manager.mobile == "90-00-00-00" &&
+                                        it.manager.email == "gyldig@example.com; invalid @example.com"
+                                },
+                                any(),
                                 NlResponseSource.LPS,
                             )
                         }
@@ -707,6 +799,45 @@ class LinenmanagerApiV1Test :
                         }
                         val stored = fakeRepo.findBehovById(requirementId) ?: error("Stored requirement missing")
                         stored.behovStatus.name shouldBe BehovStatus.BEHOV_FULFILLED.name
+                    }
+                }
+
+                it("PUT /requirement/{id} should normalize spaces in valid phone numbers") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        val requirementId = seedLinemanagerRequirement()
+                        val spacedPhoneManager = manager().copy(
+                            nationalIdentificationNumber = PersonalIdentificationNumber(
+                                narmesteLederRelasjon.manager.nationalIdentificationNumber.value.reversed(),
+                            ),
+                            mobile = "+47 90 00 00 00",
+                            email = "leder+ø@eksempelø.no; annen@domene.no ",
+                        )
+                        pdlService.prepareGetPersonResponse(spacedPhoneManager)
+                        fakeAaregClient.arbeidsForholdForIdent[spacedPhoneManager.nationalIdentificationNumber.value] =
+                            listOf(orgnummer to orgnummer)
+
+                        val response =
+                            client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                                contentType(ContentType.Application.Json)
+                                setBody(spacedPhoneManager)
+                                bearerAuth(createMockToken(orgnummer))
+                            }
+
+                        response.status shouldBe HttpStatusCode.Accepted
+                        coVerify(exactly = 1) {
+                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
+                                match { linemanager ->
+                                    linemanager.manager.mobile == "+4790000000" &&
+                                        linemanager.manager.email == "leder+ø@eksempelø.no;annen@domene.no"
+                                },
+                                any(),
+                                any(),
+                            )
+                        }
                     }
                 }
 

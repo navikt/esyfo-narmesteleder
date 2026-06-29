@@ -24,7 +24,7 @@ class SickLeaveValidatorTest :
         val orgnummer = faker.numerify("#########")
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
         }
 
         describe("validateActiveSickLeave") {

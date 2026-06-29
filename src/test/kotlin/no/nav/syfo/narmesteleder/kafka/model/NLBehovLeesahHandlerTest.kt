@@ -66,7 +66,7 @@ class NLBehovLeesahHandlerTest :
         )
 
         beforeTest {
-            clearAllMocks()
+            clearAllMocks(currentThreadOnly = true)
             servicesWrapper.fakeDbSpyk.clear()
         }
 

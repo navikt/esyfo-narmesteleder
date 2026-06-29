@@ -1,10 +1,15 @@
 package no.nav.syfo.narmesteleder.service
 
 import DefaultSystemPrincipal
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import faker
 import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -13,6 +18,7 @@ import io.mockk.mockk
 import io.mockk.spyk
 import linemanager
 import linemanagerRevoke
+import manager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
@@ -32,12 +38,14 @@ import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
+import org.slf4j.LoggerFactory
 import prepareGetPersonResponse
 
 class ValidationServiceTest :
@@ -71,6 +79,9 @@ class ValidationServiceTest :
             principalAccessValidator = principalAccessValidator,
             sickLeaveValidator = sickLeaveValidator,
         )
+        val logbackLogger = LoggerFactory.getLogger(ValidationService::class.java) as Logger
+        val logAppender = ListAppender<ILoggingEvent>()
+        val originalLevel = logbackLogger.level
 
         fun differentLastName(lastName: String): String = faker.name().lastName().let {
             if (it != lastName) it else lastName.reversed()
@@ -117,6 +128,20 @@ class ValidationServiceTest :
             )
         }
 
+        fun warningMessages(): List<String> = logAppender.list.map { it.formattedMessage }
+
+        beforeSpec {
+            logbackLogger.level = Level.WARN
+            logAppender.start()
+            logbackLogger.addAppender(logAppender)
+        }
+
+        afterSpec {
+            logbackLogger.detachAppender(logAppender)
+            logAppender.stop()
+            logbackLogger.level = originalLevel
+        }
+
         beforeTest {
             clearAllMocks()
             altinnTilgangerClient.reset()
@@ -124,6 +149,65 @@ class ValidationServiceTest :
             coEvery { eregCache.getOrganisasjon(any()) } returns null
             aaregClient.arbeidsForholdForIdent.clear()
             eregClient.organisasjoner.clear()
+            logAppender.list.clear()
+        }
+        describe("normalize manager contact details") {
+            it("should normalize valid manager payload without warnings") {
+                val linemanager = linemanager().copy(
+                    manager = manager().copy(
+                        mobile = "+47 90 00 00 00",
+                        email = "leder+ø@eksempelø.no; annen@domene.no ",
+                    )
+                )
+
+                val normalized = service.normalizeLinemanagerPayload(
+                    linemanager = linemanager,
+                    context = "path=/api/v1/linemanager",
+                )
+
+                normalized.manager.mobile shouldBe "+4790000000"
+                normalized.manager.email shouldBe "leder+ø@eksempelø.no;annen@domene.no"
+                warningMessages() shouldHaveSize 0
+            }
+
+            it("should keep invalid manager contact details and log warnings without raw values") {
+                val manager = Manager(
+                    nationalIdentificationNumber = PersonalIdentificationNumber("12345678910"),
+                    lastName = "Jensen",
+                    mobile = "90-00-00-00",
+                    email = "gyldig@example.com; invalid @example.com",
+                )
+
+                val normalized = service.normalizeManagerPayload(
+                    manager = manager,
+                    context = "operation=PUT /linemanager/requirement/{id}",
+                )
+
+                normalized shouldBe manager
+                warningMessages() shouldHaveSize 2
+                warningMessages().single { it.contains("invalid mobile") } shouldBe
+                    "ContactValidationIssue: Received manager payload with invalid mobile for operation=PUT /linemanager/requirement/{id}. Keeping original value. Reason: PhoneNumber must contain only digits, with an optional leading plus sign"
+                warningMessages().single { it.contains("invalid email") } shouldBe
+                    "ContactValidationIssue: Received manager payload with invalid email for operation=PUT /linemanager/requirement/{id}. Keeping original value. Reason: EmailAddress must not contain whitespace"
+                warningMessages().any { it.contains("90-00-00-00") } shouldBe false
+                warningMessages().any { it.contains("invalid @example.com") } shouldBe false
+                warningMessages().any { it.contains("gyldig@example.com") } shouldBe false
+            }
+
+            it("should keep phone numbers with misplaced plus sign and log warning") {
+                val manager = manager().copy(
+                    mobile = "47+90000000",
+                )
+
+                val normalized = service.normalizeManagerPayload(
+                    manager = manager,
+                    context = "path=/api/v1/linemanager",
+                )
+
+                normalized.mobile shouldBe "47+90000000"
+                warningMessages().single() shouldBe
+                    "ContactValidationIssue: Received manager payload with invalid mobile for path=/api/v1/linemanager. Keeping original value. Reason: PhoneNumber must contain only digits, with an optional leading plus sign"
+            }
         }
         describe("validateNarmesteleder") {
             it("should not thrown when all validation passes and principal is BrukerPrincipal") {

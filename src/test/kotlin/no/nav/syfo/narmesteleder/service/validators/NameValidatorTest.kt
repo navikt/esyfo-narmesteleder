@@ -24,6 +24,22 @@ class NameValidatorTest :
             nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
         )
 
+        fun personWithParallelLastNames(lastNames: List<String>, fnr: String): Person = Person(
+            name = Navn(
+                fornavn = faker.name().firstName(),
+                mellomnavn = null,
+                etternavn = lastNames.first(),
+            ),
+            names = lastNames.map { lastName ->
+                Navn(
+                    fornavn = faker.name().firstName(),
+                    mellomnavn = null,
+                    etternavn = lastName,
+                )
+            },
+            nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
+        )
+
         describe("validateLinemanagerLastName") {
             it("should throw BadRequestException if lastname of PdlPerson and manager does not match") {
                 val linemanager = linemanager()
@@ -91,6 +107,21 @@ class NameValidatorTest :
 
                 exception.message shouldBe "Last name for employee on sick leave does not correspond with registered value for the given national identification number"
                 exception.type shouldBe ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+            }
+
+            it("should not throw when employee last name matches one of the parallel last names from PDL") {
+                val linemanager = linemanager()
+                val employee = personWithParallelLastNames(
+                    lastNames = listOf(
+                        linemanager.lastName.reversed(),
+                        linemanager.lastName,
+                    ),
+                    fnr = linemanager.employeeIdentificationNumber.value,
+                )
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                }
             }
         }
 

@@ -9,7 +9,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.pdl.Person
 
 private const val PARALLEL_NAMES_VALIDATED_TOTAL =
-    "${METRICS_NS}_active_sykmelding_shadow_mismatch_total"
+    "${METRICS_NS}_parallel_names_validated_total"
 
 private val COUNT_PARALLEL_NAMES_VALIDATED: Counter = Counter
     .builder(PARALLEL_NAMES_VALIDATED_TOTAL)
@@ -41,11 +41,13 @@ object NameValidator {
         // Under visse omstendigheter kan det forekomme at personer har parallelle navn i PDL
         // https://pdl-docs.ansatt.nav.no/ekstern/index.html#_navn
         if (employeePdlPerson.hasParallelNames) {
+            val matchesPdlNames = validateParallelNames(
+                linemanager.lastName.normalizeName(),
+                employeePdlPerson.names.map { it.etternavn.normalizeName() }
+            )
+
             nlrequire(
-                value = validateParallelNames(
-                    linemanager.lastName.normalizeName(),
-                    employeePdlPerson.names.map { it.etternavn.normalizeName() }
-                ),
+                value = matchesPdlNames,
                 type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
             ) {
                 EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE

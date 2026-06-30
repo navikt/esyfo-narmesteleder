@@ -4,6 +4,7 @@ import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
@@ -91,13 +92,22 @@ class LinemanagerRequirementRESTHandler(
         createdAfter: Instant,
         orgNumber: OrganizationNumber,
         principal: Principal
-    ): List<LinemanagerRequirementRead> {
+    ): LinemanagerRequirementCollection {
         val orgName = validationService.validatePrincipalAccessToOrgnumber(principal, orgNumber)
         logger.info("Validation successful for fetching LinemanagerRequirement collection for orgNumber: ${orgNumber.value}")
-        return narmesteLederService.getNlBehovList(
+        val requirements = narmesteLederService.getNlBehovList(
             pageSize = pageSize,
             createdAfter = createdAfter,
             orgNumber = orgNumber
         ).map { it.copy(orgName = orgName) }
+        val total = narmesteLederService.countNlBehov(
+            orgNumber = orgNumber,
+            createdAfter = createdAfter,
+        )
+        return LinemanagerRequirementCollection.from(
+            list = requirements,
+            pageSize = pageSize,
+            total = total,
+        )
     }
 }

@@ -228,6 +228,15 @@ class NarmestelederService(
         limit = pageSize + 1,
     ).map { it.toEmployeeLinemanagerRead(it.getName()) }
 
+    suspend fun countNlBehov(
+        orgNumber: OrganizationNumber,
+        createdAfter: Instant,
+    ): Long = nlDb.countBehovByParameters(
+        orgNumber = orgNumber.value,
+        createdAfter = createdAfter,
+        status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+    )
+
     suspend fun updateStatusOnExpiredBehovs(validDaysAfterTom: Long) {
         var count: Int
         var totalUpdated = 0

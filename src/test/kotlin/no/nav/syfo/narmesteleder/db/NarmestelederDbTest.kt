@@ -390,6 +390,55 @@ class NarmestelederDbTest :
                         NarmestelederBehovEntity::updated
                     )
                 }
+
+                it("should count all matching items independently of limit") {
+                    // Arrange
+                    val defaultSykmledteFnr = faker.numerify("###########")
+                    val defaultOrgnummer = faker.numerify("#########")
+                    val createdAfter = Instant.now().minusSeconds(3 * 60L)
+
+                    val nlBehovEntity1 = insertAndGetBehovWithId(
+                        nlBehovEntity().copy(
+                            sykmeldtFnr = defaultSykmledteFnr,
+                            orgnummer = defaultOrgnummer,
+                            behovStatus = BehovStatus.BEHOV_CREATED,
+                        )
+                    )!!
+                    val nlBehovEntity2 = insertAndGetBehovWithId(
+                        nlBehovEntity().copy(
+                            sykmeldtFnr = faker.numerify("###########"),
+                            orgnummer = defaultOrgnummer,
+                            behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                        )
+                    )!!
+                    insertAndGetBehovWithId(
+                        nlBehovEntity().copy(
+                            sykmeldtFnr = faker.numerify("###########"),
+                            orgnummer = defaultOrgnummer.reversed(),
+                            behovStatus = BehovStatus.BEHOV_CREATED,
+                        )
+                    )!!
+                    insertAndGetBehovWithId(
+                        nlBehovEntity().copy(
+                            sykmeldtFnr = faker.numerify("###########"),
+                            orgnummer = defaultOrgnummer,
+                            behovStatus = BehovStatus.BEHOV_FULFILLED,
+                        )
+                    )!!
+
+                    updateCreated(nlBehovEntity1.id!!, createdAfter.plusSeconds(1))
+                    updateCreated(nlBehovEntity2.id!!, createdAfter.plusSeconds(1))
+
+                    // Act
+                    val total = db.countBehovByParameters(
+                        orgNumber = defaultOrgnummer,
+                        createdAfter = createdAfter,
+                        status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
+                    )
+
+                    // Assert
+                    total shouldBe 2L
+                }
             }
         }
 

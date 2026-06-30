@@ -13,7 +13,6 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.narmesteleder.domain.Linemanager
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -117,10 +116,7 @@ fun Route.registerLinemanagerApiV1(
                 orgNumber = orgNumber,
                 principal = principal,
             )
-            call.respond(
-                HttpStatusCode.OK,
-                LinemanagerRequirementCollection.from(collection, pageSize)
-            )
+            call.respond(HttpStatusCode.OK, collection)
         }
     }
 }

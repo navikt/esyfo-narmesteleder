@@ -90,7 +90,7 @@ class ValidationServiceTest :
                 listOf(linemanager.orgNumber.value to "hovedenhet")
             aaregClient.arbeidsForholdForIdent[linemanager.employeeIdentificationNumber.value] =
                 listOf(linemanager.orgNumber.value to "hovedenhet")
-            pdlService.prepareGetPersonResponse(linemanager.employeeIdentificationNumber.value, linemanager.employeeLastName)
+            pdlService.prepareGetPersonResponse(linemanager.employeeIdentificationNumber.value, linemanager.lastName)
             pdlService.prepareGetPersonResponse(linemanager.manager)
         }
 
@@ -226,7 +226,7 @@ class ValidationServiceTest :
                     listOf(narmestelederRelasjonerWrite.orgNumber.value to "hovedenhet")
                 pdlService.prepareGetPersonResponse(
                     narmestelederRelasjonerWrite.employeeIdentificationNumber.value,
-                    differentLastName(narmestelederRelasjonerWrite.employeeLastName),
+                    differentLastName(narmestelederRelasjonerWrite.lastName),
                 )
                 pdlService.prepareGetPersonResponse(narmestelederRelasjonerWrite.manager)
 

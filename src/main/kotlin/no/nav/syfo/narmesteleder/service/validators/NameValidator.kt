@@ -1,9 +1,25 @@
 package no.nav.syfo.narmesteleder.service.validators
 
+import io.micrometer.core.instrument.Counter
 import no.nav.syfo.application.api.ErrorType
+import no.nav.syfo.application.metric.METRICS_NS
+import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.pdl.Person
+
+private const val PARALLEL_NAMES_VALIDATED_TOTAL =
+    "${METRICS_NS}_active_sykmelding_shadow_mismatch_total"
+
+private val COUNT_PARALLEL_NAMES_VALIDATED: Counter = Counter
+    .builder(PARALLEL_NAMES_VALIDATED_TOTAL)
+    .description("Counts number of times parallel names have been successfully validated.")
+    .register(METRICS_REGISTRY)
+
+private const val EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE =
+    "Last name for employee on sick leave does not correspond with registered value for the given national identification number"
+private const val LINEMANAGER_NAME_VALIDATION_FAILED_MESSAGE =
+    "Last name for linemanager does not correspond with registered value for the given national identification number"
 
 object NameValidator {
     fun validateLinemanagerLastName(
@@ -11,22 +27,37 @@ object NameValidator {
         linemanager: Linemanager,
     ) {
         nlrequire(
-            managerPdlPerson.name.etternavn.uppercase() == linemanager.manager.lastName.uppercase(),
+            managerPdlPerson.name.etternavn.normalizeName() == linemanager.manager.lastName.normalizeName(),
             type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
         ) {
-            "Last name for linemanager does not correspond with registered value for the given national identification number"
+            LINEMANAGER_NAME_VALIDATION_FAILED_MESSAGE
         }
     }
 
     fun validateEmployeeLastName(
-        managerPdlPerson: Person,
+        employeePdlPerson: Person,
         linemanager: Linemanager,
     ) {
-        nlrequire(
-            managerPdlPerson.name.etternavn.uppercase() == linemanager.lastName.uppercase(),
-            type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
-        ) {
-            "Last name for employee on sick leave does not correspond with registered value for the given national identification number"
+        // Under visse omstendigheter kan det forekomme at personer har parallelle navn i PDL
+        // https://pdl-docs.ansatt.nav.no/ekstern/index.html#_navn
+        if (employeePdlPerson.hasParallelNames) {
+            nlrequire(
+                value = validateParallelNames(
+                    linemanager.lastName.normalizeName(),
+                    employeePdlPerson.names.map { it.etternavn.normalizeName() }
+                ),
+                type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+            ) {
+                EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE
+            }
+            COUNT_PARALLEL_NAMES_VALIDATED.increment()
+        } else {
+            nlrequire(
+                value = linemanager.lastName.normalizeName() == employeePdlPerson.name.etternavn.normalizeName(),
+                type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
+            ) {
+                EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE
+            }
         }
     }
 
@@ -35,10 +66,13 @@ object NameValidator {
         linemanagerRevoke: LinemanagerRevoke,
     ) {
         nlrequire(
-            managerPdlPerson.name.etternavn.uppercase() == linemanagerRevoke.lastName.uppercase(),
+            managerPdlPerson.name.etternavn.normalizeName() == linemanagerRevoke.lastName.normalizeName(),
             type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
         ) {
-            "Last name for employee on sick leave does not correspond with registered value for the given national identification number"
+            EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE
         }
     }
+
+    private fun String.normalizeName() = this.trim().uppercase().replace("\\s+".toRegex(), " ")
+    private fun validateParallelNames(nameToValidate: String, parallelNames: List<String>): Boolean = parallelNames.any { it.equals(nameToValidate, ignoreCase = true) }
 }

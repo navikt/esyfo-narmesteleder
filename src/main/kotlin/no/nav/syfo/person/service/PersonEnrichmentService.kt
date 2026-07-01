@@ -42,7 +42,7 @@ class PersonEnrichmentService(
                             entity.fornavn = pdlPerson.name.fornavn
                             entity.mellomnavn = pdlPerson.name.mellomnavn
                             entity.etternavn = pdlPerson.name.etternavn
-                            entity.foedselsdato = pdlPerson.foedselsdato?.foedselsdato
+                            entity.foedselsdato = pdlPerson.dateOfBirth?.foedselsdato
                             entity.status = PersonStatus.ENRICHED.name
                             enrichedCount++
                         }

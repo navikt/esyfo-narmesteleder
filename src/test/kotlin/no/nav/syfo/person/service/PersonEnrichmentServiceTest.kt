@@ -49,7 +49,7 @@ class PersonEnrichmentServiceTest :
         fun createPdlPerson(fnr: String, fornavn: String = "Ola") = Person(
             name = Navn(fornavn = fornavn, mellomnavn = null, etternavn = "Nordmann"),
             nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
-            foedselsdato = null,
+            dateOfBirth = null,
         )
 
         fun service() = PersonEnrichmentService(
@@ -76,7 +76,7 @@ class PersonEnrichmentServiceTest :
                     fnr to Person(
                         name = navn,
                         nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
-                        foedselsdato = Foedselsdato(foedselsdato),
+                        dateOfBirth = Foedselsdato(foedselsdato),
                     ),
                 )
 
@@ -114,7 +114,7 @@ class PersonEnrichmentServiceTest :
                     fnr1 to Person(
                         name = navn1,
                         nationalIdentificationNumber = PersonalIdentificationNumber(fnr1),
-                        foedselsdato = null,
+                        dateOfBirth = null,
                     ),
                     fnr2 to null,
                 )

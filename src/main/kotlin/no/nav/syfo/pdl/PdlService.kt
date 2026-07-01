@@ -37,7 +37,7 @@ class PdlService(
                 name = navn,
                 names = person.navn,
                 nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
-                foedselsdato = foedselsdato,
+                dateOfBirth = foedselsdato,
             )
         }
     }
@@ -102,7 +102,7 @@ class PdlService(
                 Person(
                     name = navn,
                     nationalIdentificationNumber = PersonalIdentificationNumber(bolk.ident),
-                    foedselsdato = bolk.person.foedselsdato?.firstOrNull(),
+                    dateOfBirth = bolk.person.foedselsdato?.firstOrNull(),
                 )
             } else {
                 null

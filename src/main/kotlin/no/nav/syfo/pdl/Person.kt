@@ -8,7 +8,7 @@ data class Person(
     val name: Navn,
     val names: List<Navn> = listOf(name),
     val nationalIdentificationNumber: PersonalIdentificationNumber,
-    val foedselsdato: Foedselsdato? = null,
+    val dateOfBirth: Foedselsdato? = null,
 ) {
     val hasParallelNames: Boolean = names.size > 1
 }

@@ -24,9 +24,7 @@ class PdlService(
 
     suspend fun getPersonFor(fnr: String): Person {
         val response = pdlClient.getPerson(fnr)
-        val data = requireNotNull(response.data) {
-            "Unexpected response from PDL"
-        }
+        val data = response.data ?: throw PdlRequestException("Unexpected response from upstream service")
 
         with(data) {
             val navn = person?.navn?.firstOrNull()

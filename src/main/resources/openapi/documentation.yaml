@@ -631,7 +631,7 @@ components:
           description: Indicates if there are more results available beyond the current page.
           type: boolean
         total:
-          description: Total number of results matching the request filters. When the page probe does not find more than pageSize results, this is derived directly from the returned page because all matches are known. That includes both pages with fewer than pageSize items and pages with exactly pageSize items when no additional results exist. When additional results do exist (hasMore = true), it is resolved with an additional count so the value remains exact.
+          description: Total number of results matching the request filters.
           type: integer
           format: int64
       required:

@@ -304,5 +304,5 @@ private fun pdlPerson(
         etternavn = etternavn,
     ),
     nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
-    foedselsdato = Foedselsdato(foedselsdato),
+    dateOfBirth = Foedselsdato(foedselsdato),
 )

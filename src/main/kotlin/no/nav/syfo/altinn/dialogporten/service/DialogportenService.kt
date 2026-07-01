@@ -70,7 +70,7 @@ class DialogportenService(
                 logger.error("Failed to get person info for behov ${behov.id}", ex)
                 null
             }
-            val dialog = behov.toDialog(personInfo?.name, personInfo?.foedselsdato)
+            val dialog = behov.toDialog(personInfo?.name, personInfo?.dateOfBirth)
             dialog.attachments?.firstOrNull()?.let {
                 logger.info("Sending behov ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
             }

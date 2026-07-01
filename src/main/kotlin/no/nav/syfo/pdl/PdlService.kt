@@ -24,16 +24,20 @@ class PdlService(
 
     suspend fun getPersonFor(fnr: String): Person {
         val response = pdlClient.getPerson(fnr)
-        with(response.data) {
-            val navn = response.data?.person?.navn?.firstOrNull()
+        val data = response.data ?: throw PdlRequestException("Unexpected response from upstream service")
+
+        with(data) {
+            val navn = person?.navn?.firstOrNull()
                 ?: throw PdlResourceNotFoundException("Could not find name for person")
-            val fnr = response.data.identer?.identer?.firstOrNull { it.gruppe == GRUPPE_IDENT_FNR }?.ident
+            val fnr = identer?.identer?.firstOrNull { it.gruppe == GRUPPE_IDENT_FNR }?.ident
                 ?: throw PdlResourceNotFoundException("Could not find national identification number for person")
-            val foedselsdato = response.data.person.foedselsdato?.firstOrNull()
+            val foedselsdato = person.foedselsdato?.firstOrNull()
+
             return Person(
                 name = navn,
+                names = person.navn,
                 nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
-                foedselsdato = foedselsdato,
+                dateOfBirth = foedselsdato,
             )
         }
     }
@@ -98,7 +102,7 @@ class PdlService(
                 Person(
                     name = navn,
                     nationalIdentificationNumber = PersonalIdentificationNumber(bolk.ident),
-                    foedselsdato = bolk.person.foedselsdato?.firstOrNull(),
+                    dateOfBirth = bolk.person.foedselsdato?.firstOrNull(),
                 )
             } else {
                 null

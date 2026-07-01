@@ -86,7 +86,7 @@ class PdlLeesahNameUpdateService(
                                 personEntity.fornavn = person.name.fornavn
                                 personEntity.mellomnavn = person.name.mellomnavn
                                 personEntity.etternavn = person.name.etternavn
-                                personEntity.foedselsdato = person.foedselsdato?.foedselsdato
+                                personEntity.foedselsdato = person.dateOfBirth?.foedselsdato
                                 personEntity.updated = updatedAt
                                 personEntity.fnr
                             }

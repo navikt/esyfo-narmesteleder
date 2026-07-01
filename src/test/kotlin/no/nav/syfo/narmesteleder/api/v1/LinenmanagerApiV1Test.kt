@@ -1,11 +1,12 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import DefaultOrganization
-import createMockToken
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import createMockToken
+import defaultMocks
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -29,6 +30,10 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import linemanager
+import linemanagerRevoke
+import manager
+import nlBehovEntity
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -74,14 +79,9 @@ import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
+import prepareGetPersonResponse
 import java.time.Instant
 import java.util.UUID
-import defaultMocks
-import linemanager
-import linemanagerRevoke
-import manager
-import nlBehovEntity
-import prepareGetPersonResponse
 
 class LinenmanagerApiV1Test :
     DescribeSpec({
@@ -905,7 +905,7 @@ class LinenmanagerApiV1Test :
                 }
             }
             describe("GET /requirement") {
-                it("GET /requirement should use provided query parameters to fetch results") {
+                it("GET /requirement should skip count query when all results fit in the current page") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
@@ -941,7 +941,7 @@ class LinenmanagerApiV1Test :
                                 limit = pageSize + 1, // +1 to check if there is more pages
                             )
                         }
-                        coVerify(exactly = 1) {
+                        coVerify(exactly = 0) {
                             fakeRepo.countBehovByParameters(
                                 orgNumber = requirement.orgNumber.value,
                                 createdAfter = any(),
@@ -954,7 +954,7 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
-                it("GET /requirement should return total independently of current page size") {
+                it("GET /requirement should count total when the current page may have more results") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
@@ -996,6 +996,17 @@ class LinenmanagerApiV1Test :
                         body.meta.pageSize shouldBe 1
                         body.meta.hasMore shouldBe true
                         body.meta.total shouldBe 2L
+
+                        coVerify(exactly = 1) {
+                            fakeRepo.countBehovByParameters(
+                                orgNumber = narmesteLederRelasjon.orgNumber.value,
+                                createdAfter = any(),
+                                status = listOf(
+                                    BehovStatus.BEHOV_CREATED,
+                                    BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                                ),
+                            )
+                        }
                     }
                 }
 

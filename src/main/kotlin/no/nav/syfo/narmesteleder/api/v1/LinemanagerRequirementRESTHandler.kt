@@ -100,10 +100,14 @@ class LinemanagerRequirementRESTHandler(
             createdAfter = createdAfter,
             orgNumber = orgNumber
         ).map { it.copy(orgName = orgName) }
-        val total = narmesteLederService.countNlBehov(
-            orgNumber = orgNumber,
-            createdAfter = createdAfter,
-        )
+        val total = if (requirements.size > pageSize) {
+            narmesteLederService.countNlBehov(
+                orgNumber = orgNumber,
+                createdAfter = createdAfter,
+            )
+        } else {
+            null
+        }
         return LinemanagerRequirementCollection.from(
             list = requirements,
             pageSize = pageSize,

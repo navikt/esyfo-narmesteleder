@@ -620,7 +620,7 @@ components:
         - meta
 
     PageInfo:
-      description: Information about the pageSize and number of items in the result set.
+      description: Information about the page size, number of items in the current result set, and the total number of matches.
       type: object
       properties:
         size:
@@ -630,10 +630,15 @@ components:
         hasMore:
           description: Indicates if there are more results available beyond the current page.
           type: boolean
+        total:
+          description: Total number of results matching the request filters.
+          type: integer
+          format: int64
       required:
         - size
         - pageSize
         - hasMore
+        - total
     ErrorType:
       type: string
       description: |

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import createMockToken
 import defaultMocks
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -32,6 +33,7 @@ import io.mockk.spyk
 import linemanager
 import linemanagerRevoke
 import manager
+import nlBehovEntity
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -53,6 +55,7 @@ import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
+import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
@@ -902,7 +905,7 @@ class LinenmanagerApiV1Test :
                 }
             }
             describe("GET /requirement") {
-                it("GET /requirement should use provided query parameters to fetch results") {
+                it("GET /requirement should skip count query when all results fit in the current page") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
@@ -923,6 +926,7 @@ class LinenmanagerApiV1Test :
                         val body = response.body<LinemanagerRequirementCollection>()
                         body.meta.pageSize shouldBe pageSize
                         body.meta.size shouldBe 1
+                        body.meta.total shouldBe 1L
                         body.linemanagerRequirements.first().id shouldBe requirementId
 
                         coVerify(exactly = 1) {
@@ -935,6 +939,72 @@ class LinenmanagerApiV1Test :
                                     BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
                                 ),
                                 limit = pageSize + 1, // +1 to check if there is more pages
+                            )
+                        }
+                        coVerify(exactly = 0) {
+                            fakeRepo.countBehovByParameters(
+                                orgNumber = requirement.orgNumber.value,
+                                createdAfter = any(),
+                                status = listOf(
+                                    BehovStatus.BEHOV_CREATED,
+                                    BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                                ),
+                            )
+                        }
+                    }
+                }
+
+                it("GET /requirement should count total when the current page may have more results") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        val createdAfter = Instant.now().minusSeconds(60)
+                        suspend fun insertRequirement(entity: NarmestelederBehovEntity) {
+                            fakeRepo.insertNlBehov(entity)
+                        }
+                        insertRequirement(
+                            nlBehovEntity().copy(
+                                orgnummer = narmesteLederRelasjon.orgNumber.value,
+                                hovedenhetOrgnummer = narmesteLederRelasjon.orgNumber.value,
+                                behovStatus = BehovStatus.BEHOV_CREATED,
+                                fornavn = "Ansatt",
+                                etternavn = "En",
+                            )
+                        )
+                        insertRequirement(
+                            nlBehovEntity().copy(
+                                orgnummer = narmesteLederRelasjon.orgNumber.value,
+                                hovedenhetOrgnummer = narmesteLederRelasjon.orgNumber.value,
+                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                                fornavn = "Ansatt",
+                                etternavn = "To",
+                            )
+                        )
+
+                        val response = client.get(
+                            "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=${narmesteLederRelasjon.orgNumber.value}&createdAfter=$createdAfter&pageSize=1",
+                        ) {
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        val body = response.body<LinemanagerRequirementCollection>()
+                        body.linemanagerRequirements.shouldHaveSize(1)
+                        body.meta.size shouldBe 1
+                        body.meta.pageSize shouldBe 1
+                        body.meta.hasMore shouldBe true
+                        body.meta.total shouldBe 2L
+
+                        coVerify(exactly = 1) {
+                            fakeRepo.countBehovByParameters(
+                                orgNumber = narmesteLederRelasjon.orgNumber.value,
+                                createdAfter = any(),
+                                status = listOf(
+                                    BehovStatus.BEHOV_CREATED,
+                                    BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                                ),
                             )
                         }
                     }

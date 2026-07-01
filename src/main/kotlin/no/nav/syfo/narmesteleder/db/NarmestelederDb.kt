@@ -28,6 +28,12 @@ interface INarmestelederDb {
         limit: Int
     ): List<NarmestelederBehovEntity>
 
+    suspend fun countBehovByParameters(
+        orgNumber: String,
+        createdAfter: Instant,
+        status: List<BehovStatus>,
+    ): Long
+
     suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
         tomBefore: Instant,
         newStatus: BehovStatus,
@@ -256,6 +262,40 @@ class NarmestelederDb(
                         nlBehov.add(resultSet.toNarmestelederBehovEntity())
                     }
                     nlBehov
+                }
+        }
+    }
+
+    override suspend fun countBehovByParameters(
+        orgNumber: String,
+        createdAfter: Instant,
+        status: List<BehovStatus>,
+    ): Long = withContext(dispatcher) {
+        if (status.isEmpty()) return@withContext 0L
+        return@withContext database.connection.use { connection ->
+            val placeholders = status.joinToString(", ") { "?" }
+            connection
+                .prepareStatement(
+                    """
+                        SELECT COUNT(*) AS total
+                        FROM nl_behov
+                        WHERE
+                            orgnummer = ?
+                        AND
+                            behov_status in ($placeholders)
+                        AND
+                            created > ?
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    var idx = 1
+                    preparedStatement.setString(idx++, orgNumber)
+                    status.forEach { status ->
+                        preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
+                    }
+                    preparedStatement.setTimestamp(idx, Timestamp.from(createdAfter))
+                    preparedStatement.executeQuery().use { resultSet ->
+                        if (resultSet.next()) resultSet.getLong("total") else 0L
+                    }
                 }
         }
     }

@@ -79,6 +79,17 @@ class FakeNarmestelederDb : INarmestelederDb {
             status.contains(it.behovStatus)
     }.take(limit)
 
+    override suspend fun countBehovByParameters(
+        orgNumber: String,
+        createdAfter: Instant,
+        status: List<BehovStatus>,
+    ): Long = store.values.count {
+        it.orgnummer == orgNumber &&
+            it.created.isAfter(createdAfter) &&
+            it.created.isBefore(Instant.now()) &&
+            status.contains(it.behovStatus)
+    }.toLong()
+
     override suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus in status }
 
     fun lastId(): UUID? = order.lastOrNull()

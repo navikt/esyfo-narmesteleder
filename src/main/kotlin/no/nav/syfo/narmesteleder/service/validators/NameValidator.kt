@@ -10,6 +10,8 @@ import no.nav.syfo.pdl.Person
 
 private const val PARALLEL_NAMES_VALIDATION_TOTAL =
     "${METRICS_NS}_parallel_names_validation_total"
+private const val PARALLEL_NAMES_VALIDATION_DESCRIPTION =
+    "Counts parallel names validation attempts and outcomes."
 private const val RESULT_TAG = "result"
 private const val RESULT_ATTEMPTED = "attempted"
 private const val RESULT_SUCCESS = "success"
@@ -21,6 +23,17 @@ private const val LINEMANAGER_NAME_VALIDATION_FAILED_MESSAGE =
     "Last name for linemanager does not correspond with registered value for the given national identification number"
 
 object NameValidator {
+    private val parallelNamesValidationCounters: Map<String, Counter> = listOf(
+        RESULT_ATTEMPTED,
+        RESULT_SUCCESS,
+        RESULT_FAILED,
+    ).associateWith { result ->
+        Counter.builder(PARALLEL_NAMES_VALIDATION_TOTAL)
+            .description(PARALLEL_NAMES_VALIDATION_DESCRIPTION)
+            .tag(RESULT_TAG, result)
+            .register(METRICS_REGISTRY)
+    }
+
     fun validateLinemanagerLastName(
         managerPdlPerson: Person,
         linemanager: Linemanager,
@@ -82,10 +95,6 @@ object NameValidator {
     private fun validateParallelNames(nameToValidate: String, parallelNames: List<String>): Boolean = parallelNames.any { it.equals(nameToValidate, ignoreCase = true) }
 
     private fun countParallelNamesValidation(result: String) {
-        Counter.builder(PARALLEL_NAMES_VALIDATION_TOTAL)
-            .description("Counts parallel names validation attempts and outcomes.")
-            .tag(RESULT_TAG, result)
-            .register(METRICS_REGISTRY)
-            .increment()
+        parallelNamesValidationCounters.getValue(result).increment()
     }
 }

@@ -70,6 +70,50 @@ class NameValidatorTest :
                     NameValidator.validateLinemanagerLastName(manager, linemanager)
                 }
             }
+
+            it("should not throw when linemanager last name matches one of the parallel last names from PDL") {
+                val linemanager = linemanager()
+                val manager = personWithParallelLastNames(
+                    lastNames = listOf(
+                        linemanager.manager.lastName.reversed(),
+                        linemanager.manager.lastName,
+                    ),
+                    fnr = linemanager.manager.nationalIdentificationNumber.value,
+                )
+                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
+                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
+                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateLinemanagerLastName(manager, linemanager)
+                }
+
+                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore
+            }
+
+            it("should throw when linemanager last name matches none of the parallel last names from PDL") {
+                val linemanager = linemanager()
+                val manager = personWithParallelLastNames(
+                    lastNames = listOf(
+                        "${linemanager.manager.lastName} INVALID_A",
+                        "${linemanager.manager.lastName} INVALID_B",
+                    ),
+                    fnr = linemanager.manager.nationalIdentificationNumber.value,
+                )
+                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
+                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
+                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
+
+                shouldThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateLinemanagerLastName(manager, linemanager)
+                }
+
+                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore
+                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore + 1.0
+            }
         }
 
         describe("validateEmployeeLastName with Linemanager") {
@@ -138,8 +182,8 @@ class NameValidatorTest :
                 val linemanager = linemanager()
                 val employee = personWithParallelLastNames(
                     lastNames = listOf(
-                        linemanager.lastName.reversed(),
-                        "${linemanager.lastName}x",
+                        "${linemanager.lastName} INVALID_A",
+                        "${linemanager.lastName} INVALID_B",
                     ),
                     fnr = linemanager.employeeIdentificationNumber.value,
                 )
@@ -183,6 +227,50 @@ class NameValidatorTest :
 
                 exception.message shouldBe "Last name for employee on sick leave does not correspond with registered value for the given national identification number"
                 exception.type shouldBe ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
+            }
+
+            it("should not throw when employee last name matches one of the parallel last names from PDL") {
+                val linemanagerRevoke = linemanagerRevoke()
+                val employee = personWithParallelLastNames(
+                    lastNames = listOf(
+                        linemanagerRevoke.lastName.reversed(),
+                        linemanagerRevoke.lastName,
+                    ),
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
+                )
+                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
+                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
+                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
+                }
+
+                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore
+            }
+
+            it("should throw when employee last name matches none of the parallel last names from PDL") {
+                val linemanagerRevoke = linemanagerRevoke()
+                val employee = personWithParallelLastNames(
+                    lastNames = listOf(
+                        "${linemanagerRevoke.lastName} INVALID_A",
+                        "${linemanagerRevoke.lastName} INVALID_B",
+                    ),
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
+                )
+                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
+                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
+                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
+
+                shouldThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
+                }
+
+                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore
+                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore + 1.0
             }
         }
     })

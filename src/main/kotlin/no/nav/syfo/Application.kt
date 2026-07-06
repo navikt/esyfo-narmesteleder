@@ -11,7 +11,6 @@ import no.nav.syfo.plugins.configureKafkaConsumers
 import no.nav.syfo.plugins.configureLeaderMonitoring
 import no.nav.syfo.plugins.configureLifecycleHooks
 import org.koin.ktor.ext.get
-import java.util.concurrent.TimeUnit
 
 fun main() {
     val server = embeddedServer(
@@ -25,12 +24,6 @@ fun main() {
             callGroupSize = 16
         },
         module = Application::module
-    )
-
-    Runtime.getRuntime().addShutdownHook(
-        Thread {
-            server.stop(10, 10, TimeUnit.SECONDS)
-        }
     )
 
     server.start(true)

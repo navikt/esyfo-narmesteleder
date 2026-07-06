@@ -23,4 +23,4 @@ jobs:
     secrets: inherit
     with:
       app: esyfo-narmesteleder
-      java-version: '21'
+      java-version: "25"

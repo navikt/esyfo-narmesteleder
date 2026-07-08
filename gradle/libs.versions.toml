@@ -22,7 +22,7 @@ coroutines-test = "1.11.0"
 swagger = "3.5.0"
 ktlint = "14.2.0"
 valkey-version = "5.5.0"
-exposed-version = "1.3.0"
+exposed-version = "1.3.1"
 netty = "4.2.15.Final"
 
 [libraries]

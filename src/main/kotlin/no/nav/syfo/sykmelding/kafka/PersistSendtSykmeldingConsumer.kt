@@ -26,7 +26,6 @@ import java.time.Duration
 import java.util.Properties
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class PersistSendtSykmeldingConsumer(
@@ -210,15 +209,8 @@ class PersistSendtSykmeldingConsumer(
             groupId = "esyfo-narmesteleder-persist-sendt-sykmelding-consumer"
         ).apply {
             put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-            put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500")
-            put(
-                ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG,
-                5.minutes
-                    .inWholeMilliseconds
-                    .toString()
-            )
-            put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "1048576")
-            put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "500")
+            put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "100")
+            put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "100")
         }
     }
 }

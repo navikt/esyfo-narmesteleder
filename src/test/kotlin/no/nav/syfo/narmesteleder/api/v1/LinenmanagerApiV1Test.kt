@@ -266,7 +266,7 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
-                it("Maskinporten POST /linemanager should accept invalid phone and email without rejecting payload") {
+                it("Maskinporten POST /linemanager should return 400 for invalid phone and email") {
                     withTestApplication {
                         val linemanagerWithInvalidContacts = narmesteLederRelasjon.copy(
                             manager = narmesteLederRelasjon.manager.copy(
@@ -298,16 +298,14 @@ class LinenmanagerApiV1Test :
                                 bearerAuth(createMockToken(linemanagerWithInvalidContacts.orgNumber.value))
                             }
 
-                        response.status shouldBe HttpStatusCode.Accepted
-                        coVerify(exactly = 1) {
-                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
-                                match {
-                                    it.manager.mobile == "90-00-00-00" &&
-                                        it.manager.email == "gyldig@example.com; invalid @example.com"
-                                },
-                                any(),
-                                NlResponseSource.LPS,
-                            )
+                        val apiError = response.body<ApiError>()
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        apiError.type shouldBe ErrorType.INVALID_FORMAT
+                        apiError.message.contains("90-00-00-00") shouldBe false
+                        apiError.message.contains("invalid @example.com") shouldBe false
+                        apiError.message.contains("gyldig@example.com") shouldBe false
+                        coVerify(exactly = 0) {
+                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(any(), any(), any())
                         }
                     }
                 }
@@ -840,6 +838,40 @@ class LinenmanagerApiV1Test :
                                 any(),
                                 any(),
                             )
+                        }
+                    }
+                }
+
+                it("PUT /requirement/{id} should return 400 for invalid phone and email") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        val requirementId = seedLinemanagerRequirement()
+                        val invalidContactManager = manager().copy(
+                            nationalIdentificationNumber = PersonalIdentificationNumber(
+                                narmesteLederRelasjon.manager.nationalIdentificationNumber.value.reversed(),
+                            ),
+                            mobile = "90-00-00-00",
+                            email = "gyldig@example.com; invalid @example.com",
+                        )
+
+                        val response =
+                            client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                                contentType(ContentType.Application.Json)
+                                setBody(invalidContactManager)
+                                bearerAuth(createMockToken(orgnummer))
+                            }
+
+                        val apiError = response.body<ApiError>()
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        apiError.type shouldBe ErrorType.INVALID_FORMAT
+                        apiError.message.contains("90-00-00-00") shouldBe false
+                        apiError.message.contains("invalid @example.com") shouldBe false
+                        apiError.message.contains("gyldig@example.com") shouldBe false
+                        coVerify(exactly = 0) {
+                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(any(), any(), any())
                         }
                     }
                 }

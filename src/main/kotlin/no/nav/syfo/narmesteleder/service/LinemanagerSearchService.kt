@@ -1,7 +1,6 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.application.auth.Principal
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.api.v1.getPageSize
 import no.nav.syfo.narmesteleder.api.v1.toLinemanagerSearchCursor
 import no.nav.syfo.narmesteleder.api.v1.toOpaqueCursor
@@ -38,8 +37,8 @@ class LinemanagerSearchService(
     }
 
     private fun validateRequest(request: LinemanagerSearchRequest) {
-        if (request.text != null) {
-            throw ApiErrorException.BadRequestException("Text search is not supported for this endpoint")
-        }
+//        if (request.text != null) {
+//            throw ApiErrorException.BadRequestException("Text search is not supported for this endpoint")
+//        }
     }
 }

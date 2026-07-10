@@ -111,7 +111,6 @@ class ShadowActiveSykmeldingServiceTest :
 
             exception shouldBe clientException
             coVerify(exactly = 0) { repository.findActiveSykmelding(any(), any()) }
-            warningMessages() shouldHaveSize 1
             warningMessages().single() shouldBe
                 "Dinesykmeldte client failed, rethrowing client exception. Exception type=RuntimeException"
             warningArguments() shouldBe listOf("RuntimeException")

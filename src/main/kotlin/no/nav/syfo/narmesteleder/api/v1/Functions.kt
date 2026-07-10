@@ -14,10 +14,13 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
+import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import java.time.Instant
 import java.time.format.DateTimeParseException
+import java.util.Base64
 import java.util.UUID
+import kotlin.text.Charsets.UTF_8
 
 suspend inline fun <reified T : Any> RoutingCall.tryReceive() = runCatching { receive<T>() }.getOrElse {
     when {
@@ -69,6 +72,35 @@ fun RoutingCall.getPageSize(): Int {
     }
 }
 
+fun Int?.getPageSize(): Int = when (this) {
+    null -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
+    in 1..LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE -> this
+    else -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
+}
+
+fun String?.toLinemanagerSearchCursor(): LinemanagerSearchCursor? = this?.let { cursor ->
+    runCatching {
+        val decodedCursor = String(Base64.getUrlDecoder().decode(cursor), UTF_8)
+        require(decodedCursor.startsWith(LINEMANAGER_SEARCH_CURSOR_PREFIX)) {
+            "Unsupported cursor format"
+        }
+        val id = decodedCursor.removePrefix(LINEMANAGER_SEARCH_CURSOR_PREFIX).toInt()
+        require(id > 0) {
+            "Cursor id must be positive"
+        }
+        LinemanagerSearchCursor(id)
+    }.getOrElse {
+        throw ApiErrorException.BadRequestException(
+            errorMessage = "Invalid pageToken",
+            type = ErrorType.INVALID_FORMAT,
+        )
+    }
+}
+
+fun LinemanagerSearchCursor.toOpaqueCursor(): String = Base64.getUrlEncoder()
+    .withoutPadding()
+    .encodeToString("$LINEMANAGER_SEARCH_CURSOR_PREFIX$id".toByteArray(UTF_8))
+
 fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
     JwtIssuer.MASKINPORTEN -> {
         authentication.principal<SystemPrincipal>() ?: throw UnauthorizedException()
@@ -80,3 +112,5 @@ fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
 
     else -> throw UnauthorizedException()
 }
+
+private const val LINEMANAGER_SEARCH_CURSOR_PREFIX = "v1:"

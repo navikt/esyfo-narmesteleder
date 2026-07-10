@@ -1,0 +1,73 @@
+meta {
+  name: post search linemanager
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrlEkstern}}/api/v1/linemanager/search
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "orgNumber": "682834055",
+    "pageSize": 2,
+    "managerNationalIdentificationNumber": "21237438871"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const http = require("axios");
+  
+  if (bru.getEnvName() === "nl_vars_local") {
+    if (!bru.hasEnvVar("token")) {
+      throw new Error("Kjør request 'mock maskinporten token' først for å teste lokalt");
+    }
+  } else {
+    const systembrukerOrgnr = bru.getEnvVar("systemKundeOrgnr");
+    const tokenrespons = await http.get("https://esyfo-token.intern.dev.nav.no/systembruker/" + systembrukerOrgnr + "?scope=nav%3Asyfo%2Fnarmesteleder%2Flps");
+    console.log(tokenrespons.data);
+    req.setHeader("Authorization", "Bearer "+ tokenrespons.data);
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  
+  if (body != null) {
+    bru.setVar("currentId",body.id);
+  } 
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  In order to create the :id for behov in this GET and the following PUT reques:
+  1. Publish the following content in the kafka topic: ```teamsykmelding.syfo-narmesteleder-leesah```
+      ```json
+      {
+        "narmesteLederId": "0199b8f1-0cfe-7787-bab8-2fb1cf1b4767",
+        "fnr": "15436803416",
+        "orgnummer": "215649202",
+        "narmesteLederFnr": "215649202",
+        "narmesteLederTelefonnummer": "12346532",
+        "narmesteLederEpost": "e@post.no",
+        "arbeidsgiverForskutterer": "false",
+        "aktivFom": "2025-10-06",
+        "aktivTom": "2025-10-06",
+        "timestamp": "2025-10-06T11:50:52.433859Z",
+        "status": "DEAKTIVERT_ARBEIDSTAKER"
+      }
+      ```
+  1. Inspect the logs from the running ```esyfo-narmesteleder``` service and copy the UUID from the log line ```Inserted nærmeste leder-behov with id:```
+  1. Create a file ```.env``` in the root folder of this collection, based on the existing ```.env.default```, and set the id in the proverty BEHOV_ID.
+}

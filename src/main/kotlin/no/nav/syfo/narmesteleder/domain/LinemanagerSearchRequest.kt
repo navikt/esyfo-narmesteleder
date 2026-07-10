@@ -3,7 +3,7 @@ package no.nav.syfo.narmesteleder.domain
 data class LinemanagerSearchRequest(
     val orgNumber: OrganizationNumber,
     val managerNationalIdentificationNumber: PersonalIdentificationNumber? = null,
-    val text: String? = null,
+//    val text: String? = null,
     val pageSize: Int? = null,
     val pageToken: String? = null,
 )

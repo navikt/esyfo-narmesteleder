@@ -10,7 +10,6 @@ import defaultMocks
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
@@ -1247,31 +1246,6 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
-                it("returns 400 when unsupported text search is requested") {
-                    withTestApplication {
-                        texasHttpClientMock.defaultMocks(
-                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
-                            scope = MASKINPORTEN_NL_SCOPE,
-                        )
-
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
-                            contentType(ContentType.Application.Json)
-                            setBody(
-                                LinemanagerSearchRequest(
-                                    orgNumber = narmesteLederRelasjon.orgNumber,
-                                    text = "Kari Nordmann",
-                                ),
-                            )
-                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
-                        }
-
-                        response.status shouldBe HttpStatusCode.BadRequest
-                        val body = response.body<ApiError>()
-                        body.type shouldBe ErrorType.BAD_REQUEST
-                        body.message shouldBe "Text search is not supported for this endpoint"
-                    }
-                }
-
                 it("returns 400 for invalid pageToken in request body") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
@@ -1296,33 +1270,6 @@ class LinenmanagerApiV1Test :
                         val body = response.body<ApiError>()
                         body.type shouldBe ErrorType.INVALID_FORMAT
                         body.message shouldBe "Invalid pageToken"
-                        coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
-                    }
-                }
-
-                it("returns access error before unsupported text search for unauthorized principals") {
-                    withTestApplication {
-                        texasHttpClientMock.defaultMocks(
-                            consumer = DefaultOrganization.copy(ID = "0192:000000000"),
-                            scope = MASKINPORTEN_NL_SCOPE,
-                        )
-                        coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
-
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
-                            contentType(ContentType.Application.Json)
-                            setBody(
-                                LinemanagerSearchRequest(
-                                    orgNumber = narmesteLederRelasjon.orgNumber,
-                                    text = "Kari Nordmann",
-                                ),
-                            )
-                            bearerAuth(createMockToken("000000000"))
-                        }
-
-                        response.status shouldBe HttpStatusCode.Forbidden
-                        val body = response.body<ApiError>()
-                        body.type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
-                        body.message shouldNotBe "Text search is not supported for this endpoint"
                         coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
                     }
                 }

@@ -14,8 +14,10 @@ import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.LinemanagerSearchRequest
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
@@ -29,6 +31,7 @@ fun Route.registerLinemanagerApiV1(
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler,
+    linemanagerSearchService: LinemanagerSearchService,
 ) {
     route(LINEMANAGER_API_PATH) {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -53,6 +56,14 @@ fun Route.registerLinemanagerApiV1(
                 is UserPrincipal -> COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.increment()
             }
             call.respond(HttpStatusCode.Accepted)
+        }
+
+        post("/search") {
+            val collection = linemanagerSearchService.search(
+                request = call.tryReceive<LinemanagerSearchRequest>(),
+                principal = call.getMyPrincipal(),
+            )
+            call.respond(HttpStatusCode.OK, collection)
         }
     }
 

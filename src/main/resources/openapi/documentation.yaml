@@ -175,6 +175,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/linemanager/search:
+    post:
+      summary: Search active linemanager relations for an organization
+      description: |
+        Returns a paginated list of active linemanager relations for the requested organization number.
+
+        The request body is used so that PII-based filters do not end up in URLs, query parameters or proxy logs.
+
+        Constraints:
+        - The caller must have access to the requested organization number.
+        - Only active relations are returned. A relation is considered active when `aktiv_tom` is null and `aktiv_fom` is not in the future.
+        - `managerNationalIdentificationNumber` can be used to filter on a specific manager.
+        - `text` is reserved for future use and currently returns `400 Bad Request` if provided.
+      tags: [ linemanager ]
+      security:
+        - maskinporten_jwt: [ ]
+        - tokenx_jwt: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinemanagerSearchRequest'
+      responses:
+        '200':
+          description: Search result with active linemanager relations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinemanagerReadCollection'
+        '400':
+          description: |
+            Bad Request: Possible reasons for bad request include:
+            * `INVALID_FORMAT`: The request contained invalid json data, invalid organization number, invalid manager national identification number or invalid page token.
+            * `BAD_REQUEST`: The request contained unsupported filter combinations, such as `text`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: |
+            Unauthorized:
+            Possible reasons for unauthorized response include:
+            * `AUTHORIZATION_ERROR`: Invalid token issuer, invalid token, missing scope, missing or invalid system user id or organization number in the token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: |
+            Forbidden:
+            Possible reasons for forbidden response include:
+            * `MISSING_ORG_ACCESS`: The entity making the request does not have access to the specified organization.
+            * `MISSING_ALITINN_RESOURCE_ACCESS`: The entity making the request does not have access to the required Altinn resource. EG: nav_syfo_oppgi-narmesteleder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: |
+            Internal Server Error:
+            Possible reasons for internal server error include:
+            * `INTERNAL_SERVER_ERROR`: An unexpected error occurred on the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/linemanager/requirement:
     get:
       summary: Get collection of linemanager requirement
@@ -511,6 +578,166 @@ components:
         - lastName
         - mobile
         - email
+      additionalProperties: false
+    Name:
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: First name.
+          example: "Ola"
+        middleName:
+          type: string
+          nullable: true
+          description: Middle name.
+          example: "Mellomnavn"
+        lastName:
+          type: string
+          description: Last name.
+          example: "Nordmann"
+      required:
+        - firstName
+        - lastName
+      additionalProperties: false
+    LinemanagerSearchRequest:
+      type: object
+      description: Search payload for active linemanager relations.
+      properties:
+        orgNumber:
+          type: string
+          description: Organization number used both as search criterion and access control target.
+          example: "999999999"
+          pattern: '^\d{9}$'
+        managerNationalIdentificationNumber:
+          type: string
+          nullable: true
+          description: Optional filter for the manager national identification number.
+          example: "10987654321"
+          pattern: '^\d{11}$'
+        text:
+          type: string
+          nullable: true
+          description: Reserved for future text search support. Currently rejected with `400 Bad Request` if provided.
+          example: "Kari Nordmann"
+        pageSize:
+          type: integer
+          nullable: true
+          description: Number of results per page. Values outside 1-50 are normalized to 50.
+          default: 50
+          minimum: 1
+          maximum: 50
+        pageToken:
+          type: string
+          nullable: true
+          description: Opaque page token returned from a previous search response. Send it back unchanged to request the next page.
+          example: "djE6MQ"
+      required:
+        - orgNumber
+      additionalProperties: false
+    LinemanagerRead:
+      type: object
+      description: Active linemanager relation for one employee.
+      properties:
+        orgNumber:
+          type: string
+          description: Organization number where the employee works.
+          example: "999999999"
+          pattern: '^\d{9}$'
+        activeFrom:
+          type: string
+          format: date-time
+          description: Timestamp from when the relation is active.
+          example: "2026-01-01T00:00:00Z"
+        employee:
+          $ref: '#/components/schemas/LinemanagerPersonRead'
+        manager:
+          $ref: '#/components/schemas/LinemanagerManagerRead'
+      required:
+        - orgNumber
+        - activeFrom
+        - employee
+        - manager
+      additionalProperties: false
+    LinemanagerPersonRead:
+      type: object
+      description: Employee details for an active linemanager relation.
+      properties:
+        nationalIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the employee.
+          example: "12345678910"
+          pattern: '^\d{11}$'
+        name:
+          allOf:
+            - $ref: '#/components/schemas/Name'
+          nullable: true
+          description: Name from the person register, if available.
+      required:
+        - nationalIdentificationNumber
+      additionalProperties: false
+    LinemanagerManagerRead:
+      type: object
+      description: Manager details for an active linemanager relation.
+      properties:
+        nationalIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the manager.
+          example: "10987654321"
+          pattern: '^\d{11}$'
+        name:
+          allOf:
+            - $ref: '#/components/schemas/Name'
+          nullable: true
+          description: Name from the person register, if available.
+        email:
+          type: string
+          description: Email address stored for the manager.
+          example: "kari@example.com"
+        mobile:
+          type: string
+          description: Mobile phone number stored for the manager.
+          example: "99999999"
+      required:
+        - nationalIdentificationNumber
+        - email
+        - mobile
+      additionalProperties: false
+    LinemanagerReadCollection:
+      type: object
+      properties:
+        linemanagers:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinemanagerRead'
+        meta:
+          $ref: '#/components/schemas/LinemanagerSearchPageInfo'
+      required:
+        - linemanagers
+        - meta
+      additionalProperties: false
+    LinemanagerSearchPageInfo:
+      type: object
+      description: Page metadata for linemanager search responses.
+      properties:
+        size:
+          type: integer
+          description: Number of linemanager relations returned in the current page.
+        pageSize:
+          type: integer
+          description: Requested page size after normalization.
+        hasMore:
+          type: boolean
+          description: Indicates whether more results are available after the current page.
+        nextPageToken:
+          type: string
+          nullable: true
+          description: Opaque page token to request the next page. Send it back unchanged as `pageToken`, or null when there are no more results.
+          example: "djE6MQ"
+      required:
+        - size
+        - pageSize
+        - hasMore
+        - nextPageToken
       additionalProperties: false
     LinemanagerRequirementRead:
       type: object

@@ -10,6 +10,7 @@ import defaultMocks
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
@@ -60,15 +61,25 @@ import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
+import no.nav.syfo.narmesteleder.domain.LinemanagerManagerRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerPersonRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerReadCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
+import no.nav.syfo.narmesteleder.domain.LinemanagerSearchRequest
+import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
+import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.BehovSource
+import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -122,14 +133,17 @@ class LinenmanagerApiV1Test :
         val tokenXIssuer = "https://tokenx.nav.no"
 
         lateinit var fakeRepo: FakeNarmestelederDb
+        lateinit var linemanagerSearchRepository: ILinemanagerSearchRepository
         lateinit var narmesteLederService: NarmestelederService
         lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
+        lateinit var linemanagerSearchService: LinemanagerSearchService
 
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
             fakeAltinnTilgangerClient.accessPolicy.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
+            linemanagerSearchRepository = mockk()
             coEvery { pdlCacheMock.getPerson(any()) } returns null
             narmesteLederService =
                 NarmestelederService(
@@ -145,6 +159,11 @@ class LinenmanagerApiV1Test :
                     narmesteLederService = narmesteLederService,
                     validationService = validationServiceSpy,
                     narmestelederKafkaService = narmestelederKafkaServiceSpy,
+                )
+            linemanagerSearchService =
+                LinemanagerSearchService(
+                    validationService = validationServiceSpy,
+                    linemanagerSearchRepository = linemanagerSearchRepository,
                 )
             coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns true
             fakeRepo.clear()
@@ -172,6 +191,7 @@ class LinenmanagerApiV1Test :
                             texasHttpClientMock,
                             validationServiceSpy,
                             nlBehovHandler,
+                            linemanagerSearchService,
                             altinnAccessServiceSpy,
                         )
                     }
@@ -179,6 +199,37 @@ class LinenmanagerApiV1Test :
                 fn(this)
             }
         }
+
+        fun linemanagerSearchResult(
+            cursorId: Int,
+            orgNumber: OrganizationNumber = narmesteLederRelasjon.orgNumber,
+            employeeFnr: String = "12345678910",
+            managerFnr: String = "10987654321",
+        ) = LinemanagerSearchResult(
+            cursor = LinemanagerSearchCursor(cursorId),
+            linemanager = LinemanagerRead(
+                orgNumber = orgNumber,
+                activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
+                employee = LinemanagerPersonRead(
+                    nationalIdentificationNumber = PersonalIdentificationNumber(employeeFnr),
+                    name = Name(
+                        firstName = "Ola",
+                        middleName = null,
+                        lastName = "Nordmann",
+                    ),
+                ),
+                manager = LinemanagerManagerRead(
+                    nationalIdentificationNumber = PersonalIdentificationNumber(managerFnr),
+                    name = Name(
+                        firstName = "Kari",
+                        middleName = null,
+                        lastName = "Nordmann",
+                    ),
+                    email = "kari@example.com",
+                    mobile = "99999999",
+                ),
+            ),
+        )
         describe("POST /linemanager") {
             context("Maskinporten token") {
                 it("Maskinporten POST /linemanager should return 202 Accepted for valid payload") {
@@ -1045,6 +1096,281 @@ class LinenmanagerApiV1Test :
 
                         response.status shouldBe HttpStatusCode.BadRequest
                         response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
+                    }
+                }
+            }
+            describe("POST /linemanager/search") {
+                it("returns paginated linemanager results for authorized Maskinporten principals") {
+                    withTestApplication {
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(
+                            linemanagerSearchResult(cursorId = 1),
+                            linemanagerSearchResult(cursorId = 2, employeeFnr = "12345678911"),
+                        )
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    pageSize = 1,
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        val body = response.body<LinemanagerReadCollection>()
+                        body.linemanagers.shouldHaveSize(1)
+                        body.linemanagers.single().manager.email shouldBe "kari@example.com"
+                        body.meta.size shouldBe 1
+                        body.meta.pageSize shouldBe 1
+                        body.meta.hasMore shouldBe true
+                        body.meta.nextPageToken shouldBe "djE6MQ"
+                    }
+                }
+
+                it("uses pageToken from the request when querying the next page") {
+                    withTestApplication {
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(linemanagerSearchResult(cursorId = 2))
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    pageToken = "djE6MQ",
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        coVerify(exactly = 1) {
+                            linemanagerSearchRepository.search(
+                                match {
+                                    it.orgNumber == narmesteLederRelasjon.orgNumber &&
+                                        it.pageSize == LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE &&
+                                        it.cursor == LinemanagerSearchCursor(id = 1)
+                                },
+                            )
+                        }
+                    }
+                }
+
+                it("returns linemanager results for authorized TokenX principals") {
+                    withTestApplication {
+                        val callerPid = "11223344556"
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(linemanagerSearchResult(cursorId = 1))
+                        texasHttpClientMock.defaultMocks(
+                            acr = "Level4",
+                            pid = callerPid,
+                        )
+                        fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber.value)
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                ),
+                            )
+                            bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        val body = response.body<LinemanagerReadCollection>()
+                        body.linemanagers.single().manager.nationalIdentificationNumber shouldBe PersonalIdentificationNumber("10987654321")
+                    }
+                }
+
+                it("returns 400 for invalid orgNumber in request body") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                """
+                                {
+                                  "orgNumber": "12345678",
+                                  "pageSize": 1
+                                }
+                                """.trimIndent(),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
+                    }
+                }
+
+                it("returns 400 for invalid managerNationalIdentificationNumber in request body") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                """
+                                {
+                                  "orgNumber": "${narmesteLederRelasjon.orgNumber.value}",
+                                  "managerNationalIdentificationNumber": "1098765432"
+                                }
+                                """.trimIndent(),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
+                    }
+                }
+
+                it("returns 400 when unsupported text search is requested") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    text = "Kari Nordmann",
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        val body = response.body<ApiError>()
+                        body.type shouldBe ErrorType.BAD_REQUEST
+                        body.message shouldBe "Text search is not supported for this endpoint"
+                    }
+                }
+
+                it("returns 400 for invalid pageToken in request body") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                """
+                                {
+                                  "orgNumber": "${narmesteLederRelasjon.orgNumber.value}",
+                                  "pageToken": "not-a-valid-token"
+                                }
+                                """.trimIndent(),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        val body = response.body<ApiError>()
+                        body.type shouldBe ErrorType.INVALID_FORMAT
+                        body.message shouldBe "Invalid pageToken"
+                        coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
+                    }
+                }
+
+                it("returns access error before unsupported text search for unauthorized principals") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            consumer = DefaultOrganization.copy(ID = "0192:000000000"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    text = "Kari Nordmann",
+                                ),
+                            )
+                            bearerAuth(createMockToken("000000000"))
+                        }
+
+                        response.status shouldBe HttpStatusCode.Forbidden
+                        val body = response.body<ApiError>()
+                        body.type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
+                        body.message shouldNotBe "Text search is not supported for this endpoint"
+                        coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
+                    }
+                }
+
+                it("does not query repository when Maskinporten principal lacks org access") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            consumer = DefaultOrganization.copy(ID = "0192:000000000"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                ),
+                            )
+                            bearerAuth(createMockToken("000000000"))
+                        }
+
+                        response.status shouldBe HttpStatusCode.Forbidden
+                        response.body<ApiError>().type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
+                        coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
+                    }
+                }
+
+                it("does not query repository when TokenX principal lacks org access") {
+                    withTestApplication {
+                        val callerPid = "11223344556"
+                        texasHttpClientMock.defaultMocks(
+                            acr = "Level4",
+                            pid = callerPid,
+                        )
+
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                ),
+                            )
+                            bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
+                        }
+
+                        response.status shouldBe HttpStatusCode.Forbidden
+                        coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
                     }
                 }
             }

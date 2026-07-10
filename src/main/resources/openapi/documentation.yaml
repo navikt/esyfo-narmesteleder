@@ -187,7 +187,7 @@ paths:
         - The caller must have access to the requested organization number.
         - Only active relations are returned. A relation is considered active when `aktiv_tom` is null and `aktiv_fom` is not in the future.
         - `managerNationalIdentificationNumber` can be used to filter on a specific manager.
-        - `text` is reserved for future use and currently returns `400 Bad Request` if provided.
+#        - `text` is reserved for future use and currently returns `400 Bad Request` if provided.
       tags: [ linemanager ]
       security:
         - maskinporten_jwt: [ ]
@@ -614,11 +614,11 @@ components:
           description: Optional filter for the manager national identification number.
           example: "10987654321"
           pattern: '^\d{11}$'
-        text:
-          type: string
-          nullable: true
-          description: Reserved for future text search support. Currently rejected with `400 Bad Request` if provided.
-          example: "Kari Nordmann"
+#        text:
+#          type: string
+#          nullable: true
+#          description: Reserved for future text search support. Currently rejected with `400 Bad Request` if provided.
+#          example: "Kari Nordmann"
         pageSize:
           type: integer
           nullable: true

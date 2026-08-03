@@ -96,6 +96,10 @@ components:
           description: Optional filter for the employee national identification number.
           example: "12345678910"
           pattern: '^\d{11}$'
+        hasActiveSickLeave:
+          type: boolean
+          nullable: true
+          description: Optional filter for whether the employee has an active sick leave.
         pageSize:
           type: integer
           nullable: true

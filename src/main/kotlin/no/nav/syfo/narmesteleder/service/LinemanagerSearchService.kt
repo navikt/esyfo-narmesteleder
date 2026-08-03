@@ -25,6 +25,7 @@ class LinemanagerSearchService(
             orgNumber = request.orgNumber,
             managerNationalIdentificationNumber = request.managerNationalIdentificationNumber,
             employeeNationalIdentificationNumber = request.employeeNationalIdentificationNumber,
+            hasActiveSickLeave = request.hasActiveSickLeave,
             pageSize = pageSize,
             cursor = request.pageToken.toLinemanagerSearchCursor(),
         )

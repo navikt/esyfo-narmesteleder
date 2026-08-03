@@ -11,6 +11,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.Op
@@ -20,12 +21,15 @@ import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.time.Clock
+import java.time.LocalDate
 import java.time.OffsetDateTime
 
 interface ILinemanagerSearchRepository {
@@ -58,7 +62,12 @@ class LinemanagerSearchRepository(
                         otherColumn = managerPerson[PersonTable.fnr],
                     )
 
-                joinedTables
+                val tablesWithSykmeldingFilter = joinedTables.withActiveSykmeldingFilter(
+                    hasActiveSickLeave = query.hasActiveSickLeave,
+                    today = now.toLocalDate(),
+                )
+
+                tablesWithSykmeldingFilter
                     .selectAll()
                     .where { query.toWhereClause(now) }
                     .orderBy(NarmestelederTable.id to SortOrder.ASC)
@@ -94,6 +103,36 @@ class LinemanagerSearchRepository(
         }
     }
 
+    private fun org.jetbrains.exposed.v1.core.ColumnSet.withActiveSykmeldingFilter(
+        hasActiveSickLeave: Boolean?,
+        today: LocalDate,
+    ): org.jetbrains.exposed.v1.core.ColumnSet {
+        val activeSykmeldingCondition =
+            (SendtSykmeldingTable.orgnummer eq NarmestelederTable.orgnummer) and
+                (SendtSykmeldingTable.tom greaterEq today) and
+                (SendtSykmeldingTable.revokedDate.isNull() or (SendtSykmeldingTable.revokedDate greaterEq today))
+
+        return when (hasActiveSickLeave) {
+            null -> this
+            true ->
+                join(
+                    otherTable = SendtSykmeldingTable,
+                    joinType = JoinType.INNER,
+                    onColumn = NarmestelederTable.sykmeldtFnr,
+                    otherColumn = SendtSykmeldingTable.fnr,
+                    additionalConstraint = { activeSykmeldingCondition },
+                )
+            false ->
+                join(
+                    otherTable = SendtSykmeldingTable,
+                    joinType = JoinType.LEFT,
+                    onColumn = NarmestelederTable.sykmeldtFnr,
+                    otherColumn = SendtSykmeldingTable.fnr,
+                    additionalConstraint = { activeSykmeldingCondition },
+                )
+        }
+    }
+
     private fun LinemanagerSearchQuery.toWhereClause(now: OffsetDateTime): Op<Boolean> {
         val filters = mutableListOf<Op<Boolean>>(
             NarmestelederTable.orgnummer eq orgNumber.value,
@@ -106,6 +145,9 @@ class LinemanagerSearchRepository(
         }
         employeeNationalIdentificationNumber?.let {
             filters.add(NarmestelederTable.sykmeldtFnr eq it.value)
+        }
+        if (hasActiveSickLeave == false) {
+            filters.add(SendtSykmeldingTable.id.isNull())
         }
         cursor?.let {
             filters.add(NarmestelederTable.id greater it.id)

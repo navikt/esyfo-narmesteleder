@@ -10,6 +10,8 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerSearchQuery
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
 import java.time.Instant
@@ -29,6 +31,7 @@ class LinemanagerSearchRepositoryTest :
         beforeTest {
             TestDB.clearNarmestelederData()
             TestDB.clearPersonData()
+            TestDB.clearSendtSykmeldingData()
         }
 
         fun insertPerson(
@@ -73,6 +76,25 @@ class LinemanagerSearchRepositoryTest :
                 this.aktivFom = aktivFom
                 this.aktivTom = aktivTom
             }.id.value
+        }
+
+        fun insertSendtSykmelding(
+            fnr: String,
+            orgnummer: String = orgNumber.value,
+            tom: LocalDate,
+            revokedDate: LocalDate? = null,
+        ) {
+            transaction(TestDB.exposedDatabase) {
+                SendtSykmeldingTable.insert {
+                    it[sykmeldingId] = UUID.randomUUID()
+                    it[SendtSykmeldingTable.orgnummer] = orgnummer
+                    it[syketilfelleStartDato] = tom.minusDays(10)
+                    it[SendtSykmeldingTable.fnr] = fnr
+                    it[fom] = tom.minusDays(20)
+                    it[SendtSykmeldingTable.tom] = tom
+                    it[SendtSykmeldingTable.revokedDate] = revokedDate
+                }
+            }
         }
 
         describe("search") {
@@ -192,6 +214,51 @@ class LinemanagerSearchRepositoryTest :
                 )
 
                 results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe listOf(expectedEmployeeFnr)
+            }
+
+            it("filters on whether an employee has an active sick leave") {
+                val activeEmployeeFnr = "12345678910"
+                val expiredEmployeeFnr = "12345678911"
+                val revokedEmployeeFnr = "12345678912"
+                val noSickLeaveEmployeeFnr = "12345678913"
+                listOf(activeEmployeeFnr, expiredEmployeeFnr, revokedEmployeeFnr, noSickLeaveEmployeeFnr).forEach {
+                    insertRelation(employeeFnr = it, managerFnr = "10987654321")
+                }
+                val today = now.toLocalDate()
+                insertSendtSykmelding(fnr = activeEmployeeFnr, tom = today)
+                insertSendtSykmelding(fnr = expiredEmployeeFnr, tom = today.minusDays(1))
+                insertSendtSykmelding(
+                    fnr = revokedEmployeeFnr,
+                    tom = today.plusDays(1),
+                    revokedDate = today.minusDays(1),
+                )
+
+                val activeResults = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        hasActiveSickLeave = true,
+                        pageSize = 50,
+                    ),
+                )
+                val inactiveResults = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        hasActiveSickLeave = false,
+                        pageSize = 50,
+                    ),
+                )
+                val unfilteredResults = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        pageSize = 50,
+                    ),
+                )
+
+                activeResults.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe listOf(activeEmployeeFnr)
+                inactiveResults.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe
+                    listOf(expiredEmployeeFnr, revokedEmployeeFnr, noSickLeaveEmployeeFnr)
+                unfilteredResults.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe
+                    listOf(activeEmployeeFnr, expiredEmployeeFnr, revokedEmployeeFnr, noSickLeaveEmployeeFnr)
             }
 
             it("supports deterministic cursor pagination sorted by relation id") {

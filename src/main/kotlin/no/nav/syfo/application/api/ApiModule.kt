@@ -17,6 +17,7 @@ import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.registerApiV1
+import no.nav.syfo.registerInternalApiV1
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
 import org.koin.ktor.ext.inject
@@ -44,12 +45,14 @@ fun Application.configureRouting() {
             texasHttpClient,
             validationService,
             linemanagerRequirementRESTHandler,
-            linemanagerSearchService,
             altinnTilgangerService
         )
+        registerInternalApiV1(texasHttpClient, linemanagerSearchService)
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
+        staticResources("/internal/openapi", "internal-openapi")
+        swaggerUI(path = "internal/swagger", swaggerFile = "internal-openapi/linemanager-search.yaml")
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
             registerDialogportenTokenApi(texasHttpClient, altinnTokenProvider)

@@ -35,6 +35,7 @@ import linemanagerRevoke
 import manager
 import nlBehovEntity
 import no.nav.syfo.API_V1_PATH
+import no.nav.syfo.INTERNAL_API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
@@ -87,6 +88,7 @@ import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
+import no.nav.syfo.registerInternalApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import prepareGetPersonResponse
@@ -190,9 +192,9 @@ class LinenmanagerApiV1Test :
                             texasHttpClientMock,
                             validationServiceSpy,
                             nlBehovHandler,
-                            linemanagerSearchService,
                             altinnAccessServiceSpy,
                         )
+                        registerInternalApiV1(texasHttpClientMock, linemanagerSearchService)
                     }
                 }
                 fn(this)
@@ -1130,7 +1132,23 @@ class LinenmanagerApiV1Test :
                     }
                 }
             }
-            describe("POST /linemanager/search") {
+            describe("POST /internal/api/v1/linemanager/search") {
+                it("is not available through the external API") {
+                    withTestApplication {
+                        val response = client.post("$API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.NotFound
+                    }
+                }
+
                 it("returns paginated linemanager results for authorized Maskinporten principals") {
                     withTestApplication {
                         coEvery {
@@ -1144,7 +1162,7 @@ class LinenmanagerApiV1Test :
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
 
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(
                                 LinemanagerSearchRequest(
@@ -1176,7 +1194,7 @@ class LinenmanagerApiV1Test :
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
 
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(
                                 LinemanagerSearchRequest(
@@ -1212,7 +1230,7 @@ class LinenmanagerApiV1Test :
                         )
                         fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber.value)
 
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(
                                 LinemanagerSearchRequest(
@@ -1235,7 +1253,7 @@ class LinenmanagerApiV1Test :
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
 
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(
                                 """
@@ -1260,7 +1278,7 @@ class LinenmanagerApiV1Test :
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
 
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(
                                 """
@@ -1285,7 +1303,7 @@ class LinenmanagerApiV1Test :
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
 
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(
                                 """
@@ -1314,7 +1332,7 @@ class LinenmanagerApiV1Test :
                         )
                         coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
 
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(
                                 LinemanagerSearchRequest(
@@ -1338,7 +1356,7 @@ class LinenmanagerApiV1Test :
                             pid = callerPid,
                         )
 
-                        val response = client.post("$API_V1_PATH$LINEMANAGER_API_PATH/search") {
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                             contentType(ContentType.Application.Json)
                             setBody(
                                 LinemanagerSearchRequest(

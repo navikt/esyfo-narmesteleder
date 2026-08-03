@@ -21,6 +21,7 @@
 
 ## OpenAPI
 The OpenAPI specification for the API is available at https://narmesteleder-api.nav.no/swagger
+There is a second OpenAPI specification for internal only api at https://narmesteleder-api.intern.nav.no/internal/swagger
 
 ## Overview
 This is the repository for narmesteleder-api, a service that provides an API for managing narmesteleder connection between

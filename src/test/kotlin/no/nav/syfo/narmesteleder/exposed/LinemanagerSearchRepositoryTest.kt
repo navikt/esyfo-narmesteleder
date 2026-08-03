@@ -172,6 +172,28 @@ class LinemanagerSearchRepositoryTest :
                 results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe listOf(expectedEmployeeFnr)
             }
 
+            it("filters on employee national identification number") {
+                val expectedEmployeeFnr = "12345678910"
+                insertRelation(
+                    employeeFnr = expectedEmployeeFnr,
+                    managerFnr = "10987654321",
+                )
+                insertRelation(
+                    employeeFnr = "12345678911",
+                    managerFnr = "10987654321",
+                )
+
+                val results = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        employeeNationalIdentificationNumber = PersonalIdentificationNumber(expectedEmployeeFnr),
+                        pageSize = 50,
+                    ),
+                )
+
+                results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe listOf(expectedEmployeeFnr)
+            }
+
             it("supports deterministic cursor pagination sorted by relation id") {
                 val firstId = insertRelation(
                     employeeFnr = "12345678910",

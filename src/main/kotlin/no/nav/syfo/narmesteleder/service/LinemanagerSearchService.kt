@@ -24,6 +24,7 @@ class LinemanagerSearchService(
         val query = LinemanagerSearchQuery(
             orgNumber = request.orgNumber,
             managerNationalIdentificationNumber = request.managerNationalIdentificationNumber,
+            employeeNationalIdentificationNumber = request.employeeNationalIdentificationNumber,
             pageSize = pageSize,
             cursor = request.pageToken.toLinemanagerSearchCursor(),
         )

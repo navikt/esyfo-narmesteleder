@@ -90,6 +90,12 @@ components:
           description: Optional filter for the manager national identification number.
           example: "10987654321"
           pattern: '^\d{11}$'
+        employeeNationalIdentificationNumber:
+          type: string
+          nullable: true
+          description: Optional filter for the employee national identification number.
+          example: "12345678910"
+          pattern: '^\d{11}$'
         pageSize:
           type: integer
           nullable: true

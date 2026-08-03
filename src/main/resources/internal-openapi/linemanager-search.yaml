@@ -1,0 +1,273 @@
+openapi: 3.0.3
+info:
+  title: Esyfo Narmesteleder internal API
+  version: 1.0.0
+  description: Internal API contract for linemanager search. This endpoint is not available through the external ingress.
+servers:
+  - url: https://narmesteleder-api.intern.dev.nav.no
+    description: Development server
+  - url: https://narmesteleder-api.intern.nav.no
+    description: Production server
+paths:
+  /internal/api/v1/linemanager/search:
+    post:
+      summary: Search active linemanager relations for an organization
+      description: |
+        Returns a paginated list of active linemanager relations for the requested organization number.
+
+        The request body is used so that PII-based filters do not end up in URLs, query parameters or proxy logs.
+
+        Constraints:
+        - The caller must have access to the requested organization number.
+        - Only active relations are returned. A relation is considered active when `aktiv_tom` is null and `aktiv_fom` is not in the future.
+        - `managerNationalIdentificationNumber` can be used to filter on a specific manager.
+      tags: [linemanager]
+      security:
+        - maskinporten_jwt: []
+        - tokenx_jwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinemanagerSearchRequest'
+      responses:
+        '200':
+          description: Search result with active linemanager relations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinemanagerReadCollection'
+        '400':
+          description: The request contains invalid search criteria.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: The JWT is missing, invalid or has an unsupported issuer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: The caller does not have access to the requested organization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+components:
+  securitySchemes:
+    maskinporten_jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: System user token from Maskinporten.
+    tokenx_jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: TokenX issued JWT.
+  schemas:
+    LinemanagerSearchRequest:
+      type: object
+      description: Search payload for active linemanager relations.
+      properties:
+        orgNumber:
+          type: string
+          description: Organization number used both as search criterion and access control target.
+          example: "999999999"
+          pattern: '^\d{9}$'
+        managerNationalIdentificationNumber:
+          type: string
+          nullable: true
+          description: Optional filter for the manager national identification number.
+          example: "10987654321"
+          pattern: '^\d{11}$'
+        pageSize:
+          type: integer
+          nullable: true
+          description: Number of results per page. Values outside 1-50 are normalized to 50.
+          default: 50
+          minimum: 1
+          maximum: 50
+        pageToken:
+          type: string
+          nullable: true
+          description: Opaque page token returned from a previous search response. Send it back unchanged to request the next page.
+          example: "djE6MQ"
+      required:
+        - orgNumber
+      additionalProperties: false
+    LinemanagerRead:
+      type: object
+      description: Active linemanager relation for one employee.
+      properties:
+        orgNumber:
+          type: string
+          description: Organization number where the employee works.
+          example: "999999999"
+          pattern: '^\d{9}$'
+        activeFrom:
+          type: string
+          format: date-time
+          description: Timestamp from when the relation is active.
+          example: "2026-01-01T00:00:00Z"
+        employee:
+          $ref: '#/components/schemas/LinemanagerPersonRead'
+        manager:
+          $ref: '#/components/schemas/LinemanagerManagerRead'
+      required:
+        - orgNumber
+        - activeFrom
+        - employee
+        - manager
+      additionalProperties: false
+    LinemanagerPersonRead:
+      type: object
+      description: Employee details for an active linemanager relation.
+      properties:
+        nationalIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the employee.
+          example: "12345678910"
+          pattern: '^\d{11}$'
+        name:
+          allOf:
+            - $ref: '#/components/schemas/Name'
+          nullable: true
+          description: Name from the person register, if available.
+      required:
+        - nationalIdentificationNumber
+      additionalProperties: false
+    LinemanagerManagerRead:
+      type: object
+      description: Manager details for an active linemanager relation.
+      properties:
+        nationalIdentificationNumber:
+          type: string
+          description: Norwegian national identity number or D number of the manager.
+          example: "10987654321"
+          pattern: '^\d{11}$'
+        name:
+          allOf:
+            - $ref: '#/components/schemas/Name'
+          nullable: true
+          description: Name from the person register, if available.
+        email:
+          type: string
+          description: Email address stored for the manager.
+          example: "kari@example.com"
+        mobile:
+          type: string
+          description: Mobile phone number stored for the manager.
+          example: "99999999"
+      required:
+        - nationalIdentificationNumber
+        - email
+        - mobile
+      additionalProperties: false
+    Name:
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: First name.
+          example: "Ola"
+        middleName:
+          type: string
+          nullable: true
+          description: Middle name.
+          example: "Mellomnavn"
+        lastName:
+          type: string
+          description: Last name.
+          example: "Nordmann"
+      required:
+        - firstName
+        - lastName
+      additionalProperties: false
+    LinemanagerReadCollection:
+      type: object
+      properties:
+        linemanagers:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinemanagerRead'
+        meta:
+          $ref: '#/components/schemas/LinemanagerSearchPageInfo'
+      required:
+        - linemanagers
+        - meta
+      additionalProperties: false
+    LinemanagerSearchPageInfo:
+      type: object
+      description: Page metadata for linemanager search responses.
+      properties:
+        size:
+          type: integer
+          description: Number of linemanager relations returned in the current page.
+        pageSize:
+          type: integer
+          description: Requested page size after normalization.
+        hasMore:
+          type: boolean
+          description: Indicates whether more results are available after the current page.
+        nextPageToken:
+          type: string
+          nullable: true
+          description: Opaque page token to request the next page. Send it back unchanged as `pageToken`, or null when there are no more results.
+          example: "djE6MQ"
+      required:
+        - size
+        - pageSize
+        - hasMore
+        - nextPageToken
+      additionalProperties: false
+    ErrorType:
+      type: string
+      enum:
+        - AUTHENTICATION_ERROR
+        - AUTHORIZATION_ERROR
+        - INTERNAL_SERVER_ERROR
+        - BAD_REQUEST
+        - INVALID_FORMAT
+        - MISSING_ORG_ACCESS
+        - MISSING_ALITINN_RESOURCE_ACCESS
+    ApiError:
+      type: object
+      description: Standard error payload.
+      properties:
+        status:
+          type: object
+          properties:
+            value:
+              type: integer
+              format: int32
+            description:
+              type: string
+        type:
+          $ref: '#/components/schemas/ErrorType'
+        message:
+          type: string
+        path:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - status
+        - type
+        - message
+        - timestamp
+      additionalProperties: false
+tags:
+  - name: linemanager
+    description: Internal endpoint for searching active line manager relations.

@@ -1,5 +1,6 @@
 [tools]
-java = { version = "21" }
+java = "25"
+
 [tasks.docker-up]
 description = "Spin up dependency services using Docker Compose. Postgres, Kafka etc."
 run = '''

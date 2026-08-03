@@ -2,6 +2,8 @@ package no.nav.syfo.sykmelding.exposed
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.TestDB
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -26,10 +28,11 @@ class SendtSykmeldingRepositoryTest :
             orgnummer: String = "123456789",
             tom: LocalDate,
             revokedDate: LocalDate? = null,
-        ) {
+        ): UUID {
+            val sykmeldingId = UUID.randomUUID()
             transaction(TestDB.exposedDatabase) {
                 SendtSykmeldingTable.insert {
-                    it[sykmeldingId] = UUID.randomUUID()
+                    it[SendtSykmeldingTable.sykmeldingId] = sykmeldingId
                     it[SendtSykmeldingTable.orgnummer] = orgnummer
                     it[syketilfelleStartDato] = tom.minusDays(10)
                     it[SendtSykmeldingTable.fnr] = fnr
@@ -38,38 +41,86 @@ class SendtSykmeldingRepositoryTest :
                     it[SendtSykmeldingTable.revokedDate] = revokedDate
                 }
             }
+            return sykmeldingId
         }
 
-        describe("hasActiveSykmelding") {
-            it("returns true when tom is on the included grace boundary") {
-                insertSendtSykmelding(tom = today.minusDays(SendtSykmeldingRepository.ACTIVE_SYKMELDING_GRACE_PERIOD_DAYS))
+        describe("LocalActiveSykmeldingResult.toString") {
+            it("redacts sykmeldingId in string output") {
+                val sykmeldingId = UUID.fromString("11111111-1111-1111-1111-111111111111")
 
-                repository.hasActiveSykmelding("12345678910", "123456789") shouldBe true
+                val result = LocalActiveSykmeldingResult(isActive = true, sykmeldingId = sykmeldingId)
+
+                result.toString() shouldBe
+                    "LocalActiveSykmeldingResult(isActive=true, sykmeldingId=<redacted>)"
+                result.toString() shouldNotContain sykmeldingId.toString()
+                result.toString() shouldContain "sykmeldingId=<redacted>"
+            }
+        }
+
+        describe("findActiveSykmelding") {
+            it("returns active result with sykmeldingId when tom is on the included grace boundary") {
+                val sykmeldingId =
+                    insertSendtSykmelding(tom = today.minusDays(SendtSykmeldingRepository.ACTIVE_SYKMELDING_GRACE_PERIOD_DAYS))
+
+                val result = repository.findActiveSykmelding("12345678910", "123456789")
+
+                result.isActive shouldBe true
+                result.sykmeldingId shouldBe sykmeldingId
             }
 
-            it("returns false when tom is outside the grace period") {
+            it("returns inactive result without sykmeldingId when tom is outside the grace period") {
                 insertSendtSykmelding(tom = today.minusDays(SendtSykmeldingRepository.ACTIVE_SYKMELDING_GRACE_PERIOD_DAYS + 1))
 
-                repository.hasActiveSykmelding("12345678910", "123456789") shouldBe false
+                val result = repository.findActiveSykmelding("12345678910", "123456789")
+
+                result.isActive shouldBe false
+                result.sykmeldingId shouldBe null
             }
 
-            it("returns false when sykmeldingen is revoked") {
+            it("returns inactive result without sykmeldingId when sykmeldingen is revoked") {
                 insertSendtSykmelding(
                     tom = today,
                     revokedDate = today.minusDays(1),
                 )
 
-                repository.hasActiveSykmelding("12345678910", "123456789") shouldBe false
+                val result = repository.findActiveSykmelding("12345678910", "123456789")
+
+                result.isActive shouldBe false
+                result.sykmeldingId shouldBe null
             }
 
-            it("returns false when there is no matching row") {
-                repository.hasActiveSykmelding("12345678910", "123456789") shouldBe false
+            it("returns inactive result without sykmeldingId when there is no matching row") {
+                val result = repository.findActiveSykmelding("12345678910", "123456789")
+
+                result.isActive shouldBe false
+                result.sykmeldingId shouldBe null
             }
 
-            it("returns true when tom is in the future") {
-                insertSendtSykmelding(tom = today.plusDays(5))
+            it("returns inactive result without sykmeldingId when fnr does not match an active row") {
+                insertSendtSykmelding(fnr = "10987654321", tom = today)
 
-                repository.hasActiveSykmelding("12345678910", "123456789") shouldBe true
+                val result = repository.findActiveSykmelding("12345678910", "123456789")
+
+                result.isActive shouldBe false
+                result.sykmeldingId shouldBe null
+            }
+
+            it("returns inactive result without sykmeldingId when orgnummer does not match an active row") {
+                insertSendtSykmelding(orgnummer = "987654321", tom = today)
+
+                val result = repository.findActiveSykmelding("12345678910", "123456789")
+
+                result.isActive shouldBe false
+                result.sykmeldingId shouldBe null
+            }
+
+            it("returns active result with sykmeldingId when tom is in the future") {
+                val sykmeldingId = insertSendtSykmelding(tom = today.plusDays(5))
+
+                val result = repository.findActiveSykmelding("12345678910", "123456789")
+
+                result.isActive shouldBe true
+                result.sykmeldingId shouldBe sykmeldingId
             }
         }
     })

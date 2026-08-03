@@ -1,7 +1,9 @@
 package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.Principal
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.ContactValidationIssue
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
@@ -41,6 +43,12 @@ class ValidationService(
     ): Manager {
         val validation = manager.normalizeContactDetails()
         logContactValidationIssues(validation.issues, context)
+        if (validation.issues.isNotEmpty()) {
+            throw ApiErrorException.BadRequestException(
+                errorMessage = validation.issues.toBadRequestMessage(),
+                type = ErrorType.INVALID_FORMAT,
+            )
+        }
         return validation.manager
     }
 
@@ -106,7 +114,7 @@ class ValidationService(
     ) {
         issues.forEach { issue ->
             logger.warn(
-                "ContactValidationIssue: Received manager payload with invalid {} for {}. Keeping original value. Reason: {}",
+                "ContactValidationIssue: Received manager payload with invalid {} for {}. Rejecting request. Reason: {}",
                 issue.fieldName,
                 context,
                 issue.reason,
@@ -114,3 +122,8 @@ class ValidationService(
         }
     }
 }
+
+private fun List<ContactValidationIssue>.toBadRequestMessage(): String = joinToString(
+    prefix = "Invalid manager contact details: ",
+    separator = "; ",
+) { "${it.fieldName}: ${it.reason}" }

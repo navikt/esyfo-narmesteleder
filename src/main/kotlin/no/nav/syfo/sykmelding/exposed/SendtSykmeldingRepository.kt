@@ -7,13 +7,22 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.time.Clock
 import java.time.LocalDate
+import java.util.UUID
 
 interface IActiveSykmeldingRepository {
-    suspend fun hasActiveSykmelding(fnr: String, orgnummer: String): Boolean
+    suspend fun findActiveSykmelding(fnr: String, orgnummer: String): LocalActiveSykmeldingResult
+}
+
+class LocalActiveSykmeldingResult(
+    val isActive: Boolean,
+    /** Internal value for controlled troubleshooting; must never be logged or used as a standard log correlation ID. */
+    val sykmeldingId: UUID?,
+) {
+    override fun toString(): String = "LocalActiveSykmeldingResult(isActive=$isActive, sykmeldingId=<redacted>)"
 }
 
 class SendtSykmeldingRepository(
@@ -21,12 +30,13 @@ class SendtSykmeldingRepository(
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : IActiveSykmeldingRepository {
 
-    override suspend fun hasActiveSykmelding(fnr: String, orgnummer: String): Boolean {
+    override suspend fun findActiveSykmelding(fnr: String, orgnummer: String): LocalActiveSykmeldingResult {
         val activeTomThreshold = LocalDate.now(clock).minusDays(ACTIVE_SYKMELDING_GRACE_PERIOD_DAYS)
 
         return withContext(Dispatchers.IO) {
             suspendTransaction(db = database) {
-                SendtSykmeldingTable.selectAll()
+                val row = SendtSykmeldingTable
+                    .select(SendtSykmeldingTable.sykmeldingId)
                     .where {
                         (SendtSykmeldingTable.fnr eq fnr) and
                             (SendtSykmeldingTable.orgnummer eq orgnummer) and
@@ -34,7 +44,12 @@ class SendtSykmeldingRepository(
                             (SendtSykmeldingTable.tom greaterEq activeTomThreshold)
                     }
                     .limit(1)
-                    .any()
+                    .firstOrNull()
+
+                LocalActiveSykmeldingResult(
+                    isActive = row != null,
+                    sykmeldingId = row?.get(SendtSykmeldingTable.sykmeldingId),
+                )
             }
         }
     }

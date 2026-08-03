@@ -21,6 +21,6 @@ class PdlCache(
     }
 
     companion object {
-        const val PDL_CACHE_KEY_PREFIX = "pdl"
+        const val PDL_CACHE_KEY_PREFIX = "pdl-v2"
     }
 }

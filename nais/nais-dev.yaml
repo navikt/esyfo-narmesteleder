@@ -86,6 +86,8 @@ spec:
         - application: tokenx-token-generator
           namespace: nais
         - application: narmesteleder-frontend
+        - application: min-side-arbeidsgiver
+          namespace: fager
     outbound:
       rules:
         - application: dinesykmeldte-backend

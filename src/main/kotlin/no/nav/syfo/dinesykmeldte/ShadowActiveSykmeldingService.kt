@@ -1,11 +1,10 @@
 package no.nav.syfo.dinesykmeldte
 
 import io.micrometer.core.instrument.Counter
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
+import no.nav.syfo.sykmelding.exposed.LocalActiveSykmeldingResult
 import no.nav.syfo.util.logger
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -30,136 +29,85 @@ class ShadowActiveSykmeldingService(
     private val dinesykmeldteService: DinesykmeldteService,
     private val repository: IActiveSykmeldingRepository,
 ) : IDinesykmeldteService {
-    override suspend fun getIsActiveSykmelding(personIdent: String, orgnummer: String): Boolean = coroutineScope {
-        val clientResultDeferred = async {
-            suspendRunCatching {
-                dinesykmeldteService.getIsActiveSykmelding(personIdent, orgnummer)
-            }
+    override suspend fun getIsActiveSykmelding(personIdent: String, orgnummer: String): Boolean {
+        val clientResult = suspendRunCatching {
+            dinesykmeldteService.getIsActiveSykmelding(personIdent, orgnummer)
         }
-        val localResultDeferred = async {
-            suspendRunCatching {
-                repository.hasActiveSykmelding(personIdent, orgnummer)
-            }
-        }
-
-        val clientResult = clientResultDeferred.await()
-        val localResult = localResultDeferred.await()
-
         if (clientResult.isSuccess) {
-            return@coroutineScope handleSuccessfulClientResult(
+            val localResult = suspendRunCatching {
+                repository.findActiveSykmelding(personIdent, orgnummer)
+            }
+            return handleSuccessfulClientResult(
                 clientValue = clientResult.getOrThrow(),
                 localResult = localResult,
-                personIdent = personIdent,
-                orgnummer = orgnummer,
             )
         } else {
             handleFailedClientResult(
                 clientException = clientResult.exceptionOrNull() ?: error("Missing client exception"),
-                localResult = localResult,
-                personIdent = personIdent,
-                orgnummer = orgnummer,
             )
         }
     }
 
     private fun handleSuccessfulClientResult(
         clientValue: Boolean,
-        localResult: Result<Boolean>,
-        personIdent: String,
-        orgnummer: String,
+        localResult: Result<LocalActiveSykmeldingResult>,
     ): Boolean {
         localResult
-            .onSuccess { logMismatchIfAny(clientValue, localResult.getOrThrow(), personIdent, orgnummer) }
-            .onFailure { localException -> logLocalShadowQueryFailed(personIdent, orgnummer, localException) }
+            .onSuccess { localValue -> logMismatchIfAny(clientValue, localValue.isActive) }
+            .onFailure { localException -> logLocalShadowQueryFailed(localException) }
         return clientValue
     }
 
     private fun handleFailedClientResult(
         clientException: Throwable,
-        localResult: Result<Boolean>,
-        personIdent: String,
-        orgnummer: String,
-    ): Boolean {
-        logClientFailedUsingLocalFallback(
-            personIdent = personIdent,
-            orgnummer = orgnummer,
+    ): Nothing {
+        logClientFailedRethrowingClientException(
             clientException = clientException,
         )
-
-        return localResult.getOrElse { localException ->
-            logLocalShadowQueryAlsoFailed(
-                personIdent = personIdent,
-                orgnummer = orgnummer,
-                localException = localException,
-            )
-            throw clientException
-        }
+        throw clientException
     }
 
     private fun logMismatchIfAny(
         clientValue: Boolean,
         localValue: Boolean,
-        personIdent: String,
-        orgnummer: String,
     ) {
         if (clientValue != localValue) {
-            countMismatch(clientValue, localValue).increment()
+            val direction = directionOf(clientValue, localValue)
+            countMismatch(direction).increment()
             logger.warn(
-                "Shadow mismatch for active sykmelding for fnr={} and orgnummer={}: client={}, local={}",
-                maskFnr(personIdent),
-                orgnummer,
+                "Shadow mismatch for active sykmelding: direction={}, client={}, local={}",
+                direction,
                 clientValue,
                 localValue,
             )
         }
     }
 
-    private fun logLocalShadowQueryFailed(
-        personIdent: String,
-        orgnummer: String,
-        localException: Throwable,
-    ) {
+    private fun logLocalShadowQueryFailed(localException: Throwable) {
         logger.warn(
-            "Local shadow query failed for fnr={} and orgnummer={}, ignoring local result. Exception type={}",
-            maskFnr(personIdent),
-            orgnummer,
+            "Local shadow query failed, ignoring local result. Exception type={}",
             localException::class.simpleName ?: "UnknownException",
         )
     }
 
-    private fun logClientFailedUsingLocalFallback(
-        personIdent: String,
-        orgnummer: String,
-        clientException: Throwable,
-    ) {
+    private fun logClientFailedRethrowingClientException(clientException: Throwable) {
         logger.warn(
-            "Dinesykmeldte client failed for fnr={} and orgnummer={}, using local fallback. Exception type={}",
-            maskFnr(personIdent),
-            orgnummer,
+            "Dinesykmeldte client failed, rethrowing client exception. Exception type={}",
             clientException::class.simpleName ?: "UnknownException",
         )
     }
 
-    private fun logLocalShadowQueryAlsoFailed(
-        personIdent: String,
-        orgnummer: String,
-        localException: Throwable,
-    ) {
-        logger.warn(
-            "Local shadow query also failed for fnr={} and orgnummer={}, rethrowing client exception. Exception type={}",
-            maskFnr(personIdent),
-            orgnummer,
-            localException::class.simpleName ?: "UnknownException",
-        )
-    }
-
-    private fun countMismatch(clientValue: Boolean, localValue: Boolean): Counter = when {
-        clientValue && !localValue -> COUNT_ACTIVE_SYKMELDING_SHADOW_MISMATCH_CLIENT_TRUE_LOCAL_FALSE
-        !clientValue && localValue -> COUNT_ACTIVE_SYKMELDING_SHADOW_MISMATCH_CLIENT_FALSE_LOCAL_TRUE
+    private fun directionOf(clientValue: Boolean, localValue: Boolean): String = when {
+        clientValue && !localValue -> SHADOW_DIRECTION_CLIENT_TRUE_LOCAL_FALSE
+        !clientValue && localValue -> SHADOW_DIRECTION_CLIENT_FALSE_LOCAL_TRUE
         else -> error("Unexpected shadow mismatch combination")
     }
 
-    private fun maskFnr(personIdent: String): String = "****${personIdent.takeLast(4)}"
+    private fun countMismatch(direction: String): Counter = when (direction) {
+        SHADOW_DIRECTION_CLIENT_TRUE_LOCAL_FALSE -> COUNT_ACTIVE_SYKMELDING_SHADOW_MISMATCH_CLIENT_TRUE_LOCAL_FALSE
+        SHADOW_DIRECTION_CLIENT_FALSE_LOCAL_TRUE -> COUNT_ACTIVE_SYKMELDING_SHADOW_MISMATCH_CLIENT_FALSE_LOCAL_TRUE
+        else -> error("Unexpected shadow mismatch direction")
+    }
 
     private inline fun <T> suspendRunCatching(block: () -> T): Result<T> = try {
         Result.success(block())

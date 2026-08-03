@@ -170,7 +170,7 @@ class ValidationServiceTest :
                 warningMessages() shouldHaveSize 0
             }
 
-            it("should keep invalid manager contact details and log warnings without raw values") {
+            it("should reject invalid manager contact details and log warnings without raw values") {
                 val manager = Manager(
                     nationalIdentificationNumber = PersonalIdentificationNumber("12345678910"),
                     lastName = "Jensen",
@@ -178,35 +178,46 @@ class ValidationServiceTest :
                     email = "gyldig@example.com; invalid @example.com",
                 )
 
-                val normalized = service.normalizeManagerPayload(
-                    manager = manager,
-                    context = "operation=PUT /linemanager/requirement/{id}",
-                )
+                val exception = shouldThrow<ApiErrorException.BadRequestException> {
+                    service.normalizeManagerPayload(
+                        manager = manager,
+                        context = "operation=PUT /linemanager/requirement/{id}",
+                    )
+                }
 
-                normalized shouldBe manager
+                exception.type shouldBe ErrorType.INVALID_FORMAT
+                exception.message shouldBe
+                    "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign; email: EmailAddress must not contain whitespace"
                 warningMessages() shouldHaveSize 2
                 warningMessages().single { it.contains("invalid mobile") } shouldBe
-                    "ContactValidationIssue: Received manager payload with invalid mobile for operation=PUT /linemanager/requirement/{id}. Keeping original value. Reason: PhoneNumber must contain only digits, with an optional leading plus sign"
+                    "ContactValidationIssue: Received manager payload with invalid mobile for operation=PUT /linemanager/requirement/{id}. Rejecting request. Reason: PhoneNumber must contain only digits, with an optional leading plus sign"
                 warningMessages().single { it.contains("invalid email") } shouldBe
-                    "ContactValidationIssue: Received manager payload with invalid email for operation=PUT /linemanager/requirement/{id}. Keeping original value. Reason: EmailAddress must not contain whitespace"
+                    "ContactValidationIssue: Received manager payload with invalid email for operation=PUT /linemanager/requirement/{id}. Rejecting request. Reason: EmailAddress must not contain whitespace"
                 warningMessages().any { it.contains("90-00-00-00") } shouldBe false
                 warningMessages().any { it.contains("invalid @example.com") } shouldBe false
                 warningMessages().any { it.contains("gyldig@example.com") } shouldBe false
+                exception.message?.contains("90-00-00-00") shouldBe false
+                exception.message?.contains("invalid @example.com") shouldBe false
+                exception.message?.contains("gyldig@example.com") shouldBe false
             }
 
-            it("should keep phone numbers with misplaced plus sign and log warning") {
+            it("should reject phone numbers with misplaced plus sign and log warning") {
                 val manager = manager().copy(
                     mobile = "47+90000000",
                 )
 
-                val normalized = service.normalizeManagerPayload(
-                    manager = manager,
-                    context = "path=/api/v1/linemanager",
-                )
+                val exception = shouldThrow<ApiErrorException.BadRequestException> {
+                    service.normalizeManagerPayload(
+                        manager = manager,
+                        context = "path=/api/v1/linemanager",
+                    )
+                }
 
-                normalized.mobile shouldBe "47+90000000"
+                exception.type shouldBe ErrorType.INVALID_FORMAT
+                exception.message shouldBe
+                    "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign"
                 warningMessages().single() shouldBe
-                    "ContactValidationIssue: Received manager payload with invalid mobile for path=/api/v1/linemanager. Keeping original value. Reason: PhoneNumber must contain only digits, with an optional leading plus sign"
+                    "ContactValidationIssue: Received manager payload with invalid mobile for path=/api/v1/linemanager. Rejecting request. Reason: PhoneNumber must contain only digits, with an optional leading plus sign"
             }
         }
         describe("validateNarmesteleder") {

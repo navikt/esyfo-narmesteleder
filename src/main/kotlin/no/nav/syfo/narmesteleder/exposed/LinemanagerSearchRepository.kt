@@ -104,6 +104,9 @@ class LinemanagerSearchRepository(
         managerNationalIdentificationNumber?.let {
             filters.add(NarmestelederTable.narmestelederFnr eq it.value)
         }
+        employeeNationalIdentificationNumber?.let {
+            filters.add(NarmestelederTable.sykmeldtFnr eq it.value)
+        }
         cursor?.let {
             filters.add(NarmestelederTable.id greater it.id)
         }

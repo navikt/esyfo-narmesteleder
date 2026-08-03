@@ -1218,6 +1218,39 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
+                it("uses employeeNationalIdentificationNumber from the request when querying") {
+                    withTestApplication {
+                        val employeeNationalIdentificationNumber = PersonalIdentificationNumber("12345678910")
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(linemanagerSearchResult(cursorId = 1))
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    employeeNationalIdentificationNumber = employeeNationalIdentificationNumber,
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        coVerify(exactly = 1) {
+                            linemanagerSearchRepository.search(
+                                match {
+                                    it.employeeNationalIdentificationNumber == employeeNationalIdentificationNumber
+                                },
+                            )
+                        }
+                    }
+                }
+
                 it("returns linemanager results for authorized TokenX principals") {
                     withTestApplication {
                         val callerPid = "11223344556"

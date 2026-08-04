@@ -216,6 +216,65 @@ class LinemanagerSearchRepositoryTest :
                 results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe listOf(expectedEmployeeFnr)
             }
 
+            it("searches names for either employee or manager") {
+                val employeeFnr = "12345678910"
+                val managerFnr = "10987654321"
+                val otherEmployeeFnr = "12345678911"
+                val otherManagerFnr = "10987654322"
+                insertPerson(employeeFnr, firstName = "Ola", lastName = "Nordmann")
+                insertPerson(managerFnr, firstName = "Kari", lastName = "Lunde")
+                insertPerson(otherEmployeeFnr, firstName = "Anne", lastName = "Hansen")
+                insertPerson(otherManagerFnr, firstName = "Ola", lastName = "Bjerke")
+                insertRelation(employeeFnr = employeeFnr, managerFnr = managerFnr)
+                insertRelation(employeeFnr = otherEmployeeFnr, managerFnr = otherManagerFnr)
+
+                val results = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        text = "ola",
+                        pageSize = 50,
+                    ),
+                )
+
+                results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe
+                    listOf(employeeFnr, otherEmployeeFnr)
+            }
+
+            it("treats LIKE wildcard characters in name searches as literals") {
+                val employeeFnr = "12345678910"
+                insertPerson(employeeFnr, firstName = "Ola", lastName = "Nordmann")
+                insertRelation(employeeFnr = employeeFnr, managerFnr = "10987654321")
+
+                val results = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        text = "%",
+                        pageSize = 50,
+                    ),
+                )
+
+                results.shouldHaveSize(0)
+            }
+
+            it("searches national identification numbers for either employee or manager") {
+                val nationalIdentificationNumber = PersonalIdentificationNumber("12345678910")
+                val employeeFnr = "12345678911"
+                val managerFnr = "10987654321"
+                insertRelation(employeeFnr = nationalIdentificationNumber.value, managerFnr = managerFnr)
+                insertRelation(employeeFnr = employeeFnr, managerFnr = nationalIdentificationNumber.value)
+
+                val results = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        nationalIdentificationNumber = nationalIdentificationNumber,
+                        pageSize = 50,
+                    ),
+                )
+
+                results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe
+                    listOf(nationalIdentificationNumber.value, employeeFnr)
+            }
+
             it("filters on whether an employee has an active sick leave") {
                 val activeEmployeeFnr = "12345678910"
                 val expiredEmployeeFnr = "12345678911"

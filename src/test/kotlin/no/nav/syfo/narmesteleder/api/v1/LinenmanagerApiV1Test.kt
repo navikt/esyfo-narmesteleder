@@ -1251,6 +1251,99 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
+                it("uses text from the request when querying names") {
+                    withTestApplication {
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(linemanagerSearchResult(cursorId = 1))
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    text = "Kari Nordmann",
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        coVerify(exactly = 1) {
+                            linemanagerSearchRepository.search(
+                                match {
+                                    it.text == "Kari Nordmann" && it.nationalIdentificationNumber == null
+                                },
+                            )
+                        }
+                    }
+                }
+
+                it("uses an eleven-digit text value to query either national identification number") {
+                    withTestApplication {
+                        val nationalIdentificationNumber = PersonalIdentificationNumber("12345678910")
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(linemanagerSearchResult(cursorId = 1))
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    text = nationalIdentificationNumber.value,
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        coVerify(exactly = 1) {
+                            linemanagerSearchRepository.search(
+                                match {
+                                    it.text == null && it.nationalIdentificationNumber == nationalIdentificationNumber
+                                },
+                            )
+                        }
+                    }
+                }
+
+                it("returns 400 when text exceeds 50 characters") {
+                    withTestApplication {
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(linemanagerSearchResult(cursorId = 1))
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    text = "a".repeat(51),
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
+                        response.body<ApiError>().message shouldBe "text must be at most 50 characters"
+                        coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
+                    }
+                }
+
                 it("uses hasActiveSickLeave from the request when querying") {
                     withTestApplication {
                         coEvery {

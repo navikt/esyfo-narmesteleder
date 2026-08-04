@@ -21,6 +21,7 @@ paths:
         - The caller must have access to the requested organization number.
         - Only active relations are returned. A relation is considered active when `aktiv_tom` is null and `aktiv_fom` is not in the future.
         - `managerNationalIdentificationNumber` can be used to filter on a specific manager.
+        - `text` searches names for either the employee or manager. A value consisting of exactly 11 digits searches national identification numbers for either person instead.
       tags: [linemanager]
       security:
         - maskinporten_jwt: []
@@ -96,6 +97,12 @@ components:
           description: Optional filter for the employee national identification number.
           example: "12345678910"
           pattern: '^\d{11}$'
+        text:
+          type: string
+          nullable: true
+          description: Optional case-insensitive partial name search for either employee or manager. Exactly 11 digits instead searches national identification numbers for either person.
+          example: "Kari Nordmann"
+          maxLength: 50
         hasActiveSickLeave:
           type: boolean
           nullable: true

@@ -14,6 +14,7 @@ import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -24,6 +25,8 @@ import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -31,6 +34,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.time.Clock
 import java.time.LocalDate
 import java.time.OffsetDateTime
+
+private const val LIKE_ESCAPE_CHARACTER = '\\'
 
 interface ILinemanagerSearchRepository {
     suspend fun search(query: LinemanagerSearchQuery): List<LinemanagerSearchResult>
@@ -69,7 +74,7 @@ class LinemanagerSearchRepository(
 
                 tablesWithSykmeldingFilter
                     .selectAll()
-                    .where { query.toWhereClause(now) }
+                    .where { query.toWhereClause(now, employeePerson, managerPerson) }
                     .orderBy(NarmestelederTable.id to SortOrder.ASC)
                     .limit(query.pageSize + 1)
                     .map { row ->
@@ -133,7 +138,11 @@ class LinemanagerSearchRepository(
         }
     }
 
-    private fun LinemanagerSearchQuery.toWhereClause(now: OffsetDateTime): Op<Boolean> {
+    private fun LinemanagerSearchQuery.toWhereClause(
+        now: OffsetDateTime,
+        employeePerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
+        managerPerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
+    ): Op<Boolean> {
         val filters = mutableListOf<Op<Boolean>>(
             NarmestelederTable.orgnummer eq orgNumber.value,
             NarmestelederTable.aktivTom.isNull(),
@@ -146,6 +155,15 @@ class LinemanagerSearchRepository(
         employeeNationalIdentificationNumber?.let {
             filters.add(NarmestelederTable.sykmeldtFnr eq it.value)
         }
+        nationalIdentificationNumber?.let {
+            filters.add(
+                (NarmestelederTable.sykmeldtFnr eq it.value) or
+                    (NarmestelederTable.narmestelederFnr eq it.value)
+            )
+        }
+        text?.let {
+            filters.add(employeePerson.matchesName(it) or managerPerson.matchesName(it))
+        }
         if (hasActiveSickLeave == false) {
             filters.add(SendtSykmeldingTable.id.isNull())
         }
@@ -155,7 +173,21 @@ class LinemanagerSearchRepository(
 
         return filters.reduce(Op<Boolean>::and)
     }
+
+    private fun org.jetbrains.exposed.v1.core.Alias<PersonTable>.matchesName(text: String): Op<Boolean> = text
+        .lowercase()
+        .split(Regex("\\s+"))
+        .map { searchTerm ->
+            val pattern = searchTerm.toContainsLikePattern()
+            (this[PersonTable.fornavn].lowerCase() like pattern) or
+                (this[PersonTable.mellomnavn].lowerCase() like pattern) or
+                (this[PersonTable.etternavn].lowerCase() like pattern)
+        }.reduce(Op<Boolean>::and)
 }
+
+private fun String.toContainsLikePattern(): LikePattern = LikePattern("%", LIKE_ESCAPE_CHARACTER) +
+    LikePattern.ofLiteral(this, LIKE_ESCAPE_CHARACTER) +
+    LikePattern("%", LIKE_ESCAPE_CHARACTER)
 
 private fun ResultRow.toName(
     firstName: Expression<String?>,

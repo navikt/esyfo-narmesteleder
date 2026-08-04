@@ -70,7 +70,10 @@ val avroCodeGenerationDir = "build/generated-main-avro-custom-java"
 val avroTools by configurations.creating
 
 dependencies {
-    avroTools(libs.apache.avro.tools)
+    avroTools(libs.apache.avro.tools) {
+        exclude(group = "org.apache.avro", module = "trevni-avro")
+        exclude(group = "org.apache.avro", module = "trevni-core")
+    }
 }
 
 sourceSets {

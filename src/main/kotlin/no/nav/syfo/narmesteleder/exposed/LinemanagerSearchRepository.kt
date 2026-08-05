@@ -32,7 +32,6 @@ import org.jetbrains.exposed.v1.core.notExists
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.time.Clock
 import java.time.LocalDate
@@ -71,7 +70,25 @@ class LinemanagerSearchRepository(
                     )
 
                 joinedTables
-                    .selectAll()
+                    // Keep this projection restricted: index-only scans on person_fnr_names_idx require person columns
+                    // to be only fornavn, mellomnavn, and etternavn; do not reintroduce selectAll().
+                    .select(
+                        listOf(
+                            NarmestelederTable.id,
+                            NarmestelederTable.orgnummer,
+                            NarmestelederTable.aktivFom,
+                            NarmestelederTable.sykmeldtFnr,
+                            NarmestelederTable.narmestelederFnr,
+                            NarmestelederTable.narmestelederEpost,
+                            NarmestelederTable.narmestelederTelefonnummer,
+                            employeePerson[PersonTable.fornavn],
+                            employeePerson[PersonTable.mellomnavn],
+                            employeePerson[PersonTable.etternavn],
+                            managerPerson[PersonTable.fornavn],
+                            managerPerson[PersonTable.mellomnavn],
+                            managerPerson[PersonTable.etternavn],
+                        ),
+                    )
                     .where { query.toWhereClause(now, employeePerson, managerPerson) }
                     .orderBy(NarmestelederTable.id to SortOrder.ASC)
                     .limit(query.pageSize + 1)

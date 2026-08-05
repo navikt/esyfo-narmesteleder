@@ -21,14 +21,17 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.exists
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.core.notExists
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.time.Clock
@@ -67,12 +70,7 @@ class LinemanagerSearchRepository(
                         otherColumn = managerPerson[PersonTable.fnr],
                     )
 
-                val tablesWithSykmeldingFilter = joinedTables.withActiveSykmeldingFilter(
-                    hasActiveSickLeave = query.hasActiveSickLeave,
-                    today = now.toLocalDate(),
-                )
-
-                tablesWithSykmeldingFilter
+                joinedTables
                     .selectAll()
                     .where { query.toWhereClause(now, employeePerson, managerPerson) }
                     .orderBy(NarmestelederTable.id to SortOrder.ASC)
@@ -108,36 +106,6 @@ class LinemanagerSearchRepository(
         }
     }
 
-    private fun org.jetbrains.exposed.v1.core.ColumnSet.withActiveSykmeldingFilter(
-        hasActiveSickLeave: Boolean?,
-        today: LocalDate,
-    ): org.jetbrains.exposed.v1.core.ColumnSet {
-        val activeSykmeldingCondition =
-            (SendtSykmeldingTable.orgnummer eq NarmestelederTable.orgnummer) and
-                (SendtSykmeldingTable.tom greaterEq today) and
-                (SendtSykmeldingTable.revokedDate.isNull() or (SendtSykmeldingTable.revokedDate greaterEq today))
-
-        return when (hasActiveSickLeave) {
-            null -> this
-            true ->
-                join(
-                    otherTable = SendtSykmeldingTable,
-                    joinType = JoinType.INNER,
-                    onColumn = NarmestelederTable.sykmeldtFnr,
-                    otherColumn = SendtSykmeldingTable.fnr,
-                    additionalConstraint = { activeSykmeldingCondition },
-                )
-            false ->
-                join(
-                    otherTable = SendtSykmeldingTable,
-                    joinType = JoinType.LEFT,
-                    onColumn = NarmestelederTable.sykmeldtFnr,
-                    otherColumn = SendtSykmeldingTable.fnr,
-                    additionalConstraint = { activeSykmeldingCondition },
-                )
-        }
-    }
-
     private fun LinemanagerSearchQuery.toWhereClause(
         now: OffsetDateTime,
         employeePerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
@@ -164,8 +132,15 @@ class LinemanagerSearchRepository(
         text?.let {
             filters.add(employeePerson.matchesName(it) or managerPerson.matchesName(it))
         }
-        if (hasActiveSickLeave == false) {
-            filters.add(SendtSykmeldingTable.id.isNull())
+        hasActiveSickLeave?.let {
+            val activeSykmeldingQuery = activeSykmeldingQuery(now.toLocalDate())
+            filters.add(
+                if (it) {
+                    exists(activeSykmeldingQuery)
+                } else {
+                    notExists(activeSykmeldingQuery)
+                },
+            )
         }
         cursor?.let {
             filters.add(NarmestelederTable.id greater it.id)
@@ -173,6 +148,15 @@ class LinemanagerSearchRepository(
 
         return filters.reduce(Op<Boolean>::and)
     }
+
+    private fun activeSykmeldingQuery(today: LocalDate) = SendtSykmeldingTable
+        .select(SendtSykmeldingTable.id)
+        .where {
+            (SendtSykmeldingTable.fnr eq NarmestelederTable.sykmeldtFnr) and
+                (SendtSykmeldingTable.orgnummer eq NarmestelederTable.orgnummer) and
+                (SendtSykmeldingTable.tom greaterEq today) and
+                (SendtSykmeldingTable.revokedDate.isNull() or (SendtSykmeldingTable.revokedDate greaterEq today))
+        }
 
     private fun org.jetbrains.exposed.v1.core.Alias<PersonTable>.matchesName(text: String): Op<Boolean> = text
         .lowercase()

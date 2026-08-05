@@ -279,17 +279,34 @@ class LinemanagerSearchRepositoryTest :
                 val activeEmployeeFnr = "12345678910"
                 val expiredEmployeeFnr = "12345678911"
                 val revokedEmployeeFnr = "12345678912"
-                val noSickLeaveEmployeeFnr = "12345678913"
-                listOf(activeEmployeeFnr, expiredEmployeeFnr, revokedEmployeeFnr, noSickLeaveEmployeeFnr).forEach {
+                val revokedInFutureEmployeeFnr = "12345678913"
+                val noSickLeaveEmployeeFnr = "12345678914"
+                listOf(
+                    activeEmployeeFnr,
+                    expiredEmployeeFnr,
+                    revokedEmployeeFnr,
+                    revokedInFutureEmployeeFnr,
+                    noSickLeaveEmployeeFnr,
+                ).forEach {
                     insertRelation(employeeFnr = it, managerFnr = "10987654321")
                 }
                 val today = now.toLocalDate()
                 insertSendtSykmelding(fnr = activeEmployeeFnr, tom = today)
+                insertSendtSykmelding(
+                    fnr = noSickLeaveEmployeeFnr,
+                    orgnummer = "987654321",
+                    tom = today.plusDays(1),
+                )
                 insertSendtSykmelding(fnr = expiredEmployeeFnr, tom = today.minusDays(1))
                 insertSendtSykmelding(
                     fnr = revokedEmployeeFnr,
                     tom = today.plusDays(1),
                     revokedDate = today.minusDays(1),
+                )
+                insertSendtSykmelding(
+                    fnr = revokedInFutureEmployeeFnr,
+                    tom = today.plusDays(1),
+                    revokedDate = today,
                 )
 
                 val activeResults = repository.search(
@@ -313,11 +330,18 @@ class LinemanagerSearchRepositoryTest :
                     ),
                 )
 
-                activeResults.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe listOf(activeEmployeeFnr)
+                activeResults.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe
+                    listOf(activeEmployeeFnr, revokedInFutureEmployeeFnr)
                 inactiveResults.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe
                     listOf(expiredEmployeeFnr, revokedEmployeeFnr, noSickLeaveEmployeeFnr)
                 unfilteredResults.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe
-                    listOf(activeEmployeeFnr, expiredEmployeeFnr, revokedEmployeeFnr, noSickLeaveEmployeeFnr)
+                    listOf(
+                        activeEmployeeFnr,
+                        expiredEmployeeFnr,
+                        revokedEmployeeFnr,
+                        revokedInFutureEmployeeFnr,
+                        noSickLeaveEmployeeFnr,
+                    )
             }
 
             it("supports deterministic cursor pagination sorted by relation id") {

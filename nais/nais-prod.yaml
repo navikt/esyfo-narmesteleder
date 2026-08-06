@@ -79,6 +79,10 @@ spec:
   azure:
     application:
       enabled: true
+      accessPolicy:
+        inbound:
+          rules:
+            - application: syfo-budstikka
   leaderElection: true
   accessPolicy:
     inbound:
@@ -86,6 +90,8 @@ spec:
         - application: narmesteleder-frontend
         - application: min-side-arbeidsgiver
           namespace: fager
+        - application: syfo-budstikka
+          namespace: team-esyfo
     outbound:
       rules:
         - application: dinesykmeldte-backend

@@ -29,7 +29,7 @@ spec:
     initialDelay: 10
     periodSeconds: 10
     timeout: 5
-    failureThreshold: 180
+    failureThreshold: 720
   replicas:
     max: 4
     min: 2

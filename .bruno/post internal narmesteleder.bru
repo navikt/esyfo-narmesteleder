@@ -1,0 +1,38 @@
+meta {
+  name: post internal narmesteleder
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrlIntern}}/internal/narmesteleder
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "sykmeldtFnr": "00000000000",
+    "orgnummer": "123456789"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  if (bru.getEnvName() === "nl_vars_local" && !bru.hasEnvVar("token")) {
+    throw new Error("Kjør request 'mock-auth/entra/create entra m2m' først for å teste lokalt");
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Lokalt: start avhengighetene med `mise docker-up` og applikasjonen med `mise start`.
+  Kjør deretter `mock-auth/entra/create entra m2m` for å hente et token før dette kallet.
+}

@@ -1,0 +1,20 @@
+meta {
+  name: entra well-known
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:6969/azuread/.well-known/openid-configuration
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

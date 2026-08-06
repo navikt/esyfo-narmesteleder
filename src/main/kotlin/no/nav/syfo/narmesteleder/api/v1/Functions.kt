@@ -135,15 +135,17 @@ fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
 }
 
 private const val LINEMANAGER_SEARCH_CURSOR_VERSION = "v2"
+private const val CURSOR_NULL_NAME_FIELD = "n"
+private const val CURSOR_STRING_NAME_FIELD_PREFIX = "s"
 
 private fun String?.toCursorNameField(): String = this?.let {
-    "s${Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray(UTF_8))}"
-} ?: "n"
+    "$CURSOR_STRING_NAME_FIELD_PREFIX${Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray(UTF_8))}"
+} ?: CURSOR_NULL_NAME_FIELD
 
 private fun String.toCursorName(): String? = when {
-    this == "n" -> null
-    startsWith("s") -> Base64.getUrlDecoder()
-        .decode(removePrefix("s"))
+    this == CURSOR_NULL_NAME_FIELD -> null
+    startsWith(CURSOR_STRING_NAME_FIELD_PREFIX) -> Base64.getUrlDecoder()
+        .decode(removePrefix(CURSOR_STRING_NAME_FIELD_PREFIX))
         .toStrictUtf8String()
 
     else -> error("Invalid cursor name")

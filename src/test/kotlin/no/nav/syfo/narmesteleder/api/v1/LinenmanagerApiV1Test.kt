@@ -203,20 +203,26 @@ class LinenmanagerApiV1Test :
 
         fun linemanagerSearchResult(
             cursorId: Int,
+            employeeFirstName: String = "Ola",
+            employeeLastName: String = "Nordmann",
             orgNumber: OrganizationNumber = narmesteLederRelasjon.orgNumber,
             employeeFnr: String = "12345678910",
             managerFnr: String = "10987654321",
         ) = LinemanagerSearchResult(
-            cursor = LinemanagerSearchCursor(cursorId),
+            cursor = LinemanagerSearchCursor(
+                firstName = employeeFirstName.lowercase(),
+                lastName = employeeLastName.lowercase(),
+                id = cursorId,
+            ),
             linemanager = LinemanagerRead(
                 orgNumber = orgNumber,
                 activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
                 employee = LinemanagerPersonRead(
                     nationalIdentificationNumber = PersonalIdentificationNumber(employeeFnr),
                     name = Name(
-                        firstName = "Ola",
+                        firstName = employeeFirstName,
                         middleName = null,
-                        lastName = "Nordmann",
+                        lastName = employeeLastName,
                     ),
                 ),
                 manager = LinemanagerManagerRead(
@@ -231,6 +237,24 @@ class LinenmanagerApiV1Test :
                 ),
             ),
         )
+
+        it("round-trips v2 pageTokens with nullable, empty, Unicode, and colon-delimited names") {
+            listOf(
+                LinemanagerSearchCursor(
+                    firstName = "ø:ystein",
+                    lastName = "",
+                    id = 42,
+                ),
+                LinemanagerSearchCursor(
+                    firstName = null,
+                    lastName = null,
+                    id = 1,
+                ),
+            ).forEach { cursor ->
+                cursor.toOpaqueCursor().toLinemanagerSearchCursor() shouldBe cursor
+            }
+        }
+
         describe("POST /linemanager") {
             context("Maskinporten token") {
                 it("Maskinporten POST /linemanager should return 202 Accepted for valid payload") {
@@ -1180,12 +1204,21 @@ class LinenmanagerApiV1Test :
                         body.meta.size shouldBe 1
                         body.meta.pageSize shouldBe 1
                         body.meta.hasMore shouldBe true
-                        body.meta.nextPageToken shouldBe "djE6MQ"
+                        body.meta.nextPageToken shouldBe LinemanagerSearchCursor(
+                            firstName = "ola",
+                            lastName = "nordmann",
+                            id = 1,
+                        ).toOpaqueCursor()
                     }
                 }
 
                 it("uses pageToken from the request when querying the next page") {
                     withTestApplication {
+                        val cursor = LinemanagerSearchCursor(
+                            firstName = "ola",
+                            lastName = "nordmann",
+                            id = 1,
+                        )
                         coEvery {
                             linemanagerSearchRepository.search(any())
                         } returns listOf(linemanagerSearchResult(cursorId = 2))
@@ -1199,7 +1232,7 @@ class LinenmanagerApiV1Test :
                             setBody(
                                 LinemanagerSearchRequest(
                                     orgNumber = narmesteLederRelasjon.orgNumber,
-                                    pageToken = "djE6MQ",
+                                    pageToken = cursor.toOpaqueCursor(),
                                 ),
                             )
                             bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
@@ -1211,7 +1244,7 @@ class LinenmanagerApiV1Test :
                                 match {
                                     it.orgNumber == narmesteLederRelasjon.orgNumber &&
                                         it.pageSize == LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE &&
-                                        it.cursor == LinemanagerSearchCursor(id = 1)
+                                        it.cursor == cursor
                                 },
                             )
                         }
@@ -1478,6 +1511,33 @@ class LinenmanagerApiV1Test :
                         val body = response.body<ApiError>()
                         body.type shouldBe ErrorType.INVALID_FORMAT
                         body.message shouldBe "Invalid pageToken"
+                        coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
+                    }
+                }
+
+                it("returns 400 for v1 pageToken in request body") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                """
+                                {
+                                  "orgNumber": "${narmesteLederRelasjon.orgNumber.value}",
+                                  "pageToken": "djE6MQ"
+                                }
+                                """.trimIndent(),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
+                        response.body<ApiError>().message shouldBe "Invalid pageToken"
                         coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
                     }
                 }

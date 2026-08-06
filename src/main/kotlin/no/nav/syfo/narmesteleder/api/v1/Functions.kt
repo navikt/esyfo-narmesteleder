@@ -16,6 +16,8 @@ import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 import java.time.Instant
 import java.time.format.DateTimeParseException
 import java.util.Base64
@@ -80,15 +82,22 @@ fun Int?.getPageSize(): Int = when (this) {
 
 fun String?.toLinemanagerSearchCursor(): LinemanagerSearchCursor? = this?.let { cursor ->
     runCatching {
-        val decodedCursor = String(Base64.getUrlDecoder().decode(cursor), UTF_8)
-        require(decodedCursor.startsWith(LINEMANAGER_SEARCH_CURSOR_PREFIX)) {
+        val cursorParts = Base64.getUrlDecoder()
+            .decode(cursor)
+            .toStrictUtf8String()
+            .split(":")
+        require(cursorParts.size == 4 && cursorParts.first() == LINEMANAGER_SEARCH_CURSOR_VERSION) {
             "Unsupported cursor format"
         }
-        val id = decodedCursor.removePrefix(LINEMANAGER_SEARCH_CURSOR_PREFIX).toInt()
+        val id = cursorParts.last().toInt()
         require(id > 0) {
             "Cursor id must be positive"
         }
-        LinemanagerSearchCursor(id)
+        LinemanagerSearchCursor(
+            firstName = cursorParts[1].toCursorName(),
+            lastName = cursorParts[2].toCursorName(),
+            id = id,
+        )
     }.getOrElse {
         throw ApiErrorException.BadRequestException(
             errorMessage = "Invalid pageToken",
@@ -97,9 +106,21 @@ fun String?.toLinemanagerSearchCursor(): LinemanagerSearchCursor? = this?.let { 
     }
 }
 
-fun LinemanagerSearchCursor.toOpaqueCursor(): String = Base64.getUrlEncoder()
-    .withoutPadding()
-    .encodeToString("$LINEMANAGER_SEARCH_CURSOR_PREFIX$id".toByteArray(UTF_8))
+fun LinemanagerSearchCursor.toOpaqueCursor(): String {
+    require(id > 0) {
+        "Cursor id must be positive"
+    }
+    val cursor = listOf(
+        LINEMANAGER_SEARCH_CURSOR_VERSION,
+        firstName.toCursorNameField(),
+        lastName.toCursorNameField(),
+        id,
+    ).joinToString(":")
+
+    return Base64.getUrlEncoder()
+        .withoutPadding()
+        .encodeToString(cursor.toByteArray(UTF_8))
+}
 
 fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
     JwtIssuer.MASKINPORTEN -> {
@@ -113,4 +134,23 @@ fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
     else -> throw UnauthorizedException()
 }
 
-private const val LINEMANAGER_SEARCH_CURSOR_PREFIX = "v1:"
+private const val LINEMANAGER_SEARCH_CURSOR_VERSION = "v2"
+
+private fun String?.toCursorNameField(): String = this?.let {
+    "s${Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray(UTF_8))}"
+} ?: "n"
+
+private fun String.toCursorName(): String? = when {
+    this == "n" -> null
+    startsWith("s") -> Base64.getUrlDecoder()
+        .decode(removePrefix("s"))
+        .toStrictUtf8String()
+
+    else -> error("Invalid cursor name")
+}
+
+private fun ByteArray.toStrictUtf8String(): String = UTF_8.newDecoder()
+    .onMalformedInput(CodingErrorAction.REPORT)
+    .onUnmappableCharacter(CodingErrorAction.REPORT)
+    .decode(ByteBuffer.wrap(this))
+    .toString()

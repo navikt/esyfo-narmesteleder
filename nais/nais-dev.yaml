@@ -30,6 +30,12 @@ spec:
     initialDelay: 10
     periodSeconds: 5
     timeout: 5
+  startup:
+    path: /internal/is_alive
+    initialDelay: 10
+    periodSeconds: 10
+    timeout: 5
+    failureThreshold: 720
   replicas:
     max: 4
     min: 2

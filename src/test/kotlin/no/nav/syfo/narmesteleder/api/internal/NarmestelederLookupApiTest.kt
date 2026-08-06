@@ -10,9 +10,11 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
-import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
@@ -74,7 +76,7 @@ class NarmestelederLookupApiTest :
             )
         }
 
-        describe("GET /internal/narmesteleder") {
+        describe("POST /internal/narmesteleder") {
             it("returns the active line manager with split email addresses") {
                 coEvery { lookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer) } returns listOf(
                     ActiveNarmestelederEntity(
@@ -85,8 +87,9 @@ class NarmestelederLookupApiTest :
                 )
 
                 withTestApplication {
-                    val response = client.get("/internal/narmesteleder?orgnummer=123456789") {
-                        header("Sykmeldt-Fnr", sykmeldtFnr.value)
+                    val response = client.post("/internal/narmesteleder") {
+                        contentType(ContentType.Application.Json)
+                        setBody(NarmestelederLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
                     }
 
@@ -104,8 +107,9 @@ class NarmestelederLookupApiTest :
                 coEvery { lookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer) } returns emptyList()
 
                 withTestApplication {
-                    val response = client.get("/internal/narmesteleder?orgnummer=123456789") {
-                        header("Sykmeldt-Fnr", sykmeldtFnr.value)
+                    val response = client.post("/internal/narmesteleder") {
+                        contentType(ContentType.Application.Json)
+                        setBody(NarmestelederLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
                     }
 
@@ -121,8 +125,9 @@ class NarmestelederLookupApiTest :
                 )
 
                 withTestApplication {
-                    val response = client.get("/internal/narmesteleder?orgnummer=123456789") {
-                        header("Sykmeldt-Fnr", sykmeldtFnr.value)
+                    val response = client.post("/internal/narmesteleder") {
+                        contentType(ContentType.Application.Json)
+                        setBody(NarmestelederLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
                     }
 

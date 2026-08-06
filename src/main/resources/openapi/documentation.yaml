@@ -423,25 +423,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
   /internal/narmesteleder:
-   get:
+   post:
      summary: Look up the active line manager for an employee and organization
      description: Internal machine-to-machine endpoint for syfo-budstikka.
      tags: [ internal ]
      security:
        - azuread_jwt: [ ]
-     parameters:
-       - name: orgnummer
-         in: query
-         required: true
-         schema:
-           type: string
-           pattern: '^\d{9}$'
-       - name: Sykmeldt-Fnr
-         in: header
-         required: true
-         schema:
-           type: string
-           pattern: '^\d{11}$'
+     requestBody:
+       required: true
+       content:
+         application/json:
+           schema:
+             $ref: '#/components/schemas/NarmestelederLookupRequest'
      responses:
        '200':
          description: Active line manager, or null when no active relation exists.
@@ -450,7 +443,7 @@ paths:
              schema:
                $ref: '#/components/schemas/NarmestelederLookupResponse'
        '400':
-         description: Invalid or missing orgnummer or Sykmeldt-Fnr.
+         description: Invalid or missing sykmeldtFnr or orgnummer.
        '401':
          description: Invalid or inactive Azure AD token.
        '403':
@@ -473,6 +466,19 @@ components:
       bearerFormat: JWT
       description: Azure AD client credentials token from a pre-authorized application.
   schemas:
+    NarmestelederLookupRequest:
+      type: object
+      properties:
+        sykmeldtFnr:
+          type: string
+          pattern: '^\d{11}$'
+        orgnummer:
+          type: string
+          pattern: '^\d{9}$'
+      required:
+        - sykmeldtFnr
+        - orgnummer
+      additionalProperties: false
     NarmestelederLookupResponse:
       type: object
       properties:

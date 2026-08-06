@@ -5,19 +5,24 @@ import io.ktor.server.http.content.staticResources
 import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.routing.get
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.application.ApplicationState
+import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
+import no.nav.syfo.narmesteleder.api.internal.registerNarmestelederLookupApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.texas.preAuthorizedAppsFromEnvironment
 import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {
@@ -29,6 +34,7 @@ fun Application.configureRouting() {
     val linemanagerRequirementRESTHandler by inject<LinemanagerRequirementRESTHandler>()
     val altinnTokenProvider by inject<AltinnTokenProvider>()
     val altinnTilgangerService by inject<AltinnTilgangerService>()
+    val narmestelederLookupService by inject<NarmestelederLookupService>()
 
     installCallId()
     installContentNegotiation()
@@ -37,6 +43,14 @@ fun Application.configureRouting() {
     routing {
         registerPodApi(applicationState, database)
         registerMetricApi()
+        route("/internal") {
+            install(AddTokenIssuerPlugin)
+            registerNarmestelederLookupApi(
+                narmestelederLookupService,
+                texasHttpClient,
+                preAuthorizedAppsFromEnvironment()
+            )
+        }
         registerApiV1(
             narmestelederKafkaService,
             texasHttpClient,

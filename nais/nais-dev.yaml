@@ -85,10 +85,6 @@ spec:
   azure:
     application:
       enabled: true
-      accessPolicy:
-        inbound:
-          rules:
-            - application: syfo-budstikka
   leaderElection: true
   accessPolicy:
     inbound:

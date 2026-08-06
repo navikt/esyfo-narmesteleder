@@ -1,6 +1,7 @@
 package no.nav.syfo.texas
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.server.application.createRouteScopedPlugin
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.TOKEN_ISSUER
@@ -11,6 +12,11 @@ import no.nav.syfo.texas.client.TexasHttpClient
 class AzureAdTokenAuthPluginConfiguration(
     var client: TexasHttpClient? = null,
     var preAuthorizedApps: Set<String> = emptySet(),
+)
+
+data class AzureAdPreAuthorizedApp(
+    val name: String,
+    val clientId: String,
 )
 
 val AzureAdTokenAuthPlugin = createRouteScopedPlugin(
@@ -40,7 +46,10 @@ val AzureAdTokenAuthPlugin = createRouteScopedPlugin(
 
 fun preAuthorizedAppsFromEnvironment(): Set<String> {
     val configuredApps = getEnvVar("AZURE_APP_PRE_AUTHORIZED_APPS")
-    val apps = jacksonObjectMapper().readTree(configuredApps)
-    require(apps.isArray) { "AZURE_APP_PRE_AUTHORIZED_APPS must be a JSON array" }
-    return apps.map { it.asText() }.filter(String::isNotBlank).toSet()
+    return preAuthorizedAppsFromJson(configuredApps)
 }
+
+fun preAuthorizedAppsFromJson(configuredApps: String): Set<String> = jacksonObjectMapper()
+    .readValue<List<AzureAdPreAuthorizedApp>>(configuredApps)
+    .map(AzureAdPreAuthorizedApp::clientId)
+    .toSet()

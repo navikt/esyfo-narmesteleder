@@ -13,6 +13,7 @@ import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
 import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
@@ -52,6 +53,8 @@ class LinemanagerSearchRepository(
         val now = OffsetDateTime.now(clock)
         val employeePerson = PersonTable.alias("employee_person")
         val managerPerson = PersonTable.alias("manager_person")
+        val employeeFirstNameLower = employeePerson[PersonTable.fornavn].lowerCase()
+        val employeeLastNameLower = employeePerson[PersonTable.etternavn].lowerCase()
 
         return withContext(Dispatchers.IO) {
             suspendTransaction(db = database) {
@@ -84,17 +87,35 @@ class LinemanagerSearchRepository(
                             employeePerson[PersonTable.fornavn],
                             employeePerson[PersonTable.mellomnavn],
                             employeePerson[PersonTable.etternavn],
+                            employeeFirstNameLower,
+                            employeeLastNameLower,
                             managerPerson[PersonTable.fornavn],
                             managerPerson[PersonTable.mellomnavn],
                             managerPerson[PersonTable.etternavn],
                         ),
                     )
-                    .where { query.toWhereClause(now, employeePerson, managerPerson) }
-                    .orderBy(NarmestelederTable.id to SortOrder.ASC)
+                    .where {
+                        query.toWhereClause(
+                            now,
+                            employeePerson,
+                            managerPerson,
+                            employeeFirstNameLower,
+                            employeeLastNameLower,
+                        )
+                    }
+                    .orderBy(
+                        employeeFirstNameLower to SortOrder.ASC_NULLS_LAST,
+                        employeeLastNameLower to SortOrder.ASC_NULLS_LAST,
+                        NarmestelederTable.id to SortOrder.ASC,
+                    )
                     .limit(query.pageSize + 1)
                     .map { row ->
                         LinemanagerSearchResult(
-                            cursor = LinemanagerSearchCursor(id = row[NarmestelederTable.id].value),
+                            cursor = LinemanagerSearchCursor(
+                                firstName = row[employeeFirstNameLower],
+                                lastName = row[employeeLastNameLower],
+                                id = row[NarmestelederTable.id].value,
+                            ),
                             linemanager = LinemanagerRead(
                                 orgNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
                                 activeFrom = row[NarmestelederTable.aktivFom].toInstant(),
@@ -127,6 +148,8 @@ class LinemanagerSearchRepository(
         now: OffsetDateTime,
         employeePerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
         managerPerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
+        employeeFirstNameLower: ExpressionWithColumnType<String>,
+        employeeLastNameLower: ExpressionWithColumnType<String>,
     ): Op<Boolean> {
         val filters = mutableListOf<Op<Boolean>>(
             NarmestelederTable.orgnummer eq orgNumber.value,
@@ -160,10 +183,38 @@ class LinemanagerSearchRepository(
             )
         }
         cursor?.let {
-            filters.add(NarmestelederTable.id greater it.id)
+            filters.add(
+                employeeFirstNameLower.isAfter(
+                    lastName = employeeLastNameLower,
+                    cursor = it,
+                ),
+            )
         }
 
         return filters.reduce(Op<Boolean>::and)
+    }
+
+    private fun ExpressionWithColumnType<String>.isAfter(
+        lastName: ExpressionWithColumnType<String>,
+        cursor: LinemanagerSearchCursor,
+    ): Op<Boolean> {
+        val afterLastNameAndId = when (val cursorLastName = cursor.lastName) {
+            null -> lastName.isNull() and (NarmestelederTable.id greater cursor.id)
+            else -> {
+                (lastName greater cursorLastName) or
+                    lastName.isNull() or
+                    ((lastName eq cursorLastName) and (NarmestelederTable.id greater cursor.id))
+            }
+        }
+
+        return when (val cursorFirstName = cursor.firstName) {
+            null -> this.isNull() and afterLastNameAndId
+            else -> {
+                (this greater cursorFirstName) or
+                    this.isNull() or
+                    ((this eq cursorFirstName) and afterLastNameAndId)
+            }
+        }
     }
 
     private fun activeSykmeldingQuery(today: LocalDate) = SendtSykmeldingTable

@@ -5,7 +5,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchQuery
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
@@ -237,7 +236,7 @@ class LinemanagerSearchRepositoryTest :
                 )
 
                 results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe
-                    listOf(employeeFnr, otherEmployeeFnr)
+                    listOf(otherEmployeeFnr, employeeFnr)
             }
 
             it("treats LIKE wildcard characters in name searches as literals") {
@@ -344,19 +343,77 @@ class LinemanagerSearchRepositoryTest :
                     )
             }
 
-            it("supports deterministic cursor pagination sorted by relation id") {
-                val firstId = insertRelation(
+            it("sorts employee names case-insensitively by first name, last name, and relation id") {
+                val benteId = insertRelation(
                     employeeFnr = "12345678910",
                     managerFnr = "10987654321",
                 )
-                val secondId = insertRelation(
+                val firstAdaId = insertRelation(
                     employeeFnr = "12345678911",
                     managerFnr = "10987654321",
                 )
-                val thirdId = insertRelation(
+                val secondAdaId = insertRelation(
                     employeeFnr = "12345678912",
                     managerFnr = "10987654321",
                 )
+                val adaSolId = insertRelation(
+                    employeeFnr = "12345678913",
+                    managerFnr = "10987654321",
+                )
+                val missingPersonId = insertRelation(
+                    employeeFnr = "12345678914",
+                    managerFnr = "10987654321",
+                )
+                insertPerson("12345678910", firstName = "Bente", lastName = "Andersen")
+                insertPerson("12345678911", firstName = "Ada", lastName = "Lund")
+                insertPerson("12345678912", firstName = "ada", lastName = "lund")
+                insertPerson("12345678913", firstName = "ADA", lastName = "Sol")
+
+                val results = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        pageSize = 50,
+                    ),
+                )
+
+                results.map { it.cursor.id } shouldBe
+                    listOf(firstAdaId, secondAdaId, adaSolId, benteId, missingPersonId)
+            }
+
+            it("paginates stably through equal and missing employee names") {
+                val benteId = insertRelation(
+                    employeeFnr = "12345678910",
+                    managerFnr = "10987654321",
+                )
+                val firstAdaId = insertRelation(
+                    employeeFnr = "12345678911",
+                    managerFnr = "10987654321",
+                )
+                val secondAdaId = insertRelation(
+                    employeeFnr = "12345678912",
+                    managerFnr = "10987654321",
+                )
+                val adaWithoutLastNameId = insertRelation(
+                    employeeFnr = "12345678913",
+                    managerFnr = "10987654321",
+                )
+                val secondAdaWithoutLastNameId = insertRelation(
+                    employeeFnr = "12345678914",
+                    managerFnr = "10987654321",
+                )
+                val firstMissingPersonId = insertRelation(
+                    employeeFnr = "12345678915",
+                    managerFnr = "10987654321",
+                )
+                val secondMissingPersonId = insertRelation(
+                    employeeFnr = "12345678916",
+                    managerFnr = "10987654321",
+                )
+                insertPerson("12345678910", firstName = "Bente", lastName = "Andersen")
+                insertPerson("12345678911", firstName = "Ada", lastName = "Lund")
+                insertPerson("12345678912", firstName = "ada", lastName = "lund")
+                insertPerson("12345678913", firstName = "Ada")
+                insertPerson("12345678914", firstName = "ada")
 
                 val firstPage = repository.search(
                     LinemanagerSearchQuery(
@@ -364,18 +421,43 @@ class LinemanagerSearchRepositoryTest :
                         pageSize = 2,
                     ),
                 )
-
-                firstPage.map { it.cursor.id } shouldBe listOf(firstId, secondId, thirdId)
-
                 val secondPage = repository.search(
                     LinemanagerSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 2,
-                        cursor = LinemanagerSearchCursor(id = secondId),
+                        cursor = firstPage.take(2).last().cursor,
+                    ),
+                )
+                val thirdPage = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        pageSize = 2,
+                        cursor = secondPage.take(2).last().cursor,
                     ),
                 )
 
-                secondPage.map { it.cursor.id } shouldBe listOf(thirdId)
+                val fourthPage = repository.search(
+                    LinemanagerSearchQuery(
+                        orgNumber = orgNumber,
+                        pageSize = 2,
+                        cursor = thirdPage.take(2).last().cursor,
+                    ),
+                )
+
+                (
+                    firstPage.take(2).map { it.cursor.id } +
+                        secondPage.take(2).map { it.cursor.id } +
+                        thirdPage.take(2).map { it.cursor.id } +
+                        fourthPage.map { it.cursor.id }
+                    ) shouldBe listOf(
+                    firstAdaId,
+                    secondAdaId,
+                    adaWithoutLastNameId,
+                    secondAdaWithoutLastNameId,
+                    benteId,
+                    firstMissingPersonId,
+                    secondMissingPersonId,
+                )
             }
         }
     })

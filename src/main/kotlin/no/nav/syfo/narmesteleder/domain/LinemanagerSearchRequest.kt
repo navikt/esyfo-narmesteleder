@@ -22,5 +22,7 @@ data class LinemanagerSearchQuery(
 )
 
 data class LinemanagerSearchCursor(
+    val firstName: String?,
+    val lastName: String?,
     val id: Int,
 )

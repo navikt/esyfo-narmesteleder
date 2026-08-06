@@ -128,7 +128,7 @@ private fun databaseModule() = module {
         NarmestelederDb(get(), Dispatchers.IO)
     }
     single<INarmestelederLookupDb> {
-        NarmestelederLookupDb(get(), Dispatchers.IO)
+        NarmestelederLookupDb(get<ExposedDatabase>(), Dispatchers.IO)
     }
     single<ISykmeldingDb> {
         SykmeldingDb(get(), Dispatchers.IO)

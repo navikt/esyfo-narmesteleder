@@ -4,14 +4,18 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
+import no.nav.syfo.application.environment.getEnvVar
 import org.flywaydb.core.Flyway
+import org.flywaydb.core.api.MigrationState
+import org.flywaydb.database.postgresql.PostgreSQLConfigurationExtension
 import java.sql.Connection
 
 data class DatabaseConfig(
     val jdbcUrl: String,
     val password: String,
     val username: String,
-    val poolSize: Int = 4
+    val poolSize: Int = 4,
+    val flywayRepairEnabled: Boolean = getEnvVar("FLYWAY_REPAIR_ENABLED", "false").toBoolean(),
 )
 
 class Database(
@@ -39,6 +43,7 @@ class Database(
     }
 
     private fun runFlywayMigrations() = Flyway.configure().run {
+        getConfigurationExtension(PostgreSQLConfigurationExtension::class.java).isTransactionalLock = false
         dataSource(
             config.jdbcUrl,
             config.username,
@@ -47,7 +52,26 @@ class Database(
 
 //        cleanDisabled(false)
 //        load().clean()
-        load().migrate().migrationsExecuted
+        val flyway = load()
+        if (config.flywayRepairEnabled) {
+            val failedVersions = flyway.info().all()
+                .filter { it.state == MigrationState.FAILED }
+                .map { it.version.toString() }
+
+            require(failedVersions.all { it in REPAIRABLE_FLYWAY_VERSIONS }) {
+                "FLYWAY_REPAIR_ENABLED can only repair failed migrations: ${REPAIRABLE_FLYWAY_VERSIONS.joinToString()}"
+            }
+
+            if (failedVersions.isNotEmpty()) {
+                flyway.repair()
+            }
+        }
+        flyway.migrate().migrationsExecuted
+    }
+
+    private companion object {
+        // These drop index if exists before trying to create index, so they should be repairable.
+        val REPAIRABLE_FLYWAY_VERSIONS = setOf("25", "26", "27")
     }
 }
 

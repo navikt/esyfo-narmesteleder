@@ -75,5 +75,5 @@ val COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER: Counte
 
 const val LOOKUP_NARMESTELEDER = "${METRICS_NS}_lookup_narmesteleder"
 val COUNT_LOOKUP_NARMESTELEDER: Counter = Counter.builder(LOOKUP_NARMESTELEDER)
-    .description("Counts line manager lookups for syfo-budstikka")
+    .description("Counts line manager lookups by org/sykmeldt fnr")
     .register(METRICS_REGISTRY)

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS person_fnr_idx;

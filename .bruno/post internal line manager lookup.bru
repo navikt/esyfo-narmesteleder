@@ -1,19 +1,19 @@
 meta {
-  name: post internal narmesteleder
+  name: post internal line manager lookup
   type: http
   seq: 7
 }
 
 post {
-  url: {{baseUrlIntern}}/api/v1/internal/narmesteleder
+  url: {{baseUrlIntern}}/internal/api/v1/lookup
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "sykmeldtFnr": "35933493077",
-    "orgnummer": "427604467"
+    "employeeNationalIdentificationNumber": "35933493077",
+    "organizationNumber": "427604467"
   }
 }
 

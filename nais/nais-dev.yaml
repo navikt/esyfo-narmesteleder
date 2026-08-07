@@ -112,6 +112,8 @@ spec:
     - instance: felles-cache
       access: readwrite
   env:
+    - name: AZURE_APP_PRE_AUTHORIZED_APPS
+      value: '[{"name":"syfo-budstikka","clientId":"111b89d0-2789-4e79-973a-ffc9a3e5dba2"}]'
     - name: PDL_BASE_URL
       value: https://pdl-api.dev-fss-pub.nais.io/graphql
     - name: PDL_SCOPE

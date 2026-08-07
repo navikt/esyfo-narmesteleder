@@ -4,6 +4,7 @@ enum class JwtIssuer(val value: String? = null) {
     IDPORTEN("idporten"),
     MASKINPORTEN("maskinporten"),
     TOKEN_X("tokenx"),
+    AZURE_AD("azuread"),
     FAKEDINGS("fakedings"),
     UNSUPPORTED;
 
@@ -16,6 +17,7 @@ enum class JwtIssuer(val value: String? = null) {
             // https://test.idporten.no/.well-known/openid-configuration
 //            iss.matches(Regex("https://(test\\.)?idporten\\.no/?")) -> IDPORTEN
             iss.contains("tokenx") -> TOKEN_X
+            iss.contains("login.microsoftonline.com") -> AZURE_AD
             // tokenx is found at well-known doc found in TOKEN_X_WELL_KNOWN_URL env. var
             else -> JwtIssuer.UNSUPPORTED
         }

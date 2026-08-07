@@ -27,6 +27,7 @@ run = './gradlew build'
 
 [tasks.start]
 description = "Run app using gradle"
+env = { AZURE_APP_PRE_AUTHORIZED_APPS = '[{"name":"syfo-budstikka","clientId":"syfo-budstikka"}]' }
 run = './gradlew run'
 
 [tasks.test]

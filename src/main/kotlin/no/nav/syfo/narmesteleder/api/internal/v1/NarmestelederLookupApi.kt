@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.api.internal
+package no.nav.syfo.narmesteleder.api.internal.v1
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
@@ -13,8 +13,6 @@ import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.NarmestelederLookup
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
-import no.nav.syfo.texas.AzureAdTokenAuthPlugin
-import no.nav.syfo.texas.client.TexasHttpClient
 
 const val NARMESTELEDER_LOOKUP_PATH = "/narmesteleder"
 
@@ -34,15 +32,8 @@ data class NarmesteLederResponse(
 
 fun Route.registerNarmestelederLookupApi(
     narmestelederLookupService: NarmestelederLookupService,
-    texasHttpClient: TexasHttpClient,
-    preAuthorizedApps: Set<String>,
 ) {
     route(NARMESTELEDER_LOOKUP_PATH) {
-        install(AzureAdTokenAuthPlugin) {
-            client = texasHttpClient
-            this.preAuthorizedApps = preAuthorizedApps
-        }
-
         post {
             val request = call.tryReceive<NarmestelederLookupRequest>()
             val orgnummer = OrganizationNumber.parse(

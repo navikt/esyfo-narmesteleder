@@ -13,9 +13,11 @@ import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
+import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.registerApiV1
+import no.nav.syfo.registerInternalApiV1
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
 import org.koin.ktor.ext.inject
@@ -27,6 +29,7 @@ fun Application.configureRouting() {
     val texasHttpClient by inject<TexasHttpClient>()
     val validationService by inject<ValidationService>()
     val linemanagerRequirementRESTHandler by inject<LinemanagerRequirementRESTHandler>()
+    val linemanagerSearchService by inject<LinemanagerSearchService>()
     val altinnTokenProvider by inject<AltinnTokenProvider>()
     val altinnTilgangerService by inject<AltinnTilgangerService>()
 
@@ -44,9 +47,12 @@ fun Application.configureRouting() {
             linemanagerRequirementRESTHandler,
             altinnTilgangerService
         )
+        registerInternalApiV1(texasHttpClient, linemanagerSearchService)
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
+        staticResources("/internal/openapi", "internal-openapi")
+        swaggerUI(path = "internal/swagger", swaggerFile = "internal-openapi/linemanager-search.yaml")
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
             registerDialogportenTokenApi(texasHttpClient, altinnTokenProvider)

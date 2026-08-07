@@ -12,6 +12,7 @@ import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
+import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
@@ -46,12 +47,12 @@ fun Application.configureRouting() {
             validationService,
             linemanagerRequirementRESTHandler,
             altinnTilgangerService,
-            narmestelederLookupService,
-            preAuthorizedAppsFromEnvironment()
         )
+        registerInternalApi(narmestelederLookupService, texasHttpClient, preAuthorizedAppsFromEnvironment())
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
+        swaggerUI(path = "internal/swagger", swaggerFile = "openapi/internal-documentation.yaml")
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
             registerDialogportenTokenApi(texasHttpClient, altinnTokenProvider)

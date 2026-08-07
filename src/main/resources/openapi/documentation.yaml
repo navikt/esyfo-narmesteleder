@@ -422,32 +422,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/internal/narmesteleder:
-   post:
-     summary: Look up the active line manager for an employee and organization
-     description: Internal machine-to-machine endpoint for syfo-budstikka.
-     tags: [ internal ]
-     security:
-       - azuread_jwt: [ ]
-     requestBody:
-       required: true
-       content:
-         application/json:
-           schema:
-             $ref: '#/components/schemas/NarmestelederLookupRequest'
-     responses:
-       '200':
-         description: Active line manager, or null when no active relation exists.
-         content:
-           application/json:
-             schema:
-               $ref: '#/components/schemas/NarmestelederLookupResponse'
-       '400':
-         description: Invalid or missing sykmeldtFnr or orgnummer.
-       '401':
-         description: Invalid or inactive Azure AD token.
-       '403':
-         description: Calling application is not pre-authorized.
 components:
   securitySchemes:
     maskinporten_jwt:
@@ -460,50 +434,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: TokenX issued JWT.
-    azuread_jwt:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: Azure AD client credentials token from a pre-authorized application.
   schemas:
-    NarmestelederLookupRequest:
-      type: object
-      properties:
-        sykmeldtFnr:
-          type: string
-          pattern: '^\d{11}$'
-        orgnummer:
-          type: string
-          pattern: '^\d{9}$'
-      required:
-        - sykmeldtFnr
-        - orgnummer
-      additionalProperties: false
-    NarmestelederLookupResponse:
-      type: object
-      properties:
-        narmesteLeder:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/NarmesteLeder'
-      required:
-        - narmesteLeder
-      additionalProperties: false
-    NarmesteLeder:
-      type: object
-      properties:
-        fnr:
-          type: string
-          pattern: '^\d{11}$'
-        epostadresser:
-          type: array
-          items:
-            type: string
-            format: email
-      required:
-        - fnr
-        - epostadresser
-      additionalProperties: false
     Linemanager:
       type: object
       properties:

@@ -1,0 +1,81 @@
+openapi: 3.0.3
+info:
+  title: Esyfo Narmesteleder Internal API
+  version: 1.0.0
+  description: Internal machine-to-machine API for looking up active line managers.
+servers:
+  - url: https://narmesteleder-api.ekstern.dev.nav.no
+    description: Development server.
+  - url: https://narmesteleder-api.nav.no
+    description: Production server.
+paths:
+  /internal/api/v1/lookup:
+    post:
+      summary: Look up the active line manager for an employee and organization
+      security:
+        - azuread_jwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LineManagerLookupRequest'
+      responses:
+        '200':
+          description: Active line manager, or null when no active relation exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LineManagerLookupResponse'
+        '400':
+          description: Invalid or missing employeeNationalIdentificationNumber or organizationNumber.
+        '401':
+          description: Invalid or inactive Azure AD token.
+        '403':
+          description: Calling application is not pre-authorized.
+components:
+  securitySchemes:
+    azuread_jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Azure AD client credentials token from a pre-authorized application.
+  schemas:
+    LineManagerLookupRequest:
+      type: object
+      properties:
+        employeeNationalIdentificationNumber:
+          type: string
+          pattern: '^\d{11}$'
+        organizationNumber:
+          type: string
+          pattern: '^\d{9}$'
+      required:
+        - employeeNationalIdentificationNumber
+        - organizationNumber
+      additionalProperties: false
+    LineManagerLookupResponse:
+      type: object
+      properties:
+        lineManager:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/LineManager'
+      required:
+        - lineManager
+      additionalProperties: false
+    LineManager:
+      type: object
+      properties:
+        nationalIdentificationNumber:
+          type: string
+          pattern: '^\d{11}$'
+        emailAddresses:
+          type: array
+          items:
+            type: string
+            format: email
+      required:
+        - nationalIdentificationNumber
+        - emailAddresses
+      additionalProperties: false

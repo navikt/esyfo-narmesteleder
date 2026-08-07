@@ -70,7 +70,6 @@ import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
@@ -174,8 +173,6 @@ class LinenmanagerApiV1Test :
                             validationServiceSpy,
                             nlBehovHandler,
                             altinnAccessServiceSpy,
-                            narmestelederLookupService = mockk<NarmestelederLookupService>(relaxed = true),
-                            preAuthorizedApps = emptySet()
                         )
                     }
                 }

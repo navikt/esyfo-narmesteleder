@@ -16,7 +16,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.jackson.jackson
-import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
@@ -24,12 +23,15 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
+import no.nav.syfo.narmesteleder.api.internal.v1.NarmesteLederResponse
+import no.nav.syfo.narmesteleder.api.internal.v1.NarmestelederLookupRequest
+import no.nav.syfo.narmesteleder.api.internal.v1.NarmestelederLookupResponse
 import no.nav.syfo.narmesteleder.db.ActiveNarmestelederEntity
 import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
+import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
@@ -59,10 +61,15 @@ class NarmestelederLookupApiTest :
                     installContentNegotiation()
                     installStatusPages()
                     routing {
-                        route("/internal") {
-                            install(AddTokenIssuerPlugin)
-                            registerNarmestelederLookupApi(lookupService, texasHttpClient, setOf(callingApp))
-                        }
+                        registerApiV1(
+                            narmestelederKafkaService = mockk(),
+                            texasHttpClient = texasHttpClient,
+                            validationService = mockk(),
+                            linemanagerRequirementRESTHandler = mockk(),
+                            altinnTilgangerService = mockk(),
+                            narmestelederLookupService = lookupService,
+                            preAuthorizedApps = setOf(callingApp)
+                        )
                     }
                 }
                 test()
@@ -76,7 +83,7 @@ class NarmestelederLookupApiTest :
             )
         }
 
-        describe("POST /internal/narmesteleder") {
+        describe("POST /api/v1/internal/narmesteleder") {
             it("returns the active line manager with split email addresses") {
                 coEvery { lookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer) } returns listOf(
                     ActiveNarmestelederEntity(
@@ -87,7 +94,7 @@ class NarmestelederLookupApiTest :
                 )
 
                 withTestApplication {
-                    val response = client.post("/internal/narmesteleder") {
+                    val response = client.post("/api/v1/internal/narmesteleder") {
                         contentType(ContentType.Application.Json)
                         setBody(NarmestelederLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
@@ -107,7 +114,7 @@ class NarmestelederLookupApiTest :
                 coEvery { lookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer) } returns emptyList()
 
                 withTestApplication {
-                    val response = client.post("/internal/narmesteleder") {
+                    val response = client.post("/api/v1/internal/narmesteleder") {
                         contentType(ContentType.Application.Json)
                         setBody(NarmestelederLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
@@ -125,7 +132,7 @@ class NarmestelederLookupApiTest :
                 )
 
                 withTestApplication {
-                    val response = client.post("/internal/narmesteleder") {
+                    val response = client.post("/api/v1/internal/narmesteleder") {
                         contentType(ContentType.Application.Json)
                         setBody(NarmestelederLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))

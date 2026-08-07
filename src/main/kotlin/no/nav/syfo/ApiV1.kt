@@ -5,9 +5,11 @@ import io.ktor.server.routing.route
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.registerAccessOrganizationsApi
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
+import no.nav.syfo.narmesteleder.api.internal.registerInternalAPI
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.client.TexasHttpClient
 
@@ -20,10 +22,13 @@ fun Route.registerApiV1(
     validationService: ValidationService,
     linemanagerRequirementRESTHandler: LinemanagerRequirementRESTHandler,
     altinnTilgangerService: AltinnTilgangerService,
+    narmestelederLookupService: NarmestelederLookupService,
+    preAuthorizedApps: Set<String>
 ) {
     route(API_V1_PATH) {
         install(AddTokenIssuerPlugin)
         registerLinemanagerApiV1(narmestelederKafkaService, validationService, texasHttpClient, linemanagerRequirementRESTHandler)
         registerAccessOrganizationsApi(altinnTilgangerService, texasHttpClient)
+        registerInternalAPI(narmestelederLookupService, texasHttpClient, preAuthorizedApps)
     }
 }

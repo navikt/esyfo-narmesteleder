@@ -422,7 +422,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /internal/narmesteleder:
+  /api/v1/internal/narmesteleder:
    post:
      summary: Look up the active line manager for an employee and organization
      description: Internal machine-to-machine endpoint for syfo-budstikka.

@@ -22,10 +22,12 @@ fun Route.registerLinemanagerSearchApi(
         }
 
         post {
+            val principal = call.getMyPrincipal()
             val collection = linemanagerSearchService.search(
                 request = call.tryReceive<LinemanagerSearchRequest>(),
-                principal = call.getMyPrincipal(),
+                principal = principal,
             )
+            countLinemanagerSearch(principal)
             call.respond(HttpStatusCode.OK, collection)
         }
     }

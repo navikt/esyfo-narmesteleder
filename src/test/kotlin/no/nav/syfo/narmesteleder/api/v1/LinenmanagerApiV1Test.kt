@@ -9,6 +9,7 @@ import createMockToken
 import defaultMocks
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.doubles.shouldBeExactly
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -46,6 +47,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
+import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -1482,6 +1484,43 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
+                it("counts successful searches by principal type") {
+                    withTestApplication {
+                        val systemSearchesBefore = linemanagerSearchMetricCount("system")
+                        val userSearchesBefore = linemanagerSearchMetricCount("user")
+                        val callerPid = "11223344556"
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(linemanagerSearchResult(cursorId = 1))
+
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        val systemResponse = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(LinemanagerSearchRequest(orgNumber = narmesteLederRelasjon.orgNumber))
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        texasHttpClientMock.defaultMocks(
+                            acr = "Level4",
+                            pid = callerPid,
+                        )
+                        fakeAltinnTilgangerClient.addAccess(callerPid, narmesteLederRelasjon.orgNumber.value)
+                        val userResponse = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(LinemanagerSearchRequest(orgNumber = narmesteLederRelasjon.orgNumber))
+                            bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
+                        }
+
+                        systemResponse.status shouldBe HttpStatusCode.OK
+                        userResponse.status shouldBe HttpStatusCode.OK
+                        linemanagerSearchMetricCount("system") shouldBeExactly systemSearchesBefore + 1
+                        linemanagerSearchMetricCount("user") shouldBeExactly userSearchesBefore + 1
+                    }
+                }
+
                 it("returns 400 for invalid orgNumber in request body") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
@@ -1636,3 +1675,10 @@ class LinenmanagerApiV1Test :
             }
         }
     })
+
+private fun linemanagerSearchMetricCount(principalType: String): Double = METRICS_REGISTRY
+    .find(LINEMANAGER_SEARCH_TOTAL)
+    .tag("principal_type", principalType)
+    .counter()
+    ?.count()
+    ?: 0.0

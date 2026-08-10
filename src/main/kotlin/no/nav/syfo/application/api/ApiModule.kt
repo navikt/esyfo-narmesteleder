@@ -59,9 +59,8 @@ fun Application.configureRouting() {
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
-        staticResources("/internal/openapi", "internal-openapi")
         swaggerUI(path = "internal/swagger", swaggerFile = "openapi/internal-documentation.yaml")
-        swaggerUI(path = "internal/linemanager-search/swagger", swaggerFile = "internal-openapi/linemanager-search.yaml")
+        swaggerUI(path = "internal/linemanager-search/swagger", swaggerFile = "openapi/internal-linemanager-search.yaml")
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
             registerDialogportenTokenApi(texasHttpClient, altinnTokenProvider)

@@ -18,7 +18,7 @@ class OpenApiLinemanagerSearchSchemaTest :
     StringSpec({
         fun schemas(): Map<*, *> {
             val yamlText = this::class.java.classLoader
-                .getResource("internal-openapi/linemanager-search.yaml")!!
+                .getResource("openapi/internal-linemanager-search.yaml")!!
                 .readText()
 
             val root = Yaml().load<Map<String, Any>>(yamlText)

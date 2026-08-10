@@ -43,10 +43,10 @@ class SwaggerAvailabilityTest :
             testApplication {
                 application {
                     routing {
-                        staticResources("/internal/openapi", "internal-openapi")
+                        staticResources("/openapi", "openapi")
                     }
                 }
-                val response = client.get("/internal/openapi/linemanager-search.yaml")
+                val response = client.get("/openapi/internal-documentation.yaml")
                 response.status.value shouldBe 200
                 response.bodyAsText() shouldContain "openapi: 3.0.3"
             }

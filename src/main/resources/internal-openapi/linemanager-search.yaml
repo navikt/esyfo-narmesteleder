@@ -100,7 +100,7 @@ components:
         text:
           type: string
           nullable: true
-          description: Optional case-insensitive partial name search for either employee or manager. Exactly 11 digits instead searches national identification numbers for either person.
+          description: Optional case-insensitive partial name search for either employee or manager. Leading and trailing whitespace is ignored, and blank text is treated as absent. Exactly 11 digits instead searches national identification numbers for either person.
           example: "Kari Nordmann"
           maxLength: 50
         hasActiveSickLeave:

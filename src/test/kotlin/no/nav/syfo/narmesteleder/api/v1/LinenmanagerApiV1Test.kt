@@ -1316,6 +1316,38 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
+                it("normalizes blank text to null") {
+                    withTestApplication {
+                        coEvery {
+                            linemanagerSearchRepository.search(any())
+                        } returns listOf(linemanagerSearchResult(cursorId = 1))
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                LinemanagerSearchRequest(
+                                    orgNumber = narmesteLederRelasjon.orgNumber,
+                                    text = "   ",
+                                ),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        coVerify(exactly = 1) {
+                            linemanagerSearchRepository.search(
+                                match {
+                                    it.text == null && it.nationalIdentificationNumber == null
+                                },
+                            )
+                        }
+                    }
+                }
+
                 it("uses an eleven-digit text value to query either national identification number") {
                     withTestApplication {
                         val nationalIdentificationNumber = PersonalIdentificationNumber("12345678910")

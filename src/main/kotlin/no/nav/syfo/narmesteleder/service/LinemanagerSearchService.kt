@@ -22,8 +22,9 @@ class LinemanagerSearchService(
         principal: Principal,
     ): LinemanagerReadCollection {
         validationService.validatePrincipalAccessToOrgnumber(principal, request.orgNumber)
-        request.text?.let { text ->
-            if (text.length > TEXT_MAX_LENGTH) {
+        val text = request.text?.trim()?.takeIf(String::isNotEmpty)
+        text?.let { normalizedText ->
+            if (normalizedText.length > TEXT_MAX_LENGTH) {
                 throw ApiErrorException.BadRequestException("text must be at most $TEXT_MAX_LENGTH characters")
             }
         }
@@ -33,8 +34,8 @@ class LinemanagerSearchService(
             orgNumber = request.orgNumber,
             managerNationalIdentificationNumber = request.managerNationalIdentificationNumber,
             employeeNationalIdentificationNumber = request.employeeNationalIdentificationNumber,
-            nationalIdentificationNumber = request.text?.takeIf(String::isNationalIdentificationNumber)?.let(::PersonalIdentificationNumber),
-            text = request.text?.takeUnless(String::isNationalIdentificationNumber),
+            nationalIdentificationNumber = text?.takeIf(String::isNationalIdentificationNumber)?.let(::PersonalIdentificationNumber),
+            text = text?.takeUnless(String::isNationalIdentificationNumber),
             hasActiveSickLeave = request.hasActiveSickLeave,
             pageSize = pageSize,
             cursor = request.pageToken.toLinemanagerSearchCursor(),

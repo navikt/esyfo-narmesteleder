@@ -47,6 +47,24 @@
           }
         }
       ]
+    },
+    {
+      "issuerId": "azuread",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "scope",
+          "match": "api://esyfo-narmesteleder/.default",
+          "claims": {
+            "iss": "https://login.microsoftonline.com/",
+            "sub": "syfo-budstikka",
+            "azp": "syfo-budstikka",
+            "aud": [
+              "esyfo-narmesteleder"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

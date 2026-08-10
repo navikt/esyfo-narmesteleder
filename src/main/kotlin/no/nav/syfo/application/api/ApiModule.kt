@@ -12,12 +12,15 @@ import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
+import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.texas.preAuthorizedAppsFromEnvironment
 import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {
@@ -29,6 +32,7 @@ fun Application.configureRouting() {
     val linemanagerRequirementRESTHandler by inject<LinemanagerRequirementRESTHandler>()
     val altinnTokenProvider by inject<AltinnTokenProvider>()
     val altinnTilgangerService by inject<AltinnTilgangerService>()
+    val narmestelederLookupService by inject<NarmestelederLookupService>()
 
     installCallId()
     installContentNegotiation()
@@ -42,11 +46,13 @@ fun Application.configureRouting() {
             texasHttpClient,
             validationService,
             linemanagerRequirementRESTHandler,
-            altinnTilgangerService
+            altinnTilgangerService,
         )
+        registerInternalApi(narmestelederLookupService, texasHttpClient, preAuthorizedAppsFromEnvironment())
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
+        swaggerUI(path = "internal/swagger", swaggerFile = "openapi/internal-documentation.yaml")
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
             registerDialogportenTokenApi(texasHttpClient, altinnTokenProvider)

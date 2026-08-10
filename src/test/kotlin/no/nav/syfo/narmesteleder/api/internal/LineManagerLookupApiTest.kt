@@ -31,6 +31,7 @@ import no.nav.syfo.narmesteleder.db.ActiveNarmestelederEntity
 import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
@@ -64,7 +65,8 @@ class LineManagerLookupApiTest :
                         registerInternalApi(
                             texasHttpClient = texasHttpClient,
                             narmestelederLookupService = lookupService,
-                            preAuthorizedApps = setOf(callingApp)
+                            preAuthorizedApps = setOf(callingApp),
+                            linemanagerSearchService = mockk<LinemanagerSearchService>(),
                         )
                     }
                 }

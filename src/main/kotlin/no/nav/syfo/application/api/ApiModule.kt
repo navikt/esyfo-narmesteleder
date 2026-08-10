@@ -19,7 +19,6 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.registerApiV1
-import no.nav.syfo.registerInternalApiV1
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.preAuthorizedAppsFromEnvironment
@@ -51,8 +50,12 @@ fun Application.configureRouting() {
             linemanagerRequirementRESTHandler,
             altinnTilgangerService,
         )
-        registerInternalApiV1(texasHttpClient, linemanagerSearchService)
-        registerInternalApi(narmestelederLookupService, texasHttpClient, preAuthorizedAppsFromEnvironment())
+        registerInternalApi(
+            narmestelederLookupService = narmestelederLookupService,
+            texasHttpClient = texasHttpClient,
+            preAuthorizedApps = preAuthorizedAppsFromEnvironment(),
+            linemanagerSearchService = linemanagerSearchService,
+        )
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")

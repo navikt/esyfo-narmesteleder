@@ -35,7 +35,6 @@ import linemanagerRevoke
 import manager
 import nlBehovEntity
 import no.nav.syfo.API_V1_PATH
-import no.nav.syfo.INTERNAL_API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
@@ -55,6 +54,8 @@ import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
+import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
+import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
@@ -81,6 +82,7 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
@@ -88,7 +90,6 @@ import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
-import no.nav.syfo.registerInternalApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import prepareGetPersonResponse
@@ -100,6 +101,7 @@ class LinenmanagerApiV1Test :
         val pdlCacheMock = mockk<PdlCache>(relaxed = true)
         val pdlService = spyk(PdlService(FakePdlClient(), pdlCacheMock))
         val texasHttpClientMock = mockk<TexasHttpClient>()
+        val narmestelederLookupService = mockk<NarmestelederLookupService>()
         val narmesteLederRelasjon = linemanager()
         val fakeAaregClient = FakeAaregClient()
         val aaregService = AaregService(fakeAaregClient)
@@ -194,7 +196,12 @@ class LinenmanagerApiV1Test :
                             nlBehovHandler,
                             altinnAccessServiceSpy,
                         )
-                        registerInternalApiV1(texasHttpClientMock, linemanagerSearchService)
+                        registerInternalApi(
+                            narmestelederLookupService,
+                            texasHttpClientMock,
+                            emptySet(),
+                            linemanagerSearchService
+                        )
                     }
                 }
                 fn(this)
@@ -1127,7 +1134,9 @@ class LinenmanagerApiV1Test :
 
                         val response =
                             client.get(
-                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=12345678&createdAfter=${Instant.now().minusSeconds(60)}",
+                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=12345678&createdAfter=${
+                                    Instant.now().minusSeconds(60)
+                                }",
                             ) {
                                 bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
                             }
@@ -1146,7 +1155,9 @@ class LinenmanagerApiV1Test :
 
                         val response =
                             client.get(
-                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=12345678a&createdAfter=${Instant.now().minusSeconds(60)}",
+                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=12345678a&createdAfter=${
+                                    Instant.now().minusSeconds(60)
+                                }",
                             ) {
                                 bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
                             }
@@ -1465,7 +1476,9 @@ class LinenmanagerApiV1Test :
 
                         response.status shouldBe HttpStatusCode.OK
                         val body = response.body<LinemanagerReadCollection>()
-                        body.linemanagers.single().manager.nationalIdentificationNumber shouldBe PersonalIdentificationNumber("10987654321")
+                        body.linemanagers.single().manager.nationalIdentificationNumber shouldBe PersonalIdentificationNumber(
+                            "10987654321"
+                        )
                     }
                 }
 

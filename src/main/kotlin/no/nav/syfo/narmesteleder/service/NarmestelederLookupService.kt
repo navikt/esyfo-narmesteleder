@@ -26,7 +26,7 @@ class NarmestelederLookupService(
             NarmestelederLookup(
                 fnr = relation.narmestelederFnr,
                 epostadresser = relation.narmestelederEpost
-                    .split(",")
+                    .split(",", ";")
                     .map(String::trim)
                     .filter(String::isNotEmpty)
                     .map(::EmailAddress),

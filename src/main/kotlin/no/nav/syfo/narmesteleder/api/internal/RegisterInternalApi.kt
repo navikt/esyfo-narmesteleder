@@ -15,7 +15,7 @@ fun Route.registerInternalApi(
     narmestelederLookupService: NarmestelederLookupService,
     texasHttpClient: TexasHttpClient,
     preAuthorizedApps: Set<String>,
-    linemanagerSearchService: LinemanagerSearchService? = null,
+    linemanagerSearchService: LinemanagerSearchService,
 ) {
     route(INTERNAL_API_V1_PATH) {
         install(AddTokenIssuerPlugin)
@@ -24,8 +24,6 @@ fun Route.registerInternalApi(
             texasHttpClient = texasHttpClient,
             preAuthorizedApps = preAuthorizedApps,
         )
-        linemanagerSearchService?.let {
-            registerLinemanagerSearchApi(texasHttpClient, it)
-        }
+        registerLinemanagerSearchApi(texasHttpClient, linemanagerSearchService)
     }
 }

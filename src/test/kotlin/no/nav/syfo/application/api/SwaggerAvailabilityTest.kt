@@ -39,8 +39,7 @@ class SwaggerAvailabilityTest :
                 response.bodyAsText() shouldContain "openapi: 3.0.3"
             }
         }
-
-        "internal openapi yaml is available" {
+        "linemanager search openapi yaml is available" {
             testApplication {
                 application {
                     routing {
@@ -48,6 +47,19 @@ class SwaggerAvailabilityTest :
                     }
                 }
                 val response = client.get("/internal/openapi/linemanager-search.yaml")
+                response.status.value shouldBe 200
+                response.bodyAsText() shouldContain "openapi: 3.0.3"
+            }
+        }
+
+        "internal openapi yaml is available" {
+            testApplication {
+                application {
+                    routing {
+                        staticResources("/openapi", "openapi")
+                    }
+                }
+                val response = client.get("/openapi/internal-documentation.yaml")
                 response.status.value shouldBe 200
                 response.bodyAsText() shouldContain "openapi: 3.0.3"
             }

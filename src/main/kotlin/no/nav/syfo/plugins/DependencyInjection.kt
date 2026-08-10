@@ -41,7 +41,9 @@ import no.nav.syfo.ereg.client.EregClient
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
+import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
+import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
 import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.kafka.NarmestelederLeesahProducer
@@ -50,6 +52,7 @@ import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -127,6 +130,9 @@ private fun databaseModule() = module {
     single<INarmestelederDb> {
         NarmestelederDb(get(), Dispatchers.IO)
     }
+    single<INarmestelederLookupDb> {
+        NarmestelederLookupDb(get<ExposedDatabase>(), Dispatchers.IO)
+    }
     single<ISykmeldingDb> {
         SykmeldingDb(get(), Dispatchers.IO)
     }
@@ -139,6 +145,7 @@ private fun databaseModule() = module {
 }
 
 private fun handlerModule() = module {
+    single { NarmestelederLookupService(get()) }
     single { NlBehovLeesahHandler(get()) }
     single { SendtSykmeldingHandler(get(), get()) }
     single {

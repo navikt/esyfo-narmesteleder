@@ -1,0 +1,40 @@
+meta {
+  name: create entra m2m
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:6969/azuread/token
+  body: formUrlEncoded
+  auth: basic
+}
+
+body:form-urlencoded {
+  grant_type: client_credentials
+  client_id: syfo-budstikka
+  scope: api://esyfo-narmesteleder/.default
+}
+
+auth:basic {
+  username: syfo-budstikka
+  password: local-secret
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const tokenResponse = res.getBody();
+
+  if (tokenResponse != null) {
+    bru.setEnvVar("token", tokenResponse.access_token);
+    bru.setEnvVar("identityProvider", "azuread");
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

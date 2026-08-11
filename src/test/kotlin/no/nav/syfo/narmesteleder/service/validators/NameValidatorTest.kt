@@ -273,6 +273,91 @@ class NameValidatorTest :
                 parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore + 1.0
             }
         }
+
+        describe("name matching") {
+            it("normalizes Unicode, whitespace, apostrophes, and hyphens before exact matching") {
+                NameValidator.determineMatchType(
+                    nameToValidate = "  A\u030Astr\u00F6m\u2011O\u2019Connor  ",
+                    pdlLastNames = listOf("\u00C5str\u00F6m-O'Connor"),
+                    nameSource = NAME_SOURCE_SINGLE,
+                ) shouldBe NameMatchType.EXACT
+            }
+
+            it("does not remove unknown characters while normalizing") {
+                NameValidator.determineMatchType(
+                    nameToValidate = "O*Connor",
+                    pdlLastNames = listOf("OConnor"),
+                    nameSource = NAME_SOURCE_SINGLE,
+                ) shouldBe NameMatchType.NONE
+            }
+
+            it("only uses fuzzy matching when both names have at least four Unicode letters") {
+                NameValidator.determineMatchType(
+                    nameToValidate = "Aas",
+                    pdlLastNames = listOf("Aar"),
+                    nameSource = NAME_SOURCE_SINGLE,
+                ) shouldBe NameMatchType.NONE
+
+                NameValidator.determineMatchType(
+                    nameToValidate = "Hansen",
+                    pdlLastNames = listOf("Hanson"),
+                    nameSource = NAME_SOURCE_SINGLE,
+                ) shouldBe NameMatchType.FUZZY
+            }
+
+            it("uses an inclusive fuzzy matching threshold") {
+                NameValidator.passesFuzzyThreshold(0.93) shouldBe true
+                NameValidator.passesFuzzyThreshold(0.9301) shouldBe true
+                NameValidator.passesFuzzyThreshold(0.9299) shouldBe false
+            }
+
+            it("checks every parallel PDL name for an exact match before fuzzy matching") {
+                NameValidator.determineMatchType(
+                    nameToValidate = "Hansen",
+                    pdlLastNames = listOf("Hanson", "Hansen"),
+                    nameSource = NAME_SOURCE_PARALLEL,
+                ) shouldBe NameMatchType.EXACT
+            }
+
+            it("classifies a fuzzy match in a parallel PDL name") {
+                NameValidator.determineMatchType(
+                    nameToValidate = "Hansen",
+                    pdlLastNames = listOf("Haugland", "Hanson"),
+                    nameSource = NAME_SOURCE_PARALLEL,
+                ) shouldBe NameMatchType.FUZZY
+            }
+
+            it("does not classify clearly different names as fuzzy matches") {
+                NameValidator.determineMatchType(
+                    nameToValidate = "Hansen",
+                    pdlLastNames = listOf("Haugland"),
+                    nameSource = NAME_SOURCE_SINGLE,
+                ) shouldBe NameMatchType.NONE
+            }
+
+            it("records fuzzy candidates as rejected during the observation phase") {
+                val linemanager = linemanager().copy(lastName = "Hansen")
+                val employee = person(
+                    lastName = "Hanson",
+                    fnr = linemanager.employeeIdentificationNumber.value,
+                )
+                val before = nameValidationCount(
+                    matchType = "fuzzy",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "rejected",
+                )
+
+                shouldThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                }
+
+                nameValidationCount(
+                    matchType = "fuzzy",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "rejected",
+                ) shouldBeExactly before + 1.0
+            }
+        }
     })
 
 private const val PARALLEL_NAMES_VALIDATION_TOTAL = "${METRICS_NS}_parallel_names_validation_total"
@@ -280,8 +365,30 @@ private const val RESULT_TAG = "result"
 private const val RESULT_ATTEMPTED = "attempted"
 private const val RESULT_SUCCESS = "success"
 private const val RESULT_FAILED = "failed"
+private const val NAME_VALIDATION_TOTAL = "${METRICS_NS}_name_validation_total"
+private const val MATCH_TYPE_TAG = "match_type"
+private const val NAME_SOURCE_TAG = "name_source"
+private const val VALIDATION_RESULT_TAG = "validation_result"
+private const val NAME_SOURCE_SINGLE = "single"
+private const val NAME_SOURCE_PARALLEL = "parallel"
 
 private fun parallelNamesValidationCount(result: String): Double = METRICS_REGISTRY.find(PARALLEL_NAMES_VALIDATION_TOTAL)
     .tag(RESULT_TAG, result)
+    .counter()
+    ?.count() ?: 0.0
+
+private fun nameValidationCount(
+    matchType: String,
+    nameSource: String,
+    validationResult: String,
+): Double = METRICS_REGISTRY.find(NAME_VALIDATION_TOTAL)
+    .tags(
+        MATCH_TYPE_TAG,
+        matchType,
+        NAME_SOURCE_TAG,
+        nameSource,
+        VALIDATION_RESULT_TAG,
+        validationResult,
+    )
     .counter()
     ?.count() ?: 0.0

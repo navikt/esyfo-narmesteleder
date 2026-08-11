@@ -1,5 +1,6 @@
 [versions]
 avro = "1.12.1"
+commons-text = "1.13.1"
 confluent = "8.1.1"
 datafaker = "2.7.0"
 flyway = "13.1.0"
@@ -28,6 +29,7 @@ netty = "4.2.16.Final"
 [libraries]
 apache-avro = { module = "org.apache.avro:avro", version.ref = "avro" }
 apache-avro-tools = { module = "org.apache.avro:avro-tools", version.ref = "avro" }
+commons-text = { module = "org.apache.commons:commons-text", version.ref = "commons-text" }
 confluent-kafka-avro-serializer = { module = "io.confluent:kafka-avro-serializer", version.ref = "confluent" }
 database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }

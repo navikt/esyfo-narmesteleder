@@ -31,6 +31,7 @@ buildscript {
 dependencies {
     implementation(platform(libs.netty))
     implementation(libs.apache.avro)
+    implementation(libs.commons.text)
     implementation(libs.confluent.kafka.avro.serializer) {
         exclude(group = "org.apache.kafka", module = "kafka-clients")
     }

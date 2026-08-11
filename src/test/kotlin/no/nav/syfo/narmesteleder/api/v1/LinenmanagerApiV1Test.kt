@@ -1546,6 +1546,33 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
+                it("returns 400 when request contains an unknown field") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(
+                                """
+                                {
+                                  "orgNumber": "${narmesteLederRelasjon.orgNumber.value}",
+                                  "unknownField": "value"
+                                }
+                                """.trimIndent(),
+                            )
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
+                        response.body<ApiError>().message shouldBe "Invalid search request. Unknown field: unknownField"
+                        coVerify(exactly = 0) { linemanagerSearchRepository.search(any()) }
+                    }
+                }
+
                 it("returns 400 for invalid managerNationalIdentificationNumber in request body") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(

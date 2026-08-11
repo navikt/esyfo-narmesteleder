@@ -1,0 +1,261 @@
+package no.nav.syfo.narmesteleder.exposed
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import no.nav.syfo.narmesteleder.domain.LinemanagerManagerRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerPersonRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerRead
+import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
+import no.nav.syfo.narmesteleder.domain.LinemanagerSearchQuery
+import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
+import no.nav.syfo.narmesteleder.domain.Name
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
+import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
+import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.LikePattern
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.alias
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.exists
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.core.notExists
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import java.time.Clock
+import java.time.LocalDate
+import java.time.OffsetDateTime
+
+private const val LIKE_ESCAPE_CHARACTER = '\\'
+
+interface ILinemanagerSearchRepository {
+    suspend fun search(query: LinemanagerSearchQuery): List<LinemanagerSearchResult>
+}
+
+class LinemanagerSearchRepository(
+    private val database: Database,
+    private val clock: Clock = Clock.systemUTC(),
+) : ILinemanagerSearchRepository {
+
+    override suspend fun search(query: LinemanagerSearchQuery): List<LinemanagerSearchResult> {
+        val now = OffsetDateTime.now(clock)
+        val employeePerson = PersonTable.alias("employee_person")
+        val managerPerson = PersonTable.alias("manager_person")
+        val employeeFirstNameLower = employeePerson[PersonTable.fornavn].lowerCase()
+        val employeeLastNameLower = employeePerson[PersonTable.etternavn].lowerCase()
+
+        return withContext(Dispatchers.IO) {
+            suspendTransaction(db = database) {
+                val joinedTables = NarmestelederTable
+                    .join(
+                        otherTable = employeePerson,
+                        joinType = JoinType.LEFT,
+                        onColumn = NarmestelederTable.sykmeldtFnr,
+                        otherColumn = employeePerson[PersonTable.fnr],
+                    )
+                    .join(
+                        otherTable = managerPerson,
+                        joinType = JoinType.LEFT,
+                        onColumn = NarmestelederTable.narmestelederFnr,
+                        otherColumn = managerPerson[PersonTable.fnr],
+                    )
+
+                joinedTables
+                    // Keep this projection restricted: index-only scans on person_fnr_names_idx require person columns
+                    // to be only fornavn, mellomnavn, and etternavn; do not reintroduce selectAll().
+                    .select(
+                        listOf(
+                            NarmestelederTable.id,
+                            NarmestelederTable.orgnummer,
+                            NarmestelederTable.aktivFom,
+                            NarmestelederTable.sykmeldtFnr,
+                            NarmestelederTable.narmestelederFnr,
+                            NarmestelederTable.narmestelederEpost,
+                            NarmestelederTable.narmestelederTelefonnummer,
+                            employeePerson[PersonTable.fornavn],
+                            employeePerson[PersonTable.mellomnavn],
+                            employeePerson[PersonTable.etternavn],
+                            employeeFirstNameLower,
+                            employeeLastNameLower,
+                            managerPerson[PersonTable.fornavn],
+                            managerPerson[PersonTable.mellomnavn],
+                            managerPerson[PersonTable.etternavn],
+                        ),
+                    )
+                    .where {
+                        query.toWhereClause(
+                            now,
+                            employeePerson,
+                            managerPerson,
+                            employeeFirstNameLower,
+                            employeeLastNameLower,
+                        )
+                    }
+                    .orderBy(
+                        employeeFirstNameLower to SortOrder.ASC_NULLS_LAST,
+                        employeeLastNameLower to SortOrder.ASC_NULLS_LAST,
+                        NarmestelederTable.id to SortOrder.ASC,
+                    )
+                    .limit(query.pageSize + 1)
+                    .map { row ->
+                        LinemanagerSearchResult(
+                            cursor = LinemanagerSearchCursor(
+                                firstName = row[employeeFirstNameLower],
+                                lastName = row[employeeLastNameLower],
+                                id = row[NarmestelederTable.id].value,
+                            ),
+                            linemanager = LinemanagerRead(
+                                orgNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
+                                activeFrom = row[NarmestelederTable.aktivFom].toInstant(),
+                                employee = LinemanagerPersonRead(
+                                    nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
+                                    name = row.toName(
+                                        firstName = employeePerson[PersonTable.fornavn],
+                                        middleName = employeePerson[PersonTable.mellomnavn],
+                                        lastName = employeePerson[PersonTable.etternavn],
+                                    ),
+                                ),
+                                manager = LinemanagerManagerRead(
+                                    nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.narmestelederFnr]),
+                                    name = row.toName(
+                                        firstName = managerPerson[PersonTable.fornavn],
+                                        middleName = managerPerson[PersonTable.mellomnavn],
+                                        lastName = managerPerson[PersonTable.etternavn],
+                                    ),
+                                    email = row[NarmestelederTable.narmestelederEpost],
+                                    mobile = row[NarmestelederTable.narmestelederTelefonnummer],
+                                ),
+                            ),
+                        )
+                    }
+            }
+        }
+    }
+
+    private fun LinemanagerSearchQuery.toWhereClause(
+        now: OffsetDateTime,
+        employeePerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
+        managerPerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
+        employeeFirstNameLower: ExpressionWithColumnType<String>,
+        employeeLastNameLower: ExpressionWithColumnType<String>,
+    ): Op<Boolean> {
+        val filters = mutableListOf<Op<Boolean>>(
+            NarmestelederTable.orgnummer eq orgNumber.value,
+            NarmestelederTable.aktivTom.isNull(),
+            NarmestelederTable.aktivFom lessEq now,
+        )
+
+        managerNationalIdentificationNumber?.let {
+            filters.add(NarmestelederTable.narmestelederFnr eq it.value)
+        }
+        employeeNationalIdentificationNumber?.let {
+            filters.add(NarmestelederTable.sykmeldtFnr eq it.value)
+        }
+        nationalIdentificationNumber?.let {
+            filters.add(
+                (NarmestelederTable.sykmeldtFnr eq it.value) or
+                    (NarmestelederTable.narmestelederFnr eq it.value)
+            )
+        }
+        text?.let {
+            filters.add(employeePerson.matchesName(it) or managerPerson.matchesName(it))
+        }
+        hasActiveSickLeave?.let {
+            val activeSykmeldingQuery = activeSykmeldingQuery(now.toLocalDate())
+            filters.add(
+                if (it) {
+                    exists(activeSykmeldingQuery)
+                } else {
+                    notExists(activeSykmeldingQuery)
+                },
+            )
+        }
+        cursor?.let {
+            filters.add(
+                employeeFirstNameLower.isAfter(
+                    lastName = employeeLastNameLower,
+                    cursor = it,
+                ),
+            )
+        }
+
+        return filters.reduce(Op<Boolean>::and)
+    }
+
+    private fun ExpressionWithColumnType<String>.isAfter(
+        lastName: ExpressionWithColumnType<String>,
+        cursor: LinemanagerSearchCursor,
+    ): Op<Boolean> {
+        val afterLastNameAndId = when (val cursorLastName = cursor.lastName) {
+            null -> lastName.isNull() and (NarmestelederTable.id greater cursor.id)
+            else -> {
+                (lastName greater cursorLastName) or
+                    lastName.isNull() or
+                    ((lastName eq cursorLastName) and (NarmestelederTable.id greater cursor.id))
+            }
+        }
+
+        return when (val cursorFirstName = cursor.firstName) {
+            null -> this.isNull() and afterLastNameAndId
+            else -> {
+                (this greater cursorFirstName) or
+                    this.isNull() or
+                    ((this eq cursorFirstName) and afterLastNameAndId)
+            }
+        }
+    }
+
+    private fun activeSykmeldingQuery(today: LocalDate) = SendtSykmeldingTable
+        .select(SendtSykmeldingTable.id)
+        .where {
+            (SendtSykmeldingTable.fnr eq NarmestelederTable.sykmeldtFnr) and
+                (SendtSykmeldingTable.orgnummer eq NarmestelederTable.orgnummer) and
+                (SendtSykmeldingTable.tom greaterEq today) and
+                (SendtSykmeldingTable.revokedDate.isNull() or (SendtSykmeldingTable.revokedDate greaterEq today))
+        }
+
+    private fun org.jetbrains.exposed.v1.core.Alias<PersonTable>.matchesName(text: String): Op<Boolean> = text
+        .lowercase()
+        .split(Regex("\\s+"))
+        .map { searchTerm ->
+            val pattern = searchTerm.toContainsLikePattern()
+            (this[PersonTable.fornavn].lowerCase() like pattern) or
+                (this[PersonTable.mellomnavn].lowerCase() like pattern) or
+                (this[PersonTable.etternavn].lowerCase() like pattern)
+        }.reduce(Op<Boolean>::and)
+}
+
+private fun String.toContainsLikePattern(): LikePattern = LikePattern("%", LIKE_ESCAPE_CHARACTER) +
+    LikePattern.ofLiteral(this, LIKE_ESCAPE_CHARACTER) +
+    LikePattern("%", LIKE_ESCAPE_CHARACTER)
+
+private fun ResultRow.toName(
+    firstName: Expression<String?>,
+    middleName: Expression<String?>,
+    lastName: Expression<String?>,
+): Name? {
+    val resolvedFirstName = this[firstName]
+    val resolvedLastName = this[lastName]
+
+    return if (resolvedFirstName != null && resolvedLastName != null) {
+        Name(
+            firstName = resolvedFirstName,
+            middleName = this[middleName],
+            lastName = resolvedLastName,
+        )
+    } else {
+        null
+    }
+}

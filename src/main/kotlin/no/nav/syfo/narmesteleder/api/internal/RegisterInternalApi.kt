@@ -4,8 +4,9 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.narmesteleder.api.internal.v1.registerLineManagerLookupApi
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
+import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
-import no.nav.syfo.texas.AzureAdTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
 const val INTERNAL_API_V1_PATH = "/internal/api/v1"
@@ -13,16 +14,16 @@ const val INTERNAL_API_V1_PATH = "/internal/api/v1"
 fun Route.registerInternalApi(
     narmestelederLookupService: NarmestelederLookupService,
     texasHttpClient: TexasHttpClient,
-    preAuthorizedApps: Set<String>
+    preAuthorizedApps: Set<String>,
+    linemanagerSearchService: LinemanagerSearchService,
 ) {
     route(INTERNAL_API_V1_PATH) {
         install(AddTokenIssuerPlugin)
-        install(AzureAdTokenAuthPlugin) {
-            client = texasHttpClient
-            this.preAuthorizedApps = preAuthorizedApps
-        }
         registerLineManagerLookupApi(
-            narmestelederLookupService,
+            narmestelederLookupService = narmestelederLookupService,
+            texasHttpClient = texasHttpClient,
+            preAuthorizedApps = preAuthorizedApps,
         )
+        registerLinemanagerSearchApi(texasHttpClient, linemanagerSearchService)
     }
 }

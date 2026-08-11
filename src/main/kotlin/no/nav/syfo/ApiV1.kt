@@ -23,7 +23,12 @@ fun Route.registerApiV1(
 ) {
     route(API_V1_PATH) {
         install(AddTokenIssuerPlugin)
-        registerLinemanagerApiV1(narmestelederKafkaService, validationService, texasHttpClient, linemanagerRequirementRESTHandler)
+        registerLinemanagerApiV1(
+            narmestelederKafkaService,
+            validationService,
+            texasHttpClient,
+            linemanagerRequirementRESTHandler,
+        )
         registerAccessOrganizationsApi(altinnTilgangerService, texasHttpClient)
     }
 }

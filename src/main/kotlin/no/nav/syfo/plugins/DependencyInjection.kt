@@ -44,10 +44,13 @@ import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
+import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
+import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
+import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
@@ -135,6 +138,9 @@ private fun databaseModule() = module {
     }
     single<IActiveSykmeldingRepository> {
         SendtSykmeldingRepository(get())
+    }
+    single<ILinemanagerSearchRepository> {
+        LinemanagerSearchRepository(get())
     }
 }
 
@@ -260,6 +266,12 @@ private fun servicesModule() = module {
             pdlService = get(),
             dinesykmeldteService = get(),
             dialogportenService = get(),
+        )
+    }
+    single {
+        LinemanagerSearchService(
+            validationService = get(),
+            linemanagerSearchRepository = get(),
         )
     }
     single { NarmestelederRegisterService(get()) }

@@ -13,6 +13,8 @@ import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.NarmestelederLookup
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
+import no.nav.syfo.texas.AzureAdTokenAuthPlugin
+import no.nav.syfo.texas.client.TexasHttpClient
 
 const val LINE_MANAGER_LOOKUP_PATH = "/lookup"
 
@@ -32,8 +34,15 @@ data class LineManagerResponse(
 
 fun Route.registerLineManagerLookupApi(
     narmestelederLookupService: NarmestelederLookupService,
+    texasHttpClient: TexasHttpClient,
+    preAuthorizedApps: Set<String>,
 ) {
     route(LINE_MANAGER_LOOKUP_PATH) {
+        install(AzureAdTokenAuthPlugin) {
+            client = texasHttpClient
+            this.preAuthorizedApps = preAuthorizedApps
+        }
+
         post {
             val request = call.tryReceive<LineManagerLookupRequest>()
             val organizationNumber = OrganizationNumber.parse(

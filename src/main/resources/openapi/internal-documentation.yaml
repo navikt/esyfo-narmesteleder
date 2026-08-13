@@ -2,13 +2,63 @@ openapi: 3.0.3
 info:
   title: Esyfo Narmesteleder Internal API
   version: 1.0.0
-  description: Internal machine-to-machine API for looking up active line managers.
+  description: Internal APIs for looking up active line managers and statistics.
 servers:
   - url: https://narmesteleder-api.ekstern.dev.nav.no
     description: Development server.
   - url: https://narmesteleder-api.nav.no
     description: Production server.
 paths:
+  /internal/api/v1/linemanager/statistics:
+    get:
+      summary: Get linemanager statistics for an organization
+      description: |
+        Returns counts of unique employees with an open need for a linemanager,
+        active linemanager relations with an active sick leave, and active
+        linemanager relations without an active sick leave.
+      security:
+        - maskinporten_jwt: []
+        - tokenx_jwt: []
+      parameters:
+        - name: orgNumber
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^\d{9}$'
+          description: Organization number used both as a statistic criterion and access control target.
+          example: "999999999"
+      responses:
+        '200':
+          description: Linemanager statistics for the requested organization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinemanagerStatistics'
+        '400':
+          description: The organization number is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: The JWT is missing, invalid or has an unsupported issuer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: The caller does not have access to the requested organization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /internal/api/v1/lookup:
     post:
       summary: Look up the active line manager for an employee and organization
@@ -40,7 +90,37 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Azure AD client credentials token from a pre-authorized application.
+    maskinporten_jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: System user token from Maskinporten.
+    tokenx_jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: TokenX issued JWT.
   schemas:
+    LinemanagerStatistics:
+      type: object
+      properties:
+        employeesOnSickLeaveWithoutLinemanager:
+          type: integer
+          format: int64
+          description: Number of unique employees with an open linemanager need.
+        employeesOnSickLeaveWithLinemanager:
+          type: integer
+          format: int64
+          description: Number of unique employees with an active linemanager relation and sick leave.
+        employeesNotOnSickLeaveWithLinemanager:
+          type: integer
+          format: int64
+          description: Number of unique employees with an active linemanager relation and no sick leave.
+      required:
+        - employeesOnSickLeaveWithoutLinemanager
+        - employeesOnSickLeaveWithLinemanager
+        - employeesNotOnSickLeaveWithLinemanager
+      additionalProperties: false
     LineManagerLookupRequest:
       type: object
       properties:
@@ -78,4 +158,41 @@ components:
       required:
         - nationalIdentificationNumber
         - emailAddresses
+      additionalProperties: false
+    ErrorType:
+      type: string
+      enum:
+        - AUTHENTICATION_ERROR
+        - AUTHORIZATION_ERROR
+        - INTERNAL_SERVER_ERROR
+        - BAD_REQUEST
+        - INVALID_FORMAT
+        - MISSING_ORG_ACCESS
+        - MISSING_ALITINN_RESOURCE_ACCESS
+    ApiError:
+      type: object
+      properties:
+        status:
+          type: object
+          properties:
+            value:
+              type: integer
+              format: int32
+            description:
+              type: string
+        type:
+          $ref: '#/components/schemas/ErrorType'
+        message:
+          type: string
+        path:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - status
+        - type
+        - message
+        - timestamp
       additionalProperties: false

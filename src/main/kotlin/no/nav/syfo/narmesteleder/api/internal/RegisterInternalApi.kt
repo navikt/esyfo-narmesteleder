@@ -5,7 +5,9 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.narmesteleder.api.internal.v1.registerLineManagerLookupApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
+import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.texas.client.TexasHttpClient
 
@@ -16,6 +18,7 @@ fun Route.registerInternalApi(
     texasHttpClient: TexasHttpClient,
     preAuthorizedApps: Set<String>,
     linemanagerSearchService: LinemanagerSearchService,
+    linemanagerStatisticsService: LinemanagerStatisticsService,
 ) {
     route(INTERNAL_API_V1_PATH) {
         install(AddTokenIssuerPlugin)
@@ -25,5 +28,6 @@ fun Route.registerInternalApi(
             preAuthorizedApps = preAuthorizedApps,
         )
         registerLinemanagerSearchApi(texasHttpClient, linemanagerSearchService)
+        registerLinemanagerStatisticsApi(texasHttpClient, linemanagerStatisticsService)
     }
 }

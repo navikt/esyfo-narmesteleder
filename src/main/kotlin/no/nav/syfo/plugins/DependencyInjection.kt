@@ -45,12 +45,15 @@ import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
 import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
+import no.nav.syfo.narmesteleder.exposed.ILinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
+import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
+import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
@@ -141,6 +144,9 @@ private fun databaseModule() = module {
     }
     single<ILinemanagerSearchRepository> {
         LinemanagerSearchRepository(get())
+    }
+    single<ILinemanagerStatisticsRepository> {
+        LinemanagerStatisticsRepository(get())
     }
 }
 
@@ -272,6 +278,12 @@ private fun servicesModule() = module {
         LinemanagerSearchService(
             validationService = get(),
             linemanagerSearchRepository = get(),
+        )
+    }
+    single {
+        LinemanagerStatisticsService(
+            validationService = get(),
+            linemanagerStatisticsRepository = get(),
         )
     }
     single { NarmestelederRegisterService(get()) }

@@ -46,7 +46,7 @@ class SwaggerAvailabilityTest :
                         staticResources("/openapi", "openapi")
                     }
                 }
-                val response = client.get("/openapi/internal-documentation.yaml")
+                val response = client.get("/openapi/internal-linemanager-search.yaml")
                 response.status.value shouldBe 200
                 response.bodyAsText() shouldContain "openapi: 3.0.3"
             }

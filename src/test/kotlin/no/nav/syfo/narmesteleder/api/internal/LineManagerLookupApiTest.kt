@@ -23,7 +23,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
 import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerLookupRequest
 import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerLookupResponse
 import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerResponse
@@ -32,6 +31,7 @@ import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
+import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
@@ -67,6 +67,7 @@ class LineManagerLookupApiTest :
                             narmestelederLookupService = lookupService,
                             preAuthorizedApps = setOf(callingApp),
                             linemanagerSearchService = mockk<LinemanagerSearchService>(),
+                            linemanagerStatisticsService = mockk<LinemanagerStatisticsService>(),
                         )
                     }
                 }

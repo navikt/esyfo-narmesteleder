@@ -75,14 +75,17 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchRequest
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
+import no.nav.syfo.narmesteleder.domain.LinemanagerStatistics
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
+import no.nav.syfo.narmesteleder.exposed.ILinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
+import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
@@ -139,9 +142,11 @@ class LinenmanagerApiV1Test :
 
         lateinit var fakeRepo: FakeNarmestelederDb
         lateinit var linemanagerSearchRepository: ILinemanagerSearchRepository
+        lateinit var linemanagerStatisticsRepository: ILinemanagerStatisticsRepository
         lateinit var narmesteLederService: NarmestelederService
         lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
         lateinit var linemanagerSearchService: LinemanagerSearchService
+        lateinit var linemanagerStatisticsService: LinemanagerStatisticsService
 
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
@@ -149,6 +154,7 @@ class LinenmanagerApiV1Test :
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
             linemanagerSearchRepository = mockk()
+            linemanagerStatisticsRepository = mockk()
             coEvery { pdlCacheMock.getPerson(any()) } returns null
             narmesteLederService =
                 NarmestelederService(
@@ -169,6 +175,11 @@ class LinenmanagerApiV1Test :
                 LinemanagerSearchService(
                     validationService = validationServiceSpy,
                     linemanagerSearchRepository = linemanagerSearchRepository,
+                )
+            linemanagerStatisticsService =
+                LinemanagerStatisticsService(
+                    validationService = validationServiceSpy,
+                    linemanagerStatisticsRepository = linemanagerStatisticsRepository,
                 )
             coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns true
             fakeRepo.clear()
@@ -202,7 +213,8 @@ class LinenmanagerApiV1Test :
                             narmestelederLookupService,
                             texasHttpClientMock,
                             emptySet(),
-                            linemanagerSearchService
+                            linemanagerSearchService,
+                            linemanagerStatisticsService,
                         )
                     }
                 }
@@ -1169,6 +1181,37 @@ class LinenmanagerApiV1Test :
                     }
                 }
             }
+            describe("GET /internal/api/v1/linemanager/statistics") {
+                it("returns statistics for an authorized organization") {
+                    withTestApplication {
+                        val expectedStatistics = LinemanagerStatistics(
+                            employeesOnSickLeaveWithoutLinemanager = 1,
+                            employeesOnSickLeaveWithLinemanager = 2,
+                            employeesNotOnSickLeaveWithLinemanager = 3,
+                        )
+                        coEvery {
+                            linemanagerStatisticsRepository.getStatistics(narmesteLederRelasjon.orgNumber)
+                        } returns expectedStatistics
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:${narmesteLederRelasjon.orgNumber.value}"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+
+                        val response = client.get(
+                            "$INTERNAL_API_V1_PATH$LINEMANAGER_STATISTICS_API_PATH?orgNumber=${narmesteLederRelasjon.orgNumber.value}",
+                        ) {
+                            bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
+                        }
+
+                        response.status shouldBe HttpStatusCode.OK
+                        response.body<LinemanagerStatistics>() shouldBe expectedStatistics
+                        coVerify(exactly = 1) {
+                            linemanagerStatisticsRepository.getStatistics(narmesteLederRelasjon.orgNumber)
+                        }
+                    }
+                }
+            }
+
             describe("POST /internal/api/v1/linemanager/search") {
                 it("is not available through the external API") {
                     withTestApplication {

@@ -15,6 +15,7 @@ import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
+import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -32,6 +33,7 @@ fun Application.configureRouting() {
     val validationService by inject<ValidationService>()
     val linemanagerRequirementRESTHandler by inject<LinemanagerRequirementRESTHandler>()
     val linemanagerSearchService by inject<LinemanagerSearchService>()
+    val linemanagerStatisticsService by inject<LinemanagerStatisticsService>()
     val altinnTokenProvider by inject<AltinnTokenProvider>()
     val altinnTilgangerService by inject<AltinnTilgangerService>()
     val narmestelederLookupService by inject<NarmestelederLookupService>()
@@ -55,6 +57,7 @@ fun Application.configureRouting() {
             texasHttpClient = texasHttpClient,
             preAuthorizedApps = preAuthorizedAppsFromEnvironment(),
             linemanagerSearchService = linemanagerSearchService,
+            linemanagerStatisticsService = linemanagerStatisticsService,
         )
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")

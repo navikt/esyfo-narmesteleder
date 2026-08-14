@@ -14,20 +14,24 @@ import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.sykmelding.model.RiktigNarmesteLeder
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
+import no.nav.syfo.sykmelding.service.NarmestelederBruddService
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import java.time.LocalDate
+import java.util.UUID
 
 class SendtSykmeldingHandlerTest :
     DescribeSpec({
 
         val narmesteLederService = mockk<NarmestelederService>()
         val sykmeldingService = mockk<SykmeldingService>()
-        val handler = SendtSykmeldingHandler(narmesteLederService, sykmeldingService)
+        val narmestelederBruddService = mockk<NarmestelederBruddService>()
+        val handler = SendtSykmeldingHandler(narmesteLederService, sykmeldingService, narmestelederBruddService)
 
         beforeEach {
             clearAllMocks(currentThreadOnly = true)
             coEvery { sykmeldingService.processBatch(any()) } just Runs
             coEvery { narmesteLederService.createNewNlBehov(any(), any(), any(), any()) } returns null
+            coEvery { narmestelederBruddService.revokeFromSendtSykmelding(any(), any(), any(), any(), any()) } just Runs
         }
 
         describe("skipSykmeldingCheck parameter tests") {
@@ -231,6 +235,30 @@ class SendtSykmeldingHandlerTest :
 
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any())
+                }
+            }
+
+            it("should revoke NL relation and track Kafka metadata when riktigNarmesteLeder is answered NEI") {
+                val message = defaultSendtSykmeldingMessage(
+                    riktigNarmesteLeder = RiktigNarmesteLeder(
+                        sporsmaltekst = "Er dette riktig leder?",
+                        svar = "NEI",
+                    )
+                )
+
+                handler.handleNarmestelederbehov(message, kafkaPartition = 3, kafkaOffset = 42)
+
+                coVerify {
+                    narmestelederBruddService.revokeFromSendtSykmelding(
+                        sykmeldingId = UUID.fromString(message.event.sykmeldingId),
+                        fnr = message.kafkaMetadata.fnr,
+                        orgnummer = requireNotNull(message.event.arbeidsgiver).orgnummer,
+                        kafkaPartition = 3,
+                        kafkaOffset = 42,
+                    )
+                }
+                coVerify(exactly = 0) {
+                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
                 }
             }
 

@@ -236,6 +236,7 @@ class LinenmanagerApiV1Test :
                 id = cursorId,
             ),
             linemanager = LinemanagerRead(
+                id = UUID(0, cursorId.toLong()),
                 orgNumber = orgNumber,
                 activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
                 employee = LinemanagerPersonRead(
@@ -1256,6 +1257,7 @@ class LinenmanagerApiV1Test :
                         response.status shouldBe HttpStatusCode.OK
                         val body = response.body<LinemanagerReadCollection>()
                         body.linemanagers.shouldHaveSize(1)
+                        body.linemanagers.single().id shouldBe UUID(0, 1)
                         body.linemanagers.single().manager.email shouldBe "kari@example.com"
                         body.meta.size shouldBe 1
                         body.meta.pageSize shouldBe 1

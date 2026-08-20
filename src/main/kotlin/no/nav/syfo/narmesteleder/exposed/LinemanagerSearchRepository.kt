@@ -78,6 +78,7 @@ class LinemanagerSearchRepository(
                     .select(
                         listOf(
                             NarmestelederTable.id,
+                            NarmestelederTable.narmestelederId,
                             NarmestelederTable.orgnummer,
                             NarmestelederTable.aktivFom,
                             NarmestelederTable.sykmeldtFnr,
@@ -117,6 +118,7 @@ class LinemanagerSearchRepository(
                                 id = row[NarmestelederTable.id].value,
                             ),
                             linemanager = LinemanagerRead(
+                                id = row[NarmestelederTable.narmestelederId],
                                 orgNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
                                 activeFrom = row[NarmestelederTable.aktivFom].toInstant(),
                                 employee = LinemanagerPersonRead(

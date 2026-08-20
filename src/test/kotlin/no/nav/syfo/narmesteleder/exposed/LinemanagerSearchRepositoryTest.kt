@@ -63,9 +63,10 @@ class LinemanagerSearchRepositoryTest :
             aktivTom: OffsetDateTime? = null,
             email: String = "leder@example.com",
             mobile: String = "99999999",
+            narmestelederId: UUID = UUID.randomUUID(),
         ): Int = transaction(TestDB.exposedDatabase) {
             NarmestelederEntity.new {
-                narmesteLederId = UUID.randomUUID()
+                narmesteLederId = narmestelederId
                 this.orgnummer = orgnummer
                 sykmeldtFnr = employeeFnr
                 narmestelederFnr = managerFnr
@@ -100,6 +101,7 @@ class LinemanagerSearchRepositoryTest :
             it("returns active linemanager relations with names for both employee and manager") {
                 val employeeFnr = "12345678910"
                 val managerFnr = "10987654321"
+                val narmestelederId = UUID.randomUUID()
                 insertPerson(employeeFnr, firstName = "Ola", middleName = "Mellom", lastName = "Nordmann")
                 insertPerson(managerFnr, firstName = "Kari", lastName = "Nordmann")
                 insertRelation(
@@ -107,6 +109,7 @@ class LinemanagerSearchRepositoryTest :
                     managerFnr = managerFnr,
                     email = "kari@example.com",
                     mobile = "90000000",
+                    narmestelederId = narmestelederId,
                 )
 
                 val results = repository.search(
@@ -118,6 +121,7 @@ class LinemanagerSearchRepositoryTest :
 
                 results.shouldHaveSize(1)
                 val relation = results.single().linemanager
+                relation.id shouldBe narmestelederId
                 relation.orgNumber shouldBe orgNumber
                 relation.activeFrom shouldBe now.minusDays(1).toInstant()
                 relation.employee.nationalIdentificationNumber shouldBe PersonalIdentificationNumber(employeeFnr)

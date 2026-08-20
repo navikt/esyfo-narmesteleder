@@ -5,16 +5,15 @@ meta {
 }
 
 post {
-  url: {{baseUrlEkstern}}/internal/api/v1/linemanager/search
+  url: {{baseUrlIntern}}/internal/api/v1/linemanager/search
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "orgNumber": "682834055",
+    "orgNumber": "314560132",
     "pageSize": 100,
-      "employeeNationalIdentificationNumber": "75769128964",
     "hasActiveSickLeave": true
   }
 }

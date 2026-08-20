@@ -126,6 +126,11 @@ components:
       type: object
       description: Active linemanager relation for one employee.
       properties:
+        id:
+          type: string
+          format: uuid
+          description: Stable identifier for the linemanager relation.
+          example: "123e4567-e89b-12d3-a456-426614174000"
         orgNumber:
           type: string
           description: Organization number where the employee works.
@@ -141,6 +146,7 @@ components:
         manager:
           $ref: '#/components/schemas/LinemanagerManagerRead'
       required:
+        - id
         - orgNumber
         - activeFrom
         - employee

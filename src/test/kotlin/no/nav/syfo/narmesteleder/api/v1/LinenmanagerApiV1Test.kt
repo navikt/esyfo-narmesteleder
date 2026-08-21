@@ -2,15 +2,21 @@ package no.nav.syfo.narmesteleder.api.v1
 
 import DefaultOrganization
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.node.JsonNodeType
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import createMockToken
 import defaultMocks
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.doubles.shouldBeExactly
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
@@ -65,7 +71,6 @@ import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerCollection
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerRead
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
@@ -107,6 +112,16 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import prepareGetPersonResponse
 import java.time.Instant
 import java.util.UUID
+
+private val responseObjectMapper = jacksonObjectMapper()
+
+private fun String.toJsonNode(): JsonNode = responseObjectMapper.readTree(this)
+
+private fun JsonNode.scalarValues(): List<String> = when {
+    isValueNode -> listOf(asText())
+    isObject -> fieldNames().asSequence().toList() + flatMap { it.scalarValues() }
+    else -> flatMap { it.scalarValues() }
+}
 
 class LinenmanagerApiV1Test :
     DescribeSpec({
@@ -1257,18 +1272,34 @@ class LinenmanagerApiV1Test :
                         val response = client.get("$INTERNAL_API_V1_PATH$EMPLOYEE_LINEMANAGER_API_PATH") {
                             bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
                         }
-                        val body = response.bodyAsText()
+                        val responseBody = response.bodyAsText()
+                        val responseJson = responseBody.toJsonNode()
+                        val linemanagers = responseJson.path("linemanagers")
 
                         response.status shouldBe HttpStatusCode.OK
-                        body.contains("\"meta\"") shouldBe false
-                        body.contains("\"manager\"") shouldBe false
-                        body.contains("\"nationalIdentificationNumber\"") shouldBe false
-                        body.contains(callerPid) shouldBe false
-                        body.contains("\"orgNumber\":\"123456789\"") shouldBe true
-                        Regex("\"name\"").findAll(body).count() shouldBe 2
-                        Regex("\"emailAddresses\"").findAll(body).count() shouldBe 2
-                        Regex("\"mobile\"").findAll(body).count() shouldBe 2
-                        response.body<EmployeeLinemanagerCollection>().linemanagers.shouldHaveSize(2)
+                        responseJson.findValues("meta").shouldBeEmpty()
+                        responseJson.findValues("manager").shouldBeEmpty()
+                        responseJson.findValues("nationalIdentificationNumber").shouldBeEmpty()
+                        responseJson.scalarValues().filter { it.contains(callerPid) }.shouldBeEmpty()
+                        // Raw text check guards free-text fields where a PID can be embedded in a longer string.
+                        responseBody shouldNotContain callerPid
+                        linemanagers.nodeType shouldBe JsonNodeType.ARRAY
+                        linemanagers.toList().shouldHaveSize(2)
+                        linemanagers[0].path("orgNumber").nodeType shouldBe JsonNodeType.STRING
+                        linemanagers[0].path("orgNumber").textValue() shouldBe "123456789"
+                        linemanagers.forEach { linemanager ->
+                            linemanager.path("name").nodeType shouldBe JsonNodeType.OBJECT
+                            linemanager.path("emailAddresses").nodeType shouldBe JsonNodeType.ARRAY
+                            linemanager.path("mobile").nodeType shouldBe JsonNodeType.STRING
+                            linemanager.fieldNames().asSequence().toList() shouldContainExactlyInAnyOrder listOf(
+                                "id",
+                                "orgNumber",
+                                "activeFrom",
+                                "name",
+                                "emailAddresses",
+                                "mobile",
+                            )
+                        }
                     }
                 }
 
@@ -1287,9 +1318,17 @@ class LinenmanagerApiV1Test :
                         val response = client.get("$INTERNAL_API_V1_PATH$EMPLOYEE_LINEMANAGER_API_PATH") {
                             bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
                         }
+                        val emailAddresses = response.bodyAsText()
+                            .toJsonNode()
+                            .path("linemanagers")
+                            .path(0)
+                            .path("emailAddresses")
 
                         response.status shouldBe HttpStatusCode.OK
-                        response.bodyAsText().contains("\"emailAddresses\":[\"single@example.com\"]") shouldBe true
+                        emailAddresses.nodeType shouldBe JsonNodeType.ARRAY
+                        emailAddresses.toList().shouldHaveSize(1)
+                        emailAddresses[0].nodeType shouldBe JsonNodeType.STRING
+                        emailAddresses[0].textValue() shouldBe "single@example.com"
                     }
                 }
 
@@ -1437,7 +1476,8 @@ class LinenmanagerApiV1Test :
                         val body = response.bodyAsText()
 
                         response.status shouldBe HttpStatusCode.Unauthorized
-                        body.contains(invalidPid) shouldBe false
+                        // ApiError is checked as raw text to guard every response field against PID leakage.
+                        body shouldNotContain invalidPid
                         coVerify(exactly = 0) { employeeLinemanagerRepository.findActiveForEmployee(any()) }
                     }
                 }
@@ -1509,7 +1549,9 @@ class LinenmanagerApiV1Test :
                         }
 
                         response.status shouldBe HttpStatusCode.OK
-                        response.bodyAsText().contains("\"linemanagers\":[]") shouldBe true
+                        val linemanagers = response.bodyAsText().toJsonNode().path("linemanagers")
+                        linemanagers.nodeType shouldBe JsonNodeType.ARRAY
+                        linemanagers.toList().shouldBeEmpty()
                     }
                 }
 

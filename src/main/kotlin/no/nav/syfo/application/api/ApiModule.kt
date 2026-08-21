@@ -14,6 +14,7 @@ import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
+import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -37,6 +38,7 @@ fun Application.configureRouting() {
     val altinnTokenProvider by inject<AltinnTokenProvider>()
     val altinnTilgangerService by inject<AltinnTilgangerService>()
     val narmestelederLookupService by inject<NarmestelederLookupService>()
+    val employeeLinemanagerService by inject<EmployeeLinemanagerService>()
 
     installCallId()
     installContentNegotiation()
@@ -58,6 +60,7 @@ fun Application.configureRouting() {
             preAuthorizedApps = preAuthorizedAppsFromEnvironment(),
             linemanagerSearchService = linemanagerSearchService,
             linemanagerStatisticsService = linemanagerStatisticsService,
+            employeeLinemanagerService = employeeLinemanagerService,
         )
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")

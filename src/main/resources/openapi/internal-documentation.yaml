@@ -59,6 +59,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /internal/api/v1/employee/linemanager:
+    get:
+      summary: Get active line managers for the authenticated employee
+      description: |
+        The employee's national identification number is read from the `pid` claim in the TokenX token,
+        never from a query parameter or header. Only active relations are returned: `aktiv_tom` is null
+        and `aktiv_fom` is not in the future. Intentional contract difference: team sykmelding's
+        `GET /user/v2/sykmeldt/narmesteledere` also returns inactive relations; this endpoint intentionally
+        does not. There is no pagination and no upper limit on the number of relations. No national
+        identification numbers are exposed in the response.
+      security:
+        - tokenx_jwt: []
+      parameters:
+        - name: orgNumber
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{9}$'
+          description: Optional organization number used to limit the returned relations.
+          example: "999999999"
+      responses:
+        '200':
+          description: Active line manager relations for the authenticated employee.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeLinemanagerCollection'
+        '400':
+          description: The organization number is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: The JWT is missing, invalid or has an unsupported issuer. The response can be without a body.
+        '403':
+          description: The caller is not authorized. The response can be without a body.
+        '500':
+          description: An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /internal/api/v1/lookup:
     post:
       summary: Look up the active line manager for an employee and organization
@@ -101,6 +145,63 @@ components:
       bearerFormat: JWT
       description: TokenX issued JWT.
   schemas:
+    EmployeeLinemanagerCollection:
+      type: object
+      properties:
+        linemanagers:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeLinemanagerRead'
+      required:
+        - linemanagers
+      additionalProperties: false
+    EmployeeLinemanagerRead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orgNumber:
+          type: string
+          pattern: '^\d{9}$'
+        activeFrom:
+          type: string
+          format: date-time
+        name:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Name'
+        emailAddresses:
+          type: array
+          description: The source database field is a single string that can contain multiple email addresses.
+          items:
+            type: string
+            format: email
+        mobile:
+          type: string
+      required:
+        - id
+        - orgNumber
+        - activeFrom
+        - name
+        - emailAddresses
+        - mobile
+      additionalProperties: false
+    Name:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+          nullable: true
+      required:
+        - firstName
+        - lastName
+        - middleName
+      additionalProperties: false
     LinemanagerStatistics:
       type: object
       properties:

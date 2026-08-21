@@ -52,6 +52,20 @@ fun RoutingCall.getRequiredOrganizationNumberQueryParameter(name: String): Organ
         )
     }
 
+fun RoutingCall.getOptionalOrganizationNumberQueryParameter(name: String): OrganizationNumber? {
+    val values = queryParameters.getAll(name) ?: return null
+    if (values.size != 1) {
+        throw ApiErrorException.BadRequestException("Expected exactly one $name parameter")
+    }
+    return OrganizationNumber.parse(values.single())
+        .getOrElse {
+            throw ApiErrorException.BadRequestException(
+                it.message ?: "Invalid organization number format for $name parameter",
+                type = ErrorType.INVALID_FORMAT,
+            )
+        }
+}
+
 fun RoutingCall.getCreatedAfter(): Instant {
     val createdAfter = getRequiredQueryParameter("createdAfter")
     try {

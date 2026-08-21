@@ -71,8 +71,11 @@ import no.nav.syfo.person.task.PersonEnrichmentTask
 import no.nav.syfo.sykmelding.db.ISykmeldingDb
 import no.nav.syfo.sykmelding.db.SykmeldingDb
 import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
+import no.nav.syfo.sykmelding.exposed.ISendtSykmeldingNarmestelederBruddRepository
+import no.nav.syfo.sykmelding.exposed.SendtSykmeldingNarmestelederBruddRepository
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingRepository
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
+import no.nav.syfo.sykmelding.service.NarmestelederBruddService
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -142,6 +145,9 @@ private fun databaseModule() = module {
     single<IActiveSykmeldingRepository> {
         SendtSykmeldingRepository(get())
     }
+    single<ISendtSykmeldingNarmestelederBruddRepository> {
+        SendtSykmeldingNarmestelederBruddRepository(get())
+    }
     single<ILinemanagerSearchRepository> {
         LinemanagerSearchRepository(get())
     }
@@ -153,7 +159,8 @@ private fun databaseModule() = module {
 private fun handlerModule() = module {
     single { NarmestelederLookupService(get()) }
     single { NlBehovLeesahHandler(get()) }
-    single { SendtSykmeldingHandler(get(), get()) }
+    single { NarmestelederBruddService(get(), get()) }
+    single { SendtSykmeldingHandler(get(), get(), get()) }
     single {
         LinemanagerRequirementRESTHandler(get(), get(), get())
     }

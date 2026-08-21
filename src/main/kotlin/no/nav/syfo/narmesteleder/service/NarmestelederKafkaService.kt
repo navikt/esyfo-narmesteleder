@@ -3,6 +3,8 @@ package no.nav.syfo.narmesteleder.service
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
@@ -34,11 +36,21 @@ class NarmestelederKafkaService(
     fun avbrytNarmesteLederRelation(
         linemanagerRevoke: LinemanagerRevoke,
         source: NlResponseSource
+    ) = avbrytNarmesteLederRelation(
+        employeeIdentificationNumber = linemanagerRevoke.employeeIdentificationNumber,
+        orgNumber = linemanagerRevoke.orgNumber,
+        source = source,
+    )
+
+    fun avbrytNarmesteLederRelation(
+        employeeIdentificationNumber: PersonalIdentificationNumber,
+        orgNumber: OrganizationNumber,
+        source: NlResponseSource,
     ) {
         kafkaSykemeldingProducer.sendSykmldingNLBrudd(
             NlAvbrutt(
-                sykmeldtFnr = linemanagerRevoke.employeeIdentificationNumber.value,
-                orgnummer = linemanagerRevoke.orgNumber.value,
+                sykmeldtFnr = employeeIdentificationNumber.value,
+                orgnummer = orgNumber.value,
             ),
             source = source
         )

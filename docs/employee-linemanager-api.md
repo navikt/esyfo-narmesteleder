@@ -48,8 +48,7 @@ sequenceDiagram
 
 - Endepunktet godtar bare TokenX `UserPrincipal` med `acr: Level4`.
 - API-et henter fødselsnummeret fra `pid`-claimen i tokenet.
-- Maskinporten-token gir `403 Forbidden`.
-- Token med ukjent issuer gir `401 Unauthorized`.
+- Token med ukjent eller ikke støttet issuer gir `401 Unauthorized`. Dette inkluderer Maskinporten.
 - API-et gjør ingen Altinn-tilgangssjekk. Brukeren henter bare sine egne koblinger.
 
 ## Filtrering

@@ -12,7 +12,7 @@ import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
 import no.nav.syfo.narmesteleder.api.v1.getOptionalOrganizationNumberQueryParameter
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.texas.TokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
 const val EMPLOYEE_LINEMANAGER_API_PATH = "/employee/linemanager"
@@ -22,7 +22,7 @@ fun Route.registerEmployeeLinemanagerApi(
     employeeLinemanagerService: EmployeeLinemanagerService,
 ) {
     route(EMPLOYEE_LINEMANAGER_API_PATH) {
-        install(MaskinportenAndTokenXTokenAuthPlugin) {
+        install(TokenXTokenAuthPlugin) {
             client = texasHttpClient
         }
 

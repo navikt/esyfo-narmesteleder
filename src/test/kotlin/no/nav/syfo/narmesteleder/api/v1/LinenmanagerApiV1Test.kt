@@ -1509,7 +1509,7 @@ class LinenmanagerApiV1Test :
                     }
                 }
 
-                it("returns 403 for a Maskinporten token") {
+                it("returns 401 for a Maskinporten token") {
                     withTestApplication {
                         texasHttpClientMock.defaultMocks(
                             systemBrukerOrganisasjon = DefaultOrganization,
@@ -1520,7 +1520,7 @@ class LinenmanagerApiV1Test :
                             bearerAuth(createMockToken(DefaultOrganization.ID))
                         }
 
-                        response.status shouldBe HttpStatusCode.Forbidden
+                        response.status shouldBe HttpStatusCode.Unauthorized
                         coVerify(exactly = 0) { employeeLinemanagerRepository.findActiveForEmployee(any()) }
                     }
                 }

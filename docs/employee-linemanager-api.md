@@ -62,6 +62,6 @@ Du kan bruke den valgfrie query-parameteren `orgNumber` for å begrense resultat
 
 Responsen har ingen paginering eller øvre grense for antall koblinger.
 
-## Avvik fra team sykmeldings endepunkt
+## Avvik fra team sykmelding sitt endepunkt
 
 Dette endepunktet returnerer bare aktive koblinger. Det eksponerer ikke fødselsnummer. Det har heller ikke feltene `organisasjonsnavn` og `arbeidsgiverForskutterer`, fordi de ikke finnes i datamodellen.

@@ -64,11 +64,10 @@ paths:
       summary: Get active line managers for the authenticated employee
       description: |
         The employee's national identification number is read from the `pid` claim in the TokenX token,
-        never from a query parameter or header. Only active relations are returned: `aktiv_tom` is null
-        and `aktiv_fom` is not in the future. Intentional contract difference: team sykmelding's
-        `GET /user/v2/sykmeldt/narmesteledere` also returns inactive relations; this endpoint intentionally
-        does not. There is no pagination and no upper limit on the number of relations. No national
-        identification numbers are exposed in the response.
+        never from a query parameter or header. Only active relations are returned. Intentional contract
+        difference: team sykmelding's `GET /user/v2/sykmeldt/narmesteledere` also returns inactive
+        relations; this endpoint intentionally does not. There is no pagination and no upper limit on the
+        number of relations. No national identification numbers are exposed in the response.
       security:
         - tokenx_jwt: []
       parameters:

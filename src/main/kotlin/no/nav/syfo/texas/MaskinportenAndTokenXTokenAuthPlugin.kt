@@ -1,16 +1,9 @@
 package no.nav.syfo.texas
 
-import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.createRouteScopedPlugin
-import io.ktor.server.auth.authentication
-import io.ktor.server.response.respondNullable
 import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.TOKEN_ISSUER
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.texas.client.getSystemUserId
-import no.nav.syfo.texas.client.getSystemUserOrganization
 import no.nav.syfo.util.logger
 
 private val VALID_ISSUERS = listOf(JwtIssuer.MASKINPORTEN, JwtIssuer.TOKEN_X)
@@ -32,61 +25,13 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
                 throw ApiErrorException.UnauthorizedException("Failed to find issuer in token: ${e.message}", e)
             }
 
-            val bearerToken = call.bearerToken()
-            if (bearerToken == null) {
-                throw ApiErrorException.UnauthorizedException("No bearer token found in request")
-            }
-
-            val introspectionResponse = try {
-                client?.introspectToken(issuer.value!!, bearerToken)
-                    ?: error("TexasHttpClient is not configured")
-            } catch (e: Exception) {
-                throw ApiErrorException.UnauthorizedException("Failed to introspect token: ${e.message}", e)
-            }
-
-            if (!introspectionResponse.active) {
-                throw ApiErrorException.UnauthorizedException(
-                    "Token is not active: ${introspectionResponse.error ?: "No error message"}"
-                )
-            }
+            val bearerToken =
+                call.bearerToken() ?: throw ApiErrorException.UnauthorizedException("No bearer token found in request")
 
             when (issuer) {
-                JwtIssuer.MASKINPORTEN -> {
-                    if (introspectionResponse.consumer == null) {
-                        throw ApiErrorException.UnauthorizedException("No consumer in token claims")
-                    }
-                    if (introspectionResponse.scope != MASKINPORTEN_NL_SCOPE) {
-                        throw ApiErrorException.UnauthorizedException("Invalid scope from maskinporten")
-                    }
-                    val systemUserOrganization = introspectionResponse.getSystemUserOrganization()
-                        ?: throw ApiErrorException.UnauthorizedException("No system user organization number in token claims")
-                    val systemUserId = introspectionResponse.getSystemUserId()
-                        ?: throw ApiErrorException.UnauthorizedException("No system user id in token claims")
+                JwtIssuer.MASKINPORTEN -> call.authenticateMaskinporten(client, bearerToken)
 
-                    call.authentication.principal(
-                        SystemPrincipal(
-                            ident = systemUserOrganization,
-                            token = bearerToken,
-                            systemOwner = introspectionResponse.consumer.ID,
-                            systemUserId = systemUserId,
-                        )
-                    )
-                }
-
-                JwtIssuer.TOKEN_X -> {
-                    if (!introspectionResponse.acr.equals("Level4", ignoreCase = true)) {
-                        call.application.environment.log.warn("User does not have Level4 access: ${introspectionResponse.acr}")
-                        call.respondNullable(HttpStatusCode.Forbidden)
-                        return@onCall
-                    }
-
-                    if (introspectionResponse.pid == null) {
-                        call.application.environment.log.warn("No pid in token claims")
-                        call.respondNullable(HttpStatusCode.Unauthorized)
-                        return@onCall
-                    }
-                    call.authentication.principal(UserPrincipal(introspectionResponse.pid, bearerToken))
-                }
+                JwtIssuer.TOKEN_X -> call.authenticateTokenX(client, bearerToken)
 
                 else -> throw ApiErrorException.UnauthorizedException("Unsupported token issuer")
             }

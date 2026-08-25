@@ -34,6 +34,8 @@ fun Route.registerEmployeeLinemanagerApi(
                     type = ErrorType.AUTHORIZATION_ERROR,
                 )
             }
+            // The employee identity is derived solely from the authenticated TokenX user's `pid`.
+            // Altinn validation is not required because callers can retrieve only their own relationships.
             val employee = PersonalIdentificationNumber.parse(principal.ident)
                 .getOrElse {
                     throw ApiErrorException.UnauthorizedException("Invalid token subject")

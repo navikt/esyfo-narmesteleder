@@ -7,12 +7,7 @@ import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exposed.IEmployeeLinemanagerRepository
 
 /**
- * Looks up the authenticated employee's active linemanagers.
- *
- * This deliberately does not use [ValidationService] or PrincipalAccessValidator. Authorization is
- * implicit because the personal identification number comes from the `pid` claim in the user's TokenX token,
- * and the database predicate always filters on that number. This intentionally differs from `/search` and
- * `/statistics`, which are employer endpoints and require Altinn access validation.
+ * Looks up active linemanagers for an employee.
  */
 class EmployeeLinemanagerService(
     private val repository: IEmployeeLinemanagerRepository,

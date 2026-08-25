@@ -45,6 +45,7 @@ import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.ILinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
+import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -109,6 +110,7 @@ abstract class LinemanagerApiV1TestBase(
     internal lateinit var linemanagerSearchService: LinemanagerSearchService
     internal lateinit var linemanagerStatisticsService: LinemanagerStatisticsService
     internal lateinit var employeeLinemanagerService: EmployeeLinemanagerService
+    internal lateinit var linemanagerRevokeService: LinemanagerRevokeService
 
     init {
         beforeTest {
@@ -147,6 +149,11 @@ abstract class LinemanagerApiV1TestBase(
                 )
             employeeLinemanagerService =
                 EmployeeLinemanagerService(employeeLinemanagerRepository)
+            linemanagerRevokeService =
+                LinemanagerRevokeService(
+                    narmestelederRevokeDb = mockk(),
+                    narmestelederKafkaService = narmestelederKafkaServiceSpy,
+                )
             coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns true
             fakeRepo.clear()
         }
@@ -184,6 +191,7 @@ abstract class LinemanagerApiV1TestBase(
                         linemanagerSearchService,
                         linemanagerStatisticsService,
                         employeeLinemanagerService,
+                        linemanagerRevokeService,
                     )
                 }
             }

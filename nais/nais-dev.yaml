@@ -97,6 +97,7 @@ spec:
           namespace: fager
         - application: syfo-budstikka
           namespace: team-esyfo
+        - application: syfo-oppfolgingsplan-backend
         - application: ditt-sykefravaer
           namespace: flex
     outbound:

@@ -38,6 +38,7 @@ import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
+import java.util.UUID
 
 class LineManagerLookupApiTest :
     DescribeSpec({
@@ -47,6 +48,7 @@ class LineManagerLookupApiTest :
         val callingApp = "calling-app-id"
         val sykmeldtFnr = PersonalIdentificationNumber("12345678901")
         val orgnummer = OrganizationNumber("123456789")
+        val narmestelederId = UUID.fromString("c8d10801-a0cc-4d94-a9ab-0088e850d4f4")
 
         fun withTestApplication(test: suspend ApplicationTestBuilder.() -> Unit) {
             testApplication {
@@ -90,6 +92,7 @@ class LineManagerLookupApiTest :
             it("returns the active line manager with split email addresses") {
                 coEvery { lookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer) } returns listOf(
                     ActiveNarmestelederEntity(
+                        narmestelederId = narmestelederId,
                         narmestelederFnr = PersonalIdentificationNumber("10987654321"),
                         narmestelederEpost = " leder@example.com, , annen@example.com ",
                         aktivFom = Instant.parse("2026-01-01T00:00:00Z"),
@@ -106,6 +109,7 @@ class LineManagerLookupApiTest :
                     response.status shouldBe HttpStatusCode.OK
                     response.body<LineManagerLookupResponse>() shouldBe LineManagerLookupResponse(
                         lineManager = LineManagerResponse(
+                            id = narmestelederId,
                             nationalIdentificationNumber = "10987654321",
                             emailAddresses = listOf("leder@example.com", "annen@example.com"),
                         )

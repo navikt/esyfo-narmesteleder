@@ -14,8 +14,10 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.time.Instant
+import java.util.UUID
 
 data class ActiveNarmestelederEntity(
+    val narmestelederId: UUID,
     val narmestelederFnr: PersonalIdentificationNumber,
     val narmestelederEpost: String,
     val aktivFom: Instant,
@@ -55,6 +57,7 @@ class NarmestelederLookupDb(
                 )
                 .map { row ->
                     ActiveNarmestelederEntity(
+                        narmestelederId = row[NarmestelederTable.narmestelederId],
                         narmestelederFnr = PersonalIdentificationNumber(row[NarmestelederTable.narmestelederFnr]),
                         narmestelederEpost = row[NarmestelederTable.narmestelederEpost],
                         aktivFom = row[NarmestelederTable.aktivFom].toInstant(),

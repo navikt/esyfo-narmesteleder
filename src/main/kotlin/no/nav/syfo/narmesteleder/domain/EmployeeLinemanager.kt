@@ -7,6 +7,11 @@ data class EmployeeLinemanagerCollection(
     val linemanagers: List<EmployeeLinemanagerRead>,
 )
 
+data class EmployeeLinemanagerLookupResult(
+    val linemanagers: List<EmployeeLinemanagerRead>,
+    val discardedEmailAddressCount: Int,
+)
+
 /**
  * Personal identification numbers are intentionally omitted to minimize data exposure. See issue #474.
  */

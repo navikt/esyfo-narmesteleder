@@ -1,12 +1,15 @@
 package no.nav.syfo.narmesteleder.service
 
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.doubles.shouldBeExactly
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerCollection
+import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerLookupResult
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerQuery
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerRead
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
@@ -35,11 +38,16 @@ class EmployeeLinemanagerServiceTest :
             mobile = "99999999",
         )
 
+        fun lookupResult(
+            linemanagers: List<EmployeeLinemanagerRead> = emptyList(),
+            discardedEmailAddressCount: Int = 0,
+        ) = EmployeeLinemanagerLookupResult(linemanagers, discardedEmailAddressCount)
+
         describe("findActiveLinemanagersForEmployee") {
             it("passes the employee and a null organization filter to the repository") {
                 coEvery {
                     repository.findActiveForEmployee(EmployeeLinemanagerQuery(employee))
-                } returns emptyList()
+                } returns lookupResult()
 
                 service.findActiveLinemanagersForEmployee(employee, null)
 
@@ -56,7 +64,7 @@ class EmployeeLinemanagerServiceTest :
             it("passes the organization filter unchanged to the repository") {
                 coEvery {
                     repository.findActiveForEmployee(EmployeeLinemanagerQuery(employee, orgNumber))
-                } returns emptyList()
+                } returns lookupResult()
 
                 service.findActiveLinemanagersForEmployee(employee, orgNumber)
 
@@ -70,7 +78,7 @@ class EmployeeLinemanagerServiceTest :
                 val second = linemanager()
                 coEvery {
                     repository.findActiveForEmployee(EmployeeLinemanagerQuery(employee))
-                } returns listOf(first, second)
+                } returns lookupResult(listOf(first, second))
 
                 val result = service.findActiveLinemanagersForEmployee(employee, null)
 
@@ -80,11 +88,31 @@ class EmployeeLinemanagerServiceTest :
             it("wraps an empty repository result") {
                 coEvery {
                     repository.findActiveForEmployee(EmployeeLinemanagerQuery(employee))
-                } returns emptyList()
+                } returns lookupResult()
 
                 val result = service.findActiveLinemanagersForEmployee(employee, null)
 
                 result shouldBe EmployeeLinemanagerCollection(emptyList())
             }
+
+            it("counts discarded email addresses") {
+                val countBefore = discardedEmployeeLinemanagerEmailAddressCount()
+                coEvery {
+                    repository.findActiveForEmployee(EmployeeLinemanagerQuery(employee))
+                } returns lookupResult(
+                    linemanagers = listOf(linemanager()),
+                    discardedEmailAddressCount = 2,
+                )
+
+                service.findActiveLinemanagersForEmployee(employee, null)
+
+                discardedEmployeeLinemanagerEmailAddressCount() shouldBeExactly countBefore + 2
+            }
         }
     })
+
+private fun discardedEmployeeLinemanagerEmailAddressCount(): Double = METRICS_REGISTRY
+    .find(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL)
+    .counter()
+    ?.count()
+    ?: 0.0

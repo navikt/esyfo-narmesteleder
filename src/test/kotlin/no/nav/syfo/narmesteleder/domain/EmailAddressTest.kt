@@ -38,4 +38,14 @@ class EmailAddressTest :
                 "".splitEmailAddresses() shouldBe emptyList()
             }
         }
+
+        describe("parseEmailAddresses") {
+            it("keeps valid addresses and counts discarded addresses") {
+                val result = " leder@example.com, invalid-address; annen@example.com ".parseEmailAddresses()
+
+                result.validEmailAddresses.map(EmailAddress::value) shouldBe
+                    listOf("leder@example.com", "annen@example.com")
+                result.discardedEmailAddressCount shouldBe 1
+            }
+        }
     })

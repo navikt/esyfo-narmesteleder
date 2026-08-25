@@ -92,7 +92,7 @@ class EmployeeLinemanagerRepositoryTest :
                 insertRelation(organization = "987654321", linemanagerId = secondOrgId)
                 insertRelation(organization = "123456789", linemanagerId = firstOrgId)
 
-                val results = repository.findActiveForEmployee(query())
+                val results = repository.findActiveForEmployee(query()).linemanagers
 
                 results.map { it.orgNumber.value } shouldBe listOf("123456789", "987654321")
                 results.map { it.id } shouldBe listOf(firstOrgId, secondOrgId)
@@ -103,7 +103,7 @@ class EmployeeLinemanagerRepositoryTest :
                 insertRelation(organization = "123456789")
                 insertRelation(organization = "987654321")
 
-                val results = repository.findActiveForEmployee(query(OrganizationNumber("987654321")))
+                val results = repository.findActiveForEmployee(query(OrganizationNumber("987654321"))).linemanagers
 
                 results.map { it.orgNumber.value } shouldBe listOf("987654321")
             }
@@ -111,44 +111,44 @@ class EmployeeLinemanagerRepositoryTest :
             it("excludes relations with an end date") {
                 insertRelation(activeTo = now.minusSeconds(1))
 
-                repository.findActiveForEmployee(query()) shouldBe emptyList()
+                repository.findActiveForEmployee(query()).linemanagers shouldBe emptyList()
             }
 
             it("excludes relations that start in the future") {
                 insertRelation(activeFrom = now.plusDays(1))
 
-                repository.findActiveForEmployee(query()) shouldBe emptyList()
+                repository.findActiveForEmployee(query()).linemanagers shouldBe emptyList()
             }
 
             it("includes relations that started immediately before now") {
                 insertRelation(activeFrom = now.minusSeconds(1))
 
-                repository.findActiveForEmployee(query()).shouldHaveSize(1)
+                repository.findActiveForEmployee(query()).linemanagers.shouldHaveSize(1)
             }
 
             it("includes relations that start exactly now") {
                 insertRelation(activeFrom = now)
 
-                repository.findActiveForEmployee(query()).shouldHaveSize(1)
+                repository.findActiveForEmployee(query()).linemanagers.shouldHaveSize(1)
             }
 
             it("excludes relations for another employee") {
                 insertRelation(employee = otherEmployeeFnr)
 
-                repository.findActiveForEmployee(query()) shouldBe emptyList()
+                repository.findActiveForEmployee(query()).linemanagers shouldBe emptyList()
             }
 
             it("returns a null name when the manager person row is missing") {
                 insertRelation()
 
-                repository.findActiveForEmployee(query()).single().name.shouldBeNull()
+                repository.findActiveForEmployee(query()).linemanagers.single().name.shouldBeNull()
             }
 
             it("does not expose personal identification numbers") {
                 insertPerson(managerFnr, firstName = "Kari", lastName = "Nordmann")
                 insertRelation()
 
-                val result = repository.findActiveForEmployee(query()).single().toString()
+                val result = repository.findActiveForEmployee(query()).linemanagers.single().toString()
 
                 result.contains(employeeFnr) shouldBe false
                 result.contains(managerFnr) shouldBe false
@@ -158,7 +158,7 @@ class EmployeeLinemanagerRepositoryTest :
                 insertPerson(managerFnr, firstName = "Kari", middleName = "Mellom", lastName = "Nordmann")
                 insertRelation(mobile = "90000000")
 
-                val result = repository.findActiveForEmployee(query()).single()
+                val result = repository.findActiveForEmployee(query()).linemanagers.single()
 
                 result.mobile shouldBe "90000000"
                 result.name shouldBe Name(
@@ -173,45 +173,47 @@ class EmployeeLinemanagerRepositoryTest :
                     insertRelation()
                 }
 
-                repository.findActiveForEmployee(query()).shouldHaveSize(150)
+                repository.findActiveForEmployee(query()).linemanagers.shouldHaveSize(150)
             }
 
             it("returns an empty list when the employee has no relations") {
-                repository.findActiveForEmployee(query()) shouldBe emptyList()
+                repository.findActiveForEmployee(query()).linemanagers shouldBe emptyList()
             }
 
             it("returns an empty list when the employee has no relations in the organization") {
                 insertRelation(organization = "123456789")
 
-                repository.findActiveForEmployee(query(OrganizationNumber("987654321"))) shouldBe emptyList()
+                repository.findActiveForEmployee(query(OrganizationNumber("987654321"))).linemanagers shouldBe emptyList()
             }
 
             it("maps one email address") {
                 insertRelation(email = "leder@example.com")
 
-                repository.findActiveForEmployee(query()).single().emailAddresses shouldBe
+                repository.findActiveForEmployee(query()).linemanagers.single().emailAddresses shouldBe
                     listOf("leder@example.com")
             }
 
             it("splits comma-separated email addresses") {
                 insertRelation(email = "leder@example.com,annen@example.com")
 
-                repository.findActiveForEmployee(query()).single().emailAddresses shouldBe
+                repository.findActiveForEmployee(query()).linemanagers.single().emailAddresses shouldBe
                     listOf("leder@example.com", "annen@example.com")
             }
 
             it("splits semicolon-separated email addresses") {
                 insertRelation(email = "leder@example.com;annen@example.com")
 
-                repository.findActiveForEmployee(query()).single().emailAddresses shouldBe
+                repository.findActiveForEmployee(query()).linemanagers.single().emailAddresses shouldBe
                     listOf("leder@example.com", "annen@example.com")
             }
 
             it("trims valid email addresses and discards invalid addresses") {
                 insertRelation(email = " leder@example.com , invalid-address; annen@example.com; ")
+                val result = repository.findActiveForEmployee(query())
 
-                repository.findActiveForEmployee(query()).single().emailAddresses shouldBe
+                result.linemanagers.single().emailAddresses shouldBe
                     listOf("leder@example.com", "annen@example.com")
+                result.discardedEmailAddressCount shouldBe 1
             }
         }
     })

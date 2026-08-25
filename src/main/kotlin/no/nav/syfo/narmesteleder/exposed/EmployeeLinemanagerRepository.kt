@@ -3,11 +3,12 @@ package no.nav.syfo.narmesteleder.exposed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.narmesteleder.domain.EmailAddress
+import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerLookupResult
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerQuery
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerRead
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.splitEmailAddresses
+import no.nav.syfo.narmesteleder.domain.parseEmailAddresses
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.Op
@@ -24,7 +25,7 @@ import java.time.Clock
 import java.time.OffsetDateTime
 
 interface IEmployeeLinemanagerRepository {
-    suspend fun findActiveForEmployee(query: EmployeeLinemanagerQuery): List<EmployeeLinemanagerRead>
+    suspend fun findActiveForEmployee(query: EmployeeLinemanagerQuery): EmployeeLinemanagerLookupResult
 }
 
 class EmployeeLinemanagerRepository(
@@ -32,9 +33,9 @@ class EmployeeLinemanagerRepository(
     private val clock: Clock = Clock.systemUTC(),
 ) : IEmployeeLinemanagerRepository {
 
-    override suspend fun findActiveForEmployee(query: EmployeeLinemanagerQuery): List<EmployeeLinemanagerRead> = withContext(Dispatchers.IO) {
+    override suspend fun findActiveForEmployee(query: EmployeeLinemanagerQuery): EmployeeLinemanagerLookupResult = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {
-            NarmestelederTable
+            val results = NarmestelederTable
                 .join(
                     otherTable = PersonTable,
                     joinType = JoinType.LEFT,
@@ -60,6 +61,7 @@ class EmployeeLinemanagerRepository(
                     NarmestelederTable.id to SortOrder.ASC,
                 )
                 .map { row ->
+                    val parsedEmailAddresses = row[NarmestelederTable.narmestelederEpost].parseEmailAddresses()
                     EmployeeLinemanagerRead(
                         id = row[NarmestelederTable.narmestelederId],
                         orgNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
@@ -69,14 +71,15 @@ class EmployeeLinemanagerRepository(
                             middleName = PersonTable.mellomnavn,
                             lastName = PersonTable.etternavn,
                         ),
-                        emailAddresses = row[NarmestelederTable.narmestelederEpost]
-                            .splitEmailAddresses()
-                            .mapNotNull { emailAddress ->
-                                EmailAddress.parse(emailAddress).getOrNull()?.value
-                            },
+                        emailAddresses = parsedEmailAddresses.validEmailAddresses.map(EmailAddress::value),
                         mobile = row[NarmestelederTable.narmestelederTelefonnummer],
-                    )
+                    ) to parsedEmailAddresses.discardedEmailAddressCount
                 }
+
+            EmployeeLinemanagerLookupResult(
+                linemanagers = results.map { it.first },
+                discardedEmailAddressCount = results.sumOf { it.second },
+            )
         }
     }
 

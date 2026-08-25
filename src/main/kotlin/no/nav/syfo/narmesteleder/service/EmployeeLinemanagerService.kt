@@ -16,12 +16,13 @@ class EmployeeLinemanagerService(
         employee: PersonalIdentificationNumber,
         orgNumber: OrganizationNumber?,
     ): EmployeeLinemanagerCollection {
-        val linemanagers = repository.findActiveForEmployee(
+        val lookupResult = repository.findActiveForEmployee(
             EmployeeLinemanagerQuery(
                 employeeNationalIdentificationNumber = employee,
                 orgNumber = orgNumber,
             ),
         )
-        return EmployeeLinemanagerCollection(linemanagers)
+        countDiscardedEmployeeLinemanagerEmailAddresses(lookupResult.discardedEmailAddressCount)
+        return EmployeeLinemanagerCollection(lookupResult.linemanagers)
     }
 }

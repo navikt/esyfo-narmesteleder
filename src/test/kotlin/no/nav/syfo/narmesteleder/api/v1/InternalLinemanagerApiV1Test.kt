@@ -31,6 +31,7 @@ import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
 import no.nav.syfo.narmesteleder.api.internal.v1.EMPLOYEE_LINEMANAGER_API_PATH
 import no.nav.syfo.narmesteleder.api.internal.v1.EMPLOYEE_LINEMANAGER_TOTAL
+import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerLookupResult
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerReadCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
@@ -54,6 +55,11 @@ private fun JsonNode.scalarValues(): List<String> = when {
     isObject -> fieldNames().asSequence().toList() + flatMap { it.scalarValues() }
     else -> flatMap { it.scalarValues() }
 }
+
+private fun employeeLinemanagerLookupResult(
+    linemanagers: List<EmployeeLinemanagerRead> = emptyList(),
+    discardedEmailAddressCount: Int = 0,
+) = EmployeeLinemanagerLookupResult(linemanagers, discardedEmailAddressCount)
 
 class InternalLinemanagerApiV1Test :
     LinemanagerApiV1TestBase({
@@ -127,9 +133,11 @@ class InternalLinemanagerApiV1Test :
             it("returns active linemanagers without exposing employee details") {
                 withTestApplication {
                     val callerPid = "11223344556"
-                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns listOf(
-                        employeeLinemanager(UUID(0, 1), OrganizationNumber("123456789")),
-                        employeeLinemanager(UUID(0, 2), OrganizationNumber("987654321")),
+                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns employeeLinemanagerLookupResult(
+                        listOf(
+                            employeeLinemanager(UUID(0, 1), OrganizationNumber("123456789")),
+                            employeeLinemanager(UUID(0, 2), OrganizationNumber("987654321")),
+                        )
                     )
                     texasHttpClientMock.defaultMocks(acr = "Level4", pid = callerPid)
 
@@ -170,12 +178,14 @@ class InternalLinemanagerApiV1Test :
             it("serializes one email address as an array") {
                 withTestApplication {
                     val callerPid = "11223344556"
-                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns listOf(
-                        employeeLinemanager(
-                            id = UUID(0, 1),
-                            orgNumber = OrganizationNumber("123456789"),
-                            emailAddresses = listOf("single@example.com"),
-                        ),
+                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns employeeLinemanagerLookupResult(
+                        listOf(
+                            employeeLinemanager(
+                                id = UUID(0, 1),
+                                orgNumber = OrganizationNumber("123456789"),
+                                emailAddresses = listOf("single@example.com"),
+                            ),
+                        )
                     )
                     texasHttpClientMock.defaultMocks(acr = "Level4", pid = callerPid)
 
@@ -199,7 +209,7 @@ class InternalLinemanagerApiV1Test :
             it("uses the authenticated employee pid without an organization filter") {
                 withTestApplication {
                     val callerPid = "11223344556"
-                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns emptyList()
+                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns employeeLinemanagerLookupResult()
                     texasHttpClientMock.defaultMocks(acr = "Level4", pid = callerPid)
 
                     val response = client.get("$INTERNAL_API_V1_PATH$EMPLOYEE_LINEMANAGER_API_PATH") {
@@ -221,7 +231,7 @@ class InternalLinemanagerApiV1Test :
                 withTestApplication {
                     val callerPid = "11223344556"
                     val orgNumber = OrganizationNumber("123456789")
-                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns emptyList()
+                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns employeeLinemanagerLookupResult()
                     texasHttpClientMock.defaultMocks(acr = "Level4", pid = callerPid)
 
                     val response = client.get(
@@ -421,7 +431,7 @@ class InternalLinemanagerApiV1Test :
             it("returns an empty collection when the organization has no matches") {
                 withTestApplication {
                     val callerPid = "11223344556"
-                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns emptyList()
+                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns employeeLinemanagerLookupResult()
                     texasHttpClientMock.defaultMocks(acr = "Level4", pid = callerPid)
 
                     val response = client.get(
@@ -440,7 +450,7 @@ class InternalLinemanagerApiV1Test :
             it("does not use Altinn access for employee linemanager lookups") {
                 withTestApplication {
                     val callerPid = "11223344556"
-                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns emptyList()
+                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns employeeLinemanagerLookupResult()
                     texasHttpClientMock.defaultMocks(acr = "Level4", pid = callerPid)
 
                     val response = client.get("$INTERNAL_API_V1_PATH$EMPLOYEE_LINEMANAGER_API_PATH") {
@@ -466,7 +476,7 @@ class InternalLinemanagerApiV1Test :
                     val callerPid = "11223344556"
                     val unfilteredCountBefore = employeeLinemanagerMetricCount("false")
                     val filteredCountBefore = employeeLinemanagerMetricCount("true")
-                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns emptyList()
+                    coEvery { employeeLinemanagerRepository.findActiveForEmployee(any()) } returns employeeLinemanagerLookupResult()
                     texasHttpClientMock.defaultMocks(acr = "Level4", pid = callerPid)
 
                     val unfilteredResponse = client.get("$INTERNAL_API_V1_PATH$EMPLOYEE_LINEMANAGER_API_PATH") {

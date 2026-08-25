@@ -13,7 +13,6 @@ allow_localhost_any = true
 [propose.allow]
 ports = [3000, 5432, 6379, 6969, 8081, 8082, 9092, 9101]
 localhost = [8080]
-socket = ["~/.local/share/containers/podman/machine/podman.sock"]
 
 # The following are machine-specific — add to ~/.config/cplt/config.toml:
 # allow.read = ["~/.gradle/gradle.properties"]  # in personal config

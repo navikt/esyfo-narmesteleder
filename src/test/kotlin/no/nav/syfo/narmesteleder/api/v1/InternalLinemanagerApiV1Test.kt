@@ -41,6 +41,7 @@ import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
+import java.io.IOException
 import java.time.Instant
 import java.util.UUID
 
@@ -324,6 +325,24 @@ class InternalLinemanagerApiV1Test :
                     }
 
                     response.status shouldBe HttpStatusCode.Unauthorized
+                    coVerify(exactly = 0) { employeeLinemanagerRepository.findActiveForEmployee(any()) }
+                }
+            }
+
+            it("returns a generic 500 when TokenX introspection fails") {
+                withTestApplication {
+                    val callerPid = "11223344556"
+                    val texasFailureMessage = "Texas is unavailable"
+                    coEvery { texasHttpClientMock.introspectToken("tokenx", any()) } throws
+                        IOException(texasFailureMessage)
+
+                    val response = client.get("$INTERNAL_API_V1_PATH$EMPLOYEE_LINEMANAGER_API_PATH") {
+                        bearerAuth(createMockToken(callerPid, issuer = tokenXIssuer))
+                    }
+
+                    response.status shouldBe HttpStatusCode.InternalServerError
+                    response.body<ApiError>().message shouldBe "Internal Server Error"
+                    response.bodyAsText() shouldNotContain texasFailureMessage
                     coVerify(exactly = 0) { employeeLinemanagerRepository.findActiveForEmployee(any()) }
                 }
             }

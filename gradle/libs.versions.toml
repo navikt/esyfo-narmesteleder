@@ -1,5 +1,5 @@
 [versions]
-avro = "1.12.2"
+avro = "1.12.1"
 commons-text = "1.15.0"
 confluent = "8.1.1"
 datafaker = "2.7.0"

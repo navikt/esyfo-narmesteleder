@@ -163,6 +163,7 @@ class PdlLeesahConsumerTest :
                 logMessage.contains("updatedCount=2") shouldBe true
                 logMessage.contains("notFoundInRegisterCount=0") shouldBe true
                 logMessage.contains("pdlNotFoundCount=0") shouldBe true
+                logMessage.contains("lastProcessedOffsets={pdl.leesah-v1-0=3}") shouldBe true
                 logMessage.contains("recordsWithFornavn") shouldBe false
                 logMessage.contains("recordsWithMellomnavn") shouldBe false
                 logMessage.contains("recordsWithEtternavn") shouldBe false
@@ -449,7 +450,7 @@ class PdlLeesahConsumerTest :
         }
 
         describe("pollAndProcess") {
-            it("skips poison-pill records deterministically without logging payload details") {
+            it("does not commit poison-pill records and does not log payload details") {
                 val consumer = createConsumer(
                     kafkaConsumer = kafkaConsumer,
                     pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
@@ -473,19 +474,13 @@ class PdlLeesahConsumerTest :
                     consumer.pollAndProcess(kafkaConsumer)
                 }
 
-                verify(exactly = 1) { kafkaConsumer.seek(topicPartition, 43L) }
-                verify(exactly = 1) {
-                    kafkaConsumer.commitSync(mapOf(topicPartition to OffsetAndMetadata(43L)))
-                }
-                metricCount(
-                    result = PdlLeesahConsumer.RESULT_RECORD_DESERIALIZATION_SKIPPED,
-                    opplysningstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
-                    endringstype = PdlLeesahConsumer.METRIC_UNKNOWN_VALUE,
-                ) shouldBeExactly 1.0
+                verify(exactly = 0) { kafkaConsumer.seek(any<TopicPartition>(), any<Long>()) }
+                verify(exactly = 0) { kafkaConsumer.commitSync(any<Map<TopicPartition, OffsetAndMetadata>>()) }
 
                 val logMessage = logAppender.list.joinToString("\n") { it.formattedMessage }
                 logMessage.contains("offset=42") shouldBe true
                 logMessage.contains("partition=0") shouldBe true
+                logMessage.contains("Offset will not be committed") shouldBe true
                 logMessage.contains("12345678910") shouldBe false
                 logMessage.contains("Ola Nordmann") shouldBe false
             }

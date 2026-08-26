@@ -88,14 +88,6 @@ class PdlLeesahConsumer(
                     } catch (_: WakeupException) {
                         logger.info("Wakeup received for {}", PDL_LEESAH_TOPIC)
                         break
-                    } catch (exception: FatalPdlLeesahConsumerException) {
-                        logger.error(
-                            "Stopping {} consumer for {} after failing to handle deserialization error deterministically. exceptionType={}",
-                            this@PdlLeesahConsumer::class.simpleName,
-                            PDL_LEESAH_TOPIC,
-                            exception.cause?.javaClass?.simpleName ?: exception::class.simpleName,
-                        )
-                        break
                     } catch (_: CancellationException) {
                         break
                     } catch (exception: Exception) {
@@ -133,7 +125,7 @@ class PdlLeesahConsumer(
                 processRecords(records, kafkaConsumer)
             }
         } catch (exception: RecordDeserializationException) {
-            handleRecordDeserializationException(kafkaConsumer, exception)
+            handleRecordDeserializationException(exception)
         } catch (exception: SerializationException) {
             incrementMetric(
                 opplysningstype = METRIC_UNKNOWN_VALUE,
@@ -191,13 +183,18 @@ class PdlLeesahConsumer(
             kafkaConsumer.commitSync(processedOffsets)
         }
 
+        val lastProcessedOffsets = processedOffsets.mapValues { (_, offsetAndMetadata) ->
+            offsetAndMetadata.offset() - 1
+        }
+
         updateResult?.let { result ->
             logger.info(
-                "Processed PDL Leesah name event batch relevantRecordCount={}, updatedCount={}, notFoundInRegisterCount={}, pdlNotFoundCount={}",
+                "Processed PDL Leesah name event batch relevantRecordCount={}, updatedCount={}, notFoundInRegisterCount={}, pdlNotFoundCount={}, lastProcessedOffsets={}",
                 relevantRecords.size,
                 result.updatedCount,
                 result.notFoundInRegisterCount,
                 result.pdlNotFoundCount,
+                lastProcessedOffsets,
             )
         }
 
@@ -206,27 +203,13 @@ class PdlLeesahConsumer(
     }
 
     private fun handleRecordDeserializationException(
-        kafkaConsumer: KafkaConsumer<String, Personhendelse>,
         exception: RecordDeserializationException,
     ) {
-        val nextOffset = exception.offset() + 1
         val topicPartition = exception.topicPartition()
 
-        try {
-            kafkaConsumer.seek(topicPartition, nextOffset)
-            kafkaConsumer.commitSync(mapOf(topicPartition to OffsetAndMetadata(nextOffset)))
-        } catch (seekOrCommitException: Exception) {
-            throw FatalPdlLeesahConsumerException(seekOrCommitException)
-        }
-
-        incrementMetric(
-            opplysningstype = METRIC_UNKNOWN_VALUE,
-            endringstype = METRIC_UNKNOWN_VALUE,
-            result = RESULT_RECORD_DESERIALIZATION_SKIPPED,
-        )
         // Do not log exception.message or Throwable here; it can contain persondata or raw payload bytes.
         logger.error(
-            "Skipped poison-pill record after deserialization failure for topic={}, partition={}, offset={}, exceptionType={}",
+            "Poison-pill record could not be deserialized for topic={}, partition={}, offset={}, exceptionType={}. Offset will not be committed.",
             topicPartition.topic(),
             topicPartition.partition(),
             exception.offset(),
@@ -343,7 +326,6 @@ class PdlLeesahConsumer(
         internal const val RESULT_IGNORED = "ignored"
         internal const val RESULT_PROCESSED = "processed"
         internal const val RESULT_SERIALIZATION_ERROR = "serialization_error"
-        internal const val RESULT_RECORD_DESERIALIZATION_SKIPPED = "record_deserialization_skipped"
         internal const val RESULT_TOMBSTONE = "tombstone"
         internal const val METRIC_UNKNOWN_VALUE = "unknown"
 
@@ -355,7 +337,3 @@ class PdlLeesahConsumer(
         }
     }
 }
-
-private class FatalPdlLeesahConsumerException(
-    cause: Throwable,
-) : RuntimeException(null, cause, false, false)

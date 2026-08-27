@@ -154,10 +154,15 @@ mise docker-down
 You can use [kafka-ui](http://localhost:9000) to inspect your consumers and topics. You can also publish or read messages on the topics
 
 ## Authentication for dev
-In order to get a token for annsatt that has access to update narmesteleder relasjon, you can use the following url:
+In order to get a token that allows access to the service as a person, you can use the following url:
 https://tokenx-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp:team-esyfo:esyfo-narmesteleder
 
-Select "på høyt nivå" and give the ident of a Daglig leder for the organisasjonsnummer you want to test with.
+Select "på høyt nivå".
+
+If you want to be able to set linemananger or break an existing linkt, give the ident of a Daglig leder for the organisasjonsnummer you want to test with.
+If you want to act as a person on sick leave, give the ident of a person that is registered as an employee in the organisasjonsnummer you want to test with.
+If you want to act as the linemanager, give the ident of a person that is registered as a linemanager in the organisasjonsnummer you want to test with.
+
 
 ## Running requests locally
 There is a [Bruno](https://www.usebruno.com/) collection in the folder [.bruno](./.bruno) that you can open and find request to run against your locally running instance.

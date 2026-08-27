@@ -16,7 +16,7 @@ import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import prepareGetPersonResponse
-import java.util.*
+import java.util.UUID
 
 class LinemanagerRequirementRESTHandlerTest :
     DescribeSpec({

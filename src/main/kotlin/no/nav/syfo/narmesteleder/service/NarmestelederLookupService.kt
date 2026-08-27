@@ -4,6 +4,7 @@ import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.EmailAddress
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.narmesteleder.domain.splitEmailAddresses
 import org.slf4j.LoggerFactory
 
 data class NarmestelederLookup(
@@ -26,9 +27,7 @@ class NarmestelederLookupService(
             NarmestelederLookup(
                 fnr = relation.narmestelederFnr,
                 epostadresser = relation.narmestelederEpost
-                    .split(",", ";")
-                    .map(String::trim)
-                    .filter(String::isNotEmpty)
+                    .splitEmailAddresses()
                     .map(::EmailAddress),
             )
         }

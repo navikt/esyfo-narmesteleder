@@ -6,12 +6,11 @@ import no.nav.syfo.application.auth.TOKEN_ISSUER
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.util.logger
 
-private val VALID_ISSUERS = listOf(JwtIssuer.MASKINPORTEN, JwtIssuer.TOKEN_X)
-const val MASKINPORTEN_NL_SCOPE = "nav:syfo/narmesteleder/lps"
-private val logger = logger("no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin")
+private val VALID_ISSUERS = listOf(JwtIssuer.TOKEN_X)
+private val logger = logger("no.nav.syfo.texas.TokenXTokenAuthPlugin")
 
-val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
-    name = "MaskinportenAndTokenXTokenAuthPlugin",
+val TokenXTokenAuthPlugin = createRouteScopedPlugin(
+    name = "TokenXTokenAuthPlugin",
     createConfiguration = ::TexasAuthPluginConfiguration,
 ) {
 
@@ -29,13 +28,11 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
                 call.bearerToken() ?: throw ApiErrorException.UnauthorizedException("No bearer token found in request")
 
             when (issuer) {
-                JwtIssuer.MASKINPORTEN -> call.authenticateMaskinporten(client, bearerToken)
-
                 JwtIssuer.TOKEN_X -> call.authenticateTokenX(client, bearerToken)
 
                 else -> throw ApiErrorException.UnauthorizedException("Unsupported token issuer")
             }
         }
     }
-    logger.info("TexasMaskinportenAuthPlugin installed")
+    logger.info("TexasTokenXAuthPlugin installed")
 }

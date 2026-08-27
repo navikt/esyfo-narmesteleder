@@ -88,6 +88,8 @@ spec:
           namespace: fager
         - application: syfo-budstikka
           namespace: team-esyfo
+        - application: ditt-sykefravaer
+          namespace: flex
     outbound:
       rules:
         - application: dinesykmeldte-backend

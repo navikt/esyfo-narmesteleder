@@ -64,4 +64,4 @@ Responsen har ingen paginering eller øvre grense for antall koblinger.
 
 ## Avvik fra team sykmelding sitt endepunkt
 
-Dette endepunktet returnerer bare aktive koblinger. Det eksponerer ikke fødselsnummer. Det har heller ikke feltene `organisasjonsnavn` og `arbeidsgiverForskutterer`, fordi de ikke finnes i datamodellen.
+Dette endepunktet returnerer bare aktive koblinger. Det eksponerer ikke fødselsnummer. Det har heller ikke feltene `organisasjonsnavn` og `arbeidsgiverForskutterer`, da modellen mangler `organisasjonsnavn` og `arbeidsgiverForskutterer` skal ut av scope for narmesteleder.

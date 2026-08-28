@@ -97,7 +97,7 @@ object NameValidator {
             pdlLastNames = pdlPerson.names.map { it.etternavn },
             nameSource = nameSource,
         )
-        val isAccepted = matchType == NameMatchType.EXACT
+        val isAccepted = matchType == NameMatchType.EXACT || matchType == NameMatchType.FUZZY
 
         countNameValidation(matchType, nameSource, isAccepted)
         if (pdlPerson.hasParallelNames) {

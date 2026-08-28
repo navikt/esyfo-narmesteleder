@@ -335,7 +335,7 @@ class NameValidatorTest :
                 ) shouldBe NameMatchType.NONE
             }
 
-            it("records fuzzy candidates as rejected during the observation phase") {
+            it("accepts fuzzy matches and records them as accepted") {
                 val linemanager = linemanager().copy(lastName = "Hansen")
                 val employee = person(
                     lastName = "Hanson",
@@ -344,18 +344,37 @@ class NameValidatorTest :
                 val before = nameValidationCount(
                     matchType = "fuzzy",
                     nameSource = NAME_SOURCE_SINGLE,
-                    validationResult = "rejected",
+                    validationResult = "accepted",
                 )
 
-                shouldThrow<ApiErrorException.BadRequestException> {
+                shouldNotThrow<ApiErrorException.BadRequestException> {
                     NameValidator.validateEmployeeLastName(employee, linemanager)
                 }
 
                 nameValidationCount(
                     matchType = "fuzzy",
                     nameSource = NAME_SOURCE_SINGLE,
-                    validationResult = "rejected",
+                    validationResult = "accepted",
                 ) shouldBeExactly before + 1.0
+            }
+
+            it("counts an accepted fuzzy parallel name as successful") {
+                val linemanager = linemanager().copy(lastName = "Hansen")
+                val employee = personWithParallelLastNames(
+                    lastNames = listOf("Haugland", "Hanson"),
+                    fnr = linemanager.employeeIdentificationNumber.value,
+                )
+                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
+                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
+                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                }
+
+                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore
             }
         }
     })

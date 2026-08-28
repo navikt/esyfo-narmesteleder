@@ -471,6 +471,7 @@ class NameValidatorTest :
 
             it("does not broaden orthographic variants to plain letters or digraphs") {
                 listOf(
+                    "Osterud" to "Østerud",
                     "Ost" to "Øst",
                     "Ost" to "Öst",
                     "Aer" to "Ær",

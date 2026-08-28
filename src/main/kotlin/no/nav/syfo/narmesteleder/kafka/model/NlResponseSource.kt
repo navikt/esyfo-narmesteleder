@@ -5,6 +5,7 @@ import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
+import no.nav.syfo.narmesteleder.domain.RevokeInitiator
 
 enum class NlResponseSource(val source: String) {
     LPS("esyo-narmesteleder.lps"),
@@ -24,11 +25,20 @@ enum class NlResponseSource(val source: String) {
         fun getSourceFrom(principal: Principal, linemanagerRevoke: LinemanagerRevoke): NlResponseSource = when (principal) {
             is SystemPrincipal -> LPS_REVOKE
             is UserPrincipal -> {
-                when (principal.ident) { // Can add option for NARMESTELEDER if we accept requests from them and can identity the caller as such
+                // This flow only knows the employee identifier. When the revoking party is resolved from an
+                // existing relation, use getRevokeSourceFrom(RevokedBy) instead.
+                when (principal.ident) {
                     linemanagerRevoke.employeeIdentificationNumber.value -> ARBEIDSTAGER_REVOKE
                     else -> PERSONALLEDER_REVOKE
                 }
             }
+        }
+
+        fun getRevokeSourceFrom(initiator: RevokeInitiator): NlResponseSource = when (initiator) {
+            RevokeInitiator.EMPLOYEE -> ARBEIDSTAGER_REVOKE
+            RevokeInitiator.LINEMANAGER -> NARMESTELEDER_REVOKE
+            RevokeInitiator.PERSONNEL_MANAGER -> PERSONALLEDER_REVOKE
+            RevokeInitiator.LPS -> LPS_REVOKE
         }
     }
 }

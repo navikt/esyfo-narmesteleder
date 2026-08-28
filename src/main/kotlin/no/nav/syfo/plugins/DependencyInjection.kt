@@ -42,8 +42,10 @@ import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
+import no.nav.syfo.narmesteleder.db.INarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
+import no.nav.syfo.narmesteleder.db.NarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.exposed.EmployeeLinemanagerRepository
 import no.nav.syfo.narmesteleder.exposed.IEmployeeLinemanagerRepository
 import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
@@ -55,6 +57,7 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
+import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -141,6 +144,9 @@ private fun databaseModule() = module {
     }
     single<INarmestelederLookupDb> {
         NarmestelederLookupDb(get<ExposedDatabase>(), Dispatchers.IO)
+    }
+    single<INarmestelederRevokeDb> {
+        NarmestelederRevokeDb(get<ExposedDatabase>(), Dispatchers.IO)
     }
     single<ISykmeldingDb> {
         SykmeldingDb(get(), Dispatchers.IO)
@@ -298,6 +304,13 @@ private fun servicesModule() = module {
         )
     }
     single { EmployeeLinemanagerService(repository = get()) }
+    single {
+        LinemanagerRevokeService(
+            narmestelederRevokeDb = get(),
+            narmestelederKafkaService = get(),
+            validationService = get(),
+        )
+    }
     single { NarmestelederRegisterService(get()) }
     single {
         AltinnTokenProvider(

@@ -31,6 +31,7 @@ import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
+import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
@@ -70,6 +71,7 @@ class LineManagerLookupApiTest :
                             linemanagerSearchService = mockk<LinemanagerSearchService>(),
                             linemanagerStatisticsService = mockk<LinemanagerStatisticsService>(),
                             employeeLinemanagerService = mockk<EmployeeLinemanagerService>(),
+                            linemanagerRevokeService = mockk<LinemanagerRevokeService>(),
                         )
                     }
                 }

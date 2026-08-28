@@ -92,6 +92,7 @@ spec:
         - application: tokenx-token-generator
           namespace: nais
         - application: narmesteleder-frontend
+        - application: dinesykmeldte-backend
         - application: min-side-arbeidsgiver
           namespace: fager
         - application: syfo-budstikka

@@ -102,6 +102,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /internal/api/v1/linemanager/{id}:
+    delete:
+      summary: Revoke a linemanager relation by its narmesteleder id
+      description: |
+        Revokes the linemanager relation identified by `narmeste_leder_id`.
+
+        The employee and the linemanager of the relation may always revoke it. Other callers may
+        revoke it on behalf of the employer if they hold the normal Altinn access to the
+        organization the relation belongs to. This applies both to logged in persons acting as
+        personnel managers and to system users authenticated with Maskinporten.
+
+        The revocation is published asynchronously, so a `202` means the request is accepted,
+        not that the relation is already revoked. The operation is idempotent: revoking an
+        already revoked relation also returns `202` without republishing.
+      security:
+        - maskinporten_jwt: []
+        - tokenx_jwt: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The `narmeste_leder_id` of the relation to revoke.
+          example: "0199c6f4-1d3a-7f11-9b6e-3f2a4c5d6e7f"
+      responses:
+        '202':
+          description: The revocation request is accepted.
+        '400':
+          description: The id is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: The JWT is missing, invalid or has an unsupported issuer. The response can be without a body.
+        '403':
+          description: The caller is not authorized. The response can be without a body.
+        '404':
+          description: |
+            No relation matches the id, or the caller is neither part of the relation nor has
+            Altinn access to the organization. The cases share a response so the API does not
+            disclose whether an id exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /internal/api/v1/lookup:
     post:
       summary: Look up the active line manager for an employee and organization
@@ -264,6 +318,7 @@ components:
       enum:
         - AUTHENTICATION_ERROR
         - AUTHORIZATION_ERROR
+        - NOT_FOUND
         - INTERNAL_SERVER_ERROR
         - BAD_REQUEST
         - INVALID_FORMAT

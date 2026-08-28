@@ -15,6 +15,7 @@ import no.nav.syfo.narmesteleder.service.NarmestelederLookup
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.texas.AzureAdTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
+import java.util.UUID
 
 const val LINE_MANAGER_LOOKUP_PATH = "/lookup"
 
@@ -28,6 +29,7 @@ data class LineManagerLookupResponse(
 )
 
 data class LineManagerResponse(
+    val id: UUID,
     val nationalIdentificationNumber: String,
     val emailAddresses: List<String>,
 )
@@ -72,6 +74,7 @@ fun Route.registerLineManagerLookupApi(
 }
 
 private fun NarmestelederLookup.toResponse() = LineManagerResponse(
+    id = id,
     nationalIdentificationNumber = fnr.value,
     emailAddresses = epostadresser.map { it.value },
 )

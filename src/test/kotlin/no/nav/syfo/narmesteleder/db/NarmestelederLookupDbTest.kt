@@ -23,6 +23,7 @@ class NarmestelederLookupDbTest :
         }
 
         fun insertNarmesteleder(
+            id: UUID = UUID.randomUUID(),
             lederFnr: String = "10987654321",
             epost: String = "leder@example.com",
             sykmeldt: String = sykmeldtFnr.value,
@@ -32,7 +33,7 @@ class NarmestelederLookupDbTest :
         ) {
             transaction(TestDB.exposedDatabase) {
                 NarmestelederTable.insert {
-                    it[narmestelederId] = UUID.randomUUID()
+                    it[narmestelederId] = id
                     it[NarmestelederTable.orgnummer] = org
                     it[NarmestelederTable.sykmeldtFnr] = sykmeldt
                     it[NarmestelederTable.narmestelederFnr] = lederFnr
@@ -47,7 +48,8 @@ class NarmestelederLookupDbTest :
         describe("findActiveNarmesteledere") {
             it("returns only active relations for the given sykmeldt and organization") {
                 val aktivFom = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
-                insertNarmesteleder(fom = aktivFom)
+                val narmestelederId = UUID.fromString("4ffc41ed-75df-4802-9867-b5262783da5d")
+                insertNarmesteleder(id = narmestelederId, fom = aktivFom)
                 insertNarmesteleder(
                     lederFnr = "10987654322",
                     fom = aktivFom.minusYears(1),
@@ -59,6 +61,7 @@ class NarmestelederLookupDbTest :
                 val result = lookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer)
 
                 result.size shouldBe 1
+                result.first().narmestelederId shouldBe narmestelederId
                 result.first().narmestelederFnr shouldBe PersonalIdentificationNumber("10987654321")
                 result.first().narmestelederEpost shouldBe "leder@example.com"
                 result.first().aktivFom shouldBe aktivFom.toInstant()

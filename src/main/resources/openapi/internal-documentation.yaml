@@ -301,6 +301,10 @@ components:
     LineManager:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
+          description: The ID of the active line manager relation.
         nationalIdentificationNumber:
           type: string
           pattern: '^\d{11}$'
@@ -310,6 +314,7 @@ components:
             type: string
             format: email
       required:
+        - id
         - nationalIdentificationNumber
         - emailAddresses
       additionalProperties: false

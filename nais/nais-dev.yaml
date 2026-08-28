@@ -97,6 +97,7 @@ spec:
           namespace: fager
         - application: syfo-budstikka
           namespace: team-esyfo
+        - application: syfo-oppfolgingsplan-backend
         - application: ditt-sykefravaer
           namespace: flex
     outbound:
@@ -116,7 +117,7 @@ spec:
       access: readwrite
   env:
     - name: AZURE_APP_PRE_AUTHORIZED_APPS
-      value: '[{"name":"syfo-budstikka","clientId":"111b89d0-2789-4e79-973a-ffc9a3e5dba2"}]'
+      value: '[{"name":"syfo-budstikka","clientId":"111b89d0-2789-4e79-973a-ffc9a3e5dba2"},{"name":"syfo-oppfolginsplan-backend","clientId":"4c1a052c-3f24-4b5a-9f25-bc452c0f1af9"}]'
     - name: PDL_BASE_URL
       value: https://pdl-api.dev-fss-pub.nais.io/graphql
     - name: PDL_SCOPE

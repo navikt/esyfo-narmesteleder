@@ -29,11 +29,11 @@ class OpenApiInternalLinemanagerRevokeSchemaTest :
             responses shouldContainExactly listOf("202", "400", "401", "403", "404", "500")
         }
 
-        "openapi documents the revoke endpoint as TokenX only" {
+        "openapi documents the revoke endpoint as TokenX and Maskinporten" {
             val delete = (paths[documentedPath] as Map<*, *>)["delete"] as Map<*, *>
             val security = (delete["security"] as List<*>).map { (it as Map<*, *>).keys.single() }
 
-            security shouldContainExactly listOf("tokenx_jwt")
+            security shouldContainExactly listOf("maskinporten_jwt", "tokenx_jwt")
         }
 
         "openapi ErrorType enum contains the error types the endpoint uses" {

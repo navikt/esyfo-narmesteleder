@@ -5,7 +5,7 @@ import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
-import no.nav.syfo.narmesteleder.domain.RevokedBy
+import no.nav.syfo.narmesteleder.domain.RevokeInitiator
 
 enum class NlResponseSource(val source: String) {
     LPS("esyo-narmesteleder.lps"),
@@ -34,10 +34,11 @@ enum class NlResponseSource(val source: String) {
             }
         }
 
-        fun getRevokeSourceFrom(revokedBy: RevokedBy): NlResponseSource = when (revokedBy) {
-            RevokedBy.EMPLOYEE -> ARBEIDSTAGER_REVOKE
-            RevokedBy.LINEMANAGER -> NARMESTELEDER_REVOKE
-            RevokedBy.LPS -> LPS_REVOKE
+        fun getRevokeSourceFrom(initiator: RevokeInitiator): NlResponseSource = when (initiator) {
+            RevokeInitiator.EMPLOYEE -> ARBEIDSTAGER_REVOKE
+            RevokeInitiator.LINEMANAGER -> NARMESTELEDER_REVOKE
+            RevokeInitiator.PERSONNEL_MANAGER -> PERSONALLEDER_REVOKE
+            RevokeInitiator.LPS -> LPS_REVOKE
         }
     }
 }

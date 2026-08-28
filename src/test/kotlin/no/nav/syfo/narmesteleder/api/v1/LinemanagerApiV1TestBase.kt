@@ -153,6 +153,7 @@ abstract class LinemanagerApiV1TestBase(
                 LinemanagerRevokeService(
                     narmestelederRevokeDb = mockk(),
                     narmestelederKafkaService = narmestelederKafkaServiceSpy,
+                    validationService = validationServiceSpy,
                 )
             coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns true
             fakeRepo.clear()

@@ -6,7 +6,7 @@ import linemanager
 import linemanagerRevoke
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.narmesteleder.domain.RevokedBy
+import no.nav.syfo.narmesteleder.domain.RevokeInitiator
 
 class NlResponseSourceTest :
     DescribeSpec({
@@ -75,17 +75,24 @@ class NlResponseSourceTest :
                 source shouldBe NlResponseSource.PERSONALLEDER_REVOKE
             }
         }
-        describe("getRevokeSourceFrom RevokedBy") {
+        describe("getRevokeSourceFrom RevokeInitiator") {
             it("Returns ARBEIDSTAGER_REVOKE when the employee revoked the relation") {
-                NlResponseSource.getRevokeSourceFrom(RevokedBy.EMPLOYEE) shouldBe NlResponseSource.ARBEIDSTAGER_REVOKE
+                NlResponseSource.getRevokeSourceFrom(RevokeInitiator.EMPLOYEE) shouldBe
+                    NlResponseSource.ARBEIDSTAGER_REVOKE
             }
 
             it("Returns NARMESTELEDER_REVOKE when the line manager revoked the relation") {
-                NlResponseSource.getRevokeSourceFrom(RevokedBy.LINEMANAGER) shouldBe NlResponseSource.NARMESTELEDER_REVOKE
+                NlResponseSource.getRevokeSourceFrom(RevokeInitiator.LINEMANAGER) shouldBe
+                    NlResponseSource.NARMESTELEDER_REVOKE
+            }
+
+            it("Returns PERSONALLEDER_REVOKE when a personnel manager revoked the relation") {
+                NlResponseSource.getRevokeSourceFrom(RevokeInitiator.PERSONNEL_MANAGER) shouldBe
+                    NlResponseSource.PERSONALLEDER_REVOKE
             }
 
             it("Returns LPS_REVOKE when an LPS revoked the relation") {
-                NlResponseSource.getRevokeSourceFrom(RevokedBy.LPS) shouldBe NlResponseSource.LPS_REVOKE
+                NlResponseSource.getRevokeSourceFrom(RevokeInitiator.LPS) shouldBe NlResponseSource.LPS_REVOKE
             }
         }
     })

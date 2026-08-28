@@ -16,6 +16,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.db.INarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.RevokableNarmestelederEntity
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
@@ -28,6 +29,7 @@ import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
+import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -42,12 +44,18 @@ class LinemanagerRevokeApiTest :
         val texasHttpClient = mockk<TexasHttpClient>()
         val revokeDb = mockk<INarmestelederRevokeDb>()
         val kafkaProducer = mockk<ISykmeldingNLKafkaProducer>(relaxed = true)
-        val revokeService = LinemanagerRevokeService(revokeDb, NarmestelederKafkaService(kafkaProducer))
+        val validationService = mockk<ValidationService>()
+        val revokeService = LinemanagerRevokeService(
+            narmestelederRevokeDb = revokeDb,
+            narmestelederKafkaService = NarmestelederKafkaService(kafkaProducer),
+            validationService = validationService,
+        )
 
         val narmestelederId = UUID.randomUUID()
         val employee = PersonalIdentificationNumber("12345678901")
         val manager = PersonalIdentificationNumber("10987654321")
         val orgNumber = OrganizationNumber("123456789")
+        val outsider = "11111111111"
 
         fun relation(isActive: Boolean = true) = RevokableNarmestelederEntity(
             narmestelederId = narmestelederId,
@@ -80,8 +88,44 @@ class LinemanagerRevokeApiTest :
 
         fun tokenXToken(pid: String) = createMockToken(pid, issuer = TOKEN_X_ISSUER)
 
+        fun maskinportenToken() = createMockToken("0192:123456789", issuer = MASKINPORTEN_ISSUER)
+
+        fun introspectMaskinporten() {
+            coEvery { texasHttpClient.introspectToken("maskinporten", any()) } returns TexasIntrospectionResponse(
+                active = true,
+                scope = MASKINPORTEN_NL_SCOPE,
+                consumer = DefaultOrganization,
+                authorizationDetails = listOf(
+                    AuthorizationDetail(
+                        type = "urn:altinn:systemuser",
+                        systemuserOrg = DefaultOrganization,
+                        systemuserId = listOf("some-user-id"),
+                        systemId = "some-system-id",
+                    )
+                ),
+            )
+        }
+
+        fun introspectTokenX(pid: String) {
+            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(
+                active = true,
+                acr = "Level4",
+                pid = pid,
+            )
+        }
+
+        fun grantAltinnAccess() {
+            coEvery { validationService.validatePrincipalAccessToOrgnumber(any(), orgNumber) } returns "Org AS"
+        }
+
+        fun denyAltinnAccess() {
+            coEvery {
+                validationService.validatePrincipalAccessToOrgnumber(any(), orgNumber)
+            } throws ApiErrorException.ForbiddenException("no access")
+        }
+
         beforeTest {
-            clearMocks(texasHttpClient, revokeDb, kafkaProducer)
+            clearMocks(texasHttpClient, revokeDb, kafkaProducer, validationService)
             coEvery { texasHttpClient.introspectToken("tokenx", any()) } answers {
                 TexasIntrospectionResponse(
                     active = true,
@@ -159,22 +203,39 @@ class LinemanagerRevokeApiTest :
                 verify(exactly = 0) { kafkaProducer.sendSykmldingNLBrudd(any(), any()) }
             }
 
-            it("returns 404 when the logged in person is not part of the relation") {
-                coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(
-                    active = true,
-                    acr = "Level4",
-                    pid = "11111111111",
-                )
+            it("returns 404 when the logged in person is neither part of the relation nor has Altinn access") {
+                introspectTokenX(outsider)
                 coEvery { revokeDb.findByNarmestelederId(narmestelederId) } returns relation()
+                denyAltinnAccess()
 
                 withTestApplication {
                     val response = client.delete("/internal/api/v1/linemanager/$narmestelederId") {
-                        bearerAuth(tokenXToken("11111111111"))
+                        bearerAuth(tokenXToken(outsider))
                     }
 
                     response.status shouldBe HttpStatusCode.NotFound
                 }
                 verify(exactly = 0) { kafkaProducer.sendSykmldingNLBrudd(any(), any()) }
+            }
+
+            it("publishes PERSONALLEDER_REVOKE when a person with Altinn access revokes") {
+                introspectTokenX(outsider)
+                coEvery { revokeDb.findByNarmestelederId(narmestelederId) } returns relation()
+                grantAltinnAccess()
+
+                withTestApplication {
+                    val response = client.delete("/internal/api/v1/linemanager/$narmestelederId") {
+                        bearerAuth(tokenXToken(outsider))
+                    }
+
+                    response.status shouldBe HttpStatusCode.Accepted
+                }
+                verify(exactly = 1) {
+                    kafkaProducer.sendSykmldingNLBrudd(
+                        match { it.sykmeldtFnr == employee.value && it.orgnummer == orgNumber.value },
+                        NlResponseSource.PERSONALLEDER_REVOKE,
+                    )
+                }
             }
 
             it("returns 400 when the id is not a valid UUID") {
@@ -207,28 +268,37 @@ class LinemanagerRevokeApiTest :
                 verify(exactly = 0) { kafkaProducer.sendSykmldingNLBrudd(any(), any()) }
             }
 
-            it("rejects a Maskinporten token") {
-                coEvery { texasHttpClient.introspectToken("maskinporten", any()) } returns TexasIntrospectionResponse(
-                    active = true,
-                    scope = MASKINPORTEN_NL_SCOPE,
-                    consumer = DefaultOrganization,
-                    authorizationDetails = listOf(
-                        AuthorizationDetail(
-                            type = "urn:altinn:systemuser",
-                            systemuserOrg = DefaultOrganization,
-                            systemuserId = listOf("some-user-id"),
-                            systemId = "some-system-id",
-                        )
-                    ),
-                )
+            it("publishes LPS_REVOKE when a Maskinporten system user with Altinn access revokes") {
+                introspectMaskinporten()
                 coEvery { revokeDb.findByNarmestelederId(any()) } returns relation()
+                grantAltinnAccess()
 
                 withTestApplication {
                     val response = client.delete("/internal/api/v1/linemanager/$narmestelederId") {
-                        bearerAuth(createMockToken("0192:123456789", issuer = MASKINPORTEN_ISSUER))
+                        bearerAuth(maskinportenToken())
                     }
 
-                    response.status shouldBe HttpStatusCode.Unauthorized
+                    response.status shouldBe HttpStatusCode.Accepted
+                }
+                verify(exactly = 1) {
+                    kafkaProducer.sendSykmldingNLBrudd(
+                        match { it.sykmeldtFnr == employee.value && it.orgnummer == orgNumber.value },
+                        NlResponseSource.LPS_REVOKE,
+                    )
+                }
+            }
+
+            it("returns 404 for a Maskinporten system user without Altinn access") {
+                introspectMaskinporten()
+                coEvery { revokeDb.findByNarmestelederId(any()) } returns relation()
+                denyAltinnAccess()
+
+                withTestApplication {
+                    val response = client.delete("/internal/api/v1/linemanager/$narmestelederId") {
+                        bearerAuth(maskinportenToken())
+                    }
+
+                    response.status shouldBe HttpStatusCode.NotFound
                 }
                 verify(exactly = 0) { kafkaProducer.sendSykmldingNLBrudd(any(), any()) }
             }

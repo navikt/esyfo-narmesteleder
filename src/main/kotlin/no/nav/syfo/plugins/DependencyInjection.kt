@@ -308,6 +308,7 @@ private fun servicesModule() = module {
         LinemanagerRevokeService(
             narmestelederRevokeDb = get(),
             narmestelederKafkaService = get(),
+            validationService = get(),
         )
     }
     single { NarmestelederRegisterService(get()) }

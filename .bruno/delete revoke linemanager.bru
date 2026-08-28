@@ -1,0 +1,35 @@
+meta {
+  name: delete revoke linemanager
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrlIntern}}/internal/api/v1/linemanager/d9568c4a-210f-4916-826e-bbce3277bc5c
+  body: json
+  auth: inherit
+}
+
+params:query {
+  ~orgNumber: 314560132
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  if (bru.getEnvName() === "nl_vars_local" && !bru.hasEnvVar("token")) {
+    throw new Error("Kjør request 'mock-auth/tokenx/create tokenx' først for å teste lokalt");
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Lokalt: start avhengighetene med `mise docker-up` og applikasjonen med `mise start`.
+  Før du kjører dette kallet, må du kjøre `mock-auth/tokenx/create tokenx` for å hente et TokenX-token.
+}

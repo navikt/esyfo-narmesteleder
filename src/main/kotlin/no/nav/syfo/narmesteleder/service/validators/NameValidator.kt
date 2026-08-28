@@ -23,7 +23,8 @@ private const val RESULT_FAILED = "failed"
 private const val NAME_VALIDATION_TOTAL = "${METRICS_NS}_name_validation_total"
 private const val NAME_VALIDATION_DESCRIPTION = "Counts last name validation outcomes."
 private const val FUZZY_SCORE = "${METRICS_NS}_name_validation_fuzzy_score"
-private const val FUZZY_SCORE_DESCRIPTION = "Jaro-Winkler scores after an exact last name match fails."
+private const val FUZZY_SCORE_DESCRIPTION =
+    "Jaro-Winkler scores after exact and orthographic variant last name matches fail."
 private const val MATCH_TYPE_TAG = "match_type"
 private const val NAME_SOURCE_TAG = "name_source"
 private const val VALIDATION_RESULT_TAG = "validation_result"
@@ -97,7 +98,7 @@ object NameValidator {
             pdlLastNames = pdlPerson.names.map { it.etternavn },
             nameSource = nameSource,
         )
-        val isAccepted = matchType == NameMatchType.EXACT
+        val isAccepted = matchType.isAccepted
 
         countNameValidation(matchType, nameSource, isAccepted)
         if (pdlPerson.hasParallelNames) {
@@ -121,6 +122,11 @@ object NameValidator {
             return NameMatchType.EXACT
         }
 
+        val orthographicName = normalizedName.canonicalizeOrthographicVariants()
+        if (normalizedPdlNames.any { it.canonicalizeOrthographicVariants() == orthographicName }) {
+            return NameMatchType.ORTHOGRAPHIC_VARIANT
+        }
+
         val fuzzyScores = normalizedPdlNames.mapNotNull { pdlName ->
             fuzzyScore(normalizedName, pdlName)
         }
@@ -142,6 +148,11 @@ object NameValidator {
         .replace(APOSTROPHE_VARIANTS.toRegex(), "'")
         .replace(HYPHEN_VARIANTS.toRegex(), "-")
         .uppercase()
+
+    private fun String.canonicalizeOrthographicVariants(): String = replace("AA", "Å")
+        .replace('Ö', 'Ø')
+        .replace('Ä', 'Æ')
+        .replace('É', 'E')
 
     private fun fuzzyScore(firstName: String, secondName: String): Double? = if (
         firstName.isFuzzyEligible() &&
@@ -202,8 +213,10 @@ object NameValidator {
 
 internal enum class NameMatchType(
     val metricValue: String,
+    val isAccepted: Boolean,
 ) {
-    EXACT("exact"),
-    FUZZY("fuzzy"),
-    NONE("none"),
+    EXACT("exact", true),
+    ORTHOGRAPHIC_VARIANT("orthographic_variant", true),
+    FUZZY("fuzzy", true),
+    NONE("none", false),
 }

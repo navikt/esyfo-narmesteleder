@@ -139,8 +139,11 @@ object NameValidator {
     private fun String.normalizeName(): String = Normalizer.normalize(this, Normalizer.Form.NFC)
         .trim()
         .replace("\\s+".toRegex(), " ")
+        .replace("å", "aa")
         .replace(APOSTROPHE_VARIANTS.toRegex(), "'")
         .replace(HYPHEN_VARIANTS.toRegex(), "-")
+        .replace(Ø_VARIANTS.toRegex(), "o")
+        .replace(Æ_VARIANTS.toRegex(), "ae")
         .uppercase()
 
     private fun fuzzyScore(firstName: String, secondName: String): Double? = if (
@@ -198,6 +201,8 @@ object NameValidator {
 
     private const val APOSTROPHE_VARIANTS = "[\u2018\u2019\u201B\uFF07]"
     private const val HYPHEN_VARIANTS = "[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]"
+    private const val Ø_VARIANTS = "[ØøÖö]"
+    private const val Æ_VARIANTS = "[ÆæÄä]"
 }
 
 internal enum class NameMatchType(

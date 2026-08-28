@@ -358,6 +358,98 @@ class NameValidatorTest :
                 ) shouldBeExactly before + 1.0
             }
 
+            it("accepts ø instead of ö") {
+                val linemanager = linemanager().copy(lastName = "Strøm")
+                val employee = person(
+                    lastName = "Ström",
+                    fnr = linemanager.employeeIdentificationNumber.value,
+                )
+                val before = nameValidationCount(
+                    matchType = "exact",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "accepted",
+                )
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                }
+
+                nameValidationCount(
+                    matchType = "exact",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "accepted",
+                ) shouldBeExactly before + 1.0
+            }
+
+            it("accepts ö instead of ø") {
+                val linemanager = linemanager().copy(lastName = "Björn")
+                val employee = person(
+                    lastName = "Bjørn",
+                    fnr = linemanager.employeeIdentificationNumber.value,
+                )
+                val before = nameValidationCount(
+                    matchType = "exact",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "accepted",
+                )
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                }
+
+                nameValidationCount(
+                    matchType = "exact",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "accepted",
+                ) shouldBeExactly before + 1.0
+            }
+
+            it("Accepts e instead of é") {
+                val linemanager = linemanager().copy(lastName = "Andre")
+                val employee = person(
+                    lastName = "André",
+                    fnr = linemanager.employeeIdentificationNumber.value,
+                )
+                val before = nameValidationCount(
+                    matchType = "fuzzy",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "accepted",
+                )
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                }
+
+                nameValidationCount(
+                    matchType = "fuzzy",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "accepted",
+                ) shouldBeExactly before + 1.0
+            }
+
+            it("Accepts å instead of aa") {
+                val linemanager = linemanager().copy(lastName = "Fåberg")
+                val employee = person(
+                    lastName = "Faaberg",
+                    fnr = linemanager.employeeIdentificationNumber.value,
+                )
+                val before = nameValidationCount(
+                    matchType = "exact",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "accepted",
+                )
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                }
+
+                nameValidationCount(
+                    matchType = "exact",
+                    nameSource = NAME_SOURCE_SINGLE,
+                    validationResult = "accepted",
+                ) shouldBeExactly before + 1.0
+            }
+
             it("counts an accepted fuzzy parallel name as successful") {
                 val linemanager = linemanager().copy(lastName = "Hansen")
                 val employee = personWithParallelLastNames(

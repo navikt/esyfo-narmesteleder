@@ -6,8 +6,10 @@ import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.splitEmailAddresses
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 data class NarmestelederLookup(
+    val id: UUID,
     val fnr: PersonalIdentificationNumber,
     val epostadresser: List<EmailAddress>,
 )
@@ -25,6 +27,7 @@ class NarmestelederLookupService(
         }
         return activeRelations.firstOrNull()?.let { relation ->
             NarmestelederLookup(
+                id = relation.narmestelederId,
                 fnr = relation.narmestelederFnr,
                 epostadresser = relation.narmestelederEpost
                     .splitEmailAddresses()

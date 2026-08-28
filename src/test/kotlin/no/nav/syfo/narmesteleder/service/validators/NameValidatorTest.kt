@@ -306,9 +306,9 @@ class NameValidatorTest :
             }
 
             it("uses an inclusive fuzzy matching threshold") {
-                NameValidator.passesFuzzyThreshold(0.92) shouldBe true
-                NameValidator.passesFuzzyThreshold(0.9201) shouldBe true
-                NameValidator.passesFuzzyThreshold(0.9199) shouldBe false
+                NameValidator.passesFuzzyThreshold(0.93) shouldBe true
+                NameValidator.passesFuzzyThreshold(0.9301) shouldBe true
+                NameValidator.passesFuzzyThreshold(0.9299) shouldBe false
             }
 
             it("checks every parallel PDL name for an exact match before fuzzy matching") {
@@ -365,7 +365,7 @@ class NameValidatorTest :
                     fnr = linemanager.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
-                    matchType = "exact",
+                    matchType = "orthographic_variant",
                     nameSource = NAME_SOURCE_SINGLE,
                     validationResult = "accepted",
                 )
@@ -375,7 +375,7 @@ class NameValidatorTest :
                 }
 
                 nameValidationCount(
-                    matchType = "exact",
+                    matchType = "orthographic_variant",
                     nameSource = NAME_SOURCE_SINGLE,
                     validationResult = "accepted",
                 ) shouldBeExactly before + 1.0
@@ -388,7 +388,7 @@ class NameValidatorTest :
                     fnr = linemanager.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
-                    matchType = "exact",
+                    matchType = "orthographic_variant",
                     nameSource = NAME_SOURCE_SINGLE,
                     validationResult = "accepted",
                 )
@@ -398,20 +398,20 @@ class NameValidatorTest :
                 }
 
                 nameValidationCount(
-                    matchType = "exact",
+                    matchType = "orthographic_variant",
                     nameSource = NAME_SOURCE_SINGLE,
                     validationResult = "accepted",
                 ) shouldBeExactly before + 1.0
             }
 
-            it("Accepts e instead of é") {
+            it("accepts e instead of é") {
                 val linemanager = linemanager().copy(lastName = "Andre")
                 val employee = person(
                     lastName = "André",
                     fnr = linemanager.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
-                    matchType = "fuzzy",
+                    matchType = "orthographic_variant",
                     nameSource = NAME_SOURCE_SINGLE,
                     validationResult = "accepted",
                 )
@@ -421,20 +421,20 @@ class NameValidatorTest :
                 }
 
                 nameValidationCount(
-                    matchType = "fuzzy",
+                    matchType = "orthographic_variant",
                     nameSource = NAME_SOURCE_SINGLE,
                     validationResult = "accepted",
                 ) shouldBeExactly before + 1.0
             }
 
-            it("Accepts å instead of aa") {
+            it("accepts å instead of aa") {
                 val linemanager = linemanager().copy(lastName = "Fåberg")
                 val employee = person(
                     lastName = "Faaberg",
                     fnr = linemanager.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
-                    matchType = "exact",
+                    matchType = "orthographic_variant",
                     nameSource = NAME_SOURCE_SINGLE,
                     validationResult = "accepted",
                 )
@@ -444,10 +444,47 @@ class NameValidatorTest :
                 }
 
                 nameValidationCount(
-                    matchType = "exact",
+                    matchType = "orthographic_variant",
                     nameSource = NAME_SOURCE_SINGLE,
                     validationResult = "accepted",
                 ) shouldBeExactly before + 1.0
+            }
+
+            it("classifies approved orthographic variants in both directions") {
+                listOf(
+                    "Strøm" to "Ström",
+                    "Ström" to "Strøm",
+                    "Sæther" to "Säther",
+                    "Säther" to "Sæther",
+                    "Fåberg" to "Faaberg",
+                    "Faaberg" to "Fåberg",
+                    "André" to "Andre",
+                    "Andre" to "André",
+                ).forEach { (nameToValidate, pdlLastName) ->
+                    NameValidator.determineMatchType(
+                        nameToValidate = nameToValidate,
+                        pdlLastNames = listOf(pdlLastName),
+                        nameSource = NAME_SOURCE_SINGLE,
+                    ) shouldBe NameMatchType.ORTHOGRAPHIC_VARIANT
+                }
+            }
+
+            it("does not broaden orthographic variants to plain letters or digraphs") {
+                listOf(
+                    "Ost" to "Øst",
+                    "Ost" to "Öst",
+                    "Aer" to "Ær",
+                    "Aer" to "Är",
+                    "Ar" to "Ær",
+                    "Ar" to "Är",
+                    "Ase" to "Åse",
+                ).forEach { (nameToValidate, pdlLastName) ->
+                    NameValidator.determineMatchType(
+                        nameToValidate = nameToValidate,
+                        pdlLastNames = listOf(pdlLastName),
+                        nameSource = NAME_SOURCE_SINGLE,
+                    ) shouldBe NameMatchType.NONE
+                }
             }
 
             it("counts an accepted fuzzy parallel name as successful") {
@@ -464,6 +501,35 @@ class NameValidatorTest :
                     NameValidator.validateEmployeeLastName(employee, linemanager)
                 }
 
+                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore + 1.0
+                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore
+            }
+
+            it("counts an accepted orthographic variant in a non-first parallel name as successful") {
+                val linemanager = linemanager().copy(lastName = "Strøm")
+                val employee = personWithParallelLastNames(
+                    lastNames = listOf("Haugland", "Ström"),
+                    fnr = linemanager.employeeIdentificationNumber.value,
+                )
+                val nameValidationBefore = nameValidationCount(
+                    matchType = "orthographic_variant",
+                    nameSource = NAME_SOURCE_PARALLEL,
+                    validationResult = "accepted",
+                )
+                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
+                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
+                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
+
+                shouldNotThrow<ApiErrorException.BadRequestException> {
+                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                }
+
+                nameValidationCount(
+                    matchType = "orthographic_variant",
+                    nameSource = NAME_SOURCE_PARALLEL,
+                    validationResult = "accepted",
+                ) shouldBeExactly nameValidationBefore + 1.0
                 parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
                 parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore + 1.0
                 parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore

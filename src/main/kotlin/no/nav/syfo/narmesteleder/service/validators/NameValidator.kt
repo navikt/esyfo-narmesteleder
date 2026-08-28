@@ -23,7 +23,8 @@ private const val RESULT_FAILED = "failed"
 private const val NAME_VALIDATION_TOTAL = "${METRICS_NS}_name_validation_total"
 private const val NAME_VALIDATION_DESCRIPTION = "Counts last name validation outcomes."
 private const val FUZZY_SCORE = "${METRICS_NS}_name_validation_fuzzy_score"
-private const val FUZZY_SCORE_DESCRIPTION = "Jaro-Winkler scores after an exact last name match fails."
+private const val FUZZY_SCORE_DESCRIPTION =
+    "Jaro-Winkler scores after exact and orthographic variant last name matches fail."
 private const val MATCH_TYPE_TAG = "match_type"
 private const val NAME_SOURCE_TAG = "name_source"
 private const val VALIDATION_RESULT_TAG = "validation_result"
@@ -31,7 +32,7 @@ private const val NAME_SOURCE_SINGLE = "single"
 private const val NAME_SOURCE_PARALLEL = "parallel"
 private const val VALIDATION_RESULT_ACCEPTED = "accepted"
 private const val VALIDATION_RESULT_REJECTED = "rejected"
-private const val FUZZY_MATCH_THRESHOLD = 0.92
+private const val FUZZY_MATCH_THRESHOLD = 0.93
 private const val MINIMUM_FUZZY_MATCH_LETTERS = 4
 
 private const val EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE =
@@ -97,7 +98,7 @@ object NameValidator {
             pdlLastNames = pdlPerson.names.map { it.etternavn },
             nameSource = nameSource,
         )
-        val isAccepted = matchType == NameMatchType.EXACT || matchType == NameMatchType.FUZZY
+        val isAccepted = matchType.isAccepted
 
         countNameValidation(matchType, nameSource, isAccepted)
         if (pdlPerson.hasParallelNames) {
@@ -121,6 +122,11 @@ object NameValidator {
             return NameMatchType.EXACT
         }
 
+        val orthographicName = normalizedName.canonicalizeOrthographicVariants()
+        if (normalizedPdlNames.any { it.canonicalizeOrthographicVariants() == orthographicName }) {
+            return NameMatchType.ORTHOGRAPHIC_VARIANT
+        }
+
         val fuzzyScores = normalizedPdlNames.mapNotNull { pdlName ->
             fuzzyScore(normalizedName, pdlName)
         }
@@ -139,12 +145,14 @@ object NameValidator {
     private fun String.normalizeName(): String = Normalizer.normalize(this, Normalizer.Form.NFC)
         .trim()
         .replace("\\s+".toRegex(), " ")
-        .replace("å", "aa")
         .replace(APOSTROPHE_VARIANTS.toRegex(), "'")
         .replace(HYPHEN_VARIANTS.toRegex(), "-")
-        .replace(O_VARIANTS.toRegex(), "o")
-        .replace(A_VARIANTS.toRegex(), "ae")
         .uppercase()
+
+    private fun String.canonicalizeOrthographicVariants(): String = replace("AA", "Å")
+        .replace('Ö', 'Ø')
+        .replace('Ä', 'Æ')
+        .replace('É', 'E')
 
     private fun fuzzyScore(firstName: String, secondName: String): Double? = if (
         firstName.isFuzzyEligible() &&
@@ -201,14 +209,14 @@ object NameValidator {
 
     private const val APOSTROPHE_VARIANTS = "[\u2018\u2019\u201B\uFF07]"
     private const val HYPHEN_VARIANTS = "[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]"
-    private const val O_VARIANTS = "[ØøÖö]"
-    private const val A_VARIANTS = "[ÆæÄä]"
 }
 
 internal enum class NameMatchType(
     val metricValue: String,
+    val isAccepted: Boolean,
 ) {
-    EXACT("exact"),
-    FUZZY("fuzzy"),
-    NONE("none"),
+    EXACT("exact", true),
+    ORTHOGRAPHIC_VARIANT("orthographic_variant", true),
+    FUZZY("fuzzy", true),
+    NONE("none", false),
 }

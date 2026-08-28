@@ -31,7 +31,7 @@ private const val NAME_SOURCE_SINGLE = "single"
 private const val NAME_SOURCE_PARALLEL = "parallel"
 private const val VALIDATION_RESULT_ACCEPTED = "accepted"
 private const val VALIDATION_RESULT_REJECTED = "rejected"
-private const val FUZZY_MATCH_THRESHOLD = 0.93
+private const val FUZZY_MATCH_THRESHOLD = 0.92
 private const val MINIMUM_FUZZY_MATCH_LETTERS = 4
 
 private const val EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE =

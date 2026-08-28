@@ -306,9 +306,9 @@ class NameValidatorTest :
             }
 
             it("uses an inclusive fuzzy matching threshold") {
-                NameValidator.passesFuzzyThreshold(0.93) shouldBe true
-                NameValidator.passesFuzzyThreshold(0.9301) shouldBe true
-                NameValidator.passesFuzzyThreshold(0.9299) shouldBe false
+                NameValidator.passesFuzzyThreshold(0.92) shouldBe true
+                NameValidator.passesFuzzyThreshold(0.9201) shouldBe true
+                NameValidator.passesFuzzyThreshold(0.9199) shouldBe false
             }
 
             it("checks every parallel PDL name for an exact match before fuzzy matching") {

@@ -1,10 +1,12 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import createMockToken
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.FakesWrapper
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -12,10 +14,15 @@ import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
+import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.Manager
+import no.nav.syfo.narmesteleder.domain.Name
+import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import prepareGetPersonResponse
+import java.time.Instant
 import java.util.UUID
 
 class LinemanagerRequirementRESTHandlerTest :
@@ -116,6 +123,45 @@ class LinemanagerRequirementRESTHandlerTest :
                         },
                         any(),
                         match { it == NlResponseSource.LPS }
+                    )
+                }
+            }
+        }
+
+        describe("get") {
+            it("Should preserve cancellation from organization access validation") {
+                val requirementId = UUID.randomUUID()
+                val orgNumber = OrganizationNumber("123456789")
+                val principal = SystemPrincipal(
+                    ident = "0192:${arbeidsforholdManagerAareg.first}",
+                    token = createMockToken(
+                        ident = "0192:${arbeidsforholdManagerAareg.first}",
+                    ),
+                    systemOwner = "0192:systemOwner",
+                    systemUserId = "systemUserId",
+                )
+                coEvery {
+                    servicesWrapper.narmestelederServiceSpyk.getLinemanagerRequirementReadById(requirementId)
+                } returns LinemanagerRequirementRead(
+                    id = requirementId,
+                    employeeIdentificationNumber = PersonalIdentificationNumber(defaultEmployeeFnr),
+                    orgNumber = orgNumber,
+                    mainOrgNumber = OrganizationNumber("987654321"),
+                    name = Name(firstName = "Test", lastName = "Person", middleName = null),
+                    created = Instant.EPOCH,
+                    updated = Instant.EPOCH,
+                    status = LineManagerRequirementStatus.CREATED,
+                    revokedBy = null,
+                )
+
+                coEvery {
+                    servicesWrapper.validationServiceSpyk.validatePrincipalAccessToOrgnumber(any(), orgNumber)
+                } throws CancellationException("Request cancelled")
+
+                shouldThrow<CancellationException> {
+                    servicesWrapper.lnReqRESTHandlerSpyk.handleGetLinemanagerRequirement(
+                        requirementId = requirementId,
+                        principal = principal,
                     )
                 }
             }

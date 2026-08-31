@@ -111,8 +111,6 @@ class ValidationServiceTest :
         ) {
             altinnTilgangerClient.accessPolicy.clear()
             altinnTilgangerClient.addAccess(principal.ident, linemanagerRevoke.orgNumber.value)
-            aaregClient.arbeidsForholdForIdent[linemanagerRevoke.employeeIdentificationNumber.value] =
-                listOf(linemanagerRevoke.orgNumber.value to "hovedenhet")
             pdlService.prepareGetPersonResponse(
                 linemanagerRevoke.employeeIdentificationNumber.value,
                 linemanagerRevoke.lastName,
@@ -120,8 +118,6 @@ class ValidationServiceTest :
         }
 
         fun prepareCommonValidLinemanagerRevoke(linemanagerRevoke: LinemanagerRevoke) {
-            aaregClient.arbeidsForholdForIdent[linemanagerRevoke.employeeIdentificationNumber.value] =
-                listOf(linemanagerRevoke.orgNumber.value to "hovedenhet")
             pdlService.prepareGetPersonResponse(
                 linemanagerRevoke.employeeIdentificationNumber.value,
                 linemanagerRevoke.lastName,
@@ -391,7 +387,7 @@ class ValidationServiceTest :
             }
         }
 
-        describe("validateNarmestelederAvkreft") {
+        describe("validateLinemanagerRevoke") {
             it("should call AltinnTilgangerService when principal is BrukerPrincipal") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
@@ -405,9 +401,9 @@ class ValidationServiceTest :
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmesteLederAvkreft.orgNumber.value),
                     )
-                    aaregService.findArbeidsforholdByPersonIdent(any())
                 }
                 coVerify(exactly = 0) {
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                     pdpService.hasAccessToResource(any(), any(), any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
@@ -431,6 +427,7 @@ class ValidationServiceTest :
                     )
                 }
                 coVerify(exactly = 0) {
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                     pdpService.hasAccessToResource(any(), any(), any())
                 }
             }
@@ -453,6 +450,7 @@ class ValidationServiceTest :
                     )
                 }
                 coVerify(exactly = 0) {
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                     altinnTilgangerService.validateTilgangToOrganization(
                         userPrincipal = any<UserPrincipal>(),
                         orgnummer = any(),
@@ -467,8 +465,6 @@ class ValidationServiceTest :
 
                 altinnTilgangerClient.accessPolicy.clear()
                 altinnTilgangerClient.addAccess(principal.ident, narmesteLederAvkreft.orgNumber.value)
-                aaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
-                    listOf(narmesteLederAvkreft.orgNumber.value to "hovedenhet")
                 pdlService.prepareGetPersonResponse(
                     narmesteLederAvkreft.employeeIdentificationNumber.value,
                     differentLastName(narmesteLederAvkreft.lastName),
@@ -480,23 +476,23 @@ class ValidationServiceTest :
                 exception.type shouldBe ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
             }
 
-            it("should throw BadRequestException when employee arbeidsforhold does not match request in validateLinemanagerRevoke") {
+            it("should return employee without looking up employment in validateLinemanagerRevoke") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val principal = UserPrincipal(fnr, "token")
                 val narmesteLederAvkreft = linemanagerRevoke()
 
                 altinnTilgangerClient.accessPolicy.clear()
                 altinnTilgangerClient.addAccess(principal.ident, narmesteLederAvkreft.orgNumber.value)
-                aaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
-                    listOf(differentOrgNumber(narmesteLederAvkreft.orgNumber.value) to "hovedenhet")
+                pdlService.prepareGetPersonResponse(
+                    narmesteLederAvkreft.employeeIdentificationNumber.value,
+                    narmesteLederAvkreft.lastName,
+                )
 
-                val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
-                }
-                exception.type shouldBe ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+                val employee = service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
 
+                employee.nationalIdentificationNumber shouldBe narmesteLederAvkreft.employeeIdentificationNumber
                 coVerify(exactly = 0) {
-                    pdlService.getPersonOrThrowApiError(any())
+                    aaregService.findArbeidsforholdByPersonIdent(any())
                 }
             }
         }

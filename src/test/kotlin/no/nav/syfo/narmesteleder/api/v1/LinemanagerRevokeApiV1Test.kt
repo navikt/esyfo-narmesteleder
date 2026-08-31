@@ -12,6 +12,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.mockk.Called
+import io.mockk.coEvery
 import io.mockk.coVerify
 import linemanagerRevoke
 import no.nav.syfo.API_V1_PATH
@@ -47,6 +48,12 @@ class LinemanagerRevokeApiV1Test :
                         narmesteLederAvkreft.employeeIdentificationNumber.value,
                         narmesteLederAvkreft.lastName,
                     )
+                    coEvery {
+                        narmestelederLookupService.hasActiveNarmesteleder(
+                            narmesteLederAvkreft.employeeIdentificationNumber,
+                            narmesteLederAvkreft.orgNumber,
+                        )
+                    } returns true
                     fakeAaregClient.arbeidsForholdForIdent.clear()
                     fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
                         listOf(narmesteLederAvkreft.orgNumber.value to narmesteLederAvkreft.orgNumber.value)
@@ -70,6 +77,10 @@ class LinemanagerRevokeApiV1Test :
                         validationServiceSpy.validateLinemanagerRevoke(
                             narmesteLederAvkreft,
                             any(),
+                        )
+                        narmestelederLookupService.hasActiveNarmesteleder(
+                            narmesteLederAvkreft.employeeIdentificationNumber,
+                            narmesteLederAvkreft.orgNumber,
                         )
                     }
                 }
@@ -122,7 +133,7 @@ class LinemanagerRevokeApiV1Test :
                 }
             }
 
-            it("should return 400 if sykmeldt lacks arbeidsforhold for organization number") {
+            it("should return 202 if employee lacks employment for organization number") {
                 withTestApplication {
                     // Arrange
                     val narmesteLederAvkreft = linemanagerRevoke()
@@ -132,6 +143,16 @@ class LinemanagerRevokeApiV1Test :
                         ),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
+                    pdlService.prepareGetPersonResponse(
+                        narmesteLederAvkreft.employeeIdentificationNumber.value,
+                        narmesteLederAvkreft.lastName,
+                    )
+                    coEvery {
+                        narmestelederLookupService.hasActiveNarmesteleder(
+                            narmesteLederAvkreft.employeeIdentificationNumber,
+                            narmesteLederAvkreft.orgNumber,
+                        )
+                    } returns true
 
                     // Act
                     val response =
@@ -142,13 +163,59 @@ class LinemanagerRevokeApiV1Test :
                         }
 
                     // Assert
-                    response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().message shouldBe "Employee on sick leave is missing employment in any organization"
-                    coVerify(exactly = 0) {
+                    response.status shouldBe HttpStatusCode.Accepted
+                    coVerify(exactly = 1) {
                         narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
                             narmesteLederAvkreft,
-                            NlResponseSource.LPS,
+                            NlResponseSource.LPS_REVOKE,
                         )
+                    }
+                }
+            }
+
+            it("should return 204 and not publish when no active line manager relation exists") {
+                val narmesteLederAvkreft = linemanagerRevoke()
+                withTestApplication {
+                    // Arrange
+                    texasHttpClientMock.defaultMocks(
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederAvkreft.orgNumber.value}",
+                        ),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    pdlService.prepareGetPersonResponse(
+                        narmesteLederAvkreft.employeeIdentificationNumber.value,
+                        narmesteLederAvkreft.lastName,
+                    )
+                    coEvery {
+                        narmestelederLookupService.hasActiveNarmesteleder(
+                            narmesteLederAvkreft.employeeIdentificationNumber,
+                            narmesteLederAvkreft.orgNumber,
+                        )
+                    } returns false
+
+                    // Act
+                    val response =
+                        client.post("$API_V1_PATH/$REVOKE_PATH") {
+                            contentType(ContentType.Application.Json)
+                            setBody(narmesteLederAvkreft)
+                            bearerAuth(createMockToken(narmesteLederAvkreft.orgNumber.value))
+                        }
+
+                    // Assert
+                    response.status shouldBe HttpStatusCode.NoContent
+                    coVerify(exactly = 1) {
+                        validationServiceSpy.validateLinemanagerRevoke(
+                            narmesteLederAvkreft,
+                            any(),
+                        )
+                        narmestelederLookupService.hasActiveNarmesteleder(
+                            narmesteLederAvkreft.employeeIdentificationNumber,
+                            narmesteLederAvkreft.orgNumber,
+                        )
+                    }
+                    coVerify(exactly = 0) {
+                        narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(any(), any())
                     }
                 }
             }

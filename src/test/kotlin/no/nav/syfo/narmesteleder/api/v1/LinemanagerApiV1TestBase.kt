@@ -184,6 +184,7 @@ abstract class LinemanagerApiV1TestBase(
                         validationServiceSpy,
                         nlBehovHandler,
                         altinnAccessServiceSpy,
+                        narmestelederLookupService,
                     )
                     registerInternalApi(
                         narmestelederLookupService,

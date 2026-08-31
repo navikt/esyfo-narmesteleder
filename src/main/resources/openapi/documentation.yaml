@@ -120,7 +120,6 @@ paths:
         without knowing who the replacement line manager will be or when they will start.
         
         Constraints:
-        - The employee must have an active employment in the specified organization.
         - The lastname provided for the employee on sick leave  must match the name registered with the provided national identification number.
       tags: [ linemanager ]
       security:
@@ -134,13 +133,14 @@ paths:
               $ref: '#/components/schemas/LinemanagerRevoke'
       responses:
         '202':
-          description: Revocation accepted
+          description: Revocation accepted and queued for asynchronous processing.
+        '204':
+          description: No active line manager relation exists. No revocation was published.
         '400':
           description: |
             Bad Request: Possible reasons for bad request include:
             * `INVALID_FORMAT`: The request contained json data in invalid format and could not be deserialized.
             * `BAD_REQUEST`: The request was malformed or contained invalid data. Can also occur if we fail to lookup the person linked to the provided national identification number.
-            * `EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG`: The employee does not have an active employment in the specified organization.
             * `EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH`: The name provided for the employee does not match the name registered with the provided national identification number.
           content:
             application/json:
@@ -449,7 +449,7 @@ components:
           example: "Hansen"
         orgNumber:
           type: string
-          description: Organization number where the employee works
+          description: Organization number associated with the line manager relation.
           example: "123456789"
           pattern: '^\d{9}$'
         manager:

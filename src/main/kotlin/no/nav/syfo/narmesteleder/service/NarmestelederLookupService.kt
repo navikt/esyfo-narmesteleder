@@ -17,6 +17,11 @@ data class NarmestelederLookup(
 class NarmestelederLookupService(
     private val narmestelederLookupDb: INarmestelederLookupDb,
 ) {
+    suspend fun hasActiveNarmesteleder(
+        sykmeldtFnr: PersonalIdentificationNumber,
+        orgnummer: OrganizationNumber,
+    ): Boolean = narmestelederLookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer).isNotEmpty()
+
     suspend fun findActiveNarmesteleder(
         sykmeldtFnr: PersonalIdentificationNumber,
         orgnummer: OrganizationNumber,

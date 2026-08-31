@@ -19,18 +19,4 @@ object ArbeidsforholdValidator {
             type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
         ) { "Employee on sick leave is missing employment in the organization indicated in the request" }
     }
-
-    fun validateNarmesteLederAvkreft(
-        sykmeldtArbeidsforhold: List<Arbeidsforhold>,
-        orgNumberInRequest: String,
-    ) {
-        nlrequire(
-            sykmeldtArbeidsforhold.isNotEmpty(),
-            ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
-        ) { "Employee on sick leave is missing employment in any organization" }
-        nlrequire(
-            sykmeldtArbeidsforhold.getForOrgnummer(orgNumberInRequest) != null,
-            ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
-        ) { "Employee on sick leave does not have employment in the organization indicated in the request" }
-    }
 }

@@ -87,15 +87,9 @@ class ValidationService(
         linemanagerRevoke: LinemanagerRevoke,
         principal: Principal,
     ): Person {
-        val arbeidsforhold =
-            aaregService.findArbeidsforholdByPersonIdent(linemanagerRevoke.employeeIdentificationNumber.value)
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
             linemanagerRevoke.orgNumber.value,
-        )
-        ArbeidsforholdValidator.validateNarmesteLederAvkreft(
-            orgNumberInRequest = linemanagerRevoke.orgNumber.value,
-            sykmeldtArbeidsforhold = arbeidsforhold,
         )
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanagerRevoke.employeeIdentificationNumber.value)
         NameValidator.validateEmployeeLastName(sykmeldt, linemanagerRevoke)

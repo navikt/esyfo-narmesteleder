@@ -8,6 +8,7 @@ import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.client.TexasHttpClient
 
@@ -20,6 +21,7 @@ fun Route.registerApiV1(
     validationService: ValidationService,
     linemanagerRequirementRESTHandler: LinemanagerRequirementRESTHandler,
     altinnTilgangerService: AltinnTilgangerService,
+    narmestelederLookupService: NarmestelederLookupService,
 ) {
     route(API_V1_PATH) {
         install(AddTokenIssuerPlugin)
@@ -28,6 +30,7 @@ fun Route.registerApiV1(
             validationService,
             texasHttpClient,
             linemanagerRequirementRESTHandler,
+            narmestelederLookupService,
         )
         registerAccessOrganizationsApi(altinnTilgangerService, texasHttpClient)
     }

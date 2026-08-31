@@ -31,6 +31,7 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamExceptionType
+import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
@@ -139,9 +140,12 @@ class AltinnAccessLoggingContractTest :
                 logRecord["logger_name"].asText() shouldBe AltinnTilgangerService::class.java.name
                 logRecord["message"].asText() shouldBe "AltinnTilganger lookup failed"
                 logRecord["event_type"].asText() shouldBe AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value
-                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_5XX.value
+                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR.value
                 logRecord["operation"].asText() shouldBe AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS.value
                 logRecord["exception_type"].asText() shouldBe "ServerResponseException"
+                logRecord["failure_stage"].asText() shouldBe "response"
+                logRecord["upstream_status"].isInt shouldBe true
+                logRecord["upstream_status"].asInt() shouldBe 503
                 logRecord["stack_trace"].asText().contains("UpstreamRequestException") shouldBe true
                 logRecord.has("status") shouldBe false
                 logRecord.has("path") shouldBe false
@@ -160,6 +164,131 @@ class AltinnAccessLoggingContractTest :
                 ).forEach { canary ->
                     serializedLogs shouldNotContain canary
                 }
+            }
+
+            it("keeps actionable HTTP distinctions and serializes bounded upstream status as a number") {
+                val cases = listOf(
+                    301 to AltinnTilgangerErrorCode.UPSTREAM_UNEXPECTED_REDIRECT,
+                    401 to AltinnTilgangerErrorCode.UPSTREAM_UNAUTHORIZED,
+                    403 to AltinnTilgangerErrorCode.UPSTREAM_FORBIDDEN,
+                    404 to AltinnTilgangerErrorCode.UPSTREAM_NOT_FOUND,
+                    429 to AltinnTilgangerErrorCode.UPSTREAM_RATE_LIMITED,
+                    500 to AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR,
+                    502 to AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR,
+                    503 to AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR,
+                    504 to AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR,
+                )
+
+                cases.forEach { (status, expectedErrorCode) ->
+                    logOutput.reset()
+                    val client = object : IAltinnTilgangerClient {
+                        override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
+                            UpstreamRequestException(
+                                message = "Safe upstream failure",
+                                upstreamStatus = status,
+                                upstreamExceptionType = UpstreamExceptionType.RESPONSE_EXCEPTION,
+                                failureStage = UpstreamFailureStage.RESPONSE,
+                            )
+                    }
+
+                    shouldThrow<ApiErrorException.InternalServerErrorException> {
+                        AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                    }
+
+                    val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                    logLines shouldHaveSize 1
+                    val logRecord = jacksonObjectMapper().readTree(logLines.single())
+                    logRecord["error_code"].asText() shouldBe expectedErrorCode.value
+                    logRecord["upstream_status"].isInt shouldBe true
+                    logRecord["upstream_status"].asInt() shouldBe status
+                    logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.RESPONSE.logValue
+                }
+            }
+
+            it("uses the remaining client-error code for other 4xx statuses") {
+                val client = object : IAltinnTilgangerClient {
+                    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
+                        UpstreamRequestException(
+                            message = "Safe upstream failure",
+                            upstreamStatus = 422,
+                            upstreamExceptionType = UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION,
+                            failureStage = UpstreamFailureStage.RESPONSE,
+                        )
+                }
+
+                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                }
+
+                val logRecord = jacksonObjectMapper().readTree(
+                    logOutput.toString(Charsets.UTF_8).lineSequence().single(String::isNotBlank),
+                )
+                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_CLIENT_ERROR.value
+                logRecord["upstream_status"].asInt() shouldBe 422
+            }
+
+            it("omits upstream status for non-HTTP failures") {
+                val client = object : IAltinnTilgangerClient {
+                    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
+                        UpstreamRequestException(
+                            message = "Safe transport failure",
+                            upstreamStatus = 999,
+                            upstreamExceptionType = UpstreamExceptionType.TRANSPORT_EXCEPTION,
+                            failureStage = UpstreamFailureStage.REQUEST,
+                        )
+                }
+
+                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                }
+
+                val logRecord = jacksonObjectMapper().readTree(
+                    logOutput.toString(Charsets.UTF_8).lineSequence().single(String::isNotBlank),
+                )
+                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_TRANSPORT_FAILURE.value
+                logRecord.has("upstream_status") shouldBe false
+            }
+
+            it("keeps token exchange separate while preserving its bounded HTTP status") {
+                val client = object : IAltinnTilgangerClient {
+                    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
+                        UpstreamRequestException(
+                            message = "Safe token exchange failure",
+                            upstreamStatus = 401,
+                            upstreamExceptionType = UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION,
+                            failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
+                        )
+                }
+
+                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                }
+
+                val logRecord = jacksonObjectMapper().readTree(
+                    logOutput.toString(Charsets.UTF_8).lineSequence().single(String::isNotBlank),
+                )
+                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.TOKEN_EXCHANGE_FAILED.value
+                logRecord["upstream_status"].isInt shouldBe true
+                logRecord["upstream_status"].asInt() shouldBe 401
+                logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.TOKEN_EXCHANGE.logValue
+            }
+
+            it("emits one terminal error when the client returns no response") {
+                val client = object : IAltinnTilgangerClient {
+                    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = null
+                }
+
+                val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                }
+                exception.isAlreadyLogged shouldBe true
+
+                val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                logLines shouldHaveSize 1
+                val logRecord = jacksonObjectMapper().readTree(logLines.single())
+                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.EMPTY_RESPONSE.value
+                logRecord.has("upstream_status") shouldBe false
+                logRecord.has("exception_type") shouldBe false
             }
 
             it("emits the canonical terminal event when the upstream response reports an error") {
@@ -225,9 +354,17 @@ class AltinnAccessLoggingContractTest :
                     "hent_tilgjengelige_organisasjoner",
                 )
                 AltinnTilgangerErrorCode.values().map { it.value }.toSet() shouldBe setOf(
-                    "ALTINN_TILGANGER_UPSTREAM_4XX",
-                    "ALTINN_TILGANGER_UPSTREAM_5XX",
-                    "ALTINN_TILGANGER_UPSTREAM_FAILURE",
+                    "ALTINN_TILGANGER_UPSTREAM_UNEXPECTED_REDIRECT",
+                    "ALTINN_TILGANGER_UPSTREAM_UNAUTHORIZED",
+                    "ALTINN_TILGANGER_UPSTREAM_FORBIDDEN",
+                    "ALTINN_TILGANGER_UPSTREAM_NOT_FOUND",
+                    "ALTINN_TILGANGER_UPSTREAM_RATE_LIMITED",
+                    "ALTINN_TILGANGER_UPSTREAM_CLIENT_ERROR",
+                    "ALTINN_TILGANGER_UPSTREAM_SERVER_ERROR",
+                    "ALTINN_TILGANGER_UPSTREAM_TRANSPORT_FAILURE",
+                    "ALTINN_TILGANGER_UPSTREAM_RESPONSE_FAILURE",
+                    "ALTINN_TILGANGER_TOKEN_EXCHANGE_FAILED",
+                    "ALTINN_TILGANGER_EMPTY_RESPONSE",
                     "ALTINN_TILGANGER_ERROR_RESPONSE",
                 )
                 UpstreamExceptionType.values().map { it.logValue }.toSet() shouldBe setOf(
@@ -235,6 +372,8 @@ class AltinnAccessLoggingContractTest :
                     "ServerResponseException",
                     "RedirectResponseException",
                     "ResponseException",
+                    "TransportException",
+                    "ResponseDecodingException",
                     "UnexpectedException",
                 )
 

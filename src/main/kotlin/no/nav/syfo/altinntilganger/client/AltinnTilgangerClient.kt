@@ -8,10 +8,12 @@ import io.ktor.client.plugins.ResponseException
 import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
+import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamExceptionType
+import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
@@ -139,26 +141,62 @@ class AltinnTilgangerClient(
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
     ): AltinnTilgangerResponse? {
-        try {
-            val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token).accessToken
-            val response = httpClient.post("$baseUrl/altinn-tilganger") {
-                bearerAuth(oboToken)
-            }.body<AltinnTilgangerResponse>()
-            return response
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ResponseException) {
-            throw UpstreamRequestException(
-                message = "Feil ved henting av altinn-tilganger",
-                upstreamStatus = e.response.status.value,
-                upstreamExceptionType = e.toUpstreamExceptionType(),
-            )
-        } catch (e: Exception) {
-            throw UpstreamRequestException(
-                message = "Uventet feil ved henting av altinn-tilganger",
-                upstreamExceptionType = UpstreamExceptionType.UNEXPECTED_EXCEPTION,
-            )
+        val oboToken = exchangeToken(bruker.token)
+        val response = requestAltinnTilganger(oboToken)
+        return decodeAltinnTilgangerResponse(response)
+    }
+
+    private suspend fun exchangeToken(token: String): String = try {
+        texasClient.exchangeTokenForIsAltinnTilganger(token).accessToken
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: ResponseException) {
+        throw UpstreamRequestException(
+            message = "Token exchange for AltinnTilganger failed",
+            upstreamStatus = e.response.status.value,
+            upstreamExceptionType = e.toUpstreamExceptionType(),
+            failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
+        )
+    } catch (e: Exception) {
+        throw UpstreamRequestException(
+            message = "Token exchange for AltinnTilganger failed",
+            upstreamExceptionType = UpstreamExceptionType.UNEXPECTED_EXCEPTION,
+            failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
+        )
+    }
+
+    private suspend fun requestAltinnTilganger(oboToken: String): HttpResponse = try {
+        httpClient.post("$baseUrl/altinn-tilganger") {
+            bearerAuth(oboToken)
         }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: ResponseException) {
+        throw UpstreamRequestException(
+            message = "AltinnTilganger returned an unsuccessful response",
+            upstreamStatus = e.response.status.value,
+            upstreamExceptionType = e.toUpstreamExceptionType(),
+            failureStage = UpstreamFailureStage.RESPONSE,
+        )
+    } catch (e: Exception) {
+        throw UpstreamRequestException(
+            message = "AltinnTilganger request failed",
+            upstreamExceptionType = UpstreamExceptionType.TRANSPORT_EXCEPTION,
+            failureStage = UpstreamFailureStage.REQUEST,
+        )
+    }
+
+    private suspend fun decodeAltinnTilgangerResponse(response: HttpResponse): AltinnTilgangerResponse = try {
+        response.body()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        throw UpstreamRequestException(
+            message = "AltinnTilganger response could not be decoded",
+            upstreamStatus = response.status.value,
+            upstreamExceptionType = UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION,
+            failureStage = UpstreamFailureStage.RESPONSE,
+        )
     }
 }
 

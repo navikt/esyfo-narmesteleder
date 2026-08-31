@@ -5,6 +5,7 @@ import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import org.slf4j.LoggerFactory
 
@@ -54,7 +55,9 @@ class AltinnTilgangerService(
         orgnummer: String,
     ): AltinnTilgang? {
         try {
-            return altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)?.hierarki?.findByOrgnr(orgnummer)
+            val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
+                ?: throwLoggedEmptyResponse(AltinnTilgangerOperation.LOOKUP_ORGANIZATION_ACCESS)
+            return response.hierarki.findByOrgnr(orgnummer)
         } catch (e: UpstreamRequestException) {
             logAltinnTilgangerLookupFailure(e, AltinnTilgangerOperation.LOOKUP_ORGANIZATION_ACCESS)
             throw ApiErrorException.InternalServerErrorException(
@@ -68,7 +71,7 @@ class AltinnTilgangerService(
     suspend fun getFilteredOrganizations(userPrincipal: UserPrincipal): List<AccessibleOrganization> {
         try {
             val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
-                ?: return emptyList()
+                ?: throwLoggedEmptyResponse(AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS)
             if (response.isError == true) {
                 logAltinnTilgangerLookupFailure(
                     errorCode = AltinnTilgangerErrorCode.ERROR_RESPONSE,
@@ -91,13 +94,15 @@ class AltinnTilgangerService(
         cause: UpstreamRequestException,
         operation: AltinnTilgangerOperation,
     ) {
-        logger.atError()
+        val event = logger.atError()
             .addKeyValue("event_type", AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value)
             .addKeyValue("error_code", cause.errorCode().value)
             .addKeyValue("operation", operation.value)
             .addKeyValue("exception_type", cause.upstreamExceptionType.logValue)
+            .addKeyValue("failure_stage", cause.failureStage.logValue)
             .setCause(cause)
-            .log("AltinnTilganger lookup failed")
+        cause.upstreamStatus?.let { event.addKeyValue("upstream_status", it) }
+        event.log("AltinnTilganger lookup failed")
     }
 
     private fun logAltinnTilgangerLookupFailure(
@@ -109,6 +114,17 @@ class AltinnTilgangerService(
             .addKeyValue("error_code", errorCode.value)
             .addKeyValue("operation", operation.value)
             .log("AltinnTilganger lookup failed")
+    }
+
+    private fun throwLoggedEmptyResponse(operation: AltinnTilgangerOperation): Nothing {
+        logAltinnTilgangerLookupFailure(
+            errorCode = AltinnTilgangerErrorCode.EMPTY_RESPONSE,
+            operation = operation,
+        )
+        throw ApiErrorException.InternalServerErrorException(
+            errorMessage = "AltinnTilganger returned no response",
+            isAlreadyLogged = true,
+        )
     }
 
     private fun List<AltinnTilgang>.filterToOrganizations(): List<AccessibleOrganization> = mapNotNull { it.filterAccess() }
@@ -149,8 +165,15 @@ class AltinnTilgangerService(
     }
 }
 
-private fun UpstreamRequestException.errorCode(): AltinnTilgangerErrorCode = when (upstreamStatus) {
-    in 400..499 -> AltinnTilgangerErrorCode.UPSTREAM_4XX
-    in 500..599 -> AltinnTilgangerErrorCode.UPSTREAM_5XX
-    else -> AltinnTilgangerErrorCode.UPSTREAM_FAILURE
+private fun UpstreamRequestException.errorCode(): AltinnTilgangerErrorCode = when {
+    failureStage == UpstreamFailureStage.TOKEN_EXCHANGE -> AltinnTilgangerErrorCode.TOKEN_EXCHANGE_FAILED
+    upstreamStatus in 300..399 -> AltinnTilgangerErrorCode.UPSTREAM_UNEXPECTED_REDIRECT
+    upstreamStatus == 401 -> AltinnTilgangerErrorCode.UPSTREAM_UNAUTHORIZED
+    upstreamStatus == 403 -> AltinnTilgangerErrorCode.UPSTREAM_FORBIDDEN
+    upstreamStatus == 404 -> AltinnTilgangerErrorCode.UPSTREAM_NOT_FOUND
+    upstreamStatus == 429 -> AltinnTilgangerErrorCode.UPSTREAM_RATE_LIMITED
+    upstreamStatus in 400..499 -> AltinnTilgangerErrorCode.UPSTREAM_CLIENT_ERROR
+    upstreamStatus in 500..599 -> AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR
+    failureStage == UpstreamFailureStage.RESPONSE -> AltinnTilgangerErrorCode.UPSTREAM_RESPONSE_FAILURE
+    else -> AltinnTilgangerErrorCode.UPSTREAM_TRANSPORT_FAILURE
 }

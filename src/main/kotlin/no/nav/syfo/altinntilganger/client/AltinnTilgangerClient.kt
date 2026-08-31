@@ -5,12 +5,12 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
-import no.nav.syfo.util.logger
 
 interface IAltinnTilgangerClient {
     suspend fun fetchAltinnTilganger(
@@ -135,22 +135,25 @@ class AltinnTilgangerClient(
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
     ): AltinnTilgangerResponse? {
-        val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token).accessToken
         try {
+            val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token).accessToken
             val response = httpClient.post("$baseUrl/altinn-tilganger") {
                 bearerAuth(oboToken)
             }.body<AltinnTilgangerResponse>()
             return response
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: ResponseException) {
-            logger.error("Feil ved henting av altinn-tilganger, status: ${e.response.status}", e)
-            throw UpstreamRequestException("Feil ved henting av altinn-tilganger", e)
+            throw UpstreamRequestException(
+                message = "Feil ved henting av altinn-tilganger",
+                upstreamStatus = e.response.status.value,
+                upstreamExceptionType = e::class.simpleName,
+            )
         } catch (e: Exception) {
-            logger.error("Uventet feil ved henting av altinn-tilganger", e)
-            throw UpstreamRequestException("Uventet feil ved henting av altinn-tilganger")
+            throw UpstreamRequestException(
+                message = "Uventet feil ved henting av altinn-tilganger",
+                upstreamExceptionType = e::class.simpleName,
+            )
         }
-    }
-
-    companion object {
-        private val logger = logger()
     }
 }

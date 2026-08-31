@@ -90,13 +90,16 @@ class AltinnTilgangerServiceTest :
 
             it("should throw Internal Server Error when client fails to make request") {
                 val mockAltinnTilgangerClient = mockk<FakeAltinnTilgangerClient>()
-                coEvery { mockAltinnTilgangerClient.fetchAltinnTilganger(any()) } throws UpstreamRequestException("Forced failure")
+                val upstreamFailure = UpstreamRequestException("Forced failure")
+                coEvery { mockAltinnTilgangerClient.fetchAltinnTilganger(any()) } throws upstreamFailure
                 val altinnTilgangerServiceWithMock = AltinnTilgangerService(mockAltinnTilgangerClient)
                 val accessPolicy = altinnTilgangerClient.accessPolicy.first()
                 val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
                     altinnTilgangerServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
+                exception.cause shouldBe upstreamFailure
+                exception.isAlreadyLogged shouldBe true
             }
         }
 

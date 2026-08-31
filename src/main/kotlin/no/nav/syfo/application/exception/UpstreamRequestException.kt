@@ -1,8 +1,8 @@
 package no.nav.syfo.application.exception
 
-import io.ktor.client.plugins.ResponseException
-
 class UpstreamRequestException(
     message: String,
-    cause: ResponseException? = null
+    cause: Throwable? = null,
+    val upstreamStatus: Int? = null,
+    val upstreamExceptionType: String? = cause?.javaClass?.simpleName,
 ) : RuntimeException(message, cause)

@@ -7,7 +7,8 @@ import no.nav.syfo.application.api.ErrorType
 sealed class ApiErrorException(
     message: String,
     val type: ErrorType,
-    cause: Throwable?
+    cause: Throwable?,
+    val isAlreadyLogged: Boolean = false,
 ) : RuntimeException(message, cause) {
     abstract fun toApiError(path: String): ApiError
 
@@ -28,7 +29,8 @@ sealed class ApiErrorException(
         val errorMessage: String = "Internal Server Error",
         cause: Throwable? = null,
         type: ErrorType = ErrorType.INTERNAL_SERVER_ERROR,
-    ) : ApiErrorException(errorMessage, type, cause) {
+        isAlreadyLogged: Boolean = false,
+    ) : ApiErrorException(errorMessage, type, cause, isAlreadyLogged) {
         override fun toApiError(path: String) = ApiError(
             path = path,
             status = HttpStatusCode.InternalServerError,

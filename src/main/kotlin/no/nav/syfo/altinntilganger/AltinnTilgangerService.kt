@@ -6,7 +6,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
-import no.nav.syfo.util.logger
+import org.slf4j.LoggerFactory
 
 class AltinnTilgangerService(
     val altinnTilgangerClient: IAltinnTilgangerClient,
@@ -56,8 +56,12 @@ class AltinnTilgangerService(
         try {
             return altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)?.hierarki?.findByOrgnr(orgnummer)
         } catch (e: UpstreamRequestException) {
-            logger.error("Error when fetching altinn resources available to owner to authorization token", e)
-            throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn resources for users authorization token")
+            logAltinnAccessLookupFailure(e, LOOKUP_ORGANIZATION_ACCESS_OPERATION)
+            throw ApiErrorException.InternalServerErrorException(
+                errorMessage = "An error occurred when fetching altinn resources for users authorization token",
+                cause = e,
+                isAlreadyLogged = true,
+            )
         }
     }
 
@@ -71,9 +75,23 @@ class AltinnTilgangerService(
             }
             return response.hierarki.filterToOrganizations()
         } catch (e: UpstreamRequestException) {
-            logger.error("Error when fetching altinn tilganger for organisasjon filtering", e)
-            throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn tilganger")
+            logAltinnAccessLookupFailure(e, LIST_ACCESSIBLE_ORGANIZATIONS_OPERATION)
+            throw ApiErrorException.InternalServerErrorException(
+                errorMessage = "An error occurred when fetching altinn tilganger",
+                cause = e,
+                isAlreadyLogged = true,
+            )
         }
+    }
+
+    private fun logAltinnAccessLookupFailure(cause: UpstreamRequestException, operation: String) {
+        logger.atError()
+            .addKeyValue("event_type", ALTINN_ACCESS_LOOKUP_FAILED_EVENT_TYPE)
+            .addKeyValue("error_code", cause.errorCode())
+            .addKeyValue("operation", operation)
+            .addKeyValue("exception_type", cause.safeUpstreamExceptionType())
+            .setCause(cause)
+            .log("Altinn access lookup failed")
     }
 
     private fun List<AltinnTilgang>.filterToOrganizations(): List<AccessibleOrganization> = mapNotNull { it.filterAccess() }
@@ -107,9 +125,28 @@ class AltinnTilgangerService(
     }
 
     companion object {
+        internal const val ALTINN_ACCESS_LOOKUP_FAILED_EVENT_TYPE = "altinn_access_lookup_failed"
+        internal const val ALTINN_ACCESS_UPSTREAM_4XX_ERROR_CODE = "ALTINN_ACCESS_UPSTREAM_4XX"
+        internal const val ALTINN_ACCESS_UPSTREAM_5XX_ERROR_CODE = "ALTINN_ACCESS_UPSTREAM_5XX"
+        internal const val ALTINN_ACCESS_UPSTREAM_FAILURE_ERROR_CODE = "ALTINN_ACCESS_UPSTREAM_FAILURE"
+        internal const val LOOKUP_ORGANIZATION_ACCESS_OPERATION = "lookup_organization_access"
+        internal const val LIST_ACCESSIBLE_ORGANIZATIONS_OPERATION = "list_accessible_organizations"
+
         const val OPPGI_NARMESTELEDER_RESOURCE =
             "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn3 to access NL relasjon
         const val OPPRETT_NL_REALASJON_RESOURCE = "4596:1" // Access resource in Altinn2 to access NL relasjon
-        private val logger = logger()
+        private val logger = LoggerFactory.getLogger(AltinnTilgangerService::class.java)
     }
 }
+
+private fun UpstreamRequestException.errorCode(): String = when (upstreamStatus) {
+    in 400..499 -> AltinnTilgangerService.ALTINN_ACCESS_UPSTREAM_4XX_ERROR_CODE
+    in 500..599 -> AltinnTilgangerService.ALTINN_ACCESS_UPSTREAM_5XX_ERROR_CODE
+    else -> AltinnTilgangerService.ALTINN_ACCESS_UPSTREAM_FAILURE_ERROR_CODE
+}
+
+private fun UpstreamRequestException.safeUpstreamExceptionType(): String = upstreamExceptionType
+    ?.takeIf { safeExceptionTypePattern.matches(it) }
+    ?: UpstreamRequestException::class.simpleName!!
+
+private val safeExceptionTypePattern = Regex("^[A-Za-z][A-Za-z0-9_.:$]{0,159}$")

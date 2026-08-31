@@ -13,6 +13,7 @@ import io.ktor.http.isSuccess
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -164,6 +165,24 @@ class AltinnTilgangerClientTest :
                 val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
                 shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
+            }
+
+            it("should propagate cancellation without wrapping it as an upstream failure") {
+                val userPrincipal = UserPrincipal("12345678901", "token")
+                coEvery {
+                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
+                } returns TexasResponse(
+                    "token",
+                    111,
+                    "tokenType",
+                )
+                val client = AltinnTilgangerClient(
+                    texasClient = mockTexasClient,
+                    httpClient = HttpClient(MockEngine { throw CancellationException("Request cancelled") }),
+                    baseUrl = "",
+                )
+
+                shouldThrow<CancellationException> { client.fetchAltinnTilganger(userPrincipal) }
             }
         }
     })

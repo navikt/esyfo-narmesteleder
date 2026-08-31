@@ -13,14 +13,23 @@ import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
+import io.ktor.http.headersOf
+import io.ktor.serialization.ContentConverter
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import io.ktor.util.reflect.TypeInfo
+import io.ktor.utils.io.ByteReadChannel
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import net.logstash.logback.encoder.LogstashEncoder
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
@@ -39,6 +48,7 @@ import no.nav.syfo.util.httpClientDefault
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import java.io.ByteArrayOutputStream
+import java.nio.charset.Charset
 
 class AltinnAccessLoggingContractTest :
     DescribeSpec({
@@ -289,6 +299,103 @@ class AltinnAccessLoggingContractTest :
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.EMPTY_RESPONSE.value
                 logRecord.has("upstream_status") shouldBe false
                 logRecord.has("exception_type") shouldBe false
+            }
+
+            it("emits one terminal response-decoding error for an actual HTTP 200 JSON null body") {
+                val texasClient = mockk<TexasHttpClient>()
+                coEvery {
+                    texasClient.exchangeTokenForIsAltinnTilganger("token")
+                } returns TexasResponse("obo-token", 60, "Bearer")
+                val upstreamEngine = MockEngine {
+                    respond(
+                        content = "null",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+                val client = AltinnTilgangerClient(
+                    texasClient = texasClient,
+                    httpClient = httpClientDefault(HttpClient(upstreamEngine)),
+                    baseUrl = "https://altinn-tilganger.test",
+                )
+
+                val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                }
+
+                exception.isAlreadyLogged shouldBe true
+                val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                logLines shouldHaveSize 1
+                val logRecord = jacksonObjectMapper().readTree(logLines.single())
+                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_RESPONSE_FAILURE.value
+                logRecord["upstream_status"].isInt shouldBe true
+                logRecord["upstream_status"].asInt() shouldBe 200
+                logRecord["exception_type"].asText() shouldBe UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION.logValue
+                logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.RESPONSE.logValue
+            }
+
+            it("does not log or classify cancellation from token exchange") {
+                val texasClient = mockk<TexasHttpClient>()
+                coEvery {
+                    texasClient.exchangeTokenForIsAltinnTilganger("token")
+                } throws CancellationException("Token exchange cancelled")
+                val client = AltinnTilgangerClient(
+                    texasClient = texasClient,
+                    httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
+                    baseUrl = "https://altinn-tilganger.test",
+                )
+
+                shouldThrow<CancellationException> {
+                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                }
+
+                logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList() shouldHaveSize 0
+            }
+
+            it("does not log or classify cancellation from response decoding") {
+                val cancellation = CancellationException("Response decoding cancelled")
+                val cancellingConverter = object : ContentConverter {
+                    override suspend fun serialize(
+                        contentType: ContentType,
+                        charset: Charset,
+                        typeInfo: TypeInfo,
+                        value: Any?,
+                    ): OutgoingContent? = null
+
+                    override suspend fun deserialize(
+                        charset: Charset,
+                        typeInfo: TypeInfo,
+                        content: ByteReadChannel,
+                    ): Any? = throw cancellation
+                }
+                val texasClient = mockk<TexasHttpClient>()
+                coEvery {
+                    texasClient.exchangeTokenForIsAltinnTilganger("token")
+                } returns TexasResponse("obo-token", 60, "Bearer")
+                val upstreamEngine = MockEngine {
+                    respond(
+                        content = "{}",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+                val httpClient = HttpClient(upstreamEngine) {
+                    expectSuccess = true
+                    install(ContentNegotiation) {
+                        register(ContentType.Application.Json, cancellingConverter)
+                    }
+                }
+                val client = AltinnTilgangerClient(
+                    texasClient = texasClient,
+                    httpClient = httpClient,
+                    baseUrl = "https://altinn-tilganger.test",
+                )
+
+                shouldThrow<CancellationException> {
+                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                }
+
+                logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList() shouldHaveSize 0
             }
 
             it("emits the canonical terminal event when the upstream response reports an error") {

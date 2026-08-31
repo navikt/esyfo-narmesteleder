@@ -126,16 +126,8 @@ class AltinnTilgangerClientTest :
                 result?.hierarki?.firstOrNull()?.orgnr shouldBe "987654321"
             }
 
-            it("should throw exception when getPerson responds with 4xx") {
+            it("should preserve actionable HTTP failure details from AltinnTilganger") {
                 val userPrincipal = UserPrincipal("12345678901", "token")
-
-                val mockEngine = getMockEngine(
-                    status = HttpStatusCode.Companion.BadRequest,
-                    headers = Headers.Companion.build {
-                        append("Content-Type", "application/json")
-                    },
-                    content = "invalid request",
-                )
                 coEvery {
                     mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
                 } returns TexasResponse(
@@ -143,37 +135,37 @@ class AltinnTilgangerClientTest :
                     111,
                     "tokenType"
                 )
-                val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
-
-                val exception = shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
-                exception.upstreamStatus shouldBe 400
-                exception.failureStage shouldBe UpstreamFailureStage.RESPONSE
-                exception.upstreamExceptionType shouldBe UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION
-            }
-
-            it("should throw exception when getPerson responds with 5xx") {
-                val userPrincipal = UserPrincipal("12345678901", "token")
-
-                val mockEngine = getMockEngine(
-                    status = HttpStatusCode.Companion.ServiceUnavailable,
-                    headers = Headers.Companion.build {
-                        append("Content-Type", "application/json")
-                    },
-                    content = "invalid request",
+                val cases = listOf(
+                    Triple(301, HttpStatusCode.MovedPermanently, UpstreamExceptionType.REDIRECT_RESPONSE_EXCEPTION),
+                    Triple(401, HttpStatusCode.Unauthorized, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
+                    Triple(403, HttpStatusCode.Forbidden, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
+                    Triple(404, HttpStatusCode.NotFound, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
+                    Triple(429, HttpStatusCode.TooManyRequests, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
+                    Triple(422, HttpStatusCode.UnprocessableEntity, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
+                    Triple(500, HttpStatusCode.InternalServerError, UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION),
+                    Triple(502, HttpStatusCode.BadGateway, UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION),
+                    Triple(503, HttpStatusCode.ServiceUnavailable, UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION),
+                    Triple(504, HttpStatusCode.GatewayTimeout, UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION),
                 )
-                coEvery {
-                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-                } returns TexasResponse(
-                    "token",
-                    111,
-                    "tokenType"
-                )
-                val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
-                val exception = shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
-                exception.upstreamStatus shouldBe 503
-                exception.failureStage shouldBe UpstreamFailureStage.RESPONSE
-                exception.upstreamExceptionType shouldBe UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION
+                cases.forEach { (expectedStatus, status, expectedExceptionType) ->
+                    val mockEngine = getMockEngine(
+                        status = status,
+                        headers = Headers.build {
+                            append("Content-Type", "application/json")
+                        },
+                        content = "safe failure",
+                    )
+                    val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
+
+                    val exception = shouldThrow<UpstreamRequestException> {
+                        client.fetchAltinnTilganger(userPrincipal)
+                    }
+
+                    exception.upstreamStatus shouldBe expectedStatus
+                    exception.failureStage shouldBe UpstreamFailureStage.RESPONSE
+                    exception.upstreamExceptionType shouldBe expectedExceptionType
+                }
             }
 
             it("should classify token exchange separately without exposing an invalid status") {
@@ -254,6 +246,20 @@ class AltinnTilgangerClientTest :
                 val client = AltinnTilgangerClient(
                     texasClient = mockTexasClient,
                     httpClient = HttpClient(MockEngine { throw CancellationException("Request cancelled") }),
+                    baseUrl = "",
+                )
+
+                shouldThrow<CancellationException> { client.fetchAltinnTilganger(userPrincipal) }
+            }
+
+            it("should propagate cancellation from token exchange without calling AltinnTilganger") {
+                val userPrincipal = UserPrincipal("12345678901", "token")
+                coEvery {
+                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
+                } throws CancellationException("Token exchange cancelled")
+                val client = AltinnTilgangerClient(
+                    texasClient = mockTexasClient,
+                    httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
                     baseUrl = "",
                 )
 

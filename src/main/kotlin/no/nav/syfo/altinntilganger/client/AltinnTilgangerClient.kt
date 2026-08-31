@@ -2,12 +2,16 @@ package no.nav.syfo.altinntilganger.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.RedirectResponseException
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
+import no.nav.syfo.application.exception.UpstreamExceptionType
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
@@ -147,13 +151,20 @@ class AltinnTilgangerClient(
             throw UpstreamRequestException(
                 message = "Feil ved henting av altinn-tilganger",
                 upstreamStatus = e.response.status.value,
-                upstreamExceptionType = e::class.simpleName,
+                upstreamExceptionType = e.toUpstreamExceptionType(),
             )
         } catch (e: Exception) {
             throw UpstreamRequestException(
                 message = "Uventet feil ved henting av altinn-tilganger",
-                upstreamExceptionType = e::class.simpleName,
+                upstreamExceptionType = UpstreamExceptionType.UNEXPECTED_EXCEPTION,
             )
         }
     }
+}
+
+private fun ResponseException.toUpstreamExceptionType(): UpstreamExceptionType = when (this) {
+    is ClientRequestException -> UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION
+    is ServerResponseException -> UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION
+    is RedirectResponseException -> UpstreamExceptionType.REDIRECT_RESPONSE_EXCEPTION
+    else -> UpstreamExceptionType.RESPONSE_EXCEPTION
 }

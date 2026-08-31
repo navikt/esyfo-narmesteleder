@@ -56,7 +56,7 @@ class AltinnTilgangerService(
         try {
             return altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)?.hierarki?.findByOrgnr(orgnummer)
         } catch (e: UpstreamRequestException) {
-            logAltinnAccessLookupFailure(e, LOOKUP_ORGANIZATION_ACCESS_OPERATION)
+            logAltinnTilgangerLookupFailure(e, AltinnTilgangerOperation.LOOKUP_ORGANIZATION_ACCESS)
             throw ApiErrorException.InternalServerErrorException(
                 errorMessage = "An error occurred when fetching altinn resources for users authorization token",
                 cause = e,
@@ -70,12 +70,15 @@ class AltinnTilgangerService(
             val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
                 ?: return emptyList()
             if (response.isError == true) {
-                logger.warn("Altinn tilganger proxy reported error - returning empty list")
+                logAltinnTilgangerLookupFailure(
+                    errorCode = AltinnTilgangerErrorCode.ERROR_RESPONSE,
+                    operation = AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS,
+                )
                 return emptyList()
             }
             return response.hierarki.filterToOrganizations()
         } catch (e: UpstreamRequestException) {
-            logAltinnAccessLookupFailure(e, LIST_ACCESSIBLE_ORGANIZATIONS_OPERATION)
+            logAltinnTilgangerLookupFailure(e, AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS)
             throw ApiErrorException.InternalServerErrorException(
                 errorMessage = "An error occurred when fetching altinn tilganger",
                 cause = e,
@@ -84,14 +87,28 @@ class AltinnTilgangerService(
         }
     }
 
-    private fun logAltinnAccessLookupFailure(cause: UpstreamRequestException, operation: String) {
+    private fun logAltinnTilgangerLookupFailure(
+        cause: UpstreamRequestException,
+        operation: AltinnTilgangerOperation,
+    ) {
         logger.atError()
-            .addKeyValue("event_type", ALTINN_ACCESS_LOOKUP_FAILED_EVENT_TYPE)
-            .addKeyValue("error_code", cause.errorCode())
-            .addKeyValue("operation", operation)
-            .addKeyValue("exception_type", cause.safeUpstreamExceptionType())
+            .addKeyValue("event_type", AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value)
+            .addKeyValue("error_code", cause.errorCode().value)
+            .addKeyValue("operation", operation.value)
+            .addKeyValue("exception_type", cause.upstreamExceptionType.logValue)
             .setCause(cause)
-            .log("Altinn access lookup failed")
+            .log("AltinnTilganger lookup failed")
+    }
+
+    private fun logAltinnTilgangerLookupFailure(
+        errorCode: AltinnTilgangerErrorCode,
+        operation: AltinnTilgangerOperation,
+    ) {
+        logger.atError()
+            .addKeyValue("event_type", AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value)
+            .addKeyValue("error_code", errorCode.value)
+            .addKeyValue("operation", operation.value)
+            .log("AltinnTilganger lookup failed")
     }
 
     private fun List<AltinnTilgang>.filterToOrganizations(): List<AccessibleOrganization> = mapNotNull { it.filterAccess() }
@@ -125,13 +142,6 @@ class AltinnTilgangerService(
     }
 
     companion object {
-        internal const val ALTINN_ACCESS_LOOKUP_FAILED_EVENT_TYPE = "altinn_access_lookup_failed"
-        internal const val ALTINN_ACCESS_UPSTREAM_4XX_ERROR_CODE = "ALTINN_ACCESS_UPSTREAM_4XX"
-        internal const val ALTINN_ACCESS_UPSTREAM_5XX_ERROR_CODE = "ALTINN_ACCESS_UPSTREAM_5XX"
-        internal const val ALTINN_ACCESS_UPSTREAM_FAILURE_ERROR_CODE = "ALTINN_ACCESS_UPSTREAM_FAILURE"
-        internal const val LOOKUP_ORGANIZATION_ACCESS_OPERATION = "lookup_organization_access"
-        internal const val LIST_ACCESSIBLE_ORGANIZATIONS_OPERATION = "list_accessible_organizations"
-
         const val OPPGI_NARMESTELEDER_RESOURCE =
             "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn3 to access NL relasjon
         const val OPPRETT_NL_REALASJON_RESOURCE = "4596:1" // Access resource in Altinn2 to access NL relasjon
@@ -139,14 +149,8 @@ class AltinnTilgangerService(
     }
 }
 
-private fun UpstreamRequestException.errorCode(): String = when (upstreamStatus) {
-    in 400..499 -> AltinnTilgangerService.ALTINN_ACCESS_UPSTREAM_4XX_ERROR_CODE
-    in 500..599 -> AltinnTilgangerService.ALTINN_ACCESS_UPSTREAM_5XX_ERROR_CODE
-    else -> AltinnTilgangerService.ALTINN_ACCESS_UPSTREAM_FAILURE_ERROR_CODE
+private fun UpstreamRequestException.errorCode(): AltinnTilgangerErrorCode = when (upstreamStatus) {
+    in 400..499 -> AltinnTilgangerErrorCode.UPSTREAM_4XX
+    in 500..599 -> AltinnTilgangerErrorCode.UPSTREAM_5XX
+    else -> AltinnTilgangerErrorCode.UPSTREAM_FAILURE
 }
-
-private fun UpstreamRequestException.safeUpstreamExceptionType(): String = upstreamExceptionType
-    ?.takeIf { safeExceptionTypePattern.matches(it) }
-    ?: UpstreamRequestException::class.simpleName!!
-
-private val safeExceptionTypePattern = Regex("^[A-Za-z][A-Za-z0-9_.:$]{0,159}$")

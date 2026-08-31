@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.OutputStreamAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -21,18 +22,21 @@ import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.mockk
 import net.logstash.logback.encoder.LogstashEncoder
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.ALTINN_ACCESS_LOOKUP_FAILED_EVENT_TYPE
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.ALTINN_ACCESS_UPSTREAM_5XX_ERROR_CODE
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.LIST_ACCESSIBLE_ORGANIZATIONS_OPERATION
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
+import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
 import no.nav.syfo.application.api.STATUS_PAGES_LOGGER_NAME
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.UserPrincipal
+import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.UpstreamExceptionType
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import java.io.ByteArrayOutputStream
 
 class AltinnAccessLoggingContractTest :
@@ -79,10 +83,11 @@ class AltinnAccessLoggingContractTest :
             logOutput.reset()
         }
 
-        describe("Altinn access lookup runtime error contract") {
+        describe("AltinnTilganger runtime error contract") {
             it("serializes one terminal error event through the production encoder without privacy canaries") {
                 val nationalIdentificationNumberCanary = "12345678901"
                 val tokenCanary = "privacy-canary-token"
+                val oboTokenCanary = "safe-obo-token"
                 val emailCanary = "privacy-canary-email"
                 val requestBodyCanary = "privacy-canary-request-body"
                 val upstreamResponseCanary = "privacy-canary-upstream-response-body"
@@ -90,7 +95,7 @@ class AltinnAccessLoggingContractTest :
                 val texasClient = mockk<TexasHttpClient>()
                 coEvery {
                     texasClient.exchangeTokenForIsAltinnTilganger(tokenCanary)
-                } returns TexasResponse("safe-obo-token", 60, "Bearer")
+                } returns TexasResponse(oboTokenCanary, 60, "Bearer")
                 val upstreamEngine = MockEngine {
                     respond(
                         content = upstreamResponseCanary,
@@ -132,10 +137,10 @@ class AltinnAccessLoggingContractTest :
                 val logRecord = jacksonObjectMapper().readTree(logLines.single())
                 logRecord["level"].asText() shouldBe "ERROR"
                 logRecord["logger_name"].asText() shouldBe AltinnTilgangerService::class.java.name
-                logRecord["message"].asText() shouldBe "Altinn access lookup failed"
-                logRecord["event_type"].asText() shouldBe ALTINN_ACCESS_LOOKUP_FAILED_EVENT_TYPE
-                logRecord["error_code"].asText() shouldBe ALTINN_ACCESS_UPSTREAM_5XX_ERROR_CODE
-                logRecord["operation"].asText() shouldBe LIST_ACCESSIBLE_ORGANIZATIONS_OPERATION
+                logRecord["message"].asText() shouldBe "AltinnTilganger lookup failed"
+                logRecord["event_type"].asText() shouldBe AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value
+                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_5XX.value
+                logRecord["operation"].asText() shouldBe AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS.value
                 logRecord["exception_type"].asText() shouldBe "ServerResponseException"
                 logRecord["stack_trace"].asText().contains("UpstreamRequestException") shouldBe true
                 logRecord.has("status") shouldBe false
@@ -147,6 +152,7 @@ class AltinnAccessLoggingContractTest :
                 listOf(
                     nationalIdentificationNumberCanary,
                     tokenCanary,
+                    oboTokenCanary,
                     emailCanary,
                     requestBodyCanary,
                     upstreamResponseCanary,
@@ -154,6 +160,97 @@ class AltinnAccessLoggingContractTest :
                 ).forEach { canary ->
                     serializedLogs shouldNotContain canary
                 }
+            }
+
+            it("emits the canonical terminal event when the upstream response reports an error") {
+                val client = object : IAltinnTilgangerClient {
+                    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal) = AltinnTilgangerResponse(
+                        isError = true,
+                        hierarki = emptyList(),
+                        orgNrTilTilganger = emptyMap(),
+                        tilgangTilOrgNr = emptyMap(),
+                    )
+                }
+
+                AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token")) shouldBe emptyList()
+
+                val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                logLines shouldHaveSize 1
+                val logRecord = jacksonObjectMapper().readTree(logLines.single())
+                logRecord["level"].asText() shouldBe "ERROR"
+                logRecord["event_type"].asText() shouldBe AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value
+                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.ERROR_RESPONSE.value
+                logRecord["operation"].asText() shouldBe AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS.value
+                logRecord.has("exception_type") shouldBe false
+                logRecord.has("stack_trace") shouldBe false
+            }
+
+            it("serializes trace_id from MDC with the production encoder") {
+                val traceId = "0123456789abcdef0123456789abcdef"
+                val client = object : IAltinnTilgangerClient {
+                    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw UpstreamRequestException(
+                        message = "Upstream unavailable",
+                        upstreamStatus = 503,
+                        upstreamExceptionType = UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION,
+                    )
+                }
+
+                MDC.put("trace_id", traceId)
+                try {
+                    shouldThrow<ApiErrorException.InternalServerErrorException> {
+                        AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                    }
+                } finally {
+                    MDC.remove("trace_id")
+                }
+
+                val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                logLines shouldHaveSize 1
+                val logRecord = jacksonObjectMapper().readTree(logLines.single())
+                logRecord["trace_id"].asText() shouldBe traceId
+                Regex("^[0-9a-f]{32}$").matches(logRecord["trace_id"].asText()) shouldBe true
+            }
+
+            it("keeps event types, operations, error codes and exception types in closed valid catalogs") {
+                val eventTypePattern = Regex("^[a-z][a-z0-9_.-]{0,79}$")
+                val operationPattern = Regex("^[a-z][a-z0-9_.-]{0,79}$")
+                val errorCodePattern = Regex("^[A-Z][A-Z0-9_]{0,79}$")
+                val exceptionTypePattern = Regex("^[A-Za-z][A-Za-z0-9]{0,79}$")
+
+                AltinnTilgangerRuntimeEvent.values().map { it.value }.toSet() shouldBe setOf(
+                    "altinn_tilganger_lookup_failed",
+                )
+                AltinnTilgangerOperation.values().map { it.value }.toSet() shouldBe setOf(
+                    "hent_altinn_tilgang_for_orgnummer",
+                    "hent_tilgjengelige_organisasjoner",
+                )
+                AltinnTilgangerErrorCode.values().map { it.value }.toSet() shouldBe setOf(
+                    "ALTINN_TILGANGER_UPSTREAM_4XX",
+                    "ALTINN_TILGANGER_UPSTREAM_5XX",
+                    "ALTINN_TILGANGER_UPSTREAM_FAILURE",
+                    "ALTINN_TILGANGER_ERROR_RESPONSE",
+                )
+                UpstreamExceptionType.values().map { it.logValue }.toSet() shouldBe setOf(
+                    "ClientRequestException",
+                    "ServerResponseException",
+                    "RedirectResponseException",
+                    "ResponseException",
+                    "UnexpectedException",
+                )
+
+                AltinnTilgangerRuntimeEvent.values().map { it.value }.distinct().size shouldBe
+                    AltinnTilgangerRuntimeEvent.values().size
+                AltinnTilgangerOperation.values().map { it.value }.distinct().size shouldBe
+                    AltinnTilgangerOperation.values().size
+                AltinnTilgangerErrorCode.values().map { it.value }.distinct().size shouldBe
+                    AltinnTilgangerErrorCode.values().size
+                UpstreamExceptionType.values().map { it.logValue }.distinct().size shouldBe
+                    UpstreamExceptionType.values().size
+
+                AltinnTilgangerRuntimeEvent.values().forEach { eventTypePattern.matches(it.value) shouldBe true }
+                AltinnTilgangerOperation.values().forEach { operationPattern.matches(it.value) shouldBe true }
+                AltinnTilgangerErrorCode.values().forEach { errorCodePattern.matches(it.value) shouldBe true }
+                UpstreamExceptionType.values().forEach { exceptionTypePattern.matches(it.logValue) shouldBe true }
             }
         }
     })

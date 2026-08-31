@@ -17,6 +17,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
+import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -29,6 +30,7 @@ fun Route.registerLinemanagerApiV1(
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler,
+    narmestelederLookupService: NarmestelederLookupService,
 ) {
     route(LINEMANAGER_API_PATH) {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -63,6 +65,16 @@ fun Route.registerLinemanagerApiV1(
             val employee = validationService.validateLinemanagerRevoke(revoke, principal)
 
             val tweakedRevoke = revoke.copy(employeeIdentificationNumber = employee.nationalIdentificationNumber)
+            val hasActiveRelation = narmestelederLookupService.hasActiveNarmesteleder(
+                sykmeldtFnr = tweakedRevoke.employeeIdentificationNumber,
+                orgnummer = tweakedRevoke.orgNumber,
+            )
+            if (!hasActiveRelation) {
+                COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION.increment()
+                call.respond(HttpStatusCode.NoContent)
+                return@post
+            }
+
             narmestelederKafkaService.avbrytNarmesteLederRelation(
                 tweakedRevoke,
                 NlResponseSource.getSourceFrom(principal, tweakedRevoke)

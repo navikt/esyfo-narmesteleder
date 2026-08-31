@@ -55,6 +55,7 @@ fun Application.configureRouting() {
             validationService,
             linemanagerRequirementRESTHandler,
             altinnTilgangerService,
+            narmestelederLookupService,
         )
         registerInternalApi(
             narmestelederLookupService = narmestelederLookupService,

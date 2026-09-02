@@ -156,7 +156,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord["failure_stage"].asText() shouldBe "response"
                 logRecord["upstream_status"].isInt shouldBe true
                 logRecord["upstream_status"].asInt() shouldBe 503
-                logRecord["stack_trace"].asText().contains("UpstreamRequestException") shouldBe true
+                logRecord.has("stack_trace") shouldBe false
                 logRecord.has("status") shouldBe false
                 logRecord.has("path") shouldBe false
                 logRecord.has("url") shouldBe false
@@ -283,22 +283,18 @@ class AltinnAccessLoggingContractTest :
                 logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.TOKEN_EXCHANGE.logValue
             }
 
-            it("emits one terminal error when the client returns no response") {
+            it("preserves nullable client results without emitting an error") {
                 val client = object : IAltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = null
                 }
+                val service = AltinnTilgangerService(client)
+                val principal = UserPrincipal("12345678901", "token")
 
-                val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
-                exception.isAlreadyLogged shouldBe true
+                service.getAltinnTilgangForOrgnr(principal, "999999999") shouldBe null
+                service.getFilteredOrganizations(principal) shouldBe emptyList()
 
                 val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
-                logLines shouldHaveSize 1
-                val logRecord = jacksonObjectMapper().readTree(logLines.single())
-                logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.EMPTY_RESPONSE.value
-                logRecord.has("upstream_status") shouldBe false
-                logRecord.has("exception_type") shouldBe false
+                logLines shouldBe emptyList()
             }
 
             it("emits one terminal response-decoding error for an actual HTTP 200 JSON null body") {
@@ -471,7 +467,6 @@ class AltinnAccessLoggingContractTest :
                     "ALTINN_TILGANGER_UPSTREAM_TRANSPORT_FAILURE",
                     "ALTINN_TILGANGER_UPSTREAM_RESPONSE_FAILURE",
                     "ALTINN_TILGANGER_TOKEN_EXCHANGE_FAILED",
-                    "ALTINN_TILGANGER_EMPTY_RESPONSE",
                     "ALTINN_TILGANGER_ERROR_RESPONSE",
                 )
                 UpstreamExceptionType.values().map { it.logValue }.toSet() shouldBe setOf(

@@ -56,7 +56,7 @@ class AltinnTilgangerService(
     ): AltinnTilgang? {
         try {
             val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
-                ?: throwLoggedEmptyResponse(AltinnTilgangerOperation.LOOKUP_ORGANIZATION_ACCESS)
+                ?: return null
             return response.hierarki.findByOrgnr(orgnummer)
         } catch (e: UpstreamRequestException) {
             logAltinnTilgangerLookupFailure(e, AltinnTilgangerOperation.LOOKUP_ORGANIZATION_ACCESS)
@@ -71,7 +71,7 @@ class AltinnTilgangerService(
     suspend fun getFilteredOrganizations(userPrincipal: UserPrincipal): List<AccessibleOrganization> {
         try {
             val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
-                ?: throwLoggedEmptyResponse(AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS)
+                ?: return emptyList()
             if (response.isError == true) {
                 logAltinnTilgangerLookupFailure(
                     errorCode = AltinnTilgangerErrorCode.ERROR_RESPONSE,
@@ -100,7 +100,6 @@ class AltinnTilgangerService(
             .addKeyValue("operation", operation.value)
             .addKeyValue("exception_type", cause.upstreamExceptionType.logValue)
             .addKeyValue("failure_stage", cause.failureStage.logValue)
-            .setCause(cause)
         cause.upstreamStatus?.let { event.addKeyValue("upstream_status", it) }
         event.log("AltinnTilganger lookup failed")
     }
@@ -114,17 +113,6 @@ class AltinnTilgangerService(
             .addKeyValue("error_code", errorCode.value)
             .addKeyValue("operation", operation.value)
             .log("AltinnTilganger lookup failed")
-    }
-
-    private fun throwLoggedEmptyResponse(operation: AltinnTilgangerOperation): Nothing {
-        logAltinnTilgangerLookupFailure(
-            errorCode = AltinnTilgangerErrorCode.EMPTY_RESPONSE,
-            operation = operation,
-        )
-        throw ApiErrorException.InternalServerErrorException(
-            errorMessage = "AltinnTilganger returned no response",
-            isAlreadyLogged = true,
-        )
     }
 
     private fun List<AltinnTilgang>.filterToOrganizations(): List<AccessibleOrganization> = mapNotNull { it.filterAccess() }

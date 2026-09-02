@@ -3,6 +3,7 @@ package no.nav.syfo.altinntilganger.client
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -170,9 +171,10 @@ class AltinnTilgangerClientTest :
 
             it("should classify token exchange separately without exposing an invalid status") {
                 val userPrincipal = UserPrincipal("12345678901", "privacy-canary-token")
+                val originalFailure = IllegalStateException("privacy-canary-cause-message")
                 coEvery {
                     mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-                } throws IllegalStateException("safe failure")
+                } throws originalFailure
                 val client = AltinnTilgangerClient(
                     texasClient = mockTexasClient,
                     httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
@@ -184,6 +186,9 @@ class AltinnTilgangerClientTest :
                 exception.failureStage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
                 exception.upstreamStatus shouldBe null
                 exception.upstreamExceptionType shouldBe UpstreamExceptionType.UNEXPECTED_EXCEPTION
+                exception.cause shouldBe originalFailure
+                exception.message shouldBe "Token exchange for AltinnTilganger failed"
+                exception.message shouldNotContain originalFailure.message!!
             }
 
             it("should preserve a bounded HTTP status from token exchange") {

@@ -153,6 +153,7 @@ class AltinnTilgangerClient(
     } catch (e: ResponseException) {
         throw UpstreamRequestException(
             message = "Token exchange for AltinnTilganger failed",
+            cause = e,
             upstreamStatus = e.response.status.value,
             upstreamExceptionType = e.toUpstreamExceptionType(),
             failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
@@ -160,6 +161,7 @@ class AltinnTilgangerClient(
     } catch (e: Exception) {
         throw UpstreamRequestException(
             message = "Token exchange for AltinnTilganger failed",
+            cause = e,
             upstreamExceptionType = UpstreamExceptionType.UNEXPECTED_EXCEPTION,
             failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
         )
@@ -174,6 +176,7 @@ class AltinnTilgangerClient(
     } catch (e: ResponseException) {
         throw UpstreamRequestException(
             message = "AltinnTilganger returned an unsuccessful response",
+            cause = e,
             upstreamStatus = e.response.status.value,
             upstreamExceptionType = e.toUpstreamExceptionType(),
             failureStage = UpstreamFailureStage.RESPONSE,
@@ -181,6 +184,7 @@ class AltinnTilgangerClient(
     } catch (e: Exception) {
         throw UpstreamRequestException(
             message = "AltinnTilganger request failed",
+            cause = e,
             upstreamExceptionType = UpstreamExceptionType.TRANSPORT_EXCEPTION,
             failureStage = UpstreamFailureStage.REQUEST,
         )
@@ -193,6 +197,7 @@ class AltinnTilgangerClient(
     } catch (e: Exception) {
         throw UpstreamRequestException(
             message = "AltinnTilganger response could not be decoded",
+            cause = e,
             upstreamStatus = response.status.value,
             upstreamExceptionType = UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION,
             failureStage = UpstreamFailureStage.RESPONSE,

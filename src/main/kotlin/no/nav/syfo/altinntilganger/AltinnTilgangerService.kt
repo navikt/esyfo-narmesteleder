@@ -94,12 +94,15 @@ class AltinnTilgangerService(
         cause: UpstreamRequestException,
         operation: AltinnTilgangerOperation,
     ) {
+        val origin = cause.cause ?: cause
         val event = logger.atError()
             .addKeyValue("event_type", AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value)
             .addKeyValue("error_code", cause.errorCode().value)
             .addKeyValue("operation", operation.value)
             .addKeyValue("exception_type", cause.upstreamExceptionType.logValue)
+            .addKeyValue("cause_type", origin.safeCauseType())
             .addKeyValue("failure_stage", cause.failureStage.logValue)
+            .setCause(SanitizedUpstreamFailure(origin.stackTrace))
         cause.upstreamStatus?.let { event.addKeyValue("upstream_status", it) }
         event.log("AltinnTilganger lookup failed")
     }
@@ -165,3 +168,13 @@ private fun UpstreamRequestException.errorCode(): AltinnTilgangerErrorCode = whe
     failureStage == UpstreamFailureStage.RESPONSE -> AltinnTilgangerErrorCode.UPSTREAM_RESPONSE_FAILURE
     else -> AltinnTilgangerErrorCode.UPSTREAM_TRANSPORT_FAILURE
 }
+
+private class SanitizedUpstreamFailure(originStackTrace: Array<StackTraceElement>) : RuntimeException() {
+    init {
+        stackTrace = originStackTrace
+    }
+}
+
+private val SAFE_CAUSE_TYPE = Regex("^[A-Za-z][A-Za-z0-9]{0,79}$")
+
+private fun Throwable.safeCauseType(): String = javaClass.simpleName.takeIf(SAFE_CAUSE_TYPE::matches) ?: "Throwable"

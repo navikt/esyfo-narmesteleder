@@ -103,6 +103,7 @@ class AltinnAccessLoggingContractTest :
                 val requestBodyCanary = "privacy-canary-request-body"
                 val upstreamResponseCanary = "privacy-canary-upstream-response-body"
                 val idCanary = "privacy-canary-id-8f9868ce"
+                val upstreamUrlCanary = "https://altinn-tilganger.test"
                 val texasClient = mockk<TexasHttpClient>()
                 coEvery {
                     texasClient.exchangeTokenForIsAltinnTilganger(tokenCanary)
@@ -156,7 +157,8 @@ class AltinnAccessLoggingContractTest :
                 logRecord["failure_stage"].asText() shouldBe "response"
                 logRecord["upstream_status"].isInt shouldBe true
                 logRecord["upstream_status"].asInt() shouldBe 503
-                logRecord.has("stack_trace") shouldBe false
+                logRecord["cause_type"].asText() shouldBe "ServerResponseException"
+                logRecord["stack_trace"].asText().contains(".kt:") shouldBe true
                 logRecord.has("status") shouldBe false
                 logRecord.has("path") shouldBe false
                 logRecord.has("url") shouldBe false
@@ -171,6 +173,59 @@ class AltinnAccessLoggingContractTest :
                     requestBodyCanary,
                     upstreamResponseCanary,
                     idCanary,
+                    upstreamUrlCanary,
+                ).forEach { canary ->
+                    serializedLogs shouldNotContain canary
+                }
+            }
+
+            it("serializes the concrete transport cause and its origin stack without dynamic exception data") {
+                val nationalIdentificationNumberCanary = "12345678901"
+                val tokenCanary = "privacy-canary-token"
+                val upstreamResponseCanary = "privacy-canary-upstream-response-body"
+                val upstreamUrlCanary = "https://altinn-tilganger.test/altinn-tilganger"
+                val cause = IllegalStateException(
+                    "$nationalIdentificationNumberCanary $tokenCanary $upstreamResponseCanary $upstreamUrlCanary",
+                ).apply {
+                    stackTrace = arrayOf(
+                        StackTraceElement(
+                            "no.nav.syfo.altinntilganger.client.TransportOrigin",
+                            "connect",
+                            "TransportOrigin.kt",
+                            73,
+                        ),
+                    )
+                }
+                val client = object : IAltinnTilgangerClient {
+                    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
+                        UpstreamRequestException(
+                            message = "Request failed: $upstreamUrlCanary",
+                            cause = cause,
+                            upstreamExceptionType = UpstreamExceptionType.TRANSPORT_EXCEPTION,
+                            failureStage = UpstreamFailureStage.REQUEST,
+                        )
+                }
+
+                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    AltinnTilgangerService(client).getFilteredOrganizations(
+                        UserPrincipal(nationalIdentificationNumberCanary, tokenCanary),
+                    )
+                }
+
+                val serializedLogs = logOutput.toString(Charsets.UTF_8)
+                val logRecord = jacksonObjectMapper().readTree(
+                    serializedLogs.lineSequence().single(String::isNotBlank),
+                )
+                logRecord["exception_type"].asText() shouldBe UpstreamExceptionType.TRANSPORT_EXCEPTION.logValue
+                logRecord["cause_type"].asText() shouldBe "IllegalStateException"
+                logRecord["stack_trace"].asText().contains(
+                    "no.nav.syfo.altinntilganger.client.TransportOrigin.connect(TransportOrigin.kt:73)",
+                ) shouldBe true
+                listOf(
+                    nationalIdentificationNumberCanary,
+                    tokenCanary,
+                    upstreamResponseCanary,
+                    upstreamUrlCanary,
                 ).forEach { canary ->
                     serializedLogs shouldNotContain canary
                 }

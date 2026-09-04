@@ -2,15 +2,21 @@ package no.nav.syfo.altinntilganger.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.RedirectResponseException
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
+import io.ktor.client.statement.HttpResponse
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
+import no.nav.syfo.application.exception.UpstreamExceptionType
+import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
-import no.nav.syfo.util.logger
 
 interface IAltinnTilgangerClient {
     suspend fun fetchAltinnTilganger(
@@ -135,22 +141,73 @@ class AltinnTilgangerClient(
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
     ): AltinnTilgangerResponse? {
-        val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token).accessToken
-        try {
-            val response = httpClient.post("$baseUrl/altinn-tilganger") {
-                bearerAuth(oboToken)
-            }.body<AltinnTilgangerResponse>()
-            return response
-        } catch (e: ResponseException) {
-            logger.error("Feil ved henting av altinn-tilganger, status: ${e.response.status}", e)
-            throw UpstreamRequestException("Feil ved henting av altinn-tilganger", e)
-        } catch (e: Exception) {
-            logger.error("Uventet feil ved henting av altinn-tilganger", e)
-            throw UpstreamRequestException("Uventet feil ved henting av altinn-tilganger")
-        }
+        val oboToken = exchangeToken(bruker.token)
+        val response = requestAltinnTilganger(oboToken)
+        return decodeAltinnTilgangerResponse(response)
     }
 
-    companion object {
-        private val logger = logger()
+    private suspend fun exchangeToken(token: String): String = try {
+        texasClient.exchangeTokenForIsAltinnTilganger(token).accessToken
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: ResponseException) {
+        throw UpstreamRequestException(
+            message = "Token exchange for AltinnTilganger failed",
+            cause = e,
+            upstreamStatus = e.response.status.value,
+            upstreamExceptionType = e.toUpstreamExceptionType(),
+            failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
+        )
+    } catch (e: Exception) {
+        throw UpstreamRequestException(
+            message = "Token exchange for AltinnTilganger failed",
+            cause = e,
+            upstreamExceptionType = UpstreamExceptionType.UNEXPECTED_EXCEPTION,
+            failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
+        )
     }
+
+    private suspend fun requestAltinnTilganger(oboToken: String): HttpResponse = try {
+        httpClient.post("$baseUrl/altinn-tilganger") {
+            bearerAuth(oboToken)
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: ResponseException) {
+        throw UpstreamRequestException(
+            message = "AltinnTilganger returned an unsuccessful response",
+            cause = e,
+            upstreamStatus = e.response.status.value,
+            upstreamExceptionType = e.toUpstreamExceptionType(),
+            failureStage = UpstreamFailureStage.RESPONSE,
+        )
+    } catch (e: Exception) {
+        throw UpstreamRequestException(
+            message = "AltinnTilganger request failed",
+            cause = e,
+            upstreamExceptionType = UpstreamExceptionType.TRANSPORT_EXCEPTION,
+            failureStage = UpstreamFailureStage.REQUEST,
+        )
+    }
+
+    private suspend fun decodeAltinnTilgangerResponse(response: HttpResponse): AltinnTilgangerResponse = try {
+        response.body()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        throw UpstreamRequestException(
+            message = "AltinnTilganger response could not be decoded",
+            cause = e,
+            upstreamStatus = response.status.value,
+            upstreamExceptionType = UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION,
+            failureStage = UpstreamFailureStage.RESPONSE,
+        )
+    }
+}
+
+private fun ResponseException.toUpstreamExceptionType(): UpstreamExceptionType = when (this) {
+    is ClientRequestException -> UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION
+    is ServerResponseException -> UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION
+    is RedirectResponseException -> UpstreamExceptionType.REDIRECT_RESPONSE_EXCEPTION
+    else -> UpstreamExceptionType.RESPONSE_EXCEPTION
 }

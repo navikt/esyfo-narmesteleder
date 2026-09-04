@@ -5,8 +5,9 @@ import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
-import no.nav.syfo.util.logger
+import org.slf4j.LoggerFactory
 
 class AltinnTilgangerService(
     val altinnTilgangerClient: IAltinnTilgangerClient,
@@ -54,10 +55,16 @@ class AltinnTilgangerService(
         orgnummer: String,
     ): AltinnTilgang? {
         try {
-            return altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)?.hierarki?.findByOrgnr(orgnummer)
+            val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
+                ?: return null
+            return response.hierarki.findByOrgnr(orgnummer)
         } catch (e: UpstreamRequestException) {
-            logger.error("Error when fetching altinn resources available to owner to authorization token", e)
-            throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn resources for users authorization token")
+            logAltinnTilgangerLookupFailure(e, AltinnTilgangerOperation.LOOKUP_ORGANIZATION_ACCESS)
+            throw ApiErrorException.InternalServerErrorException(
+                errorMessage = "An error occurred when fetching altinn resources for users authorization token",
+                cause = e,
+                isAlreadyLogged = true,
+            )
         }
     }
 
@@ -66,14 +73,49 @@ class AltinnTilgangerService(
             val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
                 ?: return emptyList()
             if (response.isError == true) {
-                logger.warn("Altinn tilganger proxy reported error - returning empty list")
+                logAltinnTilgangerLookupFailure(
+                    errorCode = AltinnTilgangerErrorCode.ERROR_RESPONSE,
+                    operation = AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS,
+                )
                 return emptyList()
             }
             return response.hierarki.filterToOrganizations()
         } catch (e: UpstreamRequestException) {
-            logger.error("Error when fetching altinn tilganger for organisasjon filtering", e)
-            throw ApiErrorException.InternalServerErrorException("An error occurred when fetching altinn tilganger")
+            logAltinnTilgangerLookupFailure(e, AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS)
+            throw ApiErrorException.InternalServerErrorException(
+                errorMessage = "An error occurred when fetching altinn tilganger",
+                cause = e,
+                isAlreadyLogged = true,
+            )
         }
+    }
+
+    private fun logAltinnTilgangerLookupFailure(
+        cause: UpstreamRequestException,
+        operation: AltinnTilgangerOperation,
+    ) {
+        val origin = cause.cause ?: cause
+        val event = logger.atError()
+            .addKeyValue("event_type", AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value)
+            .addKeyValue("error_code", cause.errorCode().value)
+            .addKeyValue("operation", operation.value)
+            .addKeyValue("exception_type", cause.upstreamExceptionType.logValue)
+            .addKeyValue("cause_type", origin.safeCauseType())
+            .addKeyValue("failure_stage", cause.failureStage.logValue)
+            .setCause(SanitizedUpstreamFailure(origin.stackTrace))
+        cause.upstreamStatus?.let { event.addKeyValue("upstream_status", it) }
+        event.log("AltinnTilganger lookup failed")
+    }
+
+    private fun logAltinnTilgangerLookupFailure(
+        errorCode: AltinnTilgangerErrorCode,
+        operation: AltinnTilgangerOperation,
+    ) {
+        logger.atError()
+            .addKeyValue("event_type", AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value)
+            .addKeyValue("error_code", errorCode.value)
+            .addKeyValue("operation", operation.value)
+            .log("AltinnTilganger lookup failed")
     }
 
     private fun List<AltinnTilgang>.filterToOrganizations(): List<AccessibleOrganization> = mapNotNull { it.filterAccess() }
@@ -110,6 +152,29 @@ class AltinnTilgangerService(
         const val OPPGI_NARMESTELEDER_RESOURCE =
             "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn3 to access NL relasjon
         const val OPPRETT_NL_REALASJON_RESOURCE = "4596:1" // Access resource in Altinn2 to access NL relasjon
-        private val logger = logger()
+        private val logger = LoggerFactory.getLogger(AltinnTilgangerService::class.java)
     }
 }
+
+private fun UpstreamRequestException.errorCode(): AltinnTilgangerErrorCode = when {
+    failureStage == UpstreamFailureStage.TOKEN_EXCHANGE -> AltinnTilgangerErrorCode.TOKEN_EXCHANGE_FAILED
+    upstreamStatus in 300..399 -> AltinnTilgangerErrorCode.UPSTREAM_UNEXPECTED_REDIRECT
+    upstreamStatus == 401 -> AltinnTilgangerErrorCode.UPSTREAM_UNAUTHORIZED
+    upstreamStatus == 403 -> AltinnTilgangerErrorCode.UPSTREAM_FORBIDDEN
+    upstreamStatus == 404 -> AltinnTilgangerErrorCode.UPSTREAM_NOT_FOUND
+    upstreamStatus == 429 -> AltinnTilgangerErrorCode.UPSTREAM_RATE_LIMITED
+    upstreamStatus in 400..499 -> AltinnTilgangerErrorCode.UPSTREAM_CLIENT_ERROR
+    upstreamStatus in 500..599 -> AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR
+    failureStage == UpstreamFailureStage.RESPONSE -> AltinnTilgangerErrorCode.UPSTREAM_RESPONSE_FAILURE
+    else -> AltinnTilgangerErrorCode.UPSTREAM_TRANSPORT_FAILURE
+}
+
+private class SanitizedUpstreamFailure(originStackTrace: Array<StackTraceElement>) : RuntimeException() {
+    init {
+        stackTrace = originStackTrace
+    }
+}
+
+private val SAFE_CAUSE_TYPE = Regex("^[A-Za-z][A-Za-z0-9]{0,79}$")
+
+private fun Throwable.safeCauseType(): String = javaClass.simpleName.takeIf(SAFE_CAUSE_TYPE::matches) ?: "Throwable"

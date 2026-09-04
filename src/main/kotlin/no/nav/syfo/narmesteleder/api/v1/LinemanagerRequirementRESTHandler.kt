@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.api.v1
 
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -66,6 +67,8 @@ class LinemanagerRequirementRESTHandler(
             throw ApiErrorException.NotFoundException("A LinemanagerRequirement was not found", e)
         } catch (e: ApiErrorException) {
             throw e
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw ApiErrorException.InternalServerErrorException("Internal server error", e)
         }
@@ -79,6 +82,8 @@ class LinemanagerRequirementRESTHandler(
     } catch (e: LinemanagerRequirementNotFoundException) {
         throw ApiErrorException.NotFoundException("LinemanagerRequirement", e)
     } catch (e: ApiErrorException) {
+        throw e
+    } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         throw ApiErrorException.InternalServerErrorException(

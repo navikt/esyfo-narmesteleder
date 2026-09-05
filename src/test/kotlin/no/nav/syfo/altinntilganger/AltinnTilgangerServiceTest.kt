@@ -13,6 +13,7 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_R
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
+import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
@@ -90,18 +91,30 @@ class AltinnTilgangerServiceTest :
 
             it("should throw Internal Server Error when client fails to make request") {
                 val mockAltinnTilgangerClient = mockk<FakeAltinnTilgangerClient>()
-                coEvery { mockAltinnTilgangerClient.fetchAltinnTilganger(any()) } throws UpstreamRequestException("Forced failure")
+                val upstreamFailure = UpstreamRequestException("Forced failure")
+                coEvery { mockAltinnTilgangerClient.fetchAltinnTilganger(any()) } throws upstreamFailure
                 val altinnTilgangerServiceWithMock = AltinnTilgangerService(mockAltinnTilgangerClient)
                 val accessPolicy = altinnTilgangerClient.accessPolicy.first()
                 val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
                     altinnTilgangerServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
+                exception.cause shouldBe upstreamFailure
+                exception.isAlreadyLogged shouldBe true
             }
         }
 
         describe("getFilteredOrganizations") {
             val userPrincipal = UserPrincipal("12345678910", "token")
+
+            it("should preserve empty results when the client returns null") {
+                val nullableClient = mockk<IAltinnTilgangerClient>()
+                coEvery { nullableClient.fetchAltinnTilganger(any()) } returns null
+                val service = AltinnTilgangerService(nullableClient)
+
+                service.getAltinnTilgangForOrgnr(userPrincipal, "999999999") shouldBe null
+                service.getFilteredOrganizations(userPrincipal) shouldBe emptyList()
+            }
 
             it("should keep parent as context when only child has narmesteleder access to document OR semantics") {
                 val childWithAccess = altinnTilgang(

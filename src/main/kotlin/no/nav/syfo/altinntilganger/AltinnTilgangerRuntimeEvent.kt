@@ -1,0 +1,31 @@
+package no.nav.syfo.altinntilganger
+
+/** Closed, code-owned catalog for runtime errors emitted by [AltinnTilgangerService]. */
+internal enum class AltinnTilgangerRuntimeEvent(
+    val value: String,
+) {
+    LOOKUP_FAILED("altinn_tilganger_lookup_failed"),
+}
+
+internal enum class AltinnTilgangerOperation(
+    val value: String,
+) {
+    LOOKUP_ORGANIZATION_ACCESS("hent_altinn_tilgang_for_orgnummer"),
+    LIST_ACCESSIBLE_ORGANIZATIONS("hent_tilgjengelige_organisasjoner"),
+}
+
+internal enum class AltinnTilgangerErrorCode(
+    val value: String,
+) {
+    UPSTREAM_UNEXPECTED_REDIRECT("ALTINN_TILGANGER_UPSTREAM_UNEXPECTED_REDIRECT"),
+    UPSTREAM_UNAUTHORIZED("ALTINN_TILGANGER_UPSTREAM_UNAUTHORIZED"),
+    UPSTREAM_FORBIDDEN("ALTINN_TILGANGER_UPSTREAM_FORBIDDEN"),
+    UPSTREAM_NOT_FOUND("ALTINN_TILGANGER_UPSTREAM_NOT_FOUND"),
+    UPSTREAM_RATE_LIMITED("ALTINN_TILGANGER_UPSTREAM_RATE_LIMITED"),
+    UPSTREAM_CLIENT_ERROR("ALTINN_TILGANGER_UPSTREAM_CLIENT_ERROR"),
+    UPSTREAM_SERVER_ERROR("ALTINN_TILGANGER_UPSTREAM_SERVER_ERROR"),
+    UPSTREAM_TRANSPORT_FAILURE("ALTINN_TILGANGER_UPSTREAM_TRANSPORT_FAILURE"),
+    UPSTREAM_RESPONSE_FAILURE("ALTINN_TILGANGER_UPSTREAM_RESPONSE_FAILURE"),
+    TOKEN_EXCHANGE_FAILED("ALTINN_TILGANGER_TOKEN_EXCHANGE_FAILED"),
+    ERROR_RESPONSE("ALTINN_TILGANGER_ERROR_RESPONSE"),
+}

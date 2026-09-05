@@ -9,9 +9,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
-import io.ktor.server.application.log
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.NotFoundException
 import io.ktor.server.plugins.callid.CallId
@@ -19,10 +17,15 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.exception.ApiErrorException
+import org.slf4j.LoggerFactory
 import java.util.*
 
 const val NAV_CALL_ID_HEADER = "Nav-Call-Id"
+internal const val STATUS_PAGES_LOGGER_NAME = "no.nav.syfo.application.api.StatusPages"
+
+private val statusPagesLogger = LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME)
 
 fun Application.installContentNegotiation() {
     install(ContentNegotiation) {
@@ -44,9 +47,11 @@ fun Application.installCallId() {
     }
 }
 
-private fun logException(call: ApplicationCall, cause: Throwable) {
-    val logExceptionMessage = "Caught ${cause::class.simpleName} exception"
-    call.application.log.warn(logExceptionMessage, cause)
+private fun logException(cause: Throwable) {
+    if (cause is ApiErrorException && cause.isAlreadyLogged) {
+        return
+    }
+    statusPagesLogger.warn("Unhandled API exception", cause)
 }
 
 fun determineApiError(cause: Throwable, path: String): ApiError = when (cause) {
@@ -64,8 +69,11 @@ fun determineApiError(cause: Throwable, path: String): ApiError = when (cause) {
 fun Application.installStatusPages() {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
-            logException(call, cause)
+            if (cause is CancellationException) {
+                throw cause
+            }
             val apiError = determineApiError(cause, call.request.path())
+            logException(cause)
             call.respond(apiError.status, apiError)
         }
     }

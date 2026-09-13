@@ -238,7 +238,7 @@ class ValidationServiceTest :
                     aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
                 }
                 coVerify(exactly = 0) {
-                    pdpService.hasAccessToResource(any(), any(), any())
+                    pdpService.accessDecisionForResource(any(), any(), any())
                 }
             }
 
@@ -267,7 +267,7 @@ class ValidationServiceTest :
                     aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
                 }
                 coVerify(exactly = 0) {
-                    pdpService.hasAccessToResource(any(), any(), any())
+                    pdpService.accessDecisionForResource(any(), any(), any())
                 }
 
                 exception.message shouldBe "Last name for linemanager does not correspond with registered value for the given national identification number"
@@ -346,7 +346,7 @@ class ValidationServiceTest :
                 }
                 coVerify(exactly = 0) {
                     aaregService.findArbeidsforholdByPersonIdent(any())
-                    pdpService.hasAccessToResource(any(), any(), any())
+                    pdpService.accessDecisionForResource(any(), any(), any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
             }
@@ -377,7 +377,7 @@ class ValidationServiceTest :
                     pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value))
                 }
                 coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = match<System> { it.id == "systemId" },
                         orgNumberSet = eq(setOf(narmestelederRelasjonerWrite.orgNumber.value)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
@@ -404,7 +404,7 @@ class ValidationServiceTest :
                 }
                 coVerify(exactly = 0) {
                     aaregService.findArbeidsforholdByPersonIdent(any())
-                    pdpService.hasAccessToResource(any(), any(), any())
+                    pdpService.accessDecisionForResource(any(), any(), any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
             }
@@ -428,7 +428,7 @@ class ValidationServiceTest :
                 }
                 coVerify(exactly = 0) {
                     aaregService.findArbeidsforholdByPersonIdent(any())
-                    pdpService.hasAccessToResource(any(), any(), any())
+                    pdpService.accessDecisionForResource(any(), any(), any())
                 }
             }
 
@@ -443,7 +443,7 @@ class ValidationServiceTest :
                 result.nationalIdentificationNumber.value shouldBe narmesteLederAvkreft.employeeIdentificationNumber.value
                 result.name.etternavn shouldBe narmesteLederAvkreft.lastName
                 coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = match<System> { it.id == "systemId" },
                         orgNumberSet = eq(setOf(narmesteLederAvkreft.orgNumber.value)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),

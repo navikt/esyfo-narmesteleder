@@ -18,6 +18,7 @@ import io.mockk.coVerify
 import manager
 import nlBehovEntity
 import no.nav.syfo.API_V1_PATH
+import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ereg.client.Organisasjon
@@ -107,7 +108,7 @@ class LinemanagerRequirementApiV1Test :
                             inngaarIJuridiskEnheter = emptyList()
                         )
                         val requirementId = seedLinemanagerRequirement()
-                        coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
+                        coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Deny
                         val response =
                             client.get("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
                                 bearerAuth(createMockToken("999999999"))
@@ -283,7 +284,7 @@ class LinemanagerRequirementApiV1Test :
                             consumer = DefaultOrganization.copy(ID = "0192:000000000"), // mismatch org
                             scope = MASKINPORTEN_NL_SCOPE,
                         )
-                        coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
+                        coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Deny
                         fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                         fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
                         val response =

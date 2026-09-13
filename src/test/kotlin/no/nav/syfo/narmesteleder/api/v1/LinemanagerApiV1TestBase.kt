@@ -18,6 +18,7 @@ import linemanager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
+import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -155,7 +156,7 @@ abstract class LinemanagerApiV1TestBase(
                     narmestelederKafkaService = narmestelederKafkaServiceSpy,
                     validationService = validationServiceSpy,
                 )
-            coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns true
+            coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Permit
             fakeRepo.clear()
         }
         body()

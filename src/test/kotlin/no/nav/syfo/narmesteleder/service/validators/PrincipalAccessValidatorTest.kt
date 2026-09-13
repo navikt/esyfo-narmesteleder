@@ -10,6 +10,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
+import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
@@ -78,7 +79,7 @@ class PrincipalAccessValidatorTest :
                     )
                 }
                 coVerify(exactly = 0) {
-                    pdpService.hasAccessToResource(any(), any(), any())
+                    pdpService.accessDecisionForResource(any(), any(), any())
                 }
             }
 
@@ -98,7 +99,7 @@ class PrincipalAccessValidatorTest :
                     )
                 }
                 coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = match<System> { it.id == "systemId" },
                         orgNumberSet = eq(setOf(orgNumber)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
@@ -121,8 +122,8 @@ class PrincipalAccessValidatorTest :
                     ),
                 )
                 coEvery {
-                    pdpService.hasAccessToResource(any(), eq(setOf(requestedOrgnumber)), any())
-                } returns false
+                    pdpService.accessDecisionForResource(any(), eq(setOf(requestedOrgnumber)), any())
+                } returns Decision.Deny
 
                 val exception = shouldThrow<ApiErrorException.ForbiddenException> {
                     validator.validatePrincipalAccessToOrgnumber(principal, requestedOrgnumber)
@@ -130,14 +131,14 @@ class PrincipalAccessValidatorTest :
 
                 exception.type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                 coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = match<System> { it.id == "systemId" },
                         orgNumberSet = eq(setOf(requestedOrgnumber)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
                     )
                 }
                 coVerify(exactly = 0) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = any(),
                         orgNumberSet = eq(setOf(principalOrgnumber)),
                         resource = any(),
@@ -157,24 +158,24 @@ class PrincipalAccessValidatorTest :
                     ),
                 )
                 coEvery {
-                    pdpService.hasAccessToResource(any(), eq(setOf(requestedOrgnumber)), any())
-                } returns false
+                    pdpService.accessDecisionForResource(any(), eq(setOf(requestedOrgnumber)), any())
+                } returns Decision.Deny
                 coEvery {
-                    pdpService.hasAccessToResource(any(), eq(setOf(principalOrgnumber)), any())
-                } returns true
+                    pdpService.accessDecisionForResource(any(), eq(setOf(principalOrgnumber)), any())
+                } returns Decision.Permit
 
                 val result = validator.validatePrincipalAccessToOrgnumber(principal, requestedOrgnumber)
 
                 result shouldBe null
                 coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = match<System> { it.id == "systemId" },
                         orgNumberSet = eq(setOf(requestedOrgnumber)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
                     )
                 }
                 coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = match<System> { it.id == "systemId" },
                         orgNumberSet = eq(setOf(principalOrgnumber)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
@@ -194,11 +195,11 @@ class PrincipalAccessValidatorTest :
                     ),
                 )
                 coEvery {
-                    pdpService.hasAccessToResource(any(), eq(setOf(requestedOrgnumber)), any())
-                } returns false
+                    pdpService.accessDecisionForResource(any(), eq(setOf(requestedOrgnumber)), any())
+                } returns Decision.Deny
                 coEvery {
-                    pdpService.hasAccessToResource(any(), eq(setOf(principalOrgnumber)), any())
-                } returns false
+                    pdpService.accessDecisionForResource(any(), eq(setOf(principalOrgnumber)), any())
+                } returns Decision.Deny
 
                 val exception = shouldThrow<ApiErrorException.ForbiddenException> {
                     validator.validatePrincipalAccessToOrgnumber(principal, requestedOrgnumber)
@@ -206,14 +207,14 @@ class PrincipalAccessValidatorTest :
 
                 exception.type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                 coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = match<System> { it.id == "systemId" },
                         orgNumberSet = eq(setOf(requestedOrgnumber)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),
                     )
                 }
                 coVerify(exactly = 1) {
-                    pdpService.hasAccessToResource(
+                    pdpService.accessDecisionForResource(
                         user = match<System> { it.id == "systemId" },
                         orgNumberSet = eq(setOf(principalOrgnumber)),
                         resource = eq("nav_syfo_oppgi-narmesteleder"),

@@ -16,5 +16,3 @@ enum class Decision {
 }
 
 fun PdpResponse.result() = response.first().decision
-
-fun PdpResponse.hasAccess(): Boolean = result() == Decision.Permit

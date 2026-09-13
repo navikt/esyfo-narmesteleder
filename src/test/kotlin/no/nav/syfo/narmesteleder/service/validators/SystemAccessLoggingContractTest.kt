@@ -4,10 +4,15 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.OutputStreamAppender
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.networknt.schema.InputFormat
+import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.SpecificationVersion
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.get
@@ -44,6 +49,7 @@ import org.slf4j.MDC
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 
 private const val REQUESTED_ORG = "111111111"
 private const val PRINCIPAL_ORG = "222222222"
@@ -61,6 +67,11 @@ class SystemAccessLoggingContractTest :
         val catalog = requireNotNull(
             SystemAccessLoggingContractTest::class.java.getResourceAsStream("/observability/system-access-catalog.json"),
         ).use { jacksonObjectMapper().readTree(it) }
+        val schemaBytes = requireNotNull(
+            SystemAccessLoggingContractTest::class.java.getResourceAsStream("/observability/runtime-error-v1.0.0/schema.json"),
+        ).use { it.readBytes() }
+        val runtimeSchema = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7)
+            .getSchema(schemaBytes.toString(Charsets.UTF_8), InputFormat.JSON)
         val loggers = listOf(
             PrincipalAccessValidator.logger as Logger,
             LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME) as Logger,
@@ -95,6 +106,9 @@ class SystemAccessLoggingContractTest :
             EregService(eregClient, eregCache),
         )
 
+        fun logRecords() = output.toString(Charsets.UTF_8)
+            .lineSequence().filter(String::isNotBlank).map(jacksonObjectMapper()::readTree).toList()
+
         fun checkAccessResponse(expectedStatus: HttpStatusCode) {
             testApplication {
                 application {
@@ -114,12 +128,13 @@ class SystemAccessLoggingContractTest :
                     body["type"].asText() shouldBe "MISSING_ALITINN_RESOURCE_ACCESS"
                     body["message"].asText() shouldBe
                         "System user does not have access to nav_syfo_oppgi-narmesteleder resource"
+                    val records = logRecords()
+                    records shouldHaveSize 1
+                    // Validate before filtering by event_type so a missing identity cannot hide the log.
+                    runtimeSchema.validate(records.single()) shouldHaveSize 0
                 }
             }
         }
-
-        fun logRecords() = output.toString(Charsets.UTF_8)
-            .lineSequence().filter(String::isNotBlank).map(jacksonObjectMapper()::readTree).toList()
 
         beforeSpec {
             loggers.forEach {
@@ -155,6 +170,7 @@ class SystemAccessLoggingContractTest :
             output.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).forEach { line ->
                 if (jacksonObjectMapper().readTree(line).path("event_type").asText() == "api_request_rejected") {
                     val record = jacksonObjectMapper().readTree(line)
+                    runtimeSchema.validate(record) shouldHaveSize 0
                     listOf("event_type", "error_code", "operation", "rejection_reason").forEach { field ->
                         catalog[field].any { it.asText() == record.path(field).asText() } shouldBe true
                     }
@@ -181,6 +197,26 @@ class SystemAccessLoggingContractTest :
             record.path("pdp_fallback_decision").asText() shouldBe "not_checked"
             listOf(REQUESTED_ORG, PRINCIPAL_ORG, systemPrincipal.systemOwner, systemPrincipal.systemUserId, systemPrincipal.token)
                 .forEach { serialized shouldNotContain it }
+        }
+
+        it("pins the shared v1 schema bytes used by the log contract test") {
+            val expectedSha256 = requireNotNull(
+                SystemAccessLoggingContractTest::class.java.getResourceAsStream("/observability/runtime-error-v1.0.0/schema.sha256"),
+            ).bufferedReader().use { it.readText().trim() }
+
+            MessageDigest.getInstance("SHA-256").digest(schemaBytes).toHexString() shouldBe expectedSha256
+        }
+
+        it("rejects missing identity, missing rejection reason and wrong JSON types in serialized output") {
+            checkAccessResponse(HttpStatusCode.Forbidden)
+
+            val record = logRecords().single()
+            listOf("event_type", "rejection_reason").forEach { field ->
+                val invalid = record.deepCopy<ObjectNode>().apply { remove(field) }
+                runtimeSchema.validate(invalid).shouldNotBeEmpty()
+            }
+            val invalidStatus = record.deepCopy<ObjectNode>().put("upstream_status", "502")
+            runtimeSchema.validate(invalidStatus).shouldNotBeEmpty()
         }
 
         Decision.entries.forEach { directDecision ->

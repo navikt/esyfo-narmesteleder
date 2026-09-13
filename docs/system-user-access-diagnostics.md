@@ -39,9 +39,15 @@ this event. Changing access policy merely to reduce the count is not a fix.
 
 Run `./gradlew test --tests '*SystemAccessLoggingContractTest'`. The test exercises
 the validator, PDP service and Ktor error handler, serializes through the
-production Logstash encoder, checks the local catalog in
+production Logstash encoder, validates the shared v1 JSON Schema pinned in
+`src/test/resources/observability/runtime-error-v1.0.0/`, checks the local catalog in
 `src/test/resources/observability/system-access-catalog.json`, and exports the
 verified synthetic events to `build/observability/system-access.ndjson`.
+
+Schema validation runs inside the existing Gradle test and therefore also in
+normal CI. NetworkNT is a test-only dependency compatible with Jackson 2; neither
+schema nor validator enters the production runtime. The test checks the pinned
+schema checksum and proves that missing fields and wrong JSON types are rejected.
 
 The tests cover all direct/fallback decision combinations, skipped fallback,
 unchanged HTTP responses, exception/cancellation paths, trace context, duplicate

@@ -56,6 +56,7 @@ dependencies {
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.bundles.testcontainers)
+    testImplementation(libs.json.schema.validator)
 }
 application {
     mainClass.set("no.nav.syfo.ApplicationKt")

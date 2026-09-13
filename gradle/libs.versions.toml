@@ -6,6 +6,7 @@ datafaker = "2.7.0"
 flyway = "13.4.0"
 hikaricp = "7.1.0"
 jackson-datatype-jsr = "2.22.2"
+json-schema-validator = "2.0.4"
 kafka = "4.3.1"
 koin = "4.2.2"
 kotest-extensions = "2.0.0"
@@ -36,6 +37,7 @@ database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 database-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson-datatype-jsr" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }
 koin-logger = { module = "io.insert-koin:koin-logger-slf4j", version.ref = "koin" }

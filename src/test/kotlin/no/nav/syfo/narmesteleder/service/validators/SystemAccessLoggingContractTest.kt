@@ -2,13 +2,12 @@ package no.nav.syfo.narmesteleder.service.validators
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.LoggerContext
+import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.OutputStreamAppender
+import ch.qos.logback.core.Appender
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.networknt.schema.InputFormat
-import com.networknt.schema.SchemaRegistry
-import com.networknt.schema.SpecificationVersion
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -25,7 +24,9 @@ import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
-import net.logstash.logback.encoder.LogstashEncoder
+import no.nav.esyfo.observability.testkit.LogCapture
+import no.nav.esyfo.observability.testkit.RuntimeLogContract
+import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.client.DecisionResult
 import no.nav.syfo.altinn.pdp.client.IPdpClient
@@ -46,10 +47,8 @@ import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
-import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.security.MessageDigest
 
 private const val REQUESTED_ORG = "111111111"
 private const val PRINCIPAL_ORG = "222222222"
@@ -62,31 +61,19 @@ private val systemPrincipal = SystemPrincipal(
 
 class SystemAccessLoggingContractTest :
     DescribeSpec({
-        val output = ByteArrayOutputStream()
         val emittedRejections = mutableListOf<String>()
-        val catalog = requireNotNull(
-            SystemAccessLoggingContractTest::class.java.getResourceAsStream("/observability/system-access-catalog.json"),
-        ).use { jacksonObjectMapper().readTree(it) }
-        val schemaBytes = requireNotNull(
-            SystemAccessLoggingContractTest::class.java.getResourceAsStream("/observability/runtime-error-v1.0.0/schema.json"),
-        ).use { it.readBytes() }
-        val runtimeSchema = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7)
-            .getSchema(schemaBytes.toString(Charsets.UTF_8), InputFormat.JSON)
+        val contract = RuntimeLogContract.forEvents(
+            systemUserAccessRejected,
+            rejectionReasons = setOf(SYSTEM_USER_ACCESS_NOT_GRANTED),
+        )
         val loggers = listOf(
             PrincipalAccessValidator.logger as Logger,
             LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME) as Logger,
         )
         val originalSettings = loggers.map { it.level to it.isAdditive }
-        val encoder = LogstashEncoder().apply {
-            context = loggers.first().loggerContext
-            start()
-        }
-        val appender = OutputStreamAppender<ILoggingEvent>().apply {
-            context = loggers.first().loggerContext
-            this.encoder = encoder
-            setOutputStream(output)
-            start()
-        }
+        val productionLogging = LoggerContext()
+        lateinit var productionAppender: Appender<ILoggingEvent>
+        var captures = emptyList<LogCapture>()
         val decisions = mutableMapOf<String, Decision>()
         val pdpFailures = mutableMapOf<String, Throwable>()
         val checkedOrganizations = mutableListOf<String>()
@@ -106,8 +93,9 @@ class SystemAccessLoggingContractTest :
             EregService(eregClient, eregCache),
         )
 
-        fun logRecords() = output.toString(Charsets.UTF_8)
-            .lineSequence().filter(String::isNotBlank).map(jacksonObjectMapper()::readTree).toList()
+        fun logLines() = captures.flatMap { it.records }
+
+        fun logRecords() = logLines().map(jacksonObjectMapper()::readTree)
 
         fun checkAccessResponse(expectedStatus: HttpStatusCode) {
             testApplication {
@@ -131,32 +119,37 @@ class SystemAccessLoggingContractTest :
                     val records = logRecords()
                     records shouldHaveSize 1
                     // Validate before filtering by event_type so a missing identity cannot hide the log.
-                    runtimeSchema.validate(records.single()) shouldHaveSize 0
+                    contract.assertValid(logLines(), expectedCount = 1)
                 }
             }
         }
 
         beforeSpec {
+            productionLogging.putProperty("NAIS_CLUSTER_NAME", "test")
+            JoranConfigurator().apply {
+                context = productionLogging
+                doConfigure("src/main/resources/logback.xml")
+            }
+            productionAppender = requireNotNull(productionLogging.getLogger(Logger.ROOT_LOGGER_NAME).getAppender("stdout_json"))
             loggers.forEach {
                 it.level = Level.TRACE
                 it.isAdditive = false
-                it.addAppender(appender)
+                it.addAppender(productionAppender)
             }
         }
         afterSpec {
             loggers.zip(originalSettings).forEach { (logger, settings) ->
-                logger.detachAppender(appender)
+                logger.detachAppender(productionAppender)
                 logger.level = settings.first
                 logger.isAdditive = settings.second
             }
-            appender.stop()
-            encoder.stop()
+            productionLogging.stop()
             val outputFile = Path.of("build/observability/system-access.ndjson")
             Files.createDirectories(outputFile.parent)
             Files.writeString(outputFile, emittedRejections.joinToString(separator = "\n", postfix = "\n"))
         }
         beforeTest {
-            output.reset()
+            captures = loggers.map { captureLogs(it, "stdout_json") }
             decisions.clear()
             decisions[REQUESTED_ORG] = Decision.Indeterminate
             decisions[PRINCIPAL_ORG] = Decision.Deny
@@ -167,28 +160,30 @@ class SystemAccessLoggingContractTest :
             coEvery { eregCache.getOrganisasjon(any()) } returns null
         }
         afterTest {
-            output.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).forEach { line ->
-                if (jacksonObjectMapper().readTree(line).path("event_type").asText() == "api_request_rejected") {
-                    val record = jacksonObjectMapper().readTree(line)
-                    runtimeSchema.validate(record) shouldHaveSize 0
-                    listOf("event_type", "error_code", "operation", "rejection_reason").forEach { field ->
-                        catalog[field].any { it.asText() == record.path(field).asText() } shouldBe true
+            try {
+                logLines().forEach { line ->
+                    if (jacksonObjectMapper().readTree(line).path("event_type").asText() == "api_request_rejected") {
+                        contract.assertValid(listOf(line), expectedCount = 1)
+                        listOf(REQUESTED_ORG, PRINCIPAL_ORG, systemPrincipal.systemOwner, systemPrincipal.systemUserId, systemPrincipal.token)
+                            .forEach { line shouldNotContain it }
+                        emittedRejections += line
                     }
-                    listOf(REQUESTED_ORG, PRINCIPAL_ORG, systemPrincipal.systemOwner, systemPrincipal.systemUserId, systemPrincipal.token)
-                        .forEach { line shouldNotContain it }
-                    emittedRejections += line
                 }
+            } finally {
+                captures.forEach(LogCapture::close)
             }
         }
 
         it("emits one structured terminal rejection retaining the PDP decision without identifiers") {
             checkAccessResponse(HttpStatusCode.Forbidden)
 
-            val serialized = output.toString(Charsets.UTF_8)
+            val serialized = logLines().joinToString("\n")
             val records = logRecords()
             records shouldHaveSize 1
             val record = records.single()
             record["level"].asText() shouldBe "WARN"
+            record["logger_name"].asText() shouldBe PrincipalAccessValidator.Companion::class.java.name
+            record["message"].asText() shouldBe "System user access was not granted after resource and organization checks"
             record.path("event_type").asText() shouldBe "api_request_rejected"
             record.path("rejection_reason").asText() shouldBe "SYSTEM_USER_ACCESS_NOT_GRANTED"
             record.path("error_code").asText() shouldBe "MISSING_ALTINN_RESOURCE_ACCESS"
@@ -199,24 +194,16 @@ class SystemAccessLoggingContractTest :
                 .forEach { serialized shouldNotContain it }
         }
 
-        it("pins the shared v1 schema bytes used by the log contract test") {
-            val expectedSha256 = requireNotNull(
-                SystemAccessLoggingContractTest::class.java.getResourceAsStream("/observability/runtime-error-v1.0.0/schema.sha256"),
-            ).bufferedReader().use { it.readText().trim() }
-
-            MessageDigest.getInstance("SHA-256").digest(schemaBytes).toHexString() shouldBe expectedSha256
-        }
-
         it("rejects missing identity, missing rejection reason and wrong JSON types in serialized output") {
             checkAccessResponse(HttpStatusCode.Forbidden)
 
             val record = logRecords().single()
             listOf("event_type", "rejection_reason").forEach { field ->
                 val invalid = record.deepCopy<ObjectNode>().apply { remove(field) }
-                runtimeSchema.validate(invalid).shouldNotBeEmpty()
+                contract.validate(listOf(invalid.toString())).shouldNotBeEmpty()
             }
             val invalidStatus = record.deepCopy<ObjectNode>().put("upstream_status", "502")
-            runtimeSchema.validate(invalidStatus).shouldNotBeEmpty()
+            contract.validate(listOf(invalidStatus.toString())).shouldNotBeEmpty()
         }
 
         Decision.entries.forEach { directDecision ->

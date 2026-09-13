@@ -17,6 +17,17 @@ application {
 repositories {
     mavenCentral()
     maven(url = "https://packages.confluent.io/maven/")
+    exclusiveContent {
+        forRepository {
+            maven(url = "https://maven.pkg.github.com/navikt/esyfo-observability") {
+                credentials {
+                    username = providers.gradleProperty("githubUser").orElse("x-access-token").get()
+                    password = providers.gradleProperty("githubPassword").orNull
+                }
+            }
+        }
+        filter { includeGroup("no.nav.esyfo.observability") }
+    }
 }
 
 buildscript {
@@ -36,6 +47,7 @@ dependencies {
         exclude(group = "org.apache.kafka", module = "kafka-clients")
     }
     implementation(libs.datafaker)
+    implementation(libs.esyfo.logger)
     implementation(libs.logback.classic)
     implementation(libs.bundles.ktor.client)
     implementation(libs.bundles.ktor.server)
@@ -56,7 +68,7 @@ dependencies {
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.bundles.testcontainers)
-    testImplementation(libs.json.schema.validator)
+    testImplementation(libs.esyfo.logger.testkit)
 }
 application {
     mainClass.set("no.nav.syfo.ApplicationKt")

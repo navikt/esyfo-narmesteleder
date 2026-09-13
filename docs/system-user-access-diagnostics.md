@@ -7,7 +7,9 @@ and, if so, asks PDP for that organization. Only `Permit` grants access.
 
 ## One event for the final rejection
 
-When neither check grants access, the validator emits one `WARN` with:
+When neither check grants access, the validator emits one `WARN` through the
+shared `esyfo-logger` adapter. The local `SystemUserAccessRejection` definition
+owns the operation, reason, message and typed PDP context:
 
 | Field | Value |
 | --- | --- |
@@ -38,16 +40,22 @@ this event. Changing access policy merely to reduce the count is not a fix.
 ## Verification
 
 Run `./gradlew test --tests '*SystemAccessLoggingContractTest'`. The test exercises
-the validator, PDP service and Ktor error handler, serializes through the
-production Logstash encoder, validates the shared v1 JSON Schema pinned in
-`src/test/resources/observability/runtime-error-v1.0.0/`, checks the local catalog in
-`src/test/resources/observability/system-access-catalog.json`, and exports the
-verified synthetic events to `build/observability/system-access.ndjson`.
+the validator, PDP service and Ktor error handler. `esyfo-logger-testkit` captures
+JSON with the `stdout_json` encoder loaded from `src/main/resources/logback.xml`
+using its NAIS profile in an isolated logging context. It validates the packaged
+v1 contract and a catalog derived from the actual local event definition, then
+exports verified synthetic events to `build/observability/system-access.ndjson`.
 
 Schema validation runs inside the existing Gradle test and therefore also in
-normal CI. NetworkNT is a test-only dependency compatible with Jackson 2; neither
-schema nor validator enters the production runtime. The test checks the pinned
-schema checksum and proves that missing fields and wrong JSON types are rejected.
+normal CI. The testkit and its packaged schema remain test-only dependencies;
+the runtime adapter uses the application's existing SLF4J logger and does not
+install an encoder, tracing, error handling or scrubbing. Tests prove that missing
+fields and wrong JSON types are rejected without keeping a second schema copy
+in the application.
+
+The libraries are resolved from GitHub Packages. Local builds use Gradle's
+`githubUser` and `githubPassword` properties, with a token authorized to read the
+packages. The shared CI workflow supplies these properties; do not commit credentials.
 
 The tests cover all direct/fallback decision combinations, skipped fallback,
 unchanged HTTP responses, exception/cancellation paths, trace context, duplicate

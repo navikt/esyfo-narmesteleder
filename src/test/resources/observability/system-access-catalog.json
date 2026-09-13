@@ -1,6 +1,0 @@
-{
-  "event_type": ["api_request_rejected"],
-  "error_code": ["MISSING_ALTINN_RESOURCE_ACCESS"],
-  "operation": ["validate_system_user_access"],
-  "rejection_reason": ["SYSTEM_USER_ACCESS_NOT_GRANTED"]
-}

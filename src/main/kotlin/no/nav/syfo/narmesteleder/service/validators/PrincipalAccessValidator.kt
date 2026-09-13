@@ -1,5 +1,6 @@
 package no.nav.syfo.narmesteleder.service.validators
 
+import no.nav.esyfo.observability.emit
 import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
@@ -58,14 +59,7 @@ class PrincipalAccessValidator(
             return
         }
 
-        logger.atWarn()
-            .addKeyValue("event_type", "api_request_rejected")
-            .addKeyValue("error_code", "MISSING_ALTINN_RESOURCE_ACCESS")
-            .addKeyValue("operation", "validate_system_user_access")
-            .addKeyValue("rejection_reason", "SYSTEM_USER_ACCESS_NOT_GRANTED")
-            .addKeyValue("pdp_decision", directDecision.name)
-            .addKeyValue("pdp_fallback_decision", fallbackDecision?.name ?: "not_checked")
-            .log("System user access was not granted after resource and organization checks")
+        logger.emit(systemUserAccessRejected, SystemUserAccessRejection(directDecision, fallbackDecision))
 
         throw ApiErrorException.ForbiddenException(
             errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",

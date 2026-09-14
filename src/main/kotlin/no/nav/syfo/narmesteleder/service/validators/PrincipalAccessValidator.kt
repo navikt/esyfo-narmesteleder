@@ -1,5 +1,7 @@
 package no.nav.syfo.narmesteleder.service.validators
 
+import no.nav.esyfo.observability.emit
+import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
@@ -43,37 +45,44 @@ class PrincipalAccessValidator(
         requestedOrgnumber: String,
         principal: SystemPrincipal,
     ) {
-        val hasAccess = pdpService.hasAccessToResource(
+        val directDecision = pdpService.accessDecisionForResource(
             user = System(principal.systemUserId),
             orgNumberSet = setOf(requestedOrgnumber.trim()),
             resource = OPPGI_NARMESTELEDER_RESOURCE,
         )
-        if (!hasAccess) {
-            val hasAccessThroughPrincipal = accessThroughPrincipalOrgnumber(requestedOrgnumber, principal)
-            if (!hasAccessThroughPrincipal) {
-                throw ApiErrorException.ForbiddenException(
-                    errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
-                    type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-                )
-            }
+        if (directDecision == Decision.Permit) {
+            return
         }
+
+        val fallbackDecision = accessDecisionThroughPrincipalOrgnumber(requestedOrgnumber, principal)
+        if (fallbackDecision == Decision.Permit) {
+            return
+        }
+
+        logger.emit(systemUserAccessRejected, SystemUserAccessRejection(directDecision, fallbackDecision))
+
+        throw ApiErrorException.ForbiddenException(
+            errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",
+            type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
+            isAlreadyLogged = true,
+        )
     }
 
-    private suspend fun accessThroughPrincipalOrgnumber(
+    private suspend fun accessDecisionThroughPrincipalOrgnumber(
         requestedOrgnumber: String,
         principal: SystemPrincipal,
-    ): Boolean {
+    ): Decision? {
         val organisasjon = eregService.getOrganization(requestedOrgnumber)
         val orgnummerList = organisasjon.aggregerOrgnummereFraHierarki()
         val matchesPrincipal = orgnummerList.contains(principal.getSystemUserOrgNumber())
         return if (matchesPrincipal) {
-            pdpService.hasAccessToResource(
+            pdpService.accessDecisionForResource(
                 user = System(principal.systemUserId),
                 orgNumberSet = setOf(principal.getSystemUserOrgNumber()),
                 resource = OPPGI_NARMESTELEDER_RESOURCE,
             )
         } else {
-            false
+            null
         }
     }
 }

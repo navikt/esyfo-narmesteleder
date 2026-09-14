@@ -17,6 +17,7 @@ application {
 repositories {
     mavenCentral()
     maven(url = "https://packages.confluent.io/maven/")
+    maven(url = "https://github-package-registry-mirror.gc.nav.no/cached/maven-release")
 }
 
 buildscript {
@@ -36,6 +37,7 @@ dependencies {
         exclude(group = "org.apache.kafka", module = "kafka-clients")
     }
     implementation(libs.datafaker)
+    implementation(libs.esyfo.logger)
     implementation(libs.logback.classic)
     implementation(libs.bundles.ktor.client)
     implementation(libs.bundles.ktor.server)
@@ -56,6 +58,7 @@ dependencies {
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.bundles.testcontainers)
+    testImplementation(libs.esyfo.logger.testkit)
 }
 application {
     mainClass.set("no.nav.syfo.ApplicationKt")

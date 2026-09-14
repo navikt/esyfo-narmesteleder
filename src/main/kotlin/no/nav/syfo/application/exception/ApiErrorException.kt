@@ -16,7 +16,8 @@ sealed class ApiErrorException(
         val errorMessage: String = "Forbidden",
         cause: Throwable? = null,
         type: ErrorType = ErrorType.AUTHENTICATION_ERROR,
-    ) : ApiErrorException(errorMessage, type, cause) {
+        isAlreadyLogged: Boolean = false,
+    ) : ApiErrorException(errorMessage, type, cause, isAlreadyLogged) {
         override fun toApiError(path: String) = ApiError(
             path = path,
             status = HttpStatusCode.Forbidden,

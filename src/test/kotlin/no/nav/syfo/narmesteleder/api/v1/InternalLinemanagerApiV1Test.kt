@@ -25,6 +25,7 @@ import io.mockk.Called
 import io.mockk.coEvery
 import io.mockk.coVerify
 import no.nav.syfo.API_V1_PATH
+import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.metric.METRICS_REGISTRY
@@ -987,7 +988,7 @@ class InternalLinemanagerApiV1Test :
                         consumer = DefaultOrganization.copy(ID = "0192:000000000"),
                         scope = MASKINPORTEN_NL_SCOPE,
                     )
-                    coEvery { pdpService.hasAccessToResource(any(), any(), any()) } returns false
+                    coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Deny
 
                     val response = client.post("$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH") {
                         contentType(ContentType.Application.Json)

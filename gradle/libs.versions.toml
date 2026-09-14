@@ -3,6 +3,7 @@ avro = "1.12.1"
 commons-text = "1.15.0"
 confluent = "8.1.1"
 datafaker = "2.7.0"
+esyfo-observability = "0.2.1"
 flyway = "13.4.0"
 hikaricp = "7.1.0"
 jackson-datatype-jsr = "2.22.2"
@@ -35,6 +36,8 @@ database-flyway-core = { module = "org.flywaydb:flyway-database-postgresql", ver
 database-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 database-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
+esyfo-logger = { module = "no.nav.esyfo.observability:esyfo-logger", version.ref = "esyfo-observability" }
+esyfo-logger-testkit = { module = "no.nav.esyfo.observability:esyfo-logger-testkit", version.ref = "esyfo-observability" }
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson-datatype-jsr" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }

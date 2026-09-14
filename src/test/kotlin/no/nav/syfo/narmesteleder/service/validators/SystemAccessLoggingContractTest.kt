@@ -72,7 +72,7 @@ class SystemAccessLoggingContractTest :
             rejectionReasons = setOf(SYSTEM_USER_ACCESS_NOT_GRANTED),
         )
         val loggers = listOf(
-            PrincipalAccessValidator.logger as Logger,
+            LoggerFactory.getLogger(PrincipalAccessValidator.Companion::class.java) as Logger,
             LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME) as Logger,
         )
         val originalSettings = loggers.map { it.level to it.isAdditive }

@@ -31,6 +31,10 @@ It identifies when an employee has a need to be assigned a narmeste leder from t
 It will communicate this need to the employer by creating a dialog in Altinn Dialogporten,
 that will contain an url endpoints that can be used with GET to retrieve details about person on sick leave, and PUT to assign narmesteleder to the employee.
 
+## Application logging
+
+See [Application logging](docs/logging.md) for the typed logger, migrated scope and the tests to extend when adding an event.
+
 ## Kafka-consumenter
 
 Tjenesten konsumerer Kafka-topics for å opprette og vedlikeholde data som brukes i narmesteleder-flyten.

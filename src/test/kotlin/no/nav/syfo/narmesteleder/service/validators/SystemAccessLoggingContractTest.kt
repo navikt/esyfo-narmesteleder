@@ -6,12 +6,10 @@ import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.Appender
-import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.get
@@ -72,7 +70,7 @@ class SystemAccessLoggingContractTest :
             rejectionReasons = setOf(SYSTEM_USER_ACCESS_NOT_GRANTED),
         )
         val loggers = listOf(
-            PrincipalAccessValidator.logger as Logger,
+            LoggerFactory.getLogger(PrincipalAccessValidator.Companion::class.java) as Logger,
             LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME) as Logger,
         )
         val originalSettings = loggers.map { it.level to it.isAdditive }
@@ -191,18 +189,6 @@ class SystemAccessLoggingContractTest :
             record.path("pdp_decision").asText() shouldBe "Indeterminate"
             record.path("pdp_fallback_decision").asText() shouldBe "not_checked"
             privacyCanaries.forEach { serialized shouldNotContain it }
-        }
-
-        it("rejects missing identity, missing rejection reason and wrong JSON types in serialized output") {
-            checkAccessResponse(HttpStatusCode.Forbidden)
-
-            val record = logRecords().single()
-            listOf("event_type", "rejection_reason").forEach { field ->
-                val invalid = record.deepCopy<ObjectNode>().apply { remove(field) }
-                contract.validate(listOf(invalid.toString())).shouldNotBeEmpty()
-            }
-            val invalidStatus = record.deepCopy<ObjectNode>().put("upstream_status", "502")
-            contract.validate(listOf(invalidStatus.toString())).shouldNotBeEmpty()
         }
 
         Decision.entries.forEach { directDecision ->

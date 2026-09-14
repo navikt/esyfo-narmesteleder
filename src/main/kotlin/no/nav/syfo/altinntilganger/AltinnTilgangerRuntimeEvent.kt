@@ -1,5 +1,10 @@
 package no.nav.syfo.altinntilganger
 
+import no.nav.esyfo.observability.Event
+import no.nav.syfo.application.exception.UpstreamExceptionType
+import no.nav.syfo.application.exception.UpstreamFailureStage
+import org.slf4j.event.Level
+
 /** Closed, code-owned catalog for runtime errors emitted by [AltinnTilgangerService]. */
 internal enum class AltinnTilgangerRuntimeEvent(
     val value: String,
@@ -12,7 +17,30 @@ internal enum class AltinnTilgangerOperation(
 ) {
     LOOKUP_ORGANIZATION_ACCESS("hent_altinn_tilgang_for_orgnummer"),
     LIST_ACCESSIBLE_ORGANIZATIONS("hent_tilgjengelige_organisasjoner"),
+    ;
+
+    val failureEvent = Event<AltinnTilgangerFailure>(
+        name = AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value,
+        level = Level.ERROR,
+        message = "AltinnTilganger lookup failed",
+        operation = value,
+        errorCodeFrom = { it.errorCode.value },
+        fields = mapOf(
+            "exception_type" to { it.exceptionType?.logValue },
+            "cause_type" to { it.causeType },
+            "failure_stage" to { it.failureStage?.logValue },
+            "upstream_status" to { it.upstreamStatus },
+        ),
+    )
 }
+
+internal data class AltinnTilgangerFailure(
+    val errorCode: AltinnTilgangerErrorCode,
+    val exceptionType: UpstreamExceptionType? = null,
+    val causeType: String? = null,
+    val failureStage: UpstreamFailureStage? = null,
+    val upstreamStatus: Int? = null,
+)
 
 internal enum class AltinnTilgangerErrorCode(
     val value: String,

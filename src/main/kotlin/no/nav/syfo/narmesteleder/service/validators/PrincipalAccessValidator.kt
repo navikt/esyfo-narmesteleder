@@ -1,6 +1,5 @@
 package no.nav.syfo.narmesteleder.service.validators
 
-import no.nav.esyfo.observability.emit
 import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
@@ -12,7 +11,7 @@ import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ereg.EregService
-import no.nav.syfo.util.logger
+import no.nav.syfo.logging.applicationLogger
 
 class PrincipalAccessValidator(
     private val altinnTilgangerService: AltinnTilgangerService,
@@ -20,7 +19,7 @@ class PrincipalAccessValidator(
     private val eregService: EregService,
 ) {
     companion object {
-        val logger = logger()
+        private val logger = applicationLogger(javaClass)
     }
 
     suspend fun validatePrincipalAccessToOrgnumber(
@@ -59,7 +58,7 @@ class PrincipalAccessValidator(
             return
         }
 
-        logger.emit(systemUserAccessRejected, SystemUserAccessRejection(directDecision, fallbackDecision))
+        logger.event(systemUserAccessRejected, SystemUserAccessRejection(directDecision, fallbackDecision))
 
         throw ApiErrorException.ForbiddenException(
             errorMessage = "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource",

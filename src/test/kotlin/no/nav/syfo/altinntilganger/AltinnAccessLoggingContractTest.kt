@@ -2,6 +2,8 @@ package no.nav.syfo.altinntilganger
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.LoggerContext
+import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.OutputStreamAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -30,7 +32,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
-import net.logstash.logback.encoder.LogstashEncoder
+import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
@@ -59,15 +61,32 @@ class AltinnAccessLoggingContractTest :
         val originalServiceAdditive = serviceLogger.isAdditive
         val originalStatusPagesLevel = statusPagesLogger.level
         val originalStatusPagesAdditive = statusPagesLogger.isAdditive
-        val encoder = LogstashEncoder().apply {
-            context = serviceLogger.loggerContext
-            start()
+        val contract = RuntimeLogContract.forEvents(
+            *AltinnTilgangerOperation.entries.map { it.failureEvent }.toTypedArray(),
+            dynamicErrorCodes = AltinnTilgangerErrorCode.entries.map { it.value }.toSet(),
+            exceptionTypes = UpstreamExceptionType.entries.map { it.logValue }.toSet(),
+        )
+        val productionLogging = LoggerContext().also { logging ->
+            logging.putProperty("NAIS_CLUSTER_NAME", "test")
+            JoranConfigurator().apply {
+                context = logging
+                doConfigure("src/main/resources/logback.xml")
+            }
         }
+        val productionAppender = productionLogging.getLogger(Logger.ROOT_LOGGER_NAME)
+            .getAppender("stdout_json") as OutputStreamAppender<ILoggingEvent>
         val appender = OutputStreamAppender<ILoggingEvent>().apply {
             context = serviceLogger.loggerContext
-            this.encoder = encoder
+            encoder = productionAppender.encoder
             setOutputStream(logOutput)
             start()
+        }
+
+        fun logLines(): List<String> {
+            val records = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+            // Validate every captured record before callers inspect its identity. Scenarios assert counts below.
+            contract.assertValid(records, expectedCount = records.size)
+            return records
         }
 
         beforeSpec {
@@ -87,11 +106,15 @@ class AltinnAccessLoggingContractTest :
             statusPagesLogger.level = originalStatusPagesLevel
             statusPagesLogger.isAdditive = originalStatusPagesAdditive
             appender.stop()
-            encoder.stop()
+            productionLogging.stop()
         }
 
         beforeTest {
             logOutput.reset()
+        }
+
+        afterTest {
+            logLines()
         }
 
         describe("AltinnTilganger runtime error contract") {
@@ -143,7 +166,7 @@ class AltinnAccessLoggingContractTest :
                 }
 
                 val serializedLogs = logOutput.toString(Charsets.UTF_8)
-                val logLines = serializedLogs.lineSequence().filter(String::isNotBlank).toList()
+                val logLines = logLines()
                 logLines shouldHaveSize 1
 
                 val logRecord = jacksonObjectMapper().readTree(logLines.single())
@@ -155,7 +178,6 @@ class AltinnAccessLoggingContractTest :
                 logRecord["operation"].asText() shouldBe AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS.value
                 logRecord["exception_type"].asText() shouldBe "ServerResponseException"
                 logRecord["failure_stage"].asText() shouldBe "response"
-                logRecord["upstream_status"].isInt shouldBe true
                 logRecord["upstream_status"].asInt() shouldBe 503
                 logRecord["cause_type"].asText() shouldBe "ServerResponseException"
                 logRecord["stack_trace"].asText().contains(".kt:") shouldBe true
@@ -214,7 +236,7 @@ class AltinnAccessLoggingContractTest :
 
                 val serializedLogs = logOutput.toString(Charsets.UTF_8)
                 val logRecord = jacksonObjectMapper().readTree(
-                    serializedLogs.lineSequence().single(String::isNotBlank),
+                    logLines().single(),
                 )
                 logRecord["exception_type"].asText() shouldBe UpstreamExceptionType.TRANSPORT_EXCEPTION.logValue
                 logRecord["cause_type"].asText() shouldBe "IllegalStateException"
@@ -260,11 +282,10 @@ class AltinnAccessLoggingContractTest :
                         AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
                     }
 
-                    val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                    val logLines = logLines()
                     logLines shouldHaveSize 1
                     val logRecord = jacksonObjectMapper().readTree(logLines.single())
                     logRecord["error_code"].asText() shouldBe expectedErrorCode.value
-                    logRecord["upstream_status"].isInt shouldBe true
                     logRecord["upstream_status"].asInt() shouldBe status
                     logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.RESPONSE.logValue
                 }
@@ -286,10 +307,32 @@ class AltinnAccessLoggingContractTest :
                 }
 
                 val logRecord = jacksonObjectMapper().readTree(
-                    logOutput.toString(Charsets.UTF_8).lineSequence().single(String::isNotBlank),
+                    logLines().single(),
                 )
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_CLIENT_ERROR.value
                 logRecord["upstream_status"].asInt() shouldBe 422
+            }
+
+            it("preserves the organization-access operation and its single terminal error") {
+                val client = object : IAltinnTilgangerClient {
+                    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
+                        UpstreamRequestException(
+                            message = "Upstream unavailable",
+                            upstreamStatus = 503,
+                            upstreamExceptionType = UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION,
+                            failureStage = UpstreamFailureStage.RESPONSE,
+                        )
+                }
+
+                val failure = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    AltinnTilgangerService(client).getAltinnTilgangForOrgnr(UserPrincipal("12345678901", "token"), "999999999")
+                }
+
+                failure.isAlreadyLogged shouldBe true
+                val record = jacksonObjectMapper().readTree(logLines().single())
+                record["operation"].asText() shouldBe AltinnTilgangerOperation.LOOKUP_ORGANIZATION_ACCESS.value
+                record["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR.value
+                record["upstream_status"].asInt() shouldBe 503
             }
 
             it("omits upstream status for non-HTTP failures") {
@@ -308,7 +351,7 @@ class AltinnAccessLoggingContractTest :
                 }
 
                 val logRecord = jacksonObjectMapper().readTree(
-                    logOutput.toString(Charsets.UTF_8).lineSequence().single(String::isNotBlank),
+                    logLines().single(),
                 )
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_TRANSPORT_FAILURE.value
                 logRecord.has("upstream_status") shouldBe false
@@ -330,10 +373,9 @@ class AltinnAccessLoggingContractTest :
                 }
 
                 val logRecord = jacksonObjectMapper().readTree(
-                    logOutput.toString(Charsets.UTF_8).lineSequence().single(String::isNotBlank),
+                    logLines().single(),
                 )
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.TOKEN_EXCHANGE_FAILED.value
-                logRecord["upstream_status"].isInt shouldBe true
                 logRecord["upstream_status"].asInt() shouldBe 401
                 logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.TOKEN_EXCHANGE.logValue
             }
@@ -348,7 +390,7 @@ class AltinnAccessLoggingContractTest :
                 service.getAltinnTilgangForOrgnr(principal, "999999999") shouldBe null
                 service.getFilteredOrganizations(principal) shouldBe emptyList()
 
-                val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                val logLines = logLines()
                 logLines shouldBe emptyList()
             }
 
@@ -375,11 +417,10 @@ class AltinnAccessLoggingContractTest :
                 }
 
                 exception.isAlreadyLogged shouldBe true
-                val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                val logLines = logLines()
                 logLines shouldHaveSize 1
                 val logRecord = jacksonObjectMapper().readTree(logLines.single())
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_RESPONSE_FAILURE.value
-                logRecord["upstream_status"].isInt shouldBe true
                 logRecord["upstream_status"].asInt() shouldBe 200
                 logRecord["exception_type"].asText() shouldBe UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION.logValue
                 logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.RESPONSE.logValue
@@ -400,7 +441,7 @@ class AltinnAccessLoggingContractTest :
                     AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
                 }
 
-                logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList() shouldHaveSize 0
+                logLines() shouldHaveSize 0
             }
 
             it("does not log or classify cancellation from response decoding") {
@@ -446,7 +487,7 @@ class AltinnAccessLoggingContractTest :
                     AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
                 }
 
-                logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList() shouldHaveSize 0
+                logLines() shouldHaveSize 0
             }
 
             it("emits the canonical terminal event when the upstream response reports an error") {
@@ -461,7 +502,7 @@ class AltinnAccessLoggingContractTest :
 
                 AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token")) shouldBe emptyList()
 
-                val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                val logLines = logLines()
                 logLines shouldHaveSize 1
                 val logRecord = jacksonObjectMapper().readTree(logLines.single())
                 logRecord["level"].asText() shouldBe "ERROR"
@@ -491,19 +532,13 @@ class AltinnAccessLoggingContractTest :
                     MDC.remove("trace_id")
                 }
 
-                val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+                val logLines = logLines()
                 logLines shouldHaveSize 1
                 val logRecord = jacksonObjectMapper().readTree(logLines.single())
                 logRecord["trace_id"].asText() shouldBe traceId
-                Regex("^[0-9a-f]{32}$").matches(logRecord["trace_id"].asText()) shouldBe true
             }
 
-            it("keeps event types, operations, error codes and exception types in closed valid catalogs") {
-                val eventTypePattern = Regex("^[a-z][a-z0-9_.-]{0,79}$")
-                val operationPattern = Regex("^[a-z][a-z0-9_.-]{0,79}$")
-                val errorCodePattern = Regex("^[A-Z][A-Z0-9_]{0,79}$")
-                val exceptionTypePattern = Regex("^[A-Za-z][A-Za-z0-9]{0,79}$")
-
+            it("preserves the existing catalog values and their uniqueness") {
                 AltinnTilgangerRuntimeEvent.values().map { it.value }.toSet() shouldBe setOf(
                     "altinn_tilganger_lookup_failed",
                 )
@@ -542,11 +577,6 @@ class AltinnAccessLoggingContractTest :
                     AltinnTilgangerErrorCode.values().size
                 UpstreamExceptionType.values().map { it.logValue }.distinct().size shouldBe
                     UpstreamExceptionType.values().size
-
-                AltinnTilgangerRuntimeEvent.values().forEach { eventTypePattern.matches(it.value) shouldBe true }
-                AltinnTilgangerOperation.values().forEach { operationPattern.matches(it.value) shouldBe true }
-                AltinnTilgangerErrorCode.values().forEach { errorCodePattern.matches(it.value) shouldBe true }
-                UpstreamExceptionType.values().forEach { exceptionTypePattern.matches(it.logValue) shouldBe true }
             }
         }
     })

@@ -7,7 +7,7 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
-import org.slf4j.LoggerFactory
+import no.nav.syfo.logging.applicationLogger
 
 class AltinnTilgangerService(
     val altinnTilgangerClient: IAltinnTilgangerClient,
@@ -95,27 +95,24 @@ class AltinnTilgangerService(
         operation: AltinnTilgangerOperation,
     ) {
         val origin = cause.cause ?: cause
-        val event = logger.atError()
-            .addKeyValue("event_type", AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value)
-            .addKeyValue("error_code", cause.errorCode().value)
-            .addKeyValue("operation", operation.value)
-            .addKeyValue("exception_type", cause.upstreamExceptionType.logValue)
-            .addKeyValue("cause_type", origin.safeCauseType())
-            .addKeyValue("failure_stage", cause.failureStage.logValue)
-            .setCause(SanitizedUpstreamFailure(origin.stackTrace))
-        cause.upstreamStatus?.let { event.addKeyValue("upstream_status", it) }
-        event.log("AltinnTilganger lookup failed")
+        logger.event(
+            operation.failureEvent,
+            AltinnTilgangerFailure(
+                errorCode = cause.errorCode(),
+                exceptionType = cause.upstreamExceptionType,
+                causeType = origin.safeCauseType(),
+                failureStage = cause.failureStage,
+                upstreamStatus = cause.upstreamStatus,
+            ),
+            SanitizedUpstreamFailure(origin.stackTrace),
+        )
     }
 
     private fun logAltinnTilgangerLookupFailure(
         errorCode: AltinnTilgangerErrorCode,
         operation: AltinnTilgangerOperation,
     ) {
-        logger.atError()
-            .addKeyValue("event_type", AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value)
-            .addKeyValue("error_code", errorCode.value)
-            .addKeyValue("operation", operation.value)
-            .log("AltinnTilganger lookup failed")
+        logger.event(operation.failureEvent, AltinnTilgangerFailure(errorCode))
     }
 
     private fun List<AltinnTilgang>.filterToOrganizations(): List<AccessibleOrganization> = mapNotNull { it.filterAccess() }
@@ -152,7 +149,7 @@ class AltinnTilgangerService(
         const val OPPGI_NARMESTELEDER_RESOURCE =
             "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn3 to access NL relasjon
         const val OPPRETT_NL_REALASJON_RESOURCE = "4596:1" // Access resource in Altinn2 to access NL relasjon
-        private val logger = LoggerFactory.getLogger(AltinnTilgangerService::class.java)
+        private val logger = applicationLogger(AltinnTilgangerService::class.java)
     }
 }
 

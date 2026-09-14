@@ -47,8 +47,6 @@ import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
-import java.nio.file.Files
-import java.nio.file.Path
 
 private const val REQUESTED_ORG = "111111111"
 private const val PRINCIPAL_ORG = "222222222"
@@ -61,7 +59,14 @@ private val systemPrincipal = SystemPrincipal(
 
 class SystemAccessLoggingContractTest :
     DescribeSpec({
-        val emittedRejections = mutableListOf<String>()
+        val mapper = jacksonObjectMapper()
+        val privacyCanaries = listOf(
+            REQUESTED_ORG,
+            PRINCIPAL_ORG,
+            systemPrincipal.systemOwner,
+            systemPrincipal.systemUserId,
+            systemPrincipal.token,
+        )
         val contract = RuntimeLogContract.forEvents(
             systemUserAccessRejected,
             rejectionReasons = setOf(SYSTEM_USER_ACCESS_NOT_GRANTED),
@@ -95,7 +100,7 @@ class SystemAccessLoggingContractTest :
 
         fun logLines() = captures.flatMap { it.records }
 
-        fun logRecords() = logLines().map(jacksonObjectMapper()::readTree)
+        fun logRecords() = logLines().map(mapper::readTree)
 
         fun checkAccessResponse(expectedStatus: HttpStatusCode) {
             testApplication {
@@ -112,7 +117,7 @@ class SystemAccessLoggingContractTest :
                 val response = client.get("/system-access")
                 response.status shouldBe expectedStatus
                 if (expectedStatus == HttpStatusCode.Forbidden) {
-                    val body = jacksonObjectMapper().readTree(response.bodyAsText())
+                    val body = mapper.readTree(response.bodyAsText())
                     body["type"].asText() shouldBe "MISSING_ALITINN_RESOURCE_ACCESS"
                     body["message"].asText() shouldBe
                         "System user does not have access to nav_syfo_oppgi-narmesteleder resource"
@@ -144,9 +149,6 @@ class SystemAccessLoggingContractTest :
                 logger.isAdditive = settings.second
             }
             productionLogging.stop()
-            val outputFile = Path.of("build/observability/system-access.ndjson")
-            Files.createDirectories(outputFile.parent)
-            Files.writeString(outputFile, emittedRejections.joinToString(separator = "\n", postfix = "\n"))
         }
         beforeTest {
             captures = loggers.map { captureLogs(it, "stdout_json") }
@@ -162,11 +164,9 @@ class SystemAccessLoggingContractTest :
         afterTest {
             try {
                 logLines().forEach { line ->
-                    if (jacksonObjectMapper().readTree(line).path("event_type").asText() == "api_request_rejected") {
+                    if (mapper.readTree(line).path("event_type").asText() == "api_request_rejected") {
                         contract.assertValid(listOf(line), expectedCount = 1)
-                        listOf(REQUESTED_ORG, PRINCIPAL_ORG, systemPrincipal.systemOwner, systemPrincipal.systemUserId, systemPrincipal.token)
-                            .forEach { line shouldNotContain it }
-                        emittedRejections += line
+                        privacyCanaries.forEach { line shouldNotContain it }
                     }
                 }
             } finally {
@@ -190,8 +190,7 @@ class SystemAccessLoggingContractTest :
             record.path("operation").asText() shouldBe "validate_system_user_access"
             record.path("pdp_decision").asText() shouldBe "Indeterminate"
             record.path("pdp_fallback_decision").asText() shouldBe "not_checked"
-            listOf(REQUESTED_ORG, PRINCIPAL_ORG, systemPrincipal.systemOwner, systemPrincipal.systemUserId, systemPrincipal.token)
-                .forEach { serialized shouldNotContain it }
+            privacyCanaries.forEach { serialized shouldNotContain it }
         }
 
         it("rejects missing identity, missing rejection reason and wrong JSON types in serialized output") {

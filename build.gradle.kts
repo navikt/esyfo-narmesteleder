@@ -17,17 +17,7 @@ application {
 repositories {
     mavenCentral()
     maven(url = "https://packages.confluent.io/maven/")
-    exclusiveContent {
-        forRepository {
-            maven(url = "https://maven.pkg.github.com/navikt/esyfo-observability") {
-                credentials {
-                    username = providers.gradleProperty("githubUser").orElse("x-access-token").get()
-                    password = providers.gradleProperty("githubPassword").orNull
-                }
-            }
-        }
-        filter { includeGroup("no.nav.esyfo.observability") }
-    }
+    maven(url = "https://github-package-registry-mirror.gc.nav.no/cached/maven-release")
 }
 
 buildscript {

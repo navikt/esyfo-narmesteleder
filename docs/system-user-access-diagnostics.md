@@ -43,8 +43,7 @@ Run `./gradlew test --tests '*SystemAccessLoggingContractTest'`. The test exerci
 the validator, PDP service and Ktor error handler. `esyfo-logger-testkit` captures
 JSON with the `stdout_json` encoder loaded from `src/main/resources/logback.xml`
 using its NAIS profile in an isolated logging context. It validates the packaged
-v1 contract and a catalog derived from the actual local event definition, then
-exports verified synthetic events to `build/observability/system-access.ndjson`.
+v1 contract and a catalog derived from the actual local event definition.
 
 Schema validation runs inside the existing Gradle test and therefore also in
 normal CI. The testkit and its packaged schema remain test-only dependencies;
@@ -53,9 +52,9 @@ install an encoder, tracing, error handling or scrubbing. Tests prove that missi
 fields and wrong JSON types are rejected without keeping a second schema copy
 in the application.
 
-The libraries are resolved from GitHub Packages. Local builds use Gradle's
-`githubUser` and `githubPassword` properties, with a token authorized to read the
-packages. The shared CI workflow supplies these properties; do not commit credentials.
+The public libraries are resolved through
+[Nav's GitHub Packages mirror](https://github.com/navikt/github-package-registry-mirror).
+Local builds and CI do not need registry credentials to download them.
 
 The tests cover all direct/fallback decision combinations, skipped fallback,
 unchanged HTTP responses, exception/cancellation paths, trace context, duplicate

@@ -31,6 +31,7 @@ import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 
+@Deprecated("Do not use in new tests. Construct focused test dependencies instead.")
 class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeDbSpyk = spyk(FakeNarmestelederDb())
     val fakeAaregClientSpyk = spyk(FakeAaregClient())

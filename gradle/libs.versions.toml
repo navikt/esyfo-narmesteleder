@@ -26,6 +26,7 @@ ktlint = "14.2.0"
 valkey-version = "5.5.0"
 exposed-version = "1.5.0"
 netty = "4.2.18.Final"
+testLogger = "4.0.0"
 
 [libraries]
 apache-avro = { module = "org.apache.avro:avro", version.ref = "avro" }
@@ -81,6 +82,7 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
+test-logger = { id = "com.adarshr.test-logger", version.ref = "testLogger" }
 
 [bundles]
 kotest = ["kotest-assertions-core", "kotest-junit", "kotest-property", "kotest-assertions-ktor"]

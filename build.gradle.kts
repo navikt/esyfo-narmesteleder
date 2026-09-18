@@ -1,3 +1,5 @@
+import com.adarshr.gradle.testlogger.theme.ThemeType
+
 val valkeyVersion = "5.5.0"
 
 plugins {
@@ -5,6 +7,7 @@ plugins {
     alias(libs.plugins.ktor)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.flyway)
+    alias(libs.plugins.test.logger)
 }
 
 group = "no.nav.syfo"
@@ -148,6 +151,11 @@ tasks {
     test {
         dependsOn("customAvroCodeGeneration")
         useJUnitPlatform()
+        testlogger {
+            theme = ThemeType.MOCHA_PARALLEL
+            showFullStackTraces = true
+            showSimpleNames = true
+        }
     }
 
     named("check") {

@@ -74,7 +74,7 @@ kotlin {
 val avroSchemasDir = "src/main/avro"
 val personhendelseSchema = "$avroSchemasDir/no/nav/person/pdl/leesah/Personhendelse.avsc"
 val avroCodeGenerationDir = "build/generated-main-avro-custom-java"
-val avroTools by configurations.creating
+val avroTools = configurations.create("avroTools")
 
 dependencies {
     avroTools(libs.apache.avro.tools) {

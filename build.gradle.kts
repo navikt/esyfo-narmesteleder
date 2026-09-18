@@ -1,7 +1,5 @@
 import com.adarshr.gradle.testlogger.theme.ThemeType
 
-val valkeyVersion = "5.5.0"
-
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
@@ -14,7 +12,7 @@ group = "no.nav.syfo"
 version = "0.0.1"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass.set("no.nav.syfo.ApplicationKt")
 }
 
 repositories {
@@ -63,10 +61,6 @@ dependencies {
     testImplementation(libs.bundles.testcontainers)
     testImplementation(libs.esyfo.logger.testkit)
 }
-application {
-    mainClass.set("no.nav.syfo.ApplicationKt")
-}
-
 kotlin {
     jvmToolchain(25)
 }
@@ -83,34 +77,34 @@ dependencies {
     }
 }
 
+val customAvroCodeGeneration = tasks.register<JavaExec>("customAvroCodeGeneration") {
+    inputs.file(personhendelseSchema)
+    outputs.dir(avroCodeGenerationDir)
+    classpath = avroTools
+    mainClass.set("org.apache.avro.tool.Main")
+    args(
+        "compile",
+        "schema",
+        "-encoding",
+        "UTF-8",
+        "-string",
+        "-fieldVisibility",
+        "private",
+        "-noSetters",
+        "$projectDir/$personhendelseSchema",
+        "$projectDir/$avroCodeGenerationDir",
+    )
+}
+
 sourceSets {
     main {
         java {
-            srcDir(file(avroCodeGenerationDir))
+            srcDir(customAvroCodeGeneration)
         }
     }
 }
 
 tasks {
-    register<JavaExec>("customAvroCodeGeneration") {
-        inputs.file(personhendelseSchema)
-        outputs.dir(avroCodeGenerationDir)
-        classpath = avroTools
-        mainClass.set("org.apache.avro.tool.Main")
-        args(
-            "compile",
-            "schema",
-            "-encoding",
-            "UTF-8",
-            "-string",
-            "-fieldVisibility",
-            "private",
-            "-noSetters",
-            "$projectDir/$personhendelseSchema",
-            "$projectDir/$avroCodeGenerationDir",
-        )
-    }
-
     jar {
         manifest.attributes["Main-Class"] = "no.nav.syfo.ApplicationKt"
     }
@@ -120,9 +114,7 @@ tasks {
             println(project.version)
         }
     }
-
     shadowJar {
-        dependsOn("customAvroCodeGeneration")
         filesMatching("META-INF/services/**") {
             duplicatesStrategy = DuplicatesStrategy.INCLUDE
         }
@@ -132,24 +124,7 @@ tasks {
         archiveVersion.set("")
     }
 
-    compileKotlin {
-        dependsOn("customAvroCodeGeneration")
-    }
-
-    compileTestKotlin {
-        dependsOn("customAvroCodeGeneration")
-    }
-
-    named("runKtlintCheckOverMainSourceSet") {
-        dependsOn("customAvroCodeGeneration")
-    }
-
-    named("runKtlintCheckOverTestSourceSet") {
-        dependsOn("customAvroCodeGeneration")
-    }
-
     test {
-        dependsOn("customAvroCodeGeneration")
         useJUnitPlatform()
         testlogger {
             theme = ThemeType.MOCHA_PARALLEL

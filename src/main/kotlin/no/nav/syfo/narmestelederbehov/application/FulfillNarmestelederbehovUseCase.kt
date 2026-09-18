@@ -23,35 +23,38 @@ class FulfillNarmestelederbehovUseCase(
     private val personLookup: PersonLookup,
     private val establishNarmestelederrelasjon: EstablishNarmestelederrelasjon,
     private val dialog: NarmestelederbehovDialog,
+    private val outcomeLogger: FulfillNarmestelederbehovOutcomeLogger,
 ) {
     suspend fun execute(command: FulfillNarmestelederbehovCommand): FulfillNarmestelederbehovResult {
         val manager = when (val normalization = command.manager.normalize()) {
             is ManagerContactNormalization.Valid -> normalization.manager
             is ManagerContactNormalization.Invalid -> {
                 return FulfillNarmestelederbehovResult.InvalidManagerContactDetails(normalization.issues)
+                    .log(FulfillNarmestelederbehovOutcome.InvalidManagerContactDetails)
             }
         }
         val behov = behovRepository.findForFulfillment(command.behovId)
-            ?: return FulfillNarmestelederbehovResult.NotFound
+            ?: return FulfillNarmestelederbehovResult.NotFound.log(FulfillNarmestelederbehovOutcome.NotFound)
 
         if (organizationAccess.evaluate(command.accessSubject, behov.employee.organizationNumber) == OrganizationAccessResult.Denied) {
-            return FulfillNarmestelederbehovResult.AccessDenied
+            return FulfillNarmestelederbehovResult.AccessDenied.log(FulfillNarmestelederbehovOutcome.AccessDenied)
         }
         if (!activeSykmeldingLookup.hasActiveSykmelding(behov.employee.personIdent, behov.employee.organizationNumber)) {
-            return FulfillNarmestelederbehovResult.NoActiveSykmelding
+            return FulfillNarmestelederbehovResult.NoActiveSykmelding.log(FulfillNarmestelederbehovOutcome.NoActiveSykmelding)
         }
         if (!employmentLookup.hasEmployment(behov.employee.personIdent, behov.employee.organizationNumber)) {
-            return FulfillNarmestelederbehovResult.NoEmployment
+            return FulfillNarmestelederbehovResult.NoEmployment.log(FulfillNarmestelederbehovOutcome.NoEmployment)
         }
 
         val employee = personLookup.find(behov.employee.personIdent)
-            ?: return FulfillNarmestelederbehovResult.PersonNotFound
+            ?: return FulfillNarmestelederbehovResult.PersonNotFound.log(FulfillNarmestelederbehovOutcome.PersonNotFound)
         val managerPerson = personLookup.find(manager.personIdent)
-            ?: return FulfillNarmestelederbehovResult.PersonNotFound
+            ?: return FulfillNarmestelederbehovResult.PersonNotFound.log(FulfillNarmestelederbehovOutcome.PersonNotFound)
         if (!managerPerson.matchesManagerLastName(manager.lastName)) {
-            return FulfillNarmestelederbehovResult.ManagerNameMismatch
+            return FulfillNarmestelederbehovResult.ManagerNameMismatch.log(FulfillNarmestelederbehovOutcome.ManagerNameMismatch)
         }
 
+        val relationSource = command.accessSubject.relationSource()
         establishNarmestelederrelasjon.establish(
             EstablishNarmestelederrelasjonCommand(
                 employee = RelationPerson(
@@ -67,13 +70,22 @@ class FulfillNarmestelederbehovUseCase(
                     mobile = manager.mobile.value,
                 ),
                 organizationNumber = behov.employee.organizationNumber,
-                source = command.accessSubject.relationSource(),
+                source = relationSource,
             ),
         )
         behovRepository.markFulfilled(behov.id)
-        dialog.attemptCompletion(behov.id)
-        return FulfillNarmestelederbehovResult.Fulfilled
+        val dialogCompletion = dialog.attemptCompletion(behov.id)
+        return FulfillNarmestelederbehovResult.Fulfilled.log(
+            FulfillNarmestelederbehovOutcome.Fulfilled(
+                relationSource = relationSource,
+                dialogCompletion = dialogCompletion,
+            ),
+        )
     }
+
+    private fun <T : FulfillNarmestelederbehovResult> T.log(
+        outcome: FulfillNarmestelederbehovOutcome,
+    ): T = also { outcomeLogger.log(outcome) }
 }
 
 data class FulfillNarmestelederbehovCommand(

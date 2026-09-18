@@ -97,7 +97,7 @@ fun PersonNameDetails.matchesManagerLastName(lastName: String): Boolean {
         listOf(registeredName.lastName) + listOfNotNull(
             registeredName.middleName
                 ?.takeIf { it.isNotBlank() }
-                ?.let { "${it} ${registeredName.lastName}".normalizeName() },
+                ?.let { "$it ${registeredName.lastName}".normalizeName() },
         )
     }.map(String::normalizeName)
 

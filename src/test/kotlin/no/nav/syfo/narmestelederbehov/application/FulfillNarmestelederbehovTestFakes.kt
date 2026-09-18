@@ -30,8 +30,10 @@ internal class FakeOrganizationAccess(
 
     fun withEffects(effects: MutableList<String>) = apply { this.effects = effects }
 
-    override suspend fun evaluate(subject: OrganizationAccessSubject, organizationNumber: OrganizationNumber) =
-        result.also { effects += "access" }
+    override suspend fun evaluate(
+        subject: OrganizationAccessSubject,
+        organizationNumber: OrganizationNumber,
+    ) = result.also { effects += "access" }
 }
 
 internal class FakeActiveSykmeldingLookup(
@@ -54,8 +56,7 @@ internal class FakeEmploymentLookup(private val result: Boolean = true) : Employ
 
     fun withEffects(effects: MutableList<String>) = apply { this.effects = effects }
 
-    override suspend fun hasEmployment(personIdent: PersonIdent, organizationNumber: OrganizationNumber) =
-        result.also { effects += "employment" }
+    override suspend fun hasEmployment(personIdent: PersonIdent, organizationNumber: OrganizationNumber) = result.also { effects += "employment" }
 }
 
 internal class FakePersonLookup(private val people: Map<PersonIdent, PersonNameDetails>) : PersonLookup {
@@ -63,7 +64,9 @@ internal class FakePersonLookup(private val people: Map<PersonIdent, PersonNameD
 
     fun withEffects(effects: MutableList<String>) = apply { this.effects = effects }
 
-    override suspend fun find(personIdent: PersonIdent) = people[personIdent].also { effects += "person:${personIdent.value}" }
+    override suspend fun find(
+        personIdent: PersonIdent,
+    ) = people[personIdent].also { effects += "person:${personIdent.value}" }
 }
 
 internal class FakeRelationEstablisher : EstablishNarmestelederrelasjon {
@@ -86,4 +89,16 @@ internal class FakeDialog(
     fun withEffects(effects: MutableList<String>) = apply { this.effects = effects }
 
     override suspend fun attemptCompletion(id: NarmestelederbehovId) = attempt.also { effects += "dialog" }
+}
+
+internal class FakeFulfillNarmestelederbehovOutcomeLogger : FulfillNarmestelederbehovOutcomeLogger {
+    val outcomes = mutableListOf<FulfillNarmestelederbehovOutcome>()
+    private lateinit var effects: MutableList<String>
+
+    fun withEffects(effects: MutableList<String>) = apply { this.effects = effects }
+
+    override fun log(outcome: FulfillNarmestelederbehovOutcome) {
+        outcomes += outcome
+        effects += "log"
+    }
 }

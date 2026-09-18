@@ -11,31 +11,32 @@ class TestAaregClient : IAaregClient {
         employmentsByPersonIdent[personIdent] = listOf(orgNumber to mainOrgNumber)
     }
 
-    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt =
-        AaregArbeidsforholdOversikt(
-            arbeidsforholdoversikter = employmentsByPersonIdent[personIdent].orEmpty().map { (orgNumber, mainOrgNumber) ->
-                Arbeidsforholdoversikt(
-                    arbeidssted = Arbeidssted(
-                        type = ArbeidsstedType.Underenhet,
-                        identer = listOf(
-                            Ident(
-                                type = IdentType.ORGANISASJONSNUMMER,
-                                ident = orgNumber,
-                                gjeldende = true,
-                            ),
+    override suspend fun getArbeidsforhold(
+        personIdent: String,
+    ) = AaregArbeidsforholdOversikt(
+        arbeidsforholdoversikter = employmentsByPersonIdent[personIdent].orEmpty().map { (orgNumber, mainOrgNumber) ->
+            Arbeidsforholdoversikt(
+                arbeidssted = Arbeidssted(
+                    type = ArbeidsstedType.Underenhet,
+                    identer = listOf(
+                        Ident(
+                            type = IdentType.ORGANISASJONSNUMMER,
+                            ident = orgNumber,
+                            gjeldende = true,
                         ),
                     ),
-                    opplysningspliktig = Opplysningspliktig(
-                        type = OpplysningspliktigType.Hovedenhet,
-                        identer = listOf(
-                            Ident(
-                                type = IdentType.ORGANISASJONSNUMMER,
-                                ident = mainOrgNumber,
-                                gjeldende = true,
-                            ),
+                ),
+                opplysningspliktig = Opplysningspliktig(
+                    type = OpplysningspliktigType.Hovedenhet,
+                    identer = listOf(
+                        Ident(
+                            type = IdentType.ORGANISASJONSNUMMER,
+                            ident = mainOrgNumber,
+                            gjeldende = true,
                         ),
                     ),
-                )
-            },
-        )
+                ),
+            )
+        },
+    )
 }

@@ -13,12 +13,18 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.spyk
+import io.mockk.verify
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.TestAaregClient
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
+import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
+import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.SystemPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
@@ -61,7 +67,15 @@ class FulfillNarmestelederbehovTest :
             principalAccessValidator = principalAccessValidator,
             sickLeaveValidator = SickLeaveValidator(dinesykmeldteService),
         )
-        val dialogportenService = mockk<DialogportenService>(relaxed = true)
+        val dialogportenClient = mockk<IDialogportenClient>()
+        val dialogportenService = spyk(
+            DialogportenService(
+                dialogportenClient = dialogportenClient,
+                narmestelederDb = fakeDb,
+                otherEnvironmentProperties = mockk(),
+                pdlService = pdlService,
+            ),
+        )
         val narmestelederService = NarmestelederService(
             nlDb = fakeDb,
             persistLeesahNlBehov = true,
@@ -104,6 +118,7 @@ class FulfillNarmestelederbehovTest :
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
             fakeDb.clear()
+            testAaregClient.clear()
             testAaregClient.seedEmployment(
                 personIdent = employeePersonIdent,
                 orgNumber = employeeOrgNumber,
@@ -117,7 +132,7 @@ class FulfillNarmestelederbehovTest :
             every { kafkaProducer.sendSykmeldingNLRelasjon(any(), any()) } just Runs
         }
 
-        test("should publish the relation before fulfilling the behov and completing Dialogporten") {
+        test("should publish the relation before fulfilling the behov and attempting Dialogporten completion") {
             val fixtureEntity = fakeDb.insertRequirement(requirement)
             val principal = systemPrincipal(employeeOrgNumber)
 
@@ -144,6 +159,102 @@ class FulfillNarmestelederbehovTest :
             fakeDb.findBehovById(fixtureEntity.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
         }
 
+        test("should preserve normalized contact details and the PDL employee identity in the published relation") {
+            val fixtureEntity = fakeDb.insertRequirement(requirement.copy(etternavn = "Outdated name"))
+            val currentEmployeeIdent = "22345678901"
+            coEvery { pdlClient.getPerson(employeePersonIdent) } returns getPersonResponse(currentEmployeeIdent, "Employee")
+            coEvery { pdlClient.getPerson(managerPersonIdent) } returns getPersonResponse("20987654321", manager.lastName)
+
+            handler.handleUpdatedRequirement(
+                requirementId = fixtureEntity.id!!,
+                manager = manager.copy(email = " mail@manager.no ", mobile = "+47 99999999"),
+                principal = systemPrincipal(employeeOrgNumber),
+                context = "test",
+            )
+
+            verify(exactly = 1) {
+                kafkaProducer.sendSykmeldingNLRelasjon(
+                    match {
+                        it.sykmeldt.fnr == currentEmployeeIdent &&
+                            it.sykmeldt.navn == "Test Employee" &&
+                            it.leder.fnr == managerPersonIdent &&
+                            it.leder.epost == "mail@manager.no" &&
+                            it.leder.mobil == "+4799999999" &&
+                            it.orgnummer == employeeOrgNumber &&
+                            it.utbetalesLonn == true
+                    },
+                    NlResponseSource.LPS,
+                )
+            }
+        }
+
+        test("should identify fulfillment by a personnel manager in the published relation") {
+            val fixtureEntity = fakeDb.insertRequirement(requirement)
+
+            handler.handleUpdatedRequirement(
+                requirementId = fixtureEntity.id!!,
+                manager = manager,
+                principal = UserPrincipal(ident = managerPersonIdent, token = "test-token"),
+                context = "test",
+            )
+
+            verify(exactly = 1) { kafkaProducer.sendSykmeldingNLRelasjon(any(), NlResponseSource.PERSONALLEDER) }
+        }
+
+        test("should reject invalid manager contact details before looking up the requirement") {
+            val exception = shouldThrow<ApiErrorException.BadRequestException> {
+                handler.handleUpdatedRequirement(
+                    requirementId = UUID.randomUUID(),
+                    manager = manager.copy(email = "invalid"),
+                    principal = systemPrincipal(employeeOrgNumber),
+                    context = "test",
+                )
+            }
+
+            exception.type shouldBe ErrorType.INVALID_FORMAT
+            coVerify(exactly = 0) {
+                fakeDb.findBehovById(any())
+                principalAccessValidator.validatePrincipalAccessToOrgnumber(any(), any())
+            }
+            verifyNoFulfillmentSideEffects(narmestelederKafkaService, fakeDb, dialogportenService)
+        }
+
+        test("should report a missing requirement before checking organization access") {
+            shouldThrow<ApiErrorException.NotFoundException> {
+                handler.handleUpdatedRequirement(
+                    requirementId = UUID.randomUUID(),
+                    manager = manager,
+                    principal = systemPrincipal(employeeOrgNumber),
+                    context = "test",
+                )
+            }
+
+            coVerify(exactly = 0) { principalAccessValidator.validatePrincipalAccessToOrgnumber(any(), any()) }
+            verifyNoFulfillmentSideEffects(narmestelederKafkaService, fakeDb, dialogportenService)
+        }
+
+        test("should reject missing organization access before sick leave employment and person lookups") {
+            val fixtureEntity = fakeDb.insertRequirement(requirement)
+            val denied = ApiErrorException.ForbiddenException()
+            coEvery { principalAccessValidator.validatePrincipalAccessToOrgnumber(any(), employeeOrgNumber) } throws denied
+
+            shouldThrow<ApiErrorException.ForbiddenException> {
+                handler.handleUpdatedRequirement(
+                    requirementId = fixtureEntity.id!!,
+                    manager = manager,
+                    principal = systemPrincipal(employeeOrgNumber),
+                    context = "test",
+                )
+            } shouldBe denied
+
+            coVerify(exactly = 0) {
+                dinesykmeldteService.getIsActiveSykmelding(any(), any())
+                aaregService.findArbeidsforholdByPersonIdent(any())
+                pdlClient.getPerson(any())
+            }
+            verifyNoFulfillmentSideEffects(narmestelederKafkaService, fakeDb, dialogportenService)
+        }
+
         test("should reject missing active sykmelding before any fulfillment side effect") {
             val fixtureEntity = fakeDb.insertRequirement(requirement)
             val principal = systemPrincipal(employeeOrgNumber)
@@ -167,9 +278,7 @@ class FulfillNarmestelederbehovTest :
         test("should reject missing employment before any fulfillment side effect") {
             val fixtureEntity = fakeDb.insertRequirement(requirement)
             val principal = systemPrincipal(employeeOrgNumber)
-            coEvery {
-                aaregService.findArbeidsforholdByPersonIdent(employeePersonIdent)
-            } returns emptyList()
+            testAaregClient.clear()
 
             val exception = shouldThrow<ApiErrorException.BadRequestException> {
                 handler.handleUpdatedRequirement(
@@ -219,6 +328,100 @@ class FulfillNarmestelederbehovTest :
             }
 
             verifyNoFulfillmentSideEffects(narmestelederKafkaService, fakeDb, dialogportenService)
+        }
+
+        test("should leave the requirement unchanged and skip Dialogporten when publication fails") {
+            val fixtureEntity = fakeDb.insertRequirement(requirement)
+            val failure = IllegalStateException("Publication failed")
+            every { kafkaProducer.sendSykmeldingNLRelasjon(any(), any()) } throws failure
+
+            val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                handler.handleUpdatedRequirement(
+                    requirementId = fixtureEntity.id!!,
+                    manager = manager,
+                    principal = systemPrincipal(employeeOrgNumber),
+                    context = "test",
+                )
+            }
+
+            exception.cause shouldBe failure
+            fakeDb.findBehovById(fixtureEntity.id!!)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+            coVerify(exactly = 0) {
+                fakeDb.updateNlBehov(any())
+                dialogportenService.setToCompletedInDialogporten(any())
+            }
+        }
+
+        test("should publish before a failed requirement update and skip Dialogporten") {
+            val fixtureEntity = fakeDb.insertRequirement(requirement)
+            val failure = IllegalStateException("Database update failed")
+            coEvery { fakeDb.updateNlBehov(any()) } throws failure
+
+            val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                handler.handleUpdatedRequirement(
+                    requirementId = fixtureEntity.id!!,
+                    manager = manager,
+                    principal = systemPrincipal(employeeOrgNumber),
+                    context = "test",
+                )
+            }
+
+            exception.cause shouldBe failure
+            coVerifyOrder {
+                kafkaProducer.sendSykmeldingNLRelasjon(any(), NlResponseSource.LPS)
+                fakeDb.updateNlBehov(match { it.behovStatus == BehovStatus.BEHOV_FULFILLED })
+            }
+            fakeDb.findBehovById(fixtureEntity.id!!)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+            coVerify(exactly = 0) { dialogportenService.setToCompletedInDialogporten(any()) }
+        }
+
+        test("should persist completed status only after Dialogporten accepts completion") {
+            val dialogId = UUID.randomUUID()
+            val revision = UUID.randomUUID()
+            val fixtureEntity = fakeDb.insertRequirement(requirement.copy(dialogId = dialogId))
+            coEvery { dialogportenClient.getDialogById(dialogId) } returns mockk<ExtendedDialog> {
+                every { this@mockk.revision } returns revision
+            }
+            coEvery { dialogportenClient.patchDialog(dialogId, revision, any<DialogportenClient.DialogportenPatch>()) } just Runs
+
+            handler.handleUpdatedRequirement(
+                requirementId = fixtureEntity.id!!,
+                manager = manager,
+                principal = systemPrincipal(employeeOrgNumber),
+                context = "test",
+            )
+
+            coVerifyOrder {
+                fakeDb.updateNlBehov(match { it.behovStatus == BehovStatus.BEHOV_FULFILLED })
+                dialogportenClient.patchDialog(
+                    dialogId,
+                    revision,
+                    DialogportenClient.DialogportenPatch(
+                        operation = DialogportenClient.DialogportenPatch.OPERATION.REPLACE,
+                        path = DialogportenClient.DialogportenPatch.PATH.STATUS,
+                        value = DialogStatus.Completed.name,
+                    ),
+                )
+                fakeDb.updateNlBehov(match { it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED })
+            }
+            fakeDb.findBehovById(fixtureEntity.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+        }
+
+        test("should retain fulfilled status for retry when Dialogporten is unavailable") {
+            val dialogId = UUID.randomUUID()
+            val fixtureEntity = fakeDb.insertRequirement(requirement.copy(dialogId = dialogId))
+            coEvery { dialogportenClient.getDialogById(dialogId) } throws IllegalStateException("Dialogporten unavailable")
+
+            handler.handleUpdatedRequirement(
+                requirementId = fixtureEntity.id!!,
+                manager = manager,
+                principal = systemPrincipal(employeeOrgNumber),
+                context = "test",
+            )
+
+            verify(exactly = 1) { kafkaProducer.sendSykmeldingNLRelasjon(any(), NlResponseSource.LPS) }
+            coVerify(exactly = 1) { dialogportenClient.getDialogById(dialogId) }
+            fakeDb.findBehovById(fixtureEntity.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
         }
     })
 

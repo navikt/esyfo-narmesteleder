@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.esyfo.observability.Event
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactInput
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactNormalization
@@ -17,7 +16,6 @@ import no.nav.syfo.narmestelederrelasjon.application.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
-import org.slf4j.event.Level
 
 class FulfillNarmestelederbehovUseCase(
     private val behovRepository: NarmestelederbehovRepository,
@@ -52,7 +50,7 @@ class FulfillNarmestelederbehovUseCase(
             ?: return FulfillNarmestelederbehovResult.PersonNotFound.log()
         val managerPerson = personLookup.find(manager.personIdent)
             ?: return FulfillNarmestelederbehovResult.PersonNotFound.log()
-        val managerNameMatch = managerPerson.matchManagerLastName(manager.lastName)
+        val managerNameMatch = managerPerson.name.matchManagerLastName(manager.lastName)
         if (managerNameMatch is ManagerLastNameMatch.NoMatch) {
             return FulfillNarmestelederbehovResult.ManagerNameMismatch(managerNameMatch).log()
         }
@@ -61,16 +59,16 @@ class FulfillNarmestelederbehovUseCase(
         establishNarmestelederrelasjon.establish(
             EstablishNarmestelederrelasjonCommand(
                 employee = RelationPerson(
-                    personIdent = behov.employee.personIdent,
-                    firstName = employee.firstName,
-                    middleName = employee.middleName,
-                    lastName = employee.primaryLastName,
+                    personIdent = employee.personIdent,
+                    firstName = employee.name.firstName,
+                    middleName = employee.name.middleName,
+                    lastName = employee.name.primaryLastName,
                 ),
                 manager = RelationManager(
                     personIdent = manager.personIdent,
-                    firstName = managerPerson.firstName,
-                    middleName = managerPerson.middleName,
-                    lastName = managerPerson.primaryLastName,
+                    firstName = managerPerson.name.firstName,
+                    middleName = managerPerson.name.middleName,
+                    lastName = managerPerson.name.primaryLastName,
                     email = manager.email.value,
                     mobile = manager.mobile.value,
                 ),
@@ -90,56 +88,12 @@ class FulfillNarmestelederbehovUseCase(
 
     private fun <T : FulfillNarmestelederbehovResult> T.log(): T = also { result ->
         when (result) {
-            is FulfillNarmestelederbehovResult.Fulfilled -> logger.event(
-                fulfillmentCompleted,
-                FulfilledContext(
-                    relationSource = result.relationSource.name,
-                    dialogCompletion = result.dialogCompletion.logValue,
-                ),
-            )
-
-            is FulfillNarmestelederbehovResult.InvalidManagerContactDetails ->
-                logger.event(fulfillmentRejected, RejectedContext("INVALID_MANAGER_CONTACT_DETAILS"))
-            FulfillNarmestelederbehovResult.NotFound -> logger.event(fulfillmentRejected, RejectedContext("NOT_FOUND"))
-            FulfillNarmestelederbehovResult.AccessDenied -> logger.event(fulfillmentRejected, RejectedContext("ACCESS_DENIED"))
-            FulfillNarmestelederbehovResult.NoActiveSykmelding ->
-                logger.event(fulfillmentRejected, RejectedContext("NO_ACTIVE_SYKMELDING"))
-            FulfillNarmestelederbehovResult.NoEmployment -> logger.event(fulfillmentRejected, RejectedContext("NO_EMPLOYMENT"))
-            FulfillNarmestelederbehovResult.PersonNotFound -> logger.event(fulfillmentRejected, RejectedContext("PERSON_NOT_FOUND"))
-            is FulfillNarmestelederbehovResult.ManagerNameMismatch ->
-                logger.event(fulfillmentRejected, RejectedContext("MANAGER_NAME_MISMATCH"))
+            is FulfillNarmestelederbehovResult.Fulfilled -> logger.event(fulfillmentCompleted, result)
+            else -> logger.event(fulfillmentRejected, result)
         }
     }
 
-    private data class FulfilledContext(
-        val relationSource: String,
-        val dialogCompletion: String,
-    )
-
-    private data class RejectedContext(
-        val outcomeCode: String,
-    )
-
     private companion object {
-        val fulfillmentCompleted = Event<FulfilledContext>(
-            name = "narmestelederbehov_fulfillment_completed",
-            level = Level.INFO,
-            message = "Narmestelederbehov fulfillment completed",
-            operation = "fulfill_narmestelederbehov",
-            fields = mapOf(
-                "relation_source" to { it.relationSource },
-                "dialogporten_completion" to { it.dialogCompletion },
-            ),
-        )
-        val fulfillmentRejected = Event<RejectedContext>(
-            name = "narmestelederbehov_fulfillment_rejected",
-            level = Level.WARN,
-            message = "Narmestelederbehov fulfillment rejected",
-            operation = "fulfill_narmestelederbehov",
-            fields = mapOf(
-                "outcome_code" to { it.outcomeCode },
-            ),
-        )
         val logger = applicationLogger(FulfillNarmestelederbehovUseCase::class.java)
     }
 }
@@ -173,9 +127,3 @@ private fun OrganizationAccessSubject.relationSource(): RelationSource = when (t
     is OrganizationAccessSubject.LpsSystemUser -> RelationSource.LPS
     is OrganizationAccessSubject.PersonnelManager -> RelationSource.PERSONNEL_MANAGER
 }
-
-private val DialogportenCompletionAttempt.logValue: String
-    get() = when (this) {
-        DialogportenCompletionAttempt.Completed -> "COMPLETED"
-        DialogportenCompletionAttempt.Failed -> "FAILED"
-    }

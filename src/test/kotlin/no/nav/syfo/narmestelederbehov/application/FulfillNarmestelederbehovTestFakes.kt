@@ -4,7 +4,6 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -14,12 +13,14 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 internal class FakeBehovRepository(
     private val behov: Narmestelederbehov?,
     private val effects: MutableList<String> = mutableListOf(),
+    private val updateFailure: Throwable? = null,
 ) : NarmestelederbehovRepository {
 
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov.also { effects += "load" }
 
     override suspend fun markFulfilled(id: NarmestelederbehovId) {
         effects += "fulfilled"
+        updateFailure?.let { throw it }
     }
 }
 
@@ -54,7 +55,7 @@ internal class FakeEmploymentLookup(
 }
 
 internal class FakePersonLookup(
-    private val people: Map<PersonIdent, PersonNameDetails>,
+    private val people: Map<PersonIdent, PersonDetails>,
     private val effects: MutableList<String> = mutableListOf(),
 ) : PersonLookup {
 
@@ -65,11 +66,13 @@ internal class FakePersonLookup(
 
 internal class FakeRelationEstablisher(
     private val effects: MutableList<String> = mutableListOf(),
+    private val failure: Throwable? = null,
 ) : EstablishNarmestelederrelasjon {
     var command: EstablishNarmestelederrelasjonCommand? = null
 
     override suspend fun establish(command: EstablishNarmestelederrelasjonCommand) {
         effects += "establish"
+        failure?.let { throw it }
         this.command = command
     }
 }
@@ -77,6 +80,11 @@ internal class FakeRelationEstablisher(
 internal class FakeDialog(
     private val attempt: DialogportenCompletionAttempt = DialogportenCompletionAttempt.Completed,
     private val effects: MutableList<String> = mutableListOf(),
+    private val failure: Throwable? = null,
 ) : NarmestelederbehovDialog {
-    override suspend fun attemptCompletion(id: NarmestelederbehovId) = attempt.also { effects += "dialog" }
+    override suspend fun attemptCompletion(id: NarmestelederbehovId): DialogportenCompletionAttempt {
+        effects += "dialog"
+        failure?.let { throw it }
+        return attempt
+    }
 }

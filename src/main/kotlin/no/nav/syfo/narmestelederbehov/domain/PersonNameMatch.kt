@@ -3,40 +3,6 @@ package no.nav.syfo.narmestelederbehov.domain
 import org.apache.commons.text.similarity.JaroWinklerSimilarity
 import java.text.Normalizer
 
-data class PersonNameDetails(
-    val firstName: String,
-    val primaryLastName: String,
-    val middleName: String? = null,
-    val registeredNames: List<RegisteredName>,
-)
-
-data class RegisteredName(
-    val lastName: String,
-    val middleName: String? = null,
-)
-
-sealed interface ManagerLastNameMatch {
-    val hasParallelNames: Boolean
-
-    data class Exact(
-        override val hasParallelNames: Boolean,
-    ) : ManagerLastNameMatch
-
-    data class OrthographicVariant(
-        override val hasParallelNames: Boolean,
-    ) : ManagerLastNameMatch
-
-    data class Fuzzy(
-        val score: Double,
-        override val hasParallelNames: Boolean,
-    ) : ManagerLastNameMatch
-
-    data class NoMatch(
-        val bestFuzzyScore: Double?,
-        override val hasParallelNames: Boolean,
-    ) : ManagerLastNameMatch
-}
-
 fun PersonNameDetails.matchManagerLastName(lastName: String): ManagerLastNameMatch {
     val hasParallelNames = registeredNames.size > 1
     val normalizedName = lastName.normalizeName()
@@ -63,8 +29,6 @@ fun PersonNameDetails.matchManagerLastName(lastName: String): ManagerLastNameMat
         ?.let { ManagerLastNameMatch.Fuzzy(it, hasParallelNames) }
         ?: ManagerLastNameMatch.NoMatch(bestFuzzyScore, hasParallelNames)
 }
-
-fun ManagerLastNameMatch.isAccepted(): Boolean = this !is ManagerLastNameMatch.NoMatch
 
 private const val FUZZY_MATCH_THRESHOLD = 0.93
 private const val MINIMUM_FUZZY_MATCH_LETTERS = 4

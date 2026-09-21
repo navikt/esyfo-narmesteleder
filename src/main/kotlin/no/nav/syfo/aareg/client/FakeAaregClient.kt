@@ -31,9 +31,9 @@ class FakeAaregClient(
     private val failureRef = AtomicReference<Throwable?>(null)
 
     /**
-     * getArbeidsforhold will return a failure if this property is set.
+     * getArbeidsforhold will throw the configured failure until it is cleared.
      *
-     * @param failure a `Throwable` to wrap in `Result.failure`
+     * @param failure the exception to throw
      */
     fun setFailure(failure: Throwable) {
         failureRef.set(failure)

@@ -7,6 +7,8 @@ package no.nav.syfo.aareg.client
 class TestAaregClient : IAaregClient {
     private val employmentsByPersonIdent = mutableMapOf<String, List<Pair<String, String>>>()
 
+    fun clear() = employmentsByPersonIdent.clear()
+
     fun seedEmployment(
         personIdent: String,
         orgNumber: String,

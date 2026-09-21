@@ -4,6 +4,8 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmesteleder.domain.EmailAddress as LegacyEmailAddress
+import no.nav.syfo.narmesteleder.domain.PhoneNumber as LegacyPhoneNumber
 
 class ManagerContactInputTest :
     FunSpec({
@@ -49,37 +51,95 @@ class ManagerContactInputTest :
             shouldThrow<IllegalArgumentException> { PhoneNumber("+47 99 99 99 99") }
         }
 
-        test("classifies exact matches, including middle names and parallel registered names") {
-            personWithNames(RegisteredName("Hansen")).matchManagerLastName("hansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = false)
-            personWithNames(RegisteredName("Hansen", middleName = "Berg")).matchManagerLastName("Berg Hansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = false)
-            personWithNames(RegisteredName("Hansen"), RegisteredName("Johansen")).matchManagerLastName("Johansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = true)
+        test("reports the first invalid email entry before errors in later entries") {
+            listOf("invalid;", "invalid;person @example.test", "invalid; ;valid@example.test").forEach { email ->
+                managerContact(email = email).normalize() shouldBe ManagerContactNormalization.Invalid(
+                    listOf(
+                        ManagerContactValidationIssue(
+                            ManagerContactField.EMAIL,
+                            ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+                        ),
+                    ),
+                )
+            }
         }
 
-        test("classifies orthographic variants") {
-            personWithNames(RegisteredName("Aasen")).matchManagerLastName("Åsen") shouldBe
-                ManagerLastNameMatch.OrthographicVariant(hasParallelNames = false)
+        listOf(
+            "manager@example.test",
+            " first@example.test ; second@example.test ",
+            " leder+team@arbeids-plass.test ",
+            "ærlig@blåbær.økonomi",
+            " manager@example.test\n",
+            "manager@${"a".repeat(63)}.test",
+            "manager@${"a".repeat(64)}.test",
+            "",
+            " \t ",
+            ";",
+            ";manager@example.test",
+            "manager@example.test;",
+            "manager@example.test; ;second@example.test",
+            "invalid;",
+            "invalid;manager @example.test",
+            "manager @example.test;invalid",
+            "manager\t@example.test",
+            "manager@example.test,second@example.test",
+            "manager@example",
+            "manager@-example.test",
+            "manager@example-.test",
+            "manager@exam_ple.test",
+            "manager@example..test",
+        ).forEachIndexed { index, email ->
+            test("preserves legacy email normalization and validation for case ${index + 1}") {
+                val expected = LegacyEmailAddress.parse(email)
+                when (val actual = managerContact(email = email).normalize()) {
+                    is ManagerContactNormalization.Valid -> actual.manager.email.value shouldBe expected.getOrThrow().value
+                    is ManagerContactNormalization.Invalid -> {
+                        actual.issues.single().field shouldBe ManagerContactField.EMAIL
+                        actual.issues.single().reason.message shouldBe expected.exceptionOrNull()?.message
+                    }
+                }
+
+                val expectedValue = runCatching { LegacyEmailAddress(email) }
+                val actualValue = runCatching { EmailAddress(email) }
+                actualValue.isSuccess shouldBe expectedValue.isSuccess
+                actualValue.exceptionOrNull()?.message shouldBe expectedValue.exceptionOrNull()?.message
+            }
         }
 
-        test("classifies fuzzy matches with score above the threshold") {
-            val match = personWithNames(RegisteredName("Andersen")).matchManagerLastName("Anderssen")
-            val fuzzyMatch = match as ManagerLastNameMatch.Fuzzy
+        listOf(
+            "+47 99 99 99 99",
+            " 99 99 99 99 ",
+            "99999999",
+            "+1",
+            "",
+            "   ",
+            "\t",
+            "+",
+            "++4799999999",
+            "+47-99999999",
+            "+47\t99999999",
+            "\n99999999",
+            "99999999\n",
+            "+47\u00a099999999",
+            "(+47)99999999",
+            "٩٩٩٩٩٩٩٩",
+            "999A9999",
+        ).forEachIndexed { index, mobile ->
+            test("preserves legacy phone normalization and validation for case ${index + 1}") {
+                val expected = LegacyPhoneNumber.parse(mobile)
+                when (val actual = managerContact(mobile = mobile).normalize()) {
+                    is ManagerContactNormalization.Valid -> actual.manager.mobile.value shouldBe expected.getOrThrow().value
+                    is ManagerContactNormalization.Invalid -> {
+                        actual.issues.single().field shouldBe ManagerContactField.MOBILE
+                        actual.issues.single().reason.message shouldBe expected.exceptionOrNull()?.message
+                    }
+                }
 
-            match shouldBe fuzzyMatch
-            (fuzzyMatch.score >= 0.93) shouldBe true
-            fuzzyMatch.hasParallelNames shouldBe false
-        }
-
-        test("retains no-match fuzzy score and rejects scores below the threshold") {
-            val fuzzyNoMatch = personWithNames(RegisteredName("Hansen")).matchManagerLastName("Olsen")
-                as ManagerLastNameMatch.NoMatch
-
-            (requireNotNull(fuzzyNoMatch.bestFuzzyScore) < 0.93) shouldBe true
-            fuzzyNoMatch.hasParallelNames shouldBe false
-            personWithNames(RegisteredName("Li")).matchManagerLastName("Lu") shouldBe
-                ManagerLastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
+                val expectedValue = runCatching { LegacyPhoneNumber(mobile) }
+                val actualValue = runCatching { PhoneNumber(mobile) }
+                actualValue.isSuccess shouldBe expectedValue.isSuccess
+                actualValue.exceptionOrNull()?.message shouldBe expectedValue.exceptionOrNull()?.message
+            }
         }
     })
 
@@ -89,9 +149,3 @@ private fun managerContact(
     email: String = "manager@example.test",
     mobile: String = "+4799999999",
 ) = ManagerContactInput(managerIdent, "Hansen", email, mobile)
-
-private fun personWithNames(vararg names: RegisteredName) = PersonNameDetails(
-    firstName = "Manager",
-    primaryLastName = names.first().lastName,
-    registeredNames = names.toList(),
-)

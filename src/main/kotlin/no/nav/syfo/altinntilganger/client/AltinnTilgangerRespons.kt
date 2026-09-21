@@ -11,7 +11,6 @@ data class AltinnTilgangerResponse(
 data class AltinnTilgang(
     val orgnr: String,
     val altinn3Tilganger: Set<String>,
-    val altinn2Tilganger: Set<String>,
     val underenheter: List<AltinnTilgang>,
     val navn: String,
     val organisasjonsform: String,

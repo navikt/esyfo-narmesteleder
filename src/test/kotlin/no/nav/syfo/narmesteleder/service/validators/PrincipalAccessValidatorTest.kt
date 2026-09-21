@@ -56,7 +56,7 @@ class PrincipalAccessValidatorTest :
 
                 result shouldBe "Test Org"
                 coVerify(exactly = 1) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = eq(principal),
                         orgnummer = eq(orgNumber),
                     )
@@ -73,7 +73,7 @@ class PrincipalAccessValidatorTest :
                 }
 
                 coVerify(exactly = 1) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         eq(principal),
                         eq(orgNumber),
                     )
@@ -93,7 +93,7 @@ class PrincipalAccessValidatorTest :
 
                 result shouldBe null
                 coVerify(exactly = 0) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = any<UserPrincipal>(),
                         orgnummer = any(),
                     )

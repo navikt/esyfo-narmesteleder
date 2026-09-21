@@ -84,7 +84,6 @@ class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = d
                             AltinnTilgang(
                                 orgnr = orgNrTilgang,
                                 altinn3Tilganger = setOf(altinn3tilgang),
-                                altinn2Tilganger = emptySet(),
                                 underenheter = emptyList(),
                                 navn = "Test Org",
                                 organisasjonsform = "BEDR",

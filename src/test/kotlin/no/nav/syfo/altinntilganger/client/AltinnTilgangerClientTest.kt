@@ -63,7 +63,6 @@ class AltinnTilgangerClientTest :
       "orgnr": "987654321",
       "erSlettet": false,
       "altinn3Tilganger": [],
-      "altinn2Tilganger": [],
       "underenheter": [
         {
           "orgnr": "123456789",
@@ -71,9 +70,6 @@ class AltinnTilgangerClientTest :
           "altinn3Tilganger": [
             "tilgang1",
             "tilgang2"
-          ],
-          "altinn2Tilganger": [
-            "serviceCode:serviceEdition"
           ],
           "underenheter": [],
           "navn": "Organisasjon 2",
@@ -86,15 +82,11 @@ class AltinnTilgangerClientTest :
   ],
   "orgNrTilTilganger": {
     "123456789": [
-      "serviceCode:serviceEdition",
       "tilgang1",
       "tilgang2"
     ]
   },
   "tilgangTilOrgNr": {
-    "serviceCode:serviceEdition": [
-      "123456789"
-    ],
     "tilgang1": [
       "123456789"
     ],

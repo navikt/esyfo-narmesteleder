@@ -7,12 +7,10 @@
         {
           "orgnr": "310667633",
           "altinn3Tilganger": ["nav_syfo_oppgi-narmesteleder"],
-          "altinn2Tilganger": [],
           "underenheter": [
             {
               "orgnr": "215649202",
               "altinn3Tilganger": ["nav_syfo_oppgi-narmesteleder"],
-              "altinn2Tilganger": [],
               "underenheter": [],
               "navn": "Norsk underenhet",
               "organisasjonsform": "BEDR"

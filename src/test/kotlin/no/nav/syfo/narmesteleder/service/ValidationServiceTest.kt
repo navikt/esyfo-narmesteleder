@@ -229,7 +229,7 @@ class ValidationServiceTest :
                 result.employee.nationalIdentificationNumber.value shouldBe narmestelederRelasjonerWrite.employeeIdentificationNumber.value
                 result.manager.nationalIdentificationNumber.value shouldBe narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value
                 coVerify(exactly = 1) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
@@ -258,7 +258,7 @@ class ValidationServiceTest :
                 }
 
                 coVerify(exactly = 1) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
@@ -293,7 +293,7 @@ class ValidationServiceTest :
 
                 exception.type shouldBe ErrorType.NO_ACTIVE_SICK_LEAVE
                 coVerify(exactly = 1) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
@@ -339,7 +339,7 @@ class ValidationServiceTest :
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
                 }
                 coVerify(exactly = 1) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
@@ -367,7 +367,7 @@ class ValidationServiceTest :
                     service.validateLinemanager(narmestelederRelasjonerWrite, principal)
                 }
                 coVerify(exactly = 0) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = any<UserPrincipal>(),
                         orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
                     )
@@ -397,7 +397,7 @@ class ValidationServiceTest :
                     service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
                 }
                 coVerify(exactly = 1) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmesteLederAvkreft.orgNumber.value),
                     )
@@ -421,7 +421,7 @@ class ValidationServiceTest :
                 result.nationalIdentificationNumber.value shouldBe narmesteLederAvkreft.employeeIdentificationNumber.value
                 result.name.etternavn shouldBe narmesteLederAvkreft.lastName
                 coVerify(exactly = 1) {
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = eq(principal),
                         orgnummer = eq(narmesteLederAvkreft.orgNumber.value),
                     )
@@ -451,7 +451,7 @@ class ValidationServiceTest :
                 }
                 coVerify(exactly = 0) {
                     aaregService.findArbeidsforholdByPersonIdent(any())
-                    altinnTilgangerService.validateTilgangToOrganization(
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = any<UserPrincipal>(),
                         orgnummer = any(),
                     )

@@ -4,7 +4,7 @@ import no.nav.syfo.util.JsonFixtureLoader
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Fake implementation of [IAaregClient] for testing and local development.
+ * Fixture-backed [IAaregClient] adapter for local and development environments.
  *
  * @param fixtureLoader [JsonFixtureLoader] to load arbeidsforhold from JSON files.
  *                      Expects a file mapping fnr -> AaregArbeidsforholdOversikt.

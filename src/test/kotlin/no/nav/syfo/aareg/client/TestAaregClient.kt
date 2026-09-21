@@ -1,5 +1,9 @@
 package no.nav.syfo.aareg.client
 
+/**
+ * Focused test infrastructure for seeding employments in automated tests.
+ * Local and development environments use [FakeAaregClient] with fixtures instead.
+ */
 class TestAaregClient : IAaregClient {
     private val employmentsByPersonIdent = mutableMapOf<String, List<Pair<String, String>>>()
 

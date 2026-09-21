@@ -22,12 +22,14 @@ enum class RelationSource {
 data class RelationPerson(
     val personIdent: PersonIdent,
     val firstName: String,
+    val middleName: String?,
     val lastName: String,
 )
 
 data class RelationManager(
     val personIdent: PersonIdent,
     val firstName: String,
+    val middleName: String?,
     val lastName: String,
     val email: String,
     val mobile: String,

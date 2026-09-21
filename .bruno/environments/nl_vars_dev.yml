@@ -1,0 +1,19 @@
+variables:
+  - name: baseUrlEkstern
+    value: https://narmesteleder-api.ekstern.dev.nav.no
+  - name: baseUrlIntern
+    value: https://narmesteleder-api.intern.dev.nav.no
+  - name: currentId
+    value: "{{process.env.BEHOV_ID}}"
+  - name: identityProvider
+    value: ""
+  - name: systemKundeOrgnr
+    value: "314252217"
+  - name: systemEierOrgnr
+    value: "215649202"
+  - name: narmesteLederId
+    value: "{{process.env.NARMESTE_LEDER_ID}}"
+  - name: orgnr
+    value: "{{process.env.ORG_NUMMER}}"
+  - secret: true
+    name: token

@@ -32,7 +32,7 @@ class PrincipalAccessValidator(
         }
 
         is UserPrincipal -> {
-            val altinnTilgang = altinnTilgangerService.validateTilgangToOrganization(
+            val altinnTilgang = altinnTilgangerService.getAuthorizedAltinnTilgang(
                 userPrincipal = principal,
                 orgnummer = orgNumber,
             )

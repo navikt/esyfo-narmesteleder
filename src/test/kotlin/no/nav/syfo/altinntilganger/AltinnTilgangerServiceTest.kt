@@ -1,6 +1,5 @@
 package no.nav.syfo.altinntilganger
 
-import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -47,14 +46,13 @@ class AltinnTilgangerServiceTest :
             tilgangTilOrgNr = emptyMap(),
         )
 
-        describe("validateTilgangToOrganization") {
+        describe("getAuthorizedAltinnTilgang") {
             it("should not throw when user has access to org") {
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val orgnummer = altinnTilgangerClient.accessPolicy.first().altinnTilgangerResponse.hierarki.first().orgnr
                 val userPrincipal = UserPrincipal(fnr, "token")
-                shouldNotThrow<ApiErrorException.ForbiddenException> {
-                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, orgnummer)
-                }
+                val altinnTilgang = altinnTilgangerService.getAuthorizedAltinnTilgang(userPrincipal, orgnummer)
+                altinnTilgang.orgnr shouldBe orgnummer
             }
 
             it("should throw Forbidden when user lacks access to org") {
@@ -62,7 +60,7 @@ class AltinnTilgangerServiceTest :
                 val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
                 altinnTilgangerClient.accessPolicy.clear()
                 shouldThrow<ApiErrorException.ForbiddenException> {
-                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
+                    altinnTilgangerService.getAuthorizedAltinnTilgang(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
             }
 
@@ -74,7 +72,7 @@ class AltinnTilgangerServiceTest :
                 val accessPolicy = altinnTilgangerClient.accessPolicy.first()
                 val userPrincipal = UserPrincipal(accessPolicy.hasAccess.first(), "token")
                 val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    altinnTilgangerServiceWithMock.validateTilgangToOrganization(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
+                    altinnTilgangerServiceWithMock.getAuthorizedAltinnTilgang(userPrincipal, accessPolicy.altinnTilgangerResponse.hierarki.first().orgnr)
                 }
                 exception.cause shouldBe upstreamFailure
                 exception.isAlreadyLogged shouldBe true

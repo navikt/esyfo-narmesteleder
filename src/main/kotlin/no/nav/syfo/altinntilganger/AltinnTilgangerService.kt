@@ -12,32 +12,28 @@ import no.nav.syfo.logging.applicationLogger
 class AltinnTilgangerService(
     val altinnTilgangerClient: IAltinnTilgangerClient,
 ) {
-    suspend fun validateTilgangToOrganization(
+    suspend fun getAuthorizedAltinnTilgang(
         userPrincipal: UserPrincipal,
         orgnummer: String,
-    ): AltinnTilgang {
-        val altinnTilgang = getAltinnTilgangForOrgnr(userPrincipal, orgnummer)
-        validateTilgangToOrganization(altinnTilgang, orgnummer)
-        return altinnTilgang!!
-    }
+    ): AltinnTilgang = getAltinnTilgangForOrgnr(userPrincipal, orgnummer)
+        .requireNarmestelederAccess(orgnummer)
 
-    fun validateTilgangToOrganization(
-        altinnTilgang: AltinnTilgang?,
+    private fun AltinnTilgang?.requireNarmestelederAccess(
         orgnummer: String
-    ) {
-        altinnTilgang?.let {
-            val hasAltinn3Resource = it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)
-            if (!hasAltinn3Resource) {
-                throw ApiErrorException.ForbiddenException(
-                    errorMessage = "User lacks access to required Altinn resource for organization: $orgnummer",
-                    type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
-                )
-            }
-            COUNT_HAS_ALTINN3_RESOURCE.increment()
-        } ?: throw ApiErrorException.ForbiddenException(
+    ): AltinnTilgang {
+        val altinnTilgang = this ?: throw ApiErrorException.ForbiddenException(
             errorMessage = "User lacks access to organization: $orgnummer",
-            type = ErrorType.MISSING_ORG_ACCESS
+            type = ErrorType.MISSING_ORG_ACCESS,
         )
+        if (!altinnTilgang.hasNarmestelederTilgang()) {
+            throw ApiErrorException.ForbiddenException(
+                errorMessage = "User lacks access to required Altinn resource for organization: $orgnummer",
+                type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
+            )
+        }
+
+        COUNT_HAS_ALTINN3_RESOURCE.increment()
+        return altinnTilgang
     }
 
     suspend fun getAltinnTilgangForOrgnr(

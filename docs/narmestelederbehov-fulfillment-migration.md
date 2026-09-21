@@ -17,7 +17,7 @@ architecture, while this document records the intermediate state.
 | Result-to-HTTP mapping and unchanged `ApiError` | Deferred to activation; existing HTTP handling remains active |
 | Kafka, persistence and Dialogporten adapters | Deferred to activation; contract data includes middle names and resolved employee identity |
 | Capability-owned Koin registration/settings | Deferred to activation |
-| Architecture checks | Enforced for the five populated identifier, domain and application packages |
+| Architecture checks | Not included in this change |
 | Focused tests plus endpoint/integration coverage | Retained and expanded; activation must run the same contract tests against the new route |
 | Successful build | Required for each change, including activation |
 
@@ -47,9 +47,6 @@ PUT fulfillment or complete #525.
   cancellation handling must be explicitly reconciled with the documented
   propagation rule when implementing the adapter, rather than hidden in an
   otherwise structural activation change.
-- Extend architecture checks to actual API/infrastructure and Koin wiring as
-  they are introduced. No empty target packages or repository-wide legacy
-  exception list are needed.
 
 ## Removing transitional duplication
 

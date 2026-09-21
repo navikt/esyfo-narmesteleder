@@ -23,7 +23,7 @@ sequenceDiagram
     API->>AT: POST /altinn-tilganger<br/>Authorization: Bearer <obo-token>
     AT-->>API: AltinnTilgangerResponse<br/>{ hierarki, orgNrTilTilganger, tilgangTilOrgNr }
 
-    Note over API: Filtrerer hierarkiet:<br/>kun orger med nav_syfo_oppgi-narmesteleder<br/>eller 4596:1
+    Note over API: Filtrerer hierarkiet:<br/>kun orger med nav_syfo_oppgi-narmesteleder
 
     API-->>FE: 200 OK<br/>{ organizations: [{ orgNumber, name, subOrganizations[] }] }
 ```
@@ -56,8 +56,7 @@ sequenceDiagram
 
 ## Filtreringslogikk
 
-En organisasjon inkluderes i responsen dersom:
-- Den har Altinn 3-ressursen `nav_syfo_oppgi-narmesteleder`, **eller**
-- Den har Altinn 2-tjenesten `4596:1`
+En organisasjon inkluderes i responsen dersom den har Altinn 3-ressursen
+`nav_syfo_oppgi-narmesteleder`.
 
 Hovedenheter inkluderes også hvis en underenhet har tilgang. Underenheter uten tilgang filtreres bort.

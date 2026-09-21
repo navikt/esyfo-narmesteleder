@@ -27,23 +27,13 @@ class AltinnTilgangerService(
     ) {
         altinnTilgang?.let {
             val hasAltinn3Resource = it.altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)
-            val hasAltinn2Resource = it.altinn2Tilganger.contains(OPPRETT_NL_REALASJON_RESOURCE)
-            when {
-                hasAltinn3Resource -> {
-                    COUNT_HAS_ALTINN3_RESOURCE.increment()
-                }
-
-                hasAltinn2Resource && !hasAltinn3Resource -> {
-                    COUNT_HAS_ALTINN2_AND_NOT_ALTIN3_RESOURCE.increment()
-                    // We might add logging of the org numbers that only has altinn2 access here
-                }
-            }
-            if (!(hasAltinn3Resource || hasAltinn2Resource)) {
+            if (!hasAltinn3Resource) {
                 throw ApiErrorException.ForbiddenException(
                     errorMessage = "User lacks access to required Altinn resource for organization: $orgnummer",
                     type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                 )
             }
+            COUNT_HAS_ALTINN3_RESOURCE.increment()
         } ?: throw ApiErrorException.ForbiddenException(
             errorMessage = "User lacks access to organization: $orgnummer",
             type = ErrorType.MISSING_ORG_ACCESS
@@ -132,8 +122,7 @@ class AltinnTilgangerService(
         }
     }
 
-    private fun AltinnTilgang.hasNarmestelederTilgang(): Boolean = altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE) ||
-        altinn2Tilganger.contains(OPPRETT_NL_REALASJON_RESOURCE)
+    private fun AltinnTilgang.hasNarmestelederTilgang(): Boolean = altinn3Tilganger.contains(OPPGI_NARMESTELEDER_RESOURCE)
 
     private fun List<AltinnTilgang>.findByOrgnr(targetOrgnr: String): AltinnTilgang? {
         for (tilgang in this) {
@@ -148,7 +137,6 @@ class AltinnTilgangerService(
     companion object {
         const val OPPGI_NARMESTELEDER_RESOURCE =
             "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn3 to access NL relasjon
-        const val OPPRETT_NL_REALASJON_RESOURCE = "4596:1" // Access resource in Altinn2 to access NL relasjon
         private val logger = applicationLogger(AltinnTilgangerService::class.java)
     }
 }

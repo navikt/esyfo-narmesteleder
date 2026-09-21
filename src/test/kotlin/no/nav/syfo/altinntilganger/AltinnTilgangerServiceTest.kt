@@ -9,7 +9,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.spyk
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -31,13 +30,11 @@ class AltinnTilgangerServiceTest :
         fun altinnTilgang(
             orgnr: String,
             altinn3Tilganger: Set<String> = emptySet(),
-            altinn2Tilganger: Set<String> = emptySet(),
             underenheter: List<AltinnTilgang> = emptyList(),
             navn: String = "Org $orgnr",
         ) = AltinnTilgang(
             orgnr = orgnr,
             altinn3Tilganger = altinn3Tilganger,
-            altinn2Tilganger = altinn2Tilganger,
             underenheter = underenheter,
             navn = navn,
             organisasjonsform = "BEDR",
@@ -55,26 +52,6 @@ class AltinnTilgangerServiceTest :
                 val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
                 val orgnummer = altinnTilgangerClient.accessPolicy.first().altinnTilgangerResponse.hierarki.first().orgnr
                 val userPrincipal = UserPrincipal(fnr, "token")
-                shouldNotThrow<ApiErrorException.ForbiddenException> {
-                    altinnTilgangerService.validateTilgangToOrganization(userPrincipal, orgnummer)
-                }
-            }
-
-            it("should not throw when user has access to org through altinn2") {
-                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
-                val orgnummer = altinnTilgangerClient.accessPolicy.first().altinnTilgangerResponse.hierarki.first().orgnr
-                val userPrincipal = UserPrincipal(fnr, "token")
-                val tilgang = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
-                val adjustedTilgang = tilgang.hierarki.first()
-                    .copy(altinn2Tilganger = setOf(OPPRETT_NL_REALASJON_RESOURCE), altinn3Tilganger = emptySet())
-                coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns AltinnTilgangerResponse(
-                    hierarki = listOf(
-                        adjustedTilgang
-                    ),
-                    isError = false,
-                    orgNrTilTilganger = mapOf(),
-                    tilgangTilOrgNr = mapOf()
-                )
                 shouldNotThrow<ApiErrorException.ForbiddenException> {
                     altinnTilgangerService.validateTilgangToOrganization(userPrincipal, orgnummer)
                 }
@@ -139,23 +116,6 @@ class AltinnTilgangerServiceTest :
                                 subOrganizations = emptyList(),
                             )
                         ),
-                    )
-                )
-            }
-
-            it("should keep leaf organization with narmesteleder access and empty subOrganizations") {
-                val leafWithAccess = altinnTilgang(
-                    orgnr = "333333333",
-                    altinn2Tilganger = setOf(OPPRETT_NL_REALASJON_RESOURCE),
-                )
-
-                coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(leafWithAccess)
-
-                altinnTilgangerService.getFilteredOrganizations(userPrincipal) shouldBe listOf(
-                    AccessibleOrganization(
-                        orgNumber = "333333333",
-                        name = "Org 333333333",
-                        subOrganizations = emptyList(),
                     )
                 )
             }

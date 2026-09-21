@@ -24,7 +24,6 @@ import io.mockk.clearAllMocks
 import io.mockk.mockk
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPRETT_NL_REALASJON_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
@@ -114,45 +113,6 @@ class AccessibleOrganizationsApiTest :
                 }
             }
 
-            it("should include org with only altinn2 tilgang") {
-                withTestApp {
-                    // Arrange - directly set up a response with altinn2 access in hierarchy
-                    val orgNr = "987654321"
-                    fakeAltinnTilgangerClient.accessPolicy.add(
-                        FakeAltinnTilgangerClient.FakeArbeidsforholdOversikt(
-                            hasAccess = mutableListOf(userFnr),
-                            altinnTilgangerResponse = AltinnTilgangerResponse(
-                                isError = false,
-                                hierarki = listOf(
-                                    AltinnTilgang(
-                                        orgnr = orgNr,
-                                        altinn3Tilganger = emptySet(),
-                                        altinn2Tilganger = setOf(OPPRETT_NL_REALASJON_RESOURCE),
-                                        underenheter = emptyList(),
-                                        navn = "Altinn2 Org",
-                                        organisasjonsform = "BEDR",
-                                    ),
-                                ),
-                                orgNrTilTilganger = mapOf(orgNr to setOf(OPPRETT_NL_REALASJON_RESOURCE)),
-                                tilgangTilOrgNr = mapOf(OPPRETT_NL_REALASJON_RESOURCE to setOf(orgNr)),
-                            ),
-                        ),
-                    )
-                    texasHttpClientMock.defaultMocks(pid = userFnr, acr = "Level4")
-
-                    // Act
-                    val response = client.get("$API_V1_PATH/access/organizations") {
-                        bearerAuth(createMockToken(ident = userFnr, issuer = "https://tokenx.nav.no"))
-                    }
-
-                    // Assert
-                    response.status shouldBe HttpStatusCode.OK
-                    val body = response.body<AccessibleOrganizationsResponse>().organizations
-                    body shouldHaveSize 1
-                    body[0].orgNumber shouldBe orgNr
-                }
-            }
-
             // Depends on the user having access to a sub-organization, but not the parent organization itself.
             // TODO: Verify whether this actually happens in practice.
             it("should keep parent organization when only sub-organization has tilgang") {
@@ -166,12 +126,10 @@ class AccessibleOrganizationsApiTest :
                                     AltinnTilgang(
                                         orgnr = "100000000",
                                         altinn3Tilganger = emptySet(),
-                                        altinn2Tilganger = emptySet(),
                                         underenheter = listOf(
                                             AltinnTilgang(
                                                 orgnr = "200000001",
                                                 altinn3Tilganger = setOf(OPPGI_NARMESTELEDER_RESOURCE),
-                                                altinn2Tilganger = emptySet(),
                                                 underenheter = emptyList(),
                                                 navn = "Underenhet Med Tilgang",
                                                 organisasjonsform = "BEDR",
@@ -179,7 +137,6 @@ class AccessibleOrganizationsApiTest :
                                             AltinnTilgang(
                                                 orgnr = "200000002",
                                                 altinn3Tilganger = emptySet(),
-                                                altinn2Tilganger = emptySet(),
                                                 underenheter = emptyList(),
                                                 navn = "Underenhet Uten Tilgang",
                                                 organisasjonsform = "BEDR",
@@ -223,7 +180,6 @@ class AccessibleOrganizationsApiTest :
                                     AltinnTilgang(
                                         orgnr = "999999999",
                                         altinn3Tilganger = setOf(OPPGI_NARMESTELEDER_RESOURCE),
-                                        altinn2Tilganger = emptySet(),
                                         underenheter = emptyList(),
                                         navn = "Should Be Filtered",
                                         organisasjonsform = "BEDR",

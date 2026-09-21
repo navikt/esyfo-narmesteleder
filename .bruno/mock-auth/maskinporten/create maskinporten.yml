@@ -1,0 +1,48 @@
+info:
+  name: create maskinporten
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:6969/maskinporten/token
+  body:
+    type: form-urlencoded
+    data:
+      - name: grant_type
+        value: authorization_code
+      - name: code
+        value: maskinporten
+      - name: client_id
+        value: maskinporten
+      - name: consumerAuthority
+        value: consumerAuthority
+      - name: consumerId
+        value: 0192:{{systemEierOrgnr}}
+      - name: supplierAuthority
+        value: supplierAuthority
+      - name: systemUserOrg
+        value: 0192:{{systemKundeOrgnr}}
+      - name: scope
+        value: nav:syfo/narmesteleder/lps
+      - name: aud
+        value: esyfo-narmesteleder
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const token = res.getBody();
+
+        if (token != null) {
+          bru.setEnvVar("token", token.access_token)
+          bru.setEnvVar("identityProvider", "maskinporten")
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

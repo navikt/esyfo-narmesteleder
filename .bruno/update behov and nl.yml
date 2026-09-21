@@ -1,0 +1,49 @@
+info:
+  name: update behov and nl
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{baseUrlEkstern}}/api/v1/linemanager/requirement/:id"
+  params:
+    - name: id
+      value: "{{currentId}}"
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "nationalIdentificationNumber": "13468329780",
+        "mobile": "12345678",
+        "email": "e@post.no",
+        "lastName": "Nienow"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const http = require("axios");
+
+        if (bru.getEnvName() === "nl_vars_local") {
+          if (!bru.hasEnvVar("token")) {
+            throw new Error("Kjør request 'mock maskinporten token' først for å teste lokalt");
+          }
+        } else {
+          const systembrukerOrgnr = bru.getEnvVar("systemKundeOrgnr");
+          const tokenrespons = await http.get("https://esyfo-token.intern.dev.nav.no/systembruker/" + systembrukerOrgnr + "?scope=nav%3Asyfo%2Fnarmesteleder%2Flps");
+          req.setHeader("Authorization", "Bearer "+ tokenrespons.data);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "202"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

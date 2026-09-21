@@ -1,0 +1,39 @@
+info:
+  name: post internal line manager lookup
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{baseUrlIntern}}/internal/api/v1/lookup"
+  body:
+    type: json
+    data: |-
+      {
+        "employeeNationalIdentificationNumber": "35933493077",
+        "organizationNumber": "427604467"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        if (bru.getEnvName() === "nl_vars_local" && !bru.hasEnvVar("token")) {
+          throw new Error("Kjør request 'mock-auth/entra/create entra m2m' først for å teste lokalt");
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Lokalt: start avhengighetene med `mise docker-up` og applikasjonen med `mise start`.
+  Kjør deretter `mock-auth/entra/create entra m2m` for å hente et token før dette kallet.

@@ -1,0 +1,48 @@
+info:
+  name: get internal line manager statistics
+  type: http
+  seq: 9
+
+http:
+  method: GET
+  url: "{{baseUrlIntern}}/internal/api/v1/linemanager/statistics?orgNumber=314560132"
+  params:
+    - name: orgNumber
+      value: "314560132"
+      type: query
+  body:
+    type: json
+    data: ""
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const http = require("axios");
+
+        if (bru.getEnvName() === "nl_vars_local") {
+          if (!bru.hasEnvVar("token")) {
+            throw new Error("Kjør request 'mock maskinporten token' først for å teste lokalt");
+          }
+        } else {
+          const systembrukerOrgnr = bru.getEnvVar("systemKundeOrgnr");
+          const tokenrespons = await http.get("https://esyfo-token.intern.dev.nav.no/systembruker/" + systembrukerOrgnr + "?scope=nav%3Asyfo%2Fnarmesteleder%2Flps");
+          console.log(tokenrespons.data);
+          req.setHeader("Authorization", "Bearer "+ tokenrespons.data);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Lokalt: start avhengighetene med `mise docker-up` og applikasjonen med `mise start`.
+  Kjør deretter `mock-auth/entra/create entra m2m` for å hente et token før dette kallet.

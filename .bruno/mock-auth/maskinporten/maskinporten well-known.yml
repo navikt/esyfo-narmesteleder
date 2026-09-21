@@ -1,16 +1,15 @@
-meta {
+info:
   name: maskinporten well-known
   type: http
   seq: 3
-}
 
-get {
+http:
+  method: GET
   url: http://localhost:6969/tokenx/.well-known/openid-configuration
-  body: none
-  auth: none
-}
 
-settings {
+settings:
   encodeUrl: true
   timeout: 0
-}
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

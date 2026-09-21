@@ -1,0 +1,39 @@
+info:
+  name: get employee linemanager
+  type: http
+  seq: 10
+
+http:
+  method: GET
+  url: "{{baseUrlIntern}}/internal/api/v1/employee/linemanager?orgNumber=314560132"
+  params:
+    - name: orgNumber
+      value: "314560132"
+      type: query
+  body:
+    type: json
+    data: ""
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        if (bru.getEnvName() === "nl_vars_local" && !bru.hasEnvVar("token")) {
+          throw new Error("Kjør request 'mock-auth/tokenx/create tokenx' først for å teste lokalt");
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Lokalt: start avhengighetene med `mise docker-up` og applikasjonen med `mise start`.
+  Før du kjører dette kallet, må du kjøre `mock-auth/tokenx/create tokenx` for å hente et TokenX-token.

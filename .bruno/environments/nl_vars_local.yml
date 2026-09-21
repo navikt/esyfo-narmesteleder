@@ -1,0 +1,20 @@
+name: nl_vars_local
+variables:
+  - name: baseUrlEkstern
+    value: http://localhost:8080
+  - name: baseUrlIntern
+    value: http://localhost:8080
+  - name: currentId
+    value: "{{process.env.BEHOV_ID}}"
+  - name: identityProvider
+    value: maskinporten
+  - name: systemKundeOrgnr
+    value: "{{process.env.SYSTEM_KUNDE_ORGNR}}"
+  - name: systemEierOrgnr
+    value: "{{process.env.SYSTEM_EIER_ORGNR}}"
+  - name: narmesteLederId
+    value: "{{process.env.NARMESTE_LEDER_ID}}"
+  - name: orgnr
+    value: "{{process.env.ORG_NUMMER}}"
+  - secret: true
+    name: token

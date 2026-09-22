@@ -15,8 +15,9 @@ the level, message and operation; the call supplies its typed context and an
 optional reviewed cause. INFO and DEBUG diagnostics use the same logger directly.
 Do not use native SLF4J or `println` in migrated application code.
 
-The current migration covers `altinntilganger`, `PrincipalAccessValidator` and its
-`SystemUserAccessRejection` definition. `LoggingArchitectureTest` checks these
+The current migration covers `altinntilganger`, `PrincipalAccessValidator`, its
+`SystemUserAccessRejection` definition and the extracted `narmestelederbehov`
+code. `LoggingArchitectureTest` checks these
 compiled classes, including nested classes. `ApplicationLogging.kt` is the only
 native logger factory in that scope. Other application packages and framework
 logging are not migrated yet; widen the test scope as they are adopted.
@@ -40,3 +41,13 @@ The schema is not a privacy filter: review context fields and causes, and test
 sensitive canaries. Keep useful, reviewed diagnostics, including PDL error details
 where applicable. Altinn's existing bounded diagnostics and sanitized cause policy
 remain local to the app; the shared logger does not scrub or rewrite them.
+
+`FulfillNarmestelederbehovUseCase` logs its typed result directly through two
+events defined in `FulfillmentEvents.kt`. A completed operation emits one INFO
+event with bounded relation-source and Dialogporten-completion values. An
+expected rejection emits one WARN event with a code selected exhaustively from
+the result type. Cancellation and unexpected failures propagate without a
+business-outcome event. `FulfillmentLoggingContractTest` exercises the use case
+with the production JSON encoder, validates every record before filtering, and
+checks event counts, severity, trace propagation and sensitive canaries. This
+use case is not wired to the production route yet.

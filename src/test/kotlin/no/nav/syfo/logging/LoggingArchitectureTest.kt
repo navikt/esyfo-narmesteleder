@@ -48,6 +48,7 @@ class LoggingArchitectureTest :
     })
 
 private fun isMigrated(name: String): Boolean = name.startsWith("no/nav/syfo/altinntilganger/") ||
+    name.startsWith("no/nav/syfo/narmestelederbehov/") ||
     name.substringBefore('$') in setOf(
         "no/nav/syfo/narmesteleder/service/validators/PrincipalAccessValidator",
         "no/nav/syfo/narmesteleder/service/validators/SystemUserAccessRejection",

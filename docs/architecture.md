@@ -343,6 +343,9 @@ the final repository-wide rules can replace the migration-specific checks.
 
 ## Migration approach
 
+The fulfillment foundation and its remaining activation work are described in
+[Fulfillment migration status](narmestelederbehov-fulfillment-migration.md).
+
 The first implementation slice is fulfillment of a narmestelederbehov. It
 creates only the target packages, Koin seams, application contracts and
 architecture rules required by that complete flow.

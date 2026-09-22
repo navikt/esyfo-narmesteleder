@@ -155,7 +155,7 @@ Stop them all again
 mise docker-down
 ```
 ### Kafka-ui
-You can use [kafka-ui](http://localhost:9000) to inspect your consumers and topics. You can also publish or read messages on the topics
+You can use [kafka-ui](http://localhost:9080) to inspect your consumers and topics. You can also publish or read messages on the topics
 
 ## Authentication for dev
 In order to get a token that allows access to the service as a person, you can use the following url:
@@ -169,7 +169,6 @@ If you want to act as the linemanager, give the ident of a person that is regist
 
 
 ## Running requests locally
-There is a [Bruno](https://www.usebruno.com/) collection in the folder [.bruno](./.bruno) that you can open and find request to run against your locally running instance.
-Look in the Docs tab of requests for further instructions, when needed.
+There is a [Bruno](https://www.usebruno.com/) collection in the folder [.bruno](./.bruno) for requests against a locally running instance. See the [local Bruno testing guide](./.bruno/README.md) for setup and the `update behov and nl` workflow.
 
 There is a folder with json files for kafka messages in [local-dev-resources](./local-dev-resources). These can be used from kafka-ui to publish messages to the topics that syfo-esyfo-narmesteleder is consuming.

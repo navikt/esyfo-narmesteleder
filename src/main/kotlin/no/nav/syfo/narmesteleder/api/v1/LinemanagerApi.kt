@@ -27,7 +27,7 @@ import no.nav.syfo.texas.client.TexasHttpClient
 
 const val LINEMANAGER_API_PATH = "/linemanager"
 const val REVOKE_PATH = "$LINEMANAGER_API_PATH/revoke"
-const val RECUIREMENT_PATH = "$LINEMANAGER_API_PATH/requirement"
+const val REQUIREMENT_PATH = "$LINEMANAGER_API_PATH/requirement"
 fun Route.registerLinemanagerApiV1(
     narmestelederKafkaService: NarmestelederKafkaService,
     validationService: ValidationService,
@@ -90,7 +90,7 @@ fun Route.registerLinemanagerApiV1(
         }
     }
 
-    route(RECUIREMENT_PATH) {
+    route(REQUIREMENT_PATH) {
         put("/{id}") {
             val principal = call.getMyPrincipal()
             fulfillNarmestelederbehov.execute(

@@ -7,7 +7,7 @@ variables:
   - name: currentId
     value: "{{process.env.BEHOV_ID}}"
   - name: identityProvider
-    value: maskinporten
+    value: tokenx
   - name: systemKundeOrgnr
     value: "{{process.env.SYSTEM_KUNDE_ORGNR}}"
   - name: systemEierOrgnr

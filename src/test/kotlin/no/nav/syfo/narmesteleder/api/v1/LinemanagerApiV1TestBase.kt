@@ -217,6 +217,7 @@ abstract class LinemanagerApiV1TestBase(
                         linemanagerStatisticsService,
                         employeeLinemanagerService,
                         linemanagerRevokeService,
+                        mockk(),
                     )
                 }
             }

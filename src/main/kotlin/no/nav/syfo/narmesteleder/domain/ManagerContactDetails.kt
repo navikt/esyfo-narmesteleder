@@ -3,7 +3,10 @@ package no.nav.syfo.narmesteleder.domain
 data class ContactValidationIssue(
     val fieldName: String,
     val reason: String,
+    val field: ContactField,
 )
+
+enum class ContactField { MOBILE, EMAIL }
 
 data class ManagerContactDetailsValidation(
     val manager: Manager,
@@ -19,6 +22,7 @@ fun Manager.normalizeContactDetails(): ManagerContactDetailsValidation {
                 ContactValidationIssue(
                     fieldName = "mobile",
                     reason = it.message ?: "Invalid phone number",
+                    field = ContactField.MOBILE,
                 )
             )
         }
@@ -32,6 +36,7 @@ fun Manager.normalizeContactDetails(): ManagerContactDetailsValidation {
                 ContactValidationIssue(
                     fieldName = "email",
                     reason = it.message ?: "Invalid email address",
+                    field = ContactField.EMAIL,
                 )
             )
         }

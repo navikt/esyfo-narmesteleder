@@ -1,12 +1,28 @@
 package no.nav.syfo.narmesteleder.service
 
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.EmailAddress
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.splitEmailAddresses
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.util.UUID
+
+private data class MultipleActiveRelationsDetails(
+    val recordCount: Int,
+)
+
+private val multipleActiveRelations = applicationEvent<MultipleActiveRelationsDetails>(
+    name = "multiple_active_relations",
+    level = Level.ERROR,
+    message = "Multiple active nearest leader relations were found; selecting the first",
+    fields = mapOf(
+        "record_count" to { it.recordCount },
+    ),
+)
 
 data class NarmestelederLookup(
     val id: UUID,
@@ -28,7 +44,7 @@ class NarmestelederLookupService(
     ): NarmestelederLookup? {
         val activeRelations = narmestelederLookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer)
         if (activeRelations.size > 1) {
-            logger.error("Multiple active narmesteleder relations found for a sykmeldt and organization")
+            logger.logEvent(multipleActiveRelations, MultipleActiveRelationsDetails(recordCount = activeRelations.size))
         }
         return activeRelations.firstOrNull()?.let { relation ->
             NarmestelederLookup(

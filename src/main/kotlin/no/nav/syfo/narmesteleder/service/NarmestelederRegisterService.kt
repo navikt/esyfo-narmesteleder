@@ -1,5 +1,7 @@
 package no.nav.syfo.narmesteleder.service
 
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.exposed.InsertedPerson
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.narmestelederTable
@@ -11,6 +13,26 @@ import org.jetbrains.exposed.v1.core.Transaction
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
+
+private data class NlRegisterRecordInvalidDetails(
+    val narmestelederId: String,
+    val partition: Int,
+    val offset: Long,
+    val validationReason: String,
+)
+
+private val nlRegisterRecordInvalid = applicationEvent<NlRegisterRecordInvalidDetails>(
+    name = "nl_register_record_invalid",
+    level = Level.WARN,
+    message = "Nearest leader register record failed validation and was skipped",
+    fields = mapOf(
+        "narmesteleder_id" to { it.narmestelederId },
+        "partition" to { it.partition },
+        "offset" to { it.offset },
+        "validation_reason" to { it.validationReason },
+    ),
+)
 
 data class LeesahBatchProcessResult(
     val insertedPersons: List<InsertedPerson>,
@@ -87,11 +109,14 @@ class NarmestelederRegisterService(
     private fun isValidForRegister(record: LeesahNarmestelederRecord): Boolean {
         val validationError = record.message.validateForRegister() ?: return true
 
-        logger.warn(
-            "Skipping invalid leesah record for register with narmesteLederId={} and offset={}: {}",
-            record.message.narmesteLederId,
-            record.offset,
-            validationError
+        logger.logEvent(
+            nlRegisterRecordInvalid,
+            NlRegisterRecordInvalidDetails(
+                narmestelederId = record.message.narmesteLederId.toString(),
+                partition = record.partition,
+                offset = record.offset,
+                validationReason = validationError,
+            ),
         )
         COUNT_NARMESTELEDER_REGISTER_INVALID_MESSAGE.increment()
         return false

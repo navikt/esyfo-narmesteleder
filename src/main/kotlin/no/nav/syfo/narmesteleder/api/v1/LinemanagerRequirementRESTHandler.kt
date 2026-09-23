@@ -32,12 +32,10 @@ class LinemanagerRequirementRESTHandler(
         manager: Manager,
         requirementId: UUID,
         principal: Principal,
-        context: String,
     ) {
         try {
             val normalizedManager = validationService.normalizeManagerPayload(
                 manager = manager,
-                context = context,
             )
             val employee = narmesteLederService.getEmployeeByRequirementId(requirementId)
             val linemanager = Linemanager(

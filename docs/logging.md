@@ -58,11 +58,3 @@ captured record with `RuntimeLogContract` before filtering by event name.
 Assert level, event count, fields and sensitive-data canaries. The schema
 validates shape, not privacy. `LoggingArchitectureTest` keeps migrated packages
 on the local logging entry point.
-
-## Migration status
-
-The following still use plain SLF4J WARN/ERROR: the Dialogporten
-service, nærmeste leder services and database, the dinesykmeldte shadow
-comparison, person enrichment, the PDL client and service, TokenX, Valkey,
-scheduled tasks and leader election. The PDL client still logs its own
-failures. They are migrated in follow-up changes.

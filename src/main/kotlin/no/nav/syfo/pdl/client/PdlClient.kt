@@ -9,8 +9,12 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
 import io.ktor.utils.io.CancellationException
+import no.nav.syfo.logging.logEvent
+import no.nav.syfo.pdl.PdlLookupDegradedDetails
+import no.nav.syfo.pdl.PdlLookupDegradedReason
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
+import no.nav.syfo.pdl.pdlLookupDegraded
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger
 import org.intellij.lang.annotations.Language
@@ -83,7 +87,14 @@ class PdlClient(
                 }
                 .body<GetPersonResponse>()
             if (!pdlReponse.errors.isNullOrEmpty()) {
-                logger.error("Error when requesting person from PDL. Got errors: ${pdlReponse.errors}")
+                logger.logEvent(
+                    pdlLookupDegraded,
+                    PdlLookupDegradedDetails(
+                        PdlLookupDegradedReason.GRAPHQL_ERRORS,
+                        pdlErrors = pdlReponse.errors,
+                        errorCount = pdlReponse.errors.size,
+                    ),
+                )
             }
             if (pdlReponse.data?.person == null || pdlReponse.data.identer == null) {
                 throw PdlResourceNotFoundException("Did not find person in PDL for given fnr")
@@ -94,7 +105,6 @@ class PdlClient(
                 is PdlResourceNotFoundException -> throw e
                 is CancellationException -> throw e
                 is ResponseException -> {
-                    logger.error("Error on findPerson query to PDL. Got status ${e.response.status} and message ${e.message}")
                     throw PdlRequestException("Error on findPerson query to PDL", e)
                 }
 
@@ -122,7 +132,6 @@ class PdlClient(
             when (e) {
                 is CancellationException -> throw e
                 is ResponseException -> {
-                    logger.error("Error on getPersonBolk query to PDL. Got status ${e.response.status} and message ${e.message}")
                     throw PdlRequestException("Error on getPersonBolk query to PDL", e)
                 }
 

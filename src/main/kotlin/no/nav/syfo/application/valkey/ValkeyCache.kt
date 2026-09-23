@@ -6,7 +6,23 @@ import io.valkey.JedisPool
 import io.valkey.JedisPoolConfig
 import io.valkey.exceptions.JedisConnectionException
 import no.nav.syfo.application.kafka.jacksonMapper
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
+
+private enum class CacheAction {
+    READ,
+    WRITE
+}
+
+private val cacheAccessFailed = applicationEvent<CacheAction>(
+    name = "cache_access_failed",
+    level = Level.WARN,
+    message = "Valkey access failed; continuing without cache",
+    upstream = "valkey",
+    fields = mapOf("action" to { it.name }),
+)
 
 class ValkeyCache(
     valkeyEnvironment: ValkeyEnvironment,
@@ -34,7 +50,7 @@ class ValkeyCache(
                 }
             }
         } catch (e: JedisConnectionException) {
-            logger.warn("Got connection error when fetching from valkey! Continuing without cached value", e)
+            logger.logEvent(cacheAccessFailed, CacheAction.READ, cause = e)
             return null
         }
     }
@@ -46,7 +62,7 @@ class ValkeyCache(
                 jedis.setex(key, ttlSeconds, json)
             }
         } catch (e: JedisConnectionException) {
-            logger.warn("Got connection error when storing in valkey! Continue without caching", e)
+            logger.logEvent(cacheAccessFailed, CacheAction.WRITE, cause = e)
         }
     }
 

@@ -1,5 +1,9 @@
 package no.nav.syfo.narmesteleder.service
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import defaultLeesahKafkaMessage
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -16,6 +20,7 @@ import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.util.UUID
 
@@ -29,6 +34,30 @@ class NarmestelederRegisterServiceTest :
         }
         describe("processLeesahBatch") {
             describe("validate insert or update of narmesteleder") {
+                it("logs only the register record id and Kafka position for an invalid record") {
+                    val message = defaultLeesahKafkaMessage().copy(fnr = "123")
+                    val appender = ListAppender<ILoggingEvent>().apply { start() }
+                    val logger = LoggerFactory.getLogger(NarmestelederRegisterService::class.java) as Logger
+                    val previousLevel = logger.level
+                    logger.level = Level.WARN
+                    logger.addAppender(appender)
+                    try {
+                        service.processLeesahBatch(listOf(LeesahNarmestelederRecord(offset = 42, partition = 3, message = message)))
+                        val fields = appender.list.single().keyValuePairs.associate { it.key to it.value }
+                        fields["event_type"] shouldBe "nl_register_record_invalid"
+                        fields["narmesteleder_id"] shouldBe message.narmesteLederId.toString()
+                        fields["partition"] shouldBe 3
+                        fields["offset"] shouldBe 42L
+                        val logged = appender.list.single().formattedMessage + fields.toString()
+                        logged.contains(message.orgnummer) shouldBe false
+                        logged.contains(message.narmesteLederFnr) shouldBe false
+                    } finally {
+                        logger.detachAppender(appender)
+                        logger.level = previousLevel
+                        appender.stop()
+                    }
+                }
+
                 it("should upsert replayed records idempotently") {
                     val narmesteLederId = UUID.randomUUID()
                     val originalMessage = defaultLeesahKafkaMessage().copy(

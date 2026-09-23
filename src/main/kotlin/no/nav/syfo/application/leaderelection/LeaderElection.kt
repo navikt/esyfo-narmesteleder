@@ -6,7 +6,6 @@ import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.environment.isLocalEnv
-import no.nav.syfo.util.logger
 import java.net.InetAddress
 
 /**
@@ -17,22 +16,14 @@ class LeaderElection(
     private val httpClient: HttpClient,
     private val electorPath: String,
 ) {
-    private val log = logger()
-
     suspend fun isLeader(): Boolean {
         val hostname: String = withContext(Dispatchers.IO) { InetAddress.getLocalHost() }.hostName
 
-        try {
-            val isLeader = if (isLocalEnv()) {
-                true
-            } else {
-                val leader = httpClient.get(getHttpPath(electorPath)).body<Leader>()
-                leader.name == hostname
-            }
-            return isLeader
-        } catch (e: Exception) {
-            log.error("Kall mot elector feiler", e)
-            throw e
+        return if (isLocalEnv()) {
+            true
+        } else {
+            val leader = httpClient.get(getHttpPath(electorPath)).body<Leader>()
+            leader.name == hostname
         }
     }
 

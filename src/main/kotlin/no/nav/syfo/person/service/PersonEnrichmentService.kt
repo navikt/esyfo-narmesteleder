@@ -1,5 +1,7 @@
 package no.nav.syfo.person.service
 
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.pdl.PdlService
@@ -9,6 +11,13 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.slf4j.event.Level
+
+private val personEnrichmentStalled = applicationEvent<Unit>(
+    name = "person_enrichment_stalled",
+    level = Level.WARN,
+    message = "Person enrichment stopped because the batch made no progress",
+)
 
 private const val PERSON_ENRICHMENT_BATCH_SIZE = 500
 
@@ -63,7 +72,7 @@ class PersonEnrichmentService(
             logger.info("Enrichment done: $enrichedCount enriched, $notFoundCount not found, $unchangedCount unchanged")
 
             if (updatedCount == 0) {
-                logger.warn("Stopping person enrichment because the current batch did not update any pending persons")
+                logger.logEvent(personEnrichmentStalled, Unit)
                 break
             }
 

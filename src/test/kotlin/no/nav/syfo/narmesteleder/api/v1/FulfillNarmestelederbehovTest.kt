@@ -140,7 +140,6 @@ class FulfillNarmestelederbehovTest :
                 requirementId = fixtureEntity.id!!,
                 manager = manager,
                 principal = principal,
-                context = "test",
             )
 
             coVerifyOrder {
@@ -169,7 +168,6 @@ class FulfillNarmestelederbehovTest :
                 requirementId = fixtureEntity.id!!,
                 manager = manager.copy(email = " mail@manager.no ", mobile = "+47 99999999"),
                 principal = systemPrincipal(employeeOrgNumber),
-                context = "test",
             )
 
             verify(exactly = 1) {
@@ -195,7 +193,6 @@ class FulfillNarmestelederbehovTest :
                 requirementId = fixtureEntity.id!!,
                 manager = manager,
                 principal = UserPrincipal(ident = managerPersonIdent, token = "test-token"),
-                context = "test",
             )
 
             verify(exactly = 1) { kafkaProducer.sendSykmeldingNLRelasjon(any(), NlResponseSource.PERSONALLEDER) }
@@ -207,7 +204,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = UUID.randomUUID(),
                     manager = manager.copy(email = "invalid"),
                     principal = systemPrincipal(employeeOrgNumber),
-                    context = "test",
                 )
             }
 
@@ -225,7 +221,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = UUID.randomUUID(),
                     manager = manager,
                     principal = systemPrincipal(employeeOrgNumber),
-                    context = "test",
                 )
             }
 
@@ -243,7 +238,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = fixtureEntity.id!!,
                     manager = manager,
                     principal = systemPrincipal(employeeOrgNumber),
-                    context = "test",
                 )
             } shouldBe denied
 
@@ -267,7 +261,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = fixtureEntity.id!!,
                     manager = manager,
                     principal = principal,
-                    context = "test",
                 )
             }
 
@@ -285,7 +278,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = fixtureEntity.id!!,
                     manager = manager,
                     principal = principal,
-                    context = "test",
                 )
             }
 
@@ -303,7 +295,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = fixtureEntity.id!!,
                     manager = manager,
                     principal = principal,
-                    context = "test",
                 )
             }
 
@@ -323,7 +314,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = fixtureEntity.id!!,
                     manager = manager,
                     principal = principal,
-                    context = "test",
                 )
             }
 
@@ -340,7 +330,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = fixtureEntity.id!!,
                     manager = manager,
                     principal = systemPrincipal(employeeOrgNumber),
-                    context = "test",
                 )
             }
 
@@ -362,7 +351,6 @@ class FulfillNarmestelederbehovTest :
                     requirementId = fixtureEntity.id!!,
                     manager = manager,
                     principal = systemPrincipal(employeeOrgNumber),
-                    context = "test",
                 )
             }
 
@@ -388,7 +376,6 @@ class FulfillNarmestelederbehovTest :
                 requirementId = fixtureEntity.id!!,
                 manager = manager,
                 principal = systemPrincipal(employeeOrgNumber),
-                context = "test",
             )
 
             coVerifyOrder {
@@ -416,7 +403,6 @@ class FulfillNarmestelederbehovTest :
                 requirementId = fixtureEntity.id!!,
                 manager = manager,
                 principal = systemPrincipal(employeeOrgNumber),
-                context = "test",
             )
 
             verify(exactly = 1) { kafkaProducer.sendSykmeldingNLRelasjon(any(), NlResponseSource.LPS) }

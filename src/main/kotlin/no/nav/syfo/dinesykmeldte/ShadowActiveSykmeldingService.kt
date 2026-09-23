@@ -3,10 +3,37 @@ package no.nav.syfo.dinesykmeldte
 import io.micrometer.core.instrument.Counter
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
-import no.nav.syfo.sykmelding.exposed.LocalActiveSykmeldingResult
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
 import kotlin.coroutines.cancellation.CancellationException
+
+private enum class ShadowDegradedReason {
+    MISMATCH,
+    QUERY_FAILED
+}
+
+private data class SickLeaveShadowDetails(
+    val reason: ShadowDegradedReason,
+    val remoteResult: Boolean? = null,
+    val localResult: Boolean? = null,
+    val direction: String? = null,
+)
+
+private val sickLeaveShadowDegraded = applicationEvent<SickLeaveShadowDetails>(
+    name = "sick_leave_shadow_degraded",
+    level = Level.WARN,
+    message = "Active sick leave shadow comparison is degraded",
+    upstream = "database",
+    fields = mapOf(
+        "reason" to { it.reason.name },
+        "remote_result" to { it.remoteResult },
+        "local_result" to { it.localResult },
+        "direction" to { it.direction },
+    ),
+)
 
 private const val ACTIVE_SYKMELDING_SHADOW_MISMATCH_TOTAL =
     "${METRICS_NS}_active_sykmelding_shadow_mismatch_total"
@@ -29,42 +56,16 @@ class ShadowActiveSykmeldingService(
     private val dinesykmeldteService: DinesykmeldteService,
     private val repository: IActiveSykmeldingRepository,
 ) : IDinesykmeldteService {
-    override suspend fun getIsActiveSykmelding(personIdent: String, orgnummer: String): Boolean {
-        val clientResult = suspendRunCatching {
-            dinesykmeldteService.getIsActiveSykmelding(personIdent, orgnummer)
-        }
-        if (clientResult.isSuccess) {
-            val localResult = suspendRunCatching {
-                repository.findActiveSykmelding(personIdent, orgnummer)
-            }
-            return handleSuccessfulClientResult(
-                clientValue = clientResult.getOrThrow(),
-                localResult = localResult,
-            )
-        } else {
-            handleFailedClientResult(
-                clientException = clientResult.exceptionOrNull() ?: error("Missing client exception"),
-            )
-        }
+    private fun logShadowDegraded(details: SickLeaveShadowDetails, cause: Throwable? = null) {
+        logger.logEvent(sickLeaveShadowDegraded, details, cause = cause)
     }
 
-    private fun handleSuccessfulClientResult(
-        clientValue: Boolean,
-        localResult: Result<LocalActiveSykmeldingResult>,
-    ): Boolean {
-        localResult
+    override suspend fun getIsActiveSykmelding(personIdent: String, orgnummer: String): Boolean {
+        val clientValue = dinesykmeldteService.getIsActiveSykmelding(personIdent, orgnummer)
+        suspendRunCatching { repository.findActiveSykmelding(personIdent, orgnummer) }
             .onSuccess { localValue -> logMismatchIfAny(clientValue, localValue.isActive) }
             .onFailure { localException -> logLocalShadowQueryFailed(localException) }
         return clientValue
-    }
-
-    private fun handleFailedClientResult(
-        clientException: Throwable,
-    ): Nothing {
-        logClientFailedRethrowingClientException(
-            clientException = clientException,
-        )
-        throw clientException
     }
 
     private fun logMismatchIfAny(
@@ -74,27 +75,12 @@ class ShadowActiveSykmeldingService(
         if (clientValue != localValue) {
             val direction = directionOf(clientValue, localValue)
             countMismatch(direction).increment()
-            logger.warn(
-                "Shadow mismatch for active sykmelding: direction={}, client={}, local={}",
-                direction,
-                clientValue,
-                localValue,
-            )
+            logShadowDegraded(SickLeaveShadowDetails(ShadowDegradedReason.MISMATCH, clientValue, localValue, direction))
         }
     }
 
     private fun logLocalShadowQueryFailed(localException: Throwable) {
-        logger.warn(
-            "Local shadow query failed, ignoring local result. Exception type={}",
-            localException::class.simpleName ?: "UnknownException",
-        )
-    }
-
-    private fun logClientFailedRethrowingClientException(clientException: Throwable) {
-        logger.warn(
-            "Dinesykmeldte client failed, rethrowing client exception. Exception type={}",
-            clientException::class.simpleName ?: "UnknownException",
-        )
+        logShadowDegraded(SickLeaveShadowDetails(ShadowDegradedReason.QUERY_FAILED), cause = localException)
     }
 
     private fun directionOf(clientValue: Boolean, localValue: Boolean): String = when {

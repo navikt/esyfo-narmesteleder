@@ -16,6 +16,9 @@ import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.Url
 import no.nav.syfo.altinn.dialogporten.domain.create
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
+import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
@@ -24,6 +27,7 @@ import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.Foedselsdato
 import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -31,6 +35,34 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
+
+private enum class DialogAction {
+    CREATE,
+    COMPLETE,
+    EXPIRE
+}
+private data class DialogFailureDetails(val behovId: String?, val dialogId: String?, val action: DialogAction? = null)
+
+private val dialogFailureFields: Map<String, (DialogFailureDetails) -> Any?> = mapOf(
+    "behov_id" to { it.behovId },
+    "dialog_id" to { it.dialogId },
+)
+
+private val dialogPersonEnrichmentFailed = applicationEvent<DialogFailureDetails>(
+    name = "dialog_person_enrichment_failed",
+    level = Level.WARN,
+    message = "PDL enrichment failed; creating the dialog without person details",
+    upstream = "pdl",
+    fields = dialogFailureFields,
+)
+
+private val dialogportenDialogFailed = applicationEvent<DialogFailureDetails>(
+    name = "dialogporten_dialog_failed",
+    level = Level.ERROR,
+    message = "Dialogporten dialog operation failed",
+    upstream = "dialogporten",
+    fields = dialogFailureFields + ("action" to { it: DialogFailureDetails -> it.action?.name }),
+)
 
 const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
 
@@ -41,6 +73,11 @@ class DialogportenService(
     private val pdlService: PdlService,
 ) {
     private val logger = logger()
+    private fun NarmestelederBehovEntity.logDetails() = DialogFailureDetails(id?.toString(), dialogId?.toString())
+
+    private fun logDialogFailure(behov: NarmestelederBehovEntity, action: DialogAction, cause: Throwable) {
+        logger.logEvent(dialogportenDialogFailed, behov.logDetails().copy(action = action), cause = cause)
+    }
 
     suspend fun sendDocumentsToDialogporten() {
         var batchNum = 0
@@ -67,7 +104,8 @@ class DialogportenService(
             val personInfo = try {
                 pdlService.getPersonFor(behov.sykmeldtFnr)
             } catch (ex: Exception) {
-                logger.error("Failed to get person info for behov ${behov.id}", ex)
+                ex.rethrowCancellation()
+                logger.logEvent(dialogPersonEnrichmentFailed, behov.logDetails(), cause = ex)
                 null
             }
             val dialog = behov.toDialog(personInfo?.name, personInfo?.dateOfBirth)
@@ -87,7 +125,8 @@ class DialogportenService(
                 )
             )
         } catch (ex: Exception) {
-            logger.error("Failed to send behov ${behov.id} to dialogporten", ex)
+            ex.rethrowCancellation()
+            logDialogFailure(behov, DialogAction.CREATE, ex)
         }
     }
 
@@ -112,7 +151,8 @@ class DialogportenService(
             try {
                 completeFulfilledDialog(behov)
             } catch (ex: Exception) {
-                logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
+                ex.rethrowCancellation()
+                logDialogFailure(behov, DialogAction.COMPLETE, ex)
             }
         }
         logger.info("Completed set ${behov.dialogId} to complete in dialogporten")
@@ -161,7 +201,8 @@ class DialogportenService(
                     )
                     logger.info("Successfully updated expired behov ${behov.id} with expired date: ${expirationTime.toInstant()}")
                 } catch (ex: Exception) {
-                    logger.error("Failed to update expired behov ${behov.id} in dialogporten${behov.dialogId?.let { " for dialogId: $it" } ?: ""}", ex)
+                    ex.rethrowCancellation()
+                    logDialogFailure(behov, DialogAction.EXPIRE, ex)
                 }
             }
             delay(EXPIRE_BEHOV_LOOP_DELAY_MS.milliseconds)

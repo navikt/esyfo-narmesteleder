@@ -31,8 +31,8 @@ class FulfillmentLoggingContractTest :
         lateinit var capture: LogCapture
         val privacyCanaries = listOf(
             employeeIdent.value, managerIdent.value, organizationNumber.value, behovId.value.toString(),
-            employee.name.firstName, requireNotNull(employee.name.middleName), employee.name.primaryLastName,
-            manager.name.firstName, requireNotNull(manager.name.middleName), manager.name.primaryLastName,
+            employee.name.firstName, requireNotNull(employee.name.middleName), employee.name.lastName,
+            manager.name.firstName, requireNotNull(manager.name.middleName), manager.name.lastName,
             "manager@example.test", "+4799999999", "system-user", "test-token", "11223344556",
             "private-name-canary", "private-email-canary", "private-phone-canary", "private-exception-canary",
         )

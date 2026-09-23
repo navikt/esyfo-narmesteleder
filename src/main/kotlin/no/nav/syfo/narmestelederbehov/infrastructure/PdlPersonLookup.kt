@@ -21,7 +21,7 @@ class PdlPersonLookup(private val service: PdlService) : PersonLookup {
             PersonNameDetails(
                 firstName = person.name.fornavn,
                 middleName = person.name.mellomnavn,
-                primaryLastName = person.name.etternavn,
+                lastName = person.name.etternavn,
                 registeredNames = person.names.map { RegisteredName(it.etternavn, it.mellomnavn) },
             ),
         )

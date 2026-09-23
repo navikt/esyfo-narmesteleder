@@ -149,7 +149,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                         employeeIdent to employee,
                         managerIdent to manager.copy(
                             name = manager.name.copy(
-                                primaryLastName = "Zzzzzz",
+                                lastName = "Zzzzzz",
                                 registeredNames = listOf(RegisteredName("Zzzzzz")),
                             ),
                         ),
@@ -210,7 +210,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                 employeeIdent to employee,
                 managerIdent to manager.copy(
                     name = manager.name.copy(
-                        primaryLastName = "Different",
+                        lastName = "Different",
                         registeredNames = listOf(RegisteredName("Different")),
                     )
                 ),
@@ -298,7 +298,7 @@ internal val employee = PersonDetails(
     employeeIdent,
     PersonNameDetails(
         firstName = "Employee",
-        primaryLastName = "Employee",
+        lastName = "Employee",
         middleName = "EmployeeMiddle",
         registeredNames = listOf(RegisteredName("Employee")),
     )
@@ -307,7 +307,7 @@ internal val manager = PersonDetails(
     managerIdent,
     PersonNameDetails(
         firstName = "Manager",
-        primaryLastName = "Manager",
+        lastName = "Manager",
         middleName = "ManagerMiddle",
         registeredNames = listOf(RegisteredName("Manager")),
     )

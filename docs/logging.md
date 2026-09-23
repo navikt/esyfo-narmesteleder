@@ -26,6 +26,8 @@ logger.logEvent(dialogFailed, details, cause = exception)
   cause: `failure_kind`, `exception_type`, `cause_type(s)`, `upstream`,
   `upstream_status`, `failure_stage` and `sql_state`. It also logs a sanitized
   stack trace that contains class names and frames, never exception messages.
+- Kafka consumers share the events in `application/kafka/KafkaEvents.kt` and
+  log them through `KafkaEventLogger`, which adds a bounded `consumer` field.
 - Code already using `applicationLogger` keeps using it.
 
 ## Who logs
@@ -59,8 +61,8 @@ on the local logging entry point.
 
 ## Migration status
 
-Kafka consumers and the following still use plain SLF4J WARN/ERROR: the
-Dialogporten service, nærmeste leder services and database, the dinesykmeldte
-shadow comparison, person enrichment, the PDL client and service, TokenX,
-Valkey, scheduled tasks and leader election. The PDL client still logs its own
+The following still use plain SLF4J WARN/ERROR: the Dialogporten
+service, nærmeste leder services and database, the dinesykmeldte shadow
+comparison, person enrichment, the PDL client and service, TokenX, Valkey,
+scheduled tasks and leader election. The PDL client still logs its own
 failures. They are migrated in follow-up changes.

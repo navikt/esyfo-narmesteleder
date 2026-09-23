@@ -14,14 +14,21 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import no.nav.person.pdl.leesah.Endringstype
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.person.pdl.leesah.navn.Navn
 import no.nav.person.pdl.leesah.navn.OriginaltNavn
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.pdl.exception.PdlIncompleteResponseException
 import no.nav.syfo.pdl.exception.PdlRequestException
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
@@ -61,6 +68,33 @@ class PdlLeesahConsumerTest :
             logAppender.list.clear()
             removePdlLeesahMetrics()
             removePdlLeesahPersonUpdateMetrics()
+        }
+
+        it("logs incomplete PDL batch counts at the consumer boundary without personal data") {
+            val consumer = createConsumer(kafkaConsumer = kafkaConsumer)
+            consumer.logConsumerFailure(PdlIncompleteResponseException(requestedCount = 10, missingCount = 2))
+            val event = logAppender.list.single()
+            val fields = event.keyValuePairs.associate { it.key to it.value }
+            fields["event_type"] shouldBe "kafka_consumer_failed"
+            fields["consumer"] shouldBe "PDL_LEESAH"
+            fields["error_code"] shouldBe "PDL_BULK_RESPONSE_INCOMPLETE"
+            fields["requested_count"] shouldBe 10
+            fields["missing_count"] shouldBe 2
+            fields.toString().contains("12345678910") shouldBe false
+        }
+
+        it("logs direct failures passed to the logging boundary; call sites handle cancellation") {
+            val consumer = createConsumer(kafkaConsumer = kafkaConsumer)
+            consumer.logConsumerFailure(CancellationException("cancelled"))
+            logAppender.list.single().keyValuePairs.associate { it.key to it.value }["event_type"] shouldBe "kafka_consumer_failed"
+        }
+
+        it("logs wrapped cancellation as an ordinary retry failure") {
+            val consumer = createConsumer(kafkaConsumer = kafkaConsumer)
+            consumer.logConsumerFailure(IllegalStateException("private-canary", CancellationException("cancelled")))
+            val event = logAppender.list.single()
+            event.keyValuePairs.associate { it.key to it.value }["event_type"] shouldBe "kafka_consumer_failed"
+            event.formattedMessage.contains("private-canary") shouldBe false
         }
 
         describe("processRecords") {
@@ -484,8 +518,13 @@ class PdlLeesahConsumerTest :
                 ) shouldBeExactly 1.0
 
                 val logMessage = logAppender.list.joinToString("\n") { it.formattedMessage }
-                logMessage.contains("offset=42") shouldBe true
-                logMessage.contains("partition=0") shouldBe true
+                val fields = logAppender.list.single().keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "kafka_record_skipped_error"
+                fields["reason"] shouldBe "MALFORMED_RECORD"
+                fields["offset"] shouldBe 42L
+                fields["partition"] shouldBe 0
+                fields["failure_kind"] shouldBe "invalid_response"
+                fields["cause_type"] shouldBe "SerializationException"
                 logMessage.contains("12345678910") shouldBe false
                 logMessage.contains("Ola Nordmann") shouldBe false
             }
@@ -529,6 +568,31 @@ class PdlLeesahConsumerTest :
 
                 verify(exactly = 0) { kafkaConsumer.subscribe(any<List<String>>()) }
                 verify(exactly = 0) { kafkaConsumer.poll(any<Duration>()) }
+            }
+
+            it("logs a fatal error once before rethrowing it") {
+                val fatal = LinkageError("private-canary")
+                val failure = CompletableDeferred<Throwable>()
+                val scope = CoroutineScope(SupervisorJob() + CoroutineExceptionHandler { _, thrown -> failure.complete(thrown) })
+                val fatalConsumer = PdlLeesahConsumer(
+                    kafkaConsumer = kafkaConsumer,
+                    scope = scope,
+                    env = OtherEnvironmentProperties.createForLocal(),
+                    pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
+                    retryDelaySeconds = 0,
+                )
+                every { kafkaConsumer.poll(any<Duration>()) } throws fatal
+                try {
+                    fatalConsumer.listen()
+                    withTimeout(5_000) { failure.await() } shouldBe fatal
+                    val event = logAppender.list.single { it.level == Level.ERROR }
+                    val fields = event.keyValuePairs.associate { it.key to it.value }
+                    fields["event_type"] shouldBe "kafka_consumer_crashed"
+                    fields["consumer"] shouldBe "PDL_LEESAH"
+                    event.formattedMessage.contains("private-canary") shouldBe false
+                } finally {
+                    scope.coroutineContext[Job]?.cancel()
+                }
             }
         }
     })

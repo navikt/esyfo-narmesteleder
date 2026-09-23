@@ -10,13 +10,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import no.nav.syfo.application.kafka.KafkaEventConsumer
+import no.nav.syfo.application.kafka.KafkaEventLogger
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.KafkaReason
+import no.nav.syfo.application.kafka.kafkaConsumerFailed
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
 const val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
@@ -27,6 +32,7 @@ class SendtSykmeldingKafkaConsumer(
     private val kafkaConsumer: KafkaConsumer<String, String>,
     private val scope: CoroutineScope,
 ) : KafkaListener {
+    private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.SENT_SYKMELDING)
     private lateinit var job: Job
 
     override fun listen() {
@@ -55,19 +61,23 @@ class SendtSykmeldingKafkaConsumer(
                 } catch (_: WakeupException) {
                     logger.info("Waked Kafka consumer")
                 } catch (e: JsonProcessingException) {
-                    logger.error(
-                        "Failed to deserialize message from $SENDT_SYKMELDING_TOPIC. " +
-                            "The message will be retried in $DELAY_ON_ERROR_SECONDS seconds. " +
-                            "Manual inspection may be required if this persists. Cause: ${e.message}",
-                        e
+                    kafkaLog.log(
+                        kafkaConsumerFailed,
+                        KafkaReason.DECODING,
+                        cause = e,
+                        retryDelaySeconds = DELAY_ON_ERROR_SECONDS,
                     )
                     kafkaConsumer.unsubscribe()
                     delay(DELAY_ON_ERROR_SECONDS.seconds)
                     kafkaConsumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
-                    logger.error(
-                        "Error running kafka consumer. Waiting $DELAY_ON_ERROR_SECONDS seconds for retry.",
-                        e
+                    kafkaLog.log(
+                        kafkaConsumerFailed,
+                        KafkaReason.PROCESSING,
+                        cause = e,
+                        retryDelaySeconds = DELAY_ON_ERROR_SECONDS,
                     )
                     kafkaConsumer.unsubscribe()
                     delay(DELAY_ON_ERROR_SECONDS.seconds)

@@ -11,10 +11,18 @@ import kotlinx.coroutines.launch
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaEnvironment
+import no.nav.syfo.application.kafka.KafkaEventConsumer
+import no.nav.syfo.application.kafka.KafkaEventLogger
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.KafkaReason
 import no.nav.syfo.application.kafka.avroConsumerProperties
+import no.nav.syfo.application.kafka.kafkaConsumerCrashed
+import no.nav.syfo.application.kafka.kafkaConsumerFailed
+import no.nav.syfo.application.kafka.kafkaRecordSkipped
+import no.nav.syfo.application.kafka.kafkaRecordSkippedError
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.pdl.exception.PdlIncompleteResponseException
 import no.nav.syfo.util.logger
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -40,6 +48,8 @@ class PdlLeesahConsumer(
     private val retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
 ) : KafkaListener,
     AutoCloseable {
+    private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.PDL_LEESAH)
+
     constructor(
         kafkaConsumer: KafkaConsumer<String, Personhendelse>,
         scope: CoroutineScope,
@@ -89,28 +99,20 @@ class PdlLeesahConsumer(
                         logger.info("Wakeup received for {}", PDL_LEESAH_TOPIC)
                         break
                     } catch (exception: FatalPdlLeesahConsumerException) {
-                        logger.error(
-                            "Stopping {} consumer for {} after failing to handle deserialization error deterministically. exceptionType={}",
-                            this@PdlLeesahConsumer::class.simpleName,
-                            PDL_LEESAH_TOPIC,
-                            exception.cause?.javaClass?.simpleName ?: exception::class.simpleName,
-                        )
+                        kafkaLog.log(kafkaConsumerCrashed, KafkaReason.UNSAFE_SKIP, cause = exception)
                         break
-                    } catch (_: CancellationException) {
-                        break
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
                     } catch (exception: Exception) {
-                        logger.error(
-                            "Unexpected error in {} for {}. Will retry in {} seconds. exceptionType={}",
-                            this@PdlLeesahConsumer::class.simpleName,
-                            PDL_LEESAH_TOPIC,
-                            retryDelaySeconds,
-                            exception::class.simpleName,
-                        )
+                        logConsumerFailure(exception)
                         consumer.unsubscribe()
                         delay(retryDelaySeconds.seconds)
                         consumer.subscribe(listOf(PDL_LEESAH_TOPIC))
                     }
                 }
+            } catch (error: Error) {
+                kafkaLog.log(kafkaConsumerCrashed, cause = error)
+                throw error
             } finally {
                 closeKafkaConsumer(consumer)
                 if (kafkaConsumer === consumer) {
@@ -120,6 +122,19 @@ class PdlLeesahConsumer(
                 logger.info("Exited {} consumer loop for {}", this::class.simpleName, PDL_LEESAH_TOPIC)
             }
         }
+    }
+
+    internal fun logConsumerFailure(exception: Exception) {
+        val incomplete = exception as? PdlIncompleteResponseException
+        kafkaLog.log(
+            kafkaConsumerFailed,
+            KafkaReason.PROCESSING,
+            cause = exception,
+            retryDelaySeconds = retryDelaySeconds,
+            requestedCount = incomplete?.requestedCount,
+            missingCount = incomplete?.missingCount,
+            errorCode = incomplete?.let { PdlIncompleteResponseException.ERROR_CODE },
+        )
     }
 
     internal suspend fun pollAndProcess(
@@ -140,13 +155,11 @@ class PdlLeesahConsumer(
                 endringstype = METRIC_UNKNOWN_VALUE,
                 result = RESULT_SERIALIZATION_ERROR,
             )
-            // Do not log exception.message or Throwable here; deserialization failures may include
-            // persondata or raw message content from the poison-pill payload.
-            logger.error(
-                "Serialization error while polling {}. Will retry in {} seconds. exceptionType={}",
-                PDL_LEESAH_TOPIC,
-                retryDelaySeconds,
-                exception::class.simpleName,
+            kafkaLog.log(
+                kafkaConsumerFailed,
+                KafkaReason.DECODING,
+                cause = exception,
+                retryDelaySeconds = retryDelaySeconds,
             )
             delay(retryDelaySeconds.seconds)
         }
@@ -224,20 +237,20 @@ class PdlLeesahConsumer(
             endringstype = METRIC_UNKNOWN_VALUE,
             result = RESULT_RECORD_DESERIALIZATION_SKIPPED,
         )
-        // Do not log exception.message or Throwable here; it can contain persondata or raw payload bytes.
-        logger.error(
-            "Skipped poison-pill record after deserialization failure for topic={}, partition={}, offset={}, exceptionType={}",
-            topicPartition.topic(),
-            topicPartition.partition(),
-            exception.offset(),
-            exception::class.simpleName,
+        kafkaLog.log(
+            kafkaRecordSkippedError,
+            KafkaReason.MALFORMED_RECORD,
+            cause = exception,
+            partition = topicPartition.partition(),
+            offset = exception.offset(),
         )
     }
 
     private fun classifyRecord(record: ConsumerRecord<String, Personhendelse>): RecordProcessingResult {
         val personhendelse = record.value()
         if (personhendelse == null) {
-            logger.warn("Skipping tombstone record from {}", PDL_LEESAH_TOPIC)
+            val offset = record.offset()
+            kafkaLog.log(kafkaRecordSkipped, KafkaReason.TOMBSTONE, partition = record.partition(), offset = offset)
             return RecordProcessingResult.Metrics(
                 bufferedEventMetric = BufferedLeesahEventMetric(
                     opplysningstype = METRIC_UNKNOWN_VALUE,

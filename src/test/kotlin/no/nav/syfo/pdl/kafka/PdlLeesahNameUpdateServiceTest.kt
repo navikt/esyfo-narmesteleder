@@ -148,9 +148,11 @@ class PdlLeesahNameUpdateServiceTest :
                 coEvery { pdlService.getPersonsBolk(listOf(fnr)) } returns emptyMap()
 
                 runTest {
-                    shouldThrow<PdlRequestException> {
+                    val failure = shouldThrow<no.nav.syfo.pdl.exception.PdlIncompleteResponseException> {
                         service.processNameChanges(listOf(fnr))
                     }
+                    failure.missingCount shouldBe 1
+                    failure.requestedCount shouldBe 1
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -242,9 +244,11 @@ class PdlLeesahNameUpdateServiceTest :
                 coEvery { pdlService.getPersonsBolk(listOf(fnr)) } returns emptyMap()
 
                 runTest {
-                    shouldThrow<PdlRequestException> {
+                    val failure = shouldThrow<no.nav.syfo.pdl.exception.PdlIncompleteResponseException> {
                         service.processNameChanges(listOf(fnr))
                     }
+                    failure.missingCount shouldBe 1
+                    failure.requestedCount shouldBe 1
                 }
 
                 val logMessage = logAppender.list.joinToString("\n") { it.formattedMessage }
@@ -252,7 +256,7 @@ class PdlLeesahNameUpdateServiceTest :
                 logMessage.contains(fornavn) shouldBe false
                 logMessage.contains(etternavn) shouldBe false
                 logMessage.contains("upstream failed") shouldBe false
-                logMessage.contains("missingResponseCount=1") shouldBe true
+                logAppender.list.isEmpty() shouldBe true // The consumer owns the terminal retry event.
             }
         }
     })

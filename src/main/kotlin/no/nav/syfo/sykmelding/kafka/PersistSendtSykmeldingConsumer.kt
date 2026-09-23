@@ -12,8 +12,16 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaEnvironment
+import no.nav.syfo.application.kafka.KafkaEventConsumer
+import no.nav.syfo.application.kafka.KafkaEventLogger
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.KafkaReason
 import no.nav.syfo.application.kafka.consumerProperties
+import no.nav.syfo.application.kafka.kafkaBatchDiscarded
+import no.nav.syfo.application.kafka.kafkaConsumerCrashed
+import no.nav.syfo.application.kafka.kafkaConsumerFailed
+import no.nav.syfo.application.kafka.kafkaRecordSkippedError
+import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -36,6 +44,8 @@ class PersistSendtSykmeldingConsumer(
     private val env: OtherEnvironmentProperties,
 ) : KafkaListener,
     AutoCloseable {
+    private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.SENT_SYKMELDING_PERSIST)
+
     constructor(
         handler: SendtSykmeldingHandler,
         jacksonMapper: ObjectMapper,
@@ -85,17 +95,22 @@ class PersistSendtSykmeldingConsumer(
                         logger.info("Waked Kafka consumer")
                         break
                     } catch (e: CancellationException) {
-                        break
+                        throw e
                     } catch (e: Exception) {
-                        logger.error(
-                            "Error running kafka consumer. Waiting $CONSUMER_JOB_DELAY_SECONDS seconds for retry.",
-                            e
+                        kafkaLog.log(
+                            kafkaConsumerFailed,
+                            KafkaReason.PROCESSING,
+                            cause = e,
+                            retryDelaySeconds = CONSUMER_JOB_DELAY_SECONDS,
                         )
                         consumer.unsubscribe()
                         delay(CONSUMER_JOB_DELAY_SECONDS.seconds)
                         consumer.subscribe(listOf(SENDT_SYKMELDING_TOPIC))
                     }
                 }
+            } catch (error: Error) {
+                kafkaLog.log(kafkaConsumerCrashed, cause = error)
+                throw error
             } finally {
                 closeKafkaConsumer(consumer)
                 if (kafkaConsumer === consumer) {
@@ -132,15 +147,21 @@ class PersistSendtSykmeldingConsumer(
                 message = message
             )
         } catch (e: JsonMappingException) {
-            logger.error(
-                "Error while deserializing record with key ${record.key()} and offset ${record.offset()}. Skipping record.",
-                e
+            kafkaLog.log(
+                kafkaRecordSkippedError,
+                KafkaReason.MALFORMED_RECORD,
+                cause = e,
+                partition = record.partition(),
+                offset = record.offset(),
             )
             null // Skip malformed records
         } catch (e: IllegalArgumentException) {
-            logger.error(
-                "Invalid UUID format for key ${record.key()} at offset ${record.offset()}. Skipping record.",
-                e
+            kafkaLog.log(
+                kafkaRecordSkippedError,
+                KafkaReason.INVALID_KEY,
+                cause = e,
+                partition = record.partition(),
+                offset = record.offset(),
             )
             null // Skip records with invalid UUID keys
         }
@@ -151,13 +172,10 @@ class PersistSendtSykmeldingConsumer(
         kafkaConsumer: KafkaConsumer<String, String?>,
         error: Throwable
     ) {
-        logger.error(
-            "Error while processing batch of ${records.count()} records. " +
-                "Entire batch will be retried on next poll.",
-            error
-        )
-
+        error.rethrowCancellation()
+        if (error is Error) throw error
         if (commitOnAllErrors) {
+            kafkaLog.log(kafkaBatchDiscarded, cause = error, recordCount = records.count())
             logger.info("commitOnAllErrors is enabled, committing offsets despite the error.")
             kafkaConsumer.commitSync()
         } else {

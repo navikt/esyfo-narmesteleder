@@ -4,11 +4,26 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.*
+
+private data class QueryLimitDetails(val requestedLimit: Int, val usedLimit: Int)
+
+private val queryLimitAdjusted = applicationEvent<QueryLimitDetails>(
+    name = "query_limit_adjusted",
+    level = Level.INFO,
+    message = "Requested page size was adjusted to the supported range",
+    fields = mapOf(
+        "requested_limit" to { it.requestedLimit },
+        "used_limit" to { it.usedLimit },
+    ),
+)
 
 interface INarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
@@ -402,7 +417,7 @@ class NarmestelederDb(
                     }
                     limit.coerceIn(1, MAX_LIMIT).also {
                         if (it != limit) {
-                            logger().warn("Overriding limit value. Provided limit: $limit, used limit: $it. Allowed range is: 1 - $MAX_LIMIT")
+                            logger().logEvent(queryLimitAdjusted, QueryLimitDetails(limit, it))
                         }
                         preparedStatement.setInt(++idx, it)
                     }

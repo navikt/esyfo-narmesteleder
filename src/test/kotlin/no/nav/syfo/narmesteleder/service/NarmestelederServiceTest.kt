@@ -1,5 +1,9 @@
 package no.nav.syfo.narmesteleder.service
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
@@ -25,10 +29,13 @@ import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
+import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
+import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
+import org.slf4j.LoggerFactory
 import java.util.*
 
 class NarmestelederServiceTest :
@@ -52,6 +59,50 @@ class NarmestelederServiceTest :
         )
 
         describe("createNewNlBehov") {
+            it("correlates degraded outcomes with UUIDs from their known source only") {
+                val logger = LoggerFactory.getLogger(NarmestelederService::class.java) as Logger
+                val previousLevel = logger.level
+                val appender = ListAppender<ILoggingEvent>()
+                appender.start()
+                logger.level = Level.WARN
+                logger.addAppender(appender)
+                try {
+                    val write = LinemanagerRequirementWrite(
+                        employeeIdentificationNumber = PersonalIdentificationNumber("12345678910"),
+                        orgNumber = OrganizationNumber("123456789"),
+                        managerIdentificationNumber = PersonalIdentificationNumber("01987654321"),
+                        behovReason = BehovReason.DEAKTIVERT_LEDER,
+                    )
+                    coEvery { nlDb.insertNlBehov(any()) } answers { firstArg<NarmestelederBehovEntity>().copy(id = UUID.randomUUID()) }
+                    coEvery { aaregService.findArbeidsforholdByPersonIdent(any()) } returns emptyList()
+                    val sykmeldingId = UUID.randomUUID()
+                    val relationId = UUID.randomUUID()
+
+                    service().createNewNlBehov(write, skipSykmeldingCheck = true, behovSource = BehovSource(sykmeldingId.toString(), SENDT_SYKMELDING_TOPIC))
+                    service().createNewNlBehov(
+                        write,
+                        skipSykmeldingCheck = true,
+                        behovSource = BehovSource(relationId.toString(), TEAMSYKMELDING_NL_LEESAH_TOPIC),
+                        arbeidsgiver = Arbeidsgiver(orgnummer = "123456789", juridiskOrgnummer = null, orgNavn = "Test"),
+                    )
+
+                    val events = appender.list.map { it.keyValuePairs.associate { field -> field.key to field.value } }
+                    events.map { it["event_type"] } shouldBe listOf("narmestelederbehov_stored_degraded", "narmestelederbehov_stored_degraded")
+                    events.map { it["reason"] } shouldBe listOf("EMPLOYMENT_MISSING", "SICK_LEAVE_MAIN_ORG_MISSING")
+                    events[0]["behov_source"] shouldBe SENDT_SYKMELDING_TOPIC
+                    events[0]["sykmelding_id"] shouldBe sykmeldingId.toString()
+                    events[0]["narmesteleder_id"] shouldBe null
+                    events[1]["behov_source"] shouldBe TEAMSYKMELDING_NL_LEESAH_TOPIC
+                    events[1]["narmesteleder_id"] shouldBe relationId.toString()
+                    events[1]["sykmelding_id"] shouldBe null
+                    events.toString().contains("12345678910") shouldBe false
+                } finally {
+                    logger.detachAppender(appender)
+                    appender.stop()
+                    logger.level = previousLevel
+                }
+            }
+
             it("persists entity with resolved hovedenhet") {
                 // Arrange
                 val sykmeldtFnr = "12345678910"

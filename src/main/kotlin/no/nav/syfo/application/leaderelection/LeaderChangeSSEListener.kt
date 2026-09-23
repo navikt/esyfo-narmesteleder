@@ -7,7 +7,6 @@ import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.sse.sse
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -16,10 +15,33 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
+import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.milliseconds
+
+private val leaderListenerAlreadyRunning = applicationEvent<Unit>(
+    name = "leader_listener_already_running",
+    level = Level.WARN,
+    message = "Duplicate leader listener was rejected",
+)
+
+private enum class LeaderFailureReason {
+    INVALID_RESPONSE,
+    DISCONNECTED
+}
+
+private val leaderListenerFailed = applicationEvent<LeaderFailureReason>(
+    name = "leader_listener_failed",
+    level = Level.WARN,
+    message = "Leader election listener failed",
+    upstream = "elector",
+    fields = mapOf("reason" to { it.name }),
+)
 
 /**
  * Leader election implementation using Server-Sent Events (SSE).
@@ -57,7 +79,7 @@ class LeaderChangeSSEListener(
      */
     suspend fun listenForLeaderChanges() = coroutineScope {
         if (!isListening.compareAndSet(false, true)) {
-            log.warn("Already listening for leader changes, ignoring duplicate call")
+            log.logEvent(leaderListenerAlreadyRunning, Unit)
             throw LeaderChangeSSEException("Already listening for leader changes. Only one connection allowed per instance.")
         }
 
@@ -87,15 +109,15 @@ class LeaderChangeSSEListener(
                                             "(current leader: ${leaderResponse.name}, this pod: $hostname)"
                                     )
                                 } catch (e: Exception) {
-                                    log.warn("Error parsing leader elector response: $data", e)
+                                    e.rethrowCancellation()
+                                    log.logEvent(leaderListenerFailed, LeaderFailureReason.INVALID_RESPONSE, cause = e)
                                 }
                             }
                         }
                     }
                 }.onFailure {
-                    if (it is CancellationException) break
-
-                    log.warn("Could not connect to leader election listener for hostname: $hostname. Retrying in ${SSE_CLIENT_RETRY_DELAY_MS.milliseconds.inWholeSeconds} seconds...", it)
+                    it.rethrowCancellation()
+                    log.logEvent(leaderListenerFailed, LeaderFailureReason.DISCONNECTED, cause = it)
                     delay(SSE_CLIENT_RETRY_DELAY_MS.milliseconds)
                 }
             }

@@ -15,10 +15,21 @@ import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
 import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
+import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
 import java.util.Collections
 import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicReference
+
+private val leaderInitializationFailed = applicationEvent<Unit>(
+    name = "leader_initialization_failed",
+    level = Level.WARN,
+    message = "Initial leader lookup failed; continuing through the SSE listener",
+    upstream = "elector",
+)
 
 const val LEADER_STATUS_METRIC = "${METRICS_NS}_leader_status"
 
@@ -59,10 +70,8 @@ fun Application.configureLeaderMonitoring(
                 leaderChangeSSEListener.initializeLeaderState(initialIsLeader)
                 log.info("Initialized leader state from simple API: isLeader={}", initialIsLeader)
             }.onFailure { exception ->
-                log.error(
-                    "Failed to initialize leader state from simple API; continuing leader monitoring with SSE listener",
-                    exception
-                )
+                exception.rethrowCancellation()
+                log.logEvent(leaderInitializationFailed, Unit, cause = exception)
             }
 
             log.info("Before listenForLeaderChanges - Application.configureLeaderMonitoring")

@@ -158,7 +158,6 @@ class ValidationServiceTest :
 
                 val normalized = service.normalizeLinemanagerPayload(
                     linemanager = linemanager,
-                    context = "path=/api/v1/linemanager",
                 )
 
                 normalized.manager.mobile shouldBe "+4790000000"
@@ -177,18 +176,26 @@ class ValidationServiceTest :
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
                     service.normalizeManagerPayload(
                         manager = manager,
-                        context = "operation=PUT /linemanager/requirement/{id}",
                     )
                 }
 
                 exception.type shouldBe ErrorType.INVALID_FORMAT
                 exception.message shouldBe
                     "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign; email: EmailAddress must not contain whitespace"
-                warningMessages() shouldHaveSize 2
-                warningMessages().single { it.contains("invalid mobile") } shouldBe
-                    "ContactValidationIssue: Received manager payload with invalid mobile for operation=PUT /linemanager/requirement/{id}. Rejecting request. Reason: PhoneNumber must contain only digits, with an optional leading plus sign"
-                warningMessages().single { it.contains("invalid email") } shouldBe
-                    "ContactValidationIssue: Received manager payload with invalid email for operation=PUT /linemanager/requirement/{id}. Rejecting request. Reason: EmailAddress must not contain whitespace"
+                warningMessages() shouldHaveSize 1
+                warningMessages().single() shouldBe "Manager contact fields failed validation"
+                exception.isAlreadyLogged shouldBe true
+                val fields = logAppender.list.single().keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "contact_validation_rejected"
+                val issues = fields["validation_issues"] as List<*>
+                issues shouldHaveSize 2
+                issues shouldBe listOf(
+                    mapOf("field" to "MOBILE", "reason" to "INVALID_FORMAT"),
+                    mapOf("field" to "EMAIL", "reason" to "INVALID_FORMAT"),
+                )
+                issues.toString().contains("PhoneNumber") shouldBe false
+                issues.toString().contains("90-00-00-00") shouldBe false
+                issues.toString().contains("invalid @example.com") shouldBe false
                 warningMessages().any { it.contains("90-00-00-00") } shouldBe false
                 warningMessages().any { it.contains("invalid @example.com") } shouldBe false
                 warningMessages().any { it.contains("gyldig@example.com") } shouldBe false
@@ -205,7 +212,6 @@ class ValidationServiceTest :
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
                     service.normalizeManagerPayload(
                         manager = manager,
-                        context = "path=/api/v1/linemanager",
                     )
                 }
 
@@ -213,7 +219,7 @@ class ValidationServiceTest :
                 exception.message shouldBe
                     "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign"
                 warningMessages().single() shouldBe
-                    "ContactValidationIssue: Received manager payload with invalid mobile for path=/api/v1/linemanager. Rejecting request. Reason: PhoneNumber must contain only digits, with an optional leading plus sign"
+                    "Manager contact fields failed validation"
             }
         }
         describe("validateNarmesteleder") {

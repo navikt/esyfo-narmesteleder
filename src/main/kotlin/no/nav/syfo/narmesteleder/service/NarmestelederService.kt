@@ -4,6 +4,8 @@ import kotlinx.coroutines.delay
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -17,13 +19,52 @@ import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
+import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
+
+private data class BehovSourceLogDetails(
+    val source: String,
+    val sykmeldingId: String?,
+    val narmestelederId: String?,
+    val reason: BehovDegradedReason,
+)
+
+private enum class BehovDegradedReason {
+    EMPLOYMENT_MISSING,
+    EMPLOYMENT_MAIN_ORG_MISSING,
+    SICK_LEAVE_MAIN_ORG_MISSING
+}
+
+private fun BehovSource.logDetails(reason: BehovDegradedReason): BehovSourceLogDetails {
+    val id = runCatching { UUID.fromString(id).toString() }.getOrNull()
+    return when (source) {
+        SENDT_SYKMELDING_TOPIC -> BehovSourceLogDetails(source, id, null, reason)
+        TEAMSYKMELDING_NL_LEESAH_TOPIC -> BehovSourceLogDetails(source, null, id, reason)
+        else -> BehovSourceLogDetails("unknown", null, null, reason)
+    }
+}
+
+private val behovSourceFields: Map<String, (BehovSourceLogDetails) -> Any?> = mapOf(
+    "behov_source" to { it.source },
+    "sykmelding_id" to { it.sykmeldingId },
+    "narmesteleder_id" to { it.narmestelederId },
+    "reason" to { it.reason.name },
+)
+
+private val behovStoredDegraded = applicationEvent<BehovSourceLogDetails>(
+    name = "narmestelederbehov_stored_degraded",
+    level = Level.WARN,
+    message = "Nearest leader need was stored for follow-up without required employment or organization data",
+    fields = behovSourceFields,
+)
 
 class NarmestelederService(
     private val nlDb: INarmestelederDb,
@@ -34,6 +75,10 @@ class NarmestelederService(
     private val dialogportenService: DialogportenService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    private fun logDegraded(source: BehovSource, reason: BehovDegradedReason) {
+        logger.logEvent(behovStoredDegraded, source.logDetails(reason))
+    }
 
     suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead = with(findBehovEntityById(id)) {
         val name = getName()
@@ -178,16 +223,10 @@ class NarmestelederService(
         if (arbeidsforhold == null) {
             behovStatus = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND
             COUNT_CREATE_BEHOV_STORED_ARBEIDSFORHOLD_NOT_FOUND.increment()
-            logger.warn(
-                "No arbeidsforhold found for for orgnumber $orgnummer and " +
-                    "behovSource id: ${behovSource.id} type: ${behovSource.source} "
-            )
+            logDegraded(behovSource, BehovDegradedReason.EMPLOYMENT_MISSING)
         } else if (arbeidsforhold.opplysningspliktigOrgnummer == null) {
             behovStatus = BehovStatus.HOVEDENHET_NOT_FOUND
-            logger.warn(
-                "No hovedenhet found in arbeidsforhold for orgnumber ${arbeidsforhold.orgnummer} and " +
-                    "behovSource id: ${behovSource.id} type: ${behovSource.source} "
-            )
+            logDegraded(behovSource, BehovDegradedReason.EMPLOYMENT_MAIN_ORG_MISSING)
         }
         return Pair(behovStatus, arbeidsforhold?.opplysningspliktigOrgnummer ?: "UNKNOWN")
     }
@@ -198,10 +237,7 @@ class NarmestelederService(
     ): Pair<BehovStatus, String> {
         if (arbeidsgiver.juridiskOrgnummer == null) {
             COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT.increment()
-            logger.warn(
-                "No hovedenhet found in arbeidsgiver from sykmelding for orgnumber ${arbeidsgiver.orgnummer} and " +
-                    "behovSource id: ${behovSource.id} type: ${behovSource.source} "
-            )
+            logDegraded(behovSource, BehovDegradedReason.SICK_LEAVE_MAIN_ORG_MISSING)
             return Pair(BehovStatus.HOVEDENHET_NOT_FOUND, "UNKNOWN")
         } else {
             return Pair(BehovStatus.BEHOV_CREATED, arbeidsgiver.juridiskOrgnummer)

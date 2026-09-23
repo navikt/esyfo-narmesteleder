@@ -4,6 +4,8 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.ContactValidationIssue
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
@@ -18,6 +20,24 @@ import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
+
+private data class ContactValidationRejectedDetails(
+    val validationIssues: List<ContactValidationIssue>,
+)
+
+private val contactValidationRejected = applicationEvent<ContactValidationRejectedDetails>(
+    name = "contact_validation_rejected",
+    level = Level.WARN,
+    message = "Manager contact fields failed validation",
+    fields = mapOf(
+        "validation_issues" to {
+            it.validationIssues.map { issue ->
+                mapOf("field" to issue.field.name, "reason" to "INVALID_FORMAT")
+            }
+        },
+    ),
+)
 
 class ValidationService(
     private val pdlService: PdlService,
@@ -29,24 +49,22 @@ class ValidationService(
 
     fun normalizeLinemanagerPayload(
         linemanager: Linemanager,
-        context: String,
     ): Linemanager = linemanager.copy(
         manager = normalizeManagerPayload(
             manager = linemanager.manager,
-            context = context,
         )
     )
 
     fun normalizeManagerPayload(
         manager: Manager,
-        context: String,
     ): Manager {
         val validation = manager.normalizeContactDetails()
-        logContactValidationIssues(validation.issues, context)
         if (validation.issues.isNotEmpty()) {
+            logger.logEvent(contactValidationRejected, ContactValidationRejectedDetails(validation.issues))
             throw ApiErrorException.BadRequestException(
                 errorMessage = validation.issues.toBadRequestMessage(),
                 type = ErrorType.INVALID_FORMAT,
+                isAlreadyLogged = true,
             )
         }
         return validation.manager
@@ -101,20 +119,6 @@ class ValidationService(
         principal: Principal,
         orgNumber: OrganizationNumber,
     ): String? = principalAccessValidator.validatePrincipalAccessToOrgnumber(principal, orgNumber.value)
-
-    private fun logContactValidationIssues(
-        issues: List<ContactValidationIssue>,
-        context: String,
-    ) {
-        issues.forEach { issue ->
-            logger.warn(
-                "ContactValidationIssue: Received manager payload with invalid {} for {}. Rejecting request. Reason: {}",
-                issue.fieldName,
-                context,
-                issue.reason,
-            )
-        }
-    }
 }
 
 private fun List<ContactValidationIssue>.toBadRequestMessage(): String = joinToString(

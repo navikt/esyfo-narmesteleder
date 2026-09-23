@@ -1,16 +1,34 @@
 package no.nav.syfo.narmesteleder.service
 
+import no.nav.esyfo.observability.apiRequestRejected
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.narmesteleder.db.INarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.RevokableNarmestelederEntity
 import no.nav.syfo.narmesteleder.domain.RevokeInitiator
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.util.logger
 import java.util.UUID
+
+private data class RevokeAccessRejectedDetails(
+    val rejectionReason: String,
+    val narmestelederId: UUID,
+    val principalType: String,
+)
+
+private val revokeAccessRejected = apiRequestRejected<RevokeAccessRejectedDetails>(
+    operation = "revoke_linemanager",
+    message = "Caller lacks access to revoke the nearest leader relation",
+    reason = { it.rejectionReason },
+    fields = mapOf(
+        "narmesteleder_id" to { it.narmestelederId.toString() },
+        "principal_type" to { it.principalType },
+    ),
+)
 
 sealed interface RevokeOutcome {
     data class Revoked(val initiator: RevokeInitiator) : RevokeOutcome
@@ -23,6 +41,7 @@ class LinemanagerRevokeService(
     private val validationService: ValidationService,
 ) {
     private val logger = logger()
+    private val eventLogger = applicationLogger(LinemanagerRevokeService::class.java)
 
     /**
      * Revokes the relation identified by [narmestelederId].
@@ -47,7 +66,7 @@ class LinemanagerRevokeService(
         }
 
         val initiator = relation.partyInRelationOrNull(principal)
-            ?: resolveEmployerInitiator(relation, principal, context)
+            ?: resolveEmployerInitiator(relation, principal)
 
         if (!relation.isActive) {
             logger.info("Revoke request for an already revoked linemanager relation. {}", context)
@@ -66,16 +85,21 @@ class LinemanagerRevokeService(
     private suspend fun resolveEmployerInitiator(
         relation: RevokableNarmestelederEntity,
         principal: Principal,
-        context: String,
     ): RevokeInitiator {
         try {
             validationService.validatePrincipalAccessToOrgnumber(principal, relation.orgNumber)
         } catch (e: ApiErrorException.ForbiddenException) {
-            logger.warn(
-                "Rejecting revoke request from a caller outside the relation without access to the organization. {}",
-                context,
-            )
-            throw notFound(cause = e)
+            if (!e.isAlreadyLogged) {
+                eventLogger.event(
+                    revokeAccessRejected,
+                    RevokeAccessRejectedDetails(
+                        rejectionReason = e.type.name,
+                        narmestelederId = relation.narmestelederId,
+                        principalType = principal::class.simpleName ?: "Principal",
+                    ),
+                )
+            }
+            throw notFound(cause = e, isAlreadyLogged = true)
         }
         return when (principal) {
             is SystemPrincipal -> RevokeInitiator.LPS
@@ -83,10 +107,14 @@ class LinemanagerRevokeService(
         }
     }
 
-    private fun notFound(cause: Throwable? = null) = ApiErrorException.NotFoundException(
+    private fun notFound(
+        cause: Throwable? = null,
+        isAlreadyLogged: Boolean = false,
+    ) = ApiErrorException.NotFoundException(
         errorMessage = "Linemanager relation not found",
         cause = cause,
         type = ErrorType.NOT_FOUND,
+        isAlreadyLogged = isAlreadyLogged,
     )
 }
 

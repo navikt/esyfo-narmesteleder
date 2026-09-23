@@ -1,13 +1,19 @@
 package no.nav.syfo.narmesteleder.service
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.ktor.http.HttpStatusCode
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.verify
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
@@ -18,10 +24,25 @@ import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.RevokeInitiator
 import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import org.slf4j.LoggerFactory
 import java.util.UUID
 
 class LinemanagerRevokeServiceTest :
     DescribeSpec({
+        val logger = LoggerFactory.getLogger(LinemanagerRevokeService::class.java) as Logger
+        val originalLevel = logger.level
+        val appender = ListAppender<ILoggingEvent>()
+        beforeSpec {
+            logger.level = Level.WARN
+            appender.start()
+            logger.addAppender(appender)
+        }
+        afterSpec {
+            logger.detachAppender(appender)
+            appender.stop()
+            logger.level = originalLevel
+        }
+
         val revokeDb = mockk<INarmestelederRevokeDb>()
         val kafkaProducer = mockk<ISykmeldingNLKafkaProducer>(relaxed = true)
         val validationService = mockk<ValidationService>()
@@ -58,6 +79,7 @@ class LinemanagerRevokeServiceTest :
         }
 
         beforeTest {
+            appender.list.clear()
             clearMocks(revokeDb, kafkaProducer, validationService)
         }
 
@@ -139,13 +161,47 @@ class LinemanagerRevokeServiceTest :
                 coVerify(exactly = 1) { validationService.validatePrincipalAccessToOrgnumber(outsider, orgNumber) }
             }
 
-            it("throws NotFoundException when a person lacks Altinn access") {
+            it("logs one person-free access rejection while hiding the relation behind a 404") {
                 coEvery { revokeDb.findByNarmestelederId(narmestelederId) } returns relation()
-                denyAltinnAccess()
+                coEvery {
+                    validationService.validatePrincipalAccessToOrgnumber(outsider, orgNumber)
+                } throws ApiErrorException.ForbiddenException(
+                    errorMessage = "private-access-detail",
+                    type = ErrorType.MISSING_ORG_ACCESS,
+                )
 
-                shouldThrow<ApiErrorException.NotFoundException> {
-                    service.revoke(narmestelederId, outsider, context)
+                val exception = shouldThrow<ApiErrorException.NotFoundException> {
+                    service.revoke(narmestelederId, outsider, "private-request-context")
                 }
+                exception.toApiError("/revoke").status shouldBe HttpStatusCode.NotFound
+                exception.isAlreadyLogged shouldBe true
+                val event = appender.list.single()
+                event.level shouldBe Level.WARN
+                event.throwableProxy shouldBe null
+                val fields = event.keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "api_request_rejected"
+                fields["operation"] shouldBe "revoke_linemanager"
+                fields["rejection_reason"] shouldBe "MISSING_ORG_ACCESS"
+                fields["narmesteleder_id"] shouldBe narmestelederId.toString()
+                fields["principal_type"] shouldBe "UserPrincipal"
+                val logged = event.formattedMessage + fields.toString()
+                listOf(employee.value, manager.value, outsider.ident, orgNumber.value, "private-access-detail", "private-request-context")
+                    .forEach { logged.contains(it) shouldBe false }
+                verify(exactly = 0) { kafkaProducer.sendSykmldingNLBrudd(any(), any()) }
+            }
+
+            it("does not log access rejection again when the validator already logged it") {
+                coEvery { revokeDb.findByNarmestelederId(narmestelederId) } returns relation()
+                coEvery {
+                    validationService.validatePrincipalAccessToOrgnumber(systemUser, orgNumber)
+                } throws ApiErrorException.ForbiddenException(isAlreadyLogged = true)
+
+                val exception = shouldThrow<ApiErrorException.NotFoundException> {
+                    service.revoke(narmestelederId, systemUser, context)
+                }
+                exception.toApiError("/revoke").status shouldBe HttpStatusCode.NotFound
+                exception.isAlreadyLogged shouldBe true
+                appender.list.isEmpty() shouldBe true
                 verify(exactly = 0) { kafkaProducer.sendSykmldingNLBrudd(any(), any()) }
             }
 

@@ -49,7 +49,8 @@ class ShadowActiveSykmeldingServiceTest :
 
         fun warningMessages(): List<String> = logAppender.list.map { it.formattedMessage }
         fun warningEvents(): List<ILoggingEvent> = logAppender.list.toList()
-        fun warningArguments(): List<Any?> = logAppender.list.flatMap { it.argumentArray?.toList() ?: emptyList() }
+        fun warningArguments(): List<Any?> = logAppender.list.flatMap { it.keyValuePairs?.map { pair -> pair.value } ?: emptyList() }
+        fun warningFields(): Map<String, Any?> = warningEvents().single().keyValuePairs.associate { it.key to it.value }
         fun localResult(isActive: Boolean, sykmeldingId: UUID? = null): LocalActiveSykmeldingResult = LocalActiveSykmeldingResult(isActive = isActive, sykmeldingId = sykmeldingId)
         fun assertSensitiveValueNotLogged(value: String) {
             warningMessages().any { it.contains(value) } shouldBe false
@@ -74,9 +75,10 @@ class ShadowActiveSykmeldingServiceTest :
             service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
 
             warningMessages() shouldHaveSize 1
-            warningMessages().single() shouldBe
-                "Shadow mismatch for active sykmelding: direction=client_true_local_false, client=true, local=false"
-            warningArguments() shouldBe listOf("client_true_local_false", true, false)
+            warningMessages().single() shouldBe "Active sick leave shadow comparison is degraded"
+            warningFields()["reason"] shouldBe "MISMATCH"
+            warningFields()["remote_result"] shouldBe true
+            warningFields()["local_result"] shouldBe false
             warningEvents().single().throwableProxy shouldBe null
             assertNoSensitiveValuesLogged()
         }
@@ -88,9 +90,10 @@ class ShadowActiveSykmeldingServiceTest :
             service.getIsActiveSykmelding(fnr, orgnummer) shouldBe false
 
             warningMessages() shouldHaveSize 1
-            warningMessages().single() shouldBe
-                "Shadow mismatch for active sykmelding: direction=client_false_local_true, client=false, local=true"
-            warningArguments() shouldBe listOf("client_false_local_true", false, true)
+            warningMessages().single() shouldBe "Active sick leave shadow comparison is degraded"
+            warningFields()["reason"] shouldBe "MISMATCH"
+            warningFields()["remote_result"] shouldBe false
+            warningFields()["local_result"] shouldBe true
             warningEvents().single().throwableProxy shouldBe null
             assertNoSensitiveValuesLogged()
         }
@@ -111,10 +114,7 @@ class ShadowActiveSykmeldingServiceTest :
 
             exception shouldBe clientException
             coVerify(exactly = 0) { repository.findActiveSykmelding(any(), any()) }
-            warningMessages().single() shouldBe
-                "Dinesykmeldte client failed, rethrowing client exception. Exception type=RuntimeException"
-            warningArguments() shouldBe listOf("RuntimeException")
-            warningEvents().single().throwableProxy shouldBe null
+            warningMessages() shouldHaveSize 0
             assertNoSensitiveValuesLogged()
         }
 
@@ -128,11 +128,7 @@ class ShadowActiveSykmeldingServiceTest :
             }
 
             exception shouldBe clientException
-            warningMessages() shouldHaveSize 1
-            warningMessages().single() shouldBe
-                "Dinesykmeldte client failed, rethrowing client exception. Exception type=RuntimeException"
-            warningArguments() shouldBe listOf("RuntimeException")
-            warningEvents().single().throwableProxy shouldBe null
+            warningMessages() shouldHaveSize 0
             assertNoSensitiveValuesLogged()
         }
 
@@ -143,10 +139,12 @@ class ShadowActiveSykmeldingServiceTest :
             service.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
 
             warningMessages() shouldHaveSize 1
-            warningMessages().single() shouldBe
-                "Local shadow query failed, ignoring local result. Exception type=RuntimeException"
-            warningArguments() shouldBe listOf("RuntimeException")
-            warningEvents().single().throwableProxy shouldBe null
+            warningMessages().single() shouldBe "Active sick leave shadow comparison is degraded"
+            warningFields()["event_type"] shouldBe "sick_leave_shadow_degraded"
+            warningFields()["reason"] shouldBe "QUERY_FAILED"
+            warningFields()["cause_type"] shouldBe "RuntimeException"
+            warningFields().containsKey("outcome") shouldBe false
+            warningEvents().single().throwableProxy.message shouldBe "java.lang.RuntimeException"
             assertNoSensitiveValuesLogged()
         }
 

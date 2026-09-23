@@ -6,6 +6,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.PdlCache
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
 import no.nav.syfo.pdl.client.IPdlClient
@@ -21,6 +22,10 @@ class PdlService(
     private val pdlCache: PdlCache
 ) {
     private val logger = logger()
+
+    private fun logDegraded(details: PdlLookupDegradedDetails, cause: Throwable? = null) {
+        logger.logEvent(pdlLookupDegraded, details, cause = cause)
+    }
 
     suspend fun getPersonFor(fnr: String): Person {
         val response = pdlClient.getPerson(fnr)
@@ -76,9 +81,9 @@ class PdlService(
         }
         return responses
             .onEach { response ->
-                val errorCount = response.errors?.size ?: 0
-                if (errorCount > 0) {
-                    logger.error("Errors in getPersonsBolk response from PDL, errorCount=$errorCount")
+                val errors = response.errors
+                if (!errors.isNullOrEmpty()) {
+                    logDegraded(PdlLookupDegradedDetails(PdlLookupDegradedReason.GRAPHQL_ERRORS, errors, errors.size))
                 }
             }
             .flatMap { it.toPersonMap().entries }
@@ -90,7 +95,7 @@ class PdlService(
     } catch (e: CancellationException) {
         throw e
     } catch (e: PdlRequestException) {
-        logger.error("Error when fetching person bulk from PDL for chunk of size ${fnrChunk.size}", e)
+        logDegraded(PdlLookupDegradedDetails(PdlLookupDegradedReason.BATCH_FAILED, recordCount = fnrChunk.size), e)
         null
     }
 

@@ -10,6 +10,11 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.esyfo.observability.testkit.captureLogs
+import no.nav.syfo.pdl.PdlLookupDegradedDetails
+import no.nav.syfo.pdl.PdlLookupDegradedReason
+import no.nav.syfo.pdl.client.ErrorExtension
+import no.nav.syfo.pdl.client.ResponseError
+import no.nav.syfo.pdl.pdlLookupDegraded
 import org.slf4j.event.Level
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -99,6 +104,27 @@ class RuntimeDiagnosticsTest :
             }
         }
 
+        "PDL GraphQL errors retain approved structured diagnostics with the production encoder" {
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(
+                        pdlLookupDegraded,
+                        PdlLookupDegradedDetails(
+                            reason = PdlLookupDegradedReason.GRAPHQL_ERRORS,
+                            pdlErrors = listOf(ResponseError("GraphQL failure", null, listOf("person"), ErrorExtension("NOT_FOUND", null, null))),
+                            errorCount = 1,
+                        ),
+                    )
+                    val record = jacksonObjectMapper().readTree(capture.records.single())
+                    record["event_type"].asText() shouldBe "pdl_lookup_degraded"
+                    record["reason"].asText() shouldBe "GRAPHQL_ERRORS"
+                    record["error_count"].asInt() shouldBe 1
+                    record["pdl_errors"][0]["message"].asText() shouldBe "GraphQL failure"
+                    record["pdl_errors"][0]["path"][0].asText() shouldBe "person"
+                    record["pdl_errors"][0]["extensions"]["code"].asText() shouldBe "NOT_FOUND"
+                }
+            }
+        }
         "database SQL state remains actionable" {
             withProductionLogger { logger ->
                 captureLogs(logger, "stdout_json").use { capture ->

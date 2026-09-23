@@ -1,5 +1,8 @@
 package no.nav.syfo.dialogporten.service
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
@@ -31,6 +34,7 @@ import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
+import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -76,6 +80,30 @@ class DialogportenServiceTest :
                     pdlService = pdlService,
                 )
             spyNarmestelederDb.clear()
+        }
+        it("logs need and dialog identifiers when a status update fails") {
+            val logger = LoggerFactory.getLogger(DialogportenService::class.java) as Logger
+            val appender = ListAppender<ILoggingEvent>()
+            appender.start()
+            logger.addAppender(appender)
+            try {
+                val behovId = UUID.randomUUID()
+                val dialogId = UUID.randomUUID()
+                val behov = nlBehovEntity().copy(id = behovId, dialogId = dialogId, behovStatus = BehovStatus.BEHOV_FULFILLED)
+                coEvery { dialogportenClient.getDialogById(dialogId) } throws IllegalStateException("private-canary")
+
+                dialogportenService.setToCompletedInDialogporten(behov)
+
+                val fields = appender.list.single().keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "dialogporten_dialog_failed"
+                fields["action"] shouldBe "COMPLETE"
+                fields["behov_id"] shouldBe behovId.toString()
+                fields["dialog_id"] shouldBe dialogId.toString()
+                appender.list.single().formattedMessage.contains("private-canary") shouldBe false
+            } finally {
+                logger.detachAppender(appender)
+                appender.stop()
+            }
         }
         describe("sendDocumentsToDialogporten") {
             context("when there are no behov to send") {

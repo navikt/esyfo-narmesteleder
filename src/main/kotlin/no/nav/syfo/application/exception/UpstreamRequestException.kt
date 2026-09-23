@@ -26,6 +26,23 @@ class UpstreamRequestException(
     upstreamStatus: Int? = null,
     val upstreamExceptionType: UpstreamExceptionType = UpstreamExceptionType.UNEXPECTED_EXCEPTION,
     val failureStage: UpstreamFailureStage = UpstreamFailureStage.REQUEST,
+    val upstreamErrorCode: OAuthFailureCode? = null,
+    val upstream: String? = null,
 ) : RuntimeException(message, cause) {
     val upstreamStatus: Int? = upstreamStatus?.takeIf { it in 100..599 }
+}
+
+/** OAuth error values allowed in operational logs. Unknown provider values stay unknown. */
+enum class OAuthFailureCode {
+    INVALID_REQUEST,
+    INVALID_CLIENT,
+    INVALID_GRANT,
+    UNAUTHORIZED_CLIENT,
+    UNSUPPORTED_GRANT_TYPE,
+    INVALID_SCOPE,
+    ACCESS_DENIED,
+    SERVER_ERROR,
+    TEMPORARILY_UNAVAILABLE,
+    INVALID_TARGET,
+    UNKNOWN,
 }

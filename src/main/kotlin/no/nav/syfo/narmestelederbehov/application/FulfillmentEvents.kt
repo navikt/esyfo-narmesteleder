@@ -38,5 +38,11 @@ internal val fulfillmentRejected = Event<FulfillNarmestelederbehovResult>(
                 is FulfillNarmestelederbehovResult.ManagerNameMismatch -> "MANAGER_NAME_MISMATCH"
             }
         },
+        "validation_issues" to {
+            (it as? FulfillNarmestelederbehovResult.InvalidManagerContactDetails)?.issues?.take(20)?.map { issue ->
+                mapOf("field" to issue.field.name, "reason" to issue.reason.name)
+            }
+        },
+        "issue_count" to { (it as? FulfillNarmestelederbehovResult.InvalidManagerContactDetails)?.issues?.size },
     ),
 )

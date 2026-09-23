@@ -54,7 +54,7 @@ private fun isMigrated(name: String): Boolean = name.startsWith("no/nav/syfo/alt
         "no/nav/syfo/narmesteleder/service/validators/SystemUserAccessRejection",
         "no/nav/syfo/narmesteleder/service/validators/SystemUserAccessRejectionKt",
     ) ||
-    (name.startsWith("no/nav/syfo/logging/") && name != "no/nav/syfo/logging/ApplicationLoggingKt")
+    (name.startsWith("no/nav/syfo/logging/") && name !in setOf("no/nav/syfo/logging/ApplicationLoggingKt", "no/nav/syfo/logging/FailureEventKt"))
 
 private fun forbiddenLogging(bytes: ByteArray): List<String> = ClassFile.of().parse(bytes).constantPool().mapNotNull { entry ->
     when (entry) {

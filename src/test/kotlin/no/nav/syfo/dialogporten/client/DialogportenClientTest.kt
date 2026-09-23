@@ -3,6 +3,7 @@ package no.nav.syfo.dialogporten.client
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import createMockToken
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
@@ -17,15 +18,49 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClientException
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
+import no.nav.syfo.logging.failureDiagnostics
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.httpClientDefault
 import java.util.*
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 
 class DialogportenClientTest :
     DescribeSpec({
+        describe("failure ownership") {
+            it("preserves the HTTP cause for the service that handles the failed operation") {
+                val provider = mockk<AltinnTokenProvider>()
+                coEvery { provider.token(any()) } returns AltinnTokenProvider.AltinnToken("secret-token", Duration.ZERO, "scope")
+                val client = DialogportenClient(
+                    "https://dialogporten.test",
+                    httpClientDefault(HttpClient(MockEngine { respond("private-response-body", HttpStatusCode.ServiceUnavailable) })),
+                    provider,
+                )
+                val failure = shouldThrow<DialogportenClientException> {
+                    client.getDialogById(UUID.randomUUID())
+                }
+                failure.failureDiagnostics().upstreamStatus shouldBe 503
+                failure.failureDiagnostics().failureKind shouldBe "http"
+                failure.failureDiagnostics().causeType shouldBe "ServerResponseException"
+                failure.message shouldBe "Error in request to Dialogporten"
+            }
+
+            it("propagates cancellation without converting it into a client failure") {
+                val cancelled = CancellationException("cancelled")
+                val provider = mockk<AltinnTokenProvider>()
+                coEvery { provider.token(any()) } throws cancelled
+                val client = DialogportenClient(
+                    "https://dialogporten.test",
+                    HttpClient(MockEngine { error("No upstream request should be made") }),
+                    provider,
+                )
+                shouldThrow<CancellationException> { client.getDialogById(UUID.randomUUID()) } shouldBe cancelled
+            }
+        }
+
         describe("Test PATCH status in dialogporten") {
             context("Should follow RFC specs when sending the PATCH request") {
                 val httpClientWithAssertions = httpClientDefault(

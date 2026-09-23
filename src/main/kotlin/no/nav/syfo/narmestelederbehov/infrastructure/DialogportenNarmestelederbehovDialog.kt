@@ -1,20 +1,25 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
 import kotlinx.coroutines.CancellationException
-import no.nav.esyfo.observability.Event
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
+import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmestelederbehov.application.DialogportenCompletionAttempt
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import org.slf4j.event.Level
 
-private val dialogportenCompletionFailed = Event<Unit>(
+private val dialogportenCompletionFailed = applicationEvent<String>(
     name = "narmestelederbehov_dialogporten_completion_failed",
     level = Level.WARN,
     message = "Dialogporten completion failed; pending behov remains retryable",
     operation = "fulfill_narmestelederbehov",
+    upstream = "dialogporten",
+    fields = mapOf(
+        "behov_id" to { it },
+    ),
 )
 
 class DialogportenNarmestelederbehovDialog(
@@ -31,7 +36,7 @@ class DialogportenNarmestelederbehovDialog(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.event(dialogportenCompletionFailed, Unit)
+            logger.logEvent(dialogportenCompletionFailed, id.value.toString(), cause = e)
             return DialogportenCompletionAttempt.Failed
         }
     }

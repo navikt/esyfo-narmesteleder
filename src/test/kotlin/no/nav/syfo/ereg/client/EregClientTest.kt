@@ -13,6 +13,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.mockk.clearAllMocks
 import io.mockk.mockk
+import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
@@ -62,9 +63,10 @@ class EregClientTest :
                     eregBaseUrl = "",
                     httpClient = client,
                 )
-                shouldThrow<UpstreamRequestException> {
+                val exception = shouldThrow<UpstreamRequestException> {
                     arClient.getOrganisasjon(organization.organisasjonsnummer)
                 }
+                exception.failureStage shouldBe UpstreamFailureStage.RESPONSE
             }
 
             it("Should return null if 4xx error") {

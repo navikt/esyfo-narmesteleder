@@ -23,6 +23,7 @@ import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger
 import java.util.UUID
+import kotlin.coroutines.cancellation.CancellationException
 
 interface IDialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
@@ -53,8 +54,8 @@ class DialogportenClient(
                 }.body<String>()
         UUID.fromString(response.removeSurrounding("\""))
     }.getOrElse { e ->
-        logger.error("Error in create dialog request", e)
-        throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
+        if (e is CancellationException) throw e
+        throw DialogportenClientException(GENERIC_DIALOGPORTEN_ERROR_MESSAGE, e)
     }
 
     override suspend fun getDialogById(
@@ -69,8 +70,8 @@ class DialogportenClient(
                     bearerAuth(token)
                 }.body<ExtendedDialog>()
         }.getOrElse { e ->
-            logger.error("Error on request to Dialogporten on dialog id: $dialogId", e)
-            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
+            if (e is CancellationException) throw e
+            throw DialogportenClientException(GENERIC_DIALOGPORTEN_ERROR_MESSAGE, e)
         }
 
         return dialog
@@ -115,8 +116,8 @@ class DialogportenClient(
                     setBody(patch)
                 }
         }.onFailure { e ->
-            logger.error("Error on patch request to Dialogporten on dialogId: $dialogId", e)
-            throw DialogportenClientException(e.message ?: GENERIC_DIALOGPORTEN_ERROR_MESSAGE)
+            if (e is CancellationException) throw e
+            throw DialogportenClientException(GENERIC_DIALOGPORTEN_ERROR_MESSAGE, e)
         }
     }
 }

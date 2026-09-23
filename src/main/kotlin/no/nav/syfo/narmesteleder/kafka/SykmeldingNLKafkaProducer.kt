@@ -44,7 +44,6 @@ class SykmeldingNLKafkaProducer(private val producer: KafkaProducer<String, INlR
                 else -> {
                 }
             }
-            logger.error("Exception was thrown when attempting to send NlRelasjon: ${ex.message}")
             throw ex
         }
     }
@@ -70,7 +69,6 @@ class SykmeldingNLKafkaProducer(private val producer: KafkaProducer<String, INlR
                 else -> {
                 }
             }
-            logger.error("Exception was thrown when attempting to send NlAvbrutt: ${ex.message}")
             throw ex
         }
     }

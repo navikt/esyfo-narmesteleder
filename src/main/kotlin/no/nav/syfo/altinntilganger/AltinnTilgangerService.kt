@@ -8,6 +8,7 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.logging.failureDiagnostics
 
 class AltinnTilgangerService(
     val altinnTilgangerClient: IAltinnTilgangerClient,
@@ -80,17 +81,20 @@ class AltinnTilgangerService(
         cause: UpstreamRequestException,
         operation: AltinnTilgangerOperation,
     ) {
-        val origin = cause.cause ?: cause
+        val origin = (cause.cause ?: cause).failureDiagnostics()
         logger.event(
             operation.failureEvent,
             AltinnTilgangerFailure(
                 errorCode = cause.errorCode(),
                 exceptionType = cause.upstreamExceptionType,
-                causeType = origin.safeCauseType(),
-                failureStage = cause.failureStage,
+                causeType = origin.causeType,
+                causeTypes = origin.causeTypes,
+                failureKind = origin.failureKind,
+                upstream = cause.upstream ?: "arbeidsgiver-altinn-tilganger",
+                upstreamErrorCode = cause.upstreamErrorCode?.name,
                 upstreamStatus = cause.upstreamStatus,
             ),
-            SanitizedUpstreamFailure(origin.stackTrace),
+            origin.stack,
         )
     }
 
@@ -98,7 +102,7 @@ class AltinnTilgangerService(
         errorCode: AltinnTilgangerErrorCode,
         operation: AltinnTilgangerOperation,
     ) {
-        logger.event(operation.failureEvent, AltinnTilgangerFailure(errorCode))
+        logger.event(operation.failureEvent, AltinnTilgangerFailure(errorCode, failureKind = "domain"))
     }
 
     private fun List<AltinnTilgang>.filterToOrganizations(): List<AccessibleOrganization> = mapNotNull { it.filterAccess() }
@@ -149,13 +153,3 @@ private fun UpstreamRequestException.errorCode(): AltinnTilgangerErrorCode = whe
     failureStage == UpstreamFailureStage.RESPONSE -> AltinnTilgangerErrorCode.UPSTREAM_RESPONSE_FAILURE
     else -> AltinnTilgangerErrorCode.UPSTREAM_TRANSPORT_FAILURE
 }
-
-private class SanitizedUpstreamFailure(originStackTrace: Array<StackTraceElement>) : RuntimeException() {
-    init {
-        stackTrace = originStackTrace
-    }
-}
-
-private val SAFE_CAUSE_TYPE = Regex("^[A-Za-z][A-Za-z0-9]{0,79}$")
-
-private fun Throwable.safeCauseType(): String = javaClass.simpleName.takeIf(SAFE_CAUSE_TYPE::matches) ?: "Throwable"

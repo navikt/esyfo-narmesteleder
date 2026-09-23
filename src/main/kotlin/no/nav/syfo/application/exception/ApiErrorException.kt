@@ -57,7 +57,8 @@ sealed class ApiErrorException(
         val errorMessage: String = "Bad Request",
         cause: Throwable? = null,
         type: ErrorType = ErrorType.BAD_REQUEST,
-    ) : ApiErrorException(errorMessage, type, cause) {
+        isAlreadyLogged: Boolean = false,
+    ) : ApiErrorException(errorMessage, type, cause, isAlreadyLogged) {
         override fun toApiError(path: String): ApiError = ApiError(
             path = path,
             status = HttpStatusCode.BadRequest,
@@ -70,7 +71,8 @@ sealed class ApiErrorException(
         val errorMessage: String = "Not Found",
         cause: Throwable? = null,
         type: ErrorType = ErrorType.NOT_FOUND,
-    ) : ApiErrorException(errorMessage, type, cause) {
+        isAlreadyLogged: Boolean = false,
+    ) : ApiErrorException(errorMessage, type, cause, isAlreadyLogged) {
         override fun toApiError(path: String): ApiError = ApiError(
             path = path,
             status = HttpStatusCode.NotFound,

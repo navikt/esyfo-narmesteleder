@@ -1,5 +1,9 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -14,6 +18,7 @@ import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.DialogportenCompletionAttempt
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import org.slf4j.LoggerFactory
 import java.util.UUID
 
 class DialogportenNarmestelederbehovDialogTest :
@@ -41,11 +46,30 @@ class DialogportenNarmestelederbehovDialogTest :
         test("lookup failure stays retryable") {
             val db = mockk<INarmestelederDb>()
             val service = mockk<DialogportenService>()
-            coEvery { db.findBehovById(id.value) } throws IllegalStateException("lookup failed")
+            coEvery { db.findBehovById(id.value) } throws IllegalStateException("private-exception-canary")
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            val logger = LoggerFactory.getLogger(DialogportenNarmestelederbehovDialog::class.java) as Logger
+            val previousLevel = logger.level
+            logger.level = Level.WARN
+            logger.addAppender(appender)
 
-            DialogportenNarmestelederbehovDialog(db, service).attemptCompletion(id) shouldBe
-                DialogportenCompletionAttempt.Failed
-            coVerify(exactly = 0) { service.completeFulfilledDialog(any()) }
+            try {
+                DialogportenNarmestelederbehovDialog(db, service).attemptCompletion(id) shouldBe
+                    DialogportenCompletionAttempt.Failed
+                coVerify(exactly = 0) { service.completeFulfilledDialog(any()) }
+                val event = appender.list.single()
+                val fields = event.keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "narmestelederbehov_dialogporten_completion_failed"
+                fields["behov_id"] shouldBe id.value.toString()
+                fields["failure_kind"] shouldBe "unknown"
+                event.throwableProxy.message shouldBe "java.lang.IllegalStateException"
+                (event.formattedMessage + fields.toString() + event.throwableProxy.message)
+                    .contains("private-exception-canary") shouldBe false
+            } finally {
+                logger.detachAppender(appender)
+                logger.level = previousLevel
+                appender.stop()
+            }
         }
 
         test("missing behov is not applicable") {

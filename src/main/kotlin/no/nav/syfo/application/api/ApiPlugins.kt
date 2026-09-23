@@ -17,15 +17,41 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
-import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
+import no.nav.syfo.logging.rethrowCancellation
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.util.*
 
 const val NAV_CALL_ID_HEADER = "Nav-Call-Id"
 internal const val STATUS_PAGES_LOGGER_NAME = "no.nav.syfo.application.api.StatusPages"
 
 private val statusPagesLogger = LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME)
+
+private data class RequestFailedDetails(val responseStatus: Int)
+
+private val apiRequestFailed = applicationEvent<RequestFailedDetails>(
+    name = "api_request_failed",
+    level = Level.ERROR,
+    message = "Request failed with an unexpected server error",
+    fields = mapOf(
+        "response_status" to { it.responseStatus },
+    ),
+)
+
+private data class RequestInvalidDetails(val responseStatus: Int, val errorType: String)
+
+private val apiRequestInvalid = applicationEvent<RequestInvalidDetails>(
+    name = "api_request_invalid",
+    level = Level.WARN,
+    message = "Request failed with a client error",
+    fields = mapOf(
+        "response_status" to { it.responseStatus },
+        "error_type" to { it.errorType },
+    ),
+)
 
 fun Application.installContentNegotiation() {
     install(ContentNegotiation) {
@@ -47,11 +73,22 @@ fun Application.installCallId() {
     }
 }
 
-private fun logException(cause: Throwable) {
+private fun logException(cause: Throwable, error: ApiError) {
     if (cause is ApiErrorException && cause.isAlreadyLogged) {
         return
     }
-    statusPagesLogger.warn("Unhandled API exception", cause)
+    when {
+        error.status.value >= 500 -> statusPagesLogger.logEvent(
+            apiRequestFailed,
+            RequestFailedDetails(error.status.value),
+            cause = cause,
+        )
+        error.status.value in 400..499 && error.status != HttpStatusCode.NotFound -> statusPagesLogger.logEvent(
+            apiRequestInvalid,
+            RequestInvalidDetails(error.status.value, error.type.name),
+        )
+        else -> statusPagesLogger.info("Request rejected with status {}", error.status.value)
+    }
 }
 
 fun determineApiError(cause: Throwable, path: String): ApiError = when (cause) {
@@ -69,11 +106,9 @@ fun determineApiError(cause: Throwable, path: String): ApiError = when (cause) {
 fun Application.installStatusPages() {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
-            if (cause is CancellationException) {
-                throw cause
-            }
+            cause.rethrowCancellation()
             val apiError = determineApiError(cause, call.request.path())
-            logException(cause)
+            logException(cause, apiError)
             call.respond(apiError.status, apiError)
         }
     }

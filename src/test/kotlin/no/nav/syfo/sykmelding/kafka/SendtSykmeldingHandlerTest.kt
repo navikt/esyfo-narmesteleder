@@ -1,7 +1,12 @@
 package no.nav.syfo.sykmelding.kafka
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import defaultSendtSykmeldingMessage
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
 import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -16,6 +21,7 @@ import no.nav.syfo.sykmelding.model.RiktigNarmesteLeder
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import no.nav.syfo.sykmelding.service.NarmestelederBruddService
 import no.nav.syfo.sykmelding.service.SykmeldingService
+import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.util.UUID
 
@@ -32,6 +38,57 @@ class SendtSykmeldingHandlerTest :
             coEvery { sykmeldingService.processBatch(any()) } just Runs
             coEvery { narmesteLederService.createNewNlBehov(any(), any(), any(), any()) } returns null
             coEvery { narmestelederBruddService.revokeFromSendtSykmelding(any(), any(), any(), any(), any()) } just Runs
+        }
+
+        it("logs only the validated sykmelding UUID when employer information is missing") {
+            val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
+            val originalLevel = logger.level
+            val appender = ListAppender<ILoggingEvent>()
+            appender.start()
+            logger.level = Level.ERROR
+            logger.addAppender(appender)
+            try {
+                val id = UUID.randomUUID()
+                val message = defaultSendtSykmeldingMessage(sykmeldingId = id.toString())
+                    .let { it.copy(event = it.event.copy(arbeidsgiver = null)) }
+
+                handler.handleNarmestelederbehov(message)
+
+                val fields = appender.list.single().keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "sick_leave_employer_missing"
+                fields["action"] shouldBe "CREATE_BEHOV"
+                fields["sykmelding_id"] shouldBe id.toString()
+                fields.toString().contains(message.kafkaMetadata.fnr) shouldBe false
+            } finally {
+                logger.detachAppender(appender)
+                appender.stop()
+                logger.level = originalLevel
+            }
+        }
+
+        it("keeps the skipped message action and reason bounded without logging invalid identifiers") {
+            val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
+            val previousLevel = logger.level
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            logger.level = Level.WARN
+            logger.addAppender(appender)
+            try {
+                val id = UUID.randomUUID()
+                val message = defaultSendtSykmeldingMessage(sykmeldingId = id.toString())
+                    .let { it.copy(kafkaMetadata = it.kafkaMetadata.copy(fnr = "private-canary")) }
+                handler.handleNarmestelederbehov(message)
+
+                val fields = appender.list.single().keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "sick_leave_message_skipped"
+                fields["action"] shouldBe "CREATE_BEHOV"
+                fields["reason"] shouldBe "PERSON_ID_INVALID"
+                fields["sykmelding_id"] shouldBe id.toString()
+                fields.toString().contains("private-canary") shouldBe false
+            } finally {
+                logger.detachAppender(appender)
+                appender.stop()
+                logger.level = previousLevel
+            }
         }
 
         describe("skipSykmeldingCheck parameter tests") {

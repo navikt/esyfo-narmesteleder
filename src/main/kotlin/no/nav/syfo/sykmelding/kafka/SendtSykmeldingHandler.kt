@@ -1,5 +1,7 @@
 package no.nav.syfo.sykmelding.kafka
 
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
@@ -10,8 +12,42 @@ import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.service.NarmestelederBruddService
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
 import java.time.LocalDate
 import java.util.UUID
+
+private enum class SickLeaveAction {
+    CREATE_BEHOV,
+    REVOKE_RELATION
+}
+private enum class SickLeaveSkipReason {
+    PERSON_ID_INVALID,
+    ORG_NUMBER_INVALID
+}
+private data class SickLeaveLogDetails(
+    val sykmeldingId: String?,
+    val action: SickLeaveAction,
+    val reason: SickLeaveSkipReason? = null,
+)
+
+private val sickLeaveFields: Map<String, (SickLeaveLogDetails) -> Any?> = mapOf(
+    "sykmelding_id" to { it.sykmeldingId },
+    "action" to { it.action.name },
+)
+
+private val sickLeaveEmployerMissing = applicationEvent<SickLeaveLogDetails>(
+    name = "sick_leave_employer_missing",
+    level = Level.ERROR,
+    message = "Cannot process sick leave message because employer information is missing",
+    fields = sickLeaveFields,
+)
+
+private val sickLeaveMessageSkipped = applicationEvent<SickLeaveLogDetails>(
+    name = "sick_leave_message_skipped",
+    level = Level.WARN,
+    message = "Sick leave message was skipped because an identifier is invalid",
+    fields = sickLeaveFields + ("reason" to { it: SickLeaveLogDetails -> it.reason?.name }),
+)
 
 class SendtSykmeldingHandler(
     private val narmesteLederService: NarmestelederService,
@@ -19,6 +55,17 @@ class SendtSykmeldingHandler(
     private val narmestelederBruddService: NarmestelederBruddService,
 ) {
     private val logger = logger()
+    private fun SendtSykmeldingKafkaMessage.logId(): String? = runCatching {
+        UUID.fromString(event.sykmeldingId).toString()
+    }.getOrNull()
+
+    private fun logEmployerMissing(message: SendtSykmeldingKafkaMessage, action: SickLeaveAction) {
+        logger.logEvent(sickLeaveEmployerMissing, SickLeaveLogDetails(message.logId(), action))
+    }
+
+    private fun logSkipped(message: SendtSykmeldingKafkaMessage, action: SickLeaveAction, reason: SickLeaveSkipReason) {
+        logger.logEvent(sickLeaveMessageSkipped, SickLeaveLogDetails(message.logId(), action, reason))
+    }
 
     suspend fun handleSykmeldingBatch(records: List<SykmeldingRecord>) {
         if (records.isEmpty()) return
@@ -46,16 +93,16 @@ class SendtSykmeldingHandler(
         logger.info("No riktigNarmesteLeder answer for sykmeldingId: ${message.event.sykmeldingId}. Creating NL behov...")
         val arbeidsgiver = message.event.arbeidsgiver
             ?: run {
-                logger.error("No arbeidsgiver information for sykmeldingId: ${message.event.sykmeldingId}. Skipping NL behov creation.")
+                logEmployerMissing(message, SickLeaveAction.CREATE_BEHOV)
                 return
             }
 
         if (!message.kafkaMetadata.fnr.isDigitsWithLength(FNR_LENGTH)) {
-            logger.warn("Invalid fnr in sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}. Skipping NL behov creation.")
+            logSkipped(message, SickLeaveAction.CREATE_BEHOV, SickLeaveSkipReason.PERSON_ID_INVALID)
             return
         }
         if (!arbeidsgiver.orgnummer.isDigitsWithLength(ORGNUMMER_LENGTH)) {
-            logger.warn("Invalid orgnummer in sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}. Skipping NL behov creation.")
+            logSkipped(message, SickLeaveAction.CREATE_BEHOV, SickLeaveSkipReason.ORG_NUMBER_INVALID)
             return
         }
 
@@ -79,16 +126,16 @@ class SendtSykmeldingHandler(
     ) {
         val arbeidsgiver = message.event.arbeidsgiver
             ?: run {
-                logger.error("No arbeidsgiver information for sykmeldingId: ${message.event.sykmeldingId}. Skipping NL relation revoke.")
+                logEmployerMissing(message, SickLeaveAction.REVOKE_RELATION)
                 return
             }
 
         if (!message.kafkaMetadata.fnr.isDigitsWithLength(FNR_LENGTH)) {
-            logger.warn("Invalid fnr in sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}. Skipping NL relation revoke.")
+            logSkipped(message, SickLeaveAction.REVOKE_RELATION, SickLeaveSkipReason.PERSON_ID_INVALID)
             return
         }
         if (!arbeidsgiver.orgnummer.isDigitsWithLength(ORGNUMMER_LENGTH)) {
-            logger.warn("Invalid orgnummer in sendt sykmelding with sykmeldingId: ${message.event.sykmeldingId}. Skipping NL relation revoke.")
+            logSkipped(message, SickLeaveAction.REVOKE_RELATION, SickLeaveSkipReason.ORG_NUMBER_INVALID)
             return
         }
 

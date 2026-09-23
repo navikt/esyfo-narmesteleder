@@ -1,5 +1,7 @@
 package no.nav.syfo.narmesteleder.kafka
 
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.api.v1.COUNT_CREATE_LINEMANAGER_REQUIREMENT
 import no.nav.syfo.narmesteleder.api.v1.COUNT_FULFILL_LINEMANAGER_BY_LEGACY_SYSTEM
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -9,6 +11,20 @@ import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.util.logger
+import org.slf4j.event.Level
+
+private enum class MissingStatusReason {
+    UNKNOWN,
+    MISSING
+}
+
+private val nlMessageStatusSkipped = applicationEvent<MissingStatusReason>(
+    name = "nl_message_status_skipped",
+    level = Level.WARN,
+    message = "Nearest leader message has no recognized status",
+    upstream = "kafka",
+    fields = mapOf("reason" to { it.name }),
+)
 
 class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederService) {
     private val logger = logger()
@@ -45,11 +61,11 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
             }
 
             LeesahStatus.UKJENT -> {
-                logger.warn("Unknown status received in NL message!")
+                logger.logEvent(nlMessageStatusSkipped, MissingStatusReason.UNKNOWN)
             }
 
             null -> {
-                logger.warn("Received NL message with null status!")
+                logger.logEvent(nlMessageStatusSkipped, MissingStatusReason.MISSING)
             }
         }
     }

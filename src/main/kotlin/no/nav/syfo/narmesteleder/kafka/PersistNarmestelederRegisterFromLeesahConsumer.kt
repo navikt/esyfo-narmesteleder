@@ -12,8 +12,16 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.KafkaEnvironment
+import no.nav.syfo.application.kafka.KafkaEventConsumer
+import no.nav.syfo.application.kafka.KafkaEventLogger
 import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.application.kafka.KafkaReason
 import no.nav.syfo.application.kafka.consumerProperties
+import no.nav.syfo.application.kafka.kafkaBatchDiscarded
+import no.nav.syfo.application.kafka.kafkaConsumerCrashed
+import no.nav.syfo.application.kafka.kafkaConsumerFailed
+import no.nav.syfo.application.kafka.kafkaRecordSkipped
+import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import org.apache.kafka.clients.consumer.CloseOptions
@@ -67,6 +75,8 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     private val env: OtherEnvironmentProperties,
 ) : KafkaListener,
     AutoCloseable {
+    private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.NL_REPLAY)
+
     constructor(
         handler: NarmestelederRegisterService,
         narmestelederLeesahProducer: NarmestelederLeesahProducer,
@@ -120,20 +130,23 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
                     } catch (_: WakeupException) {
                         logger.info("Wakeup received for replay consumer")
                         break
-                    } catch (_: CancellationException) {
-                        break
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
                     } catch (e: Exception) {
-                        logger.error(
-                            "Error running replay consumer for {}. Waiting {} seconds for retry.",
-                            TEAMSYKMELDING_NL_LEESAH_TOPIC,
-                            CONSUMER_JOB_DELAY_SECONDS,
-                            e
+                        kafkaLog.log(
+                            kafkaConsumerFailed,
+                            KafkaReason.PROCESSING,
+                            cause = e,
+                            retryDelaySeconds = CONSUMER_JOB_DELAY_SECONDS,
                         )
                         consumer.unsubscribe()
                         delay(CONSUMER_JOB_DELAY_SECONDS.seconds)
                         consumer.subscribe(listOf(TEAMSYKMELDING_NL_LEESAH_TOPIC))
                     }
                 }
+            } catch (error: Error) {
+                kafkaLog.log(kafkaConsumerCrashed, cause = error)
+                throw error
             } finally {
                 closeKafkaConsumer(consumer)
                 if (kafkaConsumer === consumer) {
@@ -181,11 +194,12 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
                     )
                 }
             } catch (e: JsonProcessingException) {
-                logger.warn(
-                    "Error while deserializing record from {} at offset {}. Skipping record.",
-                    record.topic(),
-                    record.offset(),
-                    e
+                kafkaLog.log(
+                    kafkaRecordSkipped,
+                    KafkaReason.MALFORMED_RECORD,
+                    cause = e,
+                    partition = record.partition(),
+                    offset = record.offset(),
                 )
             }
         }
@@ -226,20 +240,10 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
             return
         }
 
-        try {
-            // Publish happens after persistence and before commit. If publishing fails after a partial batch
-            // has been sent, the whole batch will be retried and downstream consumers must tolerate duplicates.
-            narmestelederLeesahProducer.sendLeesahBatch(recordsToRepublish)
-            kafkaConsumer.commitSync()
-        } catch (error: Throwable) {
-            logger.error(
-                "Error while republishing {} records to {}. Offsets will not be committed.",
-                recordsToRepublish.size,
-                NarmestelederLeesahProducer.NARMESTELEDER_LEESAH_TOPIC,
-                error,
-            )
-            throw error
-        }
+        // Publish happens after persistence and before commit. If publishing fails after a partial batch
+        // has been sent, the whole batch will be retried and downstream consumers must tolerate duplicates.
+        narmestelederLeesahProducer.sendLeesahBatch(recordsToRepublish)
+        kafkaConsumer.commitSync()
     }
 
     private fun handleBatchError(
@@ -247,14 +251,10 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         kafkaConsumer: KafkaConsumer<String, String?>,
         error: Throwable,
     ) {
-        logger.error(
-            "Error while processing batch of {} records from {}. Entire batch will be retried on next poll.",
-            records.count(),
-            TEAMSYKMELDING_NL_LEESAH_TOPIC,
-            error
-        )
-
+        error.rethrowCancellation()
+        if (error is Error) throw error
         if (commitOnAllErrors) {
+            kafkaLog.log(kafkaBatchDiscarded, cause = error, recordCount = records.count())
             logger.info("commitOnAllErrors is enabled, committing offsets despite batch error.")
             kafkaConsumer.commitSync()
         } else {

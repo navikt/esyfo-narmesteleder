@@ -5,7 +5,7 @@ import kotlinx.coroutines.withContext
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.pdl.exception.PdlIncompleteResponseException
 import no.nav.syfo.util.logger
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -53,13 +53,7 @@ class PdlLeesahNameUpdateService(
         val missingFnrsCount = existingFnrs.count { fnr -> !pdlPersons.containsKey(fnr) }
         if (missingFnrsCount > 0) {
             countPdlLeesahPersonUpdate(RESULT_PDL_ERROR, missingFnrsCount)
-            logger.error(
-                "PDL bulk response was incomplete for NAVN_V1 batch. requestedExistingFnrCount={}, missingResponseCount={}, outcome={}",
-                existingFnrs.size,
-                missingFnrsCount,
-                RESULT_PDL_ERROR,
-            )
-            throw PdlRequestException("Incomplete response from getPersonsBolk")
+            throw PdlIncompleteResponseException(existingFnrs.size, missingFnrsCount)
         }
 
         var pdlNotFoundCount = 0

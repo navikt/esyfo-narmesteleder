@@ -19,6 +19,12 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmestelederbehov.api.throwIfRejected
+import no.nav.syfo.narmestelederbehov.api.toManagerContactInput
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovCommand
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
@@ -31,6 +37,7 @@ fun Route.registerLinemanagerApiV1(
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler,
     narmestelederLookupService: NarmestelederLookupService,
+    fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,
 ) {
     route(LINEMANAGER_API_PATH) {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -90,21 +97,14 @@ fun Route.registerLinemanagerApiV1(
     route(RECUIREMENT_PATH) {
         put("/{id}") {
             val principal = call.getMyPrincipal()
-            val id = call.getUUIDFromPathVariable(name = "id")
-            val linemanager = call.tryReceive<Manager>()
-            val context =
-                "operation=${call.request.httpMethod} ${call.request.path()}, callId=${call.callId ?: "missing"}, principalType=${principal::class.simpleName}"
-
-            linemanagerRequirementRestHandler.handleUpdatedRequirement(
-                linemanager,
-                requirementId = id,
-                principal = principal,
-                context = context,
-            )
-            when (principal) {
-                is SystemPrincipal -> COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS.increment()
-                is UserPrincipal -> COUNT_FULFILL_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()
-            }
+            fulfillNarmestelederbehov.execute(
+                FulfillNarmestelederbehovCommand(
+                    behovId = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id")),
+                    manager = call.tryReceive<Manager>().toManagerContactInput(),
+                    accessSubject = principal.toOrganizationAccessSubject(),
+                ),
+            ).throwIfRejected()
+            principal.countFulfilledRequirement()
             call.respond(HttpStatusCode.Accepted)
         }
 

@@ -17,6 +17,7 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
 import no.nav.syfo.narmestelederbehov.domain.RegisteredName
 import no.nav.syfo.narmestelederrelasjon.application.RelationSource
+import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import java.util.UUID
@@ -31,7 +32,7 @@ class FulfillNarmestelederbehovUseCaseTest :
 
             effects shouldBe listOf(
                 "load", "access", "sykmelding", "employment", "person:${employeeIdent.value}",
-                "person:${managerIdent.value}", "establish", "fulfilled", "dialog",
+                "person:${managerIdent.value}", "metric", "establish", "fulfilled", "dialog",
             )
             requireNotNull(relation.command).manager.let {
                 it.email shouldBe "manager@example.test"
@@ -103,18 +104,18 @@ class FulfillNarmestelederbehovUseCaseTest :
                     expectedEffects = listOf("load"),
                 ),
                 Case(
-                    result = FulfillNarmestelederbehovResult.AccessDenied,
-                    accessResult = OrganizationAccessResult.Denied,
+                    result = FulfillNarmestelederbehovResult.AccessDenied(DenialReason.MISSING_ORGANIZATION_ACCESS, organizationNumber),
+                    accessResult = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS),
                     expectedEffects = listOf("load", "access"),
                 ),
                 Case(
-                    result = FulfillNarmestelederbehovResult.NoActiveSykmelding,
+                    result = FulfillNarmestelederbehovResult.NoActiveSykmelding(organizationNumber),
                     hasActiveSykmelding = false,
                     expectedEffects = listOf("load", "access", "sykmelding"),
                 ),
                 Case(
-                    result = FulfillNarmestelederbehovResult.NoEmployment,
-                    hasEmployment = false,
+                    result = FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NONE),
+                    employment = EmploymentResult.NONE,
                     expectedEffects = listOf("load", "access", "sykmelding", "employment"),
                 ),
                 Case(
@@ -148,7 +149,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                         employeeIdent to employee,
                         managerIdent to manager.copy(
                             name = manager.name.copy(
-                                primaryLastName = "Zzzzzz",
+                                lastName = "Zzzzzz",
                                 registeredNames = listOf(RegisteredName("Zzzzzz")),
                             ),
                         ),
@@ -160,6 +161,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                         "employment",
                         "person:${employeeIdent.value}",
                         "person:${managerIdent.value}",
+                        "metric",
                     ),
                 ),
             )
@@ -170,8 +172,9 @@ class FulfillNarmestelederbehovUseCaseTest :
                     repository = FakeBehovRepository(case.behovForFulfillment, effects),
                     access = FakeOrganizationAccess(case.accessResult, effects),
                     sykmelding = FakeActiveSykmeldingLookup(case.hasActiveSykmelding, effects = effects),
-                    employment = FakeEmploymentLookup(case.hasEmployment, effects),
+                    employment = FakeEmploymentLookup(case.employment, effects),
                     personLookup = FakePersonLookup(case.people, effects),
+                    effects = effects,
                 ).execute(command()) shouldBe case.result
 
                 effects shouldBe case.expectedEffects
@@ -189,6 +192,35 @@ class FulfillNarmestelederbehovUseCaseTest :
             effects.takeLast(3) shouldBe listOf("establish", "fulfilled", "dialog")
         }
 
+        test("records the name outcome even when relation publication fails") {
+            val effects = mutableListOf<String>()
+            val failure = IllegalStateException("publisher unavailable")
+            val useCase = createUseCase(
+                relation = FakeRelationEstablisher(effects, failure),
+                effects = effects,
+            )
+
+            shouldThrow<IllegalStateException> { useCase.execute(command()) } shouldBe failure
+            effects.takeLast(2) shouldBe listOf("metric", "establish")
+        }
+
+        test("records a rejected name before returning mismatch") {
+            val effects = mutableListOf<String>()
+            val people = mapOf(
+                employeeIdent to employee,
+                managerIdent to manager.copy(
+                    name = manager.name.copy(
+                        lastName = "Different",
+                        registeredNames = listOf(RegisteredName("Different")),
+                    )
+                ),
+            )
+            val result = createUseCase(personLookup = FakePersonLookup(people, effects), effects = effects).execute(command())
+
+            (result is FulfillNarmestelederbehovResult.ManagerNameMismatch) shouldBe true
+            effects.last() shouldBe "metric"
+        }
+
         listOf("establish", "fulfilled", "dialog").forEach { failingEffect ->
             listOf(IllegalStateException("upstream failed"), CancellationException("cancelled")).forEach { failure ->
                 test("propagates ${failure::class.simpleName} at $failingEffect without later effects") {
@@ -204,7 +236,7 @@ class FulfillNarmestelederbehovUseCaseTest :
 
                     val allEffects = listOf(
                         "load", "access", "sykmelding", "employment",
-                        "person:${employeeIdent.value}", "person:${managerIdent.value}",
+                        "person:${employeeIdent.value}", "person:${managerIdent.value}", "metric",
                         "establish", "fulfilled", "dialog",
                     )
                     effects shouldBe allEffects.take(allEffects.indexOf(failingEffect) + 1)
@@ -216,7 +248,7 @@ class FulfillNarmestelederbehovUseCaseTest :
             FakeBehovRepository(behov).findForFulfillment(behovId) shouldBe behov
             FakeOrganizationAccess().evaluate(lpsSystemUser, organizationNumber) shouldBe OrganizationAccessResult.Granted
             FakeActiveSykmeldingLookup().hasActiveSykmelding(employeeIdent, organizationNumber) shouldBe true
-            FakeEmploymentLookup().hasEmployment(employeeIdent, organizationNumber) shouldBe true
+            FakeEmploymentLookup().findEmployment(employeeIdent, organizationNumber) shouldBe EmploymentResult.IN_ORGANIZATION
             FakePersonLookup(mapOf(employeeIdent to employee)).find(employeeIdent) shouldBe employee
             FakeRelationEstablisher().establish(
                 no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand(
@@ -266,7 +298,7 @@ internal val employee = PersonDetails(
     employeeIdent,
     PersonNameDetails(
         firstName = "Employee",
-        primaryLastName = "Employee",
+        lastName = "Employee",
         middleName = "EmployeeMiddle",
         registeredNames = listOf(RegisteredName("Employee")),
     )
@@ -275,7 +307,7 @@ internal val manager = PersonDetails(
     managerIdent,
     PersonNameDetails(
         firstName = "Manager",
-        primaryLastName = "Manager",
+        lastName = "Manager",
         middleName = "ManagerMiddle",
         registeredNames = listOf(RegisteredName("Manager")),
     )
@@ -316,6 +348,7 @@ internal fun createUseCase(
     personLookup: FakePersonLookup? = null,
     relation: FakeRelationEstablisher? = null,
     dialog: FakeDialog? = null,
+    metrics: ManagerNameValidationMetrics? = null,
     effects: MutableList<String> = mutableListOf(),
 ) = FulfillNarmestelederbehovUseCase(
     behovRepository = repository ?: FakeBehovRepository(behov, effects),
@@ -325,6 +358,7 @@ internal fun createUseCase(
     personLookup = personLookup ?: FakePersonLookup(mapOf(employeeIdent to employee, managerIdent to manager), effects),
     establishNarmestelederrelasjon = relation ?: FakeRelationEstablisher(effects),
     dialog = dialog ?: FakeDialog(effects = effects),
+    nameValidationMetrics = metrics ?: ManagerNameValidationMetrics { effects += "metric" },
 )
 
 private data class Case(
@@ -332,7 +366,7 @@ private data class Case(
     val behovForFulfillment: Narmestelederbehov? = behov,
     val accessResult: OrganizationAccessResult = OrganizationAccessResult.Granted,
     val hasActiveSykmelding: Boolean = true,
-    val hasEmployment: Boolean = true,
+    val employment: EmploymentResult = EmploymentResult.IN_ORGANIZATION,
     val people: Map<PersonIdent, PersonDetails> = mapOf(employeeIdent to employee, managerIdent to manager),
     val expectedEffects: List<String>,
 )

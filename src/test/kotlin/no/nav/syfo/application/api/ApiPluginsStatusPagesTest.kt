@@ -8,7 +8,10 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -82,6 +85,24 @@ class ApiPluginsStatusPagesTest :
                 logAppender.list shouldHaveSize 1
                 logAppender.list.single().level shouldBe Level.WARN
                 logAppender.list.single().formattedMessage shouldBe "Unhandled API exception"
+            }
+
+            it("does not expose the message of an unclassified failure") {
+                testApplication {
+                    application {
+                        installContentNegotiation()
+                        installStatusPages()
+                        routing {
+                            get("/unclassified") {
+                                throw IllegalStateException("Internal detail")
+                            }
+                        }
+                    }
+
+                    val body = client.get("/unclassified").bodyAsText()
+                    body shouldContain "\"message\":\"Internal server error\""
+                    body shouldNotContain "Internal detail"
+                }
             }
 
             it("rethrows cancellation without logging it as an error") {

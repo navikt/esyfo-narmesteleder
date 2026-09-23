@@ -61,7 +61,7 @@ fun determineApiError(cause: Throwable, path: String): ApiError = when (cause) {
     else -> ApiError(
         HttpStatusCode.InternalServerError,
         ErrorType.INTERNAL_SERVER_ERROR,
-        cause.message ?: "Internal server error",
+        "Internal server error",
         path
     )
 }

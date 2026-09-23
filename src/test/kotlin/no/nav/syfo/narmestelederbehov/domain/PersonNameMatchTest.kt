@@ -75,7 +75,7 @@ class PersonNameMatchTest :
         }
 
         test("preserves no-match telemetry when registered names are missing") {
-            PersonNameDetails(firstName = "Manager", primaryLastName = "Hansen", registeredNames = emptyList())
+            PersonNameDetails(firstName = "Manager", lastName = "Hansen", registeredNames = emptyList())
                 .matchManagerLastName("Hansen") shouldBe ManagerLastNameMatch.NoMatch(
                 bestFuzzyScore = null,
                 hasParallelNames = false,
@@ -126,7 +126,7 @@ class PersonNameMatchTest :
 
 private fun personWithNames(vararg names: RegisteredName) = PersonNameDetails(
     firstName = "Manager",
-    primaryLastName = names.first().lastName,
+    lastName = names.first().lastName,
     registeredNames = names.toList(),
 )
 

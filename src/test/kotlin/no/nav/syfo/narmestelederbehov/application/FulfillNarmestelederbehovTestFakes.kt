@@ -47,11 +47,11 @@ internal class FakeActiveSykmeldingLookup(
 }
 
 internal class FakeEmploymentLookup(
-    private val result: Boolean = true,
+    private val result: EmploymentResult = EmploymentResult.IN_ORGANIZATION,
     private val effects: MutableList<String> = mutableListOf(),
 ) : EmploymentLookup {
 
-    override suspend fun hasEmployment(personIdent: PersonIdent, organizationNumber: OrganizationNumber) = result.also { effects += "employment" }
+    override suspend fun findEmployment(personIdent: PersonIdent, organizationNumber: OrganizationNumber) = result.also { effects += "employment" }
 }
 
 internal class FakePersonLookup(

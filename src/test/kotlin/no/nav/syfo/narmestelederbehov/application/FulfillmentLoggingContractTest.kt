@@ -15,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
+import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
@@ -30,8 +31,8 @@ class FulfillmentLoggingContractTest :
         lateinit var capture: LogCapture
         val privacyCanaries = listOf(
             employeeIdent.value, managerIdent.value, organizationNumber.value, behovId.value.toString(),
-            employee.name.firstName, requireNotNull(employee.name.middleName), employee.name.primaryLastName,
-            manager.name.firstName, requireNotNull(manager.name.middleName), manager.name.primaryLastName,
+            employee.name.firstName, requireNotNull(employee.name.middleName), employee.name.lastName,
+            manager.name.firstName, requireNotNull(manager.name.middleName), manager.name.lastName,
             "manager@example.test", "+4799999999", "system-user", "test-token", "11223344556",
             "private-name-canary", "private-email-canary", "private-phone-canary", "private-exception-canary",
         )
@@ -76,6 +77,7 @@ class FulfillmentLoggingContractTest :
             listOf(
                 DialogportenCompletionAttempt.Completed to "COMPLETED",
                 DialogportenCompletionAttempt.Failed to "FAILED",
+                DialogportenCompletionAttempt.NotApplicable to "NOT_APPLICABLE",
             ).forEach { (completion, code) ->
                 test("logs one successful $source fulfillment with $code dialog completion") {
                     createUseCase(dialog = FakeDialog(completion)).execute(command(accessSubject = subject))
@@ -91,9 +93,9 @@ class FulfillmentLoggingContractTest :
         val rejectionCases: List<Triple<String, () -> FulfillNarmestelederbehovUseCase, FulfillNarmestelederbehovCommand>> = listOf(
             Triple("INVALID_MANAGER_CONTACT_DETAILS", { createUseCase() }, command("private-email-canary", "private-phone-canary")),
             Triple("NOT_FOUND", { createUseCase(repository = FakeBehovRepository(null)) }, command()),
-            Triple("ACCESS_DENIED", { createUseCase(access = FakeOrganizationAccess(OrganizationAccessResult.Denied)) }, command()),
+            Triple("ACCESS_DENIED", { createUseCase(access = FakeOrganizationAccess(OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS))) }, command()),
             Triple("NO_ACTIVE_SYKMELDING", { createUseCase(sykmelding = FakeActiveSykmeldingLookup(false)) }, command()),
-            Triple("NO_EMPLOYMENT", { createUseCase(employment = FakeEmploymentLookup(false)) }, command()),
+            Triple("NO_EMPLOYMENT", { createUseCase(employment = FakeEmploymentLookup(EmploymentResult.NONE)) }, command()),
             Triple("PERSON_NOT_FOUND", { createUseCase(personLookup = FakePersonLookup(emptyMap())) }, command()),
             Triple(
                 "MANAGER_NAME_MISMATCH",

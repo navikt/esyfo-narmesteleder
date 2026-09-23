@@ -14,6 +14,7 @@ internal val fulfillmentCompleted = Event<FulfillNarmestelederbehovResult.Fulfil
             when (it.dialogCompletion) {
                 DialogportenCompletionAttempt.Completed -> "COMPLETED"
                 DialogportenCompletionAttempt.Failed -> "FAILED"
+                DialogportenCompletionAttempt.NotApplicable -> "NOT_APPLICABLE"
             }
         },
     ),
@@ -30,9 +31,9 @@ internal val fulfillmentRejected = Event<FulfillNarmestelederbehovResult>(
                 is FulfillNarmestelederbehovResult.Fulfilled -> error("A fulfilled behov cannot be rejected")
                 is FulfillNarmestelederbehovResult.InvalidManagerContactDetails -> "INVALID_MANAGER_CONTACT_DETAILS"
                 FulfillNarmestelederbehovResult.NotFound -> "NOT_FOUND"
-                FulfillNarmestelederbehovResult.AccessDenied -> "ACCESS_DENIED"
-                FulfillNarmestelederbehovResult.NoActiveSykmelding -> "NO_ACTIVE_SYKMELDING"
-                FulfillNarmestelederbehovResult.NoEmployment -> "NO_EMPLOYMENT"
+                is FulfillNarmestelederbehovResult.AccessDenied -> "ACCESS_DENIED"
+                is FulfillNarmestelederbehovResult.NoActiveSykmelding -> "NO_ACTIVE_SYKMELDING"
+                is FulfillNarmestelederbehovResult.NoEmployment -> "NO_EMPLOYMENT"
                 FulfillNarmestelederbehovResult.PersonNotFound -> "PERSON_NOT_FOUND"
                 is FulfillNarmestelederbehovResult.ManagerNameMismatch -> "MANAGER_NAME_MISMATCH"
             }

@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactInput
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactNormalization
@@ -13,6 +14,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.application.RelationManager
 import no.nav.syfo.narmestelederrelasjon.application.RelationPerson
 import no.nav.syfo.narmestelederrelasjon.application.RelationSource
+import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -25,6 +27,7 @@ class FulfillNarmestelederbehovUseCase(
     private val personLookup: PersonLookup,
     private val establishNarmestelederrelasjon: EstablishNarmestelederrelasjon,
     private val dialog: NarmestelederbehovDialog,
+    private val nameValidationMetrics: ManagerNameValidationMetrics,
 ) {
     suspend fun execute(command: FulfillNarmestelederbehovCommand): FulfillNarmestelederbehovResult {
         val manager = when (val normalization = command.manager.normalize()) {
@@ -36,14 +39,21 @@ class FulfillNarmestelederbehovUseCase(
         val behov = behovRepository.findForFulfillment(command.behovId)
             ?: return FulfillNarmestelederbehovResult.NotFound.log()
 
-        if (organizationAccess.evaluate(command.accessSubject, behov.employee.organizationNumber) == OrganizationAccessResult.Denied) {
-            return FulfillNarmestelederbehovResult.AccessDenied.log()
+        when (val access = organizationAccess.evaluate(command.accessSubject, behov.employee.organizationNumber)) {
+            OrganizationAccessResult.Granted -> Unit
+            is OrganizationAccessResult.Denied -> return FulfillNarmestelederbehovResult.AccessDenied(
+                access.reason,
+                behov.employee.organizationNumber,
+            ).log()
         }
         if (!activeSykmeldingLookup.hasActiveSykmelding(behov.employee.personIdent, behov.employee.organizationNumber)) {
-            return FulfillNarmestelederbehovResult.NoActiveSykmelding.log()
+            return FulfillNarmestelederbehovResult.NoActiveSykmelding(behov.employee.organizationNumber).log()
         }
-        if (!employmentLookup.hasEmployment(behov.employee.personIdent, behov.employee.organizationNumber)) {
-            return FulfillNarmestelederbehovResult.NoEmployment.log()
+        when (employmentLookup.findEmployment(behov.employee.personIdent, behov.employee.organizationNumber)) {
+            EmploymentResult.IN_ORGANIZATION -> Unit
+            EmploymentResult.NONE -> return FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NONE).log()
+            EmploymentResult.NOT_IN_ORGANIZATION ->
+                return FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NOT_IN_ORGANIZATION).log()
         }
 
         val employee = personLookup.find(behov.employee.personIdent)
@@ -51,6 +61,7 @@ class FulfillNarmestelederbehovUseCase(
         val managerPerson = personLookup.find(manager.personIdent)
             ?: return FulfillNarmestelederbehovResult.PersonNotFound.log()
         val managerNameMatch = managerPerson.name.matchManagerLastName(manager.lastName)
+        nameValidationMetrics.record(managerNameMatch)
         if (managerNameMatch is ManagerLastNameMatch.NoMatch) {
             return FulfillNarmestelederbehovResult.ManagerNameMismatch(managerNameMatch).log()
         }
@@ -62,13 +73,13 @@ class FulfillNarmestelederbehovUseCase(
                     personIdent = employee.personIdent,
                     firstName = employee.name.firstName,
                     middleName = employee.name.middleName,
-                    lastName = employee.name.primaryLastName,
+                    lastName = employee.name.lastName,
                 ),
                 manager = RelationManager(
                     personIdent = manager.personIdent,
                     firstName = managerPerson.name.firstName,
                     middleName = managerPerson.name.middleName,
-                    lastName = managerPerson.name.primaryLastName,
+                    lastName = managerPerson.name.lastName,
                     email = manager.email.value,
                     mobile = manager.mobile.value,
                 ),
@@ -114,9 +125,9 @@ sealed interface FulfillNarmestelederbehovResult {
         val issues: List<ManagerContactValidationIssue>,
     ) : FulfillNarmestelederbehovResult
     data object NotFound : FulfillNarmestelederbehovResult
-    data object AccessDenied : FulfillNarmestelederbehovResult
-    data object NoActiveSykmelding : FulfillNarmestelederbehovResult
-    data object NoEmployment : FulfillNarmestelederbehovResult
+    data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
+    data class NoActiveSykmelding(val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
+    data class NoEmployment(val reason: EmploymentResult) : FulfillNarmestelederbehovResult
     data object PersonNotFound : FulfillNarmestelederbehovResult
     data class ManagerNameMismatch(
         val managerNameMatch: ManagerLastNameMatch.NoMatch,

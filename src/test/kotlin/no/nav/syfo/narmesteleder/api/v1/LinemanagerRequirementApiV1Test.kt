@@ -150,13 +150,12 @@ class LinemanagerRequirementApiV1Test :
                             }
                         response.status shouldBe HttpStatusCode.Accepted
                         coVerify(exactly = 1) {
-                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
-                                match { linemanager ->
-                                    linemanager.employeeIdentificationNumber.value == sykmeldtFnr &&
-                                        linemanager.orgNumber.value == orgnummer &&
-                                        linemanager.manager.nationalIdentificationNumber.value == manager.nationalIdentificationNumber.value
+                            relationProducerSpy.sendSykmeldingNLRelasjon(
+                                match { relation ->
+                                    relation.sykmeldt.fnr == sykmeldtFnr &&
+                                        relation.orgnummer == orgnummer &&
+                                        relation.leder.fnr == manager.nationalIdentificationNumber.value
                                 },
-                                any(),
                                 any(),
                             )
                         }
@@ -192,12 +191,11 @@ class LinemanagerRequirementApiV1Test :
 
                         response.status shouldBe HttpStatusCode.Accepted
                         coVerify(exactly = 1) {
-                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(
-                                match { linemanager ->
-                                    linemanager.manager.mobile == "+4790000000" &&
-                                        linemanager.manager.email == "leder+ø@eksempelø.no;annen@domene.no"
+                            relationProducerSpy.sendSykmeldingNLRelasjon(
+                                match { relation ->
+                                    relation.leder.mobil == "+4790000000" &&
+                                        relation.leder.epost == "leder+ø@eksempelø.no;annen@domene.no"
                                 },
-                                any(),
                                 any(),
                             )
                         }
@@ -229,11 +227,14 @@ class LinemanagerRequirementApiV1Test :
                         val apiError = response.body<ApiError>()
                         response.status shouldBe HttpStatusCode.BadRequest
                         apiError.type shouldBe ErrorType.INVALID_FORMAT
+                        apiError.message shouldBe
+                            "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign; " +
+                            "email: EmailAddress must not contain whitespace"
                         apiError.message.contains("90-00-00-00") shouldBe false
                         apiError.message.contains("invalid @example.com") shouldBe false
                         apiError.message.contains("gyldig@example.com") shouldBe false
                         coVerify(exactly = 0) {
-                            narmestelederKafkaServiceSpy.sendNarmesteLederRelasjon(any(), any(), any())
+                            relationProducerSpy.sendSykmeldingNLRelasjon(any(), any())
                         }
                     }
                 }
@@ -255,6 +256,7 @@ class LinemanagerRequirementApiV1Test :
                             }
                         response.status shouldBe HttpStatusCode.NotFound
                         response.body<ApiError>().type shouldBe ErrorType.NOT_FOUND
+                        response.body<ApiError>().message shouldBe "A LinemanagerRequirement was not found"
                     }
                 }
 
@@ -295,6 +297,59 @@ class LinemanagerRequirementApiV1Test :
                             }
                         response.status shouldBe HttpStatusCode.Forbidden
                         response.body<ApiError>().type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
+                        response.body<ApiError>().message shouldBe
+                            "System user does not have access to nav_syfo_oppgi-narmesteleder resource"
+                    }
+                }
+
+                it("PUT /requirement/{id} returns the existing no-active-sykmelding error") {
+                    withTestApplication {
+                        texasHttpClientMock.defaultMocks(
+                            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                            scope = MASKINPORTEN_NL_SCOPE,
+                        )
+                        val requirementId = seedLinemanagerRequirement()
+                        coEvery { dineSykmelteService.getIsActiveSykmelding(sykmeldtFnr, orgnummer) } returns false
+
+                        val response = client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            contentType(ContentType.Application.Json)
+                            setBody(manager())
+                            bearerAuth(createMockToken(orgnummer))
+                        }
+
+                        response.status shouldBe HttpStatusCode.BadRequest
+                        response.body<ApiError>().type shouldBe ErrorType.NO_ACTIVE_SICK_LEAVE
+                        response.body<ApiError>().message shouldBe
+                            "No active sick leave found for the given organization number: $orgnummer"
+                        coVerify(exactly = 0) { relationProducerSpy.sendSykmeldingNLRelasjon(any(), any()) }
+                    }
+                }
+
+                listOf(
+                    emptyList<Pair<String, String>>() to "Employee on sick leave is missing employment in any organization",
+                    listOf("999999999" to "999999999") to
+                        "Employee on sick leave is missing employment in the organization indicated in the request",
+                ).forEach { (employment, message) ->
+                    it("PUT /requirement/{id} returns the existing employment error: $message") {
+                        withTestApplication {
+                            texasHttpClientMock.defaultMocks(
+                                systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgnummer"),
+                                scope = MASKINPORTEN_NL_SCOPE,
+                            )
+                            val requirementId = seedLinemanagerRequirement()
+                            fakeAaregClient.arbeidsForholdForIdent[sykmeldtFnr] = employment
+
+                            val response = client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                                contentType(ContentType.Application.Json)
+                                setBody(manager())
+                                bearerAuth(createMockToken(orgnummer))
+                            }
+
+                            response.status shouldBe HttpStatusCode.BadRequest
+                            response.body<ApiError>().type shouldBe ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
+                            response.body<ApiError>().message shouldBe message
+                            coVerify(exactly = 0) { relationProducerSpy.sendSykmeldingNLRelasjon(any(), any()) }
+                        }
                     }
                 }
             }

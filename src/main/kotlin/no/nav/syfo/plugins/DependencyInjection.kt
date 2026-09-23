@@ -53,6 +53,7 @@ import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.ILinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
+import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
 import no.nav.syfo.narmesteleder.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
@@ -68,6 +69,9 @@ import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
+import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
+import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
+import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.PdlClient
@@ -113,7 +117,10 @@ fun Application.configureDependencies() {
             valkeyModule(),
             servicesModule(),
             handlerModule(),
-            tasksModule()
+            tasksModule(),
+            narmestelederbehovModule(),
+            narmestelederrelasjonModule(),
+            organisasjonstilgangModule(),
         )
     }
 }
@@ -348,6 +355,7 @@ private fun servicesModule() = module {
         )
         NarmestelederKafkaService(sykmeldingNLKafkaProducer)
     }
+    single<ISykmeldingNLKafkaProducer> { get<NarmestelederKafkaService>().kafkaSykemeldingProducer }
     single {
         NarmestelederLeesahProducer(
             KafkaProducer<String, String?>(

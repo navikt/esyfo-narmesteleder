@@ -110,28 +110,30 @@ class DialogportenService(
         }
         behov.dialogId?.let { dialogId ->
             try {
-                dialogportenClient.getDialogById(dialogId).let { existingDialog ->
-                    dialogportenClient.patchDialog(
-                        dialogId = dialogId,
-                        revisionNumber = existingDialog.revision,
-                        patch = DialogportenClient.DialogportenPatch(
-                            operation = OPERATION.REPLACE,
-                            path = PATH.STATUS,
-                            value = DialogStatus.Completed.name
-                        )
-                    )
-                }
-                narmestelederDb.updateNlBehov(
-                    behov.copy(
-                        behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-                    )
-                )
-                logger.info("Successfully updated Dialogporten for dialog $dialogId")
+                completeFulfilledDialog(behov)
             } catch (ex: Exception) {
                 logger.error("Failed to update dialog status for dialogId: $dialogId", ex)
             }
         }
         logger.info("Completed set ${behov.dialogId} to complete in dialogporten")
+    }
+
+    suspend fun completeFulfilledDialog(behov: NarmestelederBehovEntity) {
+        require(behov.behovStatus == BehovStatus.BEHOV_FULFILLED)
+        val dialogId = requireNotNull(behov.dialogId)
+        dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+            dialogportenClient.patchDialog(
+                dialogId = dialogId,
+                revisionNumber = existingDialog.revision,
+                patch = DialogportenClient.DialogportenPatch(
+                    operation = OPERATION.REPLACE,
+                    path = PATH.STATUS,
+                    value = DialogStatus.Completed.name
+                )
+            )
+        }
+        narmestelederDb.updateNlBehov(behov.copy(behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED))
+        logger.info("Successfully updated Dialogporten for dialog $dialogId")
     }
 
     suspend fun setAllExpiredBehovsAsExpiredAndCompletedInDialogporten() {

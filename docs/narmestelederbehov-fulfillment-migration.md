@@ -2,22 +2,23 @@
 
 [PR #531](https://github.com/navikt/esyfo-narmesteleder/pull/531) establishes a
 foundation for [#525](https://github.com/navikt/esyfo-narmesteleder/issues/525).
-It does not complete that issue: the production PUT route still uses the
-existing implementation. ADR-0002 and `architecture.md` describe the target
-architecture, while this document records the intermediate state.
+The production PUT route now delegates to the fulfillment use case through
+capability-owned adapters and Koin modules. ADR-0002 and `architecture.md`
+describe the target architecture; the architecture test for this activation
+is tracked separately in #544.
 
 ## Acceptance criteria
 
 | Requirement from #525 | Foundation status |
 | --- | --- |
 | Concrete, constructor-injected fulfillment use case | Implemented and tested without Ktor or Koin |
-| Typed command/results and narrow application ports | Implemented; production adapters remain pending |
+| Typed command/results and narrow application ports | Implemented with production adapters |
 | Validation, lookup, authorization and side-effect order | Characterized on the existing handler and tested in the extracted use case |
-| HTTP route delegates to the use case | Deferred to activation |
-| Result-to-HTTP mapping and unchanged `ApiError` | Deferred to activation; existing HTTP handling remains active |
-| Kafka, persistence and Dialogporten adapters | Deferred to activation; contract data includes middle names and resolved employee identity |
-| Capability-owned Koin registration/settings | Deferred to activation |
-| Architecture checks | Not included in this change |
+| HTTP route delegates to the use case | Activated in #541 |
+| Result-to-HTTP mapping and unchanged `ApiError` | Activated in #541 |
+| Kafka, persistence and Dialogporten adapters | Activated in #541; contract data includes middle names and resolved employee identity |
+| Capability-owned Koin registration/settings | Activated in #541 |
+| Architecture checks | Moved to #544 |
 | Focused tests plus endpoint/integration coverage | Retained and expanded; activation must run the same contract tests against the new route |
 | Successful build | Required for each change, including activation |
 
@@ -42,11 +43,13 @@ PUT fulfillment or complete #525.
   `ManagerLastNameMatch` retains all of these inputs; the foundation does not
   replace the active metrics implementation.
 - Translate ordinary Dialogporten completion failures to a failed attempt so
-  fulfillment stays successful and pending synchronization remains retryable.
-  The legacy service catches cancellation inside completion as well. Its
-  cancellation handling must be explicitly reconciled with the documented
-  propagation rule when implementing the adapter, rather than hidden in an
-  otherwise structural activation change.
+  the Dialogporten step never fails the request after persistence: lookup
+  failures return `Failed` and leave the behov retryable, while a missing behov
+  or dialog ID returns `NotApplicable`. Ordinary completion failures also
+  return `Failed`. Cancellation propagates from the new adapter; the existing
+  scheduled job retains its legacy handling.
+  Persistence re-reads the behov after publishing, as in the legacy flow;
+  disappearance at that point returns the existing NotFound error.
 
 ## Removing transitional duplication
 

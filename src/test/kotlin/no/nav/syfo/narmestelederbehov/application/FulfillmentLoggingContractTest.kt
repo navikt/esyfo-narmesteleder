@@ -111,6 +111,17 @@ class FulfillmentLoggingContractTest :
                 record["outcome_code"].asText() shouldBe code
                 record.has("relation_source") shouldBe false
                 record.has("dialogporten_completion") shouldBe false
+                if (code == "INVALID_MANAGER_CONTACT_DETAILS") {
+                    val issues = record["validation_issues"]
+                    issues.size() shouldBe record["issue_count"].asInt()
+                    issues.forEach { issue ->
+                        issue.size() shouldBe 2
+                        (issue["field"].asText() in setOf("MOBILE", "EMAIL")) shouldBe true
+                        issue["reason"].asText().matches(Regex("[A-Z_]+")) shouldBe true
+                    }
+                } else {
+                    record.has("validation_issues") shouldBe false
+                }
             }
         }
 

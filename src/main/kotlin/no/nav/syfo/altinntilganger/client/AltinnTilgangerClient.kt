@@ -1,5 +1,6 @@
 package no.nav.syfo.altinntilganger.client
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
@@ -9,9 +10,11 @@ import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
+import no.nav.syfo.application.exception.OAuthFailureCode
 import no.nav.syfo.application.exception.UpstreamExceptionType
 import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
@@ -156,6 +159,8 @@ class AltinnTilgangerClient(
             upstreamStatus = e.response.status.value,
             upstreamExceptionType = e.toUpstreamExceptionType(),
             failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
+            upstream = "texas",
+            upstreamErrorCode = e.oauthFailureCode(),
         )
     } catch (e: Exception) {
         throw UpstreamRequestException(
@@ -163,6 +168,7 @@ class AltinnTilgangerClient(
             cause = e,
             upstreamExceptionType = UpstreamExceptionType.UNEXPECTED_EXCEPTION,
             failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
+            upstream = "texas",
         )
     }
 
@@ -179,6 +185,7 @@ class AltinnTilgangerClient(
             upstreamStatus = e.response.status.value,
             upstreamExceptionType = e.toUpstreamExceptionType(),
             failureStage = UpstreamFailureStage.RESPONSE,
+            upstream = "arbeidsgiver-altinn-tilganger",
         )
     } catch (e: Exception) {
         throw UpstreamRequestException(
@@ -186,6 +193,7 @@ class AltinnTilgangerClient(
             cause = e,
             upstreamExceptionType = UpstreamExceptionType.TRANSPORT_EXCEPTION,
             failureStage = UpstreamFailureStage.REQUEST,
+            upstream = "arbeidsgiver-altinn-tilganger",
         )
     }
 
@@ -200,6 +208,7 @@ class AltinnTilgangerClient(
             upstreamStatus = response.status.value,
             upstreamExceptionType = UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION,
             failureStage = UpstreamFailureStage.RESPONSE,
+            upstream = "arbeidsgiver-altinn-tilganger",
         )
     }
 }
@@ -209,4 +218,15 @@ private fun ResponseException.toUpstreamExceptionType(): UpstreamExceptionType =
     is ServerResponseException -> UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION
     is RedirectResponseException -> UpstreamExceptionType.REDIRECT_RESPONSE_EXCEPTION
     else -> UpstreamExceptionType.RESPONSE_EXCEPTION
+}
+
+private val oauthMapper = jacksonObjectMapper()
+
+private suspend fun ResponseException.oauthFailureCode(): OAuthFailureCode = try {
+    val error = oauthMapper.readTree(response.bodyAsText()).path("error").asText()
+    OAuthFailureCode.entries.firstOrNull { it.name.lowercase() == error } ?: OAuthFailureCode.UNKNOWN
+} catch (cancelled: CancellationException) {
+    throw cancelled
+} catch (_: Exception) {
+    OAuthFailureCode.UNKNOWN
 }

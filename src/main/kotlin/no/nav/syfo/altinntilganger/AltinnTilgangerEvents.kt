@@ -2,15 +2,7 @@ package no.nav.syfo.altinntilganger
 
 import no.nav.esyfo.observability.Event
 import no.nav.syfo.application.exception.UpstreamExceptionType
-import no.nav.syfo.application.exception.UpstreamFailureStage
 import org.slf4j.event.Level
-
-/** Closed, code-owned catalog for runtime errors emitted by [AltinnTilgangerService]. */
-internal enum class AltinnTilgangerRuntimeEvent(
-    val value: String,
-) {
-    LOOKUP_FAILED("altinn_tilganger_lookup_failed"),
-}
 
 internal enum class AltinnTilgangerOperation(
     val value: String,
@@ -20,25 +12,33 @@ internal enum class AltinnTilgangerOperation(
     ;
 
     val failureEvent = Event<AltinnTilgangerFailure>(
-        name = AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value,
+        name = "altinn_tilganger_lookup_failed",
         level = Level.ERROR,
         message = "AltinnTilganger lookup failed",
         operation = value,
         errorCodeFrom = { it.errorCode.value },
-        fields = mapOf(
-            "exception_type" to { it.exceptionType?.logValue },
-            "cause_type" to { it.causeType },
-            "failure_stage" to { it.failureStage?.logValue },
-            "upstream_status" to { it.upstreamStatus },
-        ),
+        fields = altinnFailureFields,
     )
 }
+
+private val altinnFailureFields: Map<String, (AltinnTilgangerFailure) -> Any?> = mapOf(
+    "exception_type" to { it.exceptionType?.logValue },
+    "cause_type" to { it.causeType },
+    "cause_types" to { it.causeTypes },
+    "failure_kind" to { it.failureKind },
+    "upstream" to { it.upstream },
+    "upstream_error_code" to { it.upstreamErrorCode },
+    "upstream_status" to { it.upstreamStatus },
+)
 
 internal data class AltinnTilgangerFailure(
     val errorCode: AltinnTilgangerErrorCode,
     val exceptionType: UpstreamExceptionType? = null,
     val causeType: String? = null,
-    val failureStage: UpstreamFailureStage? = null,
+    val causeTypes: List<String>? = null,
+    val failureKind: String? = null,
+    val upstream: String = "arbeidsgiver-altinn-tilganger",
+    val upstreamErrorCode: String? = null,
     val upstreamStatus: Int? = null,
 )
 

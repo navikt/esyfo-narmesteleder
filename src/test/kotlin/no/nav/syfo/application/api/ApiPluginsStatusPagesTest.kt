@@ -13,6 +13,7 @@ import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
@@ -67,7 +68,95 @@ class ApiPluginsStatusPagesTest :
                 logAppender.list.shouldBeEmpty()
             }
 
-            it("keeps a warn-level fallback for unclassified failures") {
+            it("preserves a hidden relation response without repeating its access rejection") {
+                testApplication {
+                    application {
+                        installContentNegotiation()
+                        installStatusPages()
+                        routing {
+                            get("/hidden-relation") {
+                                throw ApiErrorException.NotFoundException(isAlreadyLogged = true)
+                            }
+                        }
+                    }
+                    client.get("/hidden-relation").status shouldBe HttpStatusCode.NotFound
+                }
+                logAppender.list.shouldBeEmpty()
+            }
+
+            it("logs an application 400 once as a structured rejection") {
+                testApplication {
+                    application {
+                        installContentNegotiation()
+                        installStatusPages()
+                        routing {
+                            get("/invalid") {
+                                throw ApiErrorException.BadRequestException(type = ErrorType.INVALID_FORMAT)
+                            }
+                        }
+                    }
+
+                    client.get("/invalid").status shouldBe HttpStatusCode.BadRequest
+                }
+
+                val record = logAppender.list.single()
+                record.level shouldBe Level.WARN
+                val fields = record.keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "api_request_invalid"
+                fields["response_status"] shouldBe 400
+                fields["error_type"] shouldBe "INVALID_FORMAT"
+            }
+
+            it("logs Ktor bad requests with their resolved rejection reasons") {
+                testApplication {
+                    application {
+                        installContentNegotiation()
+                        installStatusPages()
+                        routing {
+                            get("/malformed") {
+                                throw BadRequestException("Malformed JSON")
+                            }
+                            get("/invalid-field") {
+                                throw BadRequestException("Invalid request", IllegalArgumentException("Invalid field"))
+                            }
+                        }
+                    }
+
+                    client.get("/malformed").status shouldBe HttpStatusCode.BadRequest
+                    client.get("/invalid-field").status shouldBe HttpStatusCode.BadRequest
+                }
+
+                val records = logAppender.list
+                records shouldHaveSize 2
+                records.map { it.level } shouldBe listOf(Level.WARN, Level.WARN)
+                val fields = records.map { record -> record.keyValuePairs.associate { it.key to it.value } }
+                fields.map { it["event_type"] } shouldBe listOf("api_request_invalid", "api_request_invalid")
+                fields.map { it["error_type"] } shouldBe listOf("BAD_REQUEST", "INVALID_FORMAT")
+                fields.map { it["response_status"] } shouldBe listOf(400, 400)
+            }
+
+            it("keeps unlogged 404 responses at INFO without a rejection event") {
+                testApplication {
+                    application {
+                        installContentNegotiation()
+                        installStatusPages()
+                        routing {
+                            get("/unknown") {
+                                throw ApiErrorException.NotFoundException()
+                            }
+                        }
+                    }
+
+                    client.get("/unknown").status shouldBe HttpStatusCode.NotFound
+                }
+
+                val record = logAppender.list.single()
+                record.level shouldBe Level.INFO
+                record.formattedMessage shouldBe "Request rejected with status 404"
+                record.keyValuePairs.orEmpty().none { it.key == "event_type" } shouldBe true
+            }
+
+            it("records one structured error for an unclassified server failure") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -83,8 +172,13 @@ class ApiPluginsStatusPagesTest :
                 }
 
                 logAppender.list shouldHaveSize 1
-                logAppender.list.single().level shouldBe Level.WARN
-                logAppender.list.single().formattedMessage shouldBe "Unhandled API exception"
+                val record = logAppender.list.single()
+                record.level shouldBe Level.ERROR
+                record.formattedMessage shouldBe "Request failed with an unexpected server error"
+                val fields = record.keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "api_request_failed"
+                fields["response_status"] shouldBe 500
+                fields["cause_type"] shouldBe "IllegalStateException"
             }
 
             it("does not expose the message of an unclassified failure") {

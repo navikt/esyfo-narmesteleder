@@ -15,6 +15,7 @@ import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.http.ContentType
@@ -118,6 +119,35 @@ class AltinnAccessLoggingContractTest :
         }
 
         describe("AltinnTilganger runtime error contract") {
+            it("retains an OAuth failure code without logging the token response or description") {
+                val payload = """{"error":"invalid_grant","error_description":"token-description-canary"}"""
+                val response = HttpClient(MockEngine { respond(payload, HttpStatusCode.BadRequest) })
+                    .get("https://texas.test/exchange")
+                val texasClient = mockk<TexasHttpClient>()
+                coEvery { texasClient.exchangeTokenForIsAltinnTilganger("token-canary") } throws
+                    ClientRequestException(response, payload)
+                val upstreamClient = AltinnTilgangerClient(
+                    texasClient,
+                    HttpClient(MockEngine { error("Altinn must not be called after token failure") }),
+                    "https://altinn.test",
+                )
+
+                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    AltinnTilgangerService(upstreamClient).getFilteredOrganizations(UserPrincipal("12345678901", "token-canary"))
+                }
+
+                val serialized = logLines().single()
+                val record = jacksonObjectMapper().readTree(serialized)
+                record["upstream"].asText() shouldBe "texas"
+                record["upstream_error_code"].asText() shouldBe "INVALID_GRANT"
+                record["upstream_status"].asInt() shouldBe 400
+                record["failure_kind"].asText() shouldBe "http"
+                record.has("failure_stage") shouldBe false
+                serialized shouldNotContain "token-description-canary"
+                serialized shouldNotContain "token-canary"
+                serialized shouldNotContain "12345678901"
+            }
+
             it("serializes one terminal error event through the production encoder without privacy canaries") {
                 val nationalIdentificationNumberCanary = "12345678901"
                 val tokenCanary = "privacy-canary-token"
@@ -173,11 +203,11 @@ class AltinnAccessLoggingContractTest :
                 logRecord["level"].asText() shouldBe "ERROR"
                 logRecord["logger_name"].asText() shouldBe AltinnTilgangerService::class.java.name
                 logRecord["message"].asText() shouldBe "AltinnTilganger lookup failed"
-                logRecord["event_type"].asText() shouldBe AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value
+                logRecord["event_type"].asText() shouldBe AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS.failureEvent.name
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_SERVER_ERROR.value
                 logRecord["operation"].asText() shouldBe AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS.value
                 logRecord["exception_type"].asText() shouldBe "ServerResponseException"
-                logRecord["failure_stage"].asText() shouldBe "response"
+                logRecord.has("failure_stage") shouldBe false
                 logRecord["upstream_status"].asInt() shouldBe 503
                 logRecord["cause_type"].asText() shouldBe "ServerResponseException"
                 logRecord["stack_trace"].asText().contains(".kt:") shouldBe true
@@ -287,7 +317,7 @@ class AltinnAccessLoggingContractTest :
                     val logRecord = jacksonObjectMapper().readTree(logLines.single())
                     logRecord["error_code"].asText() shouldBe expectedErrorCode.value
                     logRecord["upstream_status"].asInt() shouldBe status
-                    logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.RESPONSE.logValue
+                    logRecord.has("failure_stage") shouldBe false
                 }
             }
 
@@ -377,7 +407,7 @@ class AltinnAccessLoggingContractTest :
                 )
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.TOKEN_EXCHANGE_FAILED.value
                 logRecord["upstream_status"].asInt() shouldBe 401
-                logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.TOKEN_EXCHANGE.logValue
+                logRecord.has("failure_stage") shouldBe false
             }
 
             it("preserves nullable client results without emitting an error") {
@@ -423,7 +453,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.UPSTREAM_RESPONSE_FAILURE.value
                 logRecord["upstream_status"].asInt() shouldBe 200
                 logRecord["exception_type"].asText() shouldBe UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION.logValue
-                logRecord["failure_stage"].asText() shouldBe UpstreamFailureStage.RESPONSE.logValue
+                logRecord.has("failure_stage") shouldBe false
             }
 
             it("does not log or classify cancellation from token exchange") {
@@ -506,7 +536,7 @@ class AltinnAccessLoggingContractTest :
                 logLines shouldHaveSize 1
                 val logRecord = jacksonObjectMapper().readTree(logLines.single())
                 logRecord["level"].asText() shouldBe "ERROR"
-                logRecord["event_type"].asText() shouldBe AltinnTilgangerRuntimeEvent.LOOKUP_FAILED.value
+                logRecord["event_type"].asText() shouldBe AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS.failureEvent.name
                 logRecord["error_code"].asText() shouldBe AltinnTilgangerErrorCode.ERROR_RESPONSE.value
                 logRecord["operation"].asText() shouldBe AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS.value
                 logRecord.has("exception_type") shouldBe false
@@ -538,8 +568,8 @@ class AltinnAccessLoggingContractTest :
                 logRecord["trace_id"].asText() shouldBe traceId
             }
 
-            it("preserves the existing catalog values and their uniqueness") {
-                AltinnTilgangerRuntimeEvent.values().map { it.value }.toSet() shouldBe setOf(
+            it("uses one lookup failure name with distinct operations") {
+                AltinnTilgangerOperation.entries.map { it.failureEvent.name }.toSet() shouldBe setOf(
                     "altinn_tilganger_lookup_failed",
                 )
                 AltinnTilgangerOperation.values().map { it.value }.toSet() shouldBe setOf(
@@ -569,8 +599,7 @@ class AltinnAccessLoggingContractTest :
                     "UnexpectedException",
                 )
 
-                AltinnTilgangerRuntimeEvent.values().map { it.value }.distinct().size shouldBe
-                    AltinnTilgangerRuntimeEvent.values().size
+                AltinnTilgangerOperation.entries.map { it.failureEvent.name }.distinct().size shouldBe 1
                 AltinnTilgangerOperation.values().map { it.value }.distinct().size shouldBe
                     AltinnTilgangerOperation.values().size
                 AltinnTilgangerErrorCode.values().map { it.value }.distinct().size shouldBe

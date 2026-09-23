@@ -15,7 +15,6 @@ class SickLeaveValidator(
     suspend fun validateActiveSickLeave(fnr: String, orgnummer: String) {
         if (!dinesykmeldteService.getIsActiveSykmelding(fnr, orgnummer)) {
             val message = "No active sick leave found for the given organization number: $orgnummer"
-            logger.warn(message)
             throw ApiErrorException.BadRequestException(
                 errorMessage = message,
                 type = ErrorType.NO_ACTIVE_SICK_LEAVE,

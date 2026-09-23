@@ -251,8 +251,9 @@ class SystemAccessLoggingContractTest :
 
                 val records = logRecords()
                 records shouldHaveSize 1
-                records.single().has("event_type") shouldBe false
-                records.single()["message"].asText() shouldBe "Unhandled API exception"
+                records.single()["event_type"].asText() shouldBe "api_request_failed"
+                records.single()["level"].asText() shouldBe "ERROR"
+                records.single()["message"].asText() shouldBe "Request failed with an unexpected server error"
             }
         }
 
@@ -263,7 +264,8 @@ class SystemAccessLoggingContractTest :
 
             val records = logRecords()
             records shouldHaveSize 1
-            records.single().has("event_type") shouldBe false
+            records.single()["event_type"].asText() shouldBe "api_request_failed"
+            records.single()["level"].asText() shouldBe "ERROR"
             checkedOrganizations shouldBe listOf(REQUESTED_ORG)
         }
 

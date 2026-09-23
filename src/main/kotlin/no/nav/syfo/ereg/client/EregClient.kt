@@ -8,6 +8,7 @@ import io.ktor.client.request.parameter
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.util.httpClientDefault
 import no.nav.syfo.util.logger
@@ -34,7 +35,12 @@ class EregClient(
                 logger.info("Could not find organization for orgNumber $orgnummer")
                 null
             } else {
-                throw UpstreamRequestException("Error when fetching organization from ereg", e)
+                throw UpstreamRequestException(
+                    "Error when fetching organization from ereg",
+                    e,
+                    failureStage = UpstreamFailureStage.RESPONSE,
+                    upstream = "ereg",
+                )
             }
         }
         return response

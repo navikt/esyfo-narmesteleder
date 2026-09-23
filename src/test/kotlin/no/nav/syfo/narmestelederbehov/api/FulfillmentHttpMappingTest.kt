@@ -82,7 +82,7 @@ class FulfillmentHttpMappingTest :
         )
         cases.forEach { case ->
             test("maps ${case.result} to the legacy HTTP error") {
-                val error = shouldThrow<ApiErrorException> { case.result.requireFulfilled() }
+                val error = shouldThrow<ApiErrorException> { case.result.throwIfRejected() }
                 val response = error.toApiError("/api/v1/linemanager/requirement/id")
                 response.status shouldBe case.status
                 response.type shouldBe case.type

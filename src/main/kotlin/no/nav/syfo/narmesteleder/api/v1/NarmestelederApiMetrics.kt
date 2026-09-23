@@ -1,6 +1,9 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import io.micrometer.core.instrument.Counter
+import no.nav.syfo.application.auth.Principal
+import no.nav.syfo.application.auth.SystemPrincipal
+import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 
@@ -83,3 +86,8 @@ const val LOOKUP_NARMESTELEDER = "${METRICS_NS}_lookup_narmesteleder"
 val COUNT_LOOKUP_NARMESTELEDER: Counter = Counter.builder(LOOKUP_NARMESTELEDER)
     .description("Counts line manager lookups by org/sykmeldt fnr")
     .register(METRICS_REGISTRY)
+
+fun Principal.countFulfilledRequirement() = when (this) {
+    is SystemPrincipal -> COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS.increment()
+    is UserPrincipal -> COUNT_FULFILL_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()
+}

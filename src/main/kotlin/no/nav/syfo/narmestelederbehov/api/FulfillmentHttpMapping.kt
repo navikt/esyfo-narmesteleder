@@ -4,9 +4,12 @@ import no.nav.esyfo.observability.Event
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmestelederbehov.application.EmploymentResult
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
+import no.nav.syfo.narmestelederbehov.domain.ManagerContactInput
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactValidationIssue
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import org.slf4j.event.Level
@@ -23,7 +26,14 @@ private val invalidManagerContact = Event<ManagerContactValidationIssue>(
     ),
 )
 
-fun FulfillNarmestelederbehovResult.requireFulfilled() {
+fun Manager.toManagerContactInput(): ManagerContactInput = ManagerContactInput(
+    PersonIdent(nationalIdentificationNumber.value),
+    lastName,
+    email,
+    mobile,
+)
+
+fun FulfillNarmestelederbehovResult.throwIfRejected() {
     when (this) {
         is FulfillNarmestelederbehovResult.Fulfilled -> Unit
         is FulfillNarmestelederbehovResult.InvalidManagerContactDetails -> {

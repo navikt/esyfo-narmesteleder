@@ -10,8 +10,12 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
+import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
@@ -19,6 +23,13 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmestelederbehov.api.requireFulfilled
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovCommand
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.domain.ManagerContactInput
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.organisasjonstilgang.application.AccessToken
+import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
@@ -31,6 +42,7 @@ fun Route.registerLinemanagerApiV1(
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler,
     narmestelederLookupService: NarmestelederLookupService,
+    fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,
 ) {
     route(LINEMANAGER_API_PATH) {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -92,15 +104,35 @@ fun Route.registerLinemanagerApiV1(
             val principal = call.getMyPrincipal()
             val id = call.getUUIDFromPathVariable(name = "id")
             val linemanager = call.tryReceive<Manager>()
-            val context =
-                "operation=${call.request.httpMethod} ${call.request.path()}, callId=${call.callId ?: "missing"}, principalType=${principal::class.simpleName}"
-
-            linemanagerRequirementRestHandler.handleUpdatedRequirement(
-                linemanager,
-                requirementId = id,
-                principal = principal,
-                context = context,
-            )
+            try {
+                fulfillNarmestelederbehov.execute(
+                    FulfillNarmestelederbehovCommand(
+                        behovId = NarmestelederbehovId(id),
+                        manager = ManagerContactInput(
+                            PersonIdent(linemanager.nationalIdentificationNumber.value),
+                            linemanager.lastName,
+                            linemanager.email,
+                            linemanager.mobile,
+                        ),
+                        accessSubject = when (principal) {
+                            is UserPrincipal -> OrganizationAccessSubject.PersonnelManager(
+                                PersonIdent(principal.ident),
+                                AccessToken(principal.token),
+                            )
+                            is SystemPrincipal -> OrganizationAccessSubject.LpsSystemUser(
+                                principal.systemUserId,
+                                OrganizationNumber(principal.getSystemUserOrgNumber()),
+                            )
+                        },
+                    ),
+                ).requireFulfilled()
+            } catch (e: ApiErrorException) {
+                throw e
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                throw ApiErrorException.InternalServerErrorException("Internal server error", e)
+            }
             when (principal) {
                 is SystemPrincipal -> COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS.increment()
                 is UserPrincipal -> COUNT_FULFILL_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()

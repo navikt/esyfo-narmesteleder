@@ -9,4 +9,5 @@ fun interface NarmestelederbehovDialog {
 sealed interface DialogportenCompletionAttempt {
     data object Completed : DialogportenCompletionAttempt
     data object Failed : DialogportenCompletionAttempt
+    data object NotApplicable : DialogportenCompletionAttempt
 }

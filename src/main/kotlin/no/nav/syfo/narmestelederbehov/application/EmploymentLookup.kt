@@ -4,8 +4,14 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 
 fun interface EmploymentLookup {
-    suspend fun hasEmployment(
+    suspend fun findEmployment(
         personIdent: PersonIdent,
         organizationNumber: OrganizationNumber,
-    ): Boolean
+    ): EmploymentResult
+}
+
+enum class EmploymentResult {
+    IN_ORGANIZATION,
+    NONE,
+    NOT_IN_ORGANIZATION,
 }

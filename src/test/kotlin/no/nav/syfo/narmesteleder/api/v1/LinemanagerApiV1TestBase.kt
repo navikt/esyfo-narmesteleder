@@ -55,6 +55,15 @@ import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.DbNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
+import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
+import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
+import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
+import no.nav.syfo.organisasjonstilgang.infrastructure.LegacyOrganizationAccess
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
@@ -75,14 +84,15 @@ abstract class LinemanagerApiV1TestBase(
     internal val fakeEregClient = FakeEregClient()
     internal val eregCache = mockk<EregCache>(relaxed = true)
     internal val eregService = EregService(fakeEregClient, eregCache)
+    internal val relationProducerSpy = spyk(FakeSykmeldingNLKafkaProducer())
     internal val narmestelederKafkaService =
-        NarmestelederKafkaService(FakeSykmeldingNLKafkaProducer())
+        NarmestelederKafkaService(relationProducerSpy)
     internal val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
     internal val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
     internal val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
     internal val altinnAccessServiceSpy = spyk(altinnTilgangerServiceMock)
     internal val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
-    internal val dineSykmelteService: IDinesykmeldteService = DinesykmeldteService(fakeDinesykmeldteClient)
+    internal val dineSykmelteService: IDinesykmeldteService = spyk(DinesykmeldteService(fakeDinesykmeldteClient))
     internal val pdpService = mockk<PdpService>(relaxed = true)
     internal val principalAccessValidator = PrincipalAccessValidator(
         altinnTilgangerService = altinnAccessServiceSpy,
@@ -108,6 +118,7 @@ abstract class LinemanagerApiV1TestBase(
     internal lateinit var employeeLinemanagerRepository: IEmployeeLinemanagerRepository
     internal lateinit var narmesteLederService: NarmestelederService
     internal lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
+    internal lateinit var fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase
     internal lateinit var linemanagerSearchService: LinemanagerSearchService
     internal lateinit var linemanagerStatisticsService: LinemanagerStatisticsService
     internal lateinit var employeeLinemanagerService: EmployeeLinemanagerService
@@ -138,6 +149,16 @@ abstract class LinemanagerApiV1TestBase(
                     validationService = validationServiceSpy,
                     narmestelederKafkaService = narmestelederKafkaServiceSpy,
                 )
+            fulfillNarmestelederbehov = FulfillNarmestelederbehovUseCase(
+                DbNarmestelederbehovRepository(fakeRepo),
+                LegacyOrganizationAccess(principalAccessValidator),
+                DinesykmeldteActiveSykmeldingLookup(dineSykmelteService),
+                AaregEmploymentLookup(aaregService),
+                PdlPersonLookup(pdlService),
+                KafkaEstablishNarmestelederrelasjon(relationProducerSpy),
+                DialogportenNarmestelederbehovDialog(fakeRepo, mockk<DialogportenService>(relaxed = true)),
+                LegacyManagerNameValidationMetrics(),
+            )
             linemanagerSearchService =
                 LinemanagerSearchService(
                     validationService = validationServiceSpy,
@@ -186,6 +207,7 @@ abstract class LinemanagerApiV1TestBase(
                         nlBehovHandler,
                         altinnAccessServiceSpy,
                         narmestelederLookupService,
+                        fulfillNarmestelederbehov,
                     )
                     registerInternalApi(
                         narmestelederLookupService,

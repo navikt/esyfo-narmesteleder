@@ -55,6 +55,16 @@ object NameValidator {
     private val nameValidationCounters = ConcurrentHashMap<NameValidationMetricKey, Counter>()
     private val fuzzyScoreSummaries = ConcurrentHashMap<String, DistributionSummary>()
 
+    internal fun recordManagerLastNameMatch(type: NameMatchType, hasParallelNames: Boolean, bestFuzzyScore: Double?) {
+        val source = if (hasParallelNames) NAME_SOURCE_PARALLEL else NAME_SOURCE_SINGLE
+        countNameValidation(type, source, type.isAccepted)
+        if (hasParallelNames) {
+            countParallelNamesValidation(RESULT_ATTEMPTED)
+            countParallelNamesValidation(if (type.isAccepted) RESULT_SUCCESS else RESULT_FAILED)
+        }
+        bestFuzzyScore?.let { countFuzzyScore(source, it) }
+    }
+
     fun validateLinemanagerLastName(
         managerPdlPerson: Person,
         linemanager: Linemanager,

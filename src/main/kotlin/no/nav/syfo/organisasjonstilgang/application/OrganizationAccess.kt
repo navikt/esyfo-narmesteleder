@@ -34,5 +34,11 @@ class AccessToken(private val value: String) {
 
 sealed interface OrganizationAccessResult {
     data object Granted : OrganizationAccessResult
-    data object Denied : OrganizationAccessResult
+    data class Denied(val reason: DenialReason) : OrganizationAccessResult
+}
+
+enum class DenialReason {
+    MISSING_ORGANIZATION_ACCESS,
+    MISSING_RESOURCE_ACCESS,
+    SYSTEM_USER_REJECTED,
 }

@@ -30,6 +30,7 @@ class GetNarmestelederrelasjonTest :
             employeeFirstName = "Employee",
             employeeMiddleName = null,
             employeeLastName = "Person",
+            isActive = true,
         )
 
         fun query(
@@ -63,15 +64,25 @@ class GetNarmestelederrelasjonTest :
             query(
                 access = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS),
                 effects = effects,
-            ).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.NotFound
+            ).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.NotFound(
+                GetNarmestelederrelasjonResult.NotFoundReason.ACCESS_DENIED,
+                DenialReason.MISSING_ORGANIZATION_ACCESS,
+            )
             effects shouldBe listOf("lookup", "access")
         }
 
         it("masks missing active sykmelding after authorization and before organization lookup") {
             val effects = mutableListOf<String>()
             query(activeSykmelding = false, effects = effects).execute(id, caller) shouldBe
-                GetNarmestelederrelasjonResult.NotFound
+                GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.NO_ACTIVE_SYKMELDING)
             effects shouldBe listOf("lookup", "access", "sykmelding")
+        }
+
+        it("masks an inactive relation before authorization lookup") {
+            val effects = mutableListOf<String>()
+            query(lookup = lookup().copy(isActive = false), effects = effects).execute(id, caller) shouldBe
+                GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.RELATION_INACTIVE)
+            effects shouldBe listOf("lookup")
         }
 
         listOf(
@@ -107,9 +118,10 @@ class GetNarmestelederrelasjonTest :
             effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
         }
 
-        it("does not perform authorization lookup when no active relation exists") {
+        it("does not perform authorization lookup when no relation exists") {
             val effects = mutableListOf<String>()
-            query(lookup = null, effects = effects).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.NotFound
+            query(lookup = null, effects = effects).execute(id, caller) shouldBe
+                GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.RELATION_NOT_FOUND)
             effects shouldBe listOf("lookup")
         }
     })
@@ -125,16 +137,14 @@ private class FakeGetOrganizationAccess(
     private val result: OrganizationAccessResult,
     private val effects: MutableList<String>,
 ) : OrganizationAccess {
-    override suspend fun evaluate(subject: OrganizationAccessSubject, organizationNumber: OrganizationNumber) =
-        result.also { effects += "access" }
+    override suspend fun evaluate(subject: OrganizationAccessSubject, organizationNumber: OrganizationNumber) = result.also { effects += "access" }
 }
 
 private class FakeGetActiveSykmeldingLookup(
     private val active: Boolean,
     private val effects: MutableList<String>,
 ) : ActiveSykmeldingLookup {
-    override suspend fun hasActiveSykmelding(personIdent: PersonIdent, organizationNumber: OrganizationNumber) =
-        active.also { effects += "sykmelding" }
+    override suspend fun hasActiveSykmelding(personIdent: PersonIdent, organizationNumber: OrganizationNumber) = active.also { effects += "sykmelding" }
 }
 
 private class FakeGetOrganization(

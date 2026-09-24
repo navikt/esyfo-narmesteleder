@@ -81,6 +81,7 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             relation?.organizationNumber shouldBe OrganizationNumber("123456789")
             relation?.employeeIdent shouldBe PersonIdent(employeeIdent)
             relation?.employeeFirstName shouldBe "Employee"
+            relation?.isActive shouldBe true
         }
 
         it("returns names as null when person projections are absent") {
@@ -92,17 +93,21 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             relation?.employeeFirstName.shouldBeNull()
         }
 
-        it("excludes a revoked relation") {
+        it("marks a revoked relation as inactive") {
             val id = UUID.randomUUID()
             insertRelation(id, to = activeFrom.plusSeconds(1))
 
-            repository.findById(id).shouldBeNull()
+            repository.findById(id)?.isActive shouldBe false
         }
 
-        it("excludes a future relation") {
+        it("marks a future relation as inactive") {
             val id = UUID.randomUUID()
             insertRelation(id, from = activeFrom.plusDays(2))
 
-            repository.findById(id).shouldBeNull()
+            repository.findById(id)?.isActive shouldBe false
+        }
+
+        it("returns null for an unknown relation") {
+            repository.findById(UUID.randomUUID()).shouldBeNull()
         }
     })

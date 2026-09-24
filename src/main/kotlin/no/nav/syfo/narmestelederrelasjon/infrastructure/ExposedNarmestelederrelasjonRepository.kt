@@ -10,10 +10,7 @@ import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.alias
-import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.isNull
-import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
@@ -47,13 +44,11 @@ class ExposedNarmestelederrelasjonRepository(
                             employeePerson[PersonTable.fornavn],
                             employeePerson[PersonTable.mellomnavn],
                             employeePerson[PersonTable.etternavn],
+                            NarmestelederTable.aktivFom,
+                            NarmestelederTable.aktivTom,
                         ),
                     )
-                    .where {
-                        (NarmestelederTable.narmestelederId eq id) and
-                            NarmestelederTable.aktivTom.isNull() and
-                            (NarmestelederTable.aktivFom lessEq now)
-                    }
+                    .where { NarmestelederTable.narmestelederId eq id }
                     .limit(1)
                     .map { row ->
                         NarmestelederrelasjonLookup(
@@ -63,6 +58,8 @@ class ExposedNarmestelederrelasjonRepository(
                             employeeFirstName = row[employeePerson[PersonTable.fornavn]],
                             employeeMiddleName = row[employeePerson[PersonTable.mellomnavn]],
                             employeeLastName = row[employeePerson[PersonTable.etternavn]],
+                            isActive = row[NarmestelederTable.aktivTom] == null &&
+                                !row[NarmestelederTable.aktivFom].isAfter(now),
                         )
                     }
                     .singleOrNull()

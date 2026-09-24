@@ -37,7 +37,9 @@ fun Route.registerNarmestelederrelasjonApi(
                 call.response.header(HttpHeaders.CacheControl, "no-store")
                 val id = call.parameters["id"]?.toUuidOrNull()
                 if (id == null) {
-                    countGetNarmestelederrelasjon(GetNarmestelederrelasjonResult.NotFound)
+                    countGetNarmestelederrelasjon(
+                        GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.INVALID_ID),
+                    )
                     throw notFoundException()
                 }
 
@@ -54,7 +56,7 @@ fun Route.registerNarmestelederrelasjonApi(
                             result.relation.toResponse(result.organizationName),
                         )
 
-                    GetNarmestelederrelasjonResult.NotFound -> throw notFoundException()
+                    is GetNarmestelederrelasjonResult.NotFound -> throw notFoundException()
 
                     GetNarmestelederrelasjonResult.Unavailable ->
                         throw ApiErrorException.InternalServerErrorException()

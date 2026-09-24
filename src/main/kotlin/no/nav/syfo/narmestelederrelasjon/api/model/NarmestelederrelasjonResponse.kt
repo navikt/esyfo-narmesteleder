@@ -2,7 +2,6 @@ package no.nav.syfo.narmestelederrelasjon.api.model
 
 import no.nav.syfo.narmestelederrelasjon.domain.Narmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
-import no.nav.syfo.narmestelederrelasjon.domain.RelationPersonName
 import java.util.UUID
 
 data class NarmestelederrelasjonApiResponse(
@@ -16,7 +15,7 @@ data class NarmestelederrelasjonResponse(
 )
 
 data class RelationPersonResponse(
-    val name: RelationPersonNameResponse,
+    val name: RelationPersonNameResponse?,
     val nationalIdentificationNumber: String,
 )
 
@@ -32,23 +31,24 @@ data class OrganizationResponse(
 )
 
 fun Narmestelederrelasjon.toResponse(
-    employeeName: RelationPersonName,
     organizationName: String,
 ) = NarmestelederrelasjonApiResponse(
     linemanagerRelation = NarmestelederrelasjonResponse(
         id = id,
-        employee = employee.toResponse(employeeName),
-        organization = OrganizationResponse(orgNumber, organizationName),
+        employee = employee.toResponse(),
+        organization = OrganizationResponse(orgNumber.value, organizationName),
     )
 )
 
-private fun RelationPerson.toResponse(name: RelationPersonName) = RelationPersonResponse(
-    name = name.toResponse(),
-    nationalIdentificationNumber = nationalIdentificationNumber,
-)
-
-private fun RelationPersonName.toResponse() = RelationPersonNameResponse(
-    firstName = firstName,
-    middleName = middleName,
-    lastName = lastName,
+private fun RelationPerson.toResponse() = RelationPersonResponse(
+    name = if (firstName != null && lastName != null) {
+        RelationPersonNameResponse(
+            firstName = firstName,
+            middleName = middleName,
+            lastName = lastName,
+        )
+    } else {
+        null
+    },
+    nationalIdentificationNumber = personIdent.value,
 )

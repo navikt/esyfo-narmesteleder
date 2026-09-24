@@ -4,11 +4,11 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.personTable
-import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
-import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
 import java.time.Instant
@@ -31,7 +31,6 @@ class ExposedNarmestelederrelasjonRepositoryTest :
         beforeTest {
             TestDB.clearNarmestelederData()
             TestDB.clearPersonData()
-            TestDB.clearSendtSykmeldingData()
         }
 
         fun insertRelation(
@@ -71,64 +70,39 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             }
         }
 
-        fun insertActiveSykmelding() {
-            transaction(TestDB.exposedDatabase) {
-                SendtSykmeldingTable.insert {
-                    it[SendtSykmeldingTable.sykmeldingId] = UUID.randomUUID()
-                    it[SendtSykmeldingTable.orgnummer] = "123456789"
-                    it[SendtSykmeldingTable.syketilfelleStartDato] = now.atZone(ZoneOffset.UTC).toLocalDate()
-                    it[SendtSykmeldingTable.fnr] = employeeIdent
-                    it[SendtSykmeldingTable.fom] = now.atZone(ZoneOffset.UTC).toLocalDate()
-                    it[SendtSykmeldingTable.tom] = now.atZone(ZoneOffset.UTC).toLocalDate()
-                    it[SendtSykmeldingTable.revokedDate] = null
-                }
-            }
-        }
-
-        it("returns a current relation with employee name when it has an active sykmelding") {
+        it("returns a current relation with employee name") {
             val id = UUID.randomUUID()
             insertPerson(employeeIdent, "Employee", "Middle", "Person")
             insertRelation(id)
-            insertActiveSykmelding()
 
-            val relation = repository.findActiveById(id)
+            val relation = repository.findById(id)
 
             relation?.id shouldBe id
-            relation?.orgNumber shouldBe "123456789"
-            relation?.employee?.nationalIdentificationNumber shouldBe employeeIdent
-            relation?.employee?.name?.firstName shouldBe "Employee"
+            relation?.organizationNumber shouldBe OrganizationNumber("123456789")
+            relation?.employeeIdent shouldBe PersonIdent(employeeIdent)
+            relation?.employeeFirstName shouldBe "Employee"
         }
 
         it("returns names as null when person projections are absent") {
             val id = UUID.randomUUID()
             insertRelation(id)
-            insertActiveSykmelding()
 
-            val relation = repository.findActiveById(id)
+            val relation = repository.findById(id)
 
-            relation?.employee?.name.shouldBeNull()
+            relation?.employeeFirstName.shouldBeNull()
         }
 
         it("excludes a revoked relation") {
             val id = UUID.randomUUID()
             insertRelation(id, to = activeFrom.plusSeconds(1))
-            insertActiveSykmelding()
 
-            repository.findActiveById(id).shouldBeNull()
+            repository.findById(id).shouldBeNull()
         }
 
         it("excludes a future relation") {
             val id = UUID.randomUUID()
             insertRelation(id, from = activeFrom.plusDays(2))
-            insertActiveSykmelding()
 
-            repository.findActiveById(id).shouldBeNull()
-        }
-
-        it("excludes a relation without an active sykmelding") {
-            val id = UUID.randomUUID()
-            insertRelation(id)
-
-            repository.findActiveById(id).shouldBeNull()
+            repository.findById(id).shouldBeNull()
         }
     })

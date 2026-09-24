@@ -14,10 +14,12 @@ private fun getNarmestelederrelasjonCounter(outcome: String): Counter = Counter.
 
 private val foundCounter = getNarmestelederrelasjonCounter("found")
 private val notFoundCounter = getNarmestelederrelasjonCounter("not_found")
+private val unavailableCounter = getNarmestelederrelasjonCounter("unavailable")
 
 fun countGetNarmestelederrelasjon(result: GetNarmestelederrelasjonResult) {
     when (result) {
         is GetNarmestelederrelasjonResult.Found -> foundCounter.increment()
         GetNarmestelederrelasjonResult.NotFound -> notFoundCounter.increment()
+        GetNarmestelederrelasjonResult.Unavailable -> unavailableCounter.increment()
     }
 }

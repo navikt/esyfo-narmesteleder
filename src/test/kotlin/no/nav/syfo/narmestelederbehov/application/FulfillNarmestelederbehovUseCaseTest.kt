@@ -16,7 +16,7 @@ import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
 import no.nav.syfo.narmestelederbehov.domain.RegisteredName
-import no.nav.syfo.narmestelederrelasjon.application.RelationSource
+import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -252,13 +252,13 @@ class FulfillNarmestelederbehovUseCaseTest :
             FakePersonLookup(mapOf(employeeIdent to employee)).find(employeeIdent) shouldBe employee
             FakeRelationEstablisher().establish(
                 no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand(
-                    employee = no.nav.syfo.narmestelederrelasjon.application.RelationPerson(
+                    employee = no.nav.syfo.narmestelederrelasjon.domain.RelationPerson(
                         employeeIdent,
                         "Employee",
                         "EmployeeMiddle",
                         "Employee",
                     ),
-                    manager = no.nav.syfo.narmestelederrelasjon.application.RelationManager(
+                    manager = no.nav.syfo.narmestelederrelasjon.domain.RelationManager(
                         managerIdent,
                         "Manager",
                         "ManagerMiddle",

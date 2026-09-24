@@ -294,6 +294,7 @@ components:
       additionalProperties: false
     LinemanagerRelationEmployeeName:
       type: object
+      nullable: true
       properties:
         firstName:
           type: string

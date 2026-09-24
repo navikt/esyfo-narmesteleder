@@ -11,9 +11,9 @@ import no.nav.syfo.narmestelederbehov.domain.matchManagerLastName
 import no.nav.syfo.narmestelederbehov.domain.normalize
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
-import no.nav.syfo.narmestelederrelasjon.application.RelationManager
-import no.nav.syfo.narmestelederrelasjon.application.RelationPerson
-import no.nav.syfo.narmestelederrelasjon.application.RelationSource
+import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
+import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
+import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -32,6 +32,7 @@ class FulfillNarmestelederbehovUseCase(
     suspend fun execute(command: FulfillNarmestelederbehovCommand): FulfillNarmestelederbehovResult {
         val manager = when (val normalization = command.manager.normalize()) {
             is ManagerContactNormalization.Valid -> normalization.manager
+
             is ManagerContactNormalization.Invalid -> {
                 return FulfillNarmestelederbehovResult.InvalidManagerContactDetails(normalization.issues).log()
             }
@@ -41,6 +42,7 @@ class FulfillNarmestelederbehovUseCase(
 
         when (val access = organizationAccess.evaluate(command.accessSubject, behov.employee.organizationNumber)) {
             OrganizationAccessResult.Granted -> Unit
+
             is OrganizationAccessResult.Denied -> return FulfillNarmestelederbehovResult.AccessDenied(
                 access.reason,
                 behov.employee.organizationNumber,
@@ -51,7 +53,9 @@ class FulfillNarmestelederbehovUseCase(
         }
         when (employmentLookup.findEmployment(behov.employee.personIdent, behov.employee.organizationNumber)) {
             EmploymentResult.IN_ORGANIZATION -> Unit
+
             EmploymentResult.NONE -> return FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NONE).log()
+
             EmploymentResult.NOT_IN_ORGANIZATION ->
                 return FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NOT_IN_ORGANIZATION).log()
         }

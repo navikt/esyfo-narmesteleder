@@ -1,7 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
+import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
+import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 
 fun interface EstablishNarmestelederrelasjon {
     suspend fun establish(command: EstablishNarmestelederrelasjonCommand)
@@ -12,25 +14,4 @@ data class EstablishNarmestelederrelasjonCommand(
     val manager: RelationManager,
     val organizationNumber: OrganizationNumber,
     val source: RelationSource,
-)
-
-enum class RelationSource {
-    LPS,
-    PERSONNEL_MANAGER,
-}
-
-data class RelationPerson(
-    val personIdent: PersonIdent,
-    val firstName: String,
-    val middleName: String?,
-    val lastName: String,
-)
-
-data class RelationManager(
-    val personIdent: PersonIdent,
-    val firstName: String,
-    val middleName: String?,
-    val lastName: String,
-    val email: String,
-    val mobile: String,
 )

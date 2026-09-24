@@ -47,6 +47,30 @@ class ApiPluginsStatusPagesTest :
         }
 
         describe("StatusPages fallback logging") {
+            it("includes paths in default NotFoundException errors and omits them when requested") {
+                testApplication {
+                    application {
+                        installContentNegotiation()
+                        installStatusPages()
+                        routing {
+                            get("/default-not-found") {
+                                throw ApiErrorException.NotFoundException()
+                            }
+                            get("/sanitized-not-found") {
+                                throw ApiErrorException.NotFoundException(includePath = false)
+                            }
+                        }
+                    }
+
+                    val defaultBody = client.get("/default-not-found").bodyAsText()
+                    val sanitizedBody = client.get("/sanitized-not-found").bodyAsText()
+
+                    defaultBody shouldContain """"path":"/default-not-found""""
+                    sanitizedBody shouldContain """"path":null"""
+                    sanitizedBody shouldNotContain "/sanitized-not-found"
+                }
+            }
+
             it("does not duplicate a terminal error that is already logged") {
                 testApplication {
                     application {

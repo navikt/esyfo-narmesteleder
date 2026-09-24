@@ -20,8 +20,10 @@ runtime:
     - type: before-request
       code: |-
         const http = require("axios");
-        if (bru.getEnvName() === "nl_vars_local" && !bru.hasEnvVar("token")) {
-          throw new Error("Kjør request 'mock-auth/tokenx/create tokenx' først for å teste lokalt");
+        if (bru.getEnvName() === "nl_vars_local") {
+          if (!bru.hasEnvVar("token")) {
+            throw new Error("Kjør request 'mock-auth/tokenx/create tokenx' først for å teste lokalt");
+          }
         } else {
           const systembrukerOrgnr = bru.getEnvVar("systemKundeOrgnr");
           const tokenrespons = await http.get("https://esyfo-token.intern.dev.nav.no/systembruker/" + systembrukerOrgnr + "?scope=nav%3Asyfo%2Fnarmesteleder%2Flps");

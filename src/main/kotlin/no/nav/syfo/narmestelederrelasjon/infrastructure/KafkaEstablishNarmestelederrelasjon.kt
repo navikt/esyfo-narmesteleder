@@ -7,7 +7,7 @@ import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
-import no.nav.syfo.narmestelederrelasjon.application.RelationSource
+import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 
 class KafkaEstablishNarmestelederrelasjon(private val producer: ISykmeldingNLKafkaProducer) : EstablishNarmestelederrelasjon {
     override suspend fun establish(command: EstablishNarmestelederrelasjonCommand) {

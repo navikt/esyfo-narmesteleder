@@ -311,7 +311,7 @@ class LinemanagerRequirementApiV1Test :
                         val requirementId = seedLinemanagerRequirement()
                         coEvery { dineSykmelteService.getIsActiveSykmelding(sykmeldtFnr, orgnummer) } returns false
 
-                        val response = client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                        val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                             contentType(ContentType.Application.Json)
                             setBody(manager())
                             bearerAuth(createMockToken(orgnummer))
@@ -339,7 +339,7 @@ class LinemanagerRequirementApiV1Test :
                             val requirementId = seedLinemanagerRequirement()
                             fakeAaregClient.arbeidsForholdForIdent[sykmeldtFnr] = employment
 
-                            val response = client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 contentType(ContentType.Application.Json)
                                 setBody(manager())
                                 bearerAuth(createMockToken(orgnummer))

@@ -8,12 +8,14 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
 import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.observability.countGetNarmestelederrelasjon
+import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.util.UUID
@@ -36,26 +38,35 @@ fun Route.registerNarmestelederrelasjonApi(
                 val id = call.parameters["id"]?.toUuidOrNull()
                 if (id == null) {
                     countGetNarmestelederrelasjon(GetNarmestelederrelasjonResult.NotFound)
-                    call.respond(HttpStatusCode.NotFound)
-                    return@handle
+                    throw notFoundException()
                 }
 
-                val principal = call.getMyPrincipal()
-                val result = getNarmestelederrelasjon.execute(id, principal)
+                val result = getNarmestelederrelasjon.execute(
+                    id = id,
+                    accessSubject = call.getMyPrincipal().toOrganizationAccessSubject(),
+                )
                 countGetNarmestelederrelasjon(result)
 
                 when (result) {
                     is GetNarmestelederrelasjonResult.Found ->
                         call.respond(
                             HttpStatusCode.OK,
-                            result.relation.toResponse(result.employeeName, result.organizationName),
+                            result.relation.toResponse(result.organizationName),
                         )
 
-                    GetNarmestelederrelasjonResult.NotFound -> call.respond(HttpStatusCode.NotFound)
+                    GetNarmestelederrelasjonResult.NotFound -> throw notFoundException()
+
+                    GetNarmestelederrelasjonResult.Unavailable ->
+                        throw ApiErrorException.InternalServerErrorException()
                 }
             }
         }
     }
 }
+
+private fun notFoundException() = ApiErrorException.NotFoundException(
+    errorMessage = "Linemanager relation was not found",
+    includePath = false,
+)
 
 private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()

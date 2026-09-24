@@ -19,7 +19,7 @@ import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.logging.rethrowCancellation
-import no.nav.syfo.narmesteleder.api.v1.RECUIREMENT_PATH
+import no.nav.syfo.narmesteleder.api.v1.REQUIREMENT_PATH
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -249,7 +249,7 @@ class DialogportenService(
 
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED, BEHOV_BY_STATUS_LIMIT)
 
-    private fun createApiLink(id: UUID): String = "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$RECUIREMENT_PATH/$id"
+    private fun createApiLink(id: UUID): String = "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$REQUIREMENT_PATH/$id"
 
     private fun createGuiLink(id: UUID): String = "${otherEnvironmentProperties.frontendBaseUrl}/ansatte/narmesteleder/$id"
     // https://www.ekstern.dev.nav.no/arbeidsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5

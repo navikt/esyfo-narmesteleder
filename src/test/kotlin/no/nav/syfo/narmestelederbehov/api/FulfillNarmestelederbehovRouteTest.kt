@@ -57,7 +57,6 @@ import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
-import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DbNarmestelederbehovRepository
@@ -66,7 +65,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldi
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
-import no.nav.syfo.organisasjonstilgang.infrastructure.LegacyOrganizationAccess
+import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
@@ -257,14 +256,14 @@ private class PutFixture {
     val sykmelding: DinesykmeldteService = spyk(ClientDinesykmeldteService(FakeDinesykmeldteClient()))
     val producer = spyk(FakeSykmeldingNarmestelederProducer())
     val altinn = AltinnTilgangerService(FakeAltinnTilgangerClient())
-    private val principalAccess = PrincipalAccessValidator(
+    private val organizationAccess = AltinnOrganizationAccess(
         altinn,
         pdp,
         EregService(ereg, mockk<EregCache>(relaxed = true)),
     )
     val useCase = FulfillNarmestelederbehovUseCase(
         DbNarmestelederbehovRepository(db),
-        LegacyOrganizationAccess(principalAccess),
+        organizationAccess,
         DinesykmeldteActiveSykmeldingLookup(sykmelding),
         AaregEmploymentLookup(AaregService(aareg)),
         PdlPersonLookup(pdl),

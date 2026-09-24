@@ -63,7 +63,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldi
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
-import no.nav.syfo.organisasjonstilgang.infrastructure.LegacyOrganizationAccess
+import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
@@ -150,7 +150,7 @@ abstract class LinemanagerApiV1TestBase(
                 )
             fulfillNarmestelederbehov = FulfillNarmestelederbehovUseCase(
                 DbNarmestelederbehovRepository(fakeRepo),
-                LegacyOrganizationAccess(principalAccessValidator),
+                AltinnOrganizationAccess(altinnTilgangerServiceMock, pdpService, eregService),
                 DinesykmeldteActiveSykmeldingLookup(dineSykmelteService),
                 AaregEmploymentLookup(aaregService),
                 PdlPersonLookup(pdlService),

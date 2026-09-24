@@ -13,6 +13,8 @@ import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
+import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
+import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
 import no.nav.syfo.texas.client.TexasHttpClient
 
 const val INTERNAL_API_V1_PATH = "/internal/api/v1"
@@ -26,6 +28,7 @@ fun Route.registerInternalApi(
     linemanagerStatisticsService: LinemanagerStatisticsService,
     employeeLinemanagerService: EmployeeLinemanagerService,
     linemanagerRevokeService: LinemanagerRevokeService,
+    getNarmestelederrelasjon: GetNarmestelederrelasjon,
 ) {
     route(INTERNAL_API_V1_PATH) {
         install(AddTokenIssuerPlugin)
@@ -38,5 +41,6 @@ fun Route.registerInternalApi(
         registerLinemanagerStatisticsApi(texasHttpClient, linemanagerStatisticsService)
         registerEmployeeLinemanagerApi(texasHttpClient, employeeLinemanagerService)
         registerLinemanagerRevokeApi(texasHttpClient, linemanagerRevokeService)
+        registerNarmestelederrelasjonApi(getNarmestelederrelasjon, texasHttpClient)
     }
 }

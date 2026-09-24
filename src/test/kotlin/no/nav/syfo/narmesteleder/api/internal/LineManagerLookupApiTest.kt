@@ -35,6 +35,7 @@ import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
+import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
@@ -74,6 +75,7 @@ class LineManagerLookupApiTest :
                             linemanagerStatisticsService = mockk<LinemanagerStatisticsService>(),
                             employeeLinemanagerService = mockk<EmployeeLinemanagerService>(),
                             linemanagerRevokeService = mockk<LinemanagerRevokeService>(),
+                            getNarmestelederrelasjon = mockk<GetNarmestelederrelasjon>(),
                         )
                     }
                 }

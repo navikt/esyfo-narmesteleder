@@ -70,7 +70,7 @@ class LinemanagerRequirementApiV1Test :
                         )
                         val requirementId = seedLinemanagerRequirement()
                         val response =
-                            client.get("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            client.get("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 bearerAuth(createMockToken(orgnummer))
                             }
                         response.status shouldBe HttpStatusCode.OK
@@ -89,7 +89,7 @@ class LinemanagerRequirementApiV1Test :
                         )
                         val randomId = UUID.randomUUID()
                         val response =
-                            client.get("$API_V1_PATH/$RECUIREMENT_PATH/$randomId") {
+                            client.get("$API_V1_PATH/$REQUIREMENT_PATH/$randomId") {
                                 bearerAuth(createMockToken(orgnummer))
                             }
                         response.status shouldBe HttpStatusCode.NotFound
@@ -110,7 +110,7 @@ class LinemanagerRequirementApiV1Test :
                         val requirementId = seedLinemanagerRequirement()
                         coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Deny
                         val response =
-                            client.get("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            client.get("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 bearerAuth(createMockToken("999999999"))
                             }
                         response.status shouldBe HttpStatusCode.Forbidden
@@ -143,7 +143,7 @@ class LinemanagerRequirementApiV1Test :
                             listOf(orgnummer to orgnummer)
 
                         val response =
-                            client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 contentType(ContentType.Application.Json)
                                 setBody(manager)
                                 bearerAuth(createMockToken(orgnummer))
@@ -183,7 +183,7 @@ class LinemanagerRequirementApiV1Test :
                             listOf(orgnummer to orgnummer)
 
                         val response =
-                            client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 contentType(ContentType.Application.Json)
                                 setBody(spacedPhoneManager)
                                 bearerAuth(createMockToken(orgnummer))
@@ -218,7 +218,7 @@ class LinemanagerRequirementApiV1Test :
                         )
 
                         val response =
-                            client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 contentType(ContentType.Application.Json)
                                 setBody(invalidContactManager)
                                 bearerAuth(createMockToken(orgnummer))
@@ -249,7 +249,7 @@ class LinemanagerRequirementApiV1Test :
                         fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                         fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
                         val response =
-                            client.put("$API_V1_PATH/$RECUIREMENT_PATH/$randomId") {
+                            client.put("$API_V1_PATH/$REQUIREMENT_PATH/$randomId") {
                                 contentType(ContentType.Application.Json)
                                 setBody(manager())
                                 bearerAuth(createMockToken(orgnummer))
@@ -268,7 +268,7 @@ class LinemanagerRequirementApiV1Test :
                         )
                         val requirementId = seedLinemanagerRequirement()
                         val response =
-                            client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 contentType(ContentType.Application.Json)
                                 setBody("""{ "foo": "bar" }""")
                                 bearerAuth(createMockToken(orgnummer))
@@ -290,7 +290,7 @@ class LinemanagerRequirementApiV1Test :
                         fakeAaregClient.arbeidsForholdForIdent.put(sykmeldtFnr, listOf(orgnummer to orgnummer))
                         fakeAaregClient.arbeidsForholdForIdent.put(lederFnr, listOf(orgnummer to orgnummer))
                         val response =
-                            client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 contentType(ContentType.Application.Json)
                                 setBody(narmesteLederRelasjon.manager)
                                 bearerAuth(createMockToken("000000000"))
@@ -311,7 +311,7 @@ class LinemanagerRequirementApiV1Test :
                         val requirementId = seedLinemanagerRequirement()
                         coEvery { dineSykmelteService.getIsActiveSykmelding(sykmeldtFnr, orgnummer) } returns false
 
-                        val response = client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                        val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                             contentType(ContentType.Application.Json)
                             setBody(manager())
                             bearerAuth(createMockToken(orgnummer))
@@ -339,7 +339,7 @@ class LinemanagerRequirementApiV1Test :
                             val requirementId = seedLinemanagerRequirement()
                             fakeAaregClient.arbeidsForholdForIdent[sykmeldtFnr] = employment
 
-                            val response = client.put("$API_V1_PATH/$RECUIREMENT_PATH/$requirementId") {
+                            val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$requirementId") {
                                 contentType(ContentType.Application.Json)
                                 setBody(manager())
                                 bearerAuth(createMockToken(orgnummer))
@@ -365,7 +365,7 @@ class LinemanagerRequirementApiV1Test :
                         val pageSize = 10
                         val response =
                             client.get(
-                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=${requirement.orgNumber.value}&createdAfter=${
+                                "$API_V1_PATH/$REQUIREMENT_PATH?orgNumber=${requirement.orgNumber.value}&createdAfter=${
                                     Instant.now().minusSeconds(60)
                                 }&pageSize=$pageSize",
                             ) {
@@ -433,7 +433,7 @@ class LinemanagerRequirementApiV1Test :
                         )
 
                         val response = client.get(
-                            "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=${narmesteLederRelasjon.orgNumber.value}&createdAfter=$createdAfter&pageSize=1",
+                            "$API_V1_PATH/$REQUIREMENT_PATH?orgNumber=${narmesteLederRelasjon.orgNumber.value}&createdAfter=$createdAfter&pageSize=1",
                         ) {
                             bearerAuth(createMockToken(narmesteLederRelasjon.orgNumber.value))
                         }
@@ -468,7 +468,7 @@ class LinemanagerRequirementApiV1Test :
 
                         val response =
                             client.get(
-                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=12345678&createdAfter=${
+                                "$API_V1_PATH/$REQUIREMENT_PATH?orgNumber=12345678&createdAfter=${
                                     Instant.now().minusSeconds(60)
                                 }",
                             ) {
@@ -489,7 +489,7 @@ class LinemanagerRequirementApiV1Test :
 
                         val response =
                             client.get(
-                                "$API_V1_PATH/$RECUIREMENT_PATH?orgNumber=12345678a&createdAfter=${
+                                "$API_V1_PATH/$REQUIREMENT_PATH?orgNumber=12345678a&createdAfter=${
                                     Instant.now().minusSeconds(60)
                                 }",
                             ) {

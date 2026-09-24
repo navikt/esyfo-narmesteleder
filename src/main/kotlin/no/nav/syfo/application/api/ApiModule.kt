@@ -21,6 +21,7 @@ import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.AltinnTokenProvider
@@ -43,6 +44,7 @@ fun Application.configureRouting() {
     val narmestelederLookupService by inject<NarmestelederLookupService>()
     val employeeLinemanagerService by inject<EmployeeLinemanagerService>()
     val linemanagerRevokeService by inject<LinemanagerRevokeService>()
+    val getNarmestelederrelasjon by inject<GetNarmestelederrelasjon>()
 
     installCallId()
     installContentNegotiation()
@@ -68,12 +70,16 @@ fun Application.configureRouting() {
             linemanagerStatisticsService = linemanagerStatisticsService,
             employeeLinemanagerService = employeeLinemanagerService,
             linemanagerRevokeService = linemanagerRevokeService,
+            getNarmestelederrelasjon = getNarmestelederrelasjon,
         )
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
         swaggerUI(path = "internal/swagger", swaggerFile = "openapi/internal-documentation.yaml")
-        swaggerUI(path = "internal/linemanager-search/swagger", swaggerFile = "openapi/internal-linemanager-search.yaml")
+        swaggerUI(
+            path = "internal/linemanager-search/swagger",
+            swaggerFile = "openapi/internal-linemanager-search.yaml",
+        )
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
             registerDialogportenTokenApi(texasHttpClient, altinnTokenProvider)

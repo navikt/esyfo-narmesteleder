@@ -30,6 +30,7 @@ import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
+import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -79,6 +80,7 @@ class LinemanagerRevokeApiTest :
                             linemanagerStatisticsService = mockk<LinemanagerStatisticsService>(),
                             employeeLinemanagerService = mockk<EmployeeLinemanagerService>(),
                             linemanagerRevokeService = revokeService,
+                            getNarmestelederrelasjon = mockk<GetNarmestelederrelasjon>(),
                         )
                     }
                 }

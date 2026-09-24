@@ -72,9 +72,10 @@ sealed class ApiErrorException(
         cause: Throwable? = null,
         type: ErrorType = ErrorType.NOT_FOUND,
         isAlreadyLogged: Boolean = false,
+        private val includePath: Boolean = true,
     ) : ApiErrorException(errorMessage, type, cause, isAlreadyLogged) {
         override fun toApiError(path: String): ApiError = ApiError(
-            path = path,
+            path = path.takeIf { includePath },
             status = HttpStatusCode.NotFound,
             type = type,
             message = errorMessage

@@ -129,6 +129,32 @@ class PdlServiceTest :
                 coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }
 
+            describe("findPerson") {
+                it("returns null for PDL not-found without caching it") {
+                    val fnr = "12345678901"
+                    coEvery { pdlClient.getPerson(fnr) } throws PdlResourceNotFoundException("Not found")
+                    pdlService.findPerson(fnr) shouldBe null
+                    coVerify(exactly = 0) { pdlCache.putPerson(any(), any()) }
+                }
+
+                it("propagates PDL request errors as internal server errors") {
+                    val fnr = "12345678901"
+                    coEvery { pdlClient.getPerson(fnr) } throws PdlRequestException("PDL error")
+                    shouldThrow<ApiErrorException.InternalServerErrorException> { pdlService.findPerson(fnr) }
+                }
+
+                it("uses the cached person") {
+                    val fnr = "12345678901"
+                    val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
+                    coEvery { pdlClient.getPerson(fnr) } returns
+                        getPersonResponse(listOf(navn), listOf(Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")))
+                    val person = pdlService.findPerson(fnr)
+                    coEvery { pdlCache.getPerson(fnr) } returns person
+                    pdlService.findPerson(fnr) shouldBe person
+                    coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
+                }
+            }
+
             it("should convert PdlResourceNotFoundException to BadRequestException") {
                 val fnr = "12345678901"
 

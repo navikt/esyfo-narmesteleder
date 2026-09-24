@@ -47,7 +47,10 @@ class PdlService(
         }
     }
 
-    suspend fun getPersonOrThrowApiError(fnr: String): Person {
+    suspend fun getPersonOrThrowApiError(fnr: String): Person = findPerson(fnr)
+        ?: throw ApiErrorException.BadRequestException("Could not find person in PDL")
+
+    suspend fun findPerson(fnr: String): Person? {
         pdlCache.getPerson(fnr).let { cachedPerson ->
             if (cachedPerson != null) {
                 return cachedPerson
@@ -58,7 +61,7 @@ class PdlService(
             pdlCache.putPerson(fnr, person)
             person
         } catch (e: PdlResourceNotFoundException) {
-            throw ApiErrorException.BadRequestException("Could not find person in PDL", e)
+            null
         } catch (e: PdlRequestException) {
             throw ApiErrorException.InternalServerErrorException("Error when fetching person from PDL", e)
         }

@@ -11,4 +11,5 @@ data class NarmestelederrelasjonLookup(
     val employeeFirstName: String?,
     val employeeMiddleName: String?,
     val employeeLastName: String?,
+    val isActive: Boolean,
 )

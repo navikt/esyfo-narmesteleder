@@ -27,9 +27,9 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
 import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
 import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -67,6 +67,7 @@ class NarmestelederrelasjonApiTest :
             employeeFirstName = "Employee",
             employeeMiddleName = null,
             employeeLastName = "Person",
+            isActive = true,
         )
 
         fun withTestApplication(test: suspend ApplicationTestBuilder.() -> Unit) {
@@ -226,5 +227,4 @@ class NarmestelederrelasjonApiTest :
         }
     })
 
-private fun replaceTimestamp(body: String): String =
-    body.replace(Regex("""("timestamp":")[^"]+(")"""), "$1<dynamic>$2")
+private fun replaceTimestamp(body: String): String = body.replace(Regex("""("timestamp":")[^"]+(")"""), "$1<dynamic>$2")

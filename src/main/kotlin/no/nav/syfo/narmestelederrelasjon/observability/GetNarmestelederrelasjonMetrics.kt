@@ -19,7 +19,7 @@ private val unavailableCounter = getNarmestelederrelasjonCounter("unavailable")
 fun countGetNarmestelederrelasjon(result: GetNarmestelederrelasjonResult) {
     when (result) {
         is GetNarmestelederrelasjonResult.Found -> foundCounter.increment()
-        GetNarmestelederrelasjonResult.NotFound -> notFoundCounter.increment()
-        GetNarmestelederrelasjonResult.Unavailable -> unavailableCounter.increment()
+        is GetNarmestelederrelasjonResult.NotFound -> notFoundCounter.increment()
+        is GetNarmestelederrelasjonResult.Unavailable -> unavailableCounter.increment()
     }
 }

@@ -55,7 +55,7 @@ class ValidationService(
         )
     )
 
-    fun normalizeManagerPayload(
+    private fun normalizeManagerPayload(
         manager: Manager,
     ): Manager {
         val validation = manager.normalizeContactDetails()
@@ -73,7 +73,6 @@ class ValidationService(
     suspend fun validateLinemanager(
         linemanager: Linemanager,
         principal: Principal,
-        validateEmployeeLastName: Boolean = true,
     ): LinemanagerActors {
         principalAccessValidator.validatePrincipalAccessToOrgnumber(
             principal,
@@ -91,9 +90,7 @@ class ValidationService(
         val sykmeldt = pdlService.getPersonOrThrowApiError(linemanager.employeeIdentificationNumber.value)
         val leder = pdlService.getPersonOrThrowApiError(linemanager.manager.nationalIdentificationNumber.value)
         NameValidator.validateLinemanagerLastName(leder, linemanager)
-        if (validateEmployeeLastName) {
-            NameValidator.validateEmployeeLastName(sykmeldt, linemanager)
-        }
+        NameValidator.validateEmployeeLastName(sykmeldt, linemanager)
 
         return LinemanagerActors(
             employee = sykmeldt,

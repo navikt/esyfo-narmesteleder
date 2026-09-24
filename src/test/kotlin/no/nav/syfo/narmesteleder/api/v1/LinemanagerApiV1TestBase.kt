@@ -147,7 +147,6 @@ abstract class LinemanagerApiV1TestBase(
                 LinemanagerRequirementRESTHandler(
                     narmesteLederService = narmesteLederService,
                     validationService = validationServiceSpy,
-                    narmestelederKafkaService = narmestelederKafkaServiceSpy,
                 )
             fulfillNarmestelederbehov = FulfillNarmestelederbehovUseCase(
                 DbNarmestelederbehovRepository(fakeRepo),

@@ -18,7 +18,6 @@ import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import java.time.Instant
@@ -28,11 +27,9 @@ class GetNarmestelederbehovTest :
     FunSpec({
         val narmestelederService = mockk<NarmestelederService>()
         val validationService = mockk<ValidationService>()
-        val narmestelederKafkaService = mockk<NarmestelederKafkaService>()
         val handler = LinemanagerRequirementRESTHandler(
             narmesteLederService = narmestelederService,
             validationService = validationService,
-            narmestelederKafkaService = narmestelederKafkaService,
         )
         val requirementId = UUID.randomUUID()
         val orgNumber = OrganizationNumber("123456789")
@@ -49,7 +46,7 @@ class GetNarmestelederbehovTest :
         )
 
         beforeTest {
-            clearMocks(narmestelederService, validationService, narmestelederKafkaService)
+            clearMocks(narmestelederService, validationService)
             coEvery { narmestelederService.getLinemanagerRequirementReadById(requirementId) } returns requirement
         }
 

@@ -7,6 +7,11 @@ capability-owned adapters and Koin modules. ADR-0002 and `architecture.md`
 describe the target architecture; the architecture test for this activation
 is tracked separately in #544.
 
+The legacy PUT handler and its dedicated service methods have been removed.
+PUT HTTP contract tests now live in
+`src/test/kotlin/no/nav/syfo/narmestelederbehov/api/FulfillNarmestelederbehovRouteTest.kt`;
+the legacy requirement API suite covers GET only.
+
 ## Acceptance criteria
 
 | Requirement from #525 | Foundation status |
@@ -19,7 +24,7 @@ is tracked separately in #544.
 | Kafka, persistence and Dialogporten adapters | Activated in #541; contract data includes middle names and resolved employee identity |
 | Capability-owned Koin registration/settings | Activated in #541 |
 | Architecture checks | Moved to #544 |
-| Focused tests plus endpoint/integration coverage | Retained and expanded; activation must run the same contract tests against the new route |
+| Focused tests plus endpoint/integration coverage | PUT HTTP contract tests moved to `narmestelederbehov/api` and run against the use-case route |
 | Successful build | Required for each change, including activation |
 
 The separate GET-by-id migration in

@@ -5,16 +5,15 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmesteleder.api.internal.v1.registerLineManagerLookupApi
-import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.texas.client.TexasHttpClient
 
 const val INTERNAL_API_V1_PATH = "/internal/api/v1"
@@ -27,7 +26,7 @@ fun Route.registerInternalApi(
     linemanagerSearchService: LinemanagerSearchService,
     linemanagerStatisticsService: LinemanagerStatisticsService,
     employeeLinemanagerService: EmployeeLinemanagerService,
-    linemanagerRevokeService: LinemanagerRevokeService,
+    revokeNarmestelederrelasjon: RevokeNarmestelederrelasjon,
     getNarmestelederrelasjon: GetNarmestelederrelasjon,
 ) {
     route(INTERNAL_API_V1_PATH) {
@@ -40,7 +39,6 @@ fun Route.registerInternalApi(
         registerLinemanagerSearchApi(texasHttpClient, linemanagerSearchService)
         registerLinemanagerStatisticsApi(texasHttpClient, linemanagerStatisticsService)
         registerEmployeeLinemanagerApi(texasHttpClient, employeeLinemanagerService)
-        registerLinemanagerRevokeApi(texasHttpClient, linemanagerRevokeService)
-        registerNarmestelederrelasjonApi(getNarmestelederrelasjon, texasHttpClient)
+        registerNarmestelederrelasjonApi(getNarmestelederrelasjon, revokeNarmestelederrelasjon, texasHttpClient)
     }
 }

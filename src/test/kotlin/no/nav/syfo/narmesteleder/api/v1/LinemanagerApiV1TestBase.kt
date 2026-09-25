@@ -48,7 +48,6 @@ import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -64,6 +63,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldi
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.pdl.PdlService
@@ -124,7 +124,7 @@ abstract class LinemanagerApiV1TestBase(
     internal lateinit var linemanagerSearchService: LinemanagerSearchService
     internal lateinit var linemanagerStatisticsService: LinemanagerStatisticsService
     internal lateinit var employeeLinemanagerService: EmployeeLinemanagerService
-    internal lateinit var linemanagerRevokeService: LinemanagerRevokeService
+    internal lateinit var revokeNarmestelederrelasjon: RevokeNarmestelederrelasjon
 
     init {
         beforeTest {
@@ -172,12 +172,7 @@ abstract class LinemanagerApiV1TestBase(
                 )
             employeeLinemanagerService =
                 EmployeeLinemanagerService(employeeLinemanagerRepository)
-            linemanagerRevokeService =
-                LinemanagerRevokeService(
-                    narmestelederRevokeDb = mockk(),
-                    narmestelederKafkaService = narmestelederKafkaServiceSpy,
-                    validationService = validationServiceSpy,
-                )
+            revokeNarmestelederrelasjon = mockk()
             coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Permit
             fakeRepo.clear()
         }
@@ -217,7 +212,7 @@ abstract class LinemanagerApiV1TestBase(
                         linemanagerSearchService,
                         linemanagerStatisticsService,
                         employeeLinemanagerService,
-                        linemanagerRevokeService,
+                        revokeNarmestelederrelasjon,
                         mockk(),
                     )
                 }

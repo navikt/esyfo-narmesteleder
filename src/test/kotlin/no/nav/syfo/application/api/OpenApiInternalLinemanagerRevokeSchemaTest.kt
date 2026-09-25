@@ -5,8 +5,6 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
-import no.nav.syfo.narmesteleder.api.internal.v1.LINEMANAGER_REVOKE_BY_ID_PATH
 import no.nav.syfo.narmestelederrelasjon.api.NARMESTELEDERRELASJON_API_PATH
 import org.yaml.snakeyaml.Yaml
 
@@ -18,12 +16,12 @@ class OpenApiInternalLinemanagerRevokeSchemaTest :
             .readText()
         val root = Yaml().load<Map<String, Any>>(yamlText)
         val paths = root["paths"] as Map<*, *>
-        val revokePath = "$INTERNAL_API_V1_PATH$LINEMANAGER_REVOKE_BY_ID_PATH"
+        val revokePath = "/internal/api/v1/linemanager/{id}"
         val relationPath = NARMESTELEDERRELASJON_API_PATH
 
         "openapi documents the revoke endpoint on the path registered in code" {
             paths.keys.map { it as String } shouldContain revokePath
-            revokePath shouldBe relationPath
+            NARMESTELEDERRELASJON_API_PATH shouldBe revokePath
         }
 
         "openapi documents the revoke responses the endpoint can return" {

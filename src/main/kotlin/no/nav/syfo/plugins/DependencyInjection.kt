@@ -43,10 +43,8 @@ import no.nav.syfo.maintenance.MaintenanceTask
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
-import no.nav.syfo.narmesteleder.db.NarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederLookupDb
-import no.nav.syfo.narmesteleder.db.PostgresNarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.exposed.EmployeeLinemanagerRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
@@ -59,7 +57,6 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -156,9 +153,6 @@ private fun databaseModule() = module {
     }
     single<NarmestelederLookupDb> {
         PostgresNarmestelederLookupDb(get<ExposedDatabase>(), Dispatchers.IO)
-    }
-    single<NarmestelederRevokeDb> {
-        PostgresNarmestelederRevokeDb(get<ExposedDatabase>(), Dispatchers.IO)
     }
     single<SykmeldingDb> {
         PostgresSykmeldingDb(get(), Dispatchers.IO)
@@ -322,13 +316,6 @@ private fun servicesModule() = module {
         )
     }
     single { EmployeeLinemanagerService(repository = get()) }
-    single {
-        LinemanagerRevokeService(
-            narmestelederRevokeDb = get(),
-            narmestelederKafkaService = get(),
-            validationService = get(),
-        )
-    }
     single { NarmestelederRegisterService(get()) }
     single {
         AltinnTokenProvider(

@@ -9,10 +9,17 @@ interface NarmestelederbehovRepository {
 
     suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult
 
-    suspend fun markDialogCompleted(id: NarmestelederbehovId)
+    suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult
 }
 
 sealed interface MarkFulfilledResult {
     data class Marked(val id: NarmestelederbehovId, val dialogId: UUID?) : MarkFulfilledResult
     data object Missing : MarkFulfilledResult
+}
+
+sealed interface MarkDialogCompletedResult {
+    data object Marked : MarkDialogCompletedResult
+
+    /** The behov is missing or another writer changed its status; nothing is overwritten. */
+    data object NotFulfilled : MarkDialogCompletedResult
 }

@@ -145,8 +145,11 @@ class FulfillNarmestelederbehovUseCase(
             return DialogportenCompletionAttempt.Failed
         }
         return try {
-            behovRepository.markDialogCompleted(marked.id)
-            DialogportenCompletionAttempt.Completed
+            when (behovRepository.markDialogCompleted(marked.id)) {
+                MarkDialogCompletedResult.Marked,
+                MarkDialogCompletedResult.NotFulfilled,
+                -> DialogportenCompletionAttempt.Completed
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

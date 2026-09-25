@@ -274,6 +274,27 @@ class FulfillNarmestelederbehovUseCaseTest :
             }
         }
 
+        test("reports Completed without logging when another writer changed the status") {
+            val effects = mutableListOf<String>()
+            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            val previousLevel = logger.level
+            logger.level = Level.WARN
+            logger.addAppender(appender)
+            try {
+                createUseCase(
+                    repository = FakeBehovRepository(behov, effects, dialogStatusResult = MarkDialogCompletedResult.NotFulfilled),
+                    effects = effects,
+                ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.Completed)
+                effects.takeLast(2) shouldBe listOf("dialog", "dialog-status")
+                appender.list.filter { it.level == Level.WARN } shouldBe emptyList()
+            } finally {
+                logger.detachAppender(appender)
+                logger.level = previousLevel
+                appender.stop()
+            }
+        }
+
         test("status persistence cancellation propagates") {
             val failure = CancellationException("cancelled")
             shouldThrow<CancellationException> {

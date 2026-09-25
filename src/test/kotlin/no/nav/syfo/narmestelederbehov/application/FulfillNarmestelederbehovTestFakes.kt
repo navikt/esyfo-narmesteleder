@@ -17,6 +17,7 @@ internal class FakeBehovRepository(
     private val updateFailure: Throwable? = null,
     private val markResult: MarkFulfilledResult? = null,
     private val dialogStatusFailure: Throwable? = null,
+    private val dialogStatusResult: MarkDialogCompletedResult = MarkDialogCompletedResult.Marked,
 ) : NarmestelederbehovRepository {
 
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov.also { effects += "load" }
@@ -27,9 +28,10 @@ internal class FakeBehovRepository(
         return markResult ?: MarkFulfilledResult.Marked(id, UUID.fromString("00000000-0000-0000-0000-000000000002"))
     }
 
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId) {
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult {
         effects += "dialog-status"
         dialogStatusFailure?.let { throw it }
+        return dialogStatusResult
     }
 }
 

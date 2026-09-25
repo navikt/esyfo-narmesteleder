@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -10,6 +9,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
@@ -66,20 +66,28 @@ class ExposedNarmestelederbehovRepositoryTest :
         }
 
         test("marks a completed dialog status without changing other fields") {
-            val row = setupDb.insertNlBehov(nlBehovEntity())
+            val row = setupDb.insertNlBehov(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
             val id = NarmestelederbehovId(requireNotNull(row.id))
             val before = requireNotNull(setupDb.findBehovById(id.value))
 
-            repository.markDialogCompleted(id)
+            repository.markDialogCompleted(id) shouldBe MarkDialogCompletedResult.Marked
 
             val after = requireNotNull(setupDb.findBehovById(id.value))
             after.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
             after.copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
         }
 
-        test("reports missing row when persisting completed dialog status") {
-            shouldThrow<IllegalStateException> {
-                repository.markDialogCompleted(NarmestelederbehovId(UUID.randomUUID()))
-            }
+        test("does not overwrite a status changed by another writer") {
+            val row = setupDb.insertNlBehov(nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_EXPIRED))
+            val id = NarmestelederbehovId(requireNotNull(row.id))
+            val before = requireNotNull(setupDb.findBehovById(id.value))
+
+            repository.markDialogCompleted(id) shouldBe MarkDialogCompletedResult.NotFulfilled
+
+            requireNotNull(setupDb.findBehovById(id.value)) shouldBe before
+        }
+
+        test("reports NotFulfilled for a missing row when persisting completed dialog status") {
+            repository.markDialogCompleted(NarmestelederbehovId(UUID.randomUUID())) shouldBe MarkDialogCompletedResult.NotFulfilled
         }
     })

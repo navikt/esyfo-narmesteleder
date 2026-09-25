@@ -56,6 +56,7 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
@@ -310,7 +311,7 @@ private class FakePutBehovRepository : NarmestelederbehovRepository {
         return MarkFulfilledResult.Marked(id, null)
     }
 
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId) = Unit
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId) = MarkDialogCompletedResult.Marked
 }
 
 private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture) -> Unit) {

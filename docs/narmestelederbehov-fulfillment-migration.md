@@ -56,7 +56,9 @@ PUT fulfillment or complete #525.
   on failure; the fulfillment use case handles ordinary client failures, logs
   the completion failure with `behov_id`, and returns `Failed` without failing
   the request. On success the repository updates only the behov status to
-  `DIALOGPORTEN_STATUS_SET_COMPLETED`. Status-persistence failures likewise
+  `DIALOGPORTEN_STATUS_SET_COMPLETED`, and only while it is still
+  `BEHOV_FULFILLED`; a status changed by another writer is left untouched and
+  the attempt is still reported as `Completed`. Status-persistence failures likewise
   return `Failed`; cancellation propagates from either step. The existing
   scheduled job retains its legacy handling.
 

@@ -39,7 +39,6 @@ import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
-import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
@@ -57,7 +56,6 @@ import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -132,7 +130,6 @@ abstract class LinemanagerApiV1TestBase(
     internal lateinit var linemanagerSearchService: LinemanagerSearchService
     internal lateinit var linemanagerStatisticsService: LinemanagerStatisticsService
     internal lateinit var employeeLinemanagerService: EmployeeLinemanagerService
-    internal lateinit var linemanagerRevokeService: LinemanagerRevokeService
 
     init {
         beforeTest {
@@ -180,12 +177,6 @@ abstract class LinemanagerApiV1TestBase(
                 )
             employeeLinemanagerService =
                 EmployeeLinemanagerService(employeeLinemanagerRepository)
-            linemanagerRevokeService =
-                LinemanagerRevokeService(
-                    narmestelederRevokeDb = mockk(),
-                    narmestelederKafkaService = narmestelederKafkaServiceSpy,
-                    validationService = validationServiceSpy,
-                )
             coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Permit
             fakeRepo.clear()
         }
@@ -226,7 +217,6 @@ abstract class LinemanagerApiV1TestBase(
                         registerLinemanagerSearchApi(texasHttpClientMock, linemanagerSearchService)
                         registerLinemanagerStatisticsApi(texasHttpClientMock, linemanagerStatisticsService)
                         registerEmployeeLinemanagerApi(texasHttpClientMock, employeeLinemanagerService)
-                        registerLinemanagerRevokeApi(texasHttpClientMock, linemanagerRevokeService)
                     }
                 }
             }

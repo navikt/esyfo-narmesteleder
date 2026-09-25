@@ -11,10 +11,8 @@ import no.nav.syfo.ereg.EregService
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
-import no.nav.syfo.narmesteleder.db.NarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederLookupDb
-import no.nav.syfo.narmesteleder.db.PostgresNarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.exposed.EmployeeLinemanagerRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
@@ -23,7 +21,6 @@ import no.nav.syfo.narmesteleder.exposed.PostgresLinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.PostgresLinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -57,9 +54,6 @@ internal fun legacyRepositoriesModule() = module {
     single<NarmestelederDb> { PostgresNarmestelederDb(database = get(), dispatcher = Dispatchers.IO) }
     single<NarmestelederLookupDb> {
         PostgresNarmestelederLookupDb(database = get<ExposedDatabase>(), dispatcher = Dispatchers.IO)
-    }
-    single<NarmestelederRevokeDb> {
-        PostgresNarmestelederRevokeDb(database = get<ExposedDatabase>(), dispatcher = Dispatchers.IO)
     }
     single<SykmeldingDb> { PostgresSykmeldingDb(database = get(), dispatcher = Dispatchers.IO) }
     single<ActiveSykmeldingRepository> { SendtSykmeldingRepository(database = get()) }
@@ -134,11 +128,4 @@ internal fun legacyServicesModule() = module {
         LinemanagerStatisticsService(validationService = get(), linemanagerStatisticsRepository = get())
     }
     single { EmployeeLinemanagerService(repository = get()) }
-    single {
-        LinemanagerRevokeService(
-            narmestelederRevokeDb = get(),
-            narmestelederKafkaService = get(),
-            validationService = get(),
-        )
-    }
 }

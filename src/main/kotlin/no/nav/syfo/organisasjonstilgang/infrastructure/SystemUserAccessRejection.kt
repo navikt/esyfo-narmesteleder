@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.service.validators
+package no.nav.syfo.organisasjonstilgang.infrastructure
 
 import no.nav.esyfo.observability.apiRequestRejected
 import no.nav.syfo.altinn.pdp.client.Decision

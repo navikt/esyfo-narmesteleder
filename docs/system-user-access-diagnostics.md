@@ -7,8 +7,10 @@ and, if so, asks PDP for that organization. Only `Permit` grants access.
 
 ## One event for the final rejection
 
-When neither check grants access, the validator emits one `WARN` through the
-shared `esyfo-logger` adapter. The local `SystemUserAccessRejection` definition
+When neither check grants access, the access check emits one `WARN` through the
+shared `esyfo-logger` adapter. Both `AltinnOrganizationAccess` (new capability
+flows) and the legacy `PrincipalAccessValidator` emit the same event. The
+`SystemUserAccessRejection` definition in `organisasjonstilgang/infrastructure`
 owns the operation, reason, message and typed PDP context:
 
 | Field | Value |
@@ -39,11 +41,14 @@ this event. Changing access policy merely to reduce the count is not a fix.
 
 ## Verification
 
-Run `./gradlew test --tests '*SystemAccessLoggingContractTest'`. The test exercises
-the validator, PDP service and Ktor error handler. `esyfo-logger-testkit` captures
-JSON with the `stdout_json` encoder loaded from `src/main/resources/logback.xml`
-using its NAIS profile in an isolated logging context. It validates the packaged
-v1 contract and a catalog derived from the actual local event definition.
+Run `./gradlew test --tests '*SystemAccessLoggingContractTest' --tests '*AltinnOrganizationAccessLoggingContractTest'`.
+`SystemAccessLoggingContractTest` exercises the legacy validator, PDP service and
+Ktor error handler. `AltinnOrganizationAccessLoggingContractTest` exercises the
+same event from `AltinnOrganizationAccess`, with and without a fallback decision.
+`esyfo-logger-testkit` captures JSON with the `stdout_json` encoder loaded from
+`src/main/resources/logback.xml` using its NAIS profile in an isolated logging
+context. Both tests validate the packaged v1 contract and a catalog derived from
+the actual local event definition.
 
 Schema validation runs inside the existing Gradle test and therefore also in
 normal CI. The testkit and its packaged schema remain test-only dependencies;
@@ -56,7 +61,7 @@ The public libraries are resolved through
 [Nav's GitHub Packages mirror](https://github.com/navikt/github-package-registry-mirror).
 Local builds and CI do not need registry credentials to download them.
 
-The tests cover all direct/fallback decision combinations, skipped fallback,
+The legacy validator test covers all direct/fallback decision combinations, skipped fallback,
 unchanged HTTP responses, exception/cancellation paths, trace context, duplicate
 prevention and identifier canaries. This diagnostic improvement does not by
 itself resolve the functional investigation in

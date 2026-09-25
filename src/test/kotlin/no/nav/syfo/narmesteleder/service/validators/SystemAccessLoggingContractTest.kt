@@ -43,6 +43,8 @@ import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
+import no.nav.syfo.organisasjonstilgang.infrastructure.SYSTEM_USER_ACCESS_NOT_GRANTED
+import no.nav.syfo.organisasjonstilgang.infrastructure.systemUserAccessRejected
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 

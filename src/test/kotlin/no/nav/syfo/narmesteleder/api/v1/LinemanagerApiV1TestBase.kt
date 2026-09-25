@@ -7,6 +7,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.kotest.core.spec.style.DescribeSpec
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.jackson.jackson
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
@@ -15,6 +16,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.spyk
 import linemanager
+import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.TestDB
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -24,8 +26,10 @@ import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
+import no.nav.syfo.altinntilganger.registerAccessOrganizationsApi
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
+import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
@@ -33,7 +37,12 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
+import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
+import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
+import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.LinemanagerManagerRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerPersonRead
@@ -68,7 +77,6 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestele
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
-import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.time.Instant
 import java.util.UUID
@@ -201,25 +209,25 @@ abstract class LinemanagerApiV1TestBase(
                 installContentNegotiation()
                 installStatusPages()
                 routing {
-                    registerApiV1(
-                        narmestelederKafkaServiceSpy,
-                        texasHttpClientMock,
-                        validationServiceSpy,
-                        nlBehovHandler,
-                        altinnAccessServiceSpy,
-                        narmestelederLookupService,
-                        fulfillNarmestelederbehov,
-                    )
-                    registerInternalApi(
-                        narmestelederLookupService,
-                        texasHttpClientMock,
-                        emptySet(),
-                        linemanagerSearchService,
-                        linemanagerStatisticsService,
-                        employeeLinemanagerService,
-                        linemanagerRevokeService,
-                        mockk(),
-                    )
+                    route(API_V1_PATH) {
+                        install(AddTokenIssuerPlugin)
+                        registerLinemanagerApiV1(
+                            narmestelederKafkaServiceSpy,
+                            validationServiceSpy,
+                            texasHttpClientMock,
+                            nlBehovHandler,
+                            narmestelederLookupService,
+                            fulfillNarmestelederbehov,
+                        )
+                        registerAccessOrganizationsApi(altinnAccessServiceSpy, texasHttpClientMock)
+                    }
+                    route(INTERNAL_API_V1_PATH) {
+                        install(AddTokenIssuerPlugin)
+                        registerLinemanagerSearchApi(texasHttpClientMock, linemanagerSearchService)
+                        registerLinemanagerStatisticsApi(texasHttpClientMock, linemanagerStatisticsService)
+                        registerEmployeeLinemanagerApi(texasHttpClientMock, employeeLinemanagerService)
+                        registerLinemanagerRevokeApi(texasHttpClientMock, linemanagerRevokeService)
+                    }
                 }
             }
             fn(this)

@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
@@ -16,21 +17,18 @@ import io.mockk.mockk
 import io.mockk.verify
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
+import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
 import no.nav.syfo.narmesteleder.db.NarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.RevokableNarmestelederEntity
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
-import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
-import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
-import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
-import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -72,16 +70,10 @@ class LinemanagerRevokeApiTest :
                     installContentNegotiation()
                     installStatusPages()
                     routing {
-                        registerInternalApi(
-                            texasHttpClient = texasHttpClient,
-                            narmestelederLookupService = mockk<NarmestelederLookupService>(),
-                            preAuthorizedApps = setOf("calling-app-id"),
-                            linemanagerSearchService = mockk<LinemanagerSearchService>(),
-                            linemanagerStatisticsService = mockk<LinemanagerStatisticsService>(),
-                            employeeLinemanagerService = mockk<EmployeeLinemanagerService>(),
-                            linemanagerRevokeService = revokeService,
-                            getNarmestelederrelasjon = mockk<GetNarmestelederrelasjon>(),
-                        )
+                        route(INTERNAL_API_V1_PATH) {
+                            install(AddTokenIssuerPlugin)
+                            registerLinemanagerRevokeApi(texasHttpClient, revokeService)
+                        }
                     }
                 }
                 test()

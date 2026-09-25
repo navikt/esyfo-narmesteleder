@@ -18,6 +18,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.jackson.jackson
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
@@ -38,6 +39,7 @@ import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
+import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -49,6 +51,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.REQUIREMENT_PATH
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNarmestelederProducer
@@ -72,7 +75,6 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldi
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
-import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.util.UUID
@@ -331,15 +333,17 @@ private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture
             installContentNegotiation()
             installStatusPages()
             routing {
-                registerApiV1(
-                    NarmestelederKafkaService(fixture.producer),
-                    fixture.texas,
-                    mockk<ValidationService>(relaxed = true),
-                    mockk<LinemanagerRequirementRESTHandler>(relaxed = true),
-                    fixture.altinn,
-                    mockk<NarmestelederLookupService>(relaxed = true),
-                    fixture.useCase,
-                )
+                route(API_V1_PATH) {
+                    install(AddTokenIssuerPlugin)
+                    registerLinemanagerApiV1(
+                        NarmestelederKafkaService(fixture.producer),
+                        mockk<ValidationService>(relaxed = true),
+                        fixture.texas,
+                        mockk<LinemanagerRequirementRESTHandler>(relaxed = true),
+                        mockk<NarmestelederLookupService>(relaxed = true),
+                        fixture.useCase,
+                    )
+                }
             }
         }
         block(fixture)

@@ -31,6 +31,7 @@ internal val fulfillmentRejected = Event<FulfillNarmestelederbehovResult>(
                 is FulfillNarmestelederbehovResult.Fulfilled -> error("A fulfilled behov cannot be rejected")
                 is FulfillNarmestelederbehovResult.InvalidManagerContactDetails -> "INVALID_MANAGER_CONTACT_DETAILS"
                 FulfillNarmestelederbehovResult.NotFound -> "NOT_FOUND"
+                FulfillNarmestelederbehovResult.BehovMissingAfterPublication -> "BEHOV_MISSING_AFTER_PUBLICATION"
                 is FulfillNarmestelederbehovResult.AccessDenied -> "ACCESS_DENIED"
                 is FulfillNarmestelederbehovResult.NoActiveSykmelding -> "NO_ACTIVE_SYKMELDING"
                 is FulfillNarmestelederbehovResult.NoEmployment -> "NO_EMPLOYMENT"

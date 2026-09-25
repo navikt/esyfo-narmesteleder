@@ -15,8 +15,10 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.spyk
 import linemanager
+import no.nav.syfo.TestDB
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
+import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.service.PdpService
@@ -57,9 +59,9 @@ import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
-import no.nav.syfo.narmestelederbehov.infrastructure.DbNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
@@ -149,13 +151,13 @@ abstract class LinemanagerApiV1TestBase(
                     validationService = validationServiceSpy,
                 )
             fulfillNarmestelederbehov = FulfillNarmestelederbehovUseCase(
-                DbNarmestelederbehovRepository(fakeRepo),
+                ExposedNarmestelederbehovRepository(TestDB.exposedDatabase),
                 AltinnOrganizationAccess(altinnTilgangerServiceMock, pdpService, eregService),
                 DinesykmeldteActiveSykmeldingLookup(dineSykmelteService),
                 AaregEmploymentLookup(aaregService),
                 PdlPersonLookup(FakePdlClient()),
                 KafkaEstablishNarmestelederrelasjon(relationProducerSpy),
-                DialogportenNarmestelederbehovDialog(fakeRepo, mockk<DialogportenService>(relaxed = true)),
+                DialogportenNarmestelederbehovDialog(FakeDialogportenClient()),
                 LegacyManagerNameValidationMetrics(),
             )
             linemanagerSearchService =

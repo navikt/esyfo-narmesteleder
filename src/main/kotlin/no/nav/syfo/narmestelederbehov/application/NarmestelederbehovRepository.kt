@@ -7,7 +7,9 @@ import java.util.UUID
 interface NarmestelederbehovRepository {
     suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov?
 
-    suspend fun markFulfilled(id: NarmestelederbehovId)
+    suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult
+
+    suspend fun markDialogCompleted(id: NarmestelederbehovId)
 }
 
 sealed interface MarkFulfilledResult {

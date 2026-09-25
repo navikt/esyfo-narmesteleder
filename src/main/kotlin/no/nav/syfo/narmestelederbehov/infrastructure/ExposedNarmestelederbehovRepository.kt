@@ -6,6 +6,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -16,8 +17,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
 
-class ExposedNarmestelederbehovRepository(private val database: Database) {
-    suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = withContext(Dispatchers.IO) {
+class ExposedNarmestelederbehovRepository(private val database: Database) : NarmestelederbehovRepository {
+    override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {
             NarmestelederbehovTable
                 .select(
@@ -39,7 +40,7 @@ class ExposedNarmestelederbehovRepository(private val database: Database) {
         }
     }
 
-    suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = withContext(Dispatchers.IO) {
+    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {
             NarmestelederbehovTable.updateReturning(
                 returning = listOf(NarmestelederbehovTable.dialogId),
@@ -51,7 +52,7 @@ class ExposedNarmestelederbehovRepository(private val database: Database) {
         }
     }
 
-    suspend fun markDialogCompleted(id: NarmestelederbehovId) {
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId) {
         withContext(Dispatchers.IO) {
             suspendTransaction(db = database) {
                 val updated = NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {

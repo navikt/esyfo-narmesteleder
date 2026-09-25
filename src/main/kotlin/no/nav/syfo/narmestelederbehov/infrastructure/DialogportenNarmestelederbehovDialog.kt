@@ -1,47 +1,22 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import kotlinx.coroutines.CancellationException
-import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.logging.applicationEvent
-import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.logging.logEvent
-import no.nav.syfo.narmesteleder.db.NarmestelederDb
-import no.nav.syfo.narmestelederbehov.application.DialogportenCompletionAttempt
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
+import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
-import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import org.slf4j.event.Level
+import java.util.UUID
 
-private val dialogportenCompletionFailed = applicationEvent<String>(
-    name = "narmestelederbehov_dialogporten_completion_failed",
-    level = Level.WARN,
-    message = "Dialogporten completion failed; pending behov remains retryable",
-    operation = "fulfill_narmestelederbehov",
-    upstream = "dialogporten",
-    fields = mapOf(
-        "behov_id" to { it },
-    ),
-)
-
-class DialogportenNarmestelederbehovDialog(
-    private val db: NarmestelederDb,
-    private val service: DialogportenService,
-) : NarmestelederbehovDialog {
-    override suspend fun attemptCompletion(id: NarmestelederbehovId): DialogportenCompletionAttempt {
-        try {
-            val behov = db.findBehovById(id.value)
-                ?: return DialogportenCompletionAttempt.NotApplicable
-            if (behov.dialogId == null) return DialogportenCompletionAttempt.NotApplicable
-            service.completeFulfilledDialog(behov)
-            return DialogportenCompletionAttempt.Completed
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.logEvent(dialogportenCompletionFailed, id.value.toString(), cause = e)
-            return DialogportenCompletionAttempt.Failed
-        }
-    }
-
-    private companion object {
-        val logger = applicationLogger(DialogportenNarmestelederbehovDialog::class.java)
+class DialogportenNarmestelederbehovDialog(private val client: DialogportenClient) : NarmestelederbehovDialog {
+    override suspend fun complete(dialogId: UUID) {
+        val existing = client.getDialogById(dialogId)
+        client.patchDialog(
+            dialogId,
+            existing.revision,
+            HttpDialogportenClient.DialogportenPatch(
+                HttpDialogportenClient.DialogportenPatch.OPERATION.REPLACE,
+                HttpDialogportenClient.DialogportenPatch.PATH.STATUS,
+                DialogStatus.Completed.name,
+            ),
+        )
     }
 }

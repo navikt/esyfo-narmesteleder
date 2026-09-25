@@ -27,7 +27,6 @@ import io.mockk.mockk
 import io.mockk.spyk
 import linemanager
 import manager
-import nlBehovEntity
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.TestAaregClient
@@ -46,11 +45,10 @@ import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
+import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.REQUIREMENT_PATH
-import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNarmestelederProducer
@@ -58,13 +56,17 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.PersonDetails
 import no.nav.syfo.narmestelederbehov.application.PersonLookup
+import no.nav.syfo.narmestelederbehov.domain.Employee
+import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
 import no.nav.syfo.narmestelederbehov.domain.RegisteredName
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
-import no.nav.syfo.narmestelederbehov.infrastructure.DbNarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
@@ -98,7 +100,7 @@ class FulfillNarmestelederbehovRouteTest :
                         any(),
                     )
                 }
-                (fixture.db.findBehovById(id) ?: error("Stored requirement missing")).behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
             }
         }
 
@@ -246,7 +248,7 @@ private class PutFixture {
     private val relation = linemanager()
     val employeeIdent = relation.employeeIdentificationNumber.value
     val orgNumber = relation.orgNumber.value
-    val db = FakeNarmestelederDb()
+    val repository = FakePutBehovRepository()
     val aareg = TestAaregClient()
     val texas = mockk<TexasHttpClient>()
     val pdp = mockk<PdpService>(relaxed = true)
@@ -261,13 +263,13 @@ private class PutFixture {
         EregService(ereg, mockk<EregCache>(relaxed = true)),
     )
     val useCase = FulfillNarmestelederbehovUseCase(
-        DbNarmestelederbehovRepository(db),
+        repository,
         organizationAccess,
         DinesykmeldteActiveSykmeldingLookup(sykmelding),
         AaregEmploymentLookup(AaregService(aareg)),
         people,
         KafkaEstablishNarmestelederrelasjon(producer),
-        DialogportenNarmestelederbehovDialog(db, mockk(relaxed = true)),
+        NarmestelederbehovDialog { },
         LegacyManagerNameValidationMetrics(),
     )
 
@@ -282,19 +284,33 @@ private class PutFixture {
     suspend fun seed(seedEmployment: Boolean = true): UUID {
         if (seedEmployment) aareg.seedEmployment(employeeIdent, orgNumber, orgNumber)
         people.registerPerson(employeeIdent, relation.lastName)
-        return db.insertNlBehov(
-            nlBehovEntity().copy(
-                sykmeldtFnr = employeeIdent,
-                orgnummer = orgNumber,
-                hovedenhetOrgnummer = orgNumber,
-                behovStatus = BehovStatus.BEHOV_CREATED,
-            ),
-        ).id ?: error("No requirement seeded")
+        return repository.seed(employeeIdent, orgNumber)
     }
 
     fun newManager(): Manager = manager().copy(
         nationalIdentificationNumber = PersonalIdentificationNumber(relation.manager.nationalIdentificationNumber.value.reversed()),
     )
+}
+
+private class FakePutBehovRepository : NarmestelederbehovRepository {
+    private val behov = mutableMapOf<NarmestelederbehovId, Narmestelederbehov>()
+    val fulfilled = mutableListOf<NarmestelederbehovId>()
+
+    fun seed(employeeIdent: String, orgNumber: String): UUID {
+        val id = NarmestelederbehovId(UUID.randomUUID())
+        behov[id] = Narmestelederbehov(id, Employee(PersonIdent(employeeIdent), OrganizationNumber(orgNumber)))
+        return id.value
+    }
+
+    override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov[id]
+
+    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult {
+        if (id !in behov) return MarkFulfilledResult.Missing
+        fulfilled += id
+        return MarkFulfilledResult.Marked(id, null)
+    }
+
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId) = Unit
 }
 
 private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture) -> Unit) {

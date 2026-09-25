@@ -1,7 +1,10 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactInput
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactNormalization
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactValidationIssue
@@ -18,6 +21,25 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import org.slf4j.event.Level
+import java.util.UUID
+
+private val dialogStatusPersistenceFailed = applicationEvent<String>(
+    name = "narmestelederbehov_dialog_status_persistence_failed",
+    level = Level.WARN,
+    message = "Dialogporten completed but behov status could not be persisted",
+    operation = "fulfill_narmestelederbehov",
+    fields = mapOf("behov_id" to { it }),
+)
+
+private val dialogportenCompletionFailed = applicationEvent<String>(
+    name = "narmestelederbehov_dialogporten_completion_failed",
+    level = Level.WARN,
+    message = "Dialogporten completion failed; pending behov remains retryable",
+    operation = "fulfill_narmestelederbehov",
+    upstream = "dialogporten",
+    fields = mapOf("behov_id" to { it }),
+)
 
 class FulfillNarmestelederbehovUseCase(
     private val behovRepository: NarmestelederbehovRepository,
@@ -91,14 +113,38 @@ class FulfillNarmestelederbehovUseCase(
                 source = relationSource,
             ),
         )
-        behovRepository.markFulfilled(behov.id)
-        val dialogCompletion = dialog.attemptCompletion(behov.id)
+        val marked = when (val result = behovRepository.markFulfilled(behov.id)) {
+            is MarkFulfilledResult.Marked -> result
+            MarkFulfilledResult.Missing -> return FulfillNarmestelederbehovResult.BehovMissingAfterPublication.log()
+        }
+        val dialogCompletion = marked.dialogId?.let { dialogId -> completeDialog(marked.id, dialogId) }
+            ?: DialogportenCompletionAttempt.NotApplicable
         return FulfillNarmestelederbehovResult.Fulfilled(
             relationSource = relationSource,
             dialogCompletion = dialogCompletion,
             managerNameMatch = managerNameMatch,
         )
             .log()
+    }
+
+    private suspend fun completeDialog(behovId: NarmestelederbehovId, dialogId: UUID): DialogportenCompletionAttempt {
+        try {
+            dialog.complete(dialogId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.logEvent(dialogportenCompletionFailed, behovId.value.toString(), cause = e)
+            return DialogportenCompletionAttempt.Failed
+        }
+        return try {
+            behovRepository.markDialogCompleted(behovId)
+            DialogportenCompletionAttempt.Completed
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.logEvent(dialogStatusPersistenceFailed, behovId.value.toString(), cause = e)
+            DialogportenCompletionAttempt.Failed
+        }
     }
 
     private fun <T : FulfillNarmestelederbehovResult> T.log(): T = also { result ->
@@ -129,6 +175,7 @@ sealed interface FulfillNarmestelederbehovResult {
         val issues: List<ManagerContactValidationIssue>,
     ) : FulfillNarmestelederbehovResult
     data object NotFound : FulfillNarmestelederbehovResult
+    data object BehovMissingAfterPublication : FulfillNarmestelederbehovResult
     data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
     data class NoActiveSykmelding(val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
     data class NoEmployment(val reason: EmploymentResult) : FulfillNarmestelederbehovResult

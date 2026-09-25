@@ -8,18 +8,20 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.PersonLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.CachedPersonLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DbNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.ValkeyPersonDetailsCache
 import org.koin.dsl.module
 
 fun narmestelederbehovModule() = module {
     single<NarmestelederbehovRepository> { DbNarmestelederbehovRepository(get()) }
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }
-    single<PersonLookup> { PdlPersonLookup(get()) }
+    single<PersonLookup> { CachedPersonLookup(PdlPersonLookup(get()), ValkeyPersonDetailsCache(get())) }
     single<ManagerNameValidationMetrics> { LegacyManagerNameValidationMetrics() }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get(), get()) }
     single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }

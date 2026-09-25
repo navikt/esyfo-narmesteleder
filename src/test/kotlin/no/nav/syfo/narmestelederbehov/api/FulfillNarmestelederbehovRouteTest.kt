@@ -40,13 +40,13 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.valkey.EregCache
-import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.REQUIREMENT_PATH
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
@@ -58,20 +58,20 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.PersonDetails
+import no.nav.syfo.narmestelederbehov.application.PersonLookup
+import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
+import no.nav.syfo.narmestelederbehov.domain.RegisteredName
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DbNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
-import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
-import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
-import prepareGetPersonResponse
 import java.util.UUID
 
 class FulfillNarmestelederbehovRouteTest :
@@ -80,7 +80,7 @@ class FulfillNarmestelederbehovRouteTest :
             withPutApplication { fixture ->
                 val id = fixture.seed()
                 val submittedManager = fixture.newManager()
-                fixture.pdl.prepareGetPersonResponse(submittedManager)
+                fixture.people.registerPerson(submittedManager.nationalIdentificationNumber.value, submittedManager.lastName)
 
                 val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
                     contentType(ContentType.Application.Json)
@@ -109,7 +109,7 @@ class FulfillNarmestelederbehovRouteTest :
                     mobile = "+47 90 00 00 00",
                     email = "leder+ø@eksempelø.no; annen@domene.no ",
                 )
-                fixture.pdl.prepareGetPersonResponse(submittedManager)
+                fixture.people.registerPerson(submittedManager.nationalIdentificationNumber.value, submittedManager.lastName)
 
                 val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
                     contentType(ContentType.Application.Json)
@@ -251,8 +251,7 @@ private class PutFixture {
     val texas = mockk<TexasHttpClient>()
     val pdp = mockk<PdpService>(relaxed = true)
     val ereg = FakeEregClient()
-    private val pdlCache = mockk<PdlCache>(relaxed = true)
-    val pdl = spyk(PdlService(FakePdlClient(), pdlCache))
+    val people = FakePersonLookup()
     val sykmelding: DinesykmeldteService = spyk(ClientDinesykmeldteService(FakeDinesykmeldteClient()))
     val producer = spyk(FakeSykmeldingNarmestelederProducer())
     val altinn = AltinnTilgangerService(FakeAltinnTilgangerClient())
@@ -266,14 +265,13 @@ private class PutFixture {
         organizationAccess,
         DinesykmeldteActiveSykmeldingLookup(sykmelding),
         AaregEmploymentLookup(AaregService(aareg)),
-        PdlPersonLookup(pdl),
+        people,
         KafkaEstablishNarmestelederrelasjon(producer),
         DialogportenNarmestelederbehovDialog(db, mockk(relaxed = true)),
         LegacyManagerNameValidationMetrics(),
     )
 
     init {
-        coEvery { pdlCache.getPerson(any()) } returns null
         texas.defaultMocks(
             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgNumber"),
             scope = MASKINPORTEN_NL_SCOPE,
@@ -283,7 +281,7 @@ private class PutFixture {
 
     suspend fun seed(seedEmployment: Boolean = true): UUID {
         if (seedEmployment) aareg.seedEmployment(employeeIdent, orgNumber, orgNumber)
-        pdl.prepareGetPersonResponse(employeeIdent, relation.lastName)
+        people.registerPerson(employeeIdent, relation.lastName)
         return db.insertNlBehov(
             nlBehovEntity().copy(
                 sykmeldtFnr = employeeIdent,
@@ -329,4 +327,18 @@ private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture
         }
         block(fixture)
     }
+}
+
+private class FakePersonLookup : PersonLookup {
+    private val people = mutableMapOf<PersonIdent, PersonDetails>()
+
+    fun registerPerson(fnr: String, lastName: String) {
+        val personIdent = PersonIdent(fnr)
+        people[personIdent] = PersonDetails(
+            personIdent,
+            PersonNameDetails(firstName = "Test", lastName = lastName, registeredNames = listOf(RegisteredName(lastName))),
+        )
+    }
+
+    override suspend fun find(personIdent: PersonIdent): PersonDetails? = people[personIdent]
 }

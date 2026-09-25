@@ -12,8 +12,8 @@ import io.ktor.http.HttpStatusCode
 import io.mockk.coEvery
 import io.mockk.coVerify
 import nlBehovEntity
-import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.pdp.client.Decision
+import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ereg.client.Organisasjon

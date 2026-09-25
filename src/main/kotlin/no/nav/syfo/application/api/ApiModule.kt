@@ -4,74 +4,41 @@ import io.ktor.server.application.Application
 import io.ktor.server.http.content.staticResources
 import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.response.respondRedirect
+import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
-import no.nav.syfo.application.ApplicationState
-import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.altinntilganger.registerAccessOrganizationsApi
+import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
-import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
-import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
-import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
-import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
-import no.nav.syfo.narmesteleder.service.ValidationService
-import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
-import no.nav.syfo.registerApiV1
-import no.nav.syfo.texas.AltinnTokenProvider
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
+import no.nav.syfo.narmesteleder.api.internal.v1.registerLineManagerLookupApi
+import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
+import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
+import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import no.nav.syfo.texas.preAuthorizedAppsFromEnvironment
-import org.koin.ktor.ext.inject
+import org.koin.ktor.ext.get
 
 fun Application.configureRouting() {
-    val applicationState by inject<ApplicationState>()
-    val database by inject<DatabaseInterface>()
-    val narmestelederKafkaService by inject<NarmestelederKafkaService>()
-    val texasHttpClient by inject<TexasHttpClient>()
-    val validationService by inject<ValidationService>()
-    val linemanagerRequirementRESTHandler by inject<LinemanagerRequirementRESTHandler>()
-    val fulfillNarmestelederbehov by inject<FulfillNarmestelederbehovUseCase>()
-    val linemanagerSearchService by inject<LinemanagerSearchService>()
-    val linemanagerStatisticsService by inject<LinemanagerStatisticsService>()
-    val altinnTokenProvider by inject<AltinnTokenProvider>()
-    val altinnTilgangerService by inject<AltinnTilgangerService>()
-    val narmestelederLookupService by inject<NarmestelederLookupService>()
-    val employeeLinemanagerService by inject<EmployeeLinemanagerService>()
-    val linemanagerRevokeService by inject<LinemanagerRevokeService>()
-    val getNarmestelederrelasjon by inject<GetNarmestelederrelasjon>()
-
     installCallId()
     installContentNegotiation()
     installStatusPages()
 
     routing {
-        registerPodApi(applicationState, database)
+        registerPodApi(applicationState = get(), database = get())
         registerMetricApi()
-        registerApiV1(
-            narmestelederKafkaService,
-            texasHttpClient,
-            validationService,
-            linemanagerRequirementRESTHandler,
-            altinnTilgangerService,
-            narmestelederLookupService,
-            fulfillNarmestelederbehov,
-        )
-        registerInternalApi(
-            narmestelederLookupService = narmestelederLookupService,
-            texasHttpClient = texasHttpClient,
-            preAuthorizedApps = preAuthorizedAppsFromEnvironment(),
-            linemanagerSearchService = linemanagerSearchService,
-            linemanagerStatisticsService = linemanagerStatisticsService,
-            employeeLinemanagerService = employeeLinemanagerService,
-            linemanagerRevokeService = linemanagerRevokeService,
-            getNarmestelederrelasjon = getNarmestelederrelasjon,
-        )
+        route(API_V1_PATH) {
+            install(AddTokenIssuerPlugin)
+            registerApiV1Routes()
+        }
+        route(INTERNAL_API_V1_PATH) {
+            install(AddTokenIssuerPlugin)
+            registerInternalApiV1Routes()
+        }
         // Static openAPI spec + swagger
         staticResources("/openapi", "openapi")
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
@@ -82,10 +49,35 @@ fun Application.configureRouting() {
         )
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
-            registerDialogportenTokenApi(texasHttpClient, altinnTokenProvider)
+            registerDialogportenTokenApi(texasHttpClient = get(), altinnTokenProvider = get())
         }
         get("/") {
             call.respondRedirect("/swagger")
         }
     }
+}
+
+private fun Route.registerApiV1Routes() {
+    registerLinemanagerApiV1(
+        narmestelederKafkaService = get(),
+        validationService = get(),
+        texasHttpClient = get(),
+        linemanagerRequirementRestHandler = get(),
+        narmestelederLookupService = get(),
+        fulfillNarmestelederbehov = get(),
+    )
+    registerAccessOrganizationsApi(altinnTilgangerService = get(), texasHttpClient = get())
+}
+
+private fun Route.registerInternalApiV1Routes() {
+    registerLineManagerLookupApi(
+        narmestelederLookupService = get(),
+        texasHttpClient = get(),
+        preAuthorizedApps = preAuthorizedAppsFromEnvironment(),
+    )
+    registerLinemanagerSearchApi(texasHttpClient = get(), linemanagerSearchService = get())
+    registerLinemanagerStatisticsApi(texasHttpClient = get(), linemanagerStatisticsService = get())
+    registerEmployeeLinemanagerApi(texasHttpClient = get(), employeeLinemanagerService = get())
+    registerLinemanagerRevokeApi(texasHttpClient = get(), linemanagerRevokeService = get())
+    registerNarmestelederrelasjonApi(getNarmestelederrelasjon = get(), texasHttpClient = get())
 }

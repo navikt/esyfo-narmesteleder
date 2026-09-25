@@ -131,6 +131,7 @@ private class FakeNarmestelederrelasjonRepository(
     private val effects: MutableList<String>,
 ) : NarmestelederrelasjonRepository {
     override suspend fun findById(id: UUID) = lookup.also { effects += "lookup" }
+    override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? = error("Not used by GET")
 }
 
 private class FakeGetOrganizationAccess(

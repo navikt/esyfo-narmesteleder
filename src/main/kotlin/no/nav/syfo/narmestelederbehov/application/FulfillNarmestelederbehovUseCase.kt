@@ -38,9 +38,9 @@ class FulfillNarmestelederbehovUseCase(
         verifyOrganizationAccess(command.accessSubject, behov).orStop { return it }
         verifyActiveSykmelding(behov).orStop { return it }
         verifyEmployment(behov).orStop { return it }
-        val people = findEmployeeAndManager(behov, manager).orStop { return it }
-        val managerNameMatch = verifyManagerName(people.manager, manager).orStop { return it }
-        val relationSource = publishNarmestelederrelasjon(command.accessSubject, behov, manager, people)
+        val employeeAndManager = findEmployeeAndManager(behov, manager).orStop { return it }
+        val managerNameMatch = verifyManagerName(employeeAndManager.manager, manager).orStop { return it }
+        val relationSource = publishNarmestelederrelasjon(command.accessSubject, behov, manager, employeeAndManager)
         val marked = markFulfilled(behov).orStop { return it }
         return FulfillNarmestelederbehovResult.Fulfilled(
             relationSource = relationSource,
@@ -103,22 +103,22 @@ class FulfillNarmestelederbehovUseCase(
         subject: OrganizationAccessSubject,
         behov: Narmestelederbehov,
         manager: NormalizedManagerContact,
-        people: EmployeeAndManager,
+        employeeAndManager: EmployeeAndManager,
     ): RelationSource {
         val relationSource = subject.relationSource()
         establishNarmestelederrelasjon.establish(
             EstablishNarmestelederrelasjonCommand(
                 employee = RelationPerson(
-                    personIdent = people.employee.personIdent,
-                    firstName = people.employee.name.firstName,
-                    middleName = people.employee.name.middleName,
-                    lastName = people.employee.name.lastName,
+                    personIdent = employeeAndManager.employee.personIdent,
+                    firstName = employeeAndManager.employee.name.firstName,
+                    middleName = employeeAndManager.employee.name.middleName,
+                    lastName = employeeAndManager.employee.name.lastName,
                 ),
                 manager = RelationManager(
                     personIdent = manager.personIdent,
-                    firstName = people.manager.name.firstName,
-                    middleName = people.manager.name.middleName,
-                    lastName = people.manager.name.lastName,
+                    firstName = employeeAndManager.manager.name.firstName,
+                    middleName = employeeAndManager.manager.name.middleName,
+                    lastName = employeeAndManager.manager.name.lastName,
                     email = manager.email.value,
                     mobile = manager.mobile.value,
                 ),

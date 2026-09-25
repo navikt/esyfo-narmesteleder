@@ -1,13 +1,10 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import kotlinx.coroutines.CancellationException
-import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.narmestelederbehov.domain.ManagerContactInput
 import no.nav.syfo.narmestelederbehov.domain.ManagerContactNormalization
-import no.nav.syfo.narmestelederbehov.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederbehov.domain.ManagerLastNameMatch
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.domain.matchManagerLastName
@@ -17,7 +14,6 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
-import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -157,32 +153,6 @@ class FulfillNarmestelederbehovUseCase(
     private companion object {
         val logger = applicationLogger(FulfillNarmestelederbehovUseCase::class.java)
     }
-}
-
-data class FulfillNarmestelederbehovCommand(
-    val behovId: NarmestelederbehovId,
-    val manager: ManagerContactInput,
-    val accessSubject: OrganizationAccessSubject,
-)
-
-sealed interface FulfillNarmestelederbehovResult {
-    data class Fulfilled(
-        val relationSource: RelationSource,
-        val dialogCompletion: DialogportenCompletionAttempt,
-        val managerNameMatch: ManagerLastNameMatch,
-    ) : FulfillNarmestelederbehovResult
-    data class InvalidManagerContactDetails(
-        val issues: List<ManagerContactValidationIssue>,
-    ) : FulfillNarmestelederbehovResult
-    data object NotFound : FulfillNarmestelederbehovResult
-    data object BehovMissingAfterPublication : FulfillNarmestelederbehovResult
-    data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
-    data class NoActiveSykmelding(val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
-    data class NoEmployment(val reason: EmploymentResult) : FulfillNarmestelederbehovResult
-    data object PersonNotFound : FulfillNarmestelederbehovResult
-    data class ManagerNameMismatch(
-        val managerNameMatch: ManagerLastNameMatch.NoMatch,
-    ) : FulfillNarmestelederbehovResult
 }
 
 private fun OrganizationAccessSubject.relationSource(): RelationSource = when (this) {

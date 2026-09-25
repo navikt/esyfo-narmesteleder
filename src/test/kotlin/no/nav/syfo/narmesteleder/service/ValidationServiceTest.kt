@@ -6,7 +6,6 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import faker
-import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -174,9 +173,7 @@ class ValidationServiceTest :
                 )
 
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    service.normalizeManagerPayload(
-                        manager = manager,
-                    )
+                    service.normalizeLinemanagerPayload(linemanager().copy(manager = manager))
                 }
 
                 exception.type shouldBe ErrorType.INVALID_FORMAT
@@ -210,9 +207,7 @@ class ValidationServiceTest :
                 )
 
                 val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    service.normalizeManagerPayload(
-                        manager = manager,
-                    )
+                    service.normalizeLinemanagerPayload(linemanager().copy(manager = manager))
                 }
 
                 exception.type shouldBe ErrorType.INVALID_FORMAT
@@ -307,32 +302,6 @@ class ValidationServiceTest :
                 coVerify(exactly = 0) {
                     aaregService.findArbeidsforholdByPersonIdent(any())
                     pdlService.getPersonOrThrowApiError(any())
-                }
-            }
-
-            it("should skip employee last name validation when validateEmployeeLastName is false") {
-                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
-                val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
-
-                altinnTilgangerClient.accessPolicy.clear()
-                altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber.value)
-                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value] =
-                    listOf(narmestelederRelasjonerWrite.orgNumber.value to "hovedenhet")
-                aaregClient.arbeidsForholdForIdent[narmestelederRelasjonerWrite.employeeIdentificationNumber.value] =
-                    listOf(narmestelederRelasjonerWrite.orgNumber.value to "hovedenhet")
-                pdlService.prepareGetPersonResponse(
-                    narmestelederRelasjonerWrite.employeeIdentificationNumber.value,
-                    differentLastName(narmestelederRelasjonerWrite.lastName),
-                )
-                pdlService.prepareGetPersonResponse(narmestelederRelasjonerWrite.manager)
-
-                shouldNotThrow<ApiErrorException.BadRequestException> {
-                    service.validateLinemanager(
-                        narmestelederRelasjonerWrite,
-                        principal,
-                        validateEmployeeLastName = false,
-                    )
                 }
             }
 

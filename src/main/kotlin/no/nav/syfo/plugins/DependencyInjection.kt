@@ -187,7 +187,7 @@ private fun handlerModule() = module {
     single { NarmestelederBruddService(get(), get()) }
     single { SendtSykmeldingHandler(get(), get(), get()) }
     single {
-        LinemanagerRequirementRESTHandler(get(), get(), get())
+        LinemanagerRequirementRESTHandler(get(), get())
     }
 }
 

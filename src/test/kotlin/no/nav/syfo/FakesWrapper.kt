@@ -88,7 +88,6 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
         LinemanagerRequirementRESTHandler(
             narmesteLederService = narmestelederServiceSpyk,
             validationService = validationServiceSpyk,
-            narmestelederKafkaService = narmestelederKafkaServiceSpyk,
         )
     )
     val nlBehovLeesahHandlerSpyk = spyk(

@@ -4,10 +4,9 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
-import io.kotest.assertions.throwables.shouldNotThrow
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.shouldBe
 import io.mockk.CapturingSlot
 import io.mockk.clearMocks
@@ -27,7 +26,6 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
 import no.nav.syfo.pdl.PdlService
@@ -214,7 +212,7 @@ class NarmestelederServiceTest :
                 } returns true
 
                 // Act
-                shouldNotThrow<HovedenhetNotFoundException> {
+                shouldNotThrowAny {
                     service().createNewNlBehov(
                         write,
                         behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")
@@ -260,7 +258,7 @@ class NarmestelederServiceTest :
                 } returns true
 
                 // Act
-                shouldNotThrow<HovedenhetNotFoundException> {
+                shouldNotThrowAny {
                     service().createNewNlBehov(
                         write,
                         behovSource = BehovSource(id = UUID.randomUUID().toString(), source = "test")
@@ -305,7 +303,7 @@ class NarmestelederServiceTest :
                 } returns true
 
                 // Act
-                shouldNotThrow<HovedenhetNotFoundException> {
+                shouldNotThrowAny {
                     service().createNewNlBehov(
                         write,
                         behovSource = BehovSource(
@@ -440,72 +438,6 @@ class NarmestelederServiceTest :
 
                 // Act + Assert
                 shouldThrow<LinemanagerRequirementNotFoundException> { service().getLinemanagerRequirementReadById(id) }
-            }
-        }
-
-        describe("updateNlBehov") {
-            it("updates entity") {
-                // Arrange
-                val id = UUID.randomUUID()
-                val original = NarmestelederBehovEntity(
-                    id = id,
-                    orgnummer = "111111111",
-                    hovedenhetOrgnummer = "222222222",
-                    sykmeldtFnr = "12345678910",
-                    narmestelederFnr = "01987654321",
-                    behovReason = BehovReason.DEAKTIVERT_LEDER,
-                    avbruttNarmesteLederId = UUID.randomUUID(),
-                    behovStatus = BehovStatus.BEHOV_CREATED,
-                )
-
-                coEvery { nlDb.findBehovById(id) } returns original
-                coEvery { nlDb.updateNlBehov(any()) } returns Unit
-
-                // Act
-                service().updateNlBehov(original.id!!, BehovStatus.BEHOV_FULFILLED)
-                coVerify(exactly = 1) {
-                    nlDb.updateNlBehov(any())
-                }
-            }
-
-            it("retains everything except status") {
-                // Arrange
-                val id = UUID.randomUUID()
-                val original = NarmestelederBehovEntity(
-                    id = id,
-                    orgnummer = "111111111",
-                    hovedenhetOrgnummer = "222222222",
-                    sykmeldtFnr = "12345678910",
-                    narmestelederFnr = "01987654321",
-                    behovReason = BehovReason.DEAKTIVERT_LEDER,
-                    behovStatus = BehovStatus.BEHOV_CREATED,
-                    avbruttNarmesteLederId = UUID.randomUUID(),
-                )
-
-                val narmestelederBehovEntitSlot: CapturingSlot<NarmestelederBehovEntity> = slot()
-                coEvery { nlDb.findBehovById(id) } returns original
-                coEvery { nlDb.updateNlBehov(capture(narmestelederBehovEntitSlot)) } returns Unit
-
-                // Act
-                service().updateNlBehov(original.id!!, BehovStatus.BEHOV_FULFILLED)
-
-                // Assert
-                narmestelederBehovEntitSlot.captured.shouldBeEqualUsingFields({
-                    excludedProperties = setOf(NarmestelederBehovEntity::behovStatus)
-                    original
-                })
-                narmestelederBehovEntitSlot.captured.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
-            }
-
-            it("throws when behov not found") {
-                // Arrange
-                val id = UUID.randomUUID()
-
-                coEvery { nlDb.findBehovById(id) } returns null
-                // Act + Assert
-                shouldThrow<LinemanagerRequirementNotFoundException> {
-                    service().updateNlBehov(id, BehovStatus.BEHOV_FULFILLED)
-                }
             }
         }
 

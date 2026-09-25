@@ -3,73 +3,22 @@ package no.nav.syfo.narmesteleder.api.v1
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.exception.HovedenhetNotFoundException
 import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
-import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.util.logger
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 class LinemanagerRequirementRESTHandler(
     private val narmesteLederService: NarmestelederService,
     private val validationService: ValidationService,
-    private val narmestelederKafkaService: NarmestelederKafkaService,
 ) {
     companion object {
         val logger = logger()
-    }
-
-    suspend fun handleUpdatedRequirement(
-        manager: Manager,
-        requirementId: UUID,
-        principal: Principal,
-    ) {
-        try {
-            val normalizedManager = validationService.normalizeManagerPayload(
-                manager = manager,
-            )
-            val employee = narmesteLederService.getEmployeeByRequirementId(requirementId)
-            val linemanager = Linemanager(
-                employeeIdentificationNumber = employee.nationalIdentificationNumber,
-                orgNumber = employee.orgNumber,
-                lastName = employee.lastName,
-                manager = normalizedManager
-            )
-            val linemanagerActors = validationService.validateLinemanager(
-                linemanager = linemanager,
-                principal = principal,
-                validateEmployeeLastName = false
-            )
-
-            narmestelederKafkaService.sendNarmesteLederRelasjon(
-                linemanager,
-                linemanagerActors,
-                NlResponseSource.getSourceFrom(principal, linemanager)
-            )
-            narmesteLederService.updateNlBehov(
-                requirementId = requirementId,
-                behovStatus = BehovStatus.BEHOV_FULFILLED
-            )
-        } catch (e: HovedenhetNotFoundException) {
-            throw ApiErrorException.NotFoundException("Main entity not found", e)
-        } catch (e: LinemanagerRequirementNotFoundException) {
-            throw ApiErrorException.NotFoundException("A LinemanagerRequirement was not found", e)
-        } catch (e: ApiErrorException) {
-            throw e
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            throw ApiErrorException.InternalServerErrorException("Internal server error", e)
-        }
     }
 
     suspend fun handleGetLinemanagerRequirement(requirementId: UUID, principal: Principal): LinemanagerRequirementRead = try {

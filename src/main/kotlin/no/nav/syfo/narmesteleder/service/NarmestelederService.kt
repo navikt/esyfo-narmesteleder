@@ -9,7 +9,6 @@ import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.Employee
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
@@ -108,14 +107,6 @@ class NarmestelederService(
 
     private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity = nlDb.findBehovById(id)
         ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
-
-    suspend fun updateNlBehov(
-        requirementId: UUID,
-        behovStatus: BehovStatus
-    ) {
-        val narmestelederBehovEntity = findBehovEntityById(requirementId)
-        updateNlBehov(narmestelederBehovEntity, behovStatus)
-    }
 
     suspend fun updateNlBehov(
         behovEntity: NarmestelederBehovEntity,
@@ -242,15 +233,6 @@ class NarmestelederService(
         } else {
             return Pair(BehovStatus.BEHOV_CREATED, arbeidsgiver.juridiskOrgnummer)
         }
-    }
-
-    suspend fun getEmployeeByRequirementId(id: UUID): Employee {
-        val behovEntity = findBehovEntityById(id)
-        return Employee(
-            nationalIdentificationNumber = PersonalIdentificationNumber(behovEntity.sykmeldtFnr),
-            orgNumber = OrganizationNumber(behovEntity.orgnummer),
-            lastName = behovEntity.etternavn ?: "",
-        )
     }
 
     suspend fun getNlBehovList(

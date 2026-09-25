@@ -41,11 +41,14 @@ this event. Changing access policy merely to reduce the count is not a fix.
 
 ## Verification
 
-Run `./gradlew test --tests '*SystemAccessLoggingContractTest'`. The test exercises
-the validator, PDP service and Ktor error handler. `esyfo-logger-testkit` captures
-JSON with the `stdout_json` encoder loaded from `src/main/resources/logback.xml`
-using its NAIS profile in an isolated logging context. It validates the packaged
-v1 contract and a catalog derived from the actual local event definition.
+Run `./gradlew test --tests '*SystemAccessLoggingContractTest' --tests '*AltinnOrganizationAccessLoggingContractTest'`.
+`SystemAccessLoggingContractTest` exercises the legacy validator, PDP service and
+Ktor error handler. `AltinnOrganizationAccessLoggingContractTest` exercises the
+same event from `AltinnOrganizationAccess`, with and without a fallback decision.
+`esyfo-logger-testkit` captures JSON with the `stdout_json` encoder loaded from
+`src/main/resources/logback.xml` using its NAIS profile in an isolated logging
+context. Both tests validate the packaged v1 contract and a catalog derived from
+the actual local event definition.
 
 Schema validation runs inside the existing Gradle test and therefore also in
 normal CI. The testkit and its packaged schema remain test-only dependencies;
@@ -58,7 +61,7 @@ The public libraries are resolved through
 [Nav's GitHub Packages mirror](https://github.com/navikt/github-package-registry-mirror).
 Local builds and CI do not need registry credentials to download them.
 
-The tests cover all direct/fallback decision combinations, skipped fallback,
+The legacy validator test covers all direct/fallback decision combinations, skipped fallback,
 unchanged HTTP responses, exception/cancellation paths, trace context, duplicate
 prevention and identifier canaries. This diagnostic improvement does not by
 itself resolve the functional investigation in

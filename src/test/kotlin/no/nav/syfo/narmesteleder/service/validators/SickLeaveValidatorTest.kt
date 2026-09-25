@@ -11,14 +11,14 @@ import io.mockk.coEvery
 import io.mockk.spyk
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 
 class SickLeaveValidatorTest :
     DescribeSpec({
         val dinesykmeldteClient = FakeDinesykmeldteClient()
-        val dinesykmeldteService: IDinesykmeldteService = spyk(DinesykmeldteService(dinesykmeldteClient))
+        val dinesykmeldteService: DinesykmeldteService = spyk(ClientDinesykmeldteService(dinesykmeldteClient))
         val validator = SickLeaveValidator(dinesykmeldteService)
         val fnr = faker.numerify("###########")
         val orgnummer = faker.numerify("#########")

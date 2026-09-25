@@ -4,14 +4,14 @@ import no.nav.syfo.util.JsonFixtureLoader
 import java.util.concurrent.atomic.*
 
 /**
- * Fake implementation of [IEregClient] for testing and local development.
+ * Fake implementation of [EregClient] for testing and local development.
  *
  * @param fixtureLoader [JsonFixtureLoader] to load organisasjoner from JSON files.
  *                      Defaults to loading from classpath:fake-clients/ereg.
  */
 class FakeEregClient(
     fixtureLoader: JsonFixtureLoader = defaultFixtureLoader
-) : IEregClient {
+) : EregClient {
     /**
      * Mutable map of orgnummer -> Organisasjon for test manipulation.
      * Pre-populated from the fixture file.

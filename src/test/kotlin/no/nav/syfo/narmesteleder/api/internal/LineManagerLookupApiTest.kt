@@ -27,7 +27,7 @@ import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerLookupRequest
 import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerLookupResponse
 import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerResponse
 import no.nav.syfo.narmesteleder.db.ActiveNarmestelederEntity
-import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
+import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
@@ -44,7 +44,7 @@ import java.util.UUID
 class LineManagerLookupApiTest :
     DescribeSpec({
         val texasHttpClient = mockk<TexasHttpClient>()
-        val lookupDb = mockk<INarmestelederLookupDb>()
+        val lookupDb = mockk<NarmestelederLookupDb>()
         val lookupService = NarmestelederLookupService(lookupDb)
         val callingApp = "calling-app-id"
         val sykmeldtFnr = PersonalIdentificationNumber("12345678901")

@@ -21,13 +21,13 @@ import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
 
-interface IAltinnTilgangerClient {
+interface AltinnTilgangerClient {
     suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
     ): AltinnTilgangerResponse?
 }
 
-class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = defaultFixtureLoader) : IAltinnTilgangerClient {
+class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = defaultFixtureLoader) : AltinnTilgangerClient {
     val accessPolicy by lazy { loadTilganger(fixtureLoader).toMutableList() }
     private var failure: Throwable? = null
 
@@ -135,11 +135,11 @@ class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = d
     }
 }
 
-class AltinnTilgangerClient(
+class HttpAltinnTilgangerClient(
     private val texasClient: TexasHttpClient,
     private val httpClient: HttpClient,
     private val baseUrl: String,
-) : IAltinnTilgangerClient {
+) : AltinnTilgangerClient {
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
     ): AltinnTilgangerResponse? {

@@ -4,8 +4,8 @@ import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.sykmelding.exposed.ISendtSykmeldingNarmestelederBruddRepository
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingNarmestelederBrudd
+import no.nav.syfo.sykmelding.exposed.SendtSykmeldingNarmestelederBruddRepository
 import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -13,7 +13,7 @@ import java.util.UUID
 
 class NarmestelederBruddService(
     private val narmestelederKafkaService: NarmestelederKafkaService,
-    private val bruddRepository: ISendtSykmeldingNarmestelederBruddRepository,
+    private val bruddRepository: SendtSykmeldingNarmestelederBruddRepository,
 ) {
     suspend fun revokeFromSendtSykmelding(
         sykmeldingId: UUID,

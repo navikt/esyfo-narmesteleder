@@ -4,11 +4,11 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.application.valkey.EregCache
-import no.nav.syfo.ereg.client.IEregClient
+import no.nav.syfo.ereg.client.EregClient
 import no.nav.syfo.ereg.client.Organisasjon
 
 class EregService(
-    private val eregClient: IEregClient,
+    private val eregClient: EregClient,
     private val eregCache: EregCache
 ) {
     suspend fun getOrganization(

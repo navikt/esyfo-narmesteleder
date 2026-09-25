@@ -27,7 +27,7 @@ import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.altinn.pdp.client.Decision
 import no.nav.syfo.altinn.pdp.client.DecisionResult
-import no.nav.syfo.altinn.pdp.client.IPdpClient
+import no.nav.syfo.altinn.pdp.client.PdpClient
 import no.nav.syfo.altinn.pdp.client.PdpResponse
 import no.nav.syfo.altinn.pdp.client.User
 import no.nav.syfo.altinn.pdp.service.PdpService
@@ -80,7 +80,7 @@ class SystemAccessLoggingContractTest :
         val decisions = mutableMapOf<String, Decision>()
         val pdpFailures = mutableMapOf<String, Throwable>()
         val checkedOrganizations = mutableListOf<String>()
-        val pdpClient = object : IPdpClient {
+        val pdpClient = object : PdpClient {
             override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): PdpResponse {
                 val organization = orgNumberSet.single()
                 checkedOrganizations += organization

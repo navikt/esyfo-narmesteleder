@@ -1,13 +1,13 @@
 package no.nav.syfo.aareg
 
+import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.AaregClientException
 import no.nav.syfo.aareg.client.Arbeidsforholdoversikt
-import no.nav.syfo.aareg.client.IAaregClient
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.util.logger
 
-class AaregService(private val arbeidsforholdOversiktClient: IAaregClient) {
+class AaregService(private val arbeidsforholdOversiktClient: AaregClient) {
     suspend fun findArbeidsforholdByPersonIdent(
         personIdent: String
     ): List<Arbeidsforhold> {

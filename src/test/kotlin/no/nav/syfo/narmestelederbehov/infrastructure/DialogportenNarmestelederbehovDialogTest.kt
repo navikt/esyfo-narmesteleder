@@ -12,8 +12,8 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.DialogportenCompletionAttempt
@@ -34,7 +34,7 @@ class DialogportenNarmestelederbehovDialogTest :
         )
 
         test("does nothing when no dialog exists") {
-            val db = mockk<INarmestelederDb>()
+            val db = mockk<NarmestelederDb>()
             val service = mockk<DialogportenService>()
             coEvery { db.findBehovById(id.value) } returns behov
 
@@ -44,7 +44,7 @@ class DialogportenNarmestelederbehovDialogTest :
         }
 
         test("lookup failure stays retryable") {
-            val db = mockk<INarmestelederDb>()
+            val db = mockk<NarmestelederDb>()
             val service = mockk<DialogportenService>()
             coEvery { db.findBehovById(id.value) } throws IllegalStateException("private-exception-canary")
             val appender = ListAppender<ILoggingEvent>().apply { start() }
@@ -73,7 +73,7 @@ class DialogportenNarmestelederbehovDialogTest :
         }
 
         test("missing behov is not applicable") {
-            val db = mockk<INarmestelederDb>()
+            val db = mockk<NarmestelederDb>()
             val service = mockk<DialogportenService>()
             coEvery { db.findBehovById(id.value) } returns null
 
@@ -83,7 +83,7 @@ class DialogportenNarmestelederbehovDialogTest :
         }
 
         test("lookup cancellation propagates") {
-            val db = mockk<INarmestelederDb>()
+            val db = mockk<NarmestelederDb>()
             val service = mockk<DialogportenService>()
             coEvery { db.findBehovById(id.value) } throws CancellationException("cancelled")
 
@@ -98,7 +98,7 @@ class DialogportenNarmestelederbehovDialogTest :
             CancellationException("cancelled") to null,
         ).forEach { (failure, result) ->
             test("completion ${failure::class.simpleName} ${if (result == null) "propagates" else "stays retryable"}") {
-                val db = mockk<INarmestelederDb>()
+                val db = mockk<NarmestelederDb>()
                 val service = mockk<DialogportenService>()
                 val withDialog = behov.copy(dialogId = UUID.fromString("00000000-0000-0000-0000-000000000002"))
                 coEvery { db.findBehovById(id.value) } returns withDialog

@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
-class FakeNarmestelederDb : INarmestelederDb {
+class FakeNarmestelederDb : NarmestelederDb {
     private val store = ConcurrentHashMap<UUID, NarmestelederBehovEntity>()
     private val order = mutableListOf<UUID>()
 
@@ -40,7 +40,7 @@ class FakeNarmestelederDb : INarmestelederDb {
 
     /**
      * Note: This fake implementation does NOT join with sendt_sykmelding like the real implementation.
-     * It simply filters on created time. Use the real NarmestelederDb with TestDB for integration tests
+     * It simply filters on created time. Use the real PostgresNarmestelederDb with TestDB for integration tests
      * that need to verify the actual join behavior.
      */
     override suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(

@@ -17,8 +17,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClientException
+import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.logging.failureDiagnostics
 import no.nav.syfo.texas.AltinnTokenProvider
@@ -34,7 +34,7 @@ class DialogportenClientTest :
             it("preserves the HTTP cause for the service that handles the failed operation") {
                 val provider = mockk<AltinnTokenProvider>()
                 coEvery { provider.token(any()) } returns AltinnTokenProvider.AltinnToken("secret-token", Duration.ZERO, "scope")
-                val client = DialogportenClient(
+                val client = HttpDialogportenClient(
                     "https://dialogporten.test",
                     httpClientDefault(HttpClient(MockEngine { respond("private-response-body", HttpStatusCode.ServiceUnavailable) })),
                     provider,
@@ -52,7 +52,7 @@ class DialogportenClientTest :
                 val cancelled = CancellationException("cancelled")
                 val provider = mockk<AltinnTokenProvider>()
                 coEvery { provider.token(any()) } throws cancelled
-                val client = DialogportenClient(
+                val client = HttpDialogportenClient(
                     "https://dialogporten.test",
                     HttpClient(MockEngine { error("No upstream request should be made") }),
                     provider,
@@ -70,12 +70,12 @@ class DialogportenClientTest :
                                 HttpMethod.Patch -> {
                                     // Noe quirk med MockEngine gjør at headeren tydeligvis havner her
                                     request.body.contentType shouldBe JSON_PATCH_CONTENT_TYPE
-                                    val patchValues: List<DialogportenClient.DialogportenPatch> =
+                                    val patchValues: List<HttpDialogportenClient.DialogportenPatch> =
                                         jacksonObjectMapper().readValue(request.body.toByteArray())
 
-                                    patchValues.first().path shouldBe DialogportenClient.DialogportenPatch.PATH.STATUS
+                                    patchValues.first().path shouldBe HttpDialogportenClient.DialogportenPatch.PATH.STATUS
                                     patchValues.first().value shouldBe DialogStatus.Completed.name
-                                    patchValues.first().operation shouldBe DialogportenClient.DialogportenPatch.OPERATION.REPLACE
+                                    patchValues.first().operation shouldBe HttpDialogportenClient.DialogportenPatch.OPERATION.REPLACE
                                     patchValues.first().operation.jsonValue shouldBe "Replace"
 
                                     respond(
@@ -97,7 +97,7 @@ class DialogportenClientTest :
                 )
                 val mockAltinnTokenProvider = mockk<AltinnTokenProvider>(relaxed = true)
                 val dialogportenClient = spyk(
-                    DialogportenClient(
+                    HttpDialogportenClient(
                         baseUrl = "http://localhost:8080",
                         httpClient = httpClientWithAssertions,
                         altinnTokenProvider = mockAltinnTokenProvider,
@@ -113,9 +113,9 @@ class DialogportenClientTest :
                         "scope"
                     )
 
-                    val patch = DialogportenClient.DialogportenPatch(
-                        path = DialogportenClient.DialogportenPatch.PATH.STATUS,
-                        operation = DialogportenClient.DialogportenPatch.OPERATION.REPLACE,
+                    val patch = HttpDialogportenClient.DialogportenPatch(
+                        path = HttpDialogportenClient.DialogportenPatch.PATH.STATUS,
+                        operation = HttpDialogportenClient.DialogportenPatch.OPERATION.REPLACE,
                         value = DialogStatus.Completed.name,
                     )
                     dialogportenClient.patchDialog(

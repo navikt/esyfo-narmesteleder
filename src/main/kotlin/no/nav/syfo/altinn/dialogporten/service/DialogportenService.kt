@@ -4,9 +4,9 @@ import io.ktor.http.ContentType
 import kotlinx.coroutines.delay
 import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient.DialogportenPatch.OPERATION
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient.DialogportenPatch.PATH
-import no.nav.syfo.altinn.dialogporten.client.IDialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient.DialogportenPatch.OPERATION
+import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient.DialogportenPatch.PATH
 import no.nav.syfo.altinn.dialogporten.domain.Attachment
 import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.altinn.dialogporten.domain.Content
@@ -20,8 +20,8 @@ import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.api.v1.REQUIREMENT_PATH
-import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.Foedselsdato
@@ -67,8 +67,8 @@ private val dialogportenDialogFailed = applicationEvent<DialogFailureDetails>(
 const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
 
 class DialogportenService(
-    private val dialogportenClient: IDialogportenClient,
-    private val narmestelederDb: INarmestelederDb,
+    private val dialogportenClient: DialogportenClient,
+    private val narmestelederDb: NarmestelederDb,
     private val otherEnvironmentProperties: OtherEnvironmentProperties,
     private val pdlService: PdlService,
 ) {
@@ -165,7 +165,7 @@ class DialogportenService(
             dialogportenClient.patchDialog(
                 dialogId = dialogId,
                 revisionNumber = existingDialog.revision,
-                patch = DialogportenClient.DialogportenPatch(
+                patch = HttpDialogportenClient.DialogportenPatch(
                     operation = OPERATION.REPLACE,
                     path = PATH.STATUS,
                     value = DialogStatus.Completed.name
@@ -215,12 +215,12 @@ class DialogportenService(
                 dialogId = dialogId,
                 revisionNumber = existingDialog.revision,
                 patch = listOf(
-                    DialogportenClient.DialogportenPatch(
+                    HttpDialogportenClient.DialogportenPatch(
                         OPERATION.REPLACE,
                         PATH.STATUS,
                         DialogStatus.Completed.name
                     ),
-                    DialogportenClient.DialogportenPatch(
+                    HttpDialogportenClient.DialogportenPatch(
                         OPERATION.ADD,
                         PATH.EXPIRES_AT,
                         expirationTime.toString()

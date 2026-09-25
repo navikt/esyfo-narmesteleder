@@ -26,8 +26,8 @@ import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
+import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
@@ -41,10 +41,10 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.exposed.IEmployeeLinemanagerRepository
-import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
-import no.nav.syfo.narmesteleder.exposed.ILinemanagerStatisticsRepository
-import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.exposed.EmployeeLinemanagerRepository
+import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
+import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
+import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
@@ -84,7 +84,7 @@ abstract class LinemanagerApiV1TestBase(
     internal val fakeEregClient = FakeEregClient()
     internal val eregCache = mockk<EregCache>(relaxed = true)
     internal val eregService = EregService(fakeEregClient, eregCache)
-    internal val relationProducerSpy = spyk(FakeSykmeldingNLKafkaProducer())
+    internal val relationProducerSpy = spyk(FakeSykmeldingNarmestelederProducer())
     internal val narmestelederKafkaService =
         NarmestelederKafkaService(relationProducerSpy)
     internal val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
@@ -92,7 +92,7 @@ abstract class LinemanagerApiV1TestBase(
     internal val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
     internal val altinnAccessServiceSpy = spyk(altinnTilgangerServiceMock)
     internal val fakeDinesykmeldteClient = FakeDinesykmeldteClient()
-    internal val dineSykmelteService: IDinesykmeldteService = spyk(DinesykmeldteService(fakeDinesykmeldteClient))
+    internal val dineSykmelteService: DinesykmeldteService = spyk(ClientDinesykmeldteService(fakeDinesykmeldteClient))
     internal val pdpService = mockk<PdpService>(relaxed = true)
     internal val principalAccessValidator = PrincipalAccessValidator(
         altinnTilgangerService = altinnAccessServiceSpy,
@@ -113,9 +113,9 @@ abstract class LinemanagerApiV1TestBase(
     internal val tokenXIssuer = "https://tokenx.nav.no"
 
     internal lateinit var fakeRepo: FakeNarmestelederDb
-    internal lateinit var linemanagerSearchRepository: ILinemanagerSearchRepository
-    internal lateinit var linemanagerStatisticsRepository: ILinemanagerStatisticsRepository
-    internal lateinit var employeeLinemanagerRepository: IEmployeeLinemanagerRepository
+    internal lateinit var linemanagerSearchRepository: LinemanagerSearchRepository
+    internal lateinit var linemanagerStatisticsRepository: LinemanagerStatisticsRepository
+    internal lateinit var employeeLinemanagerRepository: EmployeeLinemanagerRepository
     internal lateinit var narmesteLederService: NarmestelederService
     internal lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
     internal lateinit var fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase

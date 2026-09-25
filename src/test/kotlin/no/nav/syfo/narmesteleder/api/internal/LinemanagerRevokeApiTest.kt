@@ -17,11 +17,11 @@ import io.mockk.verify
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.db.INarmestelederRevokeDb
+import no.nav.syfo.narmesteleder.db.NarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.RevokableNarmestelederEntity
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
@@ -43,8 +43,8 @@ private const val MASKINPORTEN_ISSUER = "https://test.maskinporten.no"
 class LinemanagerRevokeApiTest :
     DescribeSpec({
         val texasHttpClient = mockk<TexasHttpClient>()
-        val revokeDb = mockk<INarmestelederRevokeDb>()
-        val kafkaProducer = mockk<ISykmeldingNLKafkaProducer>(relaxed = true)
+        val revokeDb = mockk<NarmestelederRevokeDb>()
+        val kafkaProducer = mockk<SykmeldingNarmestelederProducer>(relaxed = true)
         val validationService = mockk<ValidationService>()
         val revokeService = LinemanagerRevokeService(
             narmestelederRevokeDb = revokeDb,

@@ -9,9 +9,9 @@ import io.mockk.mockk
 import io.mockk.spyk
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
-import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
@@ -83,7 +83,7 @@ class AltinnTilgangerServiceTest :
             val userPrincipal = UserPrincipal("12345678910", "token")
 
             it("should preserve empty results when the client returns null") {
-                val nullableClient = mockk<IAltinnTilgangerClient>()
+                val nullableClient = mockk<AltinnTilgangerClient>()
                 coEvery { nullableClient.fetchAltinnTilganger(any()) } returns null
                 val service = AltinnTilgangerService(nullableClient)
 

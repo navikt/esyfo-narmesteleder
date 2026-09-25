@@ -9,17 +9,17 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
-import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.sykmelding.exposed.ISendtSykmeldingNarmestelederBruddRepository
+import no.nav.syfo.sykmelding.exposed.SendtSykmeldingNarmestelederBruddRepository
 import java.util.UUID
 
 class NarmestelederBruddServiceTest :
     DescribeSpec({
-        val kafkaProducer = mockk<ISykmeldingNLKafkaProducer>()
+        val kafkaProducer = mockk<SykmeldingNarmestelederProducer>()
         val narmestelederKafkaService = NarmestelederKafkaService(kafkaProducer)
-        val bruddRepository = mockk<ISendtSykmeldingNarmestelederBruddRepository>()
+        val bruddRepository = mockk<SendtSykmeldingNarmestelederBruddRepository>()
         val service = NarmestelederBruddService(narmestelederKafkaService, bruddRepository)
 
         beforeEach {

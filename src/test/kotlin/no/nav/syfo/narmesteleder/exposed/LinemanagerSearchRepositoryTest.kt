@@ -23,7 +23,7 @@ class LinemanagerSearchRepositoryTest :
     DescribeSpec({
         val fixedInstant = Instant.parse("2026-02-01T12:00:00Z")
         val fixedClock = Clock.fixed(fixedInstant, ZoneOffset.UTC)
-        val repository = LinemanagerSearchRepository(TestDB.exposedDatabase, fixedClock)
+        val repository = PostgresLinemanagerSearchRepository(TestDB.exposedDatabase, fixedClock)
         val now = OffsetDateTime.ofInstant(fixedInstant, ZoneOffset.UTC)
         val orgNumber = OrganizationNumber("123456789")
 

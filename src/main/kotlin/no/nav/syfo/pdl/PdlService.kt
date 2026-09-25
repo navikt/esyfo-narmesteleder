@@ -9,8 +9,8 @@ import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
-import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
+import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.pdl.exception.PdlRequestException
 import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.util.logger
@@ -18,7 +18,7 @@ import no.nav.syfo.util.logger
 private const val PDL_CHUNK_SIZE = 100
 
 class PdlService(
-    private val pdlClient: IPdlClient,
+    private val pdlClient: PdlClient,
     private val pdlCache: PdlCache
 ) {
     private val logger = logger()

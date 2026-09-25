@@ -23,17 +23,17 @@ data class ActiveNarmestelederEntity(
     val aktivFom: Instant,
 )
 
-interface INarmestelederLookupDb {
+interface NarmestelederLookupDb {
     suspend fun findActiveNarmesteledere(
         sykmeldtFnr: PersonalIdentificationNumber,
         orgnummer: OrganizationNumber,
     ): List<ActiveNarmestelederEntity>
 }
 
-class NarmestelederLookupDb(
+class PostgresNarmestelederLookupDb(
     private val database: Database,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-) : INarmestelederLookupDb {
+) : NarmestelederLookupDb {
     override suspend fun findActiveNarmesteledere(
         sykmeldtFnr: PersonalIdentificationNumber,
         orgnummer: OrganizationNumber,

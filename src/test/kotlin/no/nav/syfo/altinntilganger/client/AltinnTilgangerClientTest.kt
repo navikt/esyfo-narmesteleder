@@ -112,7 +112,7 @@ class AltinnTilgangerClientTest :
                     111,
                     "tokenType"
                 )
-                val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
+                val client = HttpAltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
                 val result = client.fetchAltinnTilganger(userPrincipal)
 
@@ -149,7 +149,7 @@ class AltinnTilgangerClientTest :
                         },
                         content = "safe failure",
                     )
-                    val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
+                    val client = HttpAltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
                     val exception = shouldThrow<UpstreamRequestException> {
                         client.fetchAltinnTilganger(userPrincipal)
@@ -167,7 +167,7 @@ class AltinnTilgangerClientTest :
                 coEvery {
                     mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
                 } throws originalFailure
-                val client = AltinnTilgangerClient(
+                val client = HttpAltinnTilgangerClient(
                     texasClient = mockTexasClient,
                     httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
                     baseUrl = "",
@@ -199,7 +199,7 @@ class AltinnTilgangerClientTest :
                     ),
                     environment = TexasEnvironment.createForLocal(),
                 )
-                val client = AltinnTilgangerClient(
+                val client = HttpAltinnTilgangerClient(
                     texasClient = texasClient,
                     httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
                     baseUrl = "",
@@ -222,7 +222,7 @@ class AltinnTilgangerClientTest :
                     headers = Headers.build { append("Content-Type", "application/json") },
                     content = "not-json",
                 )
-                val client = AltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
+                val client = HttpAltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
 
                 val exception = shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
 
@@ -240,7 +240,7 @@ class AltinnTilgangerClientTest :
                     111,
                     "tokenType",
                 )
-                val client = AltinnTilgangerClient(
+                val client = HttpAltinnTilgangerClient(
                     texasClient = mockTexasClient,
                     httpClient = HttpClient(MockEngine { throw CancellationException("Request cancelled") }),
                     baseUrl = "",
@@ -254,7 +254,7 @@ class AltinnTilgangerClientTest :
                 coEvery {
                     mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
                 } throws CancellationException("Token exchange cancelled")
-                val client = AltinnTilgangerClient(
+                val client = HttpAltinnTilgangerClient(
                     texasClient = mockTexasClient,
                     httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
                     baseUrl = "",

@@ -1,6 +1,6 @@
 package no.nav.syfo.altinn.pdp.client
 
-class FakePdpClient : IPdpClient {
+class FakePdpClient : PdpClient {
     override suspend fun authorize(
         user: User,
         orgNumberSet: Set<String>,

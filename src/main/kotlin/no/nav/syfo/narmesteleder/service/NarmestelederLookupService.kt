@@ -2,7 +2,7 @@ package no.nav.syfo.narmesteleder.service
 
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
+import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.EmailAddress
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
@@ -31,7 +31,7 @@ data class NarmestelederLookup(
 )
 
 class NarmestelederLookupService(
-    private val narmestelederLookupDb: INarmestelederLookupDb,
+    private val narmestelederLookupDb: NarmestelederLookupDb,
 ) {
     suspend fun hasActiveNarmesteleder(
         sykmeldtFnr: PersonalIdentificationNumber,

@@ -11,12 +11,12 @@ import java.sql.ResultSet
 import java.time.LocalDate
 import java.util.UUID
 
-interface ISykmeldingDb {
+interface SykmeldingDb {
     suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity?
-    suspend fun transaction(block: suspend ISykmeldingTransaction.() -> Unit)
+    suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit)
 }
 
-interface ISykmeldingTransaction {
+interface SykmeldingTransaction {
     fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>): Int
     fun batchRevokeSykmelding(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int
     fun batchDeleteAllBySykmeldingIds(sykmeldingIds: List<UUID>): Int
@@ -24,12 +24,12 @@ interface ISykmeldingTransaction {
 
 class SykmeldingDbException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
-class SykmeldingDb(
+class PostgresSykmeldingDb(
     private val database: DatabaseInterface,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
-) : ISykmeldingDb {
+) : SykmeldingDb {
 
-    private class TransactionImpl(private val connection: Connection) : ISykmeldingTransaction {
+    private class TransactionImpl(private val connection: Connection) : SykmeldingTransaction {
         override fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>): Int {
             if (entities.isEmpty()) return 0
 
@@ -118,7 +118,7 @@ class SykmeldingDb(
         }
     }
 
-    override suspend fun transaction(block: suspend ISykmeldingTransaction.() -> Unit) = withContext(dispatcher) {
+    override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) = withContext(dispatcher) {
         database.connection.use { connection ->
             try {
                 connection.autoCommit = false

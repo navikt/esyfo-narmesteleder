@@ -25,24 +25,24 @@ import no.nav.syfo.util.logger
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 
-interface IDialogportenClient {
+interface DialogportenClient {
     suspend fun createDialog(dialog: Dialog): UUID
     suspend fun getDialogById(dialogId: UUID): ExtendedDialog
-    suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: DialogportenClient.DialogportenPatch) = patchDialog(dialogId, revisionNumber, listOf(patch))
-    suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<DialogportenClient.DialogportenPatch>)
+    suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: HttpDialogportenClient.DialogportenPatch) = patchDialog(dialogId, revisionNumber, listOf(patch))
+    suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<HttpDialogportenClient.DialogportenPatch>)
 }
 
 private const val GENERIC_DIALOGPORTEN_ERROR_MESSAGE = "Error in request to Dialogporten"
 
-class DialogportenClient(
+class HttpDialogportenClient(
     baseUrl: String,
     private val httpClient: HttpClient,
     private val altinnTokenProvider: AltinnTokenProvider,
-) : IDialogportenClient {
+) : DialogportenClient {
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
     private val logger = logger()
 
-    override suspend fun createDialog(dialog: Dialog): UUID = runCatching<DialogportenClient, UUID> {
+    override suspend fun createDialog(dialog: Dialog): UUID = runCatching<HttpDialogportenClient, UUID> {
         val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
         val response =
             httpClient
@@ -122,7 +122,7 @@ class DialogportenClient(
     }
 }
 
-class FakeDialogportenClient : IDialogportenClient {
+class FakeDialogportenClient : DialogportenClient {
     companion object {
         val logger = logger()
     }
@@ -151,7 +151,7 @@ class FakeDialogportenClient : IDialogportenClient {
     override suspend fun patchDialog(
         dialogId: UUID,
         revisionNumber: UUID,
-        patch: List<DialogportenClient.DialogportenPatch>
+        patch: List<HttpDialogportenClient.DialogportenPatch>
     ) {
         logger.info("Fake call patching dialog with id: $dialogId, with patch: ${ObjectMapper().writeValueAsString(patch)}")
         return

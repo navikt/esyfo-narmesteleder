@@ -7,7 +7,7 @@ import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.narmesteleder.db.INarmestelederRevokeDb
+import no.nav.syfo.narmesteleder.db.NarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.RevokableNarmestelederEntity
 import no.nav.syfo.narmesteleder.domain.RevokeInitiator
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -36,7 +36,7 @@ sealed interface RevokeOutcome {
 }
 
 class LinemanagerRevokeService(
-    private val narmestelederRevokeDb: INarmestelederRevokeDb,
+    private val narmestelederRevokeDb: NarmestelederRevokeDb,
     private val narmestelederKafkaService: NarmestelederKafkaService,
     private val validationService: ValidationService,
 ) {

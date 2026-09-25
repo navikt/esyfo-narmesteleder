@@ -1,7 +1,7 @@
 package no.nav.syfo.altinntilganger
 
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
-import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
+import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
@@ -11,7 +11,7 @@ import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.failureDiagnostics
 
 class AltinnTilgangerService(
-    val altinnTilgangerClient: IAltinnTilgangerClient,
+    val altinnTilgangerClient: AltinnTilgangerClient,
 ) {
     suspend fun getAuthorizedAltinnTilgang(
         userPrincipal: UserPrincipal,

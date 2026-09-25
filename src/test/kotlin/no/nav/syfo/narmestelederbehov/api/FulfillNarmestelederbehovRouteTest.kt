@@ -41,8 +41,8 @@ import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
+import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
@@ -53,7 +53,7 @@ import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -254,8 +254,8 @@ private class PutFixture {
     val ereg = FakeEregClient()
     private val pdlCache = mockk<PdlCache>(relaxed = true)
     val pdl = spyk(PdlService(FakePdlClient(), pdlCache))
-    val sykmelding: IDinesykmeldteService = spyk(DinesykmeldteService(FakeDinesykmeldteClient()))
-    val producer = spyk(FakeSykmeldingNLKafkaProducer())
+    val sykmelding: DinesykmeldteService = spyk(ClientDinesykmeldteService(FakeDinesykmeldteClient()))
+    val producer = spyk(FakeSykmeldingNarmestelederProducer())
     val altinn = AltinnTilgangerService(FakeAltinnTilgangerClient())
     private val principalAccess = PrincipalAccessValidator(
         altinn,

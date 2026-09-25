@@ -13,9 +13,9 @@ import io.mockk.verify
 import linemanager
 import linemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
-import no.nav.syfo.narmesteleder.kafka.model.NlAvbruddResponseKafkaMessage
-import no.nav.syfo.narmesteleder.kafka.model.NlRelationResponseKafkaMessage
+import no.nav.syfo.narmesteleder.kafka.model.NarmestelederAvbruddResponseKafkaMessage
+import no.nav.syfo.narmesteleder.kafka.model.NarmestelederRelationResponseKafkaMessage
+import no.nav.syfo.narmesteleder.kafka.model.NarmestelederResponseKafkaMessage
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
@@ -30,10 +30,10 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
-class SykemeldingNLKafkaProducerTest :
+class KafkaSykmeldingNarmestelederProducerTest :
     DescribeSpec({
-        val kafkaProducerMock = mockk<KafkaProducer<String, INlResponseKafkaMessage>>()
-        val producer = SykmeldingNLKafkaProducer(kafkaProducerMock)
+        val kafkaProducerMock = mockk<KafkaProducer<String, NarmestelederResponseKafkaMessage>>()
+        val producer = KafkaSykmeldingNarmestelederProducer(kafkaProducerMock)
 
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
@@ -55,7 +55,7 @@ class SykemeldingNLKafkaProducerTest :
 
                 val futureMock = mockk<SettableFuture<RecordMetadata>>()
                 coEvery { futureMock.get() } returns recordMetadata
-                coEvery { kafkaProducerMock.send(any<ProducerRecord<String, INlResponseKafkaMessage>>()) } returns futureMock
+                coEvery { kafkaProducerMock.send(any<ProducerRecord<String, NarmestelederResponseKafkaMessage>>()) } returns futureMock
 
                 val sykmeldingNL = NlResponse(
                     orgnummer = relasjon.orgNumber.value,
@@ -71,7 +71,7 @@ class SykemeldingNLKafkaProducerTest :
                 verify(exactly = 1) {
                     kafkaProducerMock.send(
                         withArg {
-                            it.shouldBeInstanceOf<ProducerRecord<String, NlRelationResponseKafkaMessage>>()
+                            it.shouldBeInstanceOf<ProducerRecord<String, NarmestelederRelationResponseKafkaMessage>>()
                             it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.source
                             it.value().nlResponse shouldBe sykmeldingNL
                         }
@@ -89,7 +89,7 @@ class SykemeldingNLKafkaProducerTest :
 
                 val futureMock = mockk<SettableFuture<RecordMetadata>>()
                 coEvery { futureMock.get() } returns recordMetadata
-                coEvery { kafkaProducerMock.send(any<ProducerRecord<String, INlResponseKafkaMessage>>()) } returns futureMock
+                coEvery { kafkaProducerMock.send(any<ProducerRecord<String, NarmestelederResponseKafkaMessage>>()) } returns futureMock
 
                 // Act
                 producer.sendSykmldingNLBrudd(avbryt.toNlAvbrutt(), NlResponseSource.LPS)
@@ -98,7 +98,7 @@ class SykemeldingNLKafkaProducerTest :
                 verify(exactly = 1) {
                     kafkaProducerMock.send(
                         withArg {
-                            it.shouldBeInstanceOf<ProducerRecord<String, NlAvbruddResponseKafkaMessage>>()
+                            it.shouldBeInstanceOf<ProducerRecord<String, NarmestelederAvbruddResponseKafkaMessage>>()
                             it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.source
                             it.value().nlAvbrutt shouldNotBe null
                             it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgNumber.value

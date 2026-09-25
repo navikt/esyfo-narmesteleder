@@ -38,7 +38,7 @@ class EregClientTest :
             )
 
             val httpClient = httpClientDefault(HttpClient(mockEngine))
-            val eregClient = EregClient(
+            val eregClient = HttpEregClient(
                 eregBaseUrl = "",
                 httpClient = httpClient,
             )
@@ -59,7 +59,7 @@ class EregClientTest :
                     content = ""
                 )
                 val client = httpClientDefault(HttpClient(mockEngine))
-                val arClient = EregClient(
+                val arClient = HttpEregClient(
                     eregBaseUrl = "",
                     httpClient = client,
                 )
@@ -78,7 +78,7 @@ class EregClientTest :
                     content = ""
                 )
                 val client = httpClientDefault(HttpClient(mockEngine))
-                val eregClient = EregClient(
+                val eregClient = HttpEregClient(
                     eregBaseUrl = "",
                     httpClient = client,
                 )

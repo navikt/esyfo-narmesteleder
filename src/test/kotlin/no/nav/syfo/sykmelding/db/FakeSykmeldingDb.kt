@@ -4,7 +4,7 @@ import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 
-class FakeSykmeldingDb : ISykmeldingDb {
+class FakeSykmeldingDb : SykmeldingDb {
     private val store = CopyOnWriteArrayList<SendtSykmeldingEntity>()
 
     private fun upsertSykmelding(entity: SendtSykmeldingEntity): Int {
@@ -36,7 +36,7 @@ class FakeSykmeldingDb : ISykmeldingDb {
         return 0
     }
 
-    private inner class FakeTransaction : ISykmeldingTransaction {
+    private inner class FakeTransaction : SykmeldingTransaction {
         override fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>): Int {
             var count = 0
             entities.forEach { upsertSykmelding(it).also { count += it } }
@@ -54,7 +54,7 @@ class FakeSykmeldingDb : ISykmeldingDb {
         }
     }
 
-    override suspend fun transaction(block: suspend ISykmeldingTransaction.() -> Unit) {
+    override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) {
         FakeTransaction().block()
     }
 

@@ -13,7 +13,7 @@ import java.time.Clock
 import java.time.LocalDate
 import java.util.UUID
 
-interface IActiveSykmeldingRepository {
+interface ActiveSykmeldingRepository {
     suspend fun findActiveSykmelding(fnr: String, orgnummer: String): LocalActiveSykmeldingResult
 }
 
@@ -28,7 +28,7 @@ class LocalActiveSykmeldingResult(
 class SendtSykmeldingRepository(
     private val database: Database,
     private val clock: Clock = Clock.systemDefaultZone(),
-) : IActiveSykmeldingRepository {
+) : ActiveSykmeldingRepository {
 
     override suspend fun findActiveSykmelding(fnr: String, orgnummer: String): LocalActiveSykmeldingResult {
         val activeTomThreshold = LocalDate.now(clock).minusDays(ACTIVE_SYKMELDING_GRACE_PERIOD_DAYS)

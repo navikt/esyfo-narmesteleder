@@ -14,7 +14,7 @@ import java.util.UUID
 
 class NarmestelederLookupDbTest :
     DescribeSpec({
-        val lookupDb = NarmestelederLookupDb(TestDB.exposedDatabase)
+        val lookupDb = PostgresNarmestelederLookupDb(TestDB.exposedDatabase)
         val sykmeldtFnr = PersonalIdentificationNumber("12345678901")
         val orgnummer = OrganizationNumber("123456789")
 

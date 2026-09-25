@@ -18,9 +18,9 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.Arbeidsforhold
 import no.nav.syfo.aareg.client.ArbeidsstedType
 import no.nav.syfo.aareg.client.OpplysningspliktigType
-import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
-import no.nav.syfo.narmesteleder.db.INarmestelederDb
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
@@ -38,10 +38,10 @@ import java.util.*
 
 class NarmestelederServiceTest :
     DescribeSpec({
-        val nlDb = mockk<INarmestelederDb>(relaxed = true)
+        val nlDb = mockk<NarmestelederDb>(relaxed = true)
         val aaregService = mockk<AaregService>()
         val pdlService = mockk<PdlService>()
-        val dinesykmeldteService = mockk<IDinesykmeldteService>()
+        val dinesykmeldteService = mockk<DinesykmeldteService>()
 
         beforeTest {
             clearMocks(nlDb, aaregService, pdlService, dinesykmeldteService)

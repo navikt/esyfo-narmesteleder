@@ -5,14 +5,14 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 
 class NarmestelederKafkaService(
-    val kafkaSykemeldingProducer: ISykmeldingNLKafkaProducer,
+    val kafkaSykemeldingProducer: SykmeldingNarmestelederProducer,
 ) {
     fun sendNarmesteLederRelasjon(
         linemanager: Linemanager,

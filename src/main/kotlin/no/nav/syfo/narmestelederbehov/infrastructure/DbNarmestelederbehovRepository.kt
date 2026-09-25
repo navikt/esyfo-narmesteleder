@@ -3,14 +3,14 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.db.INarmestelederDb
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 
-class DbNarmestelederbehovRepository(private val db: INarmestelederDb) : NarmestelederbehovRepository {
+class DbNarmestelederbehovRepository(private val db: NarmestelederDb) : NarmestelederbehovRepository {
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = db.findBehovById(id.value)?.let {
         Narmestelederbehov(id, Employee(PersonIdent(it.sykmeldtFnr), OrganizationNumber(it.orgnummer)))
     }

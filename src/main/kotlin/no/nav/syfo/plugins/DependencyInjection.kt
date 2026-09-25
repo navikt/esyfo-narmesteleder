@@ -4,19 +4,19 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.aareg.client.AaregClient
 import no.nav.syfo.aareg.client.FakeAaregClient
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.aareg.client.HttpAaregClient
 import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
 import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
-import no.nav.syfo.altinn.pdp.client.PdpClient
+import no.nav.syfo.altinn.pdp.client.HttpPdpClient
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
+import no.nav.syfo.altinntilganger.client.HttpAltinnTilgangerClient
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.database.Database
 import no.nav.syfo.application.database.DatabaseConfig
@@ -32,32 +32,32 @@ import no.nav.syfo.application.leaderelection.LeaderElection
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.application.valkey.ValkeyCache
+import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
-import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
+import no.nav.syfo.dinesykmeldte.client.HttpDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
-import no.nav.syfo.ereg.client.EregClient
 import no.nav.syfo.ereg.client.FakeEregClient
+import no.nav.syfo.ereg.client.HttpEregClient
 import no.nav.syfo.maintenance.MaintenanceTask
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
-import no.nav.syfo.narmesteleder.db.INarmestelederDb
-import no.nav.syfo.narmesteleder.db.INarmestelederLookupDb
-import no.nav.syfo.narmesteleder.db.INarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
 import no.nav.syfo.narmesteleder.db.NarmestelederRevokeDb
+import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
+import no.nav.syfo.narmesteleder.db.PostgresNarmestelederLookupDb
+import no.nav.syfo.narmesteleder.db.PostgresNarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.exposed.EmployeeLinemanagerRepository
-import no.nav.syfo.narmesteleder.exposed.IEmployeeLinemanagerRepository
-import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
-import no.nav.syfo.narmesteleder.exposed.ILinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
-import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.exposed.PostgresEmployeeLinemanagerRepository
+import no.nav.syfo.narmesteleder.exposed.PostgresLinemanagerSearchRepository
+import no.nav.syfo.narmesteleder.exposed.PostgresLinemanagerStatisticsRepository
+import no.nav.syfo.narmesteleder.kafka.KafkaSykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.kafka.SykmeldingNLKafkaProducer
-import no.nav.syfo.narmesteleder.kafka.model.INlResponseKafkaMessage
+import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
+import no.nav.syfo.narmesteleder.kafka.model.NarmestelederResponseKafkaMessage
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
@@ -74,14 +74,14 @@ import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
-import no.nav.syfo.pdl.client.PdlClient
+import no.nav.syfo.pdl.client.HttpPdlClient
 import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
 import no.nav.syfo.person.service.PersonEnrichmentService
 import no.nav.syfo.person.task.PersonEnrichmentTask
-import no.nav.syfo.sykmelding.db.ISykmeldingDb
+import no.nav.syfo.sykmelding.db.PostgresSykmeldingDb
 import no.nav.syfo.sykmelding.db.SykmeldingDb
-import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
-import no.nav.syfo.sykmelding.exposed.ISendtSykmeldingNarmestelederBruddRepository
+import no.nav.syfo.sykmelding.exposed.ActiveSykmeldingRepository
+import no.nav.syfo.sykmelding.exposed.PostgresSendtSykmeldingNarmestelederBruddRepository
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingNarmestelederBruddRepository
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingRepository
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
@@ -151,34 +151,34 @@ private fun databaseModule() = module {
         val db = get<DatabaseInterface>() as Database
         ExposedDatabase.connect(datasource = db.dataSource)
     }
-    single<INarmestelederDb> {
-        NarmestelederDb(get(), Dispatchers.IO)
+    single<NarmestelederDb> {
+        PostgresNarmestelederDb(get(), Dispatchers.IO)
     }
-    single<INarmestelederLookupDb> {
-        NarmestelederLookupDb(get<ExposedDatabase>(), Dispatchers.IO)
+    single<NarmestelederLookupDb> {
+        PostgresNarmestelederLookupDb(get<ExposedDatabase>(), Dispatchers.IO)
     }
-    single<INarmestelederRevokeDb> {
-        NarmestelederRevokeDb(get<ExposedDatabase>(), Dispatchers.IO)
+    single<NarmestelederRevokeDb> {
+        PostgresNarmestelederRevokeDb(get<ExposedDatabase>(), Dispatchers.IO)
     }
-    single<ISykmeldingDb> {
-        SykmeldingDb(get(), Dispatchers.IO)
+    single<SykmeldingDb> {
+        PostgresSykmeldingDb(get(), Dispatchers.IO)
     }
-    single<IActiveSykmeldingRepository> {
+    single<ActiveSykmeldingRepository> {
         SendtSykmeldingRepository(get())
     }
-    single<ISendtSykmeldingNarmestelederBruddRepository> {
-        SendtSykmeldingNarmestelederBruddRepository(get())
+    single<SendtSykmeldingNarmestelederBruddRepository> {
+        PostgresSendtSykmeldingNarmestelederBruddRepository(get())
     }
     single<SykmeldingRetentionRepository> {
         ExposedSykmeldingRetentionRepository(get())
     }
-    single<ILinemanagerSearchRepository> {
-        LinemanagerSearchRepository(get())
+    single<LinemanagerSearchRepository> {
+        PostgresLinemanagerSearchRepository(get())
     }
-    single<ILinemanagerStatisticsRepository> {
-        LinemanagerStatisticsRepository(get())
+    single<LinemanagerStatisticsRepository> {
+        PostgresLinemanagerStatisticsRepository(get())
     }
-    single<IEmployeeLinemanagerRepository> { EmployeeLinemanagerRepository(get()) }
+    single<EmployeeLinemanagerRepository> { PostgresEmployeeLinemanagerRepository(get()) }
 }
 
 private fun handlerModule() = module {
@@ -198,7 +198,7 @@ private fun clientsModule() = module {
         if (isLocalEnv()) {
             FakeAaregClient()
         } else {
-            AaregClient(
+            HttpAaregClient(
                 aaregBaseUrl = env().clientProperties.aaregBaseUrl,
                 texasHttpClient = get(),
                 scope = env().clientProperties.aaregScope,
@@ -209,7 +209,7 @@ private fun clientsModule() = module {
         if (isLocalEnv()) {
             FakeDinesykmeldteClient()
         } else {
-            DinesykmeldteClient(
+            HttpDinesykmeldteClient(
                 texasHttpClient = get(),
                 scope = env().clientProperties.dinesykmeldteScope,
                 httpClient = get(),
@@ -221,7 +221,7 @@ private fun clientsModule() = module {
         if (isLocalEnv()) {
             FakePdlClient()
         } else {
-            PdlClient(
+            HttpPdlClient(
                 httpClient = get(),
                 pdlBaseUrl = env().clientProperties.pdlBaseUrl,
                 texasHttpClient = get(),
@@ -233,7 +233,7 @@ private fun clientsModule() = module {
         if (isLocalEnv()) {
             FakeAltinnTilgangerClient()
         } else {
-            AltinnTilgangerClient(
+            HttpAltinnTilgangerClient(
                 texasClient = get(),
                 httpClient = get(),
                 baseUrl = env().clientProperties.altinnTilgangerBaseUrl,
@@ -245,7 +245,7 @@ private fun clientsModule() = module {
         if (isLocalEnv()) {
             FakeDialogportenClient()
         } else {
-            DialogportenClient(
+            HttpDialogportenClient(
                 httpClient = get(),
                 baseUrl = env().clientProperties.altinn3BaseUrl,
                 altinnTokenProvider = get(),
@@ -257,7 +257,7 @@ private fun clientsModule() = module {
         if (isLocalEnv()) {
             FakeEregClient()
         } else {
-            EregClient(
+            HttpEregClient(
                 eregBaseUrl = env().clientProperties.eregBaseUrl,
             )
         }
@@ -267,7 +267,7 @@ private fun clientsModule() = module {
         if (isLocalEnv()) {
             FakePdpClient()
         } else {
-            PdpClient(
+            HttpPdpClient(
                 httpClient = get(),
                 baseUrl = env().clientProperties.altinn3BaseUrl,
                 subscriptionKey = env().clientProperties.pdpSubscriptionKey,
@@ -292,9 +292,9 @@ private fun valkeyModule() = module {
 private fun servicesModule() = module {
     single { Clock.systemDefaultZone() }
     single { AaregService(arbeidsforholdOversiktClient = get()) }
-    single { DinesykmeldteService(dinesykmeldteClient = get()) }
-    single<IDinesykmeldteService> {
-        DinesykmeldteService(get())
+    single { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
+    single<DinesykmeldteService> {
+        ClientDinesykmeldteService(get())
     }
     single { SykmeldingService(sykmeldingDb = get(), clock = get()) }
     single { SykmeldingRetentionMetrics() }
@@ -348,14 +348,14 @@ private fun servicesModule() = module {
         LeaderElection(get(), env().otherProperties.electorPath)
     }
     single {
-        val sykmeldingNLKafkaProducer = SykmeldingNLKafkaProducer(
-            KafkaProducer<String, INlResponseKafkaMessage>(
+        val sykmeldingNLKafkaProducer = KafkaSykmeldingNarmestelederProducer(
+            KafkaProducer<String, NarmestelederResponseKafkaMessage>(
                 producerProperties(env().kafka, JacksonKafkaSerializer::class, StringSerializer::class)
             )
         )
         NarmestelederKafkaService(sykmeldingNLKafkaProducer)
     }
-    single<ISykmeldingNLKafkaProducer> { get<NarmestelederKafkaService>().kafkaSykemeldingProducer }
+    single<SykmeldingNarmestelederProducer> { get<NarmestelederKafkaService>().kafkaSykemeldingProducer }
     single {
         NarmestelederLeesahProducer(
             KafkaProducer<String, String?>(

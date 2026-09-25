@@ -1,7 +1,7 @@
 package no.nav.syfo.sykmelding.service
 
-import no.nav.syfo.sykmelding.db.ISykmeldingDb
 import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
+import no.nav.syfo.sykmelding.db.SykmeldingDb
 import no.nav.syfo.sykmelding.kafka.SykmeldingRecord
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
@@ -12,7 +12,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 class SykmeldingService(
-    private val sykmeldingDb: ISykmeldingDb,
+    private val sykmeldingDb: SykmeldingDb,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) {
     suspend fun processBatch(records: List<SykmeldingRecord>) {

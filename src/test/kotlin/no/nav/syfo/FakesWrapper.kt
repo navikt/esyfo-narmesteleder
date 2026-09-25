@@ -14,14 +14,14 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
+import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
@@ -38,7 +38,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeEregClientSpyk = spyk(FakeEregClient())
     val fakePdlClientSpyk = spyk(FakePdlClient())
     val fakeDinesykmeldteClientSpyk = spyk(FakeDinesykmeldteClient())
-    val fakeKafkaProducerSpyk = spyk(FakeSykmeldingNLKafkaProducer())
+    val fakeKafkaProducerSpyk = spyk(FakeSykmeldingNarmestelederProducer())
     val fakeAltinnTilgangerClientSpyk = spyk(FakeAltinnTilgangerClient())
     val fakePdpClientSpyk = spyk(FakePdpClient())
     val fakeDialogportenClient = FakeDialogportenClient()
@@ -48,7 +48,7 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val eregServiceSpyk = spyk(EregService(fakeEregClientSpyk, eregCacheSpyk))
     val pdlCacheMock = mockk<PdlCache>(relaxed = true)
     val pdlServiceSpyk = spyk(PdlService(fakePdlClientSpyk, pdlCacheMock))
-    val dinesykmeldteServiceSpyk: IDinesykmeldteService = spyk(DinesykmeldteService(fakeDinesykmeldteClientSpyk))
+    val dinesykmeldteServiceSpyk: DinesykmeldteService = spyk(ClientDinesykmeldteService(fakeDinesykmeldteClientSpyk))
     val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
     val pdpServiceSpyk = spyk(PdpService(fakePdpClientSpyk))
     val narmestelederKafkaServiceSpyk = spyk(

@@ -21,7 +21,7 @@ class EmployeeLinemanagerRepositoryTest :
     DescribeSpec({
         val fixedInstant = Instant.parse("2026-02-01T12:00:00Z")
         val fixedClock = Clock.fixed(fixedInstant, ZoneOffset.UTC)
-        val repository = EmployeeLinemanagerRepository(TestDB.exposedDatabase, fixedClock)
+        val repository = PostgresEmployeeLinemanagerRepository(TestDB.exposedDatabase, fixedClock)
         val now = OffsetDateTime.ofInstant(fixedInstant, ZoneOffset.UTC)
         val employeeFnr = "12345678910"
         val otherEmployeeFnr = "12345678911"

@@ -26,6 +26,13 @@ logger.logEvent(dialogFailed, details, cause = exception)
   cause: `failure_kind`, `exception_type`, `cause_type(s)`, `upstream`,
   `upstream_status`, `failure_stage` and `sql_state`. It also logs a sanitized
   stack trace that contains class names and frames, never exception messages.
+- The contract fields `exception_type`, `cause_type`, `upstream_status` and
+  `sql_state` come from the esyfo-logger 0.3.0 helpers, so they always match the
+  team's runtime-error contract. Nested classes keep their binary name, so
+  `ApiErrorException.InternalServerErrorException` is logged as
+  `ApiErrorException$InternalServerErrorException`. Classification,
+  `failure_stage`, `cause_types` (simple names) and the sanitized
+  TechnicalFailure stack stay in the app.
 - Kafka consumers share the events in `application/kafka/KafkaEvents.kt` and
   log them through `KafkaEventLogger`, which adds a bounded `consumer` field.
 - Code already using `applicationLogger` keeps using it.

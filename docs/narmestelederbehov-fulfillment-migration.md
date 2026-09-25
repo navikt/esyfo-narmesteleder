@@ -47,14 +47,18 @@ PUT fulfillment or complete #525.
   attempts/outcomes, and accepted **and rejected** best fuzzy scores. The typed
   `ManagerLastNameMatch` retains all of these inputs; the foundation does not
   replace the active metrics implementation.
-- Translate ordinary Dialogporten completion failures to a failed attempt so
-  the Dialogporten step never fails the request after persistence: lookup
-  failures return `Failed` and leave the behov retryable, while a missing behov
-  or dialog ID returns `NotApplicable`. Ordinary completion failures also
-  return `Failed`. Cancellation propagates from the new adapter; the existing
+- After publication, `markFulfilled` uses one status-only `UPDATE ... RETURNING`
+  to obtain the dialog ID. A missing row returns
+  `BehovMissingAfterPublication` (the existing 404 response), without a re-read.
+  A null dialog ID skips completion (`NotApplicable`).
+- The dialog adapter uses only `DialogportenClient` to fetch the revision and
+  patch the dialog. Its `complete` port returns normally on success and throws
+  on failure; the fulfillment use case handles ordinary client failures, logs
+  the completion failure with `behov_id`, and returns `Failed` without failing
+  the request. On success the repository updates only the behov status to
+  `DIALOGPORTEN_STATUS_SET_COMPLETED`. Status-persistence failures likewise
+  return `Failed`; cancellation propagates from either step. The existing
   scheduled job retains its legacy handling.
-  Persistence re-reads the behov after publishing, as in the legacy flow;
-  disappearance at that point returns the existing NotFound error.
 
 ## Removing transitional duplication
 

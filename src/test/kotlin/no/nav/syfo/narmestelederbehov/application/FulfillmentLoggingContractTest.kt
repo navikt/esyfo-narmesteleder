@@ -6,6 +6,7 @@ import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.Appender
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -30,15 +31,26 @@ class FulfillmentLoggingContractTest :
         lateinit var productionAppender: Appender<ILoggingEvent>
         lateinit var capture: LogCapture
         val privacyCanaries = listOf(
-            employeeIdent.value, managerIdent.value, organizationNumber.value, behovId.value.toString(),
+            employeeIdent.value, managerIdent.value, organizationNumber.value,
             employee.name.firstName, requireNotNull(employee.name.middleName), employee.name.lastName,
             manager.name.firstName, requireNotNull(manager.name.middleName), manager.name.lastName,
             "manager@example.test", "+4799999999", "system-user", "test-token", "11223344556",
             "private-name-canary", "private-email-canary", "private-phone-canary", "private-exception-canary",
         )
+        val failureEventsWithBehovId = setOf(
+            "narmestelederbehov_dialogporten_completion_failed",
+            "narmestelederbehov_dialog_status_persistence_failed",
+        )
 
-        fun checkEvent(name: String, level: String) = mapper.readTree(capture.records.single()).also {
-            contract.assertValid(capture.records, expectedCount = 1)
+        fun checkEvent(name: String, level: String) = mapper.readTree(
+            capture.records.single { mapper.readTree(it)["event_type"].asText() == name },
+        ).also {
+            contract.assertValid(
+                capture.records.filter { line ->
+                    mapper.readTree(line)["event_type"].asText() in setOf(fulfillmentCompleted.name, fulfillmentRejected.name)
+                },
+                expectedCount = 1
+            )
             it["event_type"].asText() shouldBe name
             it["level"].asText() shouldBe level
             it["operation"].asText() shouldBe "fulfill_narmestelederbehov"
@@ -67,7 +79,18 @@ class FulfillmentLoggingContractTest :
         }
         afterTest {
             try {
-                capture.records.forEach { line -> privacyCanaries.forEach { line shouldNotContain it } }
+                capture.records.forEach { line ->
+                    privacyCanaries.forEach { line shouldNotContain it }
+                    val record = mapper.readTree(line)
+                    if (record["event_type"].asText() in failureEventsWithBehovId) {
+                        record["behov_id"].asText() shouldBe behovId.value.toString()
+                        (record.deepCopy<ObjectNode>().apply { remove("behov_id") }.toString())
+                            .shouldNotContain(behovId.value.toString())
+                    } else {
+                        record.has("behov_id") shouldBe false
+                        line shouldNotContain behovId.value.toString()
+                    }
+                }
             } finally {
                 capture.close()
             }
@@ -80,19 +103,68 @@ class FulfillmentLoggingContractTest :
                 DialogportenCompletionAttempt.NotApplicable to "NOT_APPLICABLE",
             ).forEach { (completion, code) ->
                 test("logs one successful $source fulfillment with $code dialog completion") {
-                    createUseCase(dialog = FakeDialog(completion)).execute(command(accessSubject = subject))
+                    val dialog = FakeDialog(
+                        failure = IllegalStateException("private-exception-canary").takeIf {
+                            completion == DialogportenCompletionAttempt.Failed
+                        }
+                    )
+                    val repository = FakeBehovRepository(
+                        behov,
+                        markResult = MarkFulfilledResult.Marked(behovId, null).takeIf {
+                            completion == DialogportenCompletionAttempt.NotApplicable
+                        },
+                    )
+                    createUseCase(dialog = dialog, repository = repository).execute(command(accessSubject = subject))
 
                     val record = checkEvent("narmestelederbehov_fulfillment_completed", "INFO")
                     record["relation_source"].asText() shouldBe source
                     record["dialogporten_completion"].asText() shouldBe code
                     record.has("outcome_code") shouldBe false
+                    if (completion == DialogportenCompletionAttempt.Failed) {
+                        val failureRecord = mapper.readTree(
+                            capture.records.single {
+                                mapper.readTree(it)["event_type"].asText() == "narmestelederbehov_dialogporten_completion_failed"
+                            }
+                        )
+                        failureRecord["level"].asText() shouldBe "WARN"
+                        failureRecord["behov_id"].asText() shouldBe behovId.value.toString()
+                        failureRecord.has("dialog_id") shouldBe false
+                        capture.records.size shouldBe 2
+                    } else {
+                        capture.records.size shouldBe 1
+                    }
                 }
             }
+        }
+
+        test("logs a bounded status persistence failure with behov id only in its field") {
+            createUseCase(
+                repository = FakeBehovRepository(
+                    behov,
+                    dialogStatusFailure = IllegalStateException("private-exception-canary"),
+                ),
+            ).execute(command())
+
+            val record = checkEvent("narmestelederbehov_fulfillment_completed", "INFO")
+            record["dialogporten_completion"].asText() shouldBe "FAILED"
+            val failureRecord = mapper.readTree(
+                capture.records.single {
+                    mapper.readTree(it)["event_type"].asText() == "narmestelederbehov_dialog_status_persistence_failed"
+                },
+            )
+            failureRecord["level"].asText() shouldBe "WARN"
+            failureRecord["behov_id"].asText() shouldBe behovId.value.toString()
+            capture.records.size shouldBe 2
         }
 
         val rejectionCases: List<Triple<String, () -> FulfillNarmestelederbehovUseCase, FulfillNarmestelederbehovCommand>> = listOf(
             Triple("INVALID_MANAGER_CONTACT_DETAILS", { createUseCase() }, command("private-email-canary", "private-phone-canary")),
             Triple("NOT_FOUND", { createUseCase(repository = FakeBehovRepository(null)) }, command()),
+            Triple(
+                "BEHOV_MISSING_AFTER_PUBLICATION",
+                { createUseCase(repository = FakeBehovRepository(behov, markResult = MarkFulfilledResult.Missing)) },
+                command(),
+            ),
             Triple("ACCESS_DENIED", { createUseCase(access = FakeOrganizationAccess(OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS))) }, command()),
             Triple("NO_ACTIVE_SYKMELDING", { createUseCase(sykmelding = FakeActiveSykmeldingLookup(false)) }, command()),
             Triple("NO_EMPLOYMENT", { createUseCase(employment = FakeEmploymentLookup(EmploymentResult.NONE)) }, command()),
@@ -126,7 +198,12 @@ class FulfillmentLoggingContractTest :
         }
 
         listOf("sykmelding", "establish", "fulfilled", "dialog").forEach { failingEffect ->
-            listOf(IllegalStateException("private-exception-canary"), CancellationException("private-exception-canary")).forEach { failure ->
+            val failures = if (failingEffect == "dialog") {
+                listOf(CancellationException("private-exception-canary"))
+            } else {
+                listOf(IllegalStateException("private-exception-canary"), CancellationException("private-exception-canary"))
+            }
+            failures.forEach { failure ->
                 test("does not log a business outcome for ${failure::class.simpleName} at $failingEffect") {
                     val useCase = createUseCase(
                         repository = FakeBehovRepository(behov, updateFailure = failure.takeIf { failingEffect == "fulfilled" }),

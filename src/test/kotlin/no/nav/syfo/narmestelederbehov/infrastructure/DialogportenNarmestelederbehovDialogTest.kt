@@ -1,116 +1,111 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
-import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
-import no.nav.syfo.narmesteleder.db.NarmestelederDb
-import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmestelederbehov.application.DialogportenCompletionAttempt
-import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import org.slf4j.LoggerFactory
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
+import no.nav.syfo.altinn.dialogporten.domain.Content
+import no.nav.syfo.altinn.dialogporten.domain.ContentValue
+import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
+import no.nav.syfo.altinn.dialogporten.domain.Dialog
+import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
+import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import java.util.UUID
 
 class DialogportenNarmestelederbehovDialogTest :
     FunSpec({
-        val id = NarmestelederbehovId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
-        val behov = NarmestelederBehovEntity(
-            id = id.value,
-            orgnummer = "123456789",
-            hovedenhetOrgnummer = "123456789",
-            sykmeldtFnr = "12345678901",
-            behovReason = BehovReason.DEAKTIVERT_LEDER,
-            behovStatus = BehovStatus.BEHOV_FULFILLED,
-        )
+        val dialogId = UUID.fromString("00000000-0000-0000-0000-000000000002")
+        val revision = UUID.fromString("00000000-0000-0000-0000-000000000003")
 
-        test("does nothing when no dialog exists") {
-            val db = mockk<NarmestelederDb>()
-            val service = mockk<DialogportenService>()
-            coEvery { db.findBehovById(id.value) } returns behov
+        test("fetches the revision and patches completed status") {
+            val client = RecordingDialogportenClient(dialogId, revision)
 
-            DialogportenNarmestelederbehovDialog(db, service).attemptCompletion(id) shouldBe
-                DialogportenCompletionAttempt.NotApplicable
-            coVerify(exactly = 0) { service.completeFulfilledDialog(any()) }
+            DialogportenNarmestelederbehovDialog(client).complete(dialogId)
+
+            client.calls shouldBe listOf(
+                "get" to dialogId,
+                "patch" to dialogId,
+            )
+            client.patchRevision shouldBe revision
+            client.patches shouldBe listOf(
+                HttpDialogportenClient.DialogportenPatch(
+                    HttpDialogportenClient.DialogportenPatch.OPERATION.REPLACE,
+                    HttpDialogportenClient.DialogportenPatch.PATH.STATUS,
+                    DialogStatus.Completed.name,
+                ),
+            )
         }
 
-        test("lookup failure stays retryable") {
-            val db = mockk<NarmestelederDb>()
-            val service = mockk<DialogportenService>()
-            coEvery { db.findBehovById(id.value) } throws IllegalStateException("private-exception-canary")
-            val appender = ListAppender<ILoggingEvent>().apply { start() }
-            val logger = LoggerFactory.getLogger(DialogportenNarmestelederbehovDialog::class.java) as Logger
-            val previousLevel = logger.level
-            logger.level = Level.WARN
-            logger.addAppender(appender)
+        test("lookup failure propagates without patching") {
+            val failure = IllegalStateException("lookup failed")
+            val client = RecordingDialogportenClient(dialogId, revision, lookupFailure = failure)
 
-            try {
-                DialogportenNarmestelederbehovDialog(db, service).attemptCompletion(id) shouldBe
-                    DialogportenCompletionAttempt.Failed
-                coVerify(exactly = 0) { service.completeFulfilledDialog(any()) }
-                val event = appender.list.single()
-                val fields = event.keyValuePairs.associate { it.key to it.value }
-                fields["event_type"] shouldBe "narmestelederbehov_dialogporten_completion_failed"
-                fields["behov_id"] shouldBe id.value.toString()
-                fields["failure_kind"] shouldBe "unknown"
-                event.throwableProxy.message shouldBe "java.lang.IllegalStateException"
-                (event.formattedMessage + fields.toString() + event.throwableProxy.message)
-                    .contains("private-exception-canary") shouldBe false
-            } finally {
-                logger.detachAppender(appender)
-                logger.level = previousLevel
-                appender.stop()
-            }
+            shouldThrow<IllegalStateException> { DialogportenNarmestelederbehovDialog(client).complete(dialogId) } shouldBe failure
+            client.calls shouldBe listOf("get" to dialogId)
         }
 
-        test("missing behov is not applicable") {
-            val db = mockk<NarmestelederDb>()
-            val service = mockk<DialogportenService>()
-            coEvery { db.findBehovById(id.value) } returns null
+        test("patch failure propagates") {
+            val failure = IllegalStateException("patch failed")
+            val client = RecordingDialogportenClient(dialogId, revision, patchFailure = failure)
 
-            DialogportenNarmestelederbehovDialog(db, service).attemptCompletion(id) shouldBe
-                DialogportenCompletionAttempt.NotApplicable
-            coVerify(exactly = 0) { service.completeFulfilledDialog(any()) }
+            shouldThrow<IllegalStateException> { DialogportenNarmestelederbehovDialog(client).complete(dialogId) } shouldBe failure
+            client.calls shouldBe listOf("get" to dialogId, "patch" to dialogId)
         }
 
-        test("lookup cancellation propagates") {
-            val db = mockk<NarmestelederDb>()
-            val service = mockk<DialogportenService>()
-            coEvery { db.findBehovById(id.value) } throws CancellationException("cancelled")
+        listOf("lookup", "patch").forEach { failingStep ->
+            test("$failingStep cancellation propagates") {
+                val failure = CancellationException("cancelled")
+                val client = RecordingDialogportenClient(
+                    dialogId,
+                    revision,
+                    lookupFailure = failure.takeIf { failingStep == "lookup" },
+                    patchFailure = failure.takeIf { failingStep == "patch" },
+                )
 
-            shouldThrow<CancellationException> {
-                DialogportenNarmestelederbehovDialog(db, service).attemptCompletion(id)
-            }
-            coVerify(exactly = 0) { service.completeFulfilledDialog(any()) }
-        }
-
-        listOf(
-            IllegalStateException("failed") to DialogportenCompletionAttempt.Failed,
-            CancellationException("cancelled") to null,
-        ).forEach { (failure, result) ->
-            test("completion ${failure::class.simpleName} ${if (result == null) "propagates" else "stays retryable"}") {
-                val db = mockk<NarmestelederDb>()
-                val service = mockk<DialogportenService>()
-                val withDialog = behov.copy(dialogId = UUID.fromString("00000000-0000-0000-0000-000000000002"))
-                coEvery { db.findBehovById(id.value) } returns withDialog
-                coEvery { service.completeFulfilledDialog(withDialog) } throws failure
-
-                val adapter = DialogportenNarmestelederbehovDialog(db, service)
-                if (result == null) {
-                    shouldThrow<CancellationException> { adapter.attemptCompletion(id) }
-                } else {
-                    adapter.attemptCompletion(id) shouldBe result
-                }
-                coVerify(exactly = 0) { db.updateNlBehov(any()) }
+                shouldThrow<CancellationException> { DialogportenNarmestelederbehovDialog(client).complete(dialogId) } shouldBe failure
             }
         }
     })
+
+private class RecordingDialogportenClient(
+    private val dialogId: UUID,
+    private val revision: UUID,
+    private val lookupFailure: Throwable? = null,
+    private val patchFailure: Throwable? = null,
+) : DialogportenClient {
+    val calls = mutableListOf<Pair<String, UUID>>()
+    var patchRevision: UUID? = null
+    var patches: List<HttpDialogportenClient.DialogportenPatch>? = null
+
+    override suspend fun createDialog(dialog: Dialog): UUID = error("Unexpected createDialog")
+
+    override suspend fun getDialogById(dialogId: UUID): ExtendedDialog {
+        calls += "get" to dialogId
+        lookupFailure?.let { throw it }
+        return ExtendedDialog(
+            revision = revision,
+            id = this.dialogId,
+            party = "urn:altinn:organization:identifier-no:123456789",
+            serviceResource = "service:resource",
+            externalReference = this.dialogId.toString(),
+            status = DialogStatus.RequiresAttention,
+            content = Content(
+                title = ContentValue(value = listOf(ContentValueItem(value = "Title"))),
+                summary = ContentValue(value = listOf(ContentValueItem(value = "Summary"))),
+            ),
+        )
+    }
+
+    override suspend fun patchDialog(
+        dialogId: UUID,
+        revisionNumber: UUID,
+        patch: List<HttpDialogportenClient.DialogportenPatch>,
+    ) {
+        calls += "patch" to dialogId
+        patchRevision = revisionNumber
+        patches = patch
+        patchFailure?.let { throw it }
+    }
+}

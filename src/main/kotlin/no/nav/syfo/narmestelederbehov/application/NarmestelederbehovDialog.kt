@@ -1,9 +1,9 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import java.util.UUID
 
 fun interface NarmestelederbehovDialog {
-    suspend fun attemptCompletion(id: NarmestelederbehovId): DialogportenCompletionAttempt
+    suspend fun complete(dialogId: UUID)
 }
 
 sealed interface DialogportenCompletionAttempt {

@@ -29,7 +29,8 @@ fun FulfillNarmestelederbehovResult.throwIfRejected() {
                 isAlreadyLogged = true,
             )
         }
-        FulfillNarmestelederbehovResult.NotFound ->
+        FulfillNarmestelederbehovResult.NotFound,
+        FulfillNarmestelederbehovResult.BehovMissingAfterPublication ->
             throw ApiErrorException.NotFoundException("A LinemanagerRequirement was not found", isAlreadyLogged = true)
         is FulfillNarmestelederbehovResult.AccessDenied -> {
             val message = when (reason) {

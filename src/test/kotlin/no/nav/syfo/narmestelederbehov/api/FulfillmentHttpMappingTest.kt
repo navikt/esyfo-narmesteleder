@@ -24,6 +24,7 @@ class FulfillmentHttpMappingTest :
         val org = OrganizationNumber("123456789")
         val cases = listOf(
             Case(FulfillNarmestelederbehovResult.NotFound, HttpStatusCode.NotFound, ErrorType.NOT_FOUND, "A LinemanagerRequirement was not found"),
+            Case(FulfillNarmestelederbehovResult.BehovMissingAfterPublication, HttpStatusCode.NotFound, ErrorType.NOT_FOUND, "A LinemanagerRequirement was not found"),
             Case(
                 FulfillNarmestelederbehovResult.AccessDenied(DenialReason.MISSING_ORGANIZATION_ACCESS, org),
                 HttpStatusCode.Forbidden,

@@ -9,18 +9,29 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import java.util.UUID
 
 internal class FakeBehovRepository(
     private val behov: Narmestelederbehov?,
     private val effects: MutableList<String> = mutableListOf(),
     private val updateFailure: Throwable? = null,
+    private val markResult: MarkFulfilledResult? = null,
+    private val dialogStatusFailure: Throwable? = null,
+    private val dialogStatusResult: MarkDialogCompletedResult = MarkDialogCompletedResult.Marked,
 ) : NarmestelederbehovRepository {
 
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov.also { effects += "load" }
 
-    override suspend fun markFulfilled(id: NarmestelederbehovId) {
+    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult {
         effects += "fulfilled"
         updateFailure?.let { throw it }
+        return markResult ?: MarkFulfilledResult.Marked(id, UUID.fromString("00000000-0000-0000-0000-000000000002"))
+    }
+
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult {
+        effects += "dialog-status"
+        dialogStatusFailure?.let { throw it }
+        return dialogStatusResult
     }
 }
 
@@ -78,13 +89,11 @@ internal class FakeRelationEstablisher(
 }
 
 internal class FakeDialog(
-    private val attempt: DialogportenCompletionAttempt = DialogportenCompletionAttempt.Completed,
     private val effects: MutableList<String> = mutableListOf(),
     private val failure: Throwable? = null,
 ) : NarmestelederbehovDialog {
-    override suspend fun attemptCompletion(id: NarmestelederbehovId): DialogportenCompletionAttempt {
+    override suspend fun complete(dialogId: UUID) {
         effects += "dialog"
         failure?.let { throw it }
-        return attempt
     }
 }

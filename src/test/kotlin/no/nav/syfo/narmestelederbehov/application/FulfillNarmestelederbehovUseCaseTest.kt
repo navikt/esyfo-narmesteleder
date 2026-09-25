@@ -1,5 +1,9 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -20,6 +24,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import org.slf4j.LoggerFactory
 import java.util.UUID
 
 class FulfillNarmestelederbehovUseCaseTest :
@@ -32,7 +37,7 @@ class FulfillNarmestelederbehovUseCaseTest :
 
             effects shouldBe listOf(
                 "load", "access", "sykmelding", "employment", "person:${employeeIdent.value}",
-                "person:${managerIdent.value}", "metric", "establish", "fulfilled", "dialog",
+                "person:${managerIdent.value}", "metric", "establish", "fulfilled", "dialog", "dialog-status",
             )
             requireNotNull(relation.command).manager.let {
                 it.email shouldBe "manager@example.test"
@@ -183,13 +188,118 @@ class FulfillNarmestelederbehovUseCaseTest :
 
         test("keeps fulfillment successful when Dialogporten completion fails") {
             val effects = mutableListOf<String>()
+            val failure = IllegalStateException("private-exception-canary")
+            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            val previousLevel = logger.level
+            logger.level = Level.WARN
+            logger.addAppender(appender)
+            try {
+                createUseCase(
+                    dialog = FakeDialog(effects = effects, failure = failure),
+                    effects = effects,
+                ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.Failed)
 
+                effects shouldBe listOf(
+                    "load", "access", "sykmelding", "employment",
+                    "person:${employeeIdent.value}", "person:${managerIdent.value}",
+                    "metric", "establish", "fulfilled", "dialog",
+                )
+                val failureEvents = appender.list.filter { event ->
+                    event.keyValuePairs.any { it.key == "event_type" && it.value == "narmestelederbehov_dialogporten_completion_failed" }
+                }
+                failureEvents.size shouldBe 1
+                val event = failureEvents.single()
+                val fields = event.keyValuePairs.associate { it.key to it.value }
+                event.level shouldBe Level.WARN
+                fields["behov_id"] shouldBe behovId.value.toString()
+                fields.containsKey("dialog_id") shouldBe false
+                fields["operation"] shouldBe "fulfill_narmestelederbehov"
+                fields["upstream"] shouldBe "dialogporten"
+                event.throwableProxy.message shouldBe "java.lang.IllegalStateException"
+                (event.formattedMessage + fields.toString() + event.throwableProxy.message)
+                    .contains("private-exception-canary") shouldBe false
+            } finally {
+                logger.detachAppender(appender)
+                logger.level = previousLevel
+                appender.stop()
+            }
+        }
+
+        test("returns a distinct missing result after publication without dialog completion") {
+            val effects = mutableListOf<String>()
             createUseCase(
-                dialog = FakeDialog(DialogportenCompletionAttempt.Failed, effects),
+                repository = FakeBehovRepository(behov, effects, markResult = MarkFulfilledResult.Missing),
                 effects = effects,
-            ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.Failed)
+            ).execute(command()) shouldBe FulfillNarmestelederbehovResult.BehovMissingAfterPublication
+            effects.takeLast(2) shouldBe listOf("establish", "fulfilled")
+        }
 
-            effects.takeLast(3) shouldBe listOf("establish", "fulfilled", "dialog")
+        test("skips dialog and status update when no dialog id was returned") {
+            val effects = mutableListOf<String>()
+            createUseCase(
+                repository = FakeBehovRepository(behov, effects, markResult = MarkFulfilledResult.Marked(behovId, null)),
+                effects = effects,
+            ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.NotApplicable)
+            effects.takeLast(2) shouldBe listOf("establish", "fulfilled")
+        }
+
+        test("status persistence failure leaves the fulfilled request successful") {
+            val effects = mutableListOf<String>()
+            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            val previousLevel = logger.level
+            logger.level = Level.WARN
+            logger.addAppender(appender)
+            try {
+                createUseCase(
+                    repository = FakeBehovRepository(behov, effects, dialogStatusFailure = IllegalStateException("private-exception-canary")),
+                    effects = effects,
+                ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.Failed)
+                effects.takeLast(2) shouldBe listOf("dialog", "dialog-status")
+                val failureEvents = appender.list.filter { event ->
+                    event.keyValuePairs.any { it.key == "event_type" && it.value == "narmestelederbehov_dialog_status_persistence_failed" }
+                }
+                failureEvents.size shouldBe 1
+                val event = failureEvents.single()
+                val fields = event.keyValuePairs.associate { it.key to it.value }
+                fields["behov_id"] shouldBe behovId.value.toString()
+                event.throwableProxy.message shouldBe "java.lang.IllegalStateException"
+                (event.formattedMessage + fields.toString() + event.throwableProxy.message)
+                    .contains("private-exception-canary") shouldBe false
+            } finally {
+                logger.detachAppender(appender)
+                logger.level = previousLevel
+                appender.stop()
+            }
+        }
+
+        test("reports Completed without logging when another writer changed the status") {
+            val effects = mutableListOf<String>()
+            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            val previousLevel = logger.level
+            logger.level = Level.WARN
+            logger.addAppender(appender)
+            try {
+                createUseCase(
+                    repository = FakeBehovRepository(behov, effects, dialogStatusResult = MarkDialogCompletedResult.NotFulfilled),
+                    effects = effects,
+                ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.Completed)
+                effects.takeLast(2) shouldBe listOf("dialog", "dialog-status")
+                appender.list.filter { it.level == Level.WARN } shouldBe emptyList()
+            } finally {
+                logger.detachAppender(appender)
+                logger.level = previousLevel
+                appender.stop()
+            }
+        }
+
+        test("status persistence cancellation propagates") {
+            val failure = CancellationException("cancelled")
+            shouldThrow<CancellationException> {
+                createUseCase(repository = FakeBehovRepository(behov, dialogStatusFailure = failure)).execute(command())
+            } shouldBe failure
         }
 
         test("records the name outcome even when relation publication fails") {
@@ -222,7 +332,12 @@ class FulfillNarmestelederbehovUseCaseTest :
         }
 
         listOf("establish", "fulfilled", "dialog").forEach { failingEffect ->
-            listOf(IllegalStateException("upstream failed"), CancellationException("cancelled")).forEach { failure ->
+            val failures = if (failingEffect == "dialog") {
+                listOf(CancellationException("cancelled"))
+            } else {
+                listOf(IllegalStateException("upstream failed"), CancellationException("cancelled"))
+            }
+            failures.forEach { failure ->
                 test("propagates ${failure::class.simpleName} at $failingEffect without later effects") {
                     val effects = mutableListOf<String>()
                     val useCase = createUseCase(
@@ -270,7 +385,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                     source = RelationSource.LPS,
                 ),
             )
-            FakeDialog().attemptCompletion(behovId) shouldBe DialogportenCompletionAttempt.Completed
+            FakeDialog().complete(UUID.randomUUID())
         }
 
         test("propagates cancellation without later effects") {

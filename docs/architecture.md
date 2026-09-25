@@ -294,9 +294,11 @@ Split repository contracts by business purpose, not mechanically by table or
 SQL statement. For example, write flows, API queries and maintenance may have
 separate focused contracts over `nl_behov`.
 
-The structural migration first places existing JDBC/DAO behavior behind clean
-ports. Replacing implementations with Exposed DSL is separate follow-up work.
-No schema, query-semantics or transaction change is implied by moving a flow.
+New and migrated repository adapters use Exposed DSL (`Table` and
+`suspendTransaction`), not new raw JDBC (`DatabaseInterface`) or Exposed DAO
+code. Existing JDBC/DAO implementations migrate when their adapter is touched.
+The separate broad migration remains follow-up work; moving a flow alone does
+not imply a schema, query-semantics or transaction change.
 
 A database transaction does not include Kafka, Dialogporten or another remote
 system. The use case owns and tests the order between those effects.

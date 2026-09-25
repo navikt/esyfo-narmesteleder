@@ -12,7 +12,7 @@ import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
 
-interface IPdpClient {
+interface PdpClient {
     suspend fun authorize(
         user: User,
         orgNumberSet: Set<String>,
@@ -20,12 +20,12 @@ interface IPdpClient {
     ): PdpResponse
 }
 
-class PdpClient(
+class HttpPdpClient(
     private val baseUrl: String,
     private val httpClient: HttpClient,
     private val altinnTokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
-) : IPdpClient {
+) : PdpClient {
     override suspend fun authorize(
         user: User,
         orgNumberSet: Set<String>,

@@ -20,14 +20,14 @@ data class RevokableNarmestelederEntity(
     val isActive: Boolean,
 )
 
-interface INarmestelederRevokeDb {
+interface NarmestelederRevokeDb {
     suspend fun findByNarmestelederId(narmestelederId: UUID): RevokableNarmestelederEntity?
 }
 
-class NarmestelederRevokeDb(
+class PostgresNarmestelederRevokeDb(
     private val database: Database,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-) : INarmestelederRevokeDb {
+) : NarmestelederRevokeDb {
 
     /**
      * Looks up a relation regardless of whether it is still active. The caller needs to tell

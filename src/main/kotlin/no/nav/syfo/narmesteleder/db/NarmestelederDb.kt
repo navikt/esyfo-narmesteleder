@@ -25,7 +25,7 @@ private val queryLimitAdjusted = applicationEvent<QueryLimitDetails>(
     ),
 )
 
-interface INarmestelederDb {
+interface NarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
@@ -62,10 +62,10 @@ interface INarmestelederDb {
     suspend fun getNlBehovForExpireInDialogporten(limit: Int = 100, status: BehovStatus) = getNlBehovForExpireInDialogporten(limit, listOf(status))
 }
 
-class NarmestelederDb(
+class PostgresNarmestelederDb(
     private val database: DatabaseInterface,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
-) : INarmestelederDb {
+) : NarmestelederDb {
     override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity = withContext(dispatcher) {
         return@withContext database.connection.use { connection ->
             connection

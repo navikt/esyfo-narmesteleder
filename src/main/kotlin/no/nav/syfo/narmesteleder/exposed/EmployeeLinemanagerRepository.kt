@@ -24,14 +24,14 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.time.Clock
 import java.time.OffsetDateTime
 
-interface IEmployeeLinemanagerRepository {
+interface EmployeeLinemanagerRepository {
     suspend fun findActiveForEmployee(query: EmployeeLinemanagerQuery): EmployeeLinemanagerLookupResult
 }
 
-class EmployeeLinemanagerRepository(
+class PostgresEmployeeLinemanagerRepository(
     private val database: Database,
     private val clock: Clock = Clock.systemUTC(),
-) : IEmployeeLinemanagerRepository {
+) : EmployeeLinemanagerRepository {
 
     override suspend fun findActiveForEmployee(query: EmployeeLinemanagerQuery): EmployeeLinemanagerLookupResult = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {

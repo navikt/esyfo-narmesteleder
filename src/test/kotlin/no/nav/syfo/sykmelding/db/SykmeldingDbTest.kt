@@ -16,7 +16,7 @@ import java.util.UUID
 class SykmeldingDbTest :
     DescribeSpec({
         val testDb = TestDB.database
-        val db = SykmeldingDb(testDb)
+        val db = PostgresSykmeldingDb(testDb)
 
         beforeTest {
             TestDB.clearSendtSykmeldingData()
@@ -309,7 +309,7 @@ class SykmeldingDbTest :
         describe("transaction rollback behavior") {
             it("should rollback entire transaction when an error occurs") {
                 val spyDb = spyk(testDb)
-                val dbWithSpy = SykmeldingDb(spyDb)
+                val dbWithSpy = PostgresSykmeldingDb(spyDb)
 
                 val sykmeldingId = UUID.randomUUID()
 
@@ -345,7 +345,7 @@ class SykmeldingDbTest :
 
             it("should rollback both insert and revoke when transaction fails") {
                 val spyDb = spyk(testDb)
-                val dbWithSpy = SykmeldingDb(spyDb)
+                val dbWithSpy = PostgresSykmeldingDb(spyDb)
 
                 val existingId = UUID.randomUUID()
                 val newId = UUID.randomUUID()

@@ -12,7 +12,7 @@ import java.util.UUID
 
 class SendtSykmeldingNarmestelederBruddRepositoryTest :
     DescribeSpec({
-        val repository = SendtSykmeldingNarmestelederBruddRepository(TestDB.exposedDatabase)
+        val repository = PostgresSendtSykmeldingNarmestelederBruddRepository(TestDB.exposedDatabase)
 
         beforeTest {
             transaction(TestDB.exposedDatabase) {

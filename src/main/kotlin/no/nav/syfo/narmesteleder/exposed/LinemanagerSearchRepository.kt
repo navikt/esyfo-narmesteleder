@@ -40,14 +40,14 @@ import java.time.OffsetDateTime
 
 private const val LIKE_ESCAPE_CHARACTER = '\\'
 
-interface ILinemanagerSearchRepository {
+interface LinemanagerSearchRepository {
     suspend fun search(query: LinemanagerSearchQuery): List<LinemanagerSearchResult>
 }
 
-class LinemanagerSearchRepository(
+class PostgresLinemanagerSearchRepository(
     private val database: Database,
     private val clock: Clock = Clock.systemUTC(),
-) : ILinemanagerSearchRepository {
+) : LinemanagerSearchRepository {
 
     override suspend fun search(query: LinemanagerSearchQuery): List<LinemanagerSearchResult> {
         val now = OffsetDateTime.now(clock)

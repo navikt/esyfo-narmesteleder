@@ -36,7 +36,7 @@ import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
-import no.nav.syfo.altinntilganger.client.IAltinnTilgangerClient
+import no.nav.syfo.altinntilganger.client.HttpAltinnTilgangerClient
 import no.nav.syfo.application.api.STATUS_PAGES_LOGGER_NAME
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
@@ -126,7 +126,7 @@ class AltinnAccessLoggingContractTest :
                 val texasClient = mockk<TexasHttpClient>()
                 coEvery { texasClient.exchangeTokenForIsAltinnTilganger("token-canary") } throws
                     ClientRequestException(response, payload)
-                val upstreamClient = AltinnTilgangerClient(
+                val upstreamClient = HttpAltinnTilgangerClient(
                     texasClient,
                     HttpClient(MockEngine { error("Altinn must not be called after token failure") }),
                     "https://altinn.test",
@@ -167,7 +167,7 @@ class AltinnAccessLoggingContractTest :
                         status = HttpStatusCode.ServiceUnavailable,
                     )
                 }
-                val altinnClient = AltinnTilgangerClient(
+                val altinnClient = HttpAltinnTilgangerClient(
                     texasClient = texasClient,
                     httpClient = httpClientDefault(HttpClient(upstreamEngine)),
                     baseUrl = "https://altinn-tilganger.test",
@@ -248,7 +248,7 @@ class AltinnAccessLoggingContractTest :
                         ),
                     )
                 }
-                val client = object : IAltinnTilgangerClient {
+                val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
                             message = "Request failed: $upstreamUrlCanary",
@@ -298,7 +298,7 @@ class AltinnAccessLoggingContractTest :
 
                 cases.forEach { (status, expectedErrorCode) ->
                     logOutput.reset()
-                    val client = object : IAltinnTilgangerClient {
+                    val client = object : AltinnTilgangerClient {
                         override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                             UpstreamRequestException(
                                 message = "Safe upstream failure",
@@ -322,7 +322,7 @@ class AltinnAccessLoggingContractTest :
             }
 
             it("uses the remaining client-error code for other 4xx statuses") {
-                val client = object : IAltinnTilgangerClient {
+                val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
                             message = "Safe upstream failure",
@@ -344,7 +344,7 @@ class AltinnAccessLoggingContractTest :
             }
 
             it("preserves the organization-access operation and its single terminal error") {
-                val client = object : IAltinnTilgangerClient {
+                val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
                             message = "Upstream unavailable",
@@ -366,7 +366,7 @@ class AltinnAccessLoggingContractTest :
             }
 
             it("omits upstream status for non-HTTP failures") {
-                val client = object : IAltinnTilgangerClient {
+                val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
                             message = "Safe transport failure",
@@ -388,7 +388,7 @@ class AltinnAccessLoggingContractTest :
             }
 
             it("keeps token exchange separate while preserving its bounded HTTP status") {
-                val client = object : IAltinnTilgangerClient {
+                val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
                             message = "Safe token exchange failure",
@@ -411,7 +411,7 @@ class AltinnAccessLoggingContractTest :
             }
 
             it("preserves nullable client results without emitting an error") {
-                val client = object : IAltinnTilgangerClient {
+                val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = null
                 }
                 val service = AltinnTilgangerService(client)
@@ -436,7 +436,7 @@ class AltinnAccessLoggingContractTest :
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
                     )
                 }
-                val client = AltinnTilgangerClient(
+                val client = HttpAltinnTilgangerClient(
                     texasClient = texasClient,
                     httpClient = httpClientDefault(HttpClient(upstreamEngine)),
                     baseUrl = "https://altinn-tilganger.test",
@@ -461,7 +461,7 @@ class AltinnAccessLoggingContractTest :
                 coEvery {
                     texasClient.exchangeTokenForIsAltinnTilganger("token")
                 } throws CancellationException("Token exchange cancelled")
-                val client = AltinnTilgangerClient(
+                val client = HttpAltinnTilgangerClient(
                     texasClient = texasClient,
                     httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
                     baseUrl = "https://altinn-tilganger.test",
@@ -507,7 +507,7 @@ class AltinnAccessLoggingContractTest :
                         register(ContentType.Application.Json, cancellingConverter)
                     }
                 }
-                val client = AltinnTilgangerClient(
+                val client = HttpAltinnTilgangerClient(
                     texasClient = texasClient,
                     httpClient = httpClient,
                     baseUrl = "https://altinn-tilganger.test",
@@ -521,7 +521,7 @@ class AltinnAccessLoggingContractTest :
             }
 
             it("emits the canonical terminal event when the upstream response reports an error") {
-                val client = object : IAltinnTilgangerClient {
+                val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal) = AltinnTilgangerResponse(
                         isError = true,
                         hierarki = emptyList(),
@@ -545,7 +545,7 @@ class AltinnAccessLoggingContractTest :
 
             it("serializes trace_id from MDC with the production encoder") {
                 val traceId = "0123456789abcdef0123456789abcdef"
-                val client = object : IAltinnTilgangerClient {
+                val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw UpstreamRequestException(
                         message = "Upstream unavailable",
                         upstreamStatus = 503,

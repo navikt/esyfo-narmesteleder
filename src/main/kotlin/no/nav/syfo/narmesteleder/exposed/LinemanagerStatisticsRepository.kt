@@ -24,14 +24,14 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
-interface ILinemanagerStatisticsRepository {
+interface LinemanagerStatisticsRepository {
     suspend fun getStatistics(orgNumber: OrganizationNumber): LinemanagerStatistics
 }
 
-class LinemanagerStatisticsRepository(
+class PostgresLinemanagerStatisticsRepository(
     private val database: Database,
     private val clock: Clock = Clock.systemUTC(),
-) : ILinemanagerStatisticsRepository {
+) : LinemanagerStatisticsRepository {
     override suspend fun getStatistics(orgNumber: OrganizationNumber): LinemanagerStatistics {
         val now = OffsetDateTime.now(clock)
         val activeLinemanager = activeLinemanagerCondition(orgNumber, now)

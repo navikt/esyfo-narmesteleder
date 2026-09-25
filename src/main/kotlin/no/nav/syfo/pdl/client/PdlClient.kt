@@ -44,22 +44,22 @@ private val getPersonQuery =
 """
         .trimIndent()
 
-interface IPdlClient {
+interface PdlClient {
     suspend fun getSystemToken(): String
     suspend fun getPerson(fnr: String): GetPersonResponse
     suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse
 }
 
-class PdlClient(
+class HttpPdlClient(
     private val httpClient: HttpClient,
     private val pdlBaseUrl: String,
     private val texasHttpClient: TexasHttpClient,
     private val scope: String
-) : IPdlClient {
+) : PdlClient {
     companion object {
         private val logger = logger()
         private val getPersonBolkQuery =
-            PdlClient::class.java.getResource("/graphql/hentPersonBolk.graphql")
+            HttpPdlClient::class.java.getResource("/graphql/hentPersonBolk.graphql")
                 ?.readText()
                 ?: throw IllegalStateException("Could not load hentPersonBolk.graphql")
     }

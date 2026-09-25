@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
 import nlBehovEntity
 import no.nav.syfo.TestDB
-import no.nav.syfo.narmesteleder.db.NarmestelederDb
+import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerStatistics
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
@@ -26,8 +26,8 @@ class LinemanagerStatisticsRepositoryTest :
         val now = OffsetDateTime.ofInstant(fixedInstant, ZoneOffset.UTC)
         val today = now.toLocalDate()
         val orgNumber = OrganizationNumber("123456789")
-        val repository = LinemanagerStatisticsRepository(TestDB.exposedDatabase, fixedClock)
-        val behovDb = NarmestelederDb(TestDB.database, Dispatchers.IO)
+        val repository = PostgresLinemanagerStatisticsRepository(TestDB.exposedDatabase, fixedClock)
+        val behovDb = PostgresNarmestelederDb(TestDB.database, Dispatchers.IO)
 
         beforeTest {
             TestDB.clearAllData()

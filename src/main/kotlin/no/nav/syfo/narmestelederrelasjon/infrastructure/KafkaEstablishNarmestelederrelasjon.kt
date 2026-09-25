@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.model.Leder
 import no.nav.syfo.narmesteleder.kafka.model.NlResponse
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
@@ -9,7 +9,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 
-class KafkaEstablishNarmestelederrelasjon(private val producer: ISykmeldingNLKafkaProducer) : EstablishNarmestelederrelasjon {
+class KafkaEstablishNarmestelederrelasjon(private val producer: SykmeldingNarmestelederProducer) : EstablishNarmestelederrelasjon {
     override suspend fun establish(command: EstablishNarmestelederrelasjonCommand) {
         producer.sendSykmeldingNLRelasjon(
             NlResponse(

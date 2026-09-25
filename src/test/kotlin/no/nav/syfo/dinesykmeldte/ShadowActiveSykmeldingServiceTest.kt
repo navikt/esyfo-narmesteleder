@@ -11,7 +11,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
-import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
+import no.nav.syfo.sykmelding.exposed.ActiveSykmeldingRepository
 import no.nav.syfo.sykmelding.exposed.LocalActiveSykmeldingResult
 import org.slf4j.LoggerFactory
 import java.util.UUID
@@ -19,8 +19,8 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class ShadowActiveSykmeldingServiceTest :
     DescribeSpec({
-        val dinesykmeldteService = io.mockk.mockk<DinesykmeldteService>()
-        val repository = io.mockk.mockk<IActiveSykmeldingRepository>()
+        val dinesykmeldteService = io.mockk.mockk<ClientDinesykmeldteService>()
+        val repository = io.mockk.mockk<ActiveSykmeldingRepository>()
         val service = ShadowActiveSykmeldingService(dinesykmeldteService, repository)
         val logbackLogger = LoggerFactory.getLogger(ShadowActiveSykmeldingService::class.java) as Logger
         val logAppender = ListAppender<ILoggingEvent>()

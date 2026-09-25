@@ -14,13 +14,13 @@ import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerQuery
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerRead
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.exposed.IEmployeeLinemanagerRepository
+import no.nav.syfo.narmesteleder.exposed.EmployeeLinemanagerRepository
 import java.time.Instant
 import java.util.UUID
 
 class EmployeeLinemanagerServiceTest :
     DescribeSpec({
-        val repository = mockk<IEmployeeLinemanagerRepository>()
+        val repository = mockk<EmployeeLinemanagerRepository>()
         val service = EmployeeLinemanagerService(repository)
         val employee = PersonalIdentificationNumber("12345678910")
         val orgNumber = OrganizationNumber("123456789")

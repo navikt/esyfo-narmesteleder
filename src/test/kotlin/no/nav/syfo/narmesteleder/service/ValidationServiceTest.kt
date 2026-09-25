@@ -30,8 +30,8 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
+import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
@@ -52,7 +52,7 @@ class ValidationServiceTest :
         val altinnTilgangerClient = FakeAltinnTilgangerClient()
         val altinnTilgangerService = spyk(AltinnTilgangerService(altinnTilgangerClient))
         val dinesykmeldteClient = FakeDinesykmeldteClient()
-        val dinesykmeldteService: IDinesykmeldteService = spyk(DinesykmeldteService(dinesykmeldteClient))
+        val dinesykmeldteService: DinesykmeldteService = spyk(ClientDinesykmeldteService(dinesykmeldteClient))
 
         val aaregClient = FakeAaregClient()
         val aaregService = spyk(AaregService(aaregClient))

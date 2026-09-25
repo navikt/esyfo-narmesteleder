@@ -42,7 +42,7 @@ class AaregClientTest :
                 }
             }
             val httpClient = httpClientDefault(HttpClient(mockEngine))
-            val aaregClient = AaregClient(
+            val aaregClient = HttpAaregClient(
                 aaregBaseUrl = "base",
                 texasHttpClient = texasHttpClient,
                 scope = "scope",
@@ -64,13 +64,13 @@ class AaregClientTest :
             it("It should re-throw with internal server error if 4xx error except 404") {
                 texasHttpClient.defaultMocks()
                 val mockEngine = getMockEngine(
-                    path = AaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH,
+                    path = HttpAaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
                     status = HttpStatusCode.Companion.BadRequest,
                     content = ""
                 )
                 val client = httpClientDefault(HttpClient(mockEngine))
-                val arClient = AaregClient(
+                val arClient = HttpAaregClient(
                     aaregBaseUrl = "",
                     texasHttpClient = texasHttpClient,
                     scope = "scope",
@@ -84,13 +84,13 @@ class AaregClientTest :
             it("Should re-throw with internal server error if 4xx error") {
                 texasHttpClient.defaultMocks()
                 val mockEngine = getMockEngine(
-                    path = AaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH,
+                    path = HttpAaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
                     status = HttpStatusCode.Companion.NotFound,
                     content = ""
                 )
                 val client = httpClientDefault(HttpClient(mockEngine))
-                val arClient = AaregClient(
+                val arClient = HttpAaregClient(
                     aaregBaseUrl = "",
                     texasHttpClient = texasHttpClient,
                     scope = "scope",

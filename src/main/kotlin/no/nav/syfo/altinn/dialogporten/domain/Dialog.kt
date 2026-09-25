@@ -2,7 +2,7 @@ package no.nav.syfo.altinn.dialogporten.domain
 
 import java.util.UUID
 
-interface IDialog {
+interface DialogContent {
     val serviceResource: String
     val party: String
     val externalReference: String
@@ -22,7 +22,7 @@ data class Dialog(
     override val transmissions: List<Transmission> = emptyList(),
     override val attachments: List<Attachment>? = null,
     override val isApiOnly: Boolean? = true,
-) : IDialog
+) : DialogContent
 
 data class ExtendedDialog(
     val revision: UUID,
@@ -35,4 +35,4 @@ data class ExtendedDialog(
     override val transmissions: List<Transmission> = emptyList(),
     override val attachments: List<Attachment>? = null,
     override val isApiOnly: Boolean? = true,
-) : IDialog
+) : DialogContent

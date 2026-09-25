@@ -52,14 +52,14 @@ data class PersistedSendtSykmeldingNarmestelederBrudd(
     val created: OffsetDateTime,
 )
 
-interface ISendtSykmeldingNarmestelederBruddRepository {
+interface SendtSykmeldingNarmestelederBruddRepository {
     suspend fun findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmeldingNarmestelederBrudd?
     suspend fun insert(brudd: SendtSykmeldingNarmestelederBrudd)
 }
 
-class SendtSykmeldingNarmestelederBruddRepository(
+class PostgresSendtSykmeldingNarmestelederBruddRepository(
     private val database: Database,
-) : ISendtSykmeldingNarmestelederBruddRepository {
+) : SendtSykmeldingNarmestelederBruddRepository {
 
     override suspend fun findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmeldingNarmestelederBrudd? = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {

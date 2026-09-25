@@ -65,7 +65,7 @@ class PdlClientTest :
                     111,
                     "tokenType"
                 )
-                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
                 val result = client.getPerson(fnr)
 
@@ -99,7 +99,7 @@ class PdlClientTest :
                     111,
                     "tokenType"
                 )
-                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
                 shouldThrow<PdlResourceNotFoundException> { client.getPerson(fnr) }
             }
@@ -120,7 +120,7 @@ class PdlClientTest :
                     111,
                     "tokenType"
                 )
-                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
                 shouldThrow<PdlRequestException> { client.getPerson(fnr) }
             }
@@ -142,7 +142,7 @@ class PdlClientTest :
                     111,
                     "tokenType"
                 )
-                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
                 shouldThrow<PdlRequestException> { client.getPerson(fnr) }
             }
@@ -193,7 +193,7 @@ class PdlClientTest :
                 coEvery {
                     mockTexasClient.systemToken(any(), any())
                 } returns TexasResponse("token", 111, "tokenType")
-                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
                 val result = client.getPersonBolk(listOf(fnr1, fnr2), "provided-token")
 
@@ -211,7 +211,7 @@ class PdlClientTest :
                 coEvery {
                     mockTexasClient.systemToken(any(), any())
                 } returns TexasResponse("token", 111, "tokenType")
-                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
                 shouldThrow<PdlRequestException> { client.getPersonBolk(listOf("12345678901"), "provided-token") }
             }
@@ -225,7 +225,7 @@ class PdlClientTest :
                 coEvery {
                     mockTexasClient.systemToken(any(), any())
                 } returns TexasResponse("token", 111, "tokenType")
-                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
                 shouldThrow<PdlRequestException> { client.getPersonBolk(listOf("12345678901"), "provided-token") }
             }
@@ -251,7 +251,7 @@ class PdlClientTest :
                     headers = Headers.build { append("Content-Type", "application/json") },
                     content = responseJson,
                 )
-                val client = PdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
                 client.getPersonBolk(listOf(fnr), "provided-token")
 

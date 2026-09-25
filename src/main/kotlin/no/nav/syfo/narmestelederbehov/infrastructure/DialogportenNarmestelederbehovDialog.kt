@@ -5,7 +5,7 @@ import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.narmesteleder.db.INarmestelederDb
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmestelederbehov.application.DialogportenCompletionAttempt
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -23,7 +23,7 @@ private val dialogportenCompletionFailed = applicationEvent<String>(
 )
 
 class DialogportenNarmestelederbehovDialog(
-    private val db: INarmestelederDb,
+    private val db: NarmestelederDb,
     private val service: DialogportenService,
 ) : NarmestelederbehovDialog {
     override suspend fun attemptCompletion(id: NarmestelederbehovId): DialogportenCompletionAttempt {

@@ -15,10 +15,10 @@ import no.nav.syfo.pdl.client.GetPersonBolkResponse
 import no.nav.syfo.pdl.client.GetPersonResponse
 import no.nav.syfo.pdl.client.HentIdenterBolk
 import no.nav.syfo.pdl.client.HentPersonBolk
-import no.nav.syfo.pdl.client.IPdlClient
 import no.nav.syfo.pdl.client.Ident
 import no.nav.syfo.pdl.client.IdentResponse
 import no.nav.syfo.pdl.client.Navn
+import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.pdl.client.PdlIdent
 import no.nav.syfo.pdl.client.PersonBolkResponseData
 import no.nav.syfo.pdl.client.PersonResponse
@@ -30,7 +30,7 @@ import no.nav.syfo.pdl.client.Person as PdlClientPerson
 class PdlServiceTest :
     DescribeSpec({
 
-        val pdlClient = mockk<IPdlClient>()
+        val pdlClient = mockk<PdlClient>()
         val pdlCache = mockk<PdlCache>(relaxed = true)
         val pdlService = PdlService(pdlClient, pdlCache)
 

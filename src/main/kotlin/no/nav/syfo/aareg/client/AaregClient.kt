@@ -21,7 +21,7 @@ private data class FinnArbeidsforholdoversikterPrArbeidstakerAPIRequest(
     ),
 )
 
-interface IAaregClient {
+interface AaregClient {
     suspend fun getArbeidsforhold(
         personIdent: String
     ): AaregArbeidsforholdOversikt
@@ -29,12 +29,12 @@ interface IAaregClient {
 
 class AaregClientException(message: String, cause: Exception) : RuntimeException(message, cause)
 
-class AaregClient(
+class HttpAaregClient(
     aaregBaseUrl: String,
     private val texasHttpClient: TexasHttpClient,
     private val scope: String,
     private val httpClient: HttpClient = httpClientDefault()
-) : IAaregClient {
+) : AaregClient {
     private val arbeidsforholdOversiktPath = "${aaregBaseUrl}$ARBEIDSFORHOLD_OVERSIKT_PATH"
 
     override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt = getArbeidsforholdInAareg(personIdent, getSystemToken())
@@ -88,6 +88,6 @@ class AaregClient(
 
     companion object {
         const val ARBEIDSFORHOLD_OVERSIKT_PATH = "/api/v2/arbeidstaker/arbeidsforholdoversikt"
-        private val logger = LoggerFactory.getLogger(AaregClient::class.java)
+        private val logger = LoggerFactory.getLogger(HttpAaregClient::class.java)
     }
 }

@@ -5,7 +5,7 @@ import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.sykmelding.exposed.IActiveSykmeldingRepository
+import no.nav.syfo.sykmelding.exposed.ActiveSykmeldingRepository
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
 import kotlin.coroutines.cancellation.CancellationException
@@ -53,9 +53,9 @@ val COUNT_ACTIVE_SYKMELDING_SHADOW_MISMATCH_CLIENT_FALSE_LOCAL_TRUE: Counter = C
     .register(METRICS_REGISTRY)
 
 class ShadowActiveSykmeldingService(
-    private val dinesykmeldteService: DinesykmeldteService,
-    private val repository: IActiveSykmeldingRepository,
-) : IDinesykmeldteService {
+    private val dinesykmeldteService: ClientDinesykmeldteService,
+    private val repository: ActiveSykmeldingRepository,
+) : DinesykmeldteService {
     private fun logShadowDegraded(details: SickLeaveShadowDetails, cause: Throwable? = null) {
         logger.logEvent(sickLeaveShadowDegraded, details, cause = cause)
     }

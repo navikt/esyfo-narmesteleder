@@ -3,11 +3,11 @@ package no.nav.syfo.narmesteleder.service
 import kotlinx.coroutines.delay
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.dinesykmeldte.IDinesykmeldteService
+import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.narmesteleder.db.INarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
@@ -66,11 +66,11 @@ private val behovStoredDegraded = applicationEvent<BehovSourceLogDetails>(
 )
 
 class NarmestelederService(
-    private val nlDb: INarmestelederDb,
+    private val nlDb: NarmestelederDb,
     private val persistLeesahNlBehov: Boolean,
     private val aaregService: AaregService,
     private val pdlService: PdlService,
-    private val dinesykmeldteService: IDinesykmeldteService,
+    private val dinesykmeldteService: DinesykmeldteService,
     private val dialogportenService: DialogportenService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)

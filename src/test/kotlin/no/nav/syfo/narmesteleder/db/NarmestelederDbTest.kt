@@ -10,8 +10,8 @@ import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.TestDB.Companion.updateCreated
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.sykmelding.db.PostgresSykmeldingDb
 import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
-import no.nav.syfo.sykmelding.db.SykmeldingDb
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -19,8 +19,8 @@ import java.util.UUID
 class NarmestelederDbTest :
     DescribeSpec({
         val testDb = TestDB.database
-        val db = NarmestelederDb(testDb)
-        val sykmeldingDb = SykmeldingDb(testDb)
+        val db = PostgresNarmestelederDb(testDb)
+        val sykmeldingDb = PostgresSykmeldingDb(testDb)
 
         beforeTest {
             TestDB.clearAllData()

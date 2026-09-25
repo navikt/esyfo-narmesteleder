@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.findAll
-import no.nav.syfo.sykmelding.db.SykmeldingDb
+import no.nav.syfo.sykmelding.db.PostgresSykmeldingDb
 import no.nav.syfo.sykmelding.kafka.SykmeldingRecord
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import java.time.Clock
@@ -18,7 +18,7 @@ import java.util.UUID
 class SykmeldingServiceTest :
     DescribeSpec({
         val testDb = TestDB.database
-        val sykmeldingDb = SykmeldingDb(testDb)
+        val sykmeldingDb = PostgresSykmeldingDb(testDb)
         val service = SykmeldingService(sykmeldingDb)
 
         beforeEach {

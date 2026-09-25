@@ -16,18 +16,18 @@ private data class GetIsActiveSykmeldingRequest(
     val orgnummer: String
 )
 
-interface IDinesykmeldteClient {
+interface DinesykmeldteClient {
     suspend fun getIsActiveSykmelding(fnr: String, orgnummer: String): Boolean
 }
 
 class DinesykmeldteClientException(message: String, cause: Exception) : RuntimeException(message, cause)
 
-class DinesykmeldteClient(
+class HttpDinesykmeldteClient(
     private val httpClient: HttpClient,
     dinesykmeldteBaseUrl: String,
     private val texasHttpClient: TexasHttpClient,
     private val scope: String
-) : IDinesykmeldteClient {
+) : DinesykmeldteClient {
     private val arbeidsforholdOversiktPath = "${dinesykmeldteBaseUrl}$DINESYKMELDTE_ACTIVE_SYKMELDING_PATH"
 
     override suspend fun getIsActiveSykmelding(fnr: String, orgnummer: String): Boolean = getDineSykmeldteIsActiveSykmelding(
@@ -82,6 +82,6 @@ class DinesykmeldteClient(
 
     companion object {
         const val DINESYKMELDTE_ACTIVE_SYKMELDING_PATH = "/api/sykmelding/isActiveSykmelding"
-        private val logger = LoggerFactory.getLogger(DinesykmeldteClient::class.java)
+        private val logger = LoggerFactory.getLogger(HttpDinesykmeldteClient::class.java)
     }
 }

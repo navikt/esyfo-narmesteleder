@@ -13,16 +13,16 @@ import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.util.httpClientDefault
 import no.nav.syfo.util.logger
 
-interface IEregClient {
+interface EregClient {
     suspend fun getOrganisasjon(
         orgnummer: String
     ): Organisasjon?
 }
 
-class EregClient(
+class HttpEregClient(
     val eregBaseUrl: String,
     private val httpClient: HttpClient = httpClientDefault()
-) : IEregClient {
+) : EregClient {
     override suspend fun getOrganisasjon(orgnummer: String): Organisasjon? {
         val response = try {
             val response = httpClient.get("$eregBaseUrl/ereg/api/v2/organisasjon/$orgnummer") {

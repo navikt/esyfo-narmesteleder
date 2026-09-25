@@ -9,13 +9,13 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerReadCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchQuery
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchRequest
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.exposed.ILinemanagerSearchRepository
+import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 
 private const val TEXT_MAX_LENGTH = 50
 
 class LinemanagerSearchService(
     private val validationService: ValidationService,
-    private val linemanagerSearchRepository: ILinemanagerSearchRepository,
+    private val linemanagerSearchRepository: LinemanagerSearchRepository,
 ) {
     suspend fun search(
         request: LinemanagerSearchRequest,

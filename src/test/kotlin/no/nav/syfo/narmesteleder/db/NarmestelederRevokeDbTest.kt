@@ -14,7 +14,7 @@ import java.util.UUID
 
 class NarmestelederRevokeDbTest :
     DescribeSpec({
-        val revokeDb = NarmestelederRevokeDb(TestDB.exposedDatabase)
+        val revokeDb = PostgresNarmestelederRevokeDb(TestDB.exposedDatabase)
         val sykmeldtFnr = PersonalIdentificationNumber("12345678901")
         val lederFnr = PersonalIdentificationNumber("10987654321")
         val orgnummer = OrganizationNumber("123456789")

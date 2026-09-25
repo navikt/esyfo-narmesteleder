@@ -4,7 +4,7 @@ import net.datafaker.Faker
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import java.util.Random
 
-class FakePdlClient : IPdlClient {
+class FakePdlClient : PdlClient {
     override suspend fun getSystemToken(): String = "token"
 
     override suspend fun getPerson(fnr: String): GetPersonResponse {

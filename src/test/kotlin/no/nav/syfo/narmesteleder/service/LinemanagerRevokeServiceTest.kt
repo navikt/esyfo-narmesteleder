@@ -17,12 +17,12 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.db.INarmestelederRevokeDb
+import no.nav.syfo.narmesteleder.db.NarmestelederRevokeDb
 import no.nav.syfo.narmesteleder.db.RevokableNarmestelederEntity
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.RevokeInitiator
-import no.nav.syfo.narmesteleder.kafka.ISykmeldingNLKafkaProducer
+import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import org.slf4j.LoggerFactory
 import java.util.UUID
@@ -43,8 +43,8 @@ class LinemanagerRevokeServiceTest :
             logger.level = originalLevel
         }
 
-        val revokeDb = mockk<INarmestelederRevokeDb>()
-        val kafkaProducer = mockk<ISykmeldingNLKafkaProducer>(relaxed = true)
+        val revokeDb = mockk<NarmestelederRevokeDb>()
+        val kafkaProducer = mockk<SykmeldingNarmestelederProducer>(relaxed = true)
         val validationService = mockk<ValidationService>()
         val service = LinemanagerRevokeService(
             narmestelederRevokeDb = revokeDb,

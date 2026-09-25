@@ -8,13 +8,11 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
-import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
 import no.nav.syfo.altinntilganger.registerAccessOrganizationsApi
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
-import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
 import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmesteleder.api.internal.v1.registerLineManagerLookupApi
 import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi

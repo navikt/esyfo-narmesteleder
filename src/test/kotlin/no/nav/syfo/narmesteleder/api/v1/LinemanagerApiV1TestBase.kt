@@ -16,7 +16,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.spyk
 import linemanager
-import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.TestDB
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.FakeAaregClient
@@ -27,6 +26,8 @@ import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.altinntilganger.registerAccessOrganizationsApi
+import no.nav.syfo.application.api.API_V1_PATH
+import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
@@ -37,7 +38,6 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
 import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1

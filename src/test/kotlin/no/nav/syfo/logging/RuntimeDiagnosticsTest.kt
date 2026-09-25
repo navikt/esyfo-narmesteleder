@@ -16,6 +16,7 @@ import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import no.nav.esyfo.observability.testkit.captureLogs
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.pdl.PdlLookupDegradedReason
 import no.nav.syfo.pdl.client.ErrorExtension
@@ -99,6 +100,14 @@ class RuntimeDiagnosticsTest :
             diagnostic.exceptionType shouldBe "RuntimeException"
             diagnostic.causeType shouldBe "IllegalStateException"
             diagnostic.causeTypes shouldBe listOf("OddFailure", "Throwable")
+        }
+
+        "nested exception classes keep their contract-valid binary name" {
+            val diagnostic = ApiErrorException.InternalServerErrorException("private-canary").failureDiagnostics()
+
+            diagnostic.exceptionType shouldBe "ApiErrorException\$InternalServerErrorException"
+            diagnostic.causeType shouldBe "ApiErrorException\$InternalServerErrorException"
+            diagnostic.causeTypes shouldBe listOf("InternalServerErrorException")
         }
 
         "out-of-range Ktor response statuses are omitted without changing HTTP classification" {

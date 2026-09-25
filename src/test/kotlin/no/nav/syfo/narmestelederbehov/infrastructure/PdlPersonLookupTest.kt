@@ -4,13 +4,10 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import io.mockk.mockk
-import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.PersonDetails
 import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
 import no.nav.syfo.narmestelederbehov.domain.RegisteredName
-import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
 import no.nav.syfo.pdl.client.GetPersonResponse
 import no.nav.syfo.pdl.client.Ident
@@ -20,6 +17,7 @@ import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.pdl.client.PersonResponse
 import no.nav.syfo.pdl.client.ResponseData
 import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 
 class PdlPersonLookupTest :
     FunSpec({
@@ -56,18 +54,26 @@ class PdlPersonLookupTest :
                 .shouldBeNull()
         }
 
-        test("propagates request errors instead of treating them as not found") {
+        test("returns null when PDL reports the person as not found") {
+            PdlPersonLookup(StubPdlClient { throw PdlResourceNotFoundException("Did not find person in PDL") })
+                .find(personIdent)
+                .shouldBeNull()
+        }
+
+        test("propagates request errors from the client") {
+            shouldThrow<PdlRequestException> {
+                PdlPersonLookup(StubPdlClient { throw PdlRequestException("Error when calling PDL") }).find(personIdent)
+            }
+        }
+
+        test("treats a response without data as a request error") {
             shouldThrow<PdlRequestException> {
                 lookupReturning(GetPersonResponse(data = null, errors = null)).find(personIdent)
             }
         }
     })
 
-private fun lookupReturning(response: GetPersonResponse): PdlPersonLookup {
-    // Strict mock: any use of the legacy PDL cache fails the test.
-    val legacyCache = mockk<PdlCache>()
-    return PdlPersonLookup(PdlService(StubPdlClient(response), legacyCache))
-}
+private fun lookupReturning(response: GetPersonResponse) = PdlPersonLookup(StubPdlClient { response })
 
 private fun responseWith(navn: List<Navn>, fnr: String?) = GetPersonResponse(
     data = ResponseData(
@@ -77,8 +83,8 @@ private fun responseWith(navn: List<Navn>, fnr: String?) = GetPersonResponse(
     errors = null,
 )
 
-private class StubPdlClient(private val response: GetPersonResponse) : PdlClient {
+private class StubPdlClient(private val getPerson: () -> GetPersonResponse) : PdlClient {
     override suspend fun getSystemToken(): String = error("Not used")
-    override suspend fun getPerson(fnr: String): GetPersonResponse = response
+    override suspend fun getPerson(fnr: String): GetPersonResponse = getPerson()
     override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse = error("Not used")
 }

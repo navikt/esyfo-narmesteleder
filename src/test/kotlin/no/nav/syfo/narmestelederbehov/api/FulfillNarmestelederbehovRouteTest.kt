@@ -40,7 +40,6 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.valkey.EregCache
-import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -66,12 +65,17 @@ import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidation
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
-import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
+import no.nav.syfo.pdl.client.GetPersonResponse
+import no.nav.syfo.pdl.client.Ident
+import no.nav.syfo.pdl.client.IdentResponse
+import no.nav.syfo.pdl.client.Navn
+import no.nav.syfo.pdl.client.PdlClient
+import no.nav.syfo.pdl.client.PersonResponse
+import no.nav.syfo.pdl.client.ResponseData
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
-import prepareGetPersonResponse
 import java.util.UUID
 
 class FulfillNarmestelederbehovRouteTest :
@@ -80,7 +84,7 @@ class FulfillNarmestelederbehovRouteTest :
             withPutApplication { fixture ->
                 val id = fixture.seed()
                 val submittedManager = fixture.newManager()
-                fixture.pdl.prepareGetPersonResponse(submittedManager)
+                fixture.pdl.registerPerson(submittedManager.nationalIdentificationNumber.value, submittedManager.lastName)
 
                 val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
                     contentType(ContentType.Application.Json)
@@ -109,7 +113,7 @@ class FulfillNarmestelederbehovRouteTest :
                     mobile = "+47 90 00 00 00",
                     email = "leder+ø@eksempelø.no; annen@domene.no ",
                 )
-                fixture.pdl.prepareGetPersonResponse(submittedManager)
+                fixture.pdl.registerPerson(submittedManager.nationalIdentificationNumber.value, submittedManager.lastName)
 
                 val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
                     contentType(ContentType.Application.Json)
@@ -251,8 +255,7 @@ private class PutFixture {
     val texas = mockk<TexasHttpClient>()
     val pdp = mockk<PdpService>(relaxed = true)
     val ereg = FakeEregClient()
-    private val pdlCache = mockk<PdlCache>(relaxed = true)
-    val pdl = spyk(PdlService(FakePdlClient(), pdlCache))
+    val pdl = RegisteredPersonPdlClient()
     val sykmelding: DinesykmeldteService = spyk(ClientDinesykmeldteService(FakeDinesykmeldteClient()))
     val producer = spyk(FakeSykmeldingNarmestelederProducer())
     val altinn = AltinnTilgangerService(FakeAltinnTilgangerClient())
@@ -273,7 +276,6 @@ private class PutFixture {
     )
 
     init {
-        coEvery { pdlCache.getPerson(any()) } returns null
         texas.defaultMocks(
             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgNumber"),
             scope = MASKINPORTEN_NL_SCOPE,
@@ -283,7 +285,7 @@ private class PutFixture {
 
     suspend fun seed(seedEmployment: Boolean = true): UUID {
         if (seedEmployment) aareg.seedEmployment(employeeIdent, orgNumber, orgNumber)
-        pdl.prepareGetPersonResponse(employeeIdent, relation.lastName)
+        pdl.registerPerson(employeeIdent, relation.lastName)
         return db.insertNlBehov(
             nlBehovEntity().copy(
                 sykmeldtFnr = employeeIdent,
@@ -328,5 +330,24 @@ private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture
             }
         }
         block(fixture)
+    }
+}
+
+private class RegisteredPersonPdlClient(private val fallback: PdlClient = FakePdlClient()) : PdlClient by fallback {
+    private val lastNames = mutableMapOf<String, String>()
+
+    fun registerPerson(fnr: String, lastName: String) {
+        lastNames[fnr] = lastName
+    }
+
+    override suspend fun getPerson(fnr: String): GetPersonResponse {
+        val lastName = lastNames[fnr] ?: return fallback.getPerson(fnr)
+        return GetPersonResponse(
+            data = ResponseData(
+                person = PersonResponse(navn = listOf(Navn(fornavn = "Test", mellomnavn = null, etternavn = lastName))),
+                identer = IdentResponse(listOf(Ident(fnr, Ident.GRUPPE_IDENT_FNR))),
+            ),
+            errors = null,
+        )
     }
 }

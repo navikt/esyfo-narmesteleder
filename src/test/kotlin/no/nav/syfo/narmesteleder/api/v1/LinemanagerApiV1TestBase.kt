@@ -153,7 +153,7 @@ abstract class LinemanagerApiV1TestBase(
                 AltinnOrganizationAccess(altinnTilgangerServiceMock, pdpService, eregService),
                 DinesykmeldteActiveSykmeldingLookup(dineSykmelteService),
                 AaregEmploymentLookup(aaregService),
-                PdlPersonLookup(pdlService),
+                PdlPersonLookup(FakePdlClient()),
                 KafkaEstablishNarmestelederrelasjon(relationProducerSpy),
                 DialogportenNarmestelederbehovDialog(fakeRepo, mockk<DialogportenService>(relaxed = true)),
                 LegacyManagerNameValidationMetrics(),

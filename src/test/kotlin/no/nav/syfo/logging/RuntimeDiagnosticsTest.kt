@@ -9,6 +9,12 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.request.get
+import io.ktor.http.HttpStatusCode
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.pdl.PdlLookupDegradedReason
@@ -76,10 +82,40 @@ class RuntimeDiagnosticsTest :
             diagnostic.failureKind shouldBe "connection"
         }
 
-        "unsafe exception type names use the same honest fallback" {
+        "unsafe exception type names use the contract-valid fallback" {
             val diagnostic = object : Throwable("private-canary") {}.failureDiagnostics()
-            diagnostic.exceptionType shouldBe "Throwable"
-            diagnostic.causeType shouldBe "Throwable"
+            diagnostic.exceptionType shouldBe "Exception"
+            diagnostic.causeType shouldBe "Exception"
+            diagnostic.causeTypes shouldBe listOf("Throwable")
+        }
+
+        "nested and anonymous failures use valid superclass categories without changing cause_types" {
+            class OddFailure : RuntimeException()
+
+            val diagnostic = OddFailure().apply {
+                initCause(object : IllegalStateException("private-canary") {})
+            }.failureDiagnostics()
+
+            diagnostic.exceptionType shouldBe "RuntimeException"
+            diagnostic.causeType shouldBe "IllegalStateException"
+            diagnostic.causeTypes shouldBe listOf("OddFailure", "Throwable")
+        }
+
+        "out-of-range Ktor response statuses are omitted without changing HTTP classification" {
+            HttpClient(MockEngine { respond("private-canary", HttpStatusCode(42, "Unknown")) }).use { client ->
+                val failure = ClientRequestException(client.get("https://upstream.test/"), "private-canary")
+                withProductionLogger { logger ->
+                    captureLogs(logger, "stdout_json").use { capture ->
+                        logger.logEvent(diagnosticTestEvent, Unit, cause = failure)
+                        val serialized = capture.records.single()
+                        val record = jacksonObjectMapper().readTree(serialized)
+                        record.has("upstream_status") shouldBe false
+                        record["failure_kind"].asText() shouldBe "http"
+                        record["exception_type"].asText() shouldBe "ClientRequestException"
+                        serialized shouldNotContain "private-canary"
+                    }
+                }
+            }
         }
 
         "diagnostics never throw for wrapped cancellation" {

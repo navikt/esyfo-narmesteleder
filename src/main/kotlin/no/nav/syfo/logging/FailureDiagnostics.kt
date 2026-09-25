@@ -2,6 +2,11 @@ package no.nav.syfo.logging
 
 import com.fasterxml.jackson.core.JsonProcessingException
 import io.ktor.client.plugins.ResponseException
+import no.nav.esyfo.observability.causeChain
+import no.nav.esyfo.observability.causeType
+import no.nav.esyfo.observability.exceptionType
+import no.nav.esyfo.observability.sqlState
+import no.nav.esyfo.observability.validUpstreamStatus
 import no.nav.syfo.application.exception.UpstreamExceptionType
 import no.nav.syfo.application.exception.UpstreamRequestException
 import java.net.ConnectException
@@ -9,8 +14,6 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.sql.SQLException
-import java.util.Collections
-import java.util.IdentityHashMap
 import javax.net.ssl.SSLException
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -28,7 +31,7 @@ internal data class FailureDiagnostics(
 )
 
 internal fun Throwable.failureDiagnostics(): FailureDiagnostics {
-    val chain = causes()
+    val chain = causeChain()
     val upstreamStatus = chain.firstNotNullOfOrNull {
         when (it) {
             is UpstreamRequestException -> it.upstreamStatus
@@ -51,11 +54,11 @@ internal fun Throwable.failureDiagnostics(): FailureDiagnostics {
         else -> "unknown"
     }
     return FailureDiagnostics(
-        exceptionType = javaClass.simpleName.takeIf { it.matches(EXCEPTION_TYPE) } ?: "Throwable",
-        causeType = chain.last().safeTypeName(),
+        exceptionType = exceptionType(),
+        causeType = causeType(),
         causeTypes = chain.map { it.safeTypeName() },
         failureKind = kind,
-        upstreamStatus = upstreamStatus,
+        upstreamStatus = validUpstreamStatus(upstreamStatus),
         upstream = chain.firstNotNullOfOrNull {
             when (it) {
                 is UpstreamRequestException -> it.upstream
@@ -66,18 +69,12 @@ internal fun Throwable.failureDiagnostics(): FailureDiagnostics {
         failureStage = chain.filterIsInstance<UpstreamRequestException>().firstOrNull()?.failureStage?.logValue
             ?: if (kind in RESPONSE_FAILURE_KINDS) "response" else null,
         stack = chain.toTechnicalFailure(),
-        sqlState = chain.filterIsInstance<SQLException>()
-            .firstNotNullOfOrNull { it.sqlState?.takeIf(SQL_STATE::matches) },
+        sqlState = sqlState(),
     )
 }
 
 internal fun Throwable.rethrowCancellation() {
     if (this is CancellationException) throw this
-}
-
-private fun Throwable.causes(): List<Throwable> {
-    val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
-    return generateSequence(this) { it.cause }.takeWhile { seen.add(it) }.take(16).toList()
 }
 
 /** Copies class names and stack frames only, so exception messages never reach the log. */
@@ -100,6 +97,4 @@ private val DECODING_TYPES = setOf(
 private val RESPONSE_FAILURE_KINDS = setOf("http", "invalid_response")
 
 private val TYPE_NAME = Regex("^[A-Za-z][A-Za-z0-9]{0,79}$")
-private val EXCEPTION_TYPE = Regex("^[A-Za-z][A-Za-z0-9]{0,143}(Error|Exception)$")
-private val SQL_STATE = Regex("^[A-Z0-9]{5}$")
 private fun Throwable.safeTypeName(): String = javaClass.simpleName.takeIf(TYPE_NAME::matches) ?: "Throwable"

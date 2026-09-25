@@ -143,7 +143,10 @@ Contains reusable technical mechanisms without domain rules:
 - `database`: data source, Flyway and shared transaction infrastructure;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics;
 - `observability`: metrics, health and common structured logging mechanisms;
-- `scheduling`: reusable scheduling and leader-election mechanics.
+- `scheduling`: reusable scheduling and leader-election mechanics;
+- `application`: small use-case mechanics such as `Step`, which lets private
+  use-case steps continue with a value or stop with the use case's result.
+  `Step` never appears in public use-case contracts or ports.
 
 `platform` must not depend on a business module.
 

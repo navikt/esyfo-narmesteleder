@@ -37,25 +37,11 @@ class GetNarmestelederrelasjon(
             return NotFound(NotFoundReason.NO_ACTIVE_SYKMELDING).log()
         }
 
-        val firstName = lookup.employeeFirstName?.takeIf(String::isNotBlank)
-        val middleName = lookup.employeeMiddleName?.takeIf(String::isNotBlank)
-        val lastName = lookup.employeeLastName?.takeIf(String::isNotBlank)
         val organizationName = organization.findName(lookup.organizationNumber)
             ?: return GetNarmestelederrelasjonResult.Unavailable
 
-        val relation = Narmestelederrelasjon(
-            id = lookup.id,
-            orgNumber = lookup.organizationNumber,
-            employee = RelationPerson(
-                personIdent = lookup.employeeIdent,
-                firstName = firstName,
-                middleName = middleName,
-                lastName = lastName,
-            ),
-        )
-
         return GetNarmestelederrelasjonResult.Found(
-            relation = relation,
+            relation = lookup.toRelation(),
             organizationName = organizationName,
         )
     }
@@ -66,3 +52,16 @@ class GetNarmestelederrelasjon(
         val logger = applicationLogger(GetNarmestelederrelasjon::class.java)
     }
 }
+
+private fun NarmestelederrelasjonLookup.toRelation() = Narmestelederrelasjon(
+    id = id,
+    orgNumber = organizationNumber,
+    employee = RelationPerson(
+        personIdent = employeeIdent,
+        firstName = employeeFirstName.nullIfBlank(),
+        middleName = employeeMiddleName.nullIfBlank(),
+        lastName = employeeLastName.nullIfBlank(),
+    ),
+)
+
+private fun String?.nullIfBlank(): String? = this?.takeIf(String::isNotBlank)

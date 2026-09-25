@@ -19,6 +19,8 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.application.Step
+import no.nav.syfo.platform.application.orStop
 
 class FulfillNarmestelederbehovUseCase(
     private val behovRepository: NarmestelederbehovRepository,
@@ -49,16 +51,16 @@ class FulfillNarmestelederbehovUseCase(
         )
     }
 
-    private fun validateManagerContact(input: ManagerContactInput): Step<NormalizedManagerContact> = when (val normalization = input.normalize()) {
+    private fun validateManagerContact(input: ManagerContactInput): FulfillStep<NormalizedManagerContact> = when (val normalization = input.normalize()) {
         is ManagerContactNormalization.Valid -> Step.Continue(normalization.manager)
         is ManagerContactNormalization.Invalid ->
             Step.Stop(FulfillNarmestelederbehovResult.InvalidManagerContactDetails(normalization.issues))
     }
 
-    private suspend fun findBehov(id: NarmestelederbehovId): Step<Narmestelederbehov> = behovRepository.findForFulfillment(id)?.let { Step.Continue(it) }
+    private suspend fun findBehov(id: NarmestelederbehovId): FulfillStep<Narmestelederbehov> = behovRepository.findForFulfillment(id)?.let { Step.Continue(it) }
         ?: Step.Stop(FulfillNarmestelederbehovResult.NotFound)
 
-    private suspend fun verifyOrganizationAccess(subject: OrganizationAccessSubject, behov: Narmestelederbehov): Step<Unit> {
+    private suspend fun verifyOrganizationAccess(subject: OrganizationAccessSubject, behov: Narmestelederbehov): FulfillStep<Unit> {
         val organizationNumber = behov.employee.organizationNumber
         return when (val access = organizationAccess.evaluate(subject, organizationNumber)) {
             OrganizationAccessResult.Granted -> Step.Proceed
@@ -67,7 +69,7 @@ class FulfillNarmestelederbehovUseCase(
         }
     }
 
-    private suspend fun verifyActiveSykmelding(behov: Narmestelederbehov): Step<Unit> {
+    private suspend fun verifyActiveSykmelding(behov: Narmestelederbehov): FulfillStep<Unit> {
         val employee = behov.employee
         return if (activeSykmeldingLookup.hasActiveSykmelding(employee.personIdent, employee.organizationNumber)) {
             Step.Proceed
@@ -76,13 +78,13 @@ class FulfillNarmestelederbehovUseCase(
         }
     }
 
-    private suspend fun verifyEmployment(behov: Narmestelederbehov): Step<Unit> = when (val employment = employmentLookup.findEmployment(behov.employee.personIdent, behov.employee.organizationNumber)) {
+    private suspend fun verifyEmployment(behov: Narmestelederbehov): FulfillStep<Unit> = when (val employment = employmentLookup.findEmployment(behov.employee.personIdent, behov.employee.organizationNumber)) {
         EmploymentResult.IN_ORGANIZATION -> Step.Proceed
         EmploymentResult.NONE, EmploymentResult.NOT_IN_ORGANIZATION ->
             Step.Stop(FulfillNarmestelederbehovResult.NoEmployment(employment))
     }
 
-    private suspend fun findEmployeeAndManager(behov: Narmestelederbehov, manager: NormalizedManagerContact): Step<EmployeeAndManager> {
+    private suspend fun findEmployeeAndManager(behov: Narmestelederbehov, manager: NormalizedManagerContact): FulfillStep<EmployeeAndManager> {
         val employee = personLookup.find(behov.employee.personIdent)
             ?: return Step.Stop(FulfillNarmestelederbehovResult.PersonNotFound)
         val managerPerson = personLookup.find(manager.personIdent)
@@ -90,7 +92,7 @@ class FulfillNarmestelederbehovUseCase(
         return Step.Continue(EmployeeAndManager(employee, managerPerson))
     }
 
-    private fun verifyManagerName(managerPerson: PersonDetails, manager: NormalizedManagerContact): Step<ManagerLastNameMatch> {
+    private fun verifyManagerName(managerPerson: PersonDetails, manager: NormalizedManagerContact): FulfillStep<ManagerLastNameMatch> {
         val managerNameMatch = managerPerson.name.matchManagerLastName(manager.lastName)
         nameValidationMetrics.record(managerNameMatch)
         return when (managerNameMatch) {
@@ -129,7 +131,7 @@ class FulfillNarmestelederbehovUseCase(
         return relationSource
     }
 
-    private suspend fun markFulfilled(behov: Narmestelederbehov): Step<MarkFulfilledResult.Marked> = when (val result = behovRepository.markFulfilled(behov.id)) {
+    private suspend fun markFulfilled(behov: Narmestelederbehov): FulfillStep<MarkFulfilledResult.Marked> = when (val result = behovRepository.markFulfilled(behov.id)) {
         is MarkFulfilledResult.Marked -> Step.Continue(result)
         MarkFulfilledResult.Missing -> Step.Stop(FulfillNarmestelederbehovResult.BehovMissingAfterPublication)
     }
@@ -175,20 +177,7 @@ private data class EmployeeAndManager(
     val manager: PersonDetails,
 )
 
-private sealed interface Step<out T> {
-    data class Continue<out T>(val value: T) : Step<T>
-
-    data class Stop(val result: FulfillNarmestelederbehovResult) : Step<Nothing>
-
-    companion object {
-        val Proceed: Step<Unit> = Continue(Unit)
-    }
-}
-
-private inline fun <T> Step<T>.orStop(stop: (FulfillNarmestelederbehovResult) -> Nothing): T = when (this) {
-    is Step.Continue -> value
-    is Step.Stop -> stop(result)
-}
+private typealias FulfillStep<T> = Step<T, FulfillNarmestelederbehovResult>
 
 private fun OrganizationAccessSubject.relationSource(): RelationSource = when (this) {
     is OrganizationAccessSubject.LpsSystemUser -> RelationSource.LPS

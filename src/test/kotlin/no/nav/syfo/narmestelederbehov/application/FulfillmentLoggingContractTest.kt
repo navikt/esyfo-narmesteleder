@@ -6,6 +6,7 @@ import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.Appender
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -35,6 +36,10 @@ class FulfillmentLoggingContractTest :
             manager.name.firstName, requireNotNull(manager.name.middleName), manager.name.lastName,
             "manager@example.test", "+4799999999", "system-user", "test-token", "11223344556",
             "private-name-canary", "private-email-canary", "private-phone-canary", "private-exception-canary",
+        )
+        val failureEventsWithBehovId = setOf(
+            "narmestelederbehov_dialogporten_completion_failed",
+            "narmestelederbehov_dialog_status_persistence_failed",
         )
 
         fun checkEvent(name: String, level: String) = mapper.readTree(
@@ -74,7 +79,18 @@ class FulfillmentLoggingContractTest :
         }
         afterTest {
             try {
-                capture.records.forEach { line -> privacyCanaries.forEach { line shouldNotContain it } }
+                capture.records.forEach { line ->
+                    privacyCanaries.forEach { line shouldNotContain it }
+                    val record = mapper.readTree(line)
+                    if (record["event_type"].asText() in failureEventsWithBehovId) {
+                        record["behov_id"].asText() shouldBe behovId.value.toString()
+                        (record.deepCopy<ObjectNode>().apply { remove("behov_id") }.toString())
+                            .shouldNotContain(behovId.value.toString())
+                    } else {
+                        record.has("behov_id") shouldBe false
+                        line shouldNotContain behovId.value.toString()
+                    }
+                }
             } finally {
                 capture.close()
             }
@@ -119,6 +135,26 @@ class FulfillmentLoggingContractTest :
                     }
                 }
             }
+        }
+
+        test("logs a bounded status persistence failure with behov id only in its field") {
+            createUseCase(
+                repository = FakeBehovRepository(
+                    behov,
+                    dialogStatusFailure = IllegalStateException("private-exception-canary"),
+                ),
+            ).execute(command())
+
+            val record = checkEvent("narmestelederbehov_fulfillment_completed", "INFO")
+            record["dialogporten_completion"].asText() shouldBe "FAILED"
+            val failureRecord = mapper.readTree(
+                capture.records.single {
+                    mapper.readTree(it)["event_type"].asText() == "narmestelederbehov_dialog_status_persistence_failed"
+                },
+            )
+            failureRecord["level"].asText() shouldBe "WARN"
+            failureRecord["behov_id"].asText() shouldBe behovId.value.toString()
+            capture.records.size shouldBe 2
         }
 
         val rejectionCases: List<Triple<String, () -> FulfillNarmestelederbehovUseCase, FulfillNarmestelederbehovCommand>> = listOf(

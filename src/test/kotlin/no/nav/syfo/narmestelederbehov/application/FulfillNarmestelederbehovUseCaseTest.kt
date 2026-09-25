@@ -200,7 +200,11 @@ class FulfillNarmestelederbehovUseCaseTest :
                     effects = effects,
                 ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.Failed)
 
-                effects.takeLast(3) shouldBe listOf("establish", "fulfilled", "dialog")
+                effects shouldBe listOf(
+                    "load", "access", "sykmelding", "employment",
+                    "person:${employeeIdent.value}", "person:${managerIdent.value}",
+                    "metric", "establish", "fulfilled", "dialog",
+                )
                 val failureEvents = appender.list.filter { event ->
                     event.keyValuePairs.any { it.key == "event_type" && it.value == "narmestelederbehov_dialogporten_completion_failed" }
                 }
@@ -238,13 +242,6 @@ class FulfillNarmestelederbehovUseCaseTest :
                 effects = effects,
             ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.NotApplicable)
             effects.takeLast(2) shouldBe listOf("establish", "fulfilled")
-        }
-
-        test("failed dialog does not update dialog status") {
-            val effects = mutableListOf<String>()
-            createUseCase(dialog = FakeDialog(effects = effects, failure = IllegalStateException("private-exception-canary")), effects = effects)
-                .execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.Failed)
-            effects.last() shouldBe "dialog"
         }
 
         test("status persistence failure leaves the fulfilled request successful") {
@@ -313,14 +310,19 @@ class FulfillNarmestelederbehovUseCaseTest :
             effects.last() shouldBe "metric"
         }
 
-        listOf("establish", "fulfilled").forEach { failingEffect ->
-            listOf(IllegalStateException("upstream failed"), CancellationException("cancelled")).forEach { failure ->
+        listOf("establish", "fulfilled", "dialog").forEach { failingEffect ->
+            val failures = if (failingEffect == "dialog") {
+                listOf(CancellationException("cancelled"))
+            } else {
+                listOf(IllegalStateException("upstream failed"), CancellationException("cancelled"))
+            }
+            failures.forEach { failure ->
                 test("propagates ${failure::class.simpleName} at $failingEffect without later effects") {
                     val effects = mutableListOf<String>()
                     val useCase = createUseCase(
                         repository = FakeBehovRepository(behov, effects, failure.takeIf { failingEffect == "fulfilled" }),
                         relation = FakeRelationEstablisher(effects, failure.takeIf { failingEffect == "establish" }),
-                        dialog = FakeDialog(effects = effects),
+                        dialog = FakeDialog(effects = effects, failure = failure.takeIf { failingEffect == "dialog" }),
                         effects = effects,
                     )
 

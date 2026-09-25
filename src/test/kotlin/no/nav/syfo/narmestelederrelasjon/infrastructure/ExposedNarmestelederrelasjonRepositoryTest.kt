@@ -9,6 +9,7 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.personTable
+import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
 import java.time.Instant
@@ -37,13 +38,15 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             id: UUID = UUID.randomUUID(),
             from: OffsetDateTime = activeFrom,
             to: OffsetDateTime? = null,
+            employee: String = employeeIdent,
+            manager: String = managerIdent,
         ) {
             transaction(TestDB.exposedDatabase) {
                 NarmestelederEntity.new {
                     narmesteLederId = id
                     orgnummer = "123456789"
-                    sykmeldtFnr = employeeIdent
-                    narmestelederFnr = managerIdent
+                    sykmeldtFnr = employee
+                    narmestelederFnr = manager
                     narmestelederTelefonnummer = "90000000"
                     narmestelederEpost = "manager@example.com"
                     arbeidsgiverForskutterer = true
@@ -109,5 +112,49 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
         it("returns null for an unknown relation") {
             repository.findById(UUID.randomUUID()).shouldBeNull()
+        }
+
+        it("finds a revocable relation with both parties and organization without a person projection") {
+            val id = UUID.randomUUID()
+            insertRelation(id)
+
+            repository.findRevocableById(id) shouldBe RevocableNarmestelederrelasjon(
+                id = id,
+                employeeIdent = PersonIdent(employeeIdent),
+                managerIdent = PersonIdent(managerIdent),
+                organizationNumber = OrganizationNumber("123456789"),
+                isActive = true,
+            )
+        }
+
+        it("finds a revoked relation as inactive") {
+            val id = UUID.randomUUID()
+            insertRelation(id, to = activeFrom.plusSeconds(1))
+
+            repository.findRevocableById(id)?.isActive shouldBe false
+        }
+
+        it("finds a future-dated relation as revocable") {
+            val id = UUID.randomUUID()
+            insertRelation(id, from = activeFrom.plusDays(2))
+
+            repository.findRevocableById(id)?.isActive shouldBe true
+        }
+
+        it("returns null for an unknown revoke id") {
+            insertRelation()
+
+            repository.findRevocableById(UUID.randomUUID()).shouldBeNull()
+        }
+
+        it("does not return a revoke relation belonging to another id") {
+            val other = UUID.randomUUID()
+            val wanted = UUID.randomUUID()
+            insertRelation(other, employee = "12345678902", manager = "10987654322")
+            insertRelation(wanted)
+
+            repository.findRevocableById(other)?.employeeIdent shouldBe PersonIdent("12345678902")
+            repository.findRevocableById(other)?.managerIdent shouldBe PersonIdent("10987654322")
+            repository.findRevocableById(wanted)?.employeeIdent shouldBe PersonIdent(employeeIdent)
         }
     })

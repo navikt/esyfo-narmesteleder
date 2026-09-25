@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
@@ -25,13 +26,15 @@ import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
-import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
+import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -51,6 +54,11 @@ class NarmestelederrelasjonApiTest :
         val organizationAccess = mockk<OrganizationAccess>()
         val organization = mockk<NarmestelederrelasjonOrganization>()
         val activeSykmeldingLookup = ActiveSykmeldingLookup { _, _ -> true }
+        val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
+        val revokeNarmestelederrelasjon = RevokeNarmestelederrelasjon(
+            repository,
+            organizationAccess,
+        ) { command -> published.add(command) }
         val getNarmestelederrelasjon = GetNarmestelederrelasjon(
             repository,
             organizationAccess,
@@ -70,6 +78,14 @@ class NarmestelederrelasjonApiTest :
             isActive = true,
         )
 
+        fun revocableLookup(isActive: Boolean = true) = RevocableNarmestelederrelasjon(
+            id = id,
+            employeeIdent = PersonIdent(employeeIdent),
+            managerIdent = PersonIdent("10987654321"),
+            organizationNumber = OrganizationNumber("123456789"),
+            isActive = isActive,
+        )
+
         fun withTestApplication(test: suspend ApplicationTestBuilder.() -> Unit) {
             testApplication {
                 application {
@@ -78,11 +94,7 @@ class NarmestelederrelasjonApiTest :
                     routing {
                         route(INTERNAL_API_V1_PATH) {
                             install(AddTokenIssuerPlugin)
-                            registerLinemanagerRevokeApi(
-                                texasHttpClient = texasHttpClient,
-                                linemanagerRevokeService = mockk<LinemanagerRevokeService>(),
-                            )
-                            registerNarmestelederrelasjonApi(getNarmestelederrelasjon, texasHttpClient)
+                            registerNarmestelederrelasjonApi(getNarmestelederrelasjon, revokeNarmestelederrelasjon, texasHttpClient)
                         }
                     }
                 }
@@ -110,10 +122,12 @@ class NarmestelederrelasjonApiTest :
         }
 
         beforeTest {
+            published.clear()
             clearMocks(texasHttpClient, repository, organizationAccess, organization, answers = false)
             coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
                 TexasIntrospectionResponse(active = true, acr = "Level4", pid = employeeIdent)
             coEvery { repository.findById(id) } returns lookup()
+            coEvery { repository.findRevocableById(id) } returns revocableLookup()
             coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns OrganizationAccessResult.Granted
             coEvery { organization.findName(OrganizationNumber("123456789")) } returns "Organization"
         }
@@ -224,6 +238,91 @@ class NarmestelederrelasjonApiTest :
             withTestApplication {
                 client.get(path(id.toString())).status shouldBe HttpStatusCode.Unauthorized
             }
+        }
+
+        it("DELETE accepts a TokenX employee and publishes the revocation") {
+            withTestApplication {
+                val response = client.delete(path(id.toString())) { bearerAuth(token()) }
+                response.status shouldBe HttpStatusCode.Accepted
+                published.single().employeeIdent shouldBe PersonIdent(employeeIdent)
+                published.single().initiator shouldBe RevocationInitiator.EMPLOYEE
+            }
+            coVerify(exactly = 0) { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) }
+        }
+
+        it("DELETE accepts the relation's line manager without organization access") {
+            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
+                TexasIntrospectionResponse(active = true, acr = "Level4", pid = "10987654321")
+            withTestApplication {
+                client.delete(path(id.toString())) { bearerAuth(token()) }.status shouldBe HttpStatusCode.Accepted
+            }
+            published.single().initiator shouldBe RevocationInitiator.LINEMANAGER
+            coVerify(exactly = 0) { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) }
+        }
+
+        it("DELETE accepts an already revoked relation without publishing") {
+            coEvery { repository.findRevocableById(id) } returns revocableLookup(isActive = false)
+            withTestApplication {
+                client.delete(path(id.toString())) { bearerAuth(token()) }.status shouldBe HttpStatusCode.Accepted
+            }
+            published.size shouldBe 0
+        }
+
+        it("DELETE returns the same 404 body for an unknown relation and denied access") {
+            coEvery { repository.findRevocableById(id) } returnsMany listOf(null, revocableLookup())
+            coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns
+                OrganizationAccessResult.Denied(DenialReason.MISSING_RESOURCE_ACCESS)
+            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
+                TexasIntrospectionResponse(active = true, acr = "Level4", pid = "11111111111")
+            withTestApplication {
+                val first = client.delete(path(id.toString())) { bearerAuth(token()) }
+                val second = client.delete(path(id.toString())) { bearerAuth(token()) }
+                listOf(first, second).forEach {
+                    it.status shouldBe HttpStatusCode.NotFound
+                    it.bodyAsText() shouldContain """"message":"Linemanager relation not found""""
+                    it.bodyAsText() shouldContain """"type":"NOT_FOUND""""
+                    it.bodyAsText() shouldContain """"path":"/internal/api/v1/linemanager/"""
+                }
+                replaceTimestamp(first.bodyAsText()) shouldBe replaceTimestamp(second.bodyAsText())
+            }
+            published.size shouldBe 0
+        }
+
+        it("DELETE returns 400 for an invalid UUID and 401 without authentication") {
+            withTestApplication {
+                val invalid = client.delete(path("not-a-uuid")) { bearerAuth(token()) }
+                invalid.status shouldBe HttpStatusCode.BadRequest
+                invalid.bodyAsText() shouldContain """"message":"Invalid UUID format for id parameter""""
+                client.delete(path(id.toString())).status shouldBe HttpStatusCode.Unauthorized
+            }
+            published.size shouldBe 0
+        }
+
+        it("DELETE accepts an authorized Maskinporten system user") {
+            introspectMaskinporten()
+            withTestApplication {
+                client.delete(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }.status shouldBe HttpStatusCode.Accepted
+            }
+            published.single().initiator shouldBe RevocationInitiator.LPS
+        }
+
+        it("DELETE masks a denied Maskinporten system user with the legacy 404") {
+            introspectMaskinporten()
+            coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns
+                OrganizationAccessResult.Denied(DenialReason.SYSTEM_USER_REJECTED)
+            withTestApplication {
+                val response = client.delete(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }
+                response.status shouldBe HttpStatusCode.NotFound
+                response.bodyAsText() shouldContain """"message":"Linemanager relation not found""""
+            }
+            published.size shouldBe 0
+        }
+
+        it("DELETE treats the sibling search path as an invalid UUID") {
+            withTestApplication {
+                client.delete(path("search")) { bearerAuth(token()) }.status shouldBe HttpStatusCode.BadRequest
+            }
+            published.size shouldBe 0
         }
     })
 

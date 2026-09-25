@@ -31,11 +31,11 @@ import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
@@ -74,7 +74,7 @@ class LineManagerLookupApiTest :
                             linemanagerSearchService = mockk<LinemanagerSearchService>(),
                             linemanagerStatisticsService = mockk<LinemanagerStatisticsService>(),
                             employeeLinemanagerService = mockk<EmployeeLinemanagerService>(),
-                            linemanagerRevokeService = mockk<LinemanagerRevokeService>(),
+                            revokeNarmestelederrelasjon = mockk<RevokeNarmestelederrelasjon>(),
                             getNarmestelederrelasjon = mockk<GetNarmestelederrelasjon>(),
                         )
                     }

@@ -15,7 +15,6 @@ import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.internal.registerInternalApi
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
-import no.nav.syfo.narmesteleder.service.LinemanagerRevokeService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -23,6 +22,7 @@ import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.registerApiV1
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -43,7 +43,7 @@ fun Application.configureRouting() {
     val altinnTilgangerService by inject<AltinnTilgangerService>()
     val narmestelederLookupService by inject<NarmestelederLookupService>()
     val employeeLinemanagerService by inject<EmployeeLinemanagerService>()
-    val linemanagerRevokeService by inject<LinemanagerRevokeService>()
+    val revokeNarmestelederrelasjon by inject<RevokeNarmestelederrelasjon>()
     val getNarmestelederrelasjon by inject<GetNarmestelederrelasjon>()
 
     installCallId()
@@ -69,7 +69,7 @@ fun Application.configureRouting() {
             linemanagerSearchService = linemanagerSearchService,
             linemanagerStatisticsService = linemanagerStatisticsService,
             employeeLinemanagerService = employeeLinemanagerService,
-            linemanagerRevokeService = linemanagerRevokeService,
+            revokeNarmestelederrelasjon = revokeNarmestelederrelasjon,
             getNarmestelederrelasjon = getNarmestelederrelasjon,
         )
         // Static openAPI spec + swagger

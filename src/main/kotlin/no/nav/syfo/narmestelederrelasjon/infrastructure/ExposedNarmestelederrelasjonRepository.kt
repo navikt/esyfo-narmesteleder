@@ -8,6 +8,7 @@ import no.nav.syfo.narmesteleder.exposed.NarmestelederTable
 import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.eq
@@ -64,6 +65,31 @@ class ExposedNarmestelederrelasjonRepository(
                     }
                     .singleOrNull()
             }
+        }
+    }
+
+    override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? = withContext(Dispatchers.IO) {
+        suspendTransaction(db = database) {
+            NarmestelederTable
+                .select(
+                    NarmestelederTable.narmestelederId,
+                    NarmestelederTable.sykmeldtFnr,
+                    NarmestelederTable.narmestelederFnr,
+                    NarmestelederTable.orgnummer,
+                    NarmestelederTable.aktivTom,
+                )
+                .where { NarmestelederTable.narmestelederId eq id }
+                .limit(1)
+                .map { row ->
+                    RevocableNarmestelederrelasjon(
+                        id = row[NarmestelederTable.narmestelederId],
+                        employeeIdent = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
+                        managerIdent = PersonIdent(row[NarmestelederTable.narmestelederFnr]),
+                        organizationNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
+                        isActive = row[NarmestelederTable.aktivTom] == null,
+                    )
+                }
+                .singleOrNull()
         }
     }
 }

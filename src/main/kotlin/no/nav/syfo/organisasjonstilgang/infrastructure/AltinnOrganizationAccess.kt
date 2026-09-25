@@ -10,8 +10,6 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.narmesteleder.service.validators.SystemUserAccessRejection
-import no.nav.syfo.narmesteleder.service.validators.systemUserAccessRejected
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult

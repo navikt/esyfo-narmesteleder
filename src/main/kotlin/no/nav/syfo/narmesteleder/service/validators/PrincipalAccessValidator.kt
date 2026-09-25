@@ -12,6 +12,8 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.organisasjonstilgang.infrastructure.SystemUserAccessRejection
+import no.nav.syfo.organisasjonstilgang.infrastructure.systemUserAccessRejected
 
 class PrincipalAccessValidator(
     private val altinnTilgangerService: AltinnTilgangerService,

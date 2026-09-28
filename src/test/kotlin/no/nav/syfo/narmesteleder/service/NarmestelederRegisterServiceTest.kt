@@ -10,12 +10,12 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.narmesteleder.exposed.InsertedPerson
 import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
-import no.nav.syfo.narmesteleder.exposed.NarmestelederTable
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederRecord
+import no.nav.syfo.narmestelederrelasjon.infrastructure.NarmestelederTable
 import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList

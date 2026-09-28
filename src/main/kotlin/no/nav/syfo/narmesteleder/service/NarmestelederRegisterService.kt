@@ -4,10 +4,10 @@ import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.exposed.InsertedPerson
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
-import no.nav.syfo.narmesteleder.exposed.narmestelederTable
 import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmesteleder.kafka.LeesahNarmestelederRecord
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
+import no.nav.syfo.narmestelederrelasjon.infrastructure.narmestelederTable
 import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.core.Transaction
 import org.jetbrains.exposed.v1.jdbc.Database

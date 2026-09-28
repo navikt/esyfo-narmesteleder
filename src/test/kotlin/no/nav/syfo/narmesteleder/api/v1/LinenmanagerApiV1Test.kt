@@ -18,7 +18,7 @@ import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
 import no.nav.syfo.narmesteleder.domain.LinemanagerActors
-import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import prepareGetPersonResponse
 

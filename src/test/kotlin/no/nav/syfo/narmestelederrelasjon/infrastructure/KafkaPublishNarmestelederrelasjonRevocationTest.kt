@@ -4,12 +4,12 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
-import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
-import no.nav.syfo.narmesteleder.kafka.model.NlResponse
-import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
 import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
 
 class KafkaPublishNarmestelederrelasjonRevocationTest :
     FunSpec({

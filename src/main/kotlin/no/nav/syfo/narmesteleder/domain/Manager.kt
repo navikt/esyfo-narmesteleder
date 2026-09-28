@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.domain
 
-import no.nav.syfo.narmesteleder.kafka.model.Leder
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.Leder
 import no.nav.syfo.pdl.Person
 
 data class Manager(

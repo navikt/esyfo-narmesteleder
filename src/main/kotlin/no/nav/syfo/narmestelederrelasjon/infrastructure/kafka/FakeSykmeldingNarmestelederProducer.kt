@@ -1,8 +1,5 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
-import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
-import no.nav.syfo.narmesteleder.kafka.model.NlResponse
-import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.util.logger
 import java.security.MessageDigest
 

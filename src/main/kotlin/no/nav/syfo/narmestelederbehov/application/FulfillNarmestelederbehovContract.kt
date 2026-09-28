@@ -1,10 +1,10 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.narmestelederbehov.domain.ManagerContactInput
-import no.nav.syfo.narmestelederbehov.domain.ManagerContactValidationIssue
-import no.nav.syfo.narmestelederbehov.domain.ManagerLastNameMatch
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject

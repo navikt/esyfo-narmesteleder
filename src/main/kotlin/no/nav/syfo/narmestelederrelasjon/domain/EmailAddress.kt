@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelederbehov.domain
+package no.nav.syfo.narmestelederrelasjon.domain
 
 private val EMAIL_ADDRESS_REGEX = Regex(
     "^[A-Za-z0-9ÆØÅæøå._%+-]+@[A-Za-z0-9ÆØÅæøå](?:[A-Za-z0-9ÆØÅæøå-]{0,61}[A-Za-z0-9ÆØÅæøå])?(?:\\.[A-Za-z0-9ÆØÅæøå](?:[A-Za-z0-9ÆØÅæøå-]{0,61}[A-Za-z0-9ÆØÅæøå])?)+$",

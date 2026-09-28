@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelederbehov.domain
+package no.nav.syfo.narmestelederrelasjon.domain
 
 import org.apache.commons.text.similarity.JaroWinklerSimilarity
 import java.text.Normalizer

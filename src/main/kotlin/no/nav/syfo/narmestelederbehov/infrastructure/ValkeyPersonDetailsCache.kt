@@ -6,8 +6,8 @@ import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.PersonDetails
-import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
-import no.nav.syfo.narmestelederbehov.domain.RegisteredName
+import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
+import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 
 class ValkeyPersonDetailsCache(private val valkeyCache: ValkeyCache) : PersonDetailsCache {
     override fun get(personIdent: PersonIdent): PersonDetails? {

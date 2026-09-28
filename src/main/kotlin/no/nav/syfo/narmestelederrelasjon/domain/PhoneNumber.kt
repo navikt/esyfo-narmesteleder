@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelederbehov.domain
+package no.nav.syfo.narmestelederrelasjon.domain
 
 private val PHONE_NUMBER_REGEX = Regex("^\\+?\\d+$")
 

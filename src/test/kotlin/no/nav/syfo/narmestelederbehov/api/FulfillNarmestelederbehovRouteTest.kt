@@ -67,11 +67,11 @@ import no.nav.syfo.narmestelederbehov.application.PersonLookup
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
-import no.nav.syfo.narmestelederbehov.domain.RegisteredName
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
+import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess

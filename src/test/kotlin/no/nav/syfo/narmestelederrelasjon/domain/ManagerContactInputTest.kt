@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelederbehov.domain
+package no.nav.syfo.narmestelederrelasjon.domain
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec

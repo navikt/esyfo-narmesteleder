@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import no.nav.syfo.narmesteleder.service.validators.NameMatchType
 import no.nav.syfo.narmesteleder.service.validators.NameValidator
 import no.nav.syfo.narmestelederbehov.application.ManagerNameValidationMetrics
-import no.nav.syfo.narmestelederbehov.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 
 class LegacyManagerNameValidationMetrics : ManagerNameValidationMetrics {
     override fun record(match: ManagerLastNameMatch) {

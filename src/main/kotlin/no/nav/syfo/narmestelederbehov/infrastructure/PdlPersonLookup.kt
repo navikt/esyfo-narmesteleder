@@ -3,8 +3,8 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.PersonDetails
 import no.nav.syfo.narmestelederbehov.application.PersonLookup
-import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
-import no.nav.syfo.narmestelederbehov.domain.RegisteredName
+import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
+import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.pdl.client.GetPersonResponse
 import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.pdl.client.Navn

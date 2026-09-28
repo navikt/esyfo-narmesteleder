@@ -58,22 +58,33 @@ Owns the temporary lifecycle of a need for an employer to report a
 narmesteleder:
 
 - create and prevent duplicate needs;
-- validate the employer's response;
-- check employment and active sykmelding through ports;
+- verify that the need exists and is not already fulfilled;
 - authorize access through `organisasjonstilgang`;
 - fulfill, expire and query needs;
 - own `nl_behov`;
 - coordinate Dialogporten state and retry behavior.
 
-It establishes a relation through a small application contract owned by
-`narmestelederrelasjon`. It does not use relation repositories, Kafka models or
-Kafka producers directly.
+It establishes a relation through an application contract owned by
+`narmestelederrelasjon`, which validates the relation and returns a typed
+result. Fulfillment parses the manager's contact details with that contract
+first, so invalid input is still rejected before the need lookup and access
+check. It does not validate the relation itself and does not use relation
+repositories, ports, domain rules, Kafka models or Kafka producers directly.
+
+Transitional: until #578, fulfillment still validates the relation itself with
+the rules in `narmestelederrelasjon.domain` (#576) and, after #577, the lookup
+ports in `narmestelederrelasjon.application`.
 
 ### `narmestelederrelasjon`
 
 Owns established and revoked narmesteleder relations:
 
 - establish and revoke relations;
+- validate a relation before establishing it: the manager's contact details,
+  active sykmelding, employment, persons in PDL and the manager's last name.
+  Establishing and revoking only publish a message; the relation is stored when
+  the resulting Leesah event is consumed, so validation must happen before
+  publishing;
 - publish relation messages;
 - ingest and republish relation events;
 - own the local relation register;
@@ -182,7 +193,14 @@ Rules:
   dependencies.
 - `application` depends on its domain and small ports, never its
   `infrastructure`.
-- Other modules may use only explicitly exposed application contracts.
+- Other modules may use only explicitly exposed application contracts, the
+  domain types those contracts name, and the parsing of the contracts' input
+  types (for example `ManagerContactInput.parse()`). Parsing lets a caller
+  reject invalid input before its own lookups without repeating the rule.
+- Validation lives next to what it validates: the caller in
+  `organisasjonstilgang`, a need in `narmestelederbehov` and a relation in
+  `narmestelederrelasjon`. A calling module does not repeat another module's
+  validation.
 - A module never imports another module's repositories, tables, transport
   models, adapters or Koin registration.
 - `platform` and `ident` never import business modules.

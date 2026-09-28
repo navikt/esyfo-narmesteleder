@@ -9,8 +9,8 @@ import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.PersonDetails
 import no.nav.syfo.narmestelederbehov.application.PersonLookup
-import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
-import no.nav.syfo.narmestelederbehov.domain.RegisteredName
+import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
+import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 
 class CachedPersonLookupTest :
     FunSpec({

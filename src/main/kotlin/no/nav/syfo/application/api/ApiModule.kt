@@ -16,7 +16,6 @@ import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmesteleder.api.internal.v1.registerLineManagerLookupApi
-import no.nav.syfo.narmesteleder.api.internal.v1.registerLinemanagerRevokeApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
@@ -78,6 +77,9 @@ private fun Route.registerInternalApiV1Routes() {
     registerLinemanagerSearchApi(texasHttpClient = get(), linemanagerSearchService = get())
     registerLinemanagerStatisticsApi(texasHttpClient = get(), linemanagerStatisticsService = get())
     registerEmployeeLinemanagerApi(texasHttpClient = get(), employeeLinemanagerService = get())
-    registerLinemanagerRevokeApi(texasHttpClient = get(), linemanagerRevokeService = get())
-    registerNarmestelederrelasjonApi(getNarmestelederrelasjon = get(), texasHttpClient = get())
+    registerNarmestelederrelasjonApi(
+        getNarmestelederrelasjon = get(),
+        revokeNarmestelederrelasjon = get(),
+        texasHttpClient = get(),
+    )
 }

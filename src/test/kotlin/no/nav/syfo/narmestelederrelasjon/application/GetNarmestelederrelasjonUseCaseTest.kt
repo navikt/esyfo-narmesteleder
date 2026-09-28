@@ -13,7 +13,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import java.util.UUID
 
-class GetNarmestelederrelasjonTest :
+class GetNarmestelederrelasjonUseCaseTest :
     DescribeSpec({
         val id = UUID.randomUUID()
         val employeeIdent = PersonIdent("12345678901")
@@ -39,7 +39,7 @@ class GetNarmestelederrelasjonTest :
             activeSykmelding: Boolean = true,
             organizationName: String? = "Organization",
             effects: MutableList<String> = mutableListOf(),
-        ) = GetNarmestelederrelasjon(
+        ) = GetNarmestelederrelasjonUseCase(
             FakeNarmestelederrelasjonRepository(lookup, effects),
             FakeGetOrganizationAccess(access, effects),
             FakeGetActiveSykmeldingLookup(activeSykmelding, effects),
@@ -131,6 +131,7 @@ private class FakeNarmestelederrelasjonRepository(
     private val effects: MutableList<String>,
 ) : NarmestelederrelasjonRepository {
     override suspend fun findById(id: UUID) = lookup.also { effects += "lookup" }
+    override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? = error("Not used by GET")
 }
 
 private class FakeGetOrganizationAccess(

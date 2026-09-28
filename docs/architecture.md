@@ -191,7 +191,9 @@ Rules:
 
 ## Application design
 
-Use one small class for one meaningful business action or query:
+Use one small class for one meaningful business action or query. Name it
+`<Action><Concept>UseCase`, also for queries, for example
+`GetNarmestelederrelasjonUseCase`:
 
 ```kotlin
 class FulfillNarmestelederbehovUseCase(
@@ -224,6 +226,9 @@ Do not add:
 - an interface for every class;
 - a broad `*Service`, `Commands` or `Queries` facade containing unrelated
   operations.
+
+Keep a port's input and output types in the port's file, for example
+`RevocableNarmestelederrelasjon` in `NarmestelederrelasjonRepository.kt`.
 
 ## Validation and authorization
 

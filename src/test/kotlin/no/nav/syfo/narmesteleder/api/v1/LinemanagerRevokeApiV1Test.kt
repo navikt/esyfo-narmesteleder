@@ -12,19 +12,23 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.mockk.Called
-import io.mockk.coEvery
 import io.mockk.coVerify
 import linemanagerRevoke
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import prepareGetPersonResponse
+import java.time.Instant
+import java.util.UUID
+import no.nav.syfo.ident.OrganizationNumber as IdentOrganizationNumber
 
 class LinemanagerRevokeApiV1Test :
     LinemanagerApiV1TestBase({
@@ -48,12 +52,7 @@ class LinemanagerRevokeApiV1Test :
                         narmesteLederAvkreft.employeeIdentificationNumber.value,
                         narmesteLederAvkreft.lastName,
                     )
-                    coEvery {
-                        narmestelederLookupService.hasActiveNarmesteleder(
-                            narmesteLederAvkreft.employeeIdentificationNumber,
-                            narmesteLederAvkreft.orgNumber,
-                        )
-                    } returns true
+                    activeRelationRepository.rows = listOf(activeRelation())
                     fakeAaregClient.arbeidsForholdForIdent.clear()
                     fakeAaregClient.arbeidsForholdForIdent[narmesteLederAvkreft.employeeIdentificationNumber.value] =
                         listOf(narmesteLederAvkreft.orgNumber.value to narmesteLederAvkreft.orgNumber.value)
@@ -78,11 +77,11 @@ class LinemanagerRevokeApiV1Test :
                             narmesteLederAvkreft,
                             any(),
                         )
-                        narmestelederLookupService.hasActiveNarmesteleder(
-                            narmesteLederAvkreft.employeeIdentificationNumber,
-                            narmesteLederAvkreft.orgNumber,
-                        )
                     }
+                    activeRelationRepository.lookups shouldBe listOf(
+                        PersonIdent(narmesteLederAvkreft.employeeIdentificationNumber.value) to
+                            IdentOrganizationNumber(narmesteLederAvkreft.orgNumber.value)
+                    )
                 }
             }
 
@@ -147,12 +146,7 @@ class LinemanagerRevokeApiV1Test :
                         narmesteLederAvkreft.employeeIdentificationNumber.value,
                         narmesteLederAvkreft.lastName,
                     )
-                    coEvery {
-                        narmestelederLookupService.hasActiveNarmesteleder(
-                            narmesteLederAvkreft.employeeIdentificationNumber,
-                            narmesteLederAvkreft.orgNumber,
-                        )
-                    } returns true
+                    activeRelationRepository.rows = listOf(activeRelation())
 
                     // Act
                     val response =
@@ -187,12 +181,6 @@ class LinemanagerRevokeApiV1Test :
                         narmesteLederAvkreft.employeeIdentificationNumber.value,
                         narmesteLederAvkreft.lastName,
                     )
-                    coEvery {
-                        narmestelederLookupService.hasActiveNarmesteleder(
-                            narmesteLederAvkreft.employeeIdentificationNumber,
-                            narmesteLederAvkreft.orgNumber,
-                        )
-                    } returns false
 
                     // Act
                     val response =
@@ -209,11 +197,11 @@ class LinemanagerRevokeApiV1Test :
                             narmesteLederAvkreft,
                             any(),
                         )
-                        narmestelederLookupService.hasActiveNarmesteleder(
-                            narmesteLederAvkreft.employeeIdentificationNumber,
-                            narmesteLederAvkreft.orgNumber,
-                        )
                     }
+                    activeRelationRepository.lookups shouldBe listOf(
+                        PersonIdent(narmesteLederAvkreft.employeeIdentificationNumber.value) to
+                            IdentOrganizationNumber(narmesteLederAvkreft.orgNumber.value)
+                    )
                     coVerify(exactly = 0) {
                         narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(any(), any())
                     }
@@ -246,3 +234,10 @@ class LinemanagerRevokeApiV1Test :
             }
         }
     })
+
+private fun activeRelation() = ActiveNarmestelederrelasjon(
+    id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
+    managerIdent = PersonIdent("10987654321"),
+    managerEmail = "leder@example.com",
+    activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
+)

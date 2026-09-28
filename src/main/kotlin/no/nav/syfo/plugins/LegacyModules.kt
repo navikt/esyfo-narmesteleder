@@ -10,9 +10,7 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
-import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
-import no.nav.syfo.narmesteleder.db.PostgresNarmestelederLookupDb
 import no.nav.syfo.narmesteleder.exposed.EmployeeLinemanagerRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
@@ -24,7 +22,6 @@ import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -47,14 +44,10 @@ import no.nav.syfo.sykmelding.retention.infrastructure.ExposedSykmeldingRetentio
 import no.nav.syfo.sykmelding.service.NarmestelederBruddService
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import org.koin.dsl.module
-import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
 // Registrations for code that has not yet moved into a capability module (ADR-0002).
 internal fun legacyRepositoriesModule() = module {
     single<NarmestelederDb> { PostgresNarmestelederDb(database = get(), dispatcher = Dispatchers.IO) }
-    single<NarmestelederLookupDb> {
-        PostgresNarmestelederLookupDb(database = get<ExposedDatabase>(), dispatcher = Dispatchers.IO)
-    }
     single<SykmeldingDb> { PostgresSykmeldingDb(database = get(), dispatcher = Dispatchers.IO) }
     single<ActiveSykmeldingRepository> { SendtSykmeldingRepository(database = get()) }
     single<SendtSykmeldingNarmestelederBruddRepository> {
@@ -119,7 +112,6 @@ internal fun legacyServicesModule() = module {
             dialogportenService = get(),
         )
     }
-    single { NarmestelederLookupService(narmestelederLookupDb = get()) }
     single { NarmestelederRegisterService(database = get()) }
     single { NlBehovLeesahHandler(narmesteLederService = get()) }
     single { LinemanagerRequirementRESTHandler(narmesteLederService = get(), validationService = get()) }

@@ -55,7 +55,6 @@ import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
@@ -66,6 +65,8 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
@@ -343,7 +344,7 @@ private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture
                         mockk<ValidationService>(relaxed = true),
                         fixture.texas,
                         mockk<LinemanagerRequirementRESTHandler>(relaxed = true),
-                        mockk<NarmestelederLookupService>(relaxed = true),
+                        LookupActiveNarmestelederUseCase(FakeActiveNarmestelederrelasjonRepository()),
                         fixture.useCase,
                     )
                 }

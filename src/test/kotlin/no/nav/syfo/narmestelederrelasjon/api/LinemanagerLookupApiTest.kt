@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.api.internal
+package no.nav.syfo.narmestelederrelasjon.api
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
@@ -22,31 +22,32 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.mockk
+import no.nav.syfo.application.api.ApiError
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
-import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerLookupRequest
-import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerLookupResponse
-import no.nav.syfo.narmesteleder.api.internal.v1.LineManagerResponse
-import no.nav.syfo.narmesteleder.api.internal.v1.registerLineManagerLookupApi
-import no.nav.syfo.narmesteleder.db.ActiveNarmestelederEntity
-import no.nav.syfo.narmesteleder.db.NarmestelederLookupDb
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupRequest
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupResponse
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerResponse
+import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
 import java.util.UUID
 
-class LineManagerLookupApiTest :
+class LinemanagerLookupApiTest :
     DescribeSpec({
         val texasHttpClient = mockk<TexasHttpClient>()
-        val lookupDb = mockk<NarmestelederLookupDb>()
-        val lookupService = NarmestelederLookupService(lookupDb)
+        val lookupDb = FakeActiveNarmestelederrelasjonRepository()
+        val lookupService = LookupActiveNarmestelederUseCase(lookupDb)
         val callingApp = "calling-app-id"
-        val sykmeldtFnr = PersonalIdentificationNumber("12345678901")
+        val sykmeldtFnr = PersonIdent("12345678901")
         val orgnummer = OrganizationNumber("123456789")
         val narmestelederId = UUID.fromString("c8d10801-a0cc-4d94-a9ab-0088e850d4f4")
 
@@ -69,7 +70,7 @@ class LineManagerLookupApiTest :
                         route(INTERNAL_API_V1_PATH) {
                             install(AddTokenIssuerPlugin)
                             registerLineManagerLookupApi(
-                                narmestelederLookupService = lookupService,
+                                lookupActiveNarmesteleder = lookupService,
                                 texasHttpClient = texasHttpClient,
                                 preAuthorizedApps = setOf(callingApp),
                             )
@@ -81,6 +82,7 @@ class LineManagerLookupApiTest :
         }
 
         beforeTest {
+            lookupDb.reset()
             coEvery { texasHttpClient.introspectToken("azuread", any()) } returns TexasIntrospectionResponse(
                 active = true,
                 azp = callingApp,
@@ -89,25 +91,25 @@ class LineManagerLookupApiTest :
 
         describe("POST /internal/api/v1/lookup") {
             it("returns the active line manager with split email addresses") {
-                coEvery { lookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer) } returns listOf(
-                    ActiveNarmestelederEntity(
-                        narmestelederId = narmestelederId,
-                        narmestelederFnr = PersonalIdentificationNumber("10987654321"),
-                        narmestelederEpost = " leder@example.com, , annen@example.com ",
-                        aktivFom = Instant.parse("2026-01-01T00:00:00Z"),
+                lookupDb.rows = listOf(
+                    ActiveNarmestelederrelasjon(
+                        id = narmestelederId,
+                        managerIdent = PersonIdent("10987654321"),
+                        managerEmail = " leder@example.com, , annen@example.com ",
+                        activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
                     )
                 )
 
                 withTestApplication {
                     val response = client.post("/internal/api/v1/lookup") {
                         contentType(ContentType.Application.Json)
-                        setBody(LineManagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
+                        setBody(LinemanagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
                     }
 
                     response.status shouldBe HttpStatusCode.OK
-                    response.body<LineManagerLookupResponse>() shouldBe LineManagerLookupResponse(
-                        lineManager = LineManagerResponse(
+                    response.body<LinemanagerLookupResponse>() shouldBe LinemanagerLookupResponse(
+                        lineManager = LinemanagerResponse(
                             id = narmestelederId,
                             nationalIdentificationNumber = "10987654321",
                             emailAddresses = listOf("leder@example.com", "annen@example.com"),
@@ -117,17 +119,41 @@ class LineManagerLookupApiTest :
             }
 
             it("returns null when no active line manager exists") {
-                coEvery { lookupDb.findActiveNarmesteledere(sykmeldtFnr, orgnummer) } returns emptyList()
-
                 withTestApplication {
                     val response = client.post("/internal/api/v1/lookup") {
                         contentType(ContentType.Application.Json)
-                        setBody(LineManagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
+                        setBody(LinemanagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
                     }
 
                     response.status shouldBe HttpStatusCode.OK
-                    response.body<LineManagerLookupResponse>() shouldBe LineManagerLookupResponse(null)
+                    response.body<LinemanagerLookupResponse>() shouldBe LinemanagerLookupResponse(null)
+                }
+            }
+
+            it("rejects missing organizationNumber without a database lookup") {
+                withTestApplication {
+                    val response = client.post("/internal/api/v1/lookup") {
+                        contentType(ContentType.Application.Json)
+                        setBody(LinemanagerLookupRequest(sykmeldtFnr.value, null))
+                        bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
+                    }
+
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    lookupDb.lookups shouldBe emptyList()
+                }
+            }
+
+            it("rejects invalid employeeNationalIdentificationNumber with INVALID_FORMAT") {
+                withTestApplication {
+                    val response = client.post("/internal/api/v1/lookup") {
+                        contentType(ContentType.Application.Json)
+                        setBody(LinemanagerLookupRequest("invalid", orgnummer.value))
+                        bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
+                    }
+
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                 }
             }
 
@@ -140,7 +166,7 @@ class LineManagerLookupApiTest :
                 withTestApplication {
                     val response = client.post("/internal/api/v1/lookup") {
                         contentType(ContentType.Application.Json)
-                        setBody(LineManagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
+                        setBody(LinemanagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
                         bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
                     }
 

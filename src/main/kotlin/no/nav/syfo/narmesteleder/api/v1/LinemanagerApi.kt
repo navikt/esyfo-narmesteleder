@@ -9,17 +9,19 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.api.throwIfRejected
 import no.nav.syfo.narmestelederbehov.api.toManagerContactInput
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
@@ -33,7 +35,7 @@ fun Route.registerLinemanagerApiV1(
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler,
-    narmestelederLookupService: NarmestelederLookupService,
+    lookupActiveNarmesteleder: LookupActiveNarmestelederUseCase,
     fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,
 ) {
     route(LINEMANAGER_API_PATH) {
@@ -68,10 +70,10 @@ fun Route.registerLinemanagerApiV1(
             val employee = validationService.validateLinemanagerRevoke(revoke, principal)
 
             val tweakedRevoke = revoke.copy(employeeIdentificationNumber = employee.nationalIdentificationNumber)
-            val hasActiveRelation = narmestelederLookupService.hasActiveNarmesteleder(
-                sykmeldtFnr = tweakedRevoke.employeeIdentificationNumber,
-                orgnummer = tweakedRevoke.orgNumber,
-            )
+            val hasActiveRelation = lookupActiveNarmesteleder.execute(
+                PersonIdent(tweakedRevoke.employeeIdentificationNumber.value),
+                OrganizationNumber(tweakedRevoke.orgNumber.value),
+            ) != null
             if (!hasActiveRelation) {
                 COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION.increment()
                 call.respond(HttpStatusCode.NoContent)

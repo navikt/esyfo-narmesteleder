@@ -82,11 +82,6 @@ val COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER: Counte
         .description("Counts the number of failed assigned line managers from empty form by personnel manager")
         .register(METRICS_REGISTRY)
 
-const val LOOKUP_NARMESTELEDER = "${METRICS_NS}_lookup_narmesteleder"
-val COUNT_LOOKUP_NARMESTELEDER: Counter = Counter.builder(LOOKUP_NARMESTELEDER)
-    .description("Counts line manager lookups by org/sykmeldt fnr")
-    .register(METRICS_REGISTRY)
-
 fun Principal.countFulfilledRequirement() = when (this) {
     is SystemPrincipal -> COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS.increment()
     is UserPrincipal -> COUNT_FULFILL_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()

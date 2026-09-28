@@ -39,9 +39,6 @@ import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
-import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
-import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
-import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.LinemanagerManagerRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerPersonRead
@@ -58,7 +55,6 @@ import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.NarmestelederLookupService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
@@ -67,6 +63,8 @@ import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCa
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
@@ -86,7 +84,8 @@ abstract class LinemanagerApiV1TestBase(
     internal val pdlCacheMock = mockk<PdlCache>(relaxed = true)
     internal val pdlService = spyk(PdlService(FakePdlClient(), pdlCacheMock))
     internal val texasHttpClientMock = mockk<TexasHttpClient>()
-    internal val narmestelederLookupService = mockk<NarmestelederLookupService>()
+    internal val activeRelationRepository = FakeActiveNarmestelederrelasjonRepository()
+    internal val lookupActiveNarmesteleder = LookupActiveNarmestelederUseCase(activeRelationRepository)
     internal val narmesteLederRelasjon = linemanager()
     internal val fakeAaregClient = FakeAaregClient()
     internal val aaregService = AaregService(fakeAaregClient)
@@ -135,6 +134,7 @@ abstract class LinemanagerApiV1TestBase(
     init {
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
+            activeRelationRepository.reset()
             fakeAltinnTilgangerClient.accessPolicy.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
@@ -210,7 +210,7 @@ abstract class LinemanagerApiV1TestBase(
                             validationServiceSpy,
                             texasHttpClientMock,
                             nlBehovHandler,
-                            narmestelederLookupService,
+                            lookupActiveNarmesteleder,
                             fulfillNarmestelederbehov,
                         )
                         registerAccessOrganizationsApi(altinnAccessServiceSpy, texasHttpClientMock)

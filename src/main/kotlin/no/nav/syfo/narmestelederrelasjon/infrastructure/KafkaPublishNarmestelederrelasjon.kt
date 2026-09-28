@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.Leder
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
@@ -9,8 +9,8 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.Sykmeldt
 
-class KafkaEstablishNarmestelederrelasjon(private val producer: SykmeldingNarmestelederProducer) : EstablishNarmestelederrelasjon {
-    override suspend fun establish(command: EstablishNarmestelederrelasjonCommand) {
+class KafkaPublishNarmestelederrelasjon(private val producer: SykmeldingNarmestelederProducer) : PublishNarmestelederrelasjon {
+    override suspend fun publish(command: PublishNarmestelederrelasjonCommand) {
         producer.sendSykmeldingNLRelasjon(
             NlResponse(
                 orgnummer = command.organizationNumber.value,

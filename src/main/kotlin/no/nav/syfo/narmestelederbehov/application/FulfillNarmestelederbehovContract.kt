@@ -2,6 +2,7 @@ package no.nav.syfo.narmestelederbehov.application
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch

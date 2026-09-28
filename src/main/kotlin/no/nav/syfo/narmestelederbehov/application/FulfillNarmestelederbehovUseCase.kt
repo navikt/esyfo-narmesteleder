@@ -5,8 +5,14 @@ import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
+import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
+import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactNormalization
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
@@ -28,7 +34,7 @@ class FulfillNarmestelederbehovUseCase(
     private val activeSykmeldingLookup: ActiveSykmeldingLookup,
     private val employmentLookup: EmploymentLookup,
     private val personLookup: PersonLookup,
-    private val establishNarmestelederrelasjon: EstablishNarmestelederrelasjon,
+    private val relationPublisher: PublishNarmestelederrelasjon,
     private val dialog: NarmestelederbehovDialog,
     private val nameValidationMetrics: ManagerNameValidationMetrics,
 ) {
@@ -108,8 +114,8 @@ class FulfillNarmestelederbehovUseCase(
         employeeAndManager: EmployeeAndManager,
     ): RelationSource {
         val relationSource = subject.relationSource()
-        establishNarmestelederrelasjon.establish(
-            EstablishNarmestelederrelasjonCommand(
+        relationPublisher.publish(
+            PublishNarmestelederrelasjonCommand(
                 employee = RelationPerson(
                     personIdent = employeeAndManager.employee.personIdent,
                     firstName = employeeAndManager.employee.name.firstName,

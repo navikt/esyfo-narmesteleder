@@ -16,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import org.slf4j.LoggerFactory

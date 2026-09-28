@@ -1,11 +1,11 @@
-package no.nav.syfo.narmestelederbehov.infrastructure
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmestelederbehov.application.PersonDetails
+import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.pdl.client.GetPersonBolkResponse

@@ -62,17 +62,17 @@ import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.PersonDetails
-import no.nav.syfo.narmestelederbehov.application.PersonLookup
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
-import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
-import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
+import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
-import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
+import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyManagerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
@@ -271,7 +271,7 @@ private class PutFixture {
         DinesykmeldteActiveSykmeldingLookup(sykmelding),
         AaregEmploymentLookup(AaregService(aareg)),
         people,
-        KafkaEstablishNarmestelederrelasjon(producer),
+        KafkaPublishNarmestelederrelasjon(producer),
         NarmestelederbehovDialog { },
         LegacyManagerNameValidationMetrics(),
     )

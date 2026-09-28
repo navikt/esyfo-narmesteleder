@@ -4,8 +4,13 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
+import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
+import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonCommand
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -78,10 +83,10 @@ internal class FakePersonLookup(
 internal class FakeRelationEstablisher(
     private val effects: MutableList<String> = mutableListOf(),
     private val failure: Throwable? = null,
-) : EstablishNarmestelederrelasjon {
-    var command: EstablishNarmestelederrelasjonCommand? = null
+) : PublishNarmestelederrelasjon {
+    var command: PublishNarmestelederrelasjonCommand? = null
 
-    override suspend fun establish(command: EstablishNarmestelederrelasjonCommand) {
+    override suspend fun publish(command: PublishNarmestelederrelasjonCommand) {
         effects += "establish"
         failure?.let { throw it }
         this.command = command

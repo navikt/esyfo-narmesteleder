@@ -5,11 +5,11 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 
-fun interface EstablishNarmestelederrelasjon {
-    suspend fun establish(command: EstablishNarmestelederrelasjonCommand)
+fun interface PublishNarmestelederrelasjon {
+    suspend fun publish(command: PublishNarmestelederrelasjonCommand)
 }
 
-data class EstablishNarmestelederrelasjonCommand(
+data class PublishNarmestelederrelasjonCommand(
     val employee: RelationPerson,
     val manager: RelationManager,
     val organizationNumber: OrganizationNumber,

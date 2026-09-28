@@ -1,8 +1,8 @@
-package no.nav.syfo.narmestelederbehov.infrastructure
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.narmesteleder.service.validators.NameMatchType
 import no.nav.syfo.narmesteleder.service.validators.NameValidator
-import no.nav.syfo.narmestelederbehov.application.ManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 
 class LegacyManagerNameValidationMetrics : ManagerNameValidationMetrics {

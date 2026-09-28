@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelederbehov.application
+package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 

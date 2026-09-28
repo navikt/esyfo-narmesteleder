@@ -64,13 +64,13 @@ import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
-import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.infrastructure.LegacyManagerNameValidationMetrics
-import no.nav.syfo.narmestelederbehov.infrastructure.PdlPersonLookup
-import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaEstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
+import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.pdl.PdlService
@@ -161,7 +161,7 @@ abstract class LinemanagerApiV1TestBase(
                 DinesykmeldteActiveSykmeldingLookup(dineSykmelteService),
                 AaregEmploymentLookup(aaregService),
                 PdlPersonLookup(FakePdlClient()),
-                KafkaEstablishNarmestelederrelasjon(relationProducerSpy),
+                KafkaPublishNarmestelederrelasjon(relationProducerSpy),
                 DialogportenNarmestelederbehovDialog(FakeDialogportenClient()),
                 LegacyManagerNameValidationMetrics(),
             )

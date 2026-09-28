@@ -1,7 +1,7 @@
-package no.nav.syfo.narmestelederbehov.infrastructure
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmestelederbehov.application.PersonDetails
+import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 
 interface PersonDetailsCache {
     fun get(personIdent: PersonIdent): PersonDetails?

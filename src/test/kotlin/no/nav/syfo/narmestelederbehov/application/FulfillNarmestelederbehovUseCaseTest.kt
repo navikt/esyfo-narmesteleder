@@ -13,6 +13,10 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
+import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
@@ -365,8 +369,8 @@ class FulfillNarmestelederbehovUseCaseTest :
             FakeActiveSykmeldingLookup().hasActiveSykmelding(employeeIdent, organizationNumber) shouldBe true
             FakeEmploymentLookup().findEmployment(employeeIdent, organizationNumber) shouldBe EmploymentResult.IN_ORGANIZATION
             FakePersonLookup(mapOf(employeeIdent to employee)).find(employeeIdent) shouldBe employee
-            FakeRelationEstablisher().establish(
-                no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand(
+            FakeRelationEstablisher().publish(
+                PublishNarmestelederrelasjonCommand(
                     employee = no.nav.syfo.narmestelederrelasjon.domain.RelationPerson(
                         employeeIdent,
                         "Employee",
@@ -471,7 +475,7 @@ internal fun createUseCase(
     activeSykmeldingLookup = sykmelding ?: FakeActiveSykmeldingLookup(effects = effects),
     employmentLookup = employment ?: FakeEmploymentLookup(effects = effects),
     personLookup = personLookup ?: FakePersonLookup(mapOf(employeeIdent to employee, managerIdent to manager), effects),
-    establishNarmestelederrelasjon = relation ?: FakeRelationEstablisher(effects),
+    relationPublisher = relation ?: FakeRelationEstablisher(effects),
     dialog = dialog ?: FakeDialog(effects = effects),
     nameValidationMetrics = metrics ?: ManagerNameValidationMetrics { effects += "metric" },
 )

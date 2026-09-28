@@ -72,8 +72,8 @@ check. It does not validate the relation itself and does not use relation
 repositories, ports, domain rules, Kafka models or Kafka producers directly.
 
 Transitional: until #578, fulfillment still validates the relation itself with
-the rules in `narmestelederrelasjon.domain` (#576) and, after #577, the lookup
-ports in `narmestelederrelasjon.application`.
+the rules in `narmestelederrelasjon.domain` and the lookup ports and name-metrics
+port in `narmestelederrelasjon.application`.
 
 ### `narmestelederrelasjon`
 
@@ -113,8 +113,8 @@ sykmelding -> narmestelederbehov
 sykmelding -> narmestelederrelasjon
 ```
 
-`narmestelederbehov` continues to use Dinesykmeldte through its own
-`ActiveSykmeldingLookup` port. Replacing that adapter with the local sykmelding
+`narmestelederrelasjon` uses Dinesykmeldte through its `ActiveSykmeldingLookup`
+port, the single owner. Replacing that adapter with the local sykmelding
 projection belongs to #508 and follow-up work.
 
 `ShadowActiveSykmeldingService` remains dormant until that migration resumes.

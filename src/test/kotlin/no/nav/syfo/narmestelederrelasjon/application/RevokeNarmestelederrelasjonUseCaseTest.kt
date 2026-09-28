@@ -10,7 +10,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import java.util.UUID
 
-class RevokeNarmestelederrelasjonTest :
+class RevokeNarmestelederrelasjonUseCaseTest :
     FunSpec({
         val id = UUID.fromString("00000000-0000-0000-0000-000000000001")
         val employee = PersonIdent("12345678901")
@@ -35,7 +35,7 @@ class RevokeNarmestelederrelasjonTest :
             val relationId = id
             val effects = mutableListOf<String>()
             val commands = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
-            val useCase = RevokeNarmestelederrelasjon(
+            val useCase = RevokeNarmestelederrelasjonUseCase(
                 repository = object : NarmestelederrelasjonRepository {
                     override suspend fun findById(id: UUID): NarmestelederrelasjonLookup? = error("Not used by revoke")
                     override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? {
@@ -112,7 +112,7 @@ class RevokeNarmestelederrelasjonTest :
     })
 
 private data class RevokeFixture(
-    val useCase: RevokeNarmestelederrelasjon,
+    val useCase: RevokeNarmestelederrelasjonUseCase,
     val effects: List<String>,
     val commands: List<PublishNarmestelederrelasjonRevocationCommand>,
 )

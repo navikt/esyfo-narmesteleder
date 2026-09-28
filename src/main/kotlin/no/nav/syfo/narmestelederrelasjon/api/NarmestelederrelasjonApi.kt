@@ -19,10 +19,10 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
 import no.nav.syfo.narmesteleder.api.v1.getUUIDFromPathVariable
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
-import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countGetNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.observability.countLinemanagerRevokeById
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
@@ -37,8 +37,8 @@ private const val NARMESTELEDERRELASJON_RELATIVE_PATH = "/linemanager/{id}"
 const val NARMESTELEDERRELASJON_API_PATH = "$INTERNAL_API_V1_PATH$NARMESTELEDERRELASJON_RELATIVE_PATH"
 
 fun Route.registerNarmestelederrelasjonApi(
-    getNarmestelederrelasjon: GetNarmestelederrelasjon,
-    revokeNarmestelederrelasjon: RevokeNarmestelederrelasjon,
+    getNarmestelederrelasjon: GetNarmestelederrelasjonUseCase,
+    revokeNarmestelederrelasjon: RevokeNarmestelederrelasjonUseCase,
     texasHttpClient: TexasHttpClient,
 ) {
     route(NARMESTELEDERRELASJON_RELATIVE_PATH) {

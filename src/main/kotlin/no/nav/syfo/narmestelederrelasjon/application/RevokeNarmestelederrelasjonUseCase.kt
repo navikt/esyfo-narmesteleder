@@ -9,7 +9,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import java.util.UUID
 
-class RevokeNarmestelederrelasjon(
+class RevokeNarmestelederrelasjonUseCase(
     private val repository: NarmestelederrelasjonRepository,
     private val organizationAccess: OrganizationAccess,
     private val publisher: PublishNarmestelederrelasjonRevocation,
@@ -62,7 +62,7 @@ class RevokeNarmestelederrelasjon(
     }
 
     private companion object {
-        val logger = applicationLogger(RevokeNarmestelederrelasjon::class.java)
+        val logger = applicationLogger(RevokeNarmestelederrelasjonUseCase::class.java)
 
         // Legacy principal_type value. System user rejections are logged by OrganizationAccess.
         const val USER_PRINCIPAL_TYPE = "UserPrincipal"

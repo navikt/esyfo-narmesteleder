@@ -26,7 +26,7 @@ class GetNarmestelederrelasjonLoggingContractTest :
     FunSpec({
         val mapper = jacksonObjectMapper()
         val contract = RuntimeLogContract.forEvents(narmestelederrelasjonNotFound)
-        val logger = LoggerFactory.getLogger(GetNarmestelederrelasjon::class.java) as Logger
+        val logger = LoggerFactory.getLogger(GetNarmestelederrelasjonUseCase::class.java) as Logger
         val originalSettings = logger.level to logger.isAdditive
         val productionLogging = LoggerContext()
         lateinit var productionAppender: Appender<ILoggingEvent>
@@ -61,7 +61,7 @@ class GetNarmestelederrelasjonLoggingContractTest :
             lookup: NarmestelederrelasjonLookup? = lookup(),
             access: OrganizationAccessResult = OrganizationAccessResult.Granted,
             activeSykmelding: Boolean = true,
-        ) = GetNarmestelederrelasjon(
+        ) = GetNarmestelederrelasjonUseCase(
             repository = object : NarmestelederrelasjonRepository {
                 override suspend fun findById(id: UUID) = lookup
                 override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? = error("Not used by GET")

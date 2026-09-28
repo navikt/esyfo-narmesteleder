@@ -27,14 +27,14 @@ import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
-import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -55,11 +55,11 @@ class NarmestelederrelasjonApiTest :
         val organization = mockk<NarmestelederrelasjonOrganization>()
         val activeSykmeldingLookup = ActiveSykmeldingLookup { _, _ -> true }
         val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
-        val revokeNarmestelederrelasjon = RevokeNarmestelederrelasjon(
+        val revokeNarmestelederrelasjon = RevokeNarmestelederrelasjonUseCase(
             repository,
             organizationAccess,
         ) { command -> published.add(command) }
-        val getNarmestelederrelasjon = GetNarmestelederrelasjon(
+        val getNarmestelederrelasjon = GetNarmestelederrelasjonUseCase(
             repository,
             organizationAccess,
             activeSykmeldingLookup,

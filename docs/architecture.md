@@ -191,7 +191,9 @@ Rules:
 
 ## Application design
 
-Use one small class for one meaningful business action or query:
+Use one small class for one meaningful business action or query. Name it
+`<Action><Concept>UseCase`, also for queries, for example
+`GetNarmestelederrelasjonUseCase`:
 
 ```kotlin
 class FulfillNarmestelederbehovUseCase(

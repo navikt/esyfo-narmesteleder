@@ -2,11 +2,11 @@ package no.nav.syfo.narmestelederrelasjon
 
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EregNarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
@@ -20,6 +20,6 @@ fun narmestelederrelasjonModule() = module {
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<NarmestelederrelasjonOrganization> { EregNarmestelederrelasjonOrganization(get()) }
-    single<GetNarmestelederrelasjon> { GetNarmestelederrelasjon(get(), get(), get(), get()) }
-    single<RevokeNarmestelederrelasjon> { RevokeNarmestelederrelasjon(get(), get(), get()) }
+    single<GetNarmestelederrelasjonUseCase> { GetNarmestelederrelasjonUseCase(get(), get(), get(), get()) }
+    single<RevokeNarmestelederrelasjonUseCase> { RevokeNarmestelederrelasjonUseCase(get(), get(), get()) }
 }

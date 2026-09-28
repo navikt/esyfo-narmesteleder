@@ -10,7 +10,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import java.util.UUID
 
-class GetNarmestelederrelasjon(
+class GetNarmestelederrelasjonUseCase(
     private val repository: NarmestelederrelasjonRepository,
     private val organizationAccess: OrganizationAccess,
     private val activeSykmeldingLookup: ActiveSykmeldingLookup,
@@ -49,7 +49,7 @@ class GetNarmestelederrelasjon(
     private fun NotFound.log(): NotFound = also { logger.event(narmestelederrelasjonNotFound, it) }
 
     private companion object {
-        val logger = applicationLogger(GetNarmestelederrelasjon::class.java)
+        val logger = applicationLogger(GetNarmestelederrelasjonUseCase::class.java)
     }
 }
 

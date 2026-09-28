@@ -29,7 +29,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
             revokeAccessRejected,
             rejectionReasons = setOf("MISSING_ORG_ACCESS", "MISSING_ALITINN_RESOURCE_ACCESS"),
         )
-        val logger = LoggerFactory.getLogger(RevokeNarmestelederrelasjon::class.java) as Logger
+        val logger = LoggerFactory.getLogger(RevokeNarmestelederrelasjonUseCase::class.java) as Logger
         val originalSettings = logger.level to logger.isAdditive
         val productionLogging = LoggerContext()
         lateinit var productionAppender: Appender<ILoggingEvent>
@@ -45,7 +45,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
             subject: OrganizationAccessSubject,
             denial: DenialReason,
             found: Boolean = true,
-        ) = RevokeNarmestelederrelasjon(
+        ) = RevokeNarmestelederrelasjonUseCase(
             repository = object : NarmestelederrelasjonRepository {
                 override suspend fun findById(id: UUID): NarmestelederrelasjonLookup? = error("Not used by revoke")
                 override suspend fun findRevocableById(id: UUID) = if (found) {

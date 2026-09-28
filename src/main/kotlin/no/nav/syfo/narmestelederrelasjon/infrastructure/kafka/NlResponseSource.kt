@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka.model
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.SystemPrincipal

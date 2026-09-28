@@ -1,11 +1,11 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
-import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
-import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
 import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
 
 class KafkaPublishNarmestelederrelasjonRevocation(
     private val producer: SykmeldingNarmestelederProducer,

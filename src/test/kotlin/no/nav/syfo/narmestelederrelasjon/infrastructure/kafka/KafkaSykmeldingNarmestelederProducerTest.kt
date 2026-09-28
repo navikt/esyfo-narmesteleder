@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import faker
 import io.kotest.core.spec.style.DescribeSpec
@@ -13,12 +13,6 @@ import io.mockk.verify
 import linemanager
 import linemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.kafka.model.NarmestelederAvbruddResponseKafkaMessage
-import no.nav.syfo.narmesteleder.kafka.model.NarmestelederRelationResponseKafkaMessage
-import no.nav.syfo.narmesteleder.kafka.model.NarmestelederResponseKafkaMessage
-import no.nav.syfo.narmesteleder.kafka.model.NlResponse
-import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
-import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
 import org.apache.kafka.clients.producer.KafkaProducer

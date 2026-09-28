@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka.model
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import java.time.OffsetDateTime
 import java.time.ZoneOffset

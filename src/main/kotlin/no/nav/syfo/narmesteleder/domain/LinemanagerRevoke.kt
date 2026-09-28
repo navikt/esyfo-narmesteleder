@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.domain
 
-import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
 
 data class LinemanagerRevoke(
     val employeeIdentificationNumber: PersonalIdentificationNumber,

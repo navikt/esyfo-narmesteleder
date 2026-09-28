@@ -5,11 +5,11 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.kafka.SykmeldingNarmestelederProducer
-import no.nav.syfo.narmesteleder.kafka.model.NlAvbrutt
-import no.nav.syfo.narmesteleder.kafka.model.NlResponse
-import no.nav.syfo.narmesteleder.kafka.model.NlResponseSource
-import no.nav.syfo.narmesteleder.kafka.model.Sykmeldt
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.Sykmeldt
 
 class NarmestelederKafkaService(
     val kafkaSykemeldingProducer: SykmeldingNarmestelederProducer,

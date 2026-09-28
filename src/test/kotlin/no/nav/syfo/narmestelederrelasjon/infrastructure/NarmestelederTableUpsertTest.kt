@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.exposed
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import defaultLeesahKafkaMessage
 import io.kotest.core.spec.style.DescribeSpec
@@ -6,6 +6,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
+import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction

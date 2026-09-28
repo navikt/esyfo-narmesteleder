@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerStatistics
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.narmestelederrelasjon.infrastructure.NarmestelederTable
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and

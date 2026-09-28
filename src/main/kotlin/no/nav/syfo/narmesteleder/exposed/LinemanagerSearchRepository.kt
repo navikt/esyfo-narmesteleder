@@ -11,6 +11,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederrelasjon.infrastructure.NarmestelederTable
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.ExpressionWithColumnType

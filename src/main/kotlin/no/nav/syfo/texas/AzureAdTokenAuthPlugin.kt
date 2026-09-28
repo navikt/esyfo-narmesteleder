@@ -5,7 +5,6 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.server.application.createRouteScopedPlugin
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.TOKEN_ISSUER
-import no.nav.syfo.application.environment.getEnvVar
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.texas.client.TexasHttpClient
 
@@ -23,6 +22,10 @@ val AzureAdTokenAuthPlugin = createRouteScopedPlugin(
     name = "AzureAdTokenAuthPlugin",
     createConfiguration = ::AzureAdTokenAuthPluginConfiguration,
 ) {
+    val client = pluginConfig.client.requireConfigured("AzureAdTokenAuthPlugin")
+    val preAuthorizedApps = pluginConfig.preAuthorizedApps
+        .ifEmpty { error("AzureAdTokenAuthPlugin installed without pre-authorized apps") }
+
     onCall { call ->
         if (call.attributes.getOrNull(TOKEN_ISSUER) != JwtIssuer.AZURE_AD) {
             throw ApiErrorException.UnauthorizedException("Invalid token issuer")
@@ -30,23 +33,13 @@ val AzureAdTokenAuthPlugin = createRouteScopedPlugin(
 
         val bearerToken = call.bearerToken()
             ?: throw ApiErrorException.UnauthorizedException("No bearer token found in request")
-        val introspectionResponse = pluginConfig.client
-            ?.introspectToken(TexasHttpClient.IDENTITY_PROVIDER_AZUREAD, bearerToken)
-            ?: error("TexasHttpClient is not configured")
+        val introspectionResponse =
+            introspectActiveToken(client, TexasHttpClient.IDENTITY_PROVIDER_AZUREAD, bearerToken)
 
-        if (!introspectionResponse.active) {
-            throw ApiErrorException.UnauthorizedException("Token is not active")
-        }
-
-        if (introspectionResponse.azp !in pluginConfig.preAuthorizedApps) {
+        if (introspectionResponse.azp !in preAuthorizedApps) {
             throw ApiErrorException.ForbiddenException("Application is not authorized")
         }
     }
-}
-
-fun preAuthorizedAppsFromEnvironment(): Set<String> {
-    val configuredApps = getEnvVar("AZURE_APP_PRE_AUTHORIZED_APPS")
-    return preAuthorizedAppsFromJson(configuredApps)
 }
 
 fun preAuthorizedAppsFromJson(configuredApps: String): Set<String> = jacksonObjectMapper()

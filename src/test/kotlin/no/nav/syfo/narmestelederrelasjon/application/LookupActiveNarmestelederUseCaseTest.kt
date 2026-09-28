@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
@@ -8,7 +8,7 @@ import java.time.Instant
 import java.util.UUID
 
 class LookupActiveNarmestelederUseCaseTest :
-    DescribeSpec({
+    FunSpec({
         val employee = PersonIdent("12345678901")
         val organization = OrganizationNumber("123456789")
         val manager = PersonIdent("10987654321")
@@ -27,18 +27,18 @@ class LookupActiveNarmestelederUseCaseTest :
             }
         }
 
-        it("returns null when no active relation exists") {
+        test("returns null when no active relation exists") {
             LookupActiveNarmestelederUseCase(FakeRepository()).execute(employee, organization) shouldBe null
         }
 
-        it("maps the first relation and splits email addresses") {
+        test("maps the first relation and splits email addresses") {
             val result = LookupActiveNarmestelederUseCase(FakeRepository(listOf(first))).execute(employee, organization)
             result?.id shouldBe first.id
             result?.managerIdent shouldBe manager
             result?.emailAddresses?.map { it.value } shouldBe listOf("first@example.com", "second@example.com")
         }
 
-        it("selects the first row when multiple active relations exist") {
+        test("selects the first row when multiple active relations exist") {
             val second = first.copy(id = UUID.fromString("00000000-0000-0000-0000-000000000002"))
             LookupActiveNarmestelederUseCase(FakeRepository(listOf(first, second)))
                 .execute(employee, organization)?.id shouldBe first.id

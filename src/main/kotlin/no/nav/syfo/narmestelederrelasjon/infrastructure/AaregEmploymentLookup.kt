@@ -1,11 +1,11 @@
-package no.nav.syfo.narmestelederbehov.infrastructure
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.getForOrgnummer
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmestelederbehov.application.EmploymentLookup
-import no.nav.syfo.narmestelederbehov.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 
 class AaregEmploymentLookup(private val service: AaregService) : EmploymentLookup {
     override suspend fun findEmployment(personIdent: PersonIdent, organizationNumber: OrganizationNumber): EmploymentResult {

@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelederbehov.infrastructure
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe

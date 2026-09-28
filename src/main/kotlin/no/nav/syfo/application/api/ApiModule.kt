@@ -11,6 +11,7 @@ import io.ktor.server.routing.routing
 import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
 import no.nav.syfo.altinntilganger.registerAccessOrganizationsApi
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
+import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
@@ -20,7 +21,6 @@ import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
-import no.nav.syfo.texas.preAuthorizedAppsFromEnvironment
 import org.koin.ktor.ext.get
 
 fun Application.configureRouting() {
@@ -73,7 +73,7 @@ private fun Route.registerInternalApiV1Routes() {
     registerLineManagerLookupApi(
         narmestelederLookupService = get(),
         texasHttpClient = get(),
-        preAuthorizedApps = preAuthorizedAppsFromEnvironment(),
+        preAuthorizedApps = get<Environment>().texas.azurePreAuthorizedApps,
     )
     registerLinemanagerSearchApi(texasHttpClient = get(), linemanagerSearchService = get())
     registerLinemanagerStatisticsApi(texasHttpClient = get(), linemanagerStatisticsService = get())

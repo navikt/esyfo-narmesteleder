@@ -10,7 +10,7 @@ import no.nav.syfo.texas.client.getSystemUserId
 import no.nav.syfo.texas.client.getSystemUserOrganization
 
 internal suspend fun ApplicationCall.authenticateMaskinporten(
-    client: TexasHttpClient?,
+    client: TexasHttpClient,
     bearerToken: String,
 ) {
     val issuer = JwtIssuer.MASKINPORTEN.value

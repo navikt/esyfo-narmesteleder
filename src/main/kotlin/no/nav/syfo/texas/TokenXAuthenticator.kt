@@ -38,7 +38,7 @@ private fun ApplicationCall.logRejection(reason: TokenRejectionReason, acr: Stri
 }
 
 internal suspend fun ApplicationCall.authenticateTokenX(
-    client: TexasHttpClient?,
+    client: TexasHttpClient,
     bearerToken: String,
 ) {
     val issuer = JwtIssuer.TOKEN_X.value

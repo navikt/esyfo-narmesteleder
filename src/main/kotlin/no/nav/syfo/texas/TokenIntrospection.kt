@@ -6,13 +6,12 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 
 internal suspend fun introspectActiveToken(
-    client: TexasHttpClient?,
+    client: TexasHttpClient,
     issuer: String,
     bearerToken: String,
 ): TexasIntrospectionResponse {
     val introspectionResponse = try {
-        client?.introspectToken(issuer, bearerToken)
-            ?: error("TexasHttpClient is not configured")
+        client.introspectToken(issuer, bearerToken)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {

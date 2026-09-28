@@ -1,12 +1,14 @@
 package no.nav.syfo.application.texas
 
 import no.nav.syfo.application.environment.getEnvVar
+import no.nav.syfo.texas.preAuthorizedAppsFromJson
 
 data class TexasEnvironment(
     val tokenIntrospectionEndpoint: String,
     val tokenEndpoint: String,
     val tokenExchangeEndpoint: String,
     val exchangeTargetIsAltinnTilganger: String,
+    val azurePreAuthorizedApps: Set<String>,
 ) {
     companion object {
         fun createForLocal() = TexasEnvironment(
@@ -14,13 +16,15 @@ data class TexasEnvironment(
             tokenExchangeEndpoint = "http://localhost:3000/api/v1/token/exchange",
             tokenEndpoint = "http://localhost:3000/api/v1/token",
             exchangeTargetIsAltinnTilganger = "dev:teamsykefravr:istilgangskontroll",
+            azurePreAuthorizedApps = setOf("syfo-budstikka"),
         )
 
         fun createFromEnvVars() = TexasEnvironment(
             tokenIntrospectionEndpoint = getEnvVar("NAIS_TOKEN_INTROSPECTION_ENDPOINT"),
             tokenExchangeEndpoint = getEnvVar("NAIS_TOKEN_EXCHANGE_ENDPOINT"),
             tokenEndpoint = getEnvVar("NAIS_TOKEN_ENDPOINT"),
-            exchangeTargetIsAltinnTilganger = "${getEnvVar("NAIS_CLUSTER_NAME")}:fager:arbeidsgiver-altinn-tilganger"
+            exchangeTargetIsAltinnTilganger = "${getEnvVar("NAIS_CLUSTER_NAME")}:fager:arbeidsgiver-altinn-tilganger",
+            azurePreAuthorizedApps = preAuthorizedAppsFromJson(getEnvVar("AZURE_APP_PRE_AUTHORIZED_APPS")),
         )
     }
 }

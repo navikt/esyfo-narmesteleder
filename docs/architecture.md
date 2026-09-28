@@ -329,6 +329,12 @@ combines modules and selects environment-specific adapters.
 Business and domain classes remain normal constructor-injected Kotlin classes
 and do not depend on Koin.
 
+Route functions take their dependencies as explicit parameters. Bootstrap
+resolves them from Koin and registers each capability's routes directly under
+the shared API path; there is no aggregating route function that only forwards
+dependencies. `DependencyInjectionTest` verifies the complete Koin graph for
+both local and NAIS configuration.
+
 ## Testing
 
 Each migrated vertical flow includes:

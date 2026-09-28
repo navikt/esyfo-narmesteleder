@@ -24,12 +24,12 @@ import io.ktor.http.contentType
 import io.mockk.Called
 import io.mockk.coEvery
 import io.mockk.coVerify
-import no.nav.syfo.API_V1_PATH
 import no.nav.syfo.altinn.pdp.client.Decision
+import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
+import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
 import no.nav.syfo.narmesteleder.api.internal.v1.EMPLOYEE_LINEMANAGER_API_PATH
 import no.nav.syfo.narmesteleder.api.internal.v1.EMPLOYEE_LINEMANAGER_TOTAL
 import no.nav.syfo.narmesteleder.domain.EmployeeLinemanagerLookupResult

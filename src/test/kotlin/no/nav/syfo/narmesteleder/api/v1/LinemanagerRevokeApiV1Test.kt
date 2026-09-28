@@ -15,7 +15,7 @@ import io.mockk.Called
 import io.mockk.coEvery
 import io.mockk.coVerify
 import linemanagerRevoke
-import no.nav.syfo.API_V1_PATH
+import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.maskinportenIdToOrgnumber

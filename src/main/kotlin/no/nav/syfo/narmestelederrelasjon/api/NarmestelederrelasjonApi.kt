@@ -8,8 +8,8 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
+import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
 import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjon

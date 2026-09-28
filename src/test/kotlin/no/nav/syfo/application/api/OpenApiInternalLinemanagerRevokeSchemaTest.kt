@@ -5,7 +5,6 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.narmesteleder.api.internal.INTERNAL_API_V1_PATH
 import no.nav.syfo.narmesteleder.api.internal.v1.LINEMANAGER_REVOKE_BY_ID_PATH
 import no.nav.syfo.narmestelederrelasjon.api.NARMESTELEDERRELASJON_API_PATH
 import org.yaml.snakeyaml.Yaml

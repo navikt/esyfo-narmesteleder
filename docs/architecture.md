@@ -227,6 +227,9 @@ Do not add:
 - a broad `*Service`, `Commands` or `Queries` facade containing unrelated
   operations.
 
+Keep a port's input and output types in the port's file, for example
+`RevocableNarmestelederrelasjon` in `NarmestelederrelasjonRepository.kt`.
+
 ## Validation and authorization
 
 Separate three concerns:

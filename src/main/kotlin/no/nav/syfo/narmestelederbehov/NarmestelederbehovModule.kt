@@ -11,5 +11,5 @@ import org.koin.dsl.module
 fun narmestelederbehovModule() = module {
     single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }
-    single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get()) }
 }

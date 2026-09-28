@@ -66,6 +66,7 @@ import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
@@ -158,12 +159,14 @@ abstract class LinemanagerApiV1TestBase(
             fulfillNarmestelederbehov = FulfillNarmestelederbehovUseCase(
                 ExposedNarmestelederbehovRepository(TestDB.exposedDatabase),
                 AltinnOrganizationAccess(altinnTilgangerServiceMock, pdpService, eregService),
-                DinesykmeldteActiveSykmeldingLookup(dineSykmelteService),
-                AaregEmploymentLookup(aaregService),
-                PdlPersonLookup(FakePdlClient()),
-                KafkaPublishNarmestelederrelasjon(relationProducerSpy),
+                EstablishNarmestelederrelasjonUseCase(
+                    DinesykmeldteActiveSykmeldingLookup(dineSykmelteService),
+                    AaregEmploymentLookup(aaregService),
+                    PdlPersonLookup(FakePdlClient()),
+                    LegacyManagerNameValidationMetrics(),
+                    KafkaPublishNarmestelederrelasjon(relationProducerSpy),
+                ),
                 DialogportenNarmestelederbehovDialog(FakeDialogportenClient()),
-                LegacyManagerNameValidationMetrics(),
             )
             linemanagerSearchService =
                 LinemanagerSearchService(

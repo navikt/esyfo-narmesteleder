@@ -65,6 +65,7 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
@@ -268,12 +269,14 @@ private class PutFixture {
     val useCase = FulfillNarmestelederbehovUseCase(
         repository,
         organizationAccess,
-        DinesykmeldteActiveSykmeldingLookup(sykmelding),
-        AaregEmploymentLookup(AaregService(aareg)),
-        people,
-        KafkaPublishNarmestelederrelasjon(producer),
+        EstablishNarmestelederrelasjonUseCase(
+            DinesykmeldteActiveSykmeldingLookup(sykmelding),
+            AaregEmploymentLookup(AaregService(aareg)),
+            people,
+            LegacyManagerNameValidationMetrics(),
+            KafkaPublishNarmestelederrelasjon(producer),
+        ),
         NarmestelederbehovDialog { },
-        LegacyManagerNameValidationMetrics(),
     )
 
     init {

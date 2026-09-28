@@ -5,22 +5,13 @@ import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
-import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
-import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
-import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactNormalization
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.NormalizedManagerContact
-import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
-import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
-import no.nav.syfo.narmestelederrelasjon.domain.matchManagerLastName
 import no.nav.syfo.narmestelederrelasjon.domain.normalize
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -31,12 +22,8 @@ import no.nav.syfo.platform.application.orStop
 class FulfillNarmestelederbehovUseCase(
     private val behovRepository: NarmestelederbehovRepository,
     private val organizationAccess: OrganizationAccess,
-    private val activeSykmeldingLookup: ActiveSykmeldingLookup,
-    private val employmentLookup: EmploymentLookup,
-    private val personLookup: PersonLookup,
-    private val relationPublisher: PublishNarmestelederrelasjon,
+    private val establishRelation: EstablishNarmestelederrelasjon,
     private val dialog: NarmestelederbehovDialog,
-    private val nameValidationMetrics: ManagerNameValidationMetrics,
 ) {
     suspend fun execute(command: FulfillNarmestelederbehovCommand): FulfillNarmestelederbehovResult = fulfill(command).log()
 
@@ -44,16 +31,20 @@ class FulfillNarmestelederbehovUseCase(
         val manager = validateManagerContact(command.manager).orStop { return it }
         val behov = findBehov(command.behovId).orStop { return it }
         verifyOrganizationAccess(command.accessSubject, behov).orStop { return it }
-        verifyActiveSykmelding(behov).orStop { return it }
-        verifyEmployment(behov).orStop { return it }
-        val employeeAndManager = findEmployeeAndManager(behov, manager).orStop { return it }
-        val managerNameMatch = verifyManagerName(employeeAndManager.manager, manager).orStop { return it }
-        val relationSource = publishNarmestelederrelasjon(command.accessSubject, behov, manager, employeeAndManager)
+        val relationSource = command.accessSubject.relationSource()
+        val published = establish(
+            EstablishNarmestelederrelasjonCommand(
+                employeeIdent = behov.employee.personIdent,
+                organizationNumber = behov.employee.organizationNumber,
+                manager = manager,
+                source = relationSource,
+            ),
+        ).orStop { return it }
         val marked = markFulfilled(behov).orStop { return it }
         return FulfillNarmestelederbehovResult.Fulfilled(
             relationSource = relationSource,
             dialogCompletion = completeDialog(marked),
-            managerNameMatch = managerNameMatch,
+            managerNameMatch = published.managerNameMatch,
         )
     }
 
@@ -75,66 +66,15 @@ class FulfillNarmestelederbehovUseCase(
         }
     }
 
-    private suspend fun verifyActiveSykmelding(behov: Narmestelederbehov): FulfillStep<Unit> {
-        val employee = behov.employee
-        return if (activeSykmeldingLookup.hasActiveSykmelding(employee.personIdent, employee.organizationNumber)) {
-            Step.Proceed
-        } else {
-            Step.Stop(FulfillNarmestelederbehovResult.NoActiveSykmelding(employee.organizationNumber))
-        }
-    }
-
-    private suspend fun verifyEmployment(behov: Narmestelederbehov): FulfillStep<Unit> = when (val employment = employmentLookup.findEmployment(behov.employee.personIdent, behov.employee.organizationNumber)) {
-        EmploymentResult.IN_ORGANIZATION -> Step.Proceed
-        EmploymentResult.NONE, EmploymentResult.NOT_IN_ORGANIZATION ->
-            Step.Stop(FulfillNarmestelederbehovResult.NoEmployment(employment))
-    }
-
-    private suspend fun findEmployeeAndManager(behov: Narmestelederbehov, manager: NormalizedManagerContact): FulfillStep<EmployeeAndManager> {
-        val employee = personLookup.find(behov.employee.personIdent)
-            ?: return Step.Stop(FulfillNarmestelederbehovResult.PersonNotFound)
-        val managerPerson = personLookup.find(manager.personIdent)
-            ?: return Step.Stop(FulfillNarmestelederbehovResult.PersonNotFound)
-        return Step.Continue(EmployeeAndManager(employee, managerPerson))
-    }
-
-    private fun verifyManagerName(managerPerson: PersonDetails, manager: NormalizedManagerContact): FulfillStep<ManagerLastNameMatch> {
-        val managerNameMatch = managerPerson.name.matchManagerLastName(manager.lastName)
-        nameValidationMetrics.record(managerNameMatch)
-        return when (managerNameMatch) {
-            is ManagerLastNameMatch.NoMatch -> Step.Stop(FulfillNarmestelederbehovResult.ManagerNameMismatch(managerNameMatch))
-            else -> Step.Continue(managerNameMatch)
-        }
-    }
-
-    private suspend fun publishNarmestelederrelasjon(
-        subject: OrganizationAccessSubject,
-        behov: Narmestelederbehov,
-        manager: NormalizedManagerContact,
-        employeeAndManager: EmployeeAndManager,
-    ): RelationSource {
-        val relationSource = subject.relationSource()
-        relationPublisher.publish(
-            PublishNarmestelederrelasjonCommand(
-                employee = RelationPerson(
-                    personIdent = employeeAndManager.employee.personIdent,
-                    firstName = employeeAndManager.employee.name.firstName,
-                    middleName = employeeAndManager.employee.name.middleName,
-                    lastName = employeeAndManager.employee.name.lastName,
-                ),
-                manager = RelationManager(
-                    personIdent = manager.personIdent,
-                    firstName = employeeAndManager.manager.name.firstName,
-                    middleName = employeeAndManager.manager.name.middleName,
-                    lastName = employeeAndManager.manager.name.lastName,
-                    email = manager.email.value,
-                    mobile = manager.mobile.value,
-                ),
-                organizationNumber = behov.employee.organizationNumber,
-                source = relationSource,
-            ),
-        )
-        return relationSource
+    private suspend fun establish(command: EstablishNarmestelederrelasjonCommand): FulfillStep<EstablishNarmestelederrelasjonResult.Published> = when (val result = establishRelation.execute(command)) {
+        is EstablishNarmestelederrelasjonResult.Published -> Step.Continue(result)
+        is EstablishNarmestelederrelasjonResult.NoActiveSykmelding ->
+            Step.Stop(FulfillNarmestelederbehovResult.NoActiveSykmelding(result.organizationNumber))
+        is EstablishNarmestelederrelasjonResult.NoEmployment ->
+            Step.Stop(FulfillNarmestelederbehovResult.NoEmployment(result.reason))
+        EstablishNarmestelederrelasjonResult.PersonNotFound -> Step.Stop(FulfillNarmestelederbehovResult.PersonNotFound)
+        is EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
+            Step.Stop(FulfillNarmestelederbehovResult.ManagerNameMismatch(result.managerNameMatch))
     }
 
     private suspend fun markFulfilled(behov: Narmestelederbehov): FulfillStep<MarkFulfilledResult.Marked> = when (val result = behovRepository.markFulfilled(behov.id)) {
@@ -177,11 +117,6 @@ class FulfillNarmestelederbehovUseCase(
         val logger = applicationLogger(FulfillNarmestelederbehovUseCase::class.java)
     }
 }
-
-private data class EmployeeAndManager(
-    val employee: PersonDetails,
-    val manager: PersonDetails,
-)
 
 private typealias FulfillStep<T> = Step<T, FulfillNarmestelederbehovResult>
 

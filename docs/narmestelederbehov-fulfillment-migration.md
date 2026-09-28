@@ -18,7 +18,7 @@ the legacy requirement API suite covers GET only.
 | --- | --- |
 | Concrete, constructor-injected fulfillment use case | Implemented and tested without Ktor or Koin |
 | Typed command/results and narrow application ports | Implemented with production adapters |
-| Validation, lookup, authorization and side-effect order | Characterized on the existing handler and tested in the extracted use case |
+| Validation, lookup, authorization and side-effect order | Characterized on the existing handler; fulfillment owns contact normalization, need lookup and access, while `EstablishNarmestelederrelasjonUseCase` owns relation validation and publication |
 | HTTP route delegates to the use case | Activated in #541 |
 | Result-to-HTTP mapping and unchanged `ApiError` | Activated in #541 |
 | Kafka, persistence and Dialogporten adapters | Activated in #541; contract data includes middle names and resolved employee identity |
@@ -34,13 +34,17 @@ PUT fulfillment or complete #525.
 ## Activation requirements
 
 - Preserve contact normalization and the first failing email-entry reason,
-  resource lookup before access checks, and publish before persistence before
+  with invalid contact rejected before need lookup and access checks, and need
+  lookup before access checks.
+  Fulfillment calls the `EstablishNarmestelederrelasjon` contract after access;
+  that use case checks active sykmelding, employment, PDL persons and manager
+  name before publishing. Preserve publish before persistence before
   Dialogporten completion. Unexpected failures must stop later effects.
 - Preserve Kafka topic, key, source and value construction. Use the employee's
   resolved PDL ident and the manager's submitted ident. Keep first, middle and
   last names separate until the relation adapter constructs the existing
   `Sykmeldt.navn` and `Leder.fornavn` values.
-- Record name-validation metrics immediately after matching, before publishing
+- `EstablishNarmestelederrelasjonUseCase` records name-validation metrics immediately after matching, before publishing
   or other side effects can fail. Recording only from the final fulfillment
   result would lose observations on those failure paths. Preserve existing
   metric names/tags, exact/orthographic/fuzzy/none classification, parallel-name

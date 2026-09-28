@@ -10,15 +10,12 @@ import no.nav.syfo.narmesteleder.domain.PhoneNumber as LegacyPhoneNumber
 class ManagerContactInputTest :
     FunSpec({
         test("normalizes whitespace in phone number and semicolon-separated email addresses") {
-            managerContact(email = " first@example.test ; second@example.test ", mobile = "+47 99 99 99 99")
-                .normalize() shouldBe ManagerContactNormalization.Valid(
-                NormalizedManagerContact(
-                    personIdent = managerIdent,
-                    lastName = "Hansen",
-                    email = EmailAddress("first@example.test;second@example.test"),
-                    mobile = PhoneNumber("+4799999999"),
-                ),
-            )
+            val result = managerContact(email = " first@example.test ; second@example.test ", mobile = "+47 99 99 99 99")
+                .normalize() as ManagerContactNormalization.Valid
+            result.manager.personIdent shouldBe managerIdent
+            result.manager.lastName shouldBe "Hansen"
+            result.manager.email shouldBe EmailAddress("first@example.test;second@example.test")
+            result.manager.mobile shouldBe PhoneNumber("+4799999999")
         }
 
         test("reports all invalid contact fields and reasons without contact values") {

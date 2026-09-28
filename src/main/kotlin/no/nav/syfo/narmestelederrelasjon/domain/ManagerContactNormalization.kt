@@ -2,12 +2,36 @@ package no.nav.syfo.narmestelederrelasjon.domain
 
 import no.nav.syfo.ident.PersonIdent
 
-data class NormalizedManagerContact(
+@ConsistentCopyVisibility
+data class NormalizedManagerContact private constructor(
     val personIdent: PersonIdent,
     val lastName: String,
     val email: EmailAddress,
     val mobile: PhoneNumber,
-)
+) {
+    companion object {
+        fun from(input: ManagerContactInput): ManagerContactNormalization {
+            val normalizedMobile = input.mobile.replace(" ", "")
+            val normalizedEmail = input.email.split(";").joinToString(";") { it.trim() }
+            val issues = listOfNotNull(
+                PhoneNumber.validationReason(normalizedMobile)?.let { ManagerContactValidationIssue(ManagerContactField.MOBILE, it) },
+                EmailAddress.validationReason(normalizedEmail)?.let { ManagerContactValidationIssue(ManagerContactField.EMAIL, it) },
+            )
+            return if (issues.isEmpty()) {
+                ManagerContactNormalization.Valid(
+                    NormalizedManagerContact(
+                        personIdent = input.personIdent,
+                        lastName = input.lastName,
+                        email = EmailAddress(normalizedEmail),
+                        mobile = PhoneNumber(normalizedMobile),
+                    ),
+                )
+            } else {
+                ManagerContactNormalization.Invalid(issues)
+            }
+        }
+    }
+}
 
 sealed interface ManagerContactNormalization {
     data class Valid(val manager: NormalizedManagerContact) : ManagerContactNormalization

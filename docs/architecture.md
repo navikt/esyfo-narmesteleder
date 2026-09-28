@@ -71,10 +71,6 @@ first, so invalid input is still rejected before the need lookup and access
 check. It does not validate the relation itself and does not use relation
 repositories, ports, domain rules, Kafka models or Kafka producers directly.
 
-Transitional: until #578, fulfillment still validates the relation itself with
-the rules in `narmestelederrelasjon.domain` and the lookup ports and name-metrics
-port in `narmestelederrelasjon.application`.
-
 ### `narmestelederrelasjon`
 
 Owns established and revoked narmesteleder relations:
@@ -195,7 +191,7 @@ Rules:
   `infrastructure`.
 - Other modules may use only explicitly exposed application contracts, the
   domain types those contracts name, and the parsing of the contracts' input
-  types (for example `ManagerContactInput.parse()`). Parsing lets a caller
+  types (for example `ManagerContactInput.normalize()`). Parsing lets a caller
   reject invalid input before its own lookups without repeating the rule.
 - Validation lives next to what it validates: the caller in
   `organisasjonstilgang`, a need in `narmestelederbehov` and a relation in

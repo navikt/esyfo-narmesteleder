@@ -2,6 +2,8 @@ package no.nav.syfo.narmestelederrelasjon
 
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
@@ -30,6 +32,7 @@ fun narmestelederrelasjonModule() = module {
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }
     single<PersonLookup> { CachedPersonLookup(PdlPersonLookup(get()), ValkeyPersonDetailsCache(get())) }
     single<ManagerNameValidationMetrics> { LegacyManagerNameValidationMetrics() }
+    single<EstablishNarmestelederrelasjon> { EstablishNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
     single<NarmestelederrelasjonOrganization> { EregNarmestelederrelasjonOrganization(get()) }
     single<GetNarmestelederrelasjonUseCase> { GetNarmestelederrelasjonUseCase(get(), get(), get(), get()) }
     single<RevokeNarmestelederrelasjonUseCase> { RevokeNarmestelederrelasjonUseCase(get(), get(), get()) }

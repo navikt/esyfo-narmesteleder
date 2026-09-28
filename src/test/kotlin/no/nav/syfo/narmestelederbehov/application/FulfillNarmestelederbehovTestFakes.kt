@@ -1,16 +1,12 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
-import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
-import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -50,46 +46,19 @@ internal class FakeOrganizationAccess(
     ) = result.also { effects += "access" }
 }
 
-internal class FakeActiveSykmeldingLookup(
-    private val result: Boolean = true,
-    private val failure: Throwable? = null,
-    private val effects: MutableList<String> = mutableListOf(),
-) : ActiveSykmeldingLookup {
-    override suspend fun hasActiveSykmelding(personIdent: PersonIdent, organizationNumber: OrganizationNumber): Boolean {
-        effects += "sykmelding"
-        failure?.let { throw it }
-        return result
-    }
-}
-
-internal class FakeEmploymentLookup(
-    private val result: EmploymentResult = EmploymentResult.IN_ORGANIZATION,
-    private val effects: MutableList<String> = mutableListOf(),
-) : EmploymentLookup {
-
-    override suspend fun findEmployment(personIdent: PersonIdent, organizationNumber: OrganizationNumber) = result.also { effects += "employment" }
-}
-
-internal class FakePersonLookup(
-    private val people: Map<PersonIdent, PersonDetails>,
-    private val effects: MutableList<String> = mutableListOf(),
-) : PersonLookup {
-
-    override suspend fun find(
-        personIdent: PersonIdent,
-    ) = people[personIdent].also { effects += "person:${personIdent.value}" }
-}
-
 internal class FakeRelationEstablisher(
     private val effects: MutableList<String> = mutableListOf(),
     private val failure: Throwable? = null,
-) : PublishNarmestelederrelasjon {
-    var command: PublishNarmestelederrelasjonCommand? = null
+    private val result: EstablishNarmestelederrelasjonResult =
+        EstablishNarmestelederrelasjonResult.Published(ManagerLastNameMatch.Exact(hasParallelNames = false)),
+) : EstablishNarmestelederrelasjon {
+    var command: EstablishNarmestelederrelasjonCommand? = null
 
-    override suspend fun publish(command: PublishNarmestelederrelasjonCommand) {
+    override suspend fun execute(command: EstablishNarmestelederrelasjonCommand): EstablishNarmestelederrelasjonResult {
         effects += "establish"
         failure?.let { throw it }
         this.command = command
+        return result
     }
 }
 

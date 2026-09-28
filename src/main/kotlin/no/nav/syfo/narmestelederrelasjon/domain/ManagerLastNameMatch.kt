@@ -1,4 +1,4 @@
-package no.nav.syfo.narmestelederbehov.domain
+package no.nav.syfo.narmestelederrelasjon.domain
 
 sealed interface ManagerLastNameMatch {
     val hasParallelNames: Boolean

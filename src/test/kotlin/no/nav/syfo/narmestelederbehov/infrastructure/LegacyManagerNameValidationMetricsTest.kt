@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.narmestelederbehov.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 
 class LegacyManagerNameValidationMetricsTest :
     FunSpec({

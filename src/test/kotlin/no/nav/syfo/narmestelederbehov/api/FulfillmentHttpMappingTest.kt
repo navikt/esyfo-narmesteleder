@@ -12,10 +12,10 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.EmploymentResult
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
-import no.nav.syfo.narmestelederbehov.domain.ManagerContactField
-import no.nav.syfo.narmestelederbehov.domain.ManagerContactValidationIssue
-import no.nav.syfo.narmestelederbehov.domain.ManagerContactValidationReason
-import no.nav.syfo.narmestelederbehov.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import org.slf4j.LoggerFactory
 

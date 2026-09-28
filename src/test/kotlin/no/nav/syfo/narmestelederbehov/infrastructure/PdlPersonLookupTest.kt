@@ -6,8 +6,8 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.PersonDetails
-import no.nav.syfo.narmestelederbehov.domain.PersonNameDetails
-import no.nav.syfo.narmestelederbehov.domain.RegisteredName
+import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
+import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
 import no.nav.syfo.pdl.client.GetPersonResponse
 import no.nav.syfo.pdl.client.Ident

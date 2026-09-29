@@ -6,6 +6,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
@@ -33,6 +34,7 @@ fun narmestelederrelasjonModule() = module {
     single<PublishNarmestelederrelasjonRevocation> { KafkaPublishNarmestelederrelasjonRevocation(get()) }
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }
     single<ActiveNarmestelederrelasjonRepository> { ExposedActiveNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
+    single { HasActiveNarmestelederrelasjonUseCase(get()) }
     single { LookupActiveNarmestelederUseCase(get()) }
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }

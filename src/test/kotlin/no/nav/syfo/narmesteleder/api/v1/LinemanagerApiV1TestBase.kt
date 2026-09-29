@@ -64,7 +64,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbe
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
+import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
@@ -85,7 +85,7 @@ abstract class LinemanagerApiV1TestBase(
     internal val pdlService = spyk(PdlService(FakePdlClient(), pdlCacheMock))
     internal val texasHttpClientMock = mockk<TexasHttpClient>()
     internal val activeRelationRepository = FakeActiveNarmestelederrelasjonRepository()
-    internal val lookupActiveNarmesteleder = LookupActiveNarmestelederUseCase(activeRelationRepository)
+    internal val hasActiveNarmestelederrelasjon = HasActiveNarmestelederrelasjonUseCase(activeRelationRepository)
     internal val narmesteLederRelasjon = linemanager()
     internal val fakeAaregClient = FakeAaregClient()
     internal val aaregService = AaregService(fakeAaregClient)
@@ -210,7 +210,7 @@ abstract class LinemanagerApiV1TestBase(
                             validationServiceSpy,
                             texasHttpClientMock,
                             nlBehovHandler,
-                            lookupActiveNarmesteleder,
+                            hasActiveNarmestelederrelasjon,
                             fulfillNarmestelederbehov,
                         )
                         registerAccessOrganizationsApi(altinnAccessServiceSpy, texasHttpClientMock)

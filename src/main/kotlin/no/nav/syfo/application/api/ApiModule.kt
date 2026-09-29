@@ -62,7 +62,7 @@ private fun Route.registerApiV1Routes() {
         validationService = get(),
         texasHttpClient = get(),
         linemanagerRequirementRestHandler = get(),
-        lookupActiveNarmesteleder = get(),
+        hasActiveNarmestelederrelasjon = get(),
         fulfillNarmestelederbehov = get(),
     )
     registerAccessOrganizationsApi(altinnTilgangerService = get(), texasHttpClient = get())

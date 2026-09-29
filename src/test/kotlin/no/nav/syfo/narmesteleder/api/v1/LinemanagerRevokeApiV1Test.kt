@@ -85,6 +85,44 @@ class LinemanagerRevokeApiV1Test :
                 }
             }
 
+            it("should revoke an active relation with an invalid stored manager email") {
+                val narmesteLederAvkreft = linemanagerRevoke()
+                withTestApplication {
+                    // Arrange
+                    texasHttpClientMock.defaultMocks(
+                        systemBrukerOrganisasjon = DefaultOrganization.copy(
+                            ID = "0192:${narmesteLederAvkreft.orgNumber.value}",
+                        ),
+                        scope = MASKINPORTEN_NL_SCOPE,
+                    )
+                    pdlService.prepareGetPersonResponse(
+                        narmesteLederAvkreft.employeeIdentificationNumber.value,
+                        narmesteLederAvkreft.lastName,
+                    )
+                    activeRelationRepository.rows = listOf(activeRelation().copy(managerEmail = "leder@nav"))
+
+                    // Act
+                    val response = client.post("$API_V1_PATH/$REVOKE_PATH") {
+                        contentType(ContentType.Application.Json)
+                        setBody(narmesteLederAvkreft)
+                        bearerAuth(createMockToken(narmesteLederAvkreft.orgNumber.value))
+                    }
+
+                    // Assert
+                    response.status shouldBe HttpStatusCode.Accepted
+                    coVerify(exactly = 1) {
+                        narmestelederKafkaServiceSpy.avbrytNarmesteLederRelation(
+                            narmesteLederAvkreft,
+                            NlResponseSource.LPS_REVOKE,
+                        )
+                    }
+                    activeRelationRepository.lookups shouldBe listOf(
+                        PersonIdent(narmesteLederAvkreft.employeeIdentificationNumber.value) to
+                            IdentOrganizationNumber(narmesteLederAvkreft.orgNumber.value)
+                    )
+                }
+            }
+
             it("should return 400 when lastName in payload does not match the nin") {
                 val narmesteLederAvkreft = linemanagerRevoke()
                 withTestApplication {

@@ -66,7 +66,7 @@ import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
+import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
@@ -344,7 +344,7 @@ private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture
                         mockk<ValidationService>(relaxed = true),
                         fixture.texas,
                         mockk<LinemanagerRequirementRESTHandler>(relaxed = true),
-                        LookupActiveNarmestelederUseCase(FakeActiveNarmestelederrelasjonRepository()),
+                        HasActiveNarmestelederrelasjonUseCase(FakeActiveNarmestelederrelasjonRepository()),
                         fixture.useCase,
                     )
                 }

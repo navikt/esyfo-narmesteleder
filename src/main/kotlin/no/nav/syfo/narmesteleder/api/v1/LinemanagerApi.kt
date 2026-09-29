@@ -21,7 +21,7 @@ import no.nav.syfo.narmestelederbehov.api.toManagerContactInput
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
+import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
@@ -35,7 +35,7 @@ fun Route.registerLinemanagerApiV1(
     validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler,
-    lookupActiveNarmesteleder: LookupActiveNarmestelederUseCase,
+    hasActiveNarmestelederrelasjon: HasActiveNarmestelederrelasjonUseCase,
     fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,
 ) {
     route(LINEMANAGER_API_PATH) {
@@ -70,10 +70,10 @@ fun Route.registerLinemanagerApiV1(
             val employee = validationService.validateLinemanagerRevoke(revoke, principal)
 
             val tweakedRevoke = revoke.copy(employeeIdentificationNumber = employee.nationalIdentificationNumber)
-            val hasActiveRelation = lookupActiveNarmesteleder.execute(
+            val hasActiveRelation = hasActiveNarmestelederrelasjon.execute(
                 PersonIdent(tweakedRevoke.employeeIdentificationNumber.value),
                 OrganizationNumber(tweakedRevoke.orgNumber.value),
-            ) != null
+            )
             if (!hasActiveRelation) {
                 COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION.increment()
                 call.respond(HttpStatusCode.NoContent)

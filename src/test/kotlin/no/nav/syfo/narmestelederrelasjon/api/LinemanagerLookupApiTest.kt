@@ -5,13 +5,15 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import createMockToken
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -41,137 +43,125 @@ import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
 import java.util.UUID
 
-class LinemanagerLookupApiTest :
-    DescribeSpec({
-        val texasHttpClient = mockk<TexasHttpClient>()
-        val lookupDb = FakeActiveNarmestelederrelasjonRepository()
-        val lookupService = LookupActiveNarmestelederUseCase(lookupDb)
-        val callingApp = "calling-app-id"
-        val sykmeldtFnr = PersonIdent("12345678901")
-        val orgnummer = OrganizationNumber("123456789")
-        val narmestelederId = UUID.fromString("c8d10801-a0cc-4d94-a9ab-0088e850d4f4")
+private const val CALLING_APP = "calling-app-id"
+private const val LOOKUP_PATH = "/internal/api/v1/lookup"
+private val employeeIdent = PersonIdent("12345678901")
+private val organizationNumber = OrganizationNumber("123456789")
+private val narmestelederId = UUID.fromString("c8d10801-a0cc-4d94-a9ab-0088e850d4f4")
 
-        fun withTestApplication(test: suspend ApplicationTestBuilder.() -> Unit) {
-            testApplication {
-                client = createClient {
-                    install(ContentNegotiation) {
-                        jackson {
-                            registerKotlinModule()
-                            registerModule(JavaTimeModule())
-                            configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
-                            configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                        }
-                    }
-                }
-                application {
-                    installContentNegotiation()
-                    installStatusPages()
-                    routing {
-                        route(INTERNAL_API_V1_PATH) {
-                            install(AddTokenIssuerPlugin)
-                            registerLineManagerLookupApi(
-                                lookupActiveNarmesteleder = lookupService,
-                                texasHttpClient = texasHttpClient,
-                                preAuthorizedApps = setOf(callingApp),
-                            )
-                        }
-                    }
-                }
-                test()
-            }
-        }
+class LinemanagerLookupApiTest :
+    FunSpec({
+        val texasHttpClient = mockk<TexasHttpClient>()
+        val repository = FakeActiveNarmestelederrelasjonRepository()
+        val lookupActiveNarmesteleder = LookupActiveNarmestelederUseCase(repository)
 
         beforeTest {
-            lookupDb.reset()
-            coEvery { texasHttpClient.introspectToken("azuread", any()) } returns TexasIntrospectionResponse(
-                active = true,
-                azp = callingApp,
-            )
+            repository.reset()
+            texasHttpClient.authorizes(CALLING_APP)
         }
 
-        describe("POST /internal/api/v1/lookup") {
-            it("returns the active line manager with split email addresses") {
-                lookupDb.rows = listOf(
-                    ActiveNarmestelederrelasjon(
+        test("returns the active line manager with split email addresses") {
+            repository.rows = listOf(
+                ActiveNarmestelederrelasjon(
+                    id = narmestelederId,
+                    managerIdent = PersonIdent("10987654321"),
+                    managerEmail = " leder@example.com, , annen@example.com ",
+                    activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
+                )
+            )
+
+            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
+                val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
+
+                response.status shouldBe HttpStatusCode.OK
+                response.body<LinemanagerLookupResponse>() shouldBe LinemanagerLookupResponse(
+                    lineManager = LinemanagerResponse(
                         id = narmestelederId,
-                        managerIdent = PersonIdent("10987654321"),
-                        managerEmail = " leder@example.com, , annen@example.com ",
-                        activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
+                        nationalIdentificationNumber = "10987654321",
+                        emailAddresses = listOf("leder@example.com", "annen@example.com"),
                     )
                 )
-
-                withTestApplication {
-                    val response = client.post("/internal/api/v1/lookup") {
-                        contentType(ContentType.Application.Json)
-                        setBody(LinemanagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
-                        bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
-                    }
-
-                    response.status shouldBe HttpStatusCode.OK
-                    response.body<LinemanagerLookupResponse>() shouldBe LinemanagerLookupResponse(
-                        lineManager = LinemanagerResponse(
-                            id = narmestelederId,
-                            nationalIdentificationNumber = "10987654321",
-                            emailAddresses = listOf("leder@example.com", "annen@example.com"),
-                        )
-                    )
-                }
             }
+        }
 
-            it("returns null when no active line manager exists") {
-                withTestApplication {
-                    val response = client.post("/internal/api/v1/lookup") {
-                        contentType(ContentType.Application.Json)
-                        setBody(LinemanagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
-                        bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
-                    }
+        test("returns null when no active line manager exists") {
+            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
+                val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
 
-                    response.status shouldBe HttpStatusCode.OK
-                    response.body<LinemanagerLookupResponse>() shouldBe LinemanagerLookupResponse(null)
-                }
+                response.status shouldBe HttpStatusCode.OK
+                response.body<LinemanagerLookupResponse>() shouldBe LinemanagerLookupResponse(null)
             }
+        }
 
-            it("rejects missing organizationNumber without a database lookup") {
-                withTestApplication {
-                    val response = client.post("/internal/api/v1/lookup") {
-                        contentType(ContentType.Application.Json)
-                        setBody(LinemanagerLookupRequest(sykmeldtFnr.value, null))
-                        bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
-                    }
+        test("rejects missing organizationNumber without a database lookup") {
+            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
+                val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, null))
 
-                    response.status shouldBe HttpStatusCode.BadRequest
-                    lookupDb.lookups shouldBe emptyList()
-                }
+                response.status shouldBe HttpStatusCode.BadRequest
+                repository.lookups shouldBe emptyList()
             }
+        }
 
-            it("rejects invalid employeeNationalIdentificationNumber with INVALID_FORMAT") {
-                withTestApplication {
-                    val response = client.post("/internal/api/v1/lookup") {
-                        contentType(ContentType.Application.Json)
-                        setBody(LinemanagerLookupRequest("invalid", orgnummer.value))
-                        bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
-                    }
+        test("rejects invalid employeeNationalIdentificationNumber with INVALID_FORMAT") {
+            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
+                val response = client.postLookup(LinemanagerLookupRequest("invalid", organizationNumber.value))
 
-                    response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
-                }
+                response.status shouldBe HttpStatusCode.BadRequest
+                response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
             }
+        }
 
-            it("rejects applications outside the pre-authorized allowlist") {
-                coEvery { texasHttpClient.introspectToken("azuread", any()) } returns TexasIntrospectionResponse(
-                    active = true,
-                    azp = "other-app-id",
-                )
+        test("rejects applications outside the pre-authorized allowlist") {
+            texasHttpClient.authorizes("other-app-id")
 
-                withTestApplication {
-                    val response = client.post("/internal/api/v1/lookup") {
-                        contentType(ContentType.Application.Json)
-                        setBody(LinemanagerLookupRequest(sykmeldtFnr.value, orgnummer.value))
-                        bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
-                    }
+            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
+                val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
 
-                    response.status shouldBe HttpStatusCode.Forbidden
-                }
+                response.status shouldBe HttpStatusCode.Forbidden
             }
         }
     })
+
+private fun TexasHttpClient.authorizes(azp: String) {
+    coEvery { introspectToken("azuread", any()) } returns TexasIntrospectionResponse(active = true, azp = azp)
+}
+
+private suspend fun HttpClient.postLookup(request: LinemanagerLookupRequest): HttpResponse = post(LOOKUP_PATH) {
+    contentType(ContentType.Application.Json)
+    setBody(request)
+    bearerAuth(createMockToken("ignored", issuer = "https://login.microsoftonline.com/tenant/v2.0"))
+}
+
+private fun withLookupApi(
+    lookupActiveNarmesteleder: LookupActiveNarmestelederUseCase,
+    texasHttpClient: TexasHttpClient,
+    test: suspend ApplicationTestBuilder.() -> Unit,
+) {
+    testApplication {
+        client = createClient {
+            install(ContentNegotiation) {
+                jackson {
+                    registerKotlinModule()
+                    registerModule(JavaTimeModule())
+                    configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+                    configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                }
+            }
+        }
+        application {
+            installContentNegotiation()
+            installStatusPages()
+            routing {
+                route(INTERNAL_API_V1_PATH) {
+                    install(AddTokenIssuerPlugin)
+                    registerLineManagerLookupApi(
+                        lookupActiveNarmesteleder = lookupActiveNarmesteleder,
+                        texasHttpClient = texasHttpClient,
+                        preAuthorizedApps = setOf(CALLING_APP),
+                    )
+                }
+            }
+        }
+        test()
+    }
+}

@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
@@ -11,90 +11,82 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
+private val employeeIdent = PersonIdent("12345678901")
+private val organizationNumber = OrganizationNumber("123456789")
+private val activeFrom = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+
 class ExposedActiveNarmestelederrelasjonRepositoryTest :
-    DescribeSpec({
-        val lookupDb = ExposedActiveNarmestelederrelasjonRepository(TestDB.exposedDatabase)
-        val sykmeldtFnr = PersonIdent("12345678901")
-        val orgnummer = OrganizationNumber("123456789")
+    FunSpec({
+        val repository = ExposedActiveNarmestelederrelasjonRepository(TestDB.exposedDatabase)
 
         beforeTest {
             TestDB.clearNarmestelederData()
         }
 
-        fun insertNarmesteleder(
-            id: UUID = UUID.randomUUID(),
-            lederFnr: String = "10987654321",
-            epost: String = "leder@example.com",
-            sykmeldt: String = sykmeldtFnr.value,
-            org: String = orgnummer.value,
-            fom: OffsetDateTime,
-            tom: OffsetDateTime? = null,
-        ) {
-            transaction(TestDB.exposedDatabase) {
-                NarmestelederTable.insert {
-                    it[narmestelederId] = id
-                    it[NarmestelederTable.orgnummer] = org
-                    it[NarmestelederTable.sykmeldtFnr] = sykmeldt
-                    it[NarmestelederTable.narmestelederFnr] = lederFnr
-                    it[narmestelederTelefonnummer] = "99887766"
-                    it[narmestelederEpost] = epost
-                    it[aktivFom] = fom
-                    it[aktivTom] = tom
-                }
-            }
+        test("findActive returns only active relations for the given employee and organization") {
+            val narmestelederId = UUID.fromString("4ffc41ed-75df-4802-9867-b5262783da5d")
+            insertRelation(id = narmestelederId, from = activeFrom)
+            insertRelation(managerIdent = "10987654322", from = activeFrom.minusYears(1), to = activeFrom)
+            insertRelation(managerIdent = "10987654323", organization = "987654321", from = activeFrom)
+            insertRelation(managerIdent = "10987654324", employee = "12345678902", from = activeFrom)
+
+            val result = repository.findActive(employeeIdent, organizationNumber)
+
+            result.size shouldBe 1
+            result.first().id shouldBe narmestelederId
+            result.first().managerIdent shouldBe PersonIdent("10987654321")
+            result.first().managerEmail shouldBe "leder@example.com"
+            result.first().activeFrom shouldBe activeFrom.toInstant()
         }
 
-        describe("findActive") {
-            it("returns only active relations for the given sykmeldt and organization") {
-                val aktivFom = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
-                val narmestelederId = UUID.fromString("4ffc41ed-75df-4802-9867-b5262783da5d")
-                insertNarmesteleder(id = narmestelederId, fom = aktivFom)
-                insertNarmesteleder(
-                    lederFnr = "10987654322",
-                    fom = aktivFom.minusYears(1),
-                    tom = aktivFom,
-                )
-                insertNarmesteleder(lederFnr = "10987654323", org = "987654321", fom = aktivFom)
-                insertNarmesteleder(lederFnr = "10987654324", sykmeldt = "12345678902", fom = aktivFom)
+        test("findActive orders multiple active relations by newest aktiv_fom first") {
+            insertRelation(managerIdent = "10987654321", from = activeFrom.minusMonths(1))
+            insertRelation(managerIdent = "10987654322", from = activeFrom)
 
-                val result = lookupDb.findActive(sykmeldtFnr, orgnummer)
+            repository.findActive(employeeIdent, organizationNumber).map { it.managerIdent.value } shouldBe
+                listOf("10987654322", "10987654321")
+        }
 
-                result.size shouldBe 1
-                result.first().id shouldBe narmestelederId
-                result.first().managerIdent shouldBe PersonIdent("10987654321")
-                result.first().managerEmail shouldBe "leder@example.com"
-                result.first().activeFrom shouldBe aktivFom.toInstant()
-            }
+        test("findActive orders relations with the same aktiv_fom by id descending") {
+            insertRelation(
+                id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                managerIdent = "10987654321",
+                from = activeFrom,
+            )
+            insertRelation(
+                id = UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                managerIdent = "10987654322",
+                from = activeFrom,
+            )
 
-            it("orders multiple active relations by newest aktiv_fom first") {
-                val aktivFom = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
-                insertNarmesteleder(lederFnr = "10987654321", fom = aktivFom.minusMonths(1))
-                insertNarmesteleder(lederFnr = "10987654322", fom = aktivFom)
+            repository.findActive(employeeIdent, organizationNumber).map { it.managerIdent.value } shouldBe
+                listOf("10987654322", "10987654321")
+        }
 
-                val result = lookupDb.findActive(sykmeldtFnr, orgnummer)
-
-                result.map { it.managerIdent.value } shouldBe listOf("10987654322", "10987654321")
-            }
-
-            it("orders relations with the same aktiv_fom by id descending") {
-                val aktivFom = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
-                insertNarmesteleder(
-                    id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
-                    lederFnr = "10987654321",
-                    fom = aktivFom,
-                )
-                insertNarmesteleder(
-                    id = UUID.fromString("00000000-0000-0000-0000-000000000002"),
-                    lederFnr = "10987654322",
-                    fom = aktivFom,
-                )
-
-                lookupDb.findActive(sykmeldtFnr, orgnummer).map { it.managerIdent.value } shouldBe
-                    listOf("10987654322", "10987654321")
-            }
-
-            it("returns an empty list when no relation exists") {
-                lookupDb.findActive(sykmeldtFnr, orgnummer) shouldBe emptyList()
-            }
+        test("findActive returns an empty list when no relation exists") {
+            repository.findActive(employeeIdent, organizationNumber) shouldBe emptyList()
         }
     })
+
+private fun insertRelation(
+    id: UUID = UUID.randomUUID(),
+    managerIdent: String = "10987654321",
+    email: String = "leder@example.com",
+    employee: String = employeeIdent.value,
+    organization: String = organizationNumber.value,
+    from: OffsetDateTime,
+    to: OffsetDateTime? = null,
+) {
+    transaction(TestDB.exposedDatabase) {
+        NarmestelederTable.insert {
+            it[narmestelederId] = id
+            it[orgnummer] = organization
+            it[sykmeldtFnr] = employee
+            it[narmestelederFnr] = managerIdent
+            it[narmestelederTelefonnummer] = "99887766"
+            it[narmestelederEpost] = email
+            it[aktivFom] = from
+            it[aktivTom] = to
+        }
+    }
+}

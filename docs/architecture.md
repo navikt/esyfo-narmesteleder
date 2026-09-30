@@ -325,6 +325,18 @@ code. Existing JDBC/DAO implementations migrate when their adapter is touched.
 The separate broad migration remains follow-up work; moving a flow alone does
 not imply a schema, query-semantics or transaction change.
 
+Each Exposed `Table` describes its whole database table: every column, with the
+type, nullability and default from the Flyway migrations, and every index and
+constraint with its migrated name. Database-side defaults
+such as `now()` and `uuidv7()` use the expressions in `platform.database`.
+`TableDefinitionTest` compares every registered table with the migrated schema
+and fails when a migrated table is not registered, so register a new table
+there. The schema itself changes only through Flyway, never to match an Exposed
+definition. When a difference is deliberate or cannot be expressed in Exposed,
+such as a covering index with `INCLUDE`, list the exact statement in
+`knownDrift` with its reason or issue; the test fails once it no longer occurs.
+Exposed does not compare the `WHERE` condition of a partial index.
+
 A database transaction does not include Kafka, Dialogporten or another remote
 system. The use case owns and tests the order between those effects.
 

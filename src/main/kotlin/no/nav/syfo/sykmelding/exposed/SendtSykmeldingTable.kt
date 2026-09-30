@@ -16,4 +16,12 @@ object SendtSykmeldingTable : IntIdTable("sendt_sykmelding") {
     val revokedDate = date("revoked_date").nullable()
     val created = timestampWithTimeZone("created").defaultExpression(CurrentTimestampWithTimeZone)
     val updated = timestampWithTimeZone("updated").defaultExpression(CurrentTimestampWithTimeZone)
+
+    init {
+        uniqueIndex("sendt_sykmelding_sykmelding_id_key", sykmeldingId)
+        uniqueIndex("unique_fnr_and_orgnr", fnr, orgnummer)
+        index("idx_sendt_sykmelding_fnr", false, fnr)
+        index("idx_sendt_sykmelding_orgnummer", false, orgnummer)
+        index("idx_sendt_sykmelding_fnr_orgnummer_tom", false, fnr, orgnummer, tom)
+    }
 }

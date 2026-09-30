@@ -60,6 +60,7 @@ dependencies {
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.bundles.testcontainers)
+    testImplementation(libs.bundles.exposed.migration)
     testImplementation(libs.esyfo.logger.testkit)
 }
 kotlin {

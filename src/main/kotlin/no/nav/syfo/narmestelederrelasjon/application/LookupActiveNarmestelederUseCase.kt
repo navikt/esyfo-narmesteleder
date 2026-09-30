@@ -3,8 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.application
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.narmesteleder.domain.EmailAddress
-import no.nav.syfo.narmesteleder.domain.splitEmailAddresses
+import no.nav.syfo.narmestelederrelasjon.domain.EmailAddress
 import java.util.UUID
 
 data class ActiveNarmesteleder(
@@ -25,7 +24,7 @@ class LookupActiveNarmestelederUseCase(
             ActiveNarmesteleder(
                 id = relation.id,
                 managerIdent = relation.managerIdent,
-                emailAddresses = relation.managerEmail.splitEmailAddresses().map(::EmailAddress),
+                emailAddresses = EmailAddress.fromSeparatedList(relation.managerEmail),
             )
         }
     }

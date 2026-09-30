@@ -185,6 +185,9 @@ bootstrap -> all modules
 
 Rules:
 
+- Module dependencies follow the arrows above and never form a cycle, also not
+  indirectly through legacy or root packages. Existing cycles through legacy
+  code disappear as flows are migrated and are tracked in #544.
 - `domain` has no Ktor, Kafka, Exposed, JDBC, Koin, HTTP-client or environment
   dependencies.
 - `application` depends on its domain and small ports, never its

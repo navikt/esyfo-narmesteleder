@@ -15,10 +15,10 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
-import no.nav.syfo.narmesteleder.api.internal.v1.registerLineManagerLookupApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
+import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import org.koin.ktor.ext.get
 
@@ -62,7 +62,7 @@ private fun Route.registerApiV1Routes() {
         validationService = get(),
         texasHttpClient = get(),
         linemanagerRequirementRestHandler = get(),
-        narmestelederLookupService = get(),
+        hasActiveNarmestelederrelasjon = get(),
         fulfillNarmestelederbehov = get(),
     )
     registerAccessOrganizationsApi(altinnTilgangerService = get(), texasHttpClient = get())
@@ -70,7 +70,7 @@ private fun Route.registerApiV1Routes() {
 
 private fun Route.registerInternalApiV1Routes() {
     registerLineManagerLookupApi(
-        narmestelederLookupService = get(),
+        lookupActiveNarmesteleder = get(),
         texasHttpClient = get(),
         preAuthorizedApps = get<Environment>().texas.azurePreAuthorizedApps,
     )

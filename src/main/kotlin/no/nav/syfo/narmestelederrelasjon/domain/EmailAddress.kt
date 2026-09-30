@@ -11,6 +11,12 @@ value class EmailAddress(val value: String) {
     }
 
     companion object {
+        fun fromSeparatedList(value: String): List<EmailAddress> = value
+            .split(",", ";")
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .map(::EmailAddress)
+
         internal fun validationReason(value: String): ManagerContactValidationReason? {
             if (value.isBlank()) return ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_BE_BLANK
 

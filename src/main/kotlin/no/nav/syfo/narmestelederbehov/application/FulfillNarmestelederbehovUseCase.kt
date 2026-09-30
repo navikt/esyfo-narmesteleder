@@ -75,6 +75,8 @@ class FulfillNarmestelederbehovUseCase(
         EstablishNarmestelederrelasjonResult.PersonNotFound -> Step.Stop(FulfillNarmestelederbehovResult.PersonNotFound)
         is EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
             Step.Stop(FulfillNarmestelederbehovResult.ManagerNameMismatch(result.managerNameMatch))
+        is EstablishNarmestelederrelasjonResult.EmployeeNameMismatch ->
+            error("Fulfillment does not submit an employee last name")
     }
 
     private suspend fun markFulfilled(behov: Narmestelederbehov): FulfillStep<MarkFulfilledResult.Marked> = when (val result = behovRepository.markFulfilled(behov.id)) {

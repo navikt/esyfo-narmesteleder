@@ -11,7 +11,6 @@ import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
@@ -39,27 +38,9 @@ fun Route.registerLinemanagerApiV1(
     fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,
 ) {
     route(LINEMANAGER_API_PATH) {
+        // Revoke and requirement routes share this Ktor parent and inherit its authentication.
         install(MaskinportenAndTokenXTokenAuthPlugin) {
             client = texasHttpClient
-        }
-
-        post {
-            val principal = call.getMyPrincipal()
-            val create = validationService.normalizeLinemanagerPayload(
-                linemanager = call.tryReceive<Linemanager>(),
-            )
-            val actors = validationService.validateLinemanager(create, principal)
-
-            narmestelederKafkaService.sendNarmesteLederRelasjon(
-                create,
-                actors,
-                NlResponseSource.getSourceFrom(principal, create)
-            )
-            when (principal) {
-                is SystemPrincipal -> COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS.increment()
-                is UserPrincipal -> COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.increment()
-            }
-            call.respond(HttpStatusCode.Accepted)
         }
     }
 

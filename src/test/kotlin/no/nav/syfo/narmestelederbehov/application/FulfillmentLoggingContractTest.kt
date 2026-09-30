@@ -17,6 +17,8 @@ import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import org.slf4j.LoggerFactory
@@ -167,13 +169,33 @@ class FulfillmentLoggingContractTest :
                 command(),
             ),
             Triple("ACCESS_DENIED", { createUseCase(access = FakeOrganizationAccess(OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS))) }, command()),
-            Triple("NO_ACTIVE_SYKMELDING", { createUseCase(sykmelding = FakeActiveSykmeldingLookup(false)) }, command()),
-            Triple("NO_EMPLOYMENT", { createUseCase(employment = FakeEmploymentLookup(EmploymentResult.NONE)) }, command()),
-            Triple("PERSON_NOT_FOUND", { createUseCase(personLookup = FakePersonLookup(emptyMap())) }, command()),
+            Triple(
+                "NO_ACTIVE_SYKMELDING",
+                { createUseCase(relation = FakeRelationEstablisher(result = EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber))) },
+                command(),
+            ),
+            Triple(
+                "NO_EMPLOYMENT",
+                { createUseCase(relation = FakeRelationEstablisher(result = EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NONE))) },
+                command(),
+            ),
+            Triple(
+                "PERSON_NOT_FOUND",
+                { createUseCase(relation = FakeRelationEstablisher(result = EstablishNarmestelederrelasjonResult.PersonNotFound)) },
+                command(),
+            ),
             Triple(
                 "MANAGER_NAME_MISMATCH",
-                { createUseCase() },
-                command().let { it.copy(manager = it.manager.copy(lastName = "private-name-canary")) },
+                {
+                    createUseCase(
+                        relation = FakeRelationEstablisher(
+                            result = EstablishNarmestelederrelasjonResult.ManagerNameMismatch(
+                                ManagerLastNameMatch.NoMatch(0.0, hasParallelNames = false),
+                            ),
+                        ),
+                    )
+                },
+                command(),
             ),
         )
         rejectionCases.forEach { (code, useCase, input) ->
@@ -198,7 +220,7 @@ class FulfillmentLoggingContractTest :
             }
         }
 
-        listOf("sykmelding", "establish", "fulfilled", "dialog").forEach { failingEffect ->
+        listOf("establish", "fulfilled", "dialog").forEach { failingEffect ->
             val failures = if (failingEffect == "dialog") {
                 listOf(CancellationException("private-exception-canary"))
             } else {
@@ -208,7 +230,6 @@ class FulfillmentLoggingContractTest :
                 test("does not log a business outcome for ${failure::class.simpleName} at $failingEffect") {
                     val useCase = createUseCase(
                         repository = FakeBehovRepository(behov, updateFailure = failure.takeIf { failingEffect == "fulfilled" }),
-                        sykmelding = FakeActiveSykmeldingLookup(failure = failure.takeIf { failingEffect == "sykmelding" }),
                         relation = FakeRelationEstablisher(failure = failure.takeIf { failingEffect == "establish" }),
                         dialog = FakeDialog(failure = failure.takeIf { failingEffect == "dialog" }),
                     )

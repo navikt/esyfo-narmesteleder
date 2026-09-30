@@ -32,6 +32,10 @@ Hver forretningsmodul organiseres i `api`, `application`, `domain` og
 handlinger. De deler ikke repositories, persistensmodeller, transportmodeller
 eller interne domeneobjekter.
 
+Avhengigheter mellom moduler går én vei og danner ingen sykler, heller ikke
+indirekte gjennom andre pakker. En modul bruker bare en annen moduls publiserte
+kontrakter og domenetypene disse kontraktene navngir.
+
 Vi innfører strukturen gradvis i eksisterende Gradle-modul. Architecture tests
 skal håndheve avhengighetsreglene for migrert kode. Vi vurderer separate
 Gradle-moduler først når grensene er stabile og en fysisk oppdeling gir tydelig

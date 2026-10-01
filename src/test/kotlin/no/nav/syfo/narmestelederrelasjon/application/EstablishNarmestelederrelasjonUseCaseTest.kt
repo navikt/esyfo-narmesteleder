@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.application
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
@@ -105,6 +106,61 @@ class EstablishNarmestelederrelasjonUseCaseTest :
             shouldThrow<CancellationException> { useCase.execute(command()) } shouldBe failure
             effects shouldBe listOf("sykmelding")
         }
+
+        test("publishes after a matching submitted employee last name and records both name matches") {
+            val effects = mutableListOf<String>()
+            val publisher = RecordingPublisher(effects)
+            val recordedMatches = mutableListOf<ManagerLastNameMatch>()
+            val useCase = createEstablisher(
+                effects = effects,
+                publisher = publisher,
+                metrics = ManagerNameValidationMetrics {
+                    effects += "metric"
+                    recordedMatches += it
+                },
+            )
+
+            useCase.execute(command(employeeLastName = "employee")) shouldBe EstablishNarmestelederrelasjonResult.Published(ManagerLastNameMatch.Exact(false))
+            effects shouldBe listOf("sykmelding", "employment", "employee", "manager", "metric", "metric", "publish")
+            recordedMatches shouldBe listOf(ManagerLastNameMatch.Exact(false), ManagerLastNameMatch.Exact(false))
+        }
+
+        test("rejects a mismatching submitted employee last name after the manager name check without publishing") {
+            val effects = mutableListOf<String>()
+            val publisher = RecordingPublisher(effects)
+            val recordedMatches = mutableListOf<ManagerLastNameMatch>()
+            val useCase = createEstablisher(
+                effects = effects,
+                publisher = publisher,
+                metrics = ManagerNameValidationMetrics {
+                    effects += "metric"
+                    recordedMatches += it
+                },
+            )
+
+            val result = useCase.execute(command(employeeLastName = "Different"))
+
+            result shouldBe EstablishNarmestelederrelasjonResult.EmployeeNameMismatch(recordedMatches.last() as ManagerLastNameMatch.NoMatch)
+            recordedMatches.first() shouldBe ManagerLastNameMatch.Exact(false)
+            effects shouldBe listOf("sykmelding", "employment", "employee", "manager", "metric", "metric")
+            publisher.command shouldBe null
+        }
+
+        test("reports a manager name mismatch before checking the submitted employee last name") {
+            val effects = mutableListOf<String>()
+            val mismatchingManager = manager.copy(
+                name = manager.name.copy(lastName = "Different", registeredNames = listOf(RegisteredName("Different"))),
+            )
+            val useCase = createEstablisher(
+                effects = effects,
+                people = mapOf(employeeIdent to employee, managerIdent to mismatchingManager),
+            )
+
+            val result = useCase.execute(command(employeeLastName = "Different"))
+
+            result.shouldBeInstanceOf<EstablishNarmestelederrelasjonResult.ManagerNameMismatch>()
+            effects shouldBe listOf("sykmelding", "employment", "employee", "manager", "metric")
+        }
     })
 
 private val employeeIdent = PersonIdent("12345678901")
@@ -114,13 +170,14 @@ private val employee = PersonDetails(employeeIdent, PersonNameDetails("Employee"
 private val manager = PersonDetails(managerIdent, PersonNameDetails("Manager", "Manager", "ManagerMiddle", listOf(RegisteredName("Manager"))))
 private val defaultPeople = mapOf(employeeIdent to employee, managerIdent to manager)
 
-private fun command(): EstablishNarmestelederrelasjonCommand {
+private fun command(employeeLastName: String? = null): EstablishNarmestelederrelasjonCommand {
     val normalized = ManagerContactInput(managerIdent, "Manager", " manager@example.test ", "+47 99999999").normalize()
     return EstablishNarmestelederrelasjonCommand(
         employeeIdent,
         organizationNumber,
         (normalized as ManagerContactNormalization.Valid).manager,
         RelationSource.PERSONNEL_MANAGER,
+        employeeLastName,
     )
 }
 

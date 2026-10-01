@@ -15,6 +15,8 @@ data class EstablishNarmestelederrelasjonCommand(
     val organizationNumber: OrganizationNumber,
     val manager: NormalizedManagerContact,
     val source: RelationSource,
+    /** Submitted last name of the employee; `null` skips the employee name check. */
+    val employeeLastName: String? = null,
 )
 
 sealed interface EstablishNarmestelederrelasjonResult {
@@ -23,4 +25,5 @@ sealed interface EstablishNarmestelederrelasjonResult {
     data class NoEmployment(val reason: EmploymentResult) : EstablishNarmestelederrelasjonResult
     data object PersonNotFound : EstablishNarmestelederrelasjonResult
     data class ManagerNameMismatch(val managerNameMatch: ManagerLastNameMatch.NoMatch) : EstablishNarmestelederrelasjonResult
+    data class EmployeeNameMismatch(val employeeNameMatch: ManagerLastNameMatch.NoMatch) : EstablishNarmestelederrelasjonResult
 }

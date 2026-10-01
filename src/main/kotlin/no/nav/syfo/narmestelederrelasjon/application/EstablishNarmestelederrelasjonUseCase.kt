@@ -19,6 +19,7 @@ class EstablishNarmestelederrelasjonUseCase(
         verifyEmployment(command).orStop { return it }
         val employeeAndManager = findEmployeeAndManager(command).orStop { return it }
         val managerNameMatch = verifyManagerName(employeeAndManager.manager, command).orStop { return it }
+        verifyEmployeeName(employeeAndManager.employee, command).orStop { return it }
         relationPublisher.publish(
             PublishNarmestelederrelasjonCommand(
                 employee = RelationPerson(
@@ -68,6 +69,16 @@ class EstablishNarmestelederrelasjonUseCase(
         return when (match) {
             is ManagerLastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.ManagerNameMismatch(match))
             else -> Step.Continue(match)
+        }
+    }
+
+    private fun verifyEmployeeName(employee: PersonDetails, command: EstablishNarmestelederrelasjonCommand): EstablishStep<Unit> {
+        val lastName = command.employeeLastName ?: return Step.Proceed
+        val match = employee.name.matchManagerLastName(lastName)
+        nameValidationMetrics.record(match)
+        return when (match) {
+            is ManagerLastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch(match))
+            else -> Step.Proceed
         }
     }
 }

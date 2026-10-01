@@ -77,10 +77,12 @@ Owns established and revoked narmesteleder relations:
 
 - establish and revoke relations;
 - validate a relation before establishing it: the manager's contact details,
-  active sykmelding, employment, persons in PDL and the manager's last name.
+  active sykmelding, employment, persons in PDL and submitted last names.
   Establishing and revoking only publish a message; the relation is stored when
   the resulting Leesah event is consumed, so validation must happen before
   publishing;
+- accept direct POST relation submissions, normalizing contact details before
+  checking organization access and establishing through the relation contract;
 - publish relation messages;
 - ingest and republish relation events;
 - own the local relation register;

@@ -58,7 +58,6 @@ import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
-import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
@@ -107,15 +106,10 @@ abstract class LinemanagerApiV1TestBase(
         pdpService = pdpService,
         eregService = eregService,
     )
-    internal val sickLeaveValidator = SickLeaveValidator(
-        dinesykmeldteService = dineSykmelteService,
-    )
     internal val validationService =
         ValidationService(
             pdlService = pdlService,
-            aaregService = aaregService,
             principalAccessValidator = principalAccessValidator,
-            sickLeaveValidator = sickLeaveValidator,
         )
     internal val validationServiceSpy = spyk(validationService)
     internal val tokenXIssuer = "https://tokenx.nav.no"

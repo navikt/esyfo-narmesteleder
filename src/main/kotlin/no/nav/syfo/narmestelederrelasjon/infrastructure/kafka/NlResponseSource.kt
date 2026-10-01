@@ -3,7 +3,6 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 
 enum class NlResponseSource(val source: String) {
@@ -16,11 +15,6 @@ enum class NlResponseSource(val source: String) {
     ARBEIDSTAGER_SYKMELDING_REVOKE("esyo-narmesteleder.arbeidstager.sykmelding.deaktivert");
 
     companion object {
-        fun getSourceFrom(principal: Principal, linemanager: Linemanager): NlResponseSource = when (principal) {
-            is SystemPrincipal -> LPS
-            is UserPrincipal -> PERSONALLEDER
-        }
-
         fun getSourceFrom(principal: Principal, linemanagerRevoke: LinemanagerRevoke): NlResponseSource = when (principal) {
             is SystemPrincipal -> LPS_REVOKE
             is UserPrincipal -> {

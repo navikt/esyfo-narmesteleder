@@ -5,7 +5,6 @@ import io.micrometer.core.instrument.DistributionSummary
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.pdl.Person
 import org.apache.commons.text.similarity.JaroWinklerSimilarity
@@ -37,8 +36,6 @@ private const val MINIMUM_FUZZY_MATCH_LETTERS = 4
 
 private const val EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE =
     "Last name for employee on sick leave does not correspond with registered value for the given national identification number"
-private const val LINEMANAGER_NAME_VALIDATION_FAILED_MESSAGE =
-    "Last name for linemanager does not correspond with registered value for the given national identification number"
 
 object NameValidator {
     private val jaroWinklerSimilarity = JaroWinklerSimilarity()
@@ -63,30 +60,6 @@ object NameValidator {
             countParallelNamesValidation(if (type.isAccepted) RESULT_SUCCESS else RESULT_FAILED)
         }
         bestFuzzyScore?.let { countFuzzyScore(source, it) }
-    }
-
-    fun validateLinemanagerLastName(
-        managerPdlPerson: Person,
-        linemanager: Linemanager,
-    ) {
-        nlrequire(
-            validateLastName(linemanager.manager.lastName, managerPdlPerson),
-            type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
-        ) {
-            LINEMANAGER_NAME_VALIDATION_FAILED_MESSAGE
-        }
-    }
-
-    fun validateEmployeeLastName(
-        employeePdlPerson: Person,
-        linemanager: Linemanager,
-    ) {
-        nlrequire(
-            validateLastName(linemanager.lastName, employeePdlPerson),
-            type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
-        ) {
-            EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE
-        }
     }
 
     fun validateEmployeeLastName(

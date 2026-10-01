@@ -12,18 +12,7 @@ data class NlResponse(
 data class Sykmeldt(
     val fnr: String,
     val navn: String,
-) {
-    companion object {
-        fun from(person: Person): Sykmeldt {
-            with(person.name) {
-                return Sykmeldt(
-                    fnr = person.nationalIdentificationNumber.value,
-                    navn = listOfNotNull(fornavn, mellomnavn, etternavn).joinToString(" "),
-                )
-            }
-        }
-    }
-}
+)
 
 data class Leder(
     val fnr: String,

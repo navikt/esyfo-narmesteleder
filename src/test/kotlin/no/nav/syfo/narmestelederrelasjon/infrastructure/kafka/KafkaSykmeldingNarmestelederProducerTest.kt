@@ -53,8 +53,21 @@ class KafkaSykmeldingNarmestelederProducerTest :
 
                 val sykmeldingNL = NlResponse(
                     orgnummer = relasjon.orgNumber.value,
-                    leder = relasjon.manager.toLeder(linemanagerPerson),
-                    sykmeldt = Sykmeldt.from(sykmeldtPerson),
+                    leder = Leder(
+                        fnr = relasjon.manager.nationalIdentificationNumber.value,
+                        mobil = relasjon.manager.mobile,
+                        epost = relasjon.manager.email,
+                        fornavn = linemanagerPerson.name.fornavn,
+                        etternavn = linemanagerPerson.name.etternavn,
+                    ),
+                    sykmeldt = Sykmeldt(
+                        fnr = sykmeldtPerson.nationalIdentificationNumber.value,
+                        navn = listOfNotNull(
+                            sykmeldtPerson.name.fornavn,
+                            sykmeldtPerson.name.mellomnavn,
+                            sykmeldtPerson.name.etternavn,
+                        ).joinToString(" "),
+                    ),
                     utbetalesLonn = null,
                 )
 

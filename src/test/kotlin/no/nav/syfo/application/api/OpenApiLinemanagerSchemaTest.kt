@@ -5,8 +5,8 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.Manager
+import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.util.logger
 import org.yaml.snakeyaml.Yaml
 import kotlin.reflect.full.memberProperties

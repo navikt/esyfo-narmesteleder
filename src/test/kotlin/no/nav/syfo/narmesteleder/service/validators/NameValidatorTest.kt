@@ -6,7 +6,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.doubles.shouldBeExactly
 import io.kotest.matchers.shouldBe
-import linemanager
 import linemanagerRevoke
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
@@ -47,164 +46,6 @@ class NameValidatorTest :
             },
             nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
         )
-
-        describe("validateLinemanagerLastName") {
-            it("should throw BadRequestException if lastname of PdlPerson and manager does not match") {
-                val linemanager = linemanager()
-                val manager = person(
-                    lastName = linemanager.manager.lastName.reversed(),
-                    fnr = linemanager.manager.nationalIdentificationNumber.value,
-                )
-
-                val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateLinemanagerLastName(manager, linemanager)
-                }
-
-                exception.message shouldBe "Last name for linemanager does not correspond with registered value for the given national identification number"
-                exception.type shouldBe ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
-            }
-
-            it("should not throw BadRequestException if lastname of PdlPerson and manager matches case insensitively") {
-                val linemanager = linemanager()
-                val manager = person(
-                    lastName = linemanager.manager.lastName.lowercase(),
-                    fnr = linemanager.manager.nationalIdentificationNumber.value,
-                )
-
-                shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateLinemanagerLastName(manager, linemanager)
-                }
-            }
-
-            it("should not throw when linemanager last name matches one of the parallel last names from PDL") {
-                val linemanager = linemanager()
-                val manager = personWithParallelLastNames(
-                    lastNames = listOf(
-                        linemanager.manager.lastName.reversed(),
-                        linemanager.manager.lastName,
-                    ),
-                    fnr = linemanager.manager.nationalIdentificationNumber.value,
-                )
-                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
-                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
-                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
-
-                shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateLinemanagerLastName(manager, linemanager)
-                }
-
-                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
-                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore + 1.0
-                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore
-            }
-
-            it("should throw when linemanager last name matches none of the parallel last names from PDL") {
-                val linemanager = linemanager()
-                val manager = personWithParallelLastNames(
-                    lastNames = listOf(
-                        "${linemanager.manager.lastName} INVALID_A",
-                        "${linemanager.manager.lastName} INVALID_B",
-                    ),
-                    fnr = linemanager.manager.nationalIdentificationNumber.value,
-                )
-                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
-                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
-                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
-
-                shouldThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateLinemanagerLastName(manager, linemanager)
-                }
-
-                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
-                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore
-                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore + 1.0
-            }
-        }
-
-        describe("validateEmployeeLastName with Linemanager") {
-            it("should not throw when employee last name matches case insensitively") {
-                val linemanager = linemanager()
-                val employee = person(
-                    lastName = linemanager.lastName.lowercase(),
-                    fnr = linemanager.employeeIdentificationNumber.value,
-                )
-
-                shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
-                }
-            }
-
-            it("should not throw when employee last name matches exactly") {
-                val linemanager = linemanager()
-                val employee = person(
-                    lastName = linemanager.lastName,
-                    fnr = linemanager.employeeIdentificationNumber.value,
-                )
-
-                shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
-                }
-            }
-
-            it("should throw BadRequestException when employee last name does not match") {
-                val linemanager = linemanager()
-                val employee = person(
-                    lastName = linemanager.lastName.reversed(),
-                    fnr = linemanager.employeeIdentificationNumber.value,
-                )
-
-                val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
-                }
-
-                exception.message shouldBe "Last name for employee on sick leave does not correspond with registered value for the given national identification number"
-                exception.type shouldBe ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH
-            }
-
-            it("should not throw when employee last name matches one of the parallel last names from PDL") {
-                val linemanager = linemanager()
-                val employee = personWithParallelLastNames(
-                    lastNames = listOf(
-                        linemanager.lastName.reversed(),
-                        linemanager.lastName,
-                    ),
-                    fnr = linemanager.employeeIdentificationNumber.value,
-                )
-                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
-                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
-                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
-
-                shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
-                }
-
-                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
-                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore + 1.0
-                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore
-            }
-
-            it("should throw when employee last name matches none of the parallel last names from PDL") {
-                val linemanager = linemanager()
-                val employee = personWithParallelLastNames(
-                    lastNames = listOf(
-                        "${linemanager.lastName} INVALID_A",
-                        "${linemanager.lastName} INVALID_B",
-                    ),
-                    fnr = linemanager.employeeIdentificationNumber.value,
-                )
-                val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
-                val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
-                val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
-
-                shouldThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
-                }
-
-                parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
-                parallelNamesValidationCount(result = RESULT_SUCCESS) shouldBeExactly successBefore
-                parallelNamesValidationCount(result = RESULT_FAILED) shouldBeExactly failedBefore + 1.0
-            }
-        }
 
         describe("validateEmployeeLastName with LinemanagerRevoke") {
             it("should not throw when employee last name matches case insensitively") {
@@ -341,10 +182,10 @@ class NameValidatorTest :
             }
 
             it("accepts fuzzy matches and records them as accepted") {
-                val linemanager = linemanager().copy(lastName = "Hansen")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Hansen")
                 val employee = person(
                     lastName = "Hanson",
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
                     matchType = "fuzzy",
@@ -353,7 +194,7 @@ class NameValidatorTest :
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
 
                 nameValidationCount(
@@ -364,10 +205,10 @@ class NameValidatorTest :
             }
 
             it("accepts ø instead of ö") {
-                val linemanager = linemanager().copy(lastName = "Strøm")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Strøm")
                 val employee = person(
                     lastName = "Ström",
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
                     matchType = "orthographic_variant",
@@ -376,7 +217,7 @@ class NameValidatorTest :
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
 
                 nameValidationCount(
@@ -387,12 +228,12 @@ class NameValidatorTest :
             }
 
             it("accepts a request lastName combining PDL mellomnavn and etternavn") {
-                val linemanager = linemanager().copy(lastName = "Førsteetternavn Sisteetternavn")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Førsteetternavn Sisteetternavn")
                 val employee = person(
                     lastName = "Sisteetternavn",
                     firstName = "Fornavn",
                     middleName = "Førsteetternavn",
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
                     matchType = "exact",
@@ -401,7 +242,7 @@ class NameValidatorTest :
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
 
                 nameValidationCount(
@@ -412,10 +253,10 @@ class NameValidatorTest :
             }
 
             it("accepts a combined PDL mellomnavn and etternavn in parallel PDL names") {
-                val linemanager = linemanager().copy(lastName = "Førsteetternavn Sisteetternavn")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Førsteetternavn Sisteetternavn")
                 val employee = person(
                     lastName = "Urelatert",
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 ).copy(
                     names = listOf(
                         Navn(
@@ -432,15 +273,15 @@ class NameValidatorTest :
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
             }
 
             it("accepts ö instead of ø") {
-                val linemanager = linemanager().copy(lastName = "Björn")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Björn")
                 val employee = person(
                     lastName = "Bjørn",
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
                     matchType = "orthographic_variant",
@@ -449,7 +290,7 @@ class NameValidatorTest :
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
 
                 nameValidationCount(
@@ -460,10 +301,10 @@ class NameValidatorTest :
             }
 
             it("accepts e instead of é") {
-                val linemanager = linemanager().copy(lastName = "Andre")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Andre")
                 val employee = person(
                     lastName = "André",
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
                     matchType = "orthographic_variant",
@@ -472,7 +313,7 @@ class NameValidatorTest :
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
 
                 nameValidationCount(
@@ -483,10 +324,10 @@ class NameValidatorTest :
             }
 
             it("accepts å instead of aa") {
-                val linemanager = linemanager().copy(lastName = "Fåberg")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Fåberg")
                 val employee = person(
                     lastName = "Faaberg",
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
                 val before = nameValidationCount(
                     matchType = "orthographic_variant",
@@ -495,7 +336,7 @@ class NameValidatorTest :
                 )
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
 
                 nameValidationCount(
@@ -544,17 +385,17 @@ class NameValidatorTest :
             }
 
             it("counts an accepted fuzzy parallel name as successful") {
-                val linemanager = linemanager().copy(lastName = "Hansen")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Hansen")
                 val employee = personWithParallelLastNames(
                     lastNames = listOf("Haugland", "Hanson"),
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
                 val attemptedBefore = parallelNamesValidationCount(result = RESULT_ATTEMPTED)
                 val successBefore = parallelNamesValidationCount(result = RESULT_SUCCESS)
                 val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
 
                 parallelNamesValidationCount(result = RESULT_ATTEMPTED) shouldBeExactly attemptedBefore + 1.0
@@ -563,10 +404,10 @@ class NameValidatorTest :
             }
 
             it("counts an accepted orthographic variant in a non-first parallel name as successful") {
-                val linemanager = linemanager().copy(lastName = "Strøm")
+                val linemanagerRevoke = linemanagerRevoke().copy(lastName = "Strøm")
                 val employee = personWithParallelLastNames(
                     lastNames = listOf("Haugland", "Ström"),
-                    fnr = linemanager.employeeIdentificationNumber.value,
+                    fnr = linemanagerRevoke.employeeIdentificationNumber.value,
                 )
                 val nameValidationBefore = nameValidationCount(
                     matchType = "orthographic_variant",
@@ -578,7 +419,7 @@ class NameValidatorTest :
                 val failedBefore = parallelNamesValidationCount(result = RESULT_FAILED)
 
                 shouldNotThrow<ApiErrorException.BadRequestException> {
-                    NameValidator.validateEmployeeLastName(employee, linemanager)
+                    NameValidator.validateEmployeeLastName(employee, linemanagerRevoke)
                 }
 
                 nameValidationCount(

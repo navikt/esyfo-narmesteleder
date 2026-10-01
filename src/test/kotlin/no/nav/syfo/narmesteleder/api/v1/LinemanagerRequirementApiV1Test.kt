@@ -20,13 +20,13 @@ import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.BehovSource
+import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import java.time.Instant
 import java.util.UUID

@@ -1,38 +1,15 @@
 package no.nav.syfo.narmesteleder.service
 
-import no.nav.syfo.narmesteleder.domain.Linemanager
-import no.nav.syfo.narmesteleder.domain.LinemanagerActors
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
-import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
-import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.Sykmeldt
 
 class NarmestelederKafkaService(
     val kafkaSykemeldingProducer: SykmeldingNarmestelederProducer,
 ) {
-    fun sendNarmesteLederRelasjon(
-        linemanager: Linemanager,
-        linemanagerActors: LinemanagerActors,
-        source: NlResponseSource,
-    ) {
-        kafkaSykemeldingProducer.sendSykmeldingNLRelasjon(
-            NlResponse(
-                sykmeldt = Sykmeldt.from(linemanagerActors.employee),
-                leder = linemanager.manager.toLeder(linemanagerActors.manager),
-                orgnummer = linemanager.orgNumber.value,
-                // I den tidligere nærmeste leder-løsningen ble det rapportert hvorvidt arbeidsgiver forskutterer lønn i samme skjema som
-                // nærmeste leder. Ved overgangen til Altinn 3 og overføringen av NL til esyfo, gikk man bort fra dette.
-                // Denne settes til true for bakoverkompabilitet på Kafka-meldingene fram til helseytelser er ute av Altinn 2.
-                utbetalesLonn = true
-            ),
-            source = source,
-        )
-    }
-
     fun avbrytNarmesteLederRelation(
         linemanagerRevoke: LinemanagerRevoke,
         source: NlResponseSource

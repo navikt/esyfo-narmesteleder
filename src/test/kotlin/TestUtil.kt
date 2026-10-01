@@ -14,13 +14,13 @@ import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
+import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn

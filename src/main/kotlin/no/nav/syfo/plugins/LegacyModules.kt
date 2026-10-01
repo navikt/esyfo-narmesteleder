@@ -26,7 +26,6 @@ import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
-import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
 import no.nav.syfo.person.service.PersonEnrichmentService
@@ -91,13 +90,10 @@ internal fun legacyServicesModule() = module {
     }
 
     single { PrincipalAccessValidator(altinnTilgangerService = get(), pdpService = get(), eregService = get()) }
-    single { SickLeaveValidator(dinesykmeldteService = get()) }
     single {
         ValidationService(
             pdlService = get(),
-            aaregService = get(),
             principalAccessValidator = get(),
-            sickLeaveValidator = get(),
         )
     }
 

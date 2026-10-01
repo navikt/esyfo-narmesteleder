@@ -13,7 +13,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
 import no.nav.syfo.narmesteleder.api.v1.tryReceive
-import no.nav.syfo.narmesteleder.domain.Linemanager
+import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonCommand

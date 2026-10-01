@@ -1,25 +1,16 @@
 package no.nav.syfo.narmesteleder.service
 
 import DefaultSystemPrincipal
-import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import faker
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.spyk
-import linemanager
 import linemanagerRevoke
-import manager
-import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.altinn.pdp.client.FakePdpClient
 import no.nav.syfo.altinn.pdp.client.System
 import no.nav.syfo.altinn.pdp.service.PdpService
@@ -30,32 +21,19 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.PdlCache
-import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.narmesteleder.domain.Linemanager
 import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
-import no.nav.syfo.narmesteleder.domain.Manager
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
-import no.nav.syfo.narmesteleder.service.validators.SickLeaveValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
-import org.slf4j.LoggerFactory
 import prepareGetPersonResponse
 
 class ValidationServiceTest :
     DescribeSpec({
         val altinnTilgangerClient = FakeAltinnTilgangerClient()
         val altinnTilgangerService = spyk(AltinnTilgangerService(altinnTilgangerClient))
-        val dinesykmeldteClient = FakeDinesykmeldteClient()
-        val dinesykmeldteService: DinesykmeldteService = spyk(ClientDinesykmeldteService(dinesykmeldteClient))
-
-        val aaregClient = FakeAaregClient()
-        val aaregService = spyk(AaregService(aaregClient))
         val eregClient = FakeEregClient()
         val eregCache = mockk<EregCache>(relaxed = true)
         val eregService = spyk(EregService(eregClient, eregCache))
@@ -69,39 +47,13 @@ class ValidationServiceTest :
             pdpService = pdpService,
             eregService = eregService,
         )
-        val sickLeaveValidator = SickLeaveValidator(
-            dinesykmeldteService = dinesykmeldteService,
-        )
         val service = ValidationService(
             pdlService = pdlService,
-            aaregService = aaregService,
             principalAccessValidator = principalAccessValidator,
-            sickLeaveValidator = sickLeaveValidator,
         )
-        val logbackLogger = LoggerFactory.getLogger(ValidationService::class.java) as Logger
-        val logAppender = ListAppender<ILoggingEvent>()
-        val originalLevel = logbackLogger.level
 
         fun differentLastName(lastName: String): String = faker.name().lastName().let {
             if (it != lastName) it else lastName.reversed()
-        }
-
-        fun differentOrgNumber(orgNumber: String): String = faker.numerify("#########").let {
-            if (it != orgNumber) it else orgNumber.reversed()
-        }
-
-        fun prepareValidLinemanagerValidation(
-            linemanager: Linemanager,
-            principal: UserPrincipal,
-        ) {
-            altinnTilgangerClient.accessPolicy.clear()
-            altinnTilgangerClient.addAccess(principal.ident, linemanager.orgNumber.value)
-            aaregClient.arbeidsForholdForIdent[linemanager.manager.nationalIdentificationNumber.value] =
-                listOf(linemanager.orgNumber.value to "hovedenhet")
-            aaregClient.arbeidsForholdForIdent[linemanager.employeeIdentificationNumber.value] =
-                listOf(linemanager.orgNumber.value to "hovedenhet")
-            pdlService.prepareGetPersonResponse(linemanager.employeeIdentificationNumber.value, linemanager.lastName)
-            pdlService.prepareGetPersonResponse(linemanager.manager)
         }
 
         fun prepareValidLinemanagerRevoke(
@@ -123,243 +75,12 @@ class ValidationServiceTest :
             )
         }
 
-        fun warningMessages(): List<String> = logAppender.list.map { it.formattedMessage }
-
-        beforeSpec {
-            logbackLogger.level = Level.WARN
-            logAppender.start()
-            logbackLogger.addAppender(logAppender)
-        }
-
-        afterSpec {
-            logbackLogger.detachAppender(logAppender)
-            logAppender.stop()
-            logbackLogger.level = originalLevel
-        }
-
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
             altinnTilgangerClient.reset()
             coEvery { pdlCacheMock.getPerson(any()) } returns null
             coEvery { eregCache.getOrganisasjon(any()) } returns null
-            aaregClient.arbeidsForholdForIdent.clear()
             eregClient.organisasjoner.clear()
-            logAppender.list.clear()
-        }
-        describe("normalize manager contact details") {
-            it("should normalize valid manager payload without warnings") {
-                val linemanager = linemanager().copy(
-                    manager = manager().copy(
-                        mobile = "+47 90 00 00 00",
-                        email = "leder+ø@eksempelø.no; annen@domene.no ",
-                    )
-                )
-
-                val normalized = service.normalizeLinemanagerPayload(
-                    linemanager = linemanager,
-                )
-
-                normalized.manager.mobile shouldBe "+4790000000"
-                normalized.manager.email shouldBe "leder+ø@eksempelø.no;annen@domene.no"
-                warningMessages() shouldHaveSize 0
-            }
-
-            it("should reject invalid manager contact details and log warnings without raw values") {
-                val manager = Manager(
-                    nationalIdentificationNumber = PersonalIdentificationNumber("12345678910"),
-                    lastName = "Jensen",
-                    mobile = "90-00-00-00",
-                    email = "gyldig@example.com; invalid @example.com",
-                )
-
-                val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    service.normalizeLinemanagerPayload(linemanager().copy(manager = manager))
-                }
-
-                exception.type shouldBe ErrorType.INVALID_FORMAT
-                exception.message shouldBe
-                    "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign; email: EmailAddress must not contain whitespace"
-                warningMessages() shouldHaveSize 1
-                warningMessages().single() shouldBe "Manager contact fields failed validation"
-                exception.isAlreadyLogged shouldBe true
-                val fields = logAppender.list.single().keyValuePairs.associate { it.key to it.value }
-                fields["event_type"] shouldBe "contact_validation_rejected"
-                val issues = fields["validation_issues"] as List<*>
-                issues shouldHaveSize 2
-                issues shouldBe listOf(
-                    mapOf("field" to "MOBILE", "reason" to "INVALID_FORMAT"),
-                    mapOf("field" to "EMAIL", "reason" to "INVALID_FORMAT"),
-                )
-                issues.toString().contains("PhoneNumber") shouldBe false
-                issues.toString().contains("90-00-00-00") shouldBe false
-                issues.toString().contains("invalid @example.com") shouldBe false
-                warningMessages().any { it.contains("90-00-00-00") } shouldBe false
-                warningMessages().any { it.contains("invalid @example.com") } shouldBe false
-                warningMessages().any { it.contains("gyldig@example.com") } shouldBe false
-                exception.message?.contains("90-00-00-00") shouldBe false
-                exception.message?.contains("invalid @example.com") shouldBe false
-                exception.message?.contains("gyldig@example.com") shouldBe false
-            }
-
-            it("should reject phone numbers with misplaced plus sign and log warning") {
-                val manager = manager().copy(
-                    mobile = "47+90000000",
-                )
-
-                val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    service.normalizeLinemanagerPayload(linemanager().copy(manager = manager))
-                }
-
-                exception.type shouldBe ErrorType.INVALID_FORMAT
-                exception.message shouldBe
-                    "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign"
-                warningMessages().single() shouldBe
-                    "Manager contact fields failed validation"
-            }
-        }
-        describe("validateNarmesteleder") {
-            it("should not thrown when all validation passes and principal is BrukerPrincipal") {
-                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
-                val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
-
-                prepareValidLinemanagerValidation(narmestelederRelasjonerWrite, principal)
-
-                val result = service.validateLinemanager(narmestelederRelasjonerWrite, principal)
-
-                result.employee.nationalIdentificationNumber.value shouldBe narmestelederRelasjonerWrite.employeeIdentificationNumber.value
-                result.manager.nationalIdentificationNumber.value shouldBe narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value
-                coVerify(exactly = 1) {
-                    altinnTilgangerService.getAuthorizedAltinnTilgang(
-                        userPrincipal = eq(principal),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
-                    )
-                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value)
-                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
-                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
-                }
-                coVerify(exactly = 0) {
-                    pdpService.accessDecisionForResource(any(), any(), any())
-                }
-            }
-
-            it("should throw BadRequestException when lastName of manager does mot match value in PDL") {
-                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
-                val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
-
-                prepareValidLinemanagerValidation(narmestelederRelasjonerWrite, principal)
-                pdlService.prepareGetPersonResponse(
-                    narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value,
-                    differentLastName(narmestelederRelasjonerWrite.manager.lastName),
-                )
-
-                val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    service.validateLinemanager(narmestelederRelasjonerWrite, principal)
-                }
-
-                coVerify(exactly = 1) {
-                    altinnTilgangerService.getAuthorizedAltinnTilgang(
-                        userPrincipal = eq(principal),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
-                    )
-                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value)
-                    pdlService.getPersonOrThrowApiError(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
-                    aaregService.findArbeidsforholdByPersonIdent(narmestelederRelasjonerWrite.employeeIdentificationNumber.value)
-                }
-                coVerify(exactly = 0) {
-                    pdpService.accessDecisionForResource(any(), any(), any())
-                }
-
-                exception.message shouldBe "Last name for linemanager does not correspond with registered value for the given national identification number"
-            }
-
-            it("should throw BadRequestException with NO_ACTIVE_SICK_LEAVE when no active sick leave exists") {
-                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
-                val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
-
-                altinnTilgangerClient.accessPolicy.clear()
-                altinnTilgangerClient.addAccess(principal.ident, narmestelederRelasjonerWrite.orgNumber.value)
-                coEvery {
-                    dinesykmeldteService.getIsActiveSykmelding(
-                        narmestelederRelasjonerWrite.employeeIdentificationNumber.value,
-                        narmestelederRelasjonerWrite.orgNumber.value,
-                    )
-                } returns false
-
-                val exception = shouldThrow<ApiErrorException.BadRequestException> {
-                    service.validateLinemanager(narmestelederRelasjonerWrite, principal)
-                }
-
-                exception.type shouldBe ErrorType.NO_ACTIVE_SICK_LEAVE
-                coVerify(exactly = 1) {
-                    altinnTilgangerService.getAuthorizedAltinnTilgang(
-                        userPrincipal = eq(principal),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
-                    )
-                }
-                coVerify(exactly = 0) {
-                    aaregService.findArbeidsforholdByPersonIdent(any())
-                    pdlService.getPersonOrThrowApiError(any())
-                }
-            }
-
-            it("should call AltinnTilgangerService first when principal is BrukerPrincipal") {
-                val fnr = altinnTilgangerClient.accessPolicy.first().hasAccess.first()
-                val principal = UserPrincipal(fnr, "token")
-                val narmestelederRelasjonerWrite = linemanager().copy(employeeIdentificationNumber = PersonalIdentificationNumber(fnr))
-
-                shouldThrow<ApiErrorException.ForbiddenException> {
-                    service.validateLinemanager(narmestelederRelasjonerWrite, principal)
-                }
-                coVerify(exactly = 1) {
-                    altinnTilgangerService.getAuthorizedAltinnTilgang(
-                        userPrincipal = eq(principal),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
-                    )
-                }
-                coVerify(exactly = 0) {
-                    aaregService.findArbeidsforholdByPersonIdent(any())
-                    pdpService.accessDecisionForResource(any(), any(), any())
-                    pdlService.getPersonOrThrowApiError(any())
-                }
-            }
-
-            it("should not call AltinnTilgangerService when principal is SystemPrincipal") {
-                val userWithAccess = altinnTilgangerClient.accessPolicy.first()
-                val requestOrgnumber = userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr
-                val systemUserOrgnumber = requestOrgnumber.reversed()
-                val narmestelederRelasjonerWrite = linemanager().copy(
-                    employeeIdentificationNumber = PersonalIdentificationNumber(userWithAccess.hasAccess.first()),
-                    orgNumber = OrganizationNumber(userWithAccess.altinnTilgangerResponse.hierarki.first().orgnr),
-                )
-                val principal = DefaultSystemPrincipal.copy(
-                    ident = "0192:$systemUserOrgnumber",
-                )
-
-                shouldThrow<ApiErrorException.BadRequestException> {
-                    service.validateLinemanager(narmestelederRelasjonerWrite, principal)
-                }
-                coVerify(exactly = 0) {
-                    altinnTilgangerService.getAuthorizedAltinnTilgang(
-                        userPrincipal = any<UserPrincipal>(),
-                        orgnummer = eq(narmestelederRelasjonerWrite.orgNumber.value),
-                    )
-                }
-                coVerify(exactly = 0) {
-                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber.value))
-                    pdlService.getPersonOrThrowApiError(eq(narmestelederRelasjonerWrite.manager.nationalIdentificationNumber.value))
-                }
-                coVerify(exactly = 1) {
-                    pdpService.accessDecisionForResource(
-                        user = match<System> { it.id == "systemId" },
-                        orgNumberSet = eq(setOf(narmestelederRelasjonerWrite.orgNumber.value)),
-                        resource = eq("nav_syfo_oppgi-narmesteleder"),
-                    )
-                    aaregService.findArbeidsforholdByPersonIdent(eq(narmestelederRelasjonerWrite.employeeIdentificationNumber.value))
-                }
-            }
         }
 
         describe("validateLinemanagerRevoke") {
@@ -378,7 +99,6 @@ class ValidationServiceTest :
                     )
                 }
                 coVerify(exactly = 0) {
-                    aaregService.findArbeidsforholdByPersonIdent(any())
                     pdpService.accessDecisionForResource(any(), any(), any())
                     pdlService.getPersonOrThrowApiError(any())
                 }
@@ -402,7 +122,6 @@ class ValidationServiceTest :
                     )
                 }
                 coVerify(exactly = 0) {
-                    aaregService.findArbeidsforholdByPersonIdent(any())
                     pdpService.accessDecisionForResource(any(), any(), any())
                 }
             }
@@ -425,7 +144,6 @@ class ValidationServiceTest :
                     )
                 }
                 coVerify(exactly = 0) {
-                    aaregService.findArbeidsforholdByPersonIdent(any())
                     altinnTilgangerService.getAuthorizedAltinnTilgang(
                         userPrincipal = any<UserPrincipal>(),
                         orgnummer = any(),
@@ -466,9 +184,6 @@ class ValidationServiceTest :
                 val employee = service.validateLinemanagerRevoke(narmesteLederAvkreft, principal)
 
                 employee.nationalIdentificationNumber shouldBe narmesteLederAvkreft.employeeIdentificationNumber
-                coVerify(exactly = 0) {
-                    aaregService.findArbeidsforholdByPersonIdent(any())
-                }
             }
         }
     })

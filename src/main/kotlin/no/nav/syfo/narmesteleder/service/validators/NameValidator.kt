@@ -2,13 +2,8 @@ package no.nav.syfo.narmesteleder.service.validators
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.DistributionSummary
-import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
-import no.nav.syfo.pdl.Person
-import org.apache.commons.text.similarity.JaroWinklerSimilarity
-import java.text.Normalizer
 import java.util.concurrent.ConcurrentHashMap
 
 private const val PARALLEL_NAMES_VALIDATION_TOTAL =
@@ -31,14 +26,7 @@ private const val NAME_SOURCE_SINGLE = "single"
 private const val NAME_SOURCE_PARALLEL = "parallel"
 private const val VALIDATION_RESULT_ACCEPTED = "accepted"
 private const val VALIDATION_RESULT_REJECTED = "rejected"
-private const val FUZZY_MATCH_THRESHOLD = 0.93
-private const val MINIMUM_FUZZY_MATCH_LETTERS = 4
-
-private const val EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE =
-    "Last name for employee on sick leave does not correspond with registered value for the given national identification number"
-
 object NameValidator {
-    private val jaroWinklerSimilarity = JaroWinklerSimilarity()
     private val parallelNamesValidationCounters: Map<String, Counter> = listOf(
         RESULT_ATTEMPTED,
         RESULT_SUCCESS,
@@ -61,101 +49,6 @@ object NameValidator {
         }
         bestFuzzyScore?.let { countFuzzyScore(source, it) }
     }
-
-    fun validateEmployeeLastName(
-        managerPdlPerson: Person,
-        linemanagerRevoke: LinemanagerRevoke,
-    ) {
-        nlrequire(
-            validateLastName(linemanagerRevoke.lastName, managerPdlPerson),
-            type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
-        ) {
-            EMPLOYEE_NAME_VALIDATION_FAILED_MESSAGE
-        }
-    }
-
-    private fun validateLastName(nameToValidate: String, pdlPerson: Person): Boolean {
-        val nameSource = if (pdlPerson.hasParallelNames) NAME_SOURCE_PARALLEL else NAME_SOURCE_SINGLE
-        val matchType = determineMatchType(
-            nameToValidate = nameToValidate,
-            pdlLastNames = pdlPerson.names.flatMap { pdlName ->
-                listOf(pdlName.etternavn) + listOfNotNull(
-                    pdlName.mellomnavn
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { "$it ${pdlName.etternavn}".normalizeName() },
-                )
-            },
-            nameSource = nameSource,
-        )
-        val isAccepted = matchType.isAccepted
-
-        countNameValidation(matchType, nameSource, isAccepted)
-        if (pdlPerson.hasParallelNames) {
-            countParallelNamesValidation(result = RESULT_ATTEMPTED)
-            countParallelNamesValidation(
-                result = if (isAccepted) RESULT_SUCCESS else RESULT_FAILED,
-            )
-        }
-
-        return isAccepted
-    }
-
-    internal fun determineMatchType(
-        nameToValidate: String,
-        pdlLastNames: List<String>,
-        nameSource: String,
-    ): NameMatchType {
-        val normalizedName = nameToValidate.normalizeName()
-        val normalizedPdlNames = pdlLastNames.map { it.normalizeName() }
-        if (normalizedPdlNames.any { it == normalizedName }) {
-            return NameMatchType.EXACT
-        }
-
-        val orthographicName = normalizedName.canonicalizeOrthographicVariants()
-        if (normalizedPdlNames.any { it.canonicalizeOrthographicVariants() == orthographicName }) {
-            return NameMatchType.ORTHOGRAPHIC_VARIANT
-        }
-
-        val fuzzyScores = normalizedPdlNames.mapNotNull { pdlName ->
-            fuzzyScore(normalizedName, pdlName)
-        }
-        fuzzyScores.maxOrNull()?.let { score ->
-            countFuzzyScore(nameSource, score)
-            if (passesFuzzyThreshold(score)) {
-                return NameMatchType.FUZZY
-            }
-        }
-
-        return NameMatchType.NONE
-    }
-
-    internal fun passesFuzzyThreshold(score: Double): Boolean = score >= FUZZY_MATCH_THRESHOLD
-
-    private fun String.normalizeName(): String = Normalizer.normalize(this, Normalizer.Form.NFC)
-        .trim()
-        .replace("\\s+".toRegex(), " ")
-        .replace(APOSTROPHE_VARIANTS.toRegex(), "'")
-        .replace(HYPHEN_VARIANTS.toRegex(), "-")
-        .uppercase()
-
-    private fun String.canonicalizeOrthographicVariants(): String = replace("AA", "Å")
-        .replace('Ö', 'Ø')
-        .replace('Ä', 'Æ')
-        .replace('É', 'E')
-
-    private fun fuzzyScore(firstName: String, secondName: String): Double? = if (
-        firstName.isFuzzyEligible() &&
-        secondName.isFuzzyEligible()
-    ) {
-        jaroWinklerSimilarity.apply(firstName, secondName)
-    } else {
-        null
-    }
-
-    private fun String.isFuzzyEligible(): Boolean = letterCount() >= MINIMUM_FUZZY_MATCH_LETTERS &&
-        all { it.isLetter() || it.isWhitespace() || it == '\'' || it == '-' }
-
-    private fun String.letterCount(): Int = codePoints().filter(Character::isLetter).count().toInt()
 
     private fun countParallelNamesValidation(result: String) {
         parallelNamesValidationCounters.getValue(result).increment()
@@ -195,9 +88,6 @@ object NameValidator {
         val nameSource: String,
         val validationResult: String,
     )
-
-    private const val APOSTROPHE_VARIANTS = "[\u2018\u2019\u201B\uFF07]"
-    private const val HYPHEN_VARIANTS = "[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]"
 }
 
 internal enum class NameMatchType(

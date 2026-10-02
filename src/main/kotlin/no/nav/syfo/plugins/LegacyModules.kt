@@ -62,7 +62,7 @@ internal fun legacyServicesModule() = module {
     single { AaregService(arbeidsforholdOversiktClient = get()) }
     single { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
     single<DinesykmeldteService> { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
-    single { PdlService(pdlClient = get(), pdlCache = get()) }
+    single { PdlService(pdlClient = get()) }
     single { PdlLeesahNameUpdateService(database = get(), pdlService = get()) }
     single { AltinnTilgangerService(altinnTilgangerClient = get()) }
     single { PdpService(pdpClient = get()) }
@@ -92,7 +92,6 @@ internal fun legacyServicesModule() = module {
     single { PrincipalAccessValidator(altinnTilgangerService = get(), pdpService = get(), eregService = get()) }
     single {
         ValidationService(
-            pdlService = get(),
             principalAccessValidator = get(),
         )
     }

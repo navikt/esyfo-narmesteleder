@@ -6,7 +6,6 @@ import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
@@ -14,6 +13,7 @@ import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonReposi
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
+import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
@@ -35,7 +35,6 @@ fun narmestelederrelasjonModule() = module {
     single<PublishNarmestelederrelasjonRevocation> { KafkaPublishNarmestelederrelasjonRevocation(get()) }
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }
     single<ActiveNarmestelederrelasjonRepository> { ExposedActiveNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
-    single { HasActiveNarmestelederrelasjonUseCase(get()) }
     single { LookupActiveNarmestelederUseCase(get()) }
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }
@@ -46,4 +45,5 @@ fun narmestelederrelasjonModule() = module {
     single<NarmestelederrelasjonOrganization> { EregNarmestelederrelasjonOrganization(get()) }
     single<GetNarmestelederrelasjonUseCase> { GetNarmestelederrelasjonUseCase(get(), get(), get(), get()) }
     single<RevokeNarmestelederrelasjonUseCase> { RevokeNarmestelederrelasjonUseCase(get(), get(), get()) }
+    single { RevokeActiveNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
 }

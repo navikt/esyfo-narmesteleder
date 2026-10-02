@@ -14,16 +14,12 @@ import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
-import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.Person
-import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import no.nav.syfo.sykmelding.model.ArbeidsgiverSykmelding
 import no.nav.syfo.sykmelding.model.BrukerSvar
@@ -69,12 +65,6 @@ fun organisasjon() = Organisasjon(
             navn = EregNavn(sammensattnavn = faker.name().fullName()),
         )
     ),
-)
-
-fun linemanagerRevoke(): LinemanagerRevoke = LinemanagerRevoke(
-    employeeIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
-    orgNumber = OrganizationNumber(faker.numerify("#########")),
-    lastName = faker.name().lastName(),
 )
 
 fun nlBehovEntity() = NarmestelederBehovEntity(
@@ -165,24 +155,6 @@ fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, c
 
         else -> error("Unhandled request ${request.url.fullPath}")
     }
-}
-
-fun PdlService.prepareGetPersonResponse(manager: Manager) {
-    prepareGetPersonResponse(manager.nationalIdentificationNumber.value, manager.lastName)
-}
-
-fun PdlService.prepareGetPersonResponse(fnr: String, lastName: String) {
-    val name = faker().name()
-    coEvery {
-        getPersonFor(fnr)
-    } returns Person(
-        name = Navn(
-            fornavn = name.firstName(),
-            mellomnavn = "",
-            etternavn = lastName,
-        ),
-        nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
-    )
 }
 
 fun TexasHttpClient.defaultMocks(

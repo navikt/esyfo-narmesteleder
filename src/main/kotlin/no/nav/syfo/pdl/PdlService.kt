@@ -4,8 +4,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
@@ -19,7 +17,6 @@ private const val PDL_CHUNK_SIZE = 100
 
 class PdlService(
     private val pdlClient: PdlClient,
-    private val pdlCache: PdlCache
 ) {
     private val logger = logger()
 
@@ -40,27 +37,9 @@ class PdlService(
 
             return Person(
                 name = navn,
-                names = person.navn,
                 nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
                 dateOfBirth = foedselsdato,
             )
-        }
-    }
-
-    suspend fun getPersonOrThrowApiError(fnr: String): Person {
-        pdlCache.getPerson(fnr).let { cachedPerson ->
-            if (cachedPerson != null) {
-                return cachedPerson
-            }
-        }
-        return try {
-            val person: Person = getPersonFor(fnr)
-            pdlCache.putPerson(fnr, person)
-            person
-        } catch (e: PdlResourceNotFoundException) {
-            throw ApiErrorException.BadRequestException("Could not find person in PDL", e)
-        } catch (e: PdlRequestException) {
-            throw ApiErrorException.InternalServerErrorException("Error when fetching person from PDL", e)
         }
     }
 

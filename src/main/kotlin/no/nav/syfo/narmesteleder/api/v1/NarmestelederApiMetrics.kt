@@ -7,22 +7,6 @@ import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 
-const val REVOKE_LINEMANAGER_BY_LPS = "${METRICS_NS}_revoke_linemanager_by_lps"
-val COUNT_REVOKE_LINEMANAGER_BY_LPS: Counter = Counter.builder(REVOKE_LINEMANAGER_BY_LPS)
-    .description("Counts the number of revocations performed by LPS")
-    .register(METRICS_REGISTRY)
-
-const val REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER = "${METRICS_NS}_revoke_linemanager_by_personnel_manager"
-val COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER: Counter = Counter.builder(REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER)
-    .description("Counts the number of revocations performed by personnel manager")
-    .register(METRICS_REGISTRY)
-
-const val REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION = "${METRICS_NS}_revoke_linemanager_without_active_relation"
-val COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION: Counter =
-    Counter.builder(REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION)
-        .description("Counts revoke requests where no active line manager relation exists")
-        .register(METRICS_REGISTRY)
-
 const val FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS = "${METRICS_NS}_fulfill_linemanager_requirement_by_lps"
 val COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS: Counter = Counter.builder(FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS)
     .description("Counts the number of fulfilled requirements performed by LPS")

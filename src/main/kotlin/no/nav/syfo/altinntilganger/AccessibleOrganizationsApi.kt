@@ -8,7 +8,7 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
+import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 

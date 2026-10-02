@@ -23,6 +23,8 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
+import no.nav.syfo.platform.api.tryReceive
+import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 

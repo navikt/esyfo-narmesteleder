@@ -11,8 +11,6 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
-import no.nav.syfo.narmesteleder.api.v1.tryReceive
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
@@ -23,6 +21,8 @@ import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.observability.countSubmittedNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.platform.api.tryReceive
+import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.util.Locale

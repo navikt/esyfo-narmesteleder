@@ -15,6 +15,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchRequest
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
+import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 

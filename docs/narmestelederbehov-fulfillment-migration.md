@@ -69,8 +69,10 @@ PUT fulfillment or complete #525.
 ## Removing transitional duplication
 
 After activation, migrate every remaining caller and delete the legacy
-`NameValidator`, `PhoneNumber`, `EmailAddress`, `OrganizationNumber` and
-`PersonalIdentificationNumber` definitions. Do not keep a second rule set for
+`PhoneNumber`, `EmailAddress`, `OrganizationNumber` and
+`PersonalIdentificationNumber` definitions. The legacy `NameValidator` is
+already removed; `MicrometerNameValidationMetrics` in `narmestelederrelasjon`
+owns the name validation metrics. Do not keep a second rule set for
 other flows. Identifiers converge on `ident`; shared validation must have one
 owner exposed through the appropriate application boundary, without one
 capability importing another capability's domain internals. Parity tests guard

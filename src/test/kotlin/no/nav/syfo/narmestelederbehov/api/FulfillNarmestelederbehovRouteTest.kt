@@ -70,7 +70,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
@@ -270,7 +270,7 @@ private class PutFixture {
             DinesykmeldteActiveSykmeldingLookup(sykmelding),
             AaregEmploymentLookup(AaregService(aareg)),
             people,
-            LegacyNameValidationMetrics(),
+            MicrometerNameValidationMetrics(),
             KafkaPublishNarmestelederrelasjon(producer),
         ),
         NarmestelederbehovDialog { },

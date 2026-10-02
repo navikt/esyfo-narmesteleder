@@ -91,7 +91,7 @@ private class RevokeActiveFixture(
             calls += "person"
             person
         },
-        ManagerNameValidationMetrics {
+        NameValidationMetrics {
             calls += "name"
             matches += it
         },

@@ -2,10 +2,10 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.narmesteleder.service.validators.NameMatchType
 import no.nav.syfo.narmesteleder.service.validators.NameValidator
-import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.application.NameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 
-class LegacyManagerNameValidationMetrics : ManagerNameValidationMetrics {
+class LegacyNameValidationMetrics : NameValidationMetrics {
     override fun record(match: LastNameMatch) {
         val type = when (match) {
             is LastNameMatch.Exact -> NameMatchType.EXACT

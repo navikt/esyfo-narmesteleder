@@ -7,7 +7,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
-import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.application.NameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
@@ -26,7 +26,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedActiveNarmesteled
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjonRevocation
-import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ValkeyPersonDetailsCache
 import org.koin.dsl.module
@@ -41,7 +41,7 @@ fun narmestelederrelasjonModule() = module {
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }
     single<PersonLookup> { CachedPersonLookup(PdlPersonLookup(get()), ValkeyPersonDetailsCache(get())) }
-    single<ManagerNameValidationMetrics> { LegacyManagerNameValidationMetrics() }
+    single<NameValidationMetrics> { LegacyNameValidationMetrics() }
     single<EstablishNarmestelederrelasjon> { EstablishNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
     single { SubmitNarmestelederrelasjonUseCase(get(), get()) }
     single<NarmestelederrelasjonOrganization> { EregNarmestelederrelasjonOrganization(get()) }

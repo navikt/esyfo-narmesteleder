@@ -61,7 +61,7 @@ class EstablishNarmestelederrelasjonUseCaseTest :
                     active = case.active,
                     employment = case.employment,
                     people = case.people,
-                    metrics = ManagerNameValidationMetrics { match ->
+                    metrics = NameValidationMetrics { match ->
                         effects += "metric"
                         recordedMatches += match
                     },
@@ -87,7 +87,7 @@ class EstablishNarmestelederrelasjonUseCaseTest :
             val useCase = createEstablisher(
                 effects = effects,
                 publisher = publisher,
-                metrics = ManagerNameValidationMetrics {
+                metrics = NameValidationMetrics {
                     effects += "metric"
                     recordedMatches += it
                 },
@@ -114,7 +114,7 @@ class EstablishNarmestelederrelasjonUseCaseTest :
             val useCase = createEstablisher(
                 effects = effects,
                 publisher = publisher,
-                metrics = ManagerNameValidationMetrics {
+                metrics = NameValidationMetrics {
                     effects += "metric"
                     recordedMatches += it
                 },
@@ -132,7 +132,7 @@ class EstablishNarmestelederrelasjonUseCaseTest :
             val useCase = createEstablisher(
                 effects = effects,
                 publisher = publisher,
-                metrics = ManagerNameValidationMetrics {
+                metrics = NameValidationMetrics {
                     effects += "metric"
                     recordedMatches += it
                 },
@@ -187,7 +187,7 @@ private fun createEstablisher(
     activeFailure: Throwable? = null,
     employment: EmploymentResult = EmploymentResult.IN_ORGANIZATION,
     people: Map<PersonIdent, PersonDetails> = defaultPeople,
-    metrics: ManagerNameValidationMetrics = ManagerNameValidationMetrics { effects += "metric" },
+    metrics: NameValidationMetrics = NameValidationMetrics { effects += "metric" },
     publisher: RecordingPublisher = RecordingPublisher(effects),
 ): EstablishNarmestelederrelasjonUseCase = EstablishNarmestelederrelasjonUseCase(
     ActiveSykmeldingLookup { _, _ ->

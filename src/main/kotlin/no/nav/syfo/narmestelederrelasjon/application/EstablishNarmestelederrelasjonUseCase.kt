@@ -11,7 +11,7 @@ class EstablishNarmestelederrelasjonUseCase(
     private val activeSykmeldingLookup: ActiveSykmeldingLookup,
     private val employmentLookup: EmploymentLookup,
     private val personLookup: PersonLookup,
-    private val nameValidationMetrics: ManagerNameValidationMetrics,
+    private val nameValidationMetrics: NameValidationMetrics,
     private val relationPublisher: PublishNarmestelederrelasjon,
 ) : EstablishNarmestelederrelasjon {
     override suspend fun execute(command: EstablishNarmestelederrelasjonCommand): EstablishNarmestelederrelasjonResult {

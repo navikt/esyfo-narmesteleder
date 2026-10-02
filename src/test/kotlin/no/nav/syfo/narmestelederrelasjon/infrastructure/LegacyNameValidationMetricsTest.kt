@@ -6,9 +6,9 @@ import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 
-class LegacyManagerNameValidationMetricsTest :
+class LegacyNameValidationMetricsTest :
     FunSpec({
-        val recorder = LegacyManagerNameValidationMetrics()
+        val recorder = LegacyNameValidationMetrics()
         val nameMetric = "${METRICS_NS}_name_validation_total"
         val parallelMetric = "${METRICS_NS}_parallel_names_validation_total"
         val fuzzyMetric = "${METRICS_NS}_name_validation_fuzzy_score"

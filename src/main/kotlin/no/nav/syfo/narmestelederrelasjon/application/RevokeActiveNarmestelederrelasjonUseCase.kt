@@ -11,7 +11,7 @@ import no.nav.syfo.platform.application.orStop
 class RevokeActiveNarmestelederrelasjonUseCase(
     private val organizationAccess: OrganizationAccess,
     private val personLookup: PersonLookup,
-    private val nameValidationMetrics: ManagerNameValidationMetrics,
+    private val nameValidationMetrics: NameValidationMetrics,
     private val activeRelations: ActiveNarmestelederrelasjonRepository,
     private val publisher: PublishNarmestelederrelasjonRevocation,
 ) {

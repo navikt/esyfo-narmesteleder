@@ -86,6 +86,8 @@ Owns established and revoked narmesteleder relations:
 - handle `POST /api/v1/linemanager/revoke` by checking organization access,
   resolving the employee in PDL, validating the last name and active relation,
   then publishing a revocation without requiring employment or sick leave;
+- revoke the relation for a sendt sykmelding without validation, publishing
+  with the `ARBEIDSTAGER_SYKMELDING_REVOKE` Kafka source;
 - publish relation messages;
 - ingest and republish relation events;
 - own the local relation register;
@@ -105,7 +107,9 @@ Owns processing and local persistence of sendt sykmelding:
 - apply retention rules;
 - persist and revoke individual sykmeldinger;
 - trigger creation of narmestelederbehov;
-- trigger revocation of narmestelederrelasjon.
+- trigger revocation of narmestelederrelasjon through the
+  `RevokeNarmestelederrelasjonFromSendtSykmelding` contract. `sykmelding` owns
+  the `kilde` it stores for each processed brudd.
 
 The initial dependency is one-way:
 
@@ -395,7 +399,9 @@ side-effect ordering.
 
 The direct submission and employee-and-organization revoke routes now live in
 `narmestelederrelasjon`; the legacy `/linemanager` handler retains the
-requirement routes. Revocation triggered by sendt sykmelding remains separate.
+requirement routes. Revocation triggered by sendt sykmelding goes through the
+`RevokeNarmestelederrelasjonFromSendtSykmelding` contract, so no legacy code
+publishes relation revocations any more.
 
 The following are separate changes and must not be hidden inside structural
 pull requests:

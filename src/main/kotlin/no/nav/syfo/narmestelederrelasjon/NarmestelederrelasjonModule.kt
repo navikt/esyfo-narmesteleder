@@ -26,7 +26,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedActiveNarmesteled
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjonRevocation
-import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ValkeyPersonDetailsCache
 import org.koin.dsl.module
@@ -41,7 +41,7 @@ fun narmestelederrelasjonModule() = module {
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }
     single<PersonLookup> { CachedPersonLookup(PdlPersonLookup(get()), ValkeyPersonDetailsCache(get())) }
-    single<NameValidationMetrics> { LegacyNameValidationMetrics() }
+    single<NameValidationMetrics> { MicrometerNameValidationMetrics() }
     single<EstablishNarmestelederrelasjon> { EstablishNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
     single { SubmitNarmestelederrelasjonUseCase(get(), get()) }
     single<NarmestelederrelasjonOrganization> { EregNarmestelederrelasjonOrganization(get()) }

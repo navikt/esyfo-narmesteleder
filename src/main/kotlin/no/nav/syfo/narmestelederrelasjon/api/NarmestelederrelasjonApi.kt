@@ -16,7 +16,6 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.api.v1.getMyPrincipal
 import no.nav.syfo.narmesteleder.api.v1.getUUIDFromPathVariable
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult
@@ -26,6 +25,7 @@ import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.observability.countGetNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.observability.countLinemanagerRevokeById
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
+import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.logger

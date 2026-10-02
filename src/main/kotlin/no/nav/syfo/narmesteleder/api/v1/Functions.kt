@@ -1,18 +1,8 @@
 package no.nav.syfo.narmesteleder.api.v1
 
-import io.ktor.serialization.JsonConvertException
-import io.ktor.server.auth.authentication
-import io.ktor.server.plugins.BadRequestException
-import io.ktor.server.request.receive
 import io.ktor.server.routing.RoutingCall
 import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.Principal
-import no.nav.syfo.application.auth.SystemPrincipal
-import no.nav.syfo.application.auth.TOKEN_ISSUER
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exceptions.UnauthorizedException
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
@@ -23,13 +13,6 @@ import java.time.format.DateTimeParseException
 import java.util.Base64
 import java.util.UUID
 import kotlin.text.Charsets.UTF_8
-
-suspend inline fun <reified T : Any> RoutingCall.tryReceive() = runCatching { receive<T>() }.getOrElse {
-    when {
-        it is JsonConvertException -> throw BadRequestException("Invalid payload in request: ${it.message}", it)
-        else -> throw it
-    }
-}
 
 fun RoutingCall.getUUIDFromPathVariable(name: String): UUID {
     val idString = getPathVariable(name)
@@ -134,18 +117,6 @@ fun LinemanagerSearchCursor.toOpaqueCursor(): String {
     return Base64.getUrlEncoder()
         .withoutPadding()
         .encodeToString(cursor.toByteArray(UTF_8))
-}
-
-fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
-    JwtIssuer.MASKINPORTEN -> {
-        authentication.principal<SystemPrincipal>() ?: throw UnauthorizedException()
-    }
-
-    JwtIssuer.TOKEN_X -> {
-        authentication.principal<UserPrincipal>() ?: throw UnauthorizedException()
-    }
-
-    else -> throw UnauthorizedException()
 }
 
 private const val LINEMANAGER_SEARCH_CURSOR_VERSION = "v2"

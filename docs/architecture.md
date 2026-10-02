@@ -83,6 +83,9 @@ Owns established and revoked narmesteleder relations:
   publishing;
 - accept direct POST relation submissions, normalizing contact details before
   checking organization access and establishing through the relation contract;
+- handle `POST /api/v1/linemanager/revoke` by checking organization access,
+  resolving the employee in PDL, validating the last name and active relation,
+  then publishing a revocation without requiring employment or sick leave;
 - publish relation messages;
 - ingest and republish relation events;
 - own the local relation register;
@@ -389,6 +392,10 @@ Subsequent slices migrate one business action or query at a time. A slice must
 preserve external HTTP and Kafka contracts, database behavior, authentication
 and authorization order, configuration names/defaults, logging safety and
 side-effect ordering.
+
+The direct submission and employee-and-organization revoke routes now live in
+`narmestelederrelasjon`; the legacy `/linemanager` handler retains the
+requirement routes. Revocation triggered by sendt sykmelding remains separate.
 
 The following are separate changes and must not be hidden inside structural
 pull requests:

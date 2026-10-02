@@ -2,8 +2,6 @@ package no.nav.syfo.narmestelederrelasjon.domain
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.narmesteleder.service.validators.NameMatchType
-import no.nav.syfo.narmesteleder.service.validators.NameValidator
 
 class PersonNameMatchTest :
     FunSpec({
@@ -28,6 +26,16 @@ class PersonNameMatchTest :
             match shouldBe fuzzyMatch
             (fuzzyMatch.score >= 0.93) shouldBe true
             fuzzyMatch.hasParallelNames shouldBe false
+        }
+
+        test("accepts the inclusive fuzzy threshold and rejects scores below it") {
+            val accepted = personWithNames(RegisteredName("ABCDEFGHIJKLMNOPQRST"))
+                .matchManagerLastName("ABCZZZGHIJKLMNOPQRST") as ManagerLastNameMatch.Fuzzy
+            accepted.score shouldBe 0.93
+
+            val rejected = personWithNames(RegisteredName("ABCDEFGHIJKLMNOPQRST"))
+                .matchManagerLastName("ABZZZFGHIJKLMNOPQRST") as ManagerLastNameMatch.NoMatch
+            (requireNotNull(rejected.bestFuzzyScore) < 0.93) shouldBe true
         }
 
         test("retains no-match fuzzy score and rejects scores below the threshold") {
@@ -82,44 +90,85 @@ class PersonNameMatchTest :
             )
         }
 
-        listOf(
-            "  A\u030Astr\u00F6m\u2011O\u2019Connor  " to "Åström-O'Connor",
-            "van\t\nHansen" to "Van Hansen",
-            "Hansen" to "hansen",
-            "Åsen" to "Aasen",
-            "Aasen" to "Åsen",
-            "Strøm" to "Ström",
-            "Ström" to "Strøm",
-            "Sæter" to "Säter",
-            "Säter" to "Sæter",
-            "André" to "Andre",
-            "Andre" to "André",
-            "Osterud" to "Østerud",
-            "Ost" to "Øst",
-            "Ost" to "Öst",
-            "Aer" to "Ær",
-            "Aer" to "Är",
-            "Ar" to "Ær",
-            "Ar" to "Är",
-            "Ase" to "Åse",
-            "O*Connor" to "OConnor",
-            "Hansen1" to "Hansen",
-            "Hansen1" to "Hansen1",
-            "Aas" to "Aar",
-            "Li" to "Lu",
-            "Hansen" to "Hanson",
-            "Anderssen" to "Andersen",
-            "Hansen" to "Haugland",
-            "Hansen" to "Olsen",
-            "Andréssen" to "Andersen",
-        ).forEachIndexed { index, (submitted, registered) ->
-            test("preserves legacy name classification and acceptance for case ${index + 1}") {
-                val legacyMatch = NameValidator.determineMatchType(submitted, listOf(registered), "domain-parity")
-                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
+        test("normalizes Unicode, whitespace, apostrophes, and hyphens for exact matches") {
+            listOf(
+                "  A\u030Astr\u00F6m\u2011O\u2019Connor  " to "Åström-O'Connor",
+                "van\t\nHansen" to "Van Hansen",
+                "Hansen" to "hansen",
+                "Hansen1" to "Hansen1",
+            ).forEach { (submitted, registered) ->
+                personWithNames(RegisteredName(registered)).matchManagerLastName(submitted) shouldBe
+                    ManagerLastNameMatch.Exact(hasParallelNames = false)
+            }
+        }
 
-                match.legacyMatchType() shouldBe legacyMatch
-                match.isAccepted() shouldBe legacyMatch.isAccepted
-                match.hasParallelNames shouldBe false
+        test("matches only approved orthographic variants, in both directions") {
+            listOf(
+                "Åsen" to "Aasen",
+                "Aasen" to "Åsen",
+                "Strøm" to "Ström",
+                "Ström" to "Strøm",
+                "Sæther" to "Säther",
+                "Säther" to "Sæther",
+                "Sæter" to "Säter",
+                "Säter" to "Sæter",
+                "Fåberg" to "Faaberg",
+                "Faaberg" to "Fåberg",
+                "André" to "Andre",
+                "Andre" to "André",
+            ).forEach { (submitted, registered) ->
+                personWithNames(RegisteredName(registered)).matchManagerLastName(submitted) shouldBe
+                    ManagerLastNameMatch.OrthographicVariant(hasParallelNames = false)
+            }
+        }
+
+        test("does not broaden orthographic variants to plain letters or digraphs") {
+            listOf(
+                "Osterud" to "Østerud",
+                "Ost" to "Øst",
+                "Ost" to "Öst",
+                "Aer" to "Ær",
+                "Aer" to "Är",
+                "Ar" to "Ær",
+                "Ar" to "Är",
+                "Ase" to "Åse",
+            ).forEach { (submitted, registered) ->
+                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
+                (match is ManagerLastNameMatch.NoMatch) shouldBe true
+                match.isAccepted() shouldBe false
+            }
+        }
+
+        test("rejects unknown characters and names shorter than four Unicode letters for fuzzy matching") {
+            listOf(
+                "O*Connor" to "OConnor",
+                "Hansen1" to "Hansen",
+                "Aas" to "Aar",
+                "Li" to "Lu",
+            ).forEach { (submitted, registered) ->
+                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
+                match shouldBe ManagerLastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
+            }
+            (personWithNames(RegisteredName("Hanson")).matchManagerLastName("Hansen") is ManagerLastNameMatch.Fuzzy) shouldBe true
+        }
+
+        test("accepts fuzzy matches and rejects clearly different names") {
+            listOf(
+                "Hansen" to "Hanson",
+                "Anderssen" to "Andersen",
+            ).forEach { (submitted, registered) ->
+                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
+                (match is ManagerLastNameMatch.Fuzzy) shouldBe true
+                match.isAccepted() shouldBe true
+            }
+            listOf(
+                "Hansen" to "Haugland",
+                "Hansen" to "Olsen",
+                "Andréssen" to "Andersen",
+            ).forEach { (submitted, registered) ->
+                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
+                (match is ManagerLastNameMatch.NoMatch) shouldBe true
+                match.isAccepted() shouldBe false
             }
         }
     })
@@ -129,10 +178,3 @@ private fun personWithNames(vararg names: RegisteredName) = PersonNameDetails(
     lastName = names.first().lastName,
     registeredNames = names.toList(),
 )
-
-private fun ManagerLastNameMatch.legacyMatchType(): NameMatchType = when (this) {
-    is ManagerLastNameMatch.Exact -> NameMatchType.EXACT
-    is ManagerLastNameMatch.OrthographicVariant -> NameMatchType.ORTHOGRAPHIC_VARIANT
-    is ManagerLastNameMatch.Fuzzy -> NameMatchType.FUZZY
-    is ManagerLastNameMatch.NoMatch -> NameMatchType.NONE
-}

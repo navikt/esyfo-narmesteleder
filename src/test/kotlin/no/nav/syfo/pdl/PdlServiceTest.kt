@@ -8,8 +8,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
-import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.client.GetPersonBolkResponse
 import no.nav.syfo.pdl.client.GetPersonResponse
@@ -31,15 +29,11 @@ class PdlServiceTest :
     DescribeSpec({
 
         val pdlClient = mockk<PdlClient>()
-        val pdlCache = mockk<PdlCache>(relaxed = true)
-        val pdlService = PdlService(pdlClient, pdlCache)
+        val pdlService = PdlService(pdlClient)
 
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
-
-            coEvery { pdlCache.getPerson(any()) } returns null
         }
-
         fun getPersonResponse(navn: List<Navn>, identer: List<Ident>) = GetPersonResponse(
             data = ResponseData(
                 person = PersonResponse(navn = navn),
@@ -111,46 +105,6 @@ class PdlServiceTest :
                 shouldThrow<PdlResourceNotFoundException> {
                     pdlService.getPersonFor(fnr)
                 }
-            }
-        }
-
-        describe("getPersonOrThrowApiError") {
-            it("should return person when PDL returns valid data") {
-                val fnr = "12345678901"
-                val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
-                val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
-
-                coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), listOf(ident))
-
-                val result = pdlService.getPersonOrThrowApiError(fnr)
-
-                result.nationalIdentificationNumber.value shouldBe fnr
-                result.name shouldBe navn
-                coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
-            }
-
-            it("should convert PdlResourceNotFoundException to BadRequestException") {
-                val fnr = "12345678901"
-
-                coEvery { pdlClient.getPerson(fnr) } throws PdlResourceNotFoundException("Not found")
-
-                shouldThrow<ApiErrorException.BadRequestException> {
-                    pdlService.getPersonOrThrowApiError(fnr)
-                }
-
-                coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
-            }
-
-            it("should convert PdlRequestException to InternalServerErrorException") {
-                val fnr = "12345678901"
-
-                coEvery { pdlClient.getPerson(fnr) } throws PdlRequestException("PDL error")
-
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    pdlService.getPersonOrThrowApiError(fnr)
-                }
-
-                coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }
         }
 

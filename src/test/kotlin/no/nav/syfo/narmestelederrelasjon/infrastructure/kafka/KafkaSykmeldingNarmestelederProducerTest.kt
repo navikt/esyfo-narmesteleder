@@ -11,7 +11,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.verify
 import linemanager
-import linemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.pdl.client.Navn
@@ -90,16 +89,16 @@ class KafkaSykmeldingNarmestelederProducerTest :
         describe("sendSykemeldingNLBrudd") {
             it("Calls send on Producer with ProducerRecord containing NlAvbrutt") {
                 // Arrange
-                val avbryt = linemanagerRevoke()
                 val recordMetadata = createRecordMetadata()
                 val now = OffsetDateTime.now(ZoneOffset.UTC)
+                val avbryt = NlAvbrutt(sykmeldtFnr = "12345678901", orgnummer = "123456789")
 
                 val futureMock = mockk<SettableFuture<RecordMetadata>>()
                 coEvery { futureMock.get() } returns recordMetadata
                 coEvery { kafkaProducerMock.send(any<ProducerRecord<String, NarmestelederResponseKafkaMessage>>()) } returns futureMock
 
                 // Act
-                producer.sendSykmldingNLBrudd(avbryt.toNlAvbrutt(), NlResponseSource.LPS)
+                producer.sendSykmldingNLBrudd(avbryt, NlResponseSource.LPS)
 
                 // Assert
                 verify(exactly = 1) {
@@ -108,8 +107,8 @@ class KafkaSykmeldingNarmestelederProducerTest :
                             it.shouldBeInstanceOf<ProducerRecord<String, NarmestelederAvbruddResponseKafkaMessage>>()
                             it.value().kafkaMetadata.source shouldBe NlResponseSource.LPS.source
                             it.value().nlAvbrutt shouldNotBe null
-                            it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgNumber.value
-                            it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.employeeIdentificationNumber.value
+                            it.value().nlAvbrutt.orgnummer shouldBe avbryt.orgnummer
+                            it.value().nlAvbrutt.sykmeldtFnr shouldBe avbryt.sykmeldtFnr
                             it.value().nlAvbrutt.aktivTom shouldBeAfter now
                         }
                     )

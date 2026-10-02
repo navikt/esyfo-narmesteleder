@@ -32,7 +32,6 @@ import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.valkey.EregCache
-import no.nav.syfo.application.valkey.PdlCache
 import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
@@ -77,8 +76,7 @@ import java.util.UUID
 abstract class LinemanagerApiV1TestBase(
     body: LinemanagerApiV1TestBase.() -> Unit,
 ) : DescribeSpec({}) {
-    internal val pdlCacheMock = mockk<PdlCache>(relaxed = true)
-    internal val pdlService = spyk(PdlService(FakePdlClient(), pdlCacheMock))
+    internal val pdlService = spyk(PdlService(FakePdlClient()))
     internal val texasHttpClientMock = mockk<TexasHttpClient>()
     internal val narmesteLederRelasjon = linemanager()
     internal val fakeAaregClient = FakeAaregClient()
@@ -100,7 +98,6 @@ abstract class LinemanagerApiV1TestBase(
     )
     internal val validationService =
         ValidationService(
-            pdlService = pdlService,
             principalAccessValidator = principalAccessValidator,
         )
     internal val validationServiceSpy = spyk(validationService)
@@ -126,7 +123,6 @@ abstract class LinemanagerApiV1TestBase(
             linemanagerSearchRepository = mockk()
             linemanagerStatisticsRepository = mockk()
             employeeLinemanagerRepository = mockk()
-            coEvery { pdlCacheMock.getPerson(any()) } returns null
             narmesteLederService =
                 NarmestelederService(
                     nlDb = fakeRepo,

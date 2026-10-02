@@ -21,7 +21,6 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -80,7 +79,7 @@ internal fun legacyServicesModule() = module {
     single { SykmeldingService(sykmeldingDb = get(), clock = get()) }
     single { SykmeldingRetentionMetrics() }
     single { DeleteOldSykmeldinger(repository = get(), clock = get(), metrics = get()) }
-    single { NarmestelederBruddService(narmestelederKafkaService = get(), bruddRepository = get()) }
+    single { NarmestelederBruddService(revokeNarmestelederrelasjon = get(), bruddRepository = get()) }
     single {
         SendtSykmeldingHandler(
             narmesteLederService = get(),
@@ -96,7 +95,6 @@ internal fun legacyServicesModule() = module {
         )
     }
 
-    single { NarmestelederKafkaService(kafkaSykemeldingProducer = get()) }
     single {
         NarmestelederService(
             nlDb = get(),

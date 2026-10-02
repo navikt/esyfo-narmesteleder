@@ -21,6 +21,7 @@ class KafkaPublishNarmestelederrelasjonRevocationTest :
                 RevocationInitiator.LINEMANAGER to NlResponseSource.NARMESTELEDER_REVOKE,
                 RevocationInitiator.PERSONNEL_MANAGER to NlResponseSource.PERSONALLEDER_REVOKE,
                 RevocationInitiator.LPS to NlResponseSource.LPS_REVOKE,
+                RevocationInitiator.EMPLOYEE_SENDT_SYKMELDING to NlResponseSource.ARBEIDSTAGER_SYKMELDING_REVOKE,
             )
             expectedSources.forEach { (initiator, source) ->
                 adapter.publish(

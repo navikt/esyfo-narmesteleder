@@ -1,9 +1,9 @@
 package no.nav.syfo.sykmelding.service
 
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingNarmestelederBrudd
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingNarmestelederBruddRepository
 import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
@@ -11,8 +11,10 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
+internal const val SENDT_SYKMELDING_BRUDD_KILDE = "esyo-narmesteleder.arbeidstager.sykmelding.deaktivert"
+
 class NarmestelederBruddService(
-    private val narmestelederKafkaService: NarmestelederKafkaService,
+    private val revokeNarmestelederrelasjon: RevokeNarmestelederrelasjonFromSendtSykmelding,
     private val bruddRepository: SendtSykmeldingNarmestelederBruddRepository,
 ) {
     suspend fun revokeFromSendtSykmelding(
@@ -24,12 +26,11 @@ class NarmestelederBruddService(
     ) {
         if (bruddRepository.findBySykmeldingId(sykmeldingId) != null) return
 
-        val source = NlResponseSource.ARBEIDSTAGER_SYKMELDING_REVOKE
-
-        narmestelederKafkaService.avbrytNarmesteLederRelation(
-            employeeIdentificationNumber = PersonalIdentificationNumber(fnr),
-            orgNumber = OrganizationNumber(orgnummer),
-            source = source,
+        revokeNarmestelederrelasjon.execute(
+            RevokeNarmestelederrelasjonFromSendtSykmeldingCommand(
+                employeeIdent = PersonIdent(fnr),
+                organizationNumber = OrganizationNumber(orgnummer),
+            ),
         )
 
         bruddRepository.insert(
@@ -40,7 +41,7 @@ class NarmestelederBruddService(
                 kafkaTopic = SENDT_SYKMELDING_TOPIC,
                 kafkaPartition = kafkaPartition,
                 kafkaOffset = kafkaOffset,
-                kilde = source.source,
+                kilde = SENDT_SYKMELDING_BRUDD_KILDE,
                 created = OffsetDateTime.now(ZoneOffset.UTC),
             )
         )

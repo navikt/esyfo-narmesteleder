@@ -21,6 +21,7 @@ class KafkaPublishNarmestelederrelasjonRevocation(
                 RevocationInitiator.LINEMANAGER -> NlResponseSource.NARMESTELEDER_REVOKE
                 RevocationInitiator.PERSONNEL_MANAGER -> NlResponseSource.PERSONALLEDER_REVOKE
                 RevocationInitiator.LPS -> NlResponseSource.LPS_REVOKE
+                RevocationInitiator.EMPLOYEE_SENDT_SYKMELDING -> NlResponseSource.ARBEIDSTAGER_SYKMELDING_REVOKE
             },
         )
     }

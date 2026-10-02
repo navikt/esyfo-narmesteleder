@@ -3,9 +3,9 @@ package no.nav.syfo.narmestelederbehov.application
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -20,7 +20,7 @@ sealed interface FulfillNarmestelederbehovResult {
     data class Fulfilled(
         val relationSource: RelationSource,
         val dialogCompletion: DialogportenCompletionAttempt,
-        val managerNameMatch: ManagerLastNameMatch,
+        val managerNameMatch: LastNameMatch,
     ) : FulfillNarmestelederbehovResult
     data class InvalidManagerContactDetails(
         val issues: List<ManagerContactValidationIssue>,
@@ -32,6 +32,6 @@ sealed interface FulfillNarmestelederbehovResult {
     data class NoEmployment(val reason: EmploymentResult) : FulfillNarmestelederbehovResult
     data object PersonNotFound : FulfillNarmestelederbehovResult
     data class ManagerNameMismatch(
-        val managerNameMatch: ManagerLastNameMatch.NoMatch,
+        val managerNameMatch: LastNameMatch.NoMatch,
     ) : FulfillNarmestelederbehovResult
 }

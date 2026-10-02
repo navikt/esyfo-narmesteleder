@@ -2,7 +2,7 @@ package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.NormalizedManagerContact
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 
@@ -20,10 +20,10 @@ data class EstablishNarmestelederrelasjonCommand(
 )
 
 sealed interface EstablishNarmestelederrelasjonResult {
-    data class Published(val managerNameMatch: ManagerLastNameMatch) : EstablishNarmestelederrelasjonResult
+    data class Published(val managerNameMatch: LastNameMatch) : EstablishNarmestelederrelasjonResult
     data class NoActiveSykmelding(val organizationNumber: OrganizationNumber) : EstablishNarmestelederrelasjonResult
     data class NoEmployment(val reason: EmploymentResult) : EstablishNarmestelederrelasjonResult
     data object PersonNotFound : EstablishNarmestelederrelasjonResult
-    data class ManagerNameMismatch(val managerNameMatch: ManagerLastNameMatch.NoMatch) : EstablishNarmestelederrelasjonResult
-    data class EmployeeNameMismatch(val employeeNameMatch: ManagerLastNameMatch.NoMatch) : EstablishNarmestelederrelasjonResult
+    data class ManagerNameMismatch(val managerNameMatch: LastNameMatch.NoMatch) : EstablishNarmestelederrelasjonResult
+    data class EmployeeNameMismatch(val employeeNameMatch: LastNameMatch.NoMatch) : EstablishNarmestelederrelasjonResult
 }

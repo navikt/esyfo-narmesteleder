@@ -1,25 +1,25 @@
 package no.nav.syfo.narmestelederrelasjon.domain
 
-sealed interface ManagerLastNameMatch {
+sealed interface LastNameMatch {
     val hasParallelNames: Boolean
 
     data class Exact(
         override val hasParallelNames: Boolean,
-    ) : ManagerLastNameMatch
+    ) : LastNameMatch
 
     data class OrthographicVariant(
         override val hasParallelNames: Boolean,
-    ) : ManagerLastNameMatch
+    ) : LastNameMatch
 
     data class Fuzzy(
         val score: Double,
         override val hasParallelNames: Boolean,
-    ) : ManagerLastNameMatch
+    ) : LastNameMatch
 
     data class NoMatch(
         val bestFuzzyScore: Double?,
         override val hasParallelNames: Boolean,
-    ) : ManagerLastNameMatch
+    ) : LastNameMatch
 }
 
-fun ManagerLastNameMatch.isAccepted(): Boolean = this !is ManagerLastNameMatch.NoMatch
+fun LastNameMatch.isAccepted(): Boolean = this !is LastNameMatch.NoMatch

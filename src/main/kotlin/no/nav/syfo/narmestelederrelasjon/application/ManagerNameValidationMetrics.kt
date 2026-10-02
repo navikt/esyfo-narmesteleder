@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 
 fun interface ManagerNameValidationMetrics {
-    fun record(match: ManagerLastNameMatch)
+    fun record(match: LastNameMatch)
 }

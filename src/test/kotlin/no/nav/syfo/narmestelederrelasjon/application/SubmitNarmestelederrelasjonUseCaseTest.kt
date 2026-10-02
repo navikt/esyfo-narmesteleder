@@ -4,8 +4,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -35,7 +35,7 @@ class SubmitNarmestelederrelasjonUseCaseTest :
                     EstablishNarmestelederrelasjon {
                         effects += "establish"
                         established = it
-                        EstablishNarmestelederrelasjonResult.Published(ManagerLastNameMatch.Exact(false))
+                        EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false))
                     },
                 )
                 useCase.execute(command(subject)) shouldBe SubmitNarmestelederrelasjonResult.Established(source)
@@ -76,6 +76,6 @@ private fun recordingUseCase(
     },
     EstablishNarmestelederrelasjon {
         effects += "establish"
-        EstablishNarmestelederrelasjonResult.Published(ManagerLastNameMatch.Exact(false))
+        EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false))
     },
 )

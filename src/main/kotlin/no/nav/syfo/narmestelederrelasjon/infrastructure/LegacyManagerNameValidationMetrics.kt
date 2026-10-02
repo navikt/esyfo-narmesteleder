@@ -3,19 +3,19 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import no.nav.syfo.narmesteleder.service.validators.NameMatchType
 import no.nav.syfo.narmesteleder.service.validators.NameValidator
 import no.nav.syfo.narmestelederrelasjon.application.ManagerNameValidationMetrics
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 
 class LegacyManagerNameValidationMetrics : ManagerNameValidationMetrics {
-    override fun record(match: ManagerLastNameMatch) {
+    override fun record(match: LastNameMatch) {
         val type = when (match) {
-            is ManagerLastNameMatch.Exact -> NameMatchType.EXACT
-            is ManagerLastNameMatch.OrthographicVariant -> NameMatchType.ORTHOGRAPHIC_VARIANT
-            is ManagerLastNameMatch.Fuzzy -> NameMatchType.FUZZY
-            is ManagerLastNameMatch.NoMatch -> NameMatchType.NONE
+            is LastNameMatch.Exact -> NameMatchType.EXACT
+            is LastNameMatch.OrthographicVariant -> NameMatchType.ORTHOGRAPHIC_VARIANT
+            is LastNameMatch.Fuzzy -> NameMatchType.FUZZY
+            is LastNameMatch.NoMatch -> NameMatchType.NONE
         }
         val score = when (match) {
-            is ManagerLastNameMatch.Fuzzy -> match.score
-            is ManagerLastNameMatch.NoMatch -> match.bestFuzzyScore
+            is LastNameMatch.Fuzzy -> match.score
+            is LastNameMatch.NoMatch -> match.bestFuzzyScore
             else -> null
         }
         NameValidator.recordManagerLastNameMatch(type, match.hasParallelNames, score)

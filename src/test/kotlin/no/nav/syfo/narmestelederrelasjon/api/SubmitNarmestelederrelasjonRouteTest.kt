@@ -46,10 +46,10 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
 import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -60,7 +60,7 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 
 private val organization = OrganizationNumber("123456789")
-private val noMatch = ManagerLastNameMatch.NoMatch(null, false)
+private val noMatch = LastNameMatch.NoMatch(null, false)
 
 class SubmitNarmestelederrelasjonRouteTest :
     FunSpec({
@@ -225,7 +225,7 @@ private data class HttpCase(
 )
 
 private class SubmitFixture(
-    private val relationResult: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published(ManagerLastNameMatch.Exact(false)),
+    private val relationResult: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false)),
     private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted },
     private val failure: Exception? = null,
 ) {

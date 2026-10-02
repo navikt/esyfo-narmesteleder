@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.domain
 import org.apache.commons.text.similarity.JaroWinklerSimilarity
 import java.text.Normalizer
 
-fun PersonNameDetails.matchManagerLastName(lastName: String): ManagerLastNameMatch {
+fun PersonNameDetails.matchLastName(lastName: String): LastNameMatch {
     val hasParallelNames = registeredNames.size > 1
     val normalizedName = lastName.normalizeName()
     val registeredLastNames = registeredNames.flatMap { registeredName ->
@@ -15,19 +15,19 @@ fun PersonNameDetails.matchManagerLastName(lastName: String): ManagerLastNameMat
     }.map(String::normalizeName)
 
     if (registeredLastNames.any { it == normalizedName }) {
-        return ManagerLastNameMatch.Exact(hasParallelNames)
+        return LastNameMatch.Exact(hasParallelNames)
     }
 
     val orthographicName = normalizedName.canonicalizeOrthographicVariants()
     if (registeredLastNames.any { it.canonicalizeOrthographicVariants() == orthographicName }) {
-        return ManagerLastNameMatch.OrthographicVariant(hasParallelNames)
+        return LastNameMatch.OrthographicVariant(hasParallelNames)
     }
 
     val bestFuzzyScore = registeredLastNames.mapNotNull { normalizedName.fuzzySimilarityTo(it) }.maxOrNull()
     return bestFuzzyScore
         ?.takeIf { it >= FUZZY_MATCH_THRESHOLD }
-        ?.let { ManagerLastNameMatch.Fuzzy(it, hasParallelNames) }
-        ?: ManagerLastNameMatch.NoMatch(bestFuzzyScore, hasParallelNames)
+        ?.let { LastNameMatch.Fuzzy(it, hasParallelNames) }
+        ?: LastNameMatch.NoMatch(bestFuzzyScore, hasParallelNames)
 }
 
 private const val FUZZY_MATCH_THRESHOLD = 0.93

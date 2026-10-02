@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
@@ -40,7 +40,7 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
             val fixture = RevokeActiveFixture(name = "Other")
             fixture.execute() shouldBe RevokeActiveNarmestelederrelasjonResult.EmployeeNameMismatch
             fixture.calls shouldBe listOf("access", "person", "name")
-            fixture.matches.single().shouldBeInstanceOf<ManagerLastNameMatch.NoMatch>().hasParallelNames shouldBe false
+            fixture.matches.single().shouldBeInstanceOf<LastNameMatch.NoMatch>().hasParallelNames shouldBe false
         }
 
         test("no active relation does not publish") {
@@ -60,14 +60,14 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
                 fixture.calls shouldBe listOf("access", "person", "name", "active", "publish")
                 fixture.published.single() shouldBe PublishNarmestelederrelasjonRevocationCommand(resolved, organization, initiator)
                 fixture.lookups shouldBe listOf(resolved to organization)
-                fixture.matches.single() shouldBe ManagerLastNameMatch.Exact(false)
+                fixture.matches.single() shouldBe LastNameMatch.Exact(false)
             }
         }
 
         test("parallel registered name records matching metrics before publishing") {
             val fixture = RevokeActiveFixture(name = "Other", registeredNames = listOf(RegisteredName("Other"), RegisteredName("Hansen")))
             fixture.execute() shouldBe RevokeActiveNarmestelederrelasjonResult.Revoked(RevocationInitiator.LPS)
-            fixture.matches shouldBe listOf(ManagerLastNameMatch.Exact(true))
+            fixture.matches shouldBe listOf(LastNameMatch.Exact(true))
         }
     })
 
@@ -79,7 +79,7 @@ private class RevokeActiveFixture(
     private val active: Boolean = true,
 ) {
     val calls = mutableListOf<String>()
-    val matches = mutableListOf<ManagerLastNameMatch>()
+    val matches = mutableListOf<LastNameMatch>()
     val lookups = mutableListOf<Pair<PersonIdent, OrganizationNumber>>()
     val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
     private val useCase = RevokeActiveNarmestelederrelasjonUseCase(

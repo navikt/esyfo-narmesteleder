@@ -54,8 +54,6 @@ import no.nav.syfo.narmesteleder.api.v1.REQUIREMENT_PATH
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
@@ -65,8 +63,6 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
@@ -340,11 +336,8 @@ private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture
                 route(API_V1_PATH) {
                     install(AddTokenIssuerPlugin)
                     registerLinemanagerApiV1(
-                        NarmestelederKafkaService(fixture.producer),
-                        mockk<ValidationService>(relaxed = true),
                         fixture.texas,
                         mockk<LinemanagerRequirementRESTHandler>(relaxed = true),
-                        HasActiveNarmestelederrelasjonUseCase(FakeActiveNarmestelederrelasjonRepository()),
                         fixture.useCase,
                     )
                 }

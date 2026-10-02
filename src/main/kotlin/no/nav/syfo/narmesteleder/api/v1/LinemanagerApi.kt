@@ -4,24 +4,14 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
-import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import no.nav.syfo.application.auth.SystemPrincipal
-import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.domain.LinemanagerRevoke
 import no.nav.syfo.narmesteleder.domain.Manager
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.api.throwIfRejected
 import no.nav.syfo.narmestelederbehov.api.toManagerContactInput
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
@@ -29,49 +19,16 @@ import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
 const val LINEMANAGER_API_PATH = "/linemanager"
-const val REVOKE_PATH = "$LINEMANAGER_API_PATH/revoke"
 const val REQUIREMENT_PATH = "$LINEMANAGER_API_PATH/requirement"
 fun Route.registerLinemanagerApiV1(
-    narmestelederKafkaService: NarmestelederKafkaService,
-    validationService: ValidationService,
     texasHttpClient: TexasHttpClient,
     linemanagerRequirementRestHandler: LinemanagerRequirementRESTHandler,
-    hasActiveNarmestelederrelasjon: HasActiveNarmestelederrelasjonUseCase,
     fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,
 ) {
     route(LINEMANAGER_API_PATH) {
-        // Revoke and requirement routes share this Ktor parent and inherit its authentication.
+        // Requirement routes inherit authentication from this parent.
         install(MaskinportenAndTokenXTokenAuthPlugin) {
             client = texasHttpClient
-        }
-    }
-
-    route(REVOKE_PATH) {
-        post {
-            val principal = call.getMyPrincipal()
-            val revoke = call.tryReceive<LinemanagerRevoke>()
-            val employee = validationService.validateLinemanagerRevoke(revoke, principal)
-
-            val tweakedRevoke = revoke.copy(employeeIdentificationNumber = employee.nationalIdentificationNumber)
-            val hasActiveRelation = hasActiveNarmestelederrelasjon.execute(
-                PersonIdent(tweakedRevoke.employeeIdentificationNumber.value),
-                OrganizationNumber(tweakedRevoke.orgNumber.value),
-            )
-            if (!hasActiveRelation) {
-                COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION.increment()
-                call.respond(HttpStatusCode.NoContent)
-                return@post
-            }
-
-            narmestelederKafkaService.avbrytNarmesteLederRelation(
-                tweakedRevoke,
-                NlResponseSource.getSourceFrom(principal, tweakedRevoke)
-            )
-            when (principal) {
-                is SystemPrincipal -> COUNT_REVOKE_LINEMANAGER_BY_LPS.increment()
-                is UserPrincipal -> COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()
-            }
-            call.respond(HttpStatusCode.Accepted)
         }
     }
 

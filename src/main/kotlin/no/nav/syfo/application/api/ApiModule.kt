@@ -20,6 +20,7 @@ import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
+import no.nav.syfo.narmestelederrelasjon.api.registerRevokeActiveNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerSubmitNarmestelederrelasjonApi
 import org.koin.ktor.ext.get
 
@@ -59,14 +60,12 @@ fun Application.configureRouting() {
 
 private fun Route.registerApiV1Routes() {
     registerLinemanagerApiV1(
-        narmestelederKafkaService = get(),
-        validationService = get(),
         texasHttpClient = get(),
         linemanagerRequirementRestHandler = get(),
-        hasActiveNarmestelederrelasjon = get(),
         fulfillNarmestelederbehov = get(),
     )
     registerSubmitNarmestelederrelasjonApi(submit = get(), texasHttpClient = get())
+    registerRevokeActiveNarmestelederrelasjonApi(revoke = get(), texasHttpClient = get())
     registerAccessOrganizationsApi(altinnTilgangerService = get(), texasHttpClient = get())
 }
 

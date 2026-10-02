@@ -54,7 +54,6 @@ import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
@@ -62,8 +61,6 @@ import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCa
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
@@ -83,8 +80,6 @@ abstract class LinemanagerApiV1TestBase(
     internal val pdlCacheMock = mockk<PdlCache>(relaxed = true)
     internal val pdlService = spyk(PdlService(FakePdlClient(), pdlCacheMock))
     internal val texasHttpClientMock = mockk<TexasHttpClient>()
-    internal val activeRelationRepository = FakeActiveNarmestelederrelasjonRepository()
-    internal val hasActiveNarmestelederrelasjon = HasActiveNarmestelederrelasjonUseCase(activeRelationRepository)
     internal val narmesteLederRelasjon = linemanager()
     internal val fakeAaregClient = FakeAaregClient()
     internal val aaregService = AaregService(fakeAaregClient)
@@ -92,9 +87,6 @@ abstract class LinemanagerApiV1TestBase(
     internal val eregCache = mockk<EregCache>(relaxed = true)
     internal val eregService = EregService(fakeEregClient, eregCache)
     internal val relationProducerSpy = spyk(FakeSykmeldingNarmestelederProducer())
-    internal val narmestelederKafkaService =
-        NarmestelederKafkaService(relationProducerSpy)
-    internal val narmestelederKafkaServiceSpy = spyk(narmestelederKafkaService)
     internal val fakeAltinnTilgangerClient = FakeAltinnTilgangerClient()
     internal val altinnTilgangerServiceMock = AltinnTilgangerService(fakeAltinnTilgangerClient)
     internal val altinnAccessServiceSpy = spyk(altinnTilgangerServiceMock)
@@ -128,7 +120,6 @@ abstract class LinemanagerApiV1TestBase(
     init {
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
-            activeRelationRepository.reset()
             fakeAltinnTilgangerClient.accessPolicy.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
@@ -200,11 +191,8 @@ abstract class LinemanagerApiV1TestBase(
                     route(API_V1_PATH) {
                         install(AddTokenIssuerPlugin)
                         registerLinemanagerApiV1(
-                            narmestelederKafkaServiceSpy,
-                            validationServiceSpy,
                             texasHttpClientMock,
                             nlBehovHandler,
-                            hasActiveNarmestelederrelasjon,
                             fulfillNarmestelederbehov,
                         )
                         registerAccessOrganizationsApi(altinnAccessServiceSpy, texasHttpClientMock)

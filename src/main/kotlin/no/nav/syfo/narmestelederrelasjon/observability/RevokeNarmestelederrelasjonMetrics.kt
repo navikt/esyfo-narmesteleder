@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonResult
 
 const val LINEMANAGER_REVOKE_BY_ID_TOTAL = "${METRICS_NS}_linemanager_revoke_by_id_total"
@@ -29,5 +30,31 @@ fun countLinemanagerRevokeById(result: RevokeNarmestelederrelasjonResult) {
             RevocationInitiator.PERSONNEL_MANAGER -> countRevokedByPersonnelManager.increment()
             RevocationInitiator.LPS -> countRevokedByLps.increment()
         }
+    }
+}
+
+const val REVOKE_LINEMANAGER_BY_LPS = "${METRICS_NS}_revoke_linemanager_by_lps"
+val COUNT_REVOKE_LINEMANAGER_BY_LPS: Counter = Counter.builder(REVOKE_LINEMANAGER_BY_LPS)
+    .description("Counts the number of revocations performed by LPS")
+    .register(METRICS_REGISTRY)
+
+const val REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER = "${METRICS_NS}_revoke_linemanager_by_personnel_manager"
+val COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER: Counter = Counter.builder(REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER)
+    .description("Counts the number of revocations performed by personnel manager")
+    .register(METRICS_REGISTRY)
+
+const val REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION = "${METRICS_NS}_revoke_linemanager_without_active_relation"
+val COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION: Counter = Counter.builder(REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION)
+    .description("Counts revoke requests where no active line manager relation exists")
+    .register(METRICS_REGISTRY)
+
+fun countRevokeActiveNarmestelederrelasjon(result: RevokeActiveNarmestelederrelasjonResult) {
+    when (result) {
+        is RevokeActiveNarmestelederrelasjonResult.Revoked -> when (result.initiator) {
+            RevocationInitiator.LPS -> COUNT_REVOKE_LINEMANAGER_BY_LPS.increment()
+            else -> COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()
+        }
+        RevokeActiveNarmestelederrelasjonResult.NoActiveRelation -> COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION.increment()
+        else -> Unit
     }
 }

@@ -66,6 +66,12 @@ class ExposedActiveNarmestelederrelasjonRepositoryTest :
         test("findActive returns an empty list when no relation exists") {
             repository.findActive(employeeIdent, organizationNumber) shouldBe emptyList()
         }
+
+        test("findActive returns stored manager email without parsing it") {
+            insertRelation(email = "leder@nav", from = activeFrom)
+
+            repository.findActive(employeeIdent, organizationNumber).single().managerEmail shouldBe "leder@nav"
+        }
     })
 
 private fun insertRelation(

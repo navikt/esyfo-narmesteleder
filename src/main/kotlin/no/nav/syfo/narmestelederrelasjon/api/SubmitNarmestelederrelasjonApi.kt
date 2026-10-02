@@ -6,7 +6,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
@@ -20,7 +19,6 @@ import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.observability.countSubmittedNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
-import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
@@ -72,16 +70,7 @@ internal fun SubmitNarmestelederrelasjonResult.throwIfRejected(): SubmitNarmeste
             type = ErrorType.INVALID_FORMAT,
             isAlreadyLogged = true,
         )
-    is SubmitNarmestelederrelasjonResult.AccessDenied -> throw ApiErrorException.ForbiddenException(
-        errorMessage = when (reason) {
-            DenialReason.MISSING_ORGANIZATION_ACCESS -> "User lacks access to organization: ${organizationNumber.value}"
-            DenialReason.MISSING_RESOURCE_ACCESS ->
-                "User lacks access to required Altinn resource for organization: ${organizationNumber.value}"
-            DenialReason.SYSTEM_USER_REJECTED -> "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource"
-        },
-        type = if (reason == DenialReason.MISSING_ORGANIZATION_ACCESS) ErrorType.MISSING_ORG_ACCESS else ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-        isAlreadyLogged = reason == DenialReason.SYSTEM_USER_REJECTED,
-    )
+    is SubmitNarmestelederrelasjonResult.AccessDenied -> throw reason.toForbiddenException(organizationNumber)
     is SubmitNarmestelederrelasjonResult.EstablishRejected -> when (val rejection = reason) {
         is EstablishNarmestelederrelasjonResult.NoActiveSykmelding ->
             throw ApiErrorException.BadRequestException(

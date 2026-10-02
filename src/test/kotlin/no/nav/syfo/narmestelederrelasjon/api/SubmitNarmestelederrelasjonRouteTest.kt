@@ -39,14 +39,11 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
-import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
@@ -279,11 +276,8 @@ private class SubmitFixture(
                     route(API_V1_PATH) {
                         install(AddTokenIssuerPlugin)
                         registerLinemanagerApiV1(
-                            mockk<NarmestelederKafkaService>(),
-                            mockk<ValidationService>(),
                             texas,
                             mockk<LinemanagerRequirementRESTHandler>(),
-                            mockk<HasActiveNarmestelederrelasjonUseCase>(),
                             mockk<FulfillNarmestelederbehovUseCase>(),
                         )
                         registerSubmitNarmestelederrelasjonApi(
@@ -296,6 +290,7 @@ private class SubmitFixture(
                             ),
                             texas,
                         )
+                        registerRevokeActiveNarmestelederrelasjonApi(mockk(), texas)
                     }
                     route(INTERNAL_API_V1_PATH) {
                         install(AddTokenIssuerPlugin)

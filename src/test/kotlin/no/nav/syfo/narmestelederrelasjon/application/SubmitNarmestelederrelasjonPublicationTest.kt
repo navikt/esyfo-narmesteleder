@@ -38,7 +38,7 @@ class SubmitNarmestelederrelasjonPublicationTest :
                             else -> null
                         }
                     },
-                    ManagerNameValidationMetrics { },
+                    NameValidationMetrics { },
                     KafkaPublishNarmestelederrelasjon(producer),
                 )
                 val submit = SubmitNarmestelederrelasjonUseCase(

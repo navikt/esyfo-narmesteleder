@@ -49,7 +49,7 @@ PUT fulfillment or complete #525.
   result would lose observations on those failure paths. Preserve existing
   metric names/tags, exact/orthographic/fuzzy/none classification, parallel-name
   attempts/outcomes, and accepted **and rejected** best fuzzy scores. The typed
-  `ManagerLastNameMatch` retains all of these inputs; the foundation does not
+  `LastNameMatch` retains all of these inputs; the foundation does not
   replace the active metrics implementation.
 - After publication, `markFulfilled` uses one status-only `UPDATE ... RETURNING`
   to obtain the dialog ID. A missing row returns

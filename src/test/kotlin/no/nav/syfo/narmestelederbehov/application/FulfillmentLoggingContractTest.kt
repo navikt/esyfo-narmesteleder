@@ -18,7 +18,7 @@ import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import org.slf4j.LoggerFactory
@@ -190,7 +190,7 @@ class FulfillmentLoggingContractTest :
                     createUseCase(
                         relation = FakeRelationEstablisher(
                             result = EstablishNarmestelederrelasjonResult.ManagerNameMismatch(
-                                ManagerLastNameMatch.NoMatch(0.0, hasParallelNames = false),
+                                LastNameMatch.NoMatch(0.0, hasParallelNames = false),
                             ),
                         ),
                     )

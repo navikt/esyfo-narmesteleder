@@ -6,22 +6,22 @@ import io.kotest.matchers.shouldBe
 class PersonNameMatchTest :
     FunSpec({
         test("classifies exact matches, including middle names and parallel registered names") {
-            personWithNames(RegisteredName("Hansen")).matchManagerLastName("hansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = false)
-            personWithNames(RegisteredName("Hansen", middleName = "Berg")).matchManagerLastName("Berg Hansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = false)
-            personWithNames(RegisteredName("Hansen"), RegisteredName("Johansen")).matchManagerLastName("Johansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = true)
+            personWithNames(RegisteredName("Hansen")).matchLastName("hansen") shouldBe
+                LastNameMatch.Exact(hasParallelNames = false)
+            personWithNames(RegisteredName("Hansen", middleName = "Berg")).matchLastName("Berg Hansen") shouldBe
+                LastNameMatch.Exact(hasParallelNames = false)
+            personWithNames(RegisteredName("Hansen"), RegisteredName("Johansen")).matchLastName("Johansen") shouldBe
+                LastNameMatch.Exact(hasParallelNames = true)
         }
 
         test("classifies orthographic variants") {
-            personWithNames(RegisteredName("Aasen")).matchManagerLastName("Åsen") shouldBe
-                ManagerLastNameMatch.OrthographicVariant(hasParallelNames = false)
+            personWithNames(RegisteredName("Aasen")).matchLastName("Åsen") shouldBe
+                LastNameMatch.OrthographicVariant(hasParallelNames = false)
         }
 
         test("classifies fuzzy matches with score above the threshold") {
-            val match = personWithNames(RegisteredName("Andersen")).matchManagerLastName("Anderssen")
-            val fuzzyMatch = match as ManagerLastNameMatch.Fuzzy
+            val match = personWithNames(RegisteredName("Andersen")).matchLastName("Anderssen")
+            val fuzzyMatch = match as LastNameMatch.Fuzzy
 
             match shouldBe fuzzyMatch
             (fuzzyMatch.score >= 0.93) shouldBe true
@@ -30,61 +30,61 @@ class PersonNameMatchTest :
 
         test("accepts the inclusive fuzzy threshold and rejects scores below it") {
             val accepted = personWithNames(RegisteredName("ABCDEFGHIJKLMNOPQRST"))
-                .matchManagerLastName("ABCZZZGHIJKLMNOPQRST") as ManagerLastNameMatch.Fuzzy
+                .matchLastName("ABCZZZGHIJKLMNOPQRST") as LastNameMatch.Fuzzy
             accepted.score shouldBe 0.93
 
             val rejected = personWithNames(RegisteredName("ABCDEFGHIJKLMNOPQRST"))
-                .matchManagerLastName("ABZZZFGHIJKLMNOPQRST") as ManagerLastNameMatch.NoMatch
+                .matchLastName("ABZZZFGHIJKLMNOPQRST") as LastNameMatch.NoMatch
             (requireNotNull(rejected.bestFuzzyScore) < 0.93) shouldBe true
         }
 
         test("retains no-match fuzzy score and rejects scores below the threshold") {
-            val fuzzyNoMatch = personWithNames(RegisteredName("Hansen")).matchManagerLastName("Olsen")
-                as ManagerLastNameMatch.NoMatch
+            val fuzzyNoMatch = personWithNames(RegisteredName("Hansen")).matchLastName("Olsen")
+                as LastNameMatch.NoMatch
 
             (requireNotNull(fuzzyNoMatch.bestFuzzyScore) < 0.93) shouldBe true
             fuzzyNoMatch.hasParallelNames shouldBe false
-            personWithNames(RegisteredName("Li")).matchManagerLastName("Lu") shouldBe
-                ManagerLastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
+            personWithNames(RegisteredName("Li")).matchLastName("Lu") shouldBe
+                LastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
         }
 
         test("prefers exact matches in any registered name over orthographic and fuzzy matches") {
-            personWithNames(RegisteredName("Hanson"), RegisteredName("Hansen")).matchManagerLastName("Hansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = true)
-            personWithNames(RegisteredName("Ström"), RegisteredName("Strøm")).matchManagerLastName("Strøm") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = true)
+            personWithNames(RegisteredName("Hanson"), RegisteredName("Hansen")).matchLastName("Hansen") shouldBe
+                LastNameMatch.Exact(hasParallelNames = true)
+            personWithNames(RegisteredName("Ström"), RegisteredName("Strøm")).matchLastName("Strøm") shouldBe
+                LastNameMatch.Exact(hasParallelNames = true)
         }
 
         test("prefers orthographic matches in any registered name over fuzzy matches") {
-            personWithNames(RegisteredName("Andree"), RegisteredName("André")).matchManagerLastName("Andre") shouldBe
-                ManagerLastNameMatch.OrthographicVariant(hasParallelNames = true)
+            personWithNames(RegisteredName("Andree"), RegisteredName("André")).matchLastName("Andre") shouldBe
+                LastNameMatch.OrthographicVariant(hasParallelNames = true)
         }
 
         test("preserves the best accepted and rejected fuzzy scores across parallel names") {
-            val accepted = personWithNames(RegisteredName("Hanson")).matchManagerLastName("Hansen") as ManagerLastNameMatch.Fuzzy
-            personWithNames(RegisteredName("Haugland"), RegisteredName("Hanson")).matchManagerLastName("Hansen") shouldBe
+            val accepted = personWithNames(RegisteredName("Hanson")).matchLastName("Hansen") as LastNameMatch.Fuzzy
+            personWithNames(RegisteredName("Haugland"), RegisteredName("Hanson")).matchLastName("Hansen") shouldBe
                 accepted.copy(hasParallelNames = true)
 
-            val rejected = personWithNames(RegisteredName("Haugland")).matchManagerLastName("Hansen") as ManagerLastNameMatch.NoMatch
-            personWithNames(RegisteredName("Li"), RegisteredName("Haugland")).matchManagerLastName("Hansen") shouldBe
+            val rejected = personWithNames(RegisteredName("Haugland")).matchLastName("Hansen") as LastNameMatch.NoMatch
+            personWithNames(RegisteredName("Li"), RegisteredName("Haugland")).matchLastName("Hansen") shouldBe
                 rejected.copy(hasParallelNames = true)
         }
 
         test("does not treat middle name candidates as parallel registered names") {
-            personWithNames(RegisteredName("Hansen", middleName = "Berg")).matchManagerLastName("Berg Hansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = false)
-            personWithNames(RegisteredName("Hansen", middleName = " \t ")).matchManagerLastName("Hansen") shouldBe
-                ManagerLastNameMatch.Exact(hasParallelNames = false)
+            personWithNames(RegisteredName("Hansen", middleName = "Berg")).matchLastName("Berg Hansen") shouldBe
+                LastNameMatch.Exact(hasParallelNames = false)
+            personWithNames(RegisteredName("Hansen", middleName = " \t ")).matchLastName("Hansen") shouldBe
+                LastNameMatch.Exact(hasParallelNames = false)
         }
 
         test("matches combined middle and last names in non-primary parallel names") {
             personWithNames(RegisteredName("Olsen"), RegisteredName("Hansen", middleName = "Berg"))
-                .matchManagerLastName("Berg Hansen") shouldBe ManagerLastNameMatch.Exact(hasParallelNames = true)
+                .matchLastName("Berg Hansen") shouldBe LastNameMatch.Exact(hasParallelNames = true)
         }
 
         test("preserves no-match telemetry when registered names are missing") {
             PersonNameDetails(firstName = "Manager", lastName = "Hansen", registeredNames = emptyList())
-                .matchManagerLastName("Hansen") shouldBe ManagerLastNameMatch.NoMatch(
+                .matchLastName("Hansen") shouldBe LastNameMatch.NoMatch(
                 bestFuzzyScore = null,
                 hasParallelNames = false,
             )
@@ -97,8 +97,8 @@ class PersonNameMatchTest :
                 "Hansen" to "hansen",
                 "Hansen1" to "Hansen1",
             ).forEach { (submitted, registered) ->
-                personWithNames(RegisteredName(registered)).matchManagerLastName(submitted) shouldBe
-                    ManagerLastNameMatch.Exact(hasParallelNames = false)
+                personWithNames(RegisteredName(registered)).matchLastName(submitted) shouldBe
+                    LastNameMatch.Exact(hasParallelNames = false)
             }
         }
 
@@ -117,8 +117,8 @@ class PersonNameMatchTest :
                 "André" to "Andre",
                 "Andre" to "André",
             ).forEach { (submitted, registered) ->
-                personWithNames(RegisteredName(registered)).matchManagerLastName(submitted) shouldBe
-                    ManagerLastNameMatch.OrthographicVariant(hasParallelNames = false)
+                personWithNames(RegisteredName(registered)).matchLastName(submitted) shouldBe
+                    LastNameMatch.OrthographicVariant(hasParallelNames = false)
             }
         }
 
@@ -133,8 +133,8 @@ class PersonNameMatchTest :
                 "Ar" to "Är",
                 "Ase" to "Åse",
             ).forEach { (submitted, registered) ->
-                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
-                (match is ManagerLastNameMatch.NoMatch) shouldBe true
+                val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
+                (match is LastNameMatch.NoMatch) shouldBe true
                 match.isAccepted() shouldBe false
             }
         }
@@ -146,10 +146,10 @@ class PersonNameMatchTest :
                 "Aas" to "Aar",
                 "Li" to "Lu",
             ).forEach { (submitted, registered) ->
-                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
-                match shouldBe ManagerLastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
+                val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
+                match shouldBe LastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
             }
-            (personWithNames(RegisteredName("Hanson")).matchManagerLastName("Hansen") is ManagerLastNameMatch.Fuzzy) shouldBe true
+            (personWithNames(RegisteredName("Hanson")).matchLastName("Hansen") is LastNameMatch.Fuzzy) shouldBe true
         }
 
         test("accepts fuzzy matches and rejects clearly different names") {
@@ -157,8 +157,8 @@ class PersonNameMatchTest :
                 "Hansen" to "Hanson",
                 "Anderssen" to "Andersen",
             ).forEach { (submitted, registered) ->
-                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
-                (match is ManagerLastNameMatch.Fuzzy) shouldBe true
+                val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
+                (match is LastNameMatch.Fuzzy) shouldBe true
                 match.isAccepted() shouldBe true
             }
             listOf(
@@ -166,8 +166,8 @@ class PersonNameMatchTest :
                 "Hansen" to "Olsen",
                 "Andréssen" to "Andersen",
             ).forEach { (submitted, registered) ->
-                val match = personWithNames(RegisteredName(registered)).matchManagerLastName(submitted)
-                (match is ManagerLastNameMatch.NoMatch) shouldBe true
+                val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
+                (match is LastNameMatch.NoMatch) shouldBe true
                 match.isAccepted() shouldBe false
             }
         }

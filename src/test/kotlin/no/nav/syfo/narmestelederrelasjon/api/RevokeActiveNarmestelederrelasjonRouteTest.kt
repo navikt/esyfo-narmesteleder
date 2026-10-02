@@ -45,7 +45,7 @@ import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederre
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjonRevocation
-import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyManagerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
@@ -212,7 +212,7 @@ private class RevokeRouteFixture(
             failure?.let { throw it }
             person
         },
-        LegacyManagerNameValidationMetrics(),
+        LegacyNameValidationMetrics(),
         object : ActiveNarmestelederrelasjonRepository {
             override suspend fun findActive(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
                 lookups += employeeIdent

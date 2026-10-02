@@ -16,11 +16,11 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
@@ -132,7 +132,7 @@ class FulfillNarmestelederbehovUseCaseTest :
         }
 
         test("maps each establish rejection without fulfilling or completing dialog") {
-            val mismatch = ManagerLastNameMatch.NoMatch(0.0, hasParallelNames = false)
+            val mismatch = LastNameMatch.NoMatch(0.0, hasParallelNames = false)
             listOf(
                 EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber) to
                     FulfillNarmestelederbehovResult.NoActiveSykmelding(organizationNumber),
@@ -360,7 +360,7 @@ internal fun fulfilledResult(
 ) = FulfillNarmestelederbehovResult.Fulfilled(
     relationSource = relationSource,
     dialogCompletion = dialogCompletion,
-    managerNameMatch = ManagerLastNameMatch.Exact(hasParallelNames = false),
+    managerNameMatch = LastNameMatch.Exact(hasParallelNames = false),
 )
 
 internal fun createUseCase(

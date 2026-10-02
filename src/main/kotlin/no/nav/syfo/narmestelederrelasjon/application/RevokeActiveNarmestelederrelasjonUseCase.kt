@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
-import no.nav.syfo.narmestelederrelasjon.domain.matchManagerLastName
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.matchLastName
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -11,7 +11,7 @@ import no.nav.syfo.platform.application.orStop
 class RevokeActiveNarmestelederrelasjonUseCase(
     private val organizationAccess: OrganizationAccess,
     private val personLookup: PersonLookup,
-    private val nameValidationMetrics: ManagerNameValidationMetrics,
+    private val nameValidationMetrics: NameValidationMetrics,
     private val activeRelations: ActiveNarmestelederrelasjonRepository,
     private val publisher: PublishNarmestelederrelasjonRevocation,
 ) {
@@ -40,10 +40,10 @@ class RevokeActiveNarmestelederrelasjonUseCase(
         ?: Step.Stop(RevokeActiveNarmestelederrelasjonResult.EmployeeNotFound)
 
     private fun verifyName(employee: PersonDetails, command: RevokeActiveNarmestelederrelasjonCommand): RevokeActiveStep<Unit> {
-        val match = employee.name.matchManagerLastName(command.employeeLastName)
+        val match = employee.name.matchLastName(command.employeeLastName)
         nameValidationMetrics.record(match)
         return when (match) {
-            is ManagerLastNameMatch.NoMatch -> Step.Stop(RevokeActiveNarmestelederrelasjonResult.EmployeeNameMismatch)
+            is LastNameMatch.NoMatch -> Step.Stop(RevokeActiveNarmestelederrelasjonResult.EmployeeNameMismatch)
             else -> Step.Proceed
         }
     }

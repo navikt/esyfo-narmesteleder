@@ -12,10 +12,10 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import org.slf4j.LoggerFactory
 
@@ -68,7 +68,7 @@ class FulfillmentHttpMappingTest :
                 "Could not find person in PDL"
             ),
             Case(
-                FulfillNarmestelederbehovResult.ManagerNameMismatch(ManagerLastNameMatch.NoMatch(null, false)),
+                FulfillNarmestelederbehovResult.ManagerNameMismatch(LastNameMatch.NoMatch(null, false)),
                 HttpStatusCode.BadRequest,
                 ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
                 "Last name for linemanager does not correspond with registered value for the given national identification number"

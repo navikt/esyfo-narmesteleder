@@ -1,9 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
-import no.nav.syfo.narmestelederrelasjon.domain.matchManagerLastName
+import no.nav.syfo.narmestelederrelasjon.domain.matchLastName
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
 
@@ -11,7 +11,7 @@ class EstablishNarmestelederrelasjonUseCase(
     private val activeSykmeldingLookup: ActiveSykmeldingLookup,
     private val employmentLookup: EmploymentLookup,
     private val personLookup: PersonLookup,
-    private val nameValidationMetrics: ManagerNameValidationMetrics,
+    private val nameValidationMetrics: NameValidationMetrics,
     private val relationPublisher: PublishNarmestelederrelasjon,
 ) : EstablishNarmestelederrelasjon {
     override suspend fun execute(command: EstablishNarmestelederrelasjonCommand): EstablishNarmestelederrelasjonResult {
@@ -63,21 +63,21 @@ class EstablishNarmestelederrelasjonUseCase(
         return Step.Continue(EmployeeAndManager(employee, manager))
     }
 
-    private fun verifyManagerName(manager: PersonDetails, command: EstablishNarmestelederrelasjonCommand): EstablishStep<ManagerLastNameMatch> {
-        val match = manager.name.matchManagerLastName(command.manager.lastName)
+    private fun verifyManagerName(manager: PersonDetails, command: EstablishNarmestelederrelasjonCommand): EstablishStep<LastNameMatch> {
+        val match = manager.name.matchLastName(command.manager.lastName)
         nameValidationMetrics.record(match)
         return when (match) {
-            is ManagerLastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.ManagerNameMismatch(match))
+            is LastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.ManagerNameMismatch(match))
             else -> Step.Continue(match)
         }
     }
 
     private fun verifyEmployeeName(employee: PersonDetails, command: EstablishNarmestelederrelasjonCommand): EstablishStep<Unit> {
         val lastName = command.employeeLastName ?: return Step.Proceed
-        val match = employee.name.matchManagerLastName(lastName)
+        val match = employee.name.matchLastName(lastName)
         nameValidationMetrics.record(match)
         return when (match) {
-            is ManagerLastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch(match))
+            is LastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch(match))
             else -> Step.Proceed
         }
     }

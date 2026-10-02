@@ -6,7 +6,7 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -50,7 +50,7 @@ internal class FakeRelationEstablisher(
     private val effects: MutableList<String> = mutableListOf(),
     private val failure: Throwable? = null,
     private val result: EstablishNarmestelederrelasjonResult =
-        EstablishNarmestelederrelasjonResult.Published(ManagerLastNameMatch.Exact(hasParallelNames = false)),
+        EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(hasParallelNames = false)),
 ) : EstablishNarmestelederrelasjon {
     var command: EstablishNarmestelederrelasjonCommand? = null
 

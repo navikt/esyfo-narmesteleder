@@ -4,11 +4,11 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerLastNameMatch
+import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 
-class LegacyManagerNameValidationMetricsTest :
+class LegacyNameValidationMetricsTest :
     FunSpec({
-        val recorder = LegacyManagerNameValidationMetrics()
+        val recorder = LegacyNameValidationMetrics()
         val nameMetric = "${METRICS_NS}_name_validation_total"
         val parallelMetric = "${METRICS_NS}_parallel_names_validation_total"
         val fuzzyMetric = "${METRICS_NS}_name_validation_fuzzy_score"
@@ -24,7 +24,7 @@ class LegacyManagerNameValidationMetricsTest :
             val beforeFailed = failed.counter()?.count() ?: 0.0
             val beforeScores = score.summary()?.count() ?: 0L
 
-            recorder.record(ManagerLastNameMatch.NoMatch(0.82, hasParallelNames = true))
+            recorder.record(LastNameMatch.NoMatch(0.82, hasParallelNames = true))
 
             rejected.counter()?.count() shouldBe beforeRejected + 1.0
             attempted.counter()?.count() shouldBe beforeAttempted + 1.0
@@ -39,7 +39,7 @@ class LegacyManagerNameValidationMetricsTest :
             val beforeCount = accepted.counter()?.count() ?: 0.0
             val beforeScores = score.summary()?.count() ?: 0L
 
-            recorder.record(ManagerLastNameMatch.Fuzzy(0.95, hasParallelNames = false))
+            recorder.record(LastNameMatch.Fuzzy(0.95, hasParallelNames = false))
 
             accepted.counter()?.count() shouldBe beforeCount + 1.0
             score.summary()?.count() shouldBe beforeScores + 1

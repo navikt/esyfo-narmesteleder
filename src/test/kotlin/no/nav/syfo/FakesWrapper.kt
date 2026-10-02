@@ -21,11 +21,9 @@ import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.service.NarmestelederKafkaService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
-import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 
@@ -36,7 +34,6 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val fakeEregClientSpyk = spyk(FakeEregClient())
     val fakePdlClientSpyk = spyk(FakePdlClient())
     val fakeDinesykmeldteClientSpyk = spyk(FakeDinesykmeldteClient())
-    val fakeKafkaProducerSpyk = spyk(FakeSykmeldingNarmestelederProducer())
     val fakeAltinnTilgangerClientSpyk = spyk(FakeAltinnTilgangerClient())
     val fakePdpClientSpyk = spyk(FakePdpClient())
     val fakeDialogportenClient = FakeDialogportenClient()
@@ -48,9 +45,6 @@ class FakesWrapper(dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     val dinesykmeldteServiceSpyk: DinesykmeldteService = spyk(ClientDinesykmeldteService(fakeDinesykmeldteClientSpyk))
     val altinnTilgangerServiceSpyk = spyk(AltinnTilgangerService(fakeAltinnTilgangerClientSpyk))
     val pdpServiceSpyk = spyk(PdpService(fakePdpClientSpyk))
-    val narmestelederKafkaServiceSpyk = spyk(
-        NarmestelederKafkaService(kafkaSykemeldingProducer = fakeKafkaProducerSpyk),
-    )
     val principalAccessValidatorSpyk = spyk(
         PrincipalAccessValidator(
             altinnTilgangerService = altinnTilgangerServiceSpyk,

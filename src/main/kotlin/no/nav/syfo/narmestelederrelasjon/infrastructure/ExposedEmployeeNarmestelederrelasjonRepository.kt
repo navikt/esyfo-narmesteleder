@@ -9,7 +9,6 @@ import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
 import org.jetbrains.exposed.v1.core.JoinType
-import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -51,13 +50,12 @@ class ExposedEmployeeNarmestelederrelasjonRepository(
                     ),
                 )
                 .where {
-                    val filters = mutableListOf(
-                        NarmestelederTable.sykmeldtFnr eq employeeIdent.value,
-                        NarmestelederTable.aktivTom.isNull(),
-                        NarmestelederTable.aktivFom lessEq OffsetDateTime.now(clock),
-                    )
-                    organizationNumber?.let { filters.add(NarmestelederTable.orgnummer eq it.value) }
-                    filters.reduce(Op<Boolean>::and)
+                    val activeForEmployee = (NarmestelederTable.sykmeldtFnr eq employeeIdent.value) and
+                        NarmestelederTable.aktivTom.isNull() and
+                        (NarmestelederTable.aktivFom lessEq OffsetDateTime.now(clock))
+                    organizationNumber
+                        ?.let { activeForEmployee and (NarmestelederTable.orgnummer eq it.value) }
+                        ?: activeForEmployee
                 }
                 .orderBy(
                     NarmestelederTable.orgnummer to SortOrder.ASC,

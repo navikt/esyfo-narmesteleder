@@ -7,7 +7,6 @@ import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.exposed.PersonTable
-import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
@@ -24,7 +23,6 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
             TestDB.exposedDatabase,
             Clock.fixed(now.toInstant(), ZoneOffset.UTC),
         )
-        val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository)
 
         beforeTest {
             TestDB.clearNarmestelederData()
@@ -84,7 +82,6 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
             result.managerFirstName shouldBe null
             result.managerMiddleName shouldBe null
             result.managerLastName shouldBe null
-            useCase.execute(employee, null).narmesteledere.single().name shouldBe null
         }
 
         test("does not expose personal identification numbers") {
@@ -124,27 +121,22 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
             repository.findActive(employee, null).single().managerEmail shouldBe "manager@example.com"
         }
 
-        test("preserves comma-separated emails and the use case splits them") {
+        test("returns comma-separated emails unparsed") {
             val raw = "first@example.com,second@example.com"
             insertEmployeeRelation(email = raw)
             repository.findActive(employee, null).single().managerEmail shouldBe raw
-            useCase.execute(employee, null).narmesteledere.single().emailAddresses.map { it.value } shouldBe listOf("first@example.com", "second@example.com")
         }
 
-        test("preserves semicolon-separated emails and the use case splits them") {
+        test("returns semicolon-separated emails unparsed") {
             val raw = "first@example.com;second@example.com"
             insertEmployeeRelation(email = raw)
             repository.findActive(employee, null).single().managerEmail shouldBe raw
-            useCase.execute(employee, null).narmesteledere.single().emailAddresses.map { it.value } shouldBe listOf("first@example.com", "second@example.com")
         }
 
-        test("preserves invalid raw emails and the use case trims and discards them") {
+        test("returns invalid emails and surrounding whitespace unparsed") {
             val raw = " first@example.com , invalid-address; second@example.com; "
             insertEmployeeRelation(email = raw)
             repository.findActive(employee, null).single().managerEmail shouldBe raw
-            val result = useCase.execute(employee, null)
-            result.narmesteledere.single().emailAddresses.map { it.value } shouldBe listOf("first@example.com", "second@example.com")
-            result.discardedEmailAddressCount shouldBe 1
         }
     })
 

@@ -12,11 +12,13 @@ class ListActiveNarmesteledereForEmployeeUseCaseTest :
         val employee = PersonIdent("12345678901")
         val organization = OrganizationNumber("123456789")
         val repository = RecordingEmployeeRepository()
-        val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository)
+        val discardedEmailAddressMetrics = RecordingDiscardedEmailAddressMetrics()
+        val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository, discardedEmailAddressMetrics)
 
         beforeTest {
             repository.rows = emptyList()
             repository.lookups.clear()
+            discardedEmailAddressMetrics.recorded.clear()
         }
 
         test("passes employee identity without an organization filter") {
@@ -34,19 +36,20 @@ class ListActiveNarmesteledereForEmployeeUseCaseTest :
             val second = employeeRelation(UUID(0, 1)).copy(organizationNumber = OrganizationNumber("987654321"))
             repository.rows = listOf(first, second)
             val result = useCase.execute(employee, null)
-            result.narmesteledere.map { it.id } shouldBe listOf(first.id, second.id)
-            result.narmesteledere.map { it.organizationNumber } shouldBe listOf(first.organizationNumber, second.organizationNumber)
-            result.narmesteledere.first().activeFrom shouldBe first.activeFrom
-            result.narmesteledere.first().mobile shouldBe first.managerMobile
+            result.map { it.id } shouldBe listOf(first.id, second.id)
+            result.map { it.organizationNumber } shouldBe listOf(first.organizationNumber, second.organizationNumber)
+            result.first().activeFrom shouldBe first.activeFrom
+            result.first().mobile shouldBe first.managerMobile
         }
 
-        test("returns an empty result") {
-            useCase.execute(employee, null) shouldBe ActiveNarmesteledereForEmployee(emptyList(), 0)
+        test("returns an empty result and records no discarded addresses") {
+            useCase.execute(employee, null) shouldBe emptyList()
+            discardedEmailAddressMetrics.recorded shouldBe listOf(0)
         }
 
         test("maps full names including optional middle name") {
             repository.rows = listOf(employeeRelation(), employeeRelation().copy(managerMiddleName = null))
-            useCase.execute(employee, null).narmesteledere.map { it.name } shouldBe listOf(
+            useCase.execute(employee, null).map { it.name } shouldBe listOf(
                 NarmestelederName("Manager", "Middle", "Person"),
                 NarmestelederName("Manager", null, "Person"),
             )
@@ -58,20 +61,20 @@ class ListActiveNarmesteledereForEmployeeUseCaseTest :
                 employeeRelation().copy(managerLastName = null),
                 employeeRelation().copy(managerFirstName = null, managerLastName = null),
             )
-            useCase.execute(employee, null).narmesteledere.map { it.name } shouldBe listOf(null, null, null)
+            useCase.execute(employee, null).map { it.name } shouldBe listOf(null, null, null)
         }
 
-        test("splits emails on comma and semicolon, trims and sums discarded addresses") {
+        test("splits emails on comma and semicolon, trims and records the summed discarded addresses") {
             repository.rows = listOf(
                 employeeRelation().copy(managerEmail = " first@example.com, invalid; second@example.com; "),
                 employeeRelation().copy(managerEmail = "bad;also-bad,third@example.com"),
             )
             val result = useCase.execute(employee, null)
-            result.narmesteledere.map { manager -> manager.emailAddresses.map { it.value } } shouldBe listOf(
+            result.map { manager -> manager.emailAddresses.map { it.value } } shouldBe listOf(
                 listOf("first@example.com", "second@example.com"),
                 listOf("third@example.com"),
             )
-            result.discardedEmailAddressCount shouldBe 3
+            discardedEmailAddressMetrics.recorded shouldBe listOf(3)
         }
     })
 
@@ -82,6 +85,14 @@ private class RecordingEmployeeRepository : EmployeeNarmestelederrelasjonReposit
     override suspend fun findActive(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon> {
         lookups.add(employeeIdent to organizationNumber)
         return rows
+    }
+}
+
+private class RecordingDiscardedEmailAddressMetrics : DiscardedEmailAddressMetrics {
+    val recorded = mutableListOf<Int>()
+
+    override fun record(count: Int) {
+        recorded.add(count)
     }
 }
 

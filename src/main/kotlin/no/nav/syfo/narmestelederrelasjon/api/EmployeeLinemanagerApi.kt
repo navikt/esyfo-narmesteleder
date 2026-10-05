@@ -13,7 +13,6 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
-import no.nav.syfo.narmestelederrelasjon.observability.countDiscardedEmployeeLinemanagerEmailAddresses
 import no.nav.syfo.narmestelederrelasjon.observability.countEmployeeLinemanager
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.TokenXTokenAuthPlugin
@@ -45,10 +44,9 @@ fun Route.registerEmployeeLinemanagerApi(
                     throw ApiErrorException.UnauthorizedException("Invalid token subject")
                 }
             val orgNumber = call.getOptionalOrganizationNumberQueryParameter("orgNumber")
-            val result = listActiveNarmesteledereForEmployee.execute(employee, orgNumber)
-            countDiscardedEmployeeLinemanagerEmailAddresses(result.discardedEmailAddressCount)
+            val narmesteledere = listActiveNarmesteledereForEmployee.execute(employee, orgNumber)
             countEmployeeLinemanager(filtered = orgNumber != null)
-            call.respond(HttpStatusCode.OK, result.toResponse())
+            call.respond(HttpStatusCode.OK, narmesteledere.toResponse())
         }
     }
 }

@@ -9,21 +9,15 @@ import java.util.UUID
 
 class ListActiveNarmesteledereForEmployeeUseCase(
     private val repository: EmployeeNarmestelederrelasjonRepository,
+    private val discardedEmailAddressMetrics: DiscardedEmailAddressMetrics,
 ) {
-    suspend fun execute(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber?): ActiveNarmesteledereForEmployee {
+    suspend fun execute(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber?): List<EmployeeNarmesteleder> {
         val relations = repository.findActive(employeeIdent, organizationNumber)
         val parsedEmailAddresses = relations.map { EmailAddress.parseSeparatedList(it.managerEmail) }
-        return ActiveNarmesteledereForEmployee(
-            narmesteledere = relations.zip(parsedEmailAddresses, ::toEmployeeNarmesteleder),
-            discardedEmailAddressCount = parsedEmailAddresses.sumOf { it.discardedEmailAddressCount },
-        )
+        discardedEmailAddressMetrics.record(parsedEmailAddresses.sumOf { it.discardedEmailAddressCount })
+        return relations.zip(parsedEmailAddresses, ::toEmployeeNarmesteleder)
     }
 }
-
-data class ActiveNarmesteledereForEmployee(
-    val narmesteledere: List<EmployeeNarmesteleder>,
-    val discardedEmailAddressCount: Int,
-)
 
 data class EmployeeNarmesteleder(
     val id: UUID,

@@ -2,6 +2,7 @@ package no.nav.syfo.narmestelederrelasjon
 
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.application.DiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
@@ -29,6 +30,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedEmployeeNarmestel
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjonRevocation
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ValkeyPersonDetailsCache
@@ -42,7 +44,8 @@ fun narmestelederrelasjonModule() = module {
     single<ActiveNarmestelederrelasjonRepository> { ExposedActiveNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
     single { LookupActiveNarmestelederUseCase(get()) }
     single<EmployeeNarmestelederrelasjonRepository> { ExposedEmployeeNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
-    single { ListActiveNarmesteledereForEmployeeUseCase(get()) }
+    single<DiscardedEmailAddressMetrics> { MicrometerDiscardedEmailAddressMetrics() }
+    single { ListActiveNarmesteledereForEmployeeUseCase(get(), get()) }
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }
     single<PersonLookup> { CachedPersonLookup(PdlPersonLookup(get()), ValkeyPersonDetailsCache(get())) }

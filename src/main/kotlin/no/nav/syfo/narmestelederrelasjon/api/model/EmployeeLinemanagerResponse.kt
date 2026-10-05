@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.api.model
 
-import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmesteledereForEmployee
+import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmesteleder
 import java.time.Instant
 import java.util.UUID
 
@@ -26,8 +26,8 @@ data class EmployeeLinemanagerResponse(
     )
 }
 
-fun ActiveNarmesteledereForEmployee.toResponse(): EmployeeLinemanagersResponse = EmployeeLinemanagersResponse(
-    linemanagers = narmesteledere.map { manager ->
+fun List<EmployeeNarmesteleder>.toResponse(): EmployeeLinemanagersResponse = EmployeeLinemanagersResponse(
+    linemanagers = map { manager ->
         EmployeeLinemanagerResponse(
             id = manager.id,
             orgNumber = manager.organizationNumber.value,

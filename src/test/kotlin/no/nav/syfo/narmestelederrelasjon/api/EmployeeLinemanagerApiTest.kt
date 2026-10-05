@@ -33,7 +33,8 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
-import no.nav.syfo.narmestelederrelasjon.observability.EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL
+import no.nav.syfo.narmestelederrelasjon.infrastructure.EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.observability.EMPLOYEE_LINEMANAGER_TOTAL
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
@@ -48,7 +49,7 @@ private val responseMapper = jacksonObjectMapper()
 class EmployeeLinemanagerApiTest :
     FunSpec({
         val repository = EmployeeApiRepository()
-        val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository)
+        val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository, MicrometerDiscardedEmailAddressMetrics())
         val texasHttpClient = mockk<TexasHttpClient>()
 
         beforeTest {

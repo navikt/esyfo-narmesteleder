@@ -63,7 +63,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.infrastructure.LegacyNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
@@ -144,7 +144,7 @@ abstract class LinemanagerApiV1TestBase(
                     DinesykmeldteActiveSykmeldingLookup(dineSykmelteService),
                     AaregEmploymentLookup(aaregService),
                     PdlPersonLookup(FakePdlClient()),
-                    LegacyNameValidationMetrics(),
+                    MicrometerNameValidationMetrics(),
                     KafkaPublishNarmestelederrelasjon(relationProducerSpy),
                 ),
                 DialogportenNarmestelederbehovDialog(FakeDialogportenClient()),

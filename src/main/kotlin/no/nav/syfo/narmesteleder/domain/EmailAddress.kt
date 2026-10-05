@@ -11,31 +11,6 @@ private val EMAIL_ADDRESS_REGEX = Regex(
     "^[A-Za-z0-9ÆØÅæøå._%+-]+@[A-Za-z0-9ÆØÅæøå](?:[A-Za-z0-9ÆØÅæøå-]{0,61}[A-Za-z0-9ÆØÅæøå])?(?:\\.[A-Za-z0-9ÆØÅæøå](?:[A-Za-z0-9ÆØÅæøå-]{0,61}[A-Za-z0-9ÆØÅæøå])?)+\$"
 )
 
-fun String.splitEmailAddresses(): List<String> = split(",", ";")
-    .map(String::trim)
-    .filter(String::isNotEmpty)
-
-data class ParsedEmailAddresses(
-    val validEmailAddresses: List<EmailAddress>,
-    val discardedEmailAddressCount: Int,
-)
-
-fun String.parseEmailAddresses(): ParsedEmailAddresses {
-    val validEmailAddresses = mutableListOf<EmailAddress>()
-    var discardedEmailAddressCount = 0
-
-    splitEmailAddresses().forEach { value ->
-        EmailAddress.parse(value)
-            .onSuccess(validEmailAddresses::add)
-            .onFailure { discardedEmailAddressCount++ }
-    }
-
-    return ParsedEmailAddresses(
-        validEmailAddresses = validEmailAddresses,
-        discardedEmailAddressCount = discardedEmailAddressCount,
-    )
-}
-
 @JvmInline
 value class EmailAddress(val value: String) {
     init {

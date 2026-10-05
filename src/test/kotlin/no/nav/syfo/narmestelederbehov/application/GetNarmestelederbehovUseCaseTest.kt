@@ -23,23 +23,27 @@ class GetNarmestelederbehovUseCaseTest :
         test("stored names are read without person lookup or writes and carry Altinn name") {
             val fixture = ReadFixture()
             val result = fixture.execute()
-            result shouldBe GetNarmestelederbehovResult.Found(requireNotNull(fixture.row), BehovPersonName("Stored", "Middle", "Name"), "Org")
+            result shouldBe GetNarmestelederbehovResult.Found(
+                behov = requireNotNull(fixture.row),
+                name = BehovPersonName(firstName = "Stored", middleName = "Middle", lastName = "Name"),
+                organizationName = "Org",
+            )
             fixture.effects shouldBe listOf("read", "access")
         }
 
         test("missing name is looked up and persisted before access is checked") {
-            val fixture = ReadFixture(row = readRow().copy(firstName = null, lastName = null))
+            val fixture = ReadFixture(row = behovDetails().copy(firstName = null, lastName = null))
             fixture.person = PersonDetails(
-                requireNotNull(fixture.row).employeeIdent,
-                PersonNameDetails("Looked", "Up", "Middle", listOf()),
+                personIdent = requireNotNull(fixture.row).employeeIdent,
+                name = PersonNameDetails(firstName = "Looked", lastName = "Up", middleName = "Middle", registeredNames = listOf()),
             )
             fixture.execute() shouldBe GetNarmestelederbehovResult.Found(
-                requireNotNull(fixture.row),
-                BehovPersonName("Looked", "Middle", "Up"),
-                "Org",
+                behov = requireNotNull(fixture.row),
+                name = BehovPersonName(firstName = "Looked", middleName = "Middle", lastName = "Up"),
+                organizationName = "Org",
             )
             fixture.effects shouldBe listOf("read", "person", "save-name", "access")
-            fixture.savedNames shouldBe listOf(BehovPersonName("Looked", "Middle", "Up"))
+            fixture.savedNames shouldBe listOf(BehovPersonName(firstName = "Looked", middleName = "Middle", lastName = "Up"))
         }
 
         test("missing id is reported before access") {
@@ -50,38 +54,46 @@ class GetNarmestelederbehovUseCaseTest :
 
         DenialReason.entries.forEach { reason ->
             test("denial $reason is evaluated after the name is resolved") {
-                val fixture = ReadFixture(row = readRow().copy(firstName = null), access = OrganizationAccessResult.Denied(reason))
+                val fixture = ReadFixture(row = behovDetails().copy(firstName = null), access = OrganizationAccessResult.Denied(reason))
                 fixture.person = PersonDetails(
-                    requireNotNull(fixture.row).employeeIdent,
-                    PersonNameDetails("Looked", "Up", null, listOf()),
+                    personIdent = requireNotNull(fixture.row).employeeIdent,
+                    name = PersonNameDetails(firstName = "Looked", lastName = "Up", middleName = null, registeredNames = listOf()),
                 )
-                fixture.execute() shouldBe GetNarmestelederbehovResult.AccessDenied(reason, requireNotNull(fixture.row).organizationNumber)
+                fixture.execute() shouldBe GetNarmestelederbehovResult.AccessDenied(
+                    reason = reason,
+                    organizationNumber = requireNotNull(fixture.row).organizationNumber,
+                )
                 fixture.effects shouldBe listOf("read", "person", "save-name", "access")
             }
         }
 
         test("system user has no organization name") {
-            val fixture = ReadFixture(access = OrganizationAccessResult.Granted(null))
-            val result = fixture.execute(OrganizationAccessSubject.LpsSystemUser("system", OrganizationNumber("910000001")))
+            val fixture = ReadFixture(access = OrganizationAccessResult.Granted(organizationName = null))
+            val result = fixture.execute(
+                subject = OrganizationAccessSubject.LpsSystemUser(
+                    systemUserId = "system",
+                    systemUserOrganizationNumber = OrganizationNumber("910000001"),
+                ),
+            )
             (result as GetNarmestelederbehovResult.Found).organizationName shouldBe null
         }
 
         test("unresolved missing name is unavailable") {
-            val fixture = ReadFixture(row = readRow().copy(firstName = null))
+            val fixture = ReadFixture(row = behovDetails().copy(firstName = null))
             fixture.execute() shouldBe GetNarmestelederbehovResult.PersonNotFound
             fixture.effects shouldBe listOf("read", "person")
         }
     })
 
 private class ReadFixture(
-    val row: NarmestelederbehovRead? = readRow(),
-    val access: OrganizationAccessResult = OrganizationAccessResult.Granted("Org"),
+    val row: NarmestelederbehovDetails? = behovDetails(),
+    val access: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = "Org"),
 ) {
     val effects = mutableListOf<String>()
     var person: PersonDetails? = null
     val savedNames = mutableListOf<BehovPersonName>()
     private val repository = object : NarmestelederbehovRepository {
-        override suspend fun findForRead(id: NarmestelederbehovId) = row.also { effects += "read" }
+        override suspend fun findDetails(id: NarmestelederbehovId) = row.also { effects += "read" }
         override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) {
             effects += "save-name"
             savedNames += name
@@ -91,15 +103,20 @@ private class ReadFixture(
         override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("GET must not write")
     }
     private val useCase = GetNarmestelederbehovUseCase(
-        repository,
-        OrganizationAccess { _, _ -> access.also { effects += "access" } },
-        PersonLookup { person.also { effects += "person" } },
+        repository = repository,
+        organizationAccess = OrganizationAccess { _, _ -> access.also { effects += "access" } },
+        personLookup = PersonLookup { person.also { effects += "person" } },
     )
 
-    suspend fun execute(subject: OrganizationAccessSubject = OrganizationAccessSubject.PersonnelManager(PersonIdent("12345678901"), AccessToken("token"))) = useCase.execute(NarmestelederbehovId(UUID.randomUUID()), subject)
+    suspend fun execute(
+        subject: OrganizationAccessSubject = OrganizationAccessSubject.PersonnelManager(
+            personIdent = PersonIdent("12345678901"),
+            accessToken = AccessToken("token"),
+        ),
+    ) = useCase.execute(id = NarmestelederbehovId(UUID.randomUUID()), subject = subject)
 }
 
-private fun readRow() = NarmestelederbehovRead(
+private fun behovDetails() = NarmestelederbehovDetails(
     id = NarmestelederbehovId(UUID.randomUUID()),
     employeeIdent = PersonIdent("12345678901"),
     organizationNumber = OrganizationNumber("910000001"),

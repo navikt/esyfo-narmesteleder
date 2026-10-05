@@ -194,7 +194,7 @@ private class RevokeRouteFixture(
     private val name: String = "Hansen",
     private val person: PersonDetails? = PersonDetails(resolvedIdent, PersonNameDetails("Test", name, registeredNames = listOf(RegisteredName(name)))),
     private val managerEmail: String = "manager@example.test",
-    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(null) },
+    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
     private val failure: Exception? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()

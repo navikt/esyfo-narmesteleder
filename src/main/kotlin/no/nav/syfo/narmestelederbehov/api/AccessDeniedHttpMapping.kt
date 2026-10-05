@@ -13,7 +13,7 @@ internal fun accessDeniedException(reason: DenialReason, organizationNumber: Org
         DenialReason.SYSTEM_USER_REJECTED -> "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource"
     }
     return ApiErrorException.ForbiddenException(
-        message,
+        errorMessage = message,
         type = if (reason == DenialReason.MISSING_ORGANIZATION_ACCESS) ErrorType.MISSING_ORG_ACCESS else ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
         isAlreadyLogged = true,
     )

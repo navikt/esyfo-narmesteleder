@@ -7,7 +7,7 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import java.time.Instant
 
-data class NarmestelederbehovRead(
+data class NarmestelederbehovDetails(
     val id: NarmestelederbehovId,
     val employeeIdent: PersonIdent,
     val organizationNumber: OrganizationNumber,

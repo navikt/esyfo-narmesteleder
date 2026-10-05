@@ -15,7 +15,7 @@ class GetNarmestelederbehovUseCase(
     private val personLookup: PersonLookup,
 ) {
     suspend fun execute(id: NarmestelederbehovId, subject: OrganizationAccessSubject): GetNarmestelederbehovResult {
-        val behov = repository.findForRead(id) ?: return GetNarmestelederbehovResult.NotFound.log()
+        val behov = repository.findDetails(id) ?: return GetNarmestelederbehovResult.NotFound.log()
         // Legacy parity: the name is resolved and persisted before access is checked. Redesign tracked in #602.
         val name = if (behov.firstName != null && behov.lastName != null) {
             BehovPersonName(
@@ -29,14 +29,14 @@ class GetNarmestelederbehovUseCase(
                 firstName = details.name.firstName,
                 middleName = details.name.middleName,
                 lastName = details.name.lastName,
-            ).also { repository.saveEmployeeName(behov.id, it) }
+            ).also { repository.saveEmployeeName(id = behov.id, name = it) }
         }
-        val organizationName = when (val access = organizationAccess.evaluate(subject, behov.organizationNumber)) {
+        val organizationName = when (val access = organizationAccess.evaluate(subject = subject, organizationNumber = behov.organizationNumber)) {
             is OrganizationAccessResult.Denied ->
-                return GetNarmestelederbehovResult.AccessDenied(access.reason, behov.organizationNumber).log()
+                return GetNarmestelederbehovResult.AccessDenied(reason = access.reason, organizationNumber = behov.organizationNumber).log()
             is OrganizationAccessResult.Granted -> access.organizationName
         }
-        return GetNarmestelederbehovResult.Found(behov, name, organizationName)
+        return GetNarmestelederbehovResult.Found(behov = behov, name = name, organizationName = organizationName)
     }
 
     private fun <T : GetNarmestelederbehovResult> T.log(): T = also { logger.event(getNarmestelederbehovRejected, it) }
@@ -49,7 +49,7 @@ class GetNarmestelederbehovUseCase(
 data class BehovPersonName(val firstName: String, val middleName: String?, val lastName: String)
 
 sealed interface GetNarmestelederbehovResult {
-    data class Found(val behov: NarmestelederbehovRead, val name: BehovPersonName, val organizationName: String?) : GetNarmestelederbehovResult
+    data class Found(val behov: NarmestelederbehovDetails, val name: BehovPersonName, val organizationName: String?) : GetNarmestelederbehovResult
     data object NotFound : GetNarmestelederbehovResult
     data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : GetNarmestelederbehovResult
     data object PersonNotFound : GetNarmestelederbehovResult

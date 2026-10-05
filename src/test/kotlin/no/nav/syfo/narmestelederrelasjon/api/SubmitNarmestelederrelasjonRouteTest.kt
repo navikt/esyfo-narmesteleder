@@ -227,7 +227,7 @@ private data class HttpCase(
 
 private class SubmitFixture(
     private val relationResult: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false)),
-    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(null) },
+    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
     private val failure: Exception? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
@@ -292,7 +292,7 @@ private class SubmitFixture(
                             texas,
                         )
                         registerRevokeActiveNarmestelederrelasjonApi(mockk(), texas)
-                        registerGetNarmestelederbehovApi(mockk(), texas)
+                        registerGetNarmestelederbehovApi(getNarmestelederbehov = mockk(), texasHttpClient = texas)
                     }
                     route(INTERNAL_API_V1_PATH) {
                         install(AddTokenIssuerPlugin)

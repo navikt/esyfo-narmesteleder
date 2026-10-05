@@ -9,7 +9,7 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRead
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
@@ -23,7 +23,7 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
 
 class ExposedNarmestelederbehovRepository(private val database: Database) : NarmestelederbehovRepository {
-    override suspend fun findForRead(id: NarmestelederbehovId): NarmestelederbehovRead? = withContext(Dispatchers.IO) {
+    override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {
             NarmestelederbehovTable.select(
                 NarmestelederbehovTable.id,
@@ -39,7 +39,7 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
                 NarmestelederbehovTable.behovStatus,
                 NarmestelederbehovTable.behovReason,
             ).where { NarmestelederbehovTable.id eq id.value }.singleOrNull()?.let { row ->
-                NarmestelederbehovRead(
+                NarmestelederbehovDetails(
                     id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
                     employeeIdent = PersonIdent(row[NarmestelederbehovTable.sykmeldtFnr]),
                     organizationNumber = OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),

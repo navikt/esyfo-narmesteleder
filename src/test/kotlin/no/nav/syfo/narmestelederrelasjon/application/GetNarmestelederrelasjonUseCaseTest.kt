@@ -35,7 +35,7 @@ class GetNarmestelederrelasjonUseCaseTest :
 
         fun query(
             lookup: NarmestelederrelasjonLookup? = lookup(),
-            access: OrganizationAccessResult = OrganizationAccessResult.Granted(null),
+            access: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
             activeSykmelding: Boolean = true,
             organizationName: String? = "Organization",
             effects: MutableList<String> = mutableListOf(),

@@ -17,15 +17,15 @@ fun GetNarmestelederbehovResult.toLinemanagerRequirementRead(): LinemanagerRequi
         orgName = organizationName,
         mainOrgNumber = OrganizationNumber(behov.mainOrganizationNumber),
         managerIdentificationNumber = behov.managerIdent?.let { PersonalIdentificationNumber(it.value) },
-        name = Name(name.firstName, name.lastName, name.middleName),
+        name = Name(firstName = name.firstName, lastName = name.lastName, middleName = name.middleName),
         created = behov.created,
         updated = behov.updated,
         status = LineManagerRequirementStatus.from(behov.status),
         revokedBy = RevokedBy.from(behov.reason),
     )
     GetNarmestelederbehovResult.NotFound ->
-        throw ApiErrorException.NotFoundException("LinemanagerRequirement", isAlreadyLogged = true)
-    is GetNarmestelederbehovResult.AccessDenied -> throw accessDeniedException(reason, organizationNumber)
+        throw ApiErrorException.NotFoundException(errorMessage = "LinemanagerRequirement", isAlreadyLogged = true)
+    is GetNarmestelederbehovResult.AccessDenied -> throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
     GetNarmestelederbehovResult.PersonNotFound ->
-        throw ApiErrorException.InternalServerErrorException("Something went wrong while fetching LinemanagerRequirement")
+        throw ApiErrorException.InternalServerErrorException(errorMessage = "Something went wrong while fetching LinemanagerRequirement")
 }

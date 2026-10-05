@@ -14,5 +14,11 @@ fun narmestelederbehovModule() = module {
     single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }
     single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get()) }
-    single { GetNarmestelederbehovUseCase(get(), get(), PdlPersonLookup(get())) }
+    single {
+        GetNarmestelederbehovUseCase(
+            repository = get(),
+            organizationAccess = get(),
+            personLookup = PdlPersonLookup(get()),
+        )
+    }
 }

@@ -36,7 +36,7 @@ class ExposedNarmestelederbehovRepositoryTest :
                 ),
             )
             val id = NarmestelederbehovId(requireNotNull(row.id))
-            val result = requireNotNull(repository.findForRead(id))
+            val result = requireNotNull(repository.findDetails(id))
             result.id shouldBe id
             result.employeeIdent shouldBe PersonIdent(row.sykmeldtFnr)
             result.organizationNumber shouldBe OrganizationNumber(row.orgnummer)
@@ -49,7 +49,7 @@ class ExposedNarmestelederbehovRepositoryTest :
             result.updated shouldBe row.updated
             result.status shouldBe row.behovStatus
             result.reason shouldBe row.behovReason
-            repository.findForRead(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
+            repository.findDetails(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
             setupDb.findBehovById(id.value) shouldBe row
         }
 
@@ -58,7 +58,10 @@ class ExposedNarmestelederbehovRepositoryTest :
             val id = NarmestelederbehovId(requireNotNull(row.id))
             val before = requireNotNull(setupDb.findBehovById(id.value))
 
-            repository.saveEmployeeName(id, BehovPersonName("First", "Middle", "Last"))
+            repository.saveEmployeeName(
+                id = id,
+                name = BehovPersonName(firstName = "First", middleName = "Middle", lastName = "Last"),
+            )
 
             val after = requireNotNull(setupDb.findBehovById(id.value))
             after.fornavn shouldBe "First"

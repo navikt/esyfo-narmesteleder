@@ -72,7 +72,7 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
     })
 
 private class RevokeActiveFixture(
-    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(null) },
+    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
     name: String = "Hansen",
     registeredNames: List<RegisteredName> = listOf(RegisteredName(name)),
     person: PersonDetails? = PersonDetails(resolved, PersonNameDetails("Test", name, registeredNames = registeredNames)),

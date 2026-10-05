@@ -37,7 +37,7 @@ import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRead
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -90,7 +90,7 @@ class GetNarmestelederbehovRouteTest :
                 body.name.firstName shouldBe "Looked"
                 body.name.lastName shouldBe "Up"
                 fixture.effects shouldBe listOf("person", "access")
-                fixture.repository.savedNames shouldBe listOf(behov.id to BehovPersonName("Looked", null, "Up"))
+                fixture.repository.savedNames shouldBe listOf(behov.id to BehovPersonName(firstName = "Looked", middleName = null, lastName = "Up"))
             }
         }
 
@@ -175,20 +175,20 @@ private class GetFixture(
     organizationName: String? = null,
     denialReason: DenialReason? = null,
     person: PersonDetails? = PersonDetails(
-        PersonIdent(EMPLOYEE_IDENT),
-        PersonNameDetails(firstName = "Looked", lastName = "Up", registeredNames = emptyList()),
+        personIdent = PersonIdent(EMPLOYEE_IDENT),
+        name = PersonNameDetails(firstName = "Looked", lastName = "Up", registeredNames = emptyList()),
     ),
 ) {
     val effects = mutableListOf<String>()
     val repository = FakeReadBehovRepository()
     private val texas = mockk<TexasHttpClient>()
     private val useCase = GetNarmestelederbehovUseCase(
-        repository,
-        OrganizationAccess { _, _ ->
+        repository = repository,
+        organizationAccess = OrganizationAccess { _, _ ->
             effects += "access"
             denialReason?.let { OrganizationAccessResult.Denied(it) } ?: OrganizationAccessResult.Granted(organizationName)
         },
-        PersonLookup {
+        personLookup = PersonLookup {
             effects += "person"
             person
         },
@@ -219,7 +219,7 @@ private class GetFixture(
                 routing {
                     route(API_V1_PATH) {
                         install(AddTokenIssuerPlugin)
-                        registerGetNarmestelederbehovApi(useCase, texas)
+                        registerGetNarmestelederbehovApi(getNarmestelederbehov = useCase, texasHttpClient = texas)
                     }
                 }
             }
@@ -229,12 +229,12 @@ private class GetFixture(
 }
 
 private class FakeReadBehovRepository : NarmestelederbehovRepository {
-    private val behov = mutableMapOf<NarmestelederbehovId, NarmestelederbehovRead>()
+    private val behov = mutableMapOf<NarmestelederbehovId, NarmestelederbehovDetails>()
     val savedNames = mutableListOf<Pair<NarmestelederbehovId, BehovPersonName>>()
     var failure: Exception? = null
 
-    fun seed(firstName: String? = "Stored", lastName: String? = "Name"): NarmestelederbehovRead {
-        val read = NarmestelederbehovRead(
+    fun seed(firstName: String? = "Stored", lastName: String? = "Name"): NarmestelederbehovDetails {
+        val details = NarmestelederbehovDetails(
             id = NarmestelederbehovId(UUID.randomUUID()),
             employeeIdent = PersonIdent(EMPLOYEE_IDENT),
             organizationNumber = OrganizationNumber(ORGANIZATION_NUMBER),
@@ -248,11 +248,11 @@ private class FakeReadBehovRepository : NarmestelederbehovRepository {
             status = BehovStatus.BEHOV_CREATED,
             reason = BehovReason.DEAKTIVERT_LEDER,
         )
-        behov[read.id] = read
-        return read
+        behov[details.id] = details
+        return details
     }
 
-    override suspend fun findForRead(id: NarmestelederbehovId): NarmestelederbehovRead? {
+    override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? {
         failure?.let { throw it }
         return behov[id]
     }

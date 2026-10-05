@@ -40,7 +40,7 @@ class AltinnOrganizationAccessTest :
                 )
 
                 fixture.access.evaluate(personnelManager(), OrganizationNumber(REQUESTED_ORG)) shouldBe
-                    OrganizationAccessResult.Granted("Test Org")
+                    OrganizationAccessResult.Granted(organizationName = "Test Org")
             }
 
             test("is denied missing organization access without Altinn access to the organization") {
@@ -65,7 +65,7 @@ class AltinnOrganizationAccessTest :
                 fixture.pdp.permit(REQUESTED_ORG)
 
                 fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG)) shouldBe
-                    OrganizationAccessResult.Granted(null)
+                    OrganizationAccessResult.Granted(organizationName = null)
                 fixture.pdp.requestedOrganizations shouldContainExactly listOf(setOf(REQUESTED_ORG))
             }
 
@@ -75,7 +75,7 @@ class AltinnOrganizationAccessTest :
                 fixture.ereg.organisasjoner[REQUESTED_ORG] = organisationWithParent(SYSTEM_USER_ORG)
 
                 fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG)) shouldBe
-                    OrganizationAccessResult.Granted(null)
+                    OrganizationAccessResult.Granted(organizationName = null)
                 fixture.pdp.requestedOrganizations shouldContainExactly
                     listOf(setOf(REQUESTED_ORG), setOf(SYSTEM_USER_ORG))
             }

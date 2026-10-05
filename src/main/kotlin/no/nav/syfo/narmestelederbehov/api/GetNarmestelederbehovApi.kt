@@ -31,15 +31,15 @@ fun Route.registerGetNarmestelederbehovApi(
                 val id = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id"))
                 val subject = call.getMyPrincipal().toOrganizationAccessSubject()
                 val response = try {
-                    getNarmestelederbehov.execute(id, subject).toLinemanagerRequirementRead()
+                    getNarmestelederbehov.execute(id = id, subject = subject).toLinemanagerRequirementRead()
                 } catch (e: ApiErrorException) {
                     throw e
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     throw ApiErrorException.InternalServerErrorException(
-                        "Something went wrong while fetching LinemanagerRequirement",
-                        e,
+                        errorMessage = "Something went wrong while fetching LinemanagerRequirement",
+                        cause = e,
                     )
                 }
                 call.respond(HttpStatusCode.OK, response)

@@ -14,7 +14,7 @@ import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRead
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import java.time.Instant
@@ -23,21 +23,25 @@ import java.util.UUID
 class GetNarmestelederbehovHttpMappingTest :
     FunSpec({
         test("maps all read response fields") {
-            val behov = NarmestelederbehovRead(
-                NarmestelederbehovId(UUID.randomUUID()),
-                PersonIdent("12345678901"),
-                OrganizationNumber("910000001"),
-                "910000002",
-                PersonIdent("12345678902"),
-                "Stored",
-                null,
-                "Name",
-                Instant.EPOCH,
-                Instant.EPOCH,
-                BehovStatus.BEHOV_CREATED,
-                BehovReason.DEAKTIVERT_LEDER,
+            val behov = NarmestelederbehovDetails(
+                id = NarmestelederbehovId(UUID.randomUUID()),
+                employeeIdent = PersonIdent("12345678901"),
+                organizationNumber = OrganizationNumber("910000001"),
+                mainOrganizationNumber = "910000002",
+                managerIdent = PersonIdent("12345678902"),
+                firstName = "Stored",
+                middleName = null,
+                lastName = "Name",
+                created = Instant.EPOCH,
+                updated = Instant.EPOCH,
+                status = BehovStatus.BEHOV_CREATED,
+                reason = BehovReason.DEAKTIVERT_LEDER,
             )
-            val dto = GetNarmestelederbehovResult.Found(behov, BehovPersonName("First", "Middle", "Last"), "Org").toLinemanagerRequirementRead()
+            val dto = GetNarmestelederbehovResult.Found(
+                behov = behov,
+                name = BehovPersonName(firstName = "First", middleName = "Middle", lastName = "Last"),
+                organizationName = "Org",
+            ).toLinemanagerRequirementRead()
             dto.id shouldBe behov.id.value
             dto.employeeIdentificationNumber.value shouldBe behov.employeeIdent.value
             dto.orgNumber.value shouldBe behov.organizationNumber.value
@@ -75,7 +79,8 @@ class GetNarmestelederbehovHttpMappingTest :
         ).forEach { (reason, expected) ->
             test("denial $reason retains PUT and legacy 403 contract") {
                 val error = shouldThrow<ApiErrorException.ForbiddenException> {
-                    GetNarmestelederbehovResult.AccessDenied(reason, OrganizationNumber("910000001")).toLinemanagerRequirementRead()
+                    GetNarmestelederbehovResult.AccessDenied(reason = reason, organizationNumber = OrganizationNumber("910000001"))
+                        .toLinemanagerRequirementRead()
                 }
                 error.errorMessage shouldBe expected.first
                 error.type shouldBe expected.second

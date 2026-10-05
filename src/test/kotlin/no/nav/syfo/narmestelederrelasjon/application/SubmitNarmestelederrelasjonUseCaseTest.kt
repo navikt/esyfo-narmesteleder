@@ -30,7 +30,7 @@ class SubmitNarmestelederrelasjonUseCaseTest :
                         effects += "access"
                         accessSubject shouldBe subject
                         organization shouldBe organizationNumber
-                        OrganizationAccessResult.Granted(null)
+                        OrganizationAccessResult.Granted(organizationName = null)
                     },
                     EstablishNarmestelederrelasjon {
                         effects += "establish"
@@ -68,7 +68,7 @@ private fun command(subject: OrganizationAccessSubject) = SubmitNarmestelederrel
 
 private fun recordingUseCase(
     effects: MutableList<String>,
-    accessResult: OrganizationAccessResult = OrganizationAccessResult.Granted(null),
+    accessResult: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
 ) = SubmitNarmestelederrelasjonUseCase(
     OrganizationAccess { _, _ ->
         effects += "access"

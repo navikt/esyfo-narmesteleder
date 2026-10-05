@@ -54,10 +54,12 @@ import no.nav.syfo.narmesteleder.api.v1.REQUIREMENT_PATH
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRead
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
@@ -304,6 +306,10 @@ private class FakePutBehovRepository : NarmestelederbehovRepository {
         behov[id] = Narmestelederbehov(id, Employee(PersonIdent(employeeIdent), OrganizationNumber(orgNumber)))
         return id.value
     }
+
+    override suspend fun findForRead(id: NarmestelederbehovId): NarmestelederbehovRead? = null
+
+    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Fulfillment must not save employee name")
 
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov[id]
 

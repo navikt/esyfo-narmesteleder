@@ -5,6 +5,10 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import java.util.UUID
 
 interface NarmestelederbehovRepository {
+    suspend fun findForRead(id: NarmestelederbehovId): NarmestelederbehovRead?
+
+    suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName)
+
     suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov?
 
     suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult

@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.PersonIdent
@@ -8,7 +7,6 @@ import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
-import no.nav.syfo.organisasjonstilgang.application.DenialReason
 
 fun Manager.toManagerContactInput(): ManagerContactInput = ManagerContactInput(
     PersonIdent(nationalIdentificationNumber.value),
@@ -33,22 +31,7 @@ fun FulfillNarmestelederbehovResult.throwIfRejected() {
         FulfillNarmestelederbehovResult.BehovMissingAfterPublication ->
             throw ApiErrorException.NotFoundException("A LinemanagerRequirement was not found", isAlreadyLogged = true)
         is FulfillNarmestelederbehovResult.AccessDenied -> {
-            val message = when (reason) {
-                DenialReason.MISSING_ORGANIZATION_ACCESS -> "User lacks access to organization: ${organizationNumber.value}"
-                DenialReason.MISSING_RESOURCE_ACCESS ->
-                    "User lacks access to required Altinn resource for organization: ${organizationNumber.value}"
-                DenialReason.SYSTEM_USER_REJECTED ->
-                    "System user does not have access to $OPPGI_NARMESTELEDER_RESOURCE resource"
-            }
-            throw ApiErrorException.ForbiddenException(
-                message,
-                type = if (reason == DenialReason.MISSING_ORGANIZATION_ACCESS) {
-                    ErrorType.MISSING_ORG_ACCESS
-                } else {
-                    ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
-                },
-                isAlreadyLogged = true,
-            )
+            throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
         }
         is FulfillNarmestelederbehovResult.NoActiveSykmelding -> throw ApiErrorException.BadRequestException(
             "No active sick leave found for the given organization number: ${organizationNumber.value}",

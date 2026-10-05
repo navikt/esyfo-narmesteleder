@@ -46,15 +46,6 @@ fun Route.registerLinemanagerApiV1(
             call.respond(HttpStatusCode.Accepted)
         }
 
-        get("/{id}") {
-            val id = call.getUUIDFromPathVariable(name = "id")
-            val nlBehov = linemanagerRequirementRestHandler.handleGetLinemanagerRequirement(
-                requirementId = id,
-                principal = call.getMyPrincipal()
-            )
-            call.respond(HttpStatusCode.OK, nlBehov)
-        }
-
         get {
             val pageSize = call.getPageSize()
             val createAfter = call.getCreatedAfter()

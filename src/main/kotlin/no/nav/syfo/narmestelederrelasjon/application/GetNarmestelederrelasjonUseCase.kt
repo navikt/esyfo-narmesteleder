@@ -27,7 +27,7 @@ class GetNarmestelederrelasjonUseCase(
         }
 
         when (val access = organizationAccess.evaluate(accessSubject, lookup.organizationNumber)) {
-            OrganizationAccessResult.Granted -> Unit
+            is OrganizationAccessResult.Granted -> Unit
 
             is OrganizationAccessResult.Denied ->
                 return NotFound(NotFoundReason.ACCESS_DENIED, denialReason = access.reason).log()

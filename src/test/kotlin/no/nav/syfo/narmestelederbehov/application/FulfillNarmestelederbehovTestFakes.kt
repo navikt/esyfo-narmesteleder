@@ -20,6 +20,9 @@ internal class FakeBehovRepository(
     private val dialogStatusFailure: Throwable? = null,
     private val dialogStatusResult: MarkDialogCompletedResult = MarkDialogCompletedResult.Marked,
 ) : NarmestelederbehovRepository {
+    override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = null
+
+    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Fulfillment must not save employee name")
 
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov.also { effects += "load" }
 
@@ -37,7 +40,7 @@ internal class FakeBehovRepository(
 }
 
 internal class FakeOrganizationAccess(
-    private val result: OrganizationAccessResult = OrganizationAccessResult.Granted,
+    private val result: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
     private val effects: MutableList<String> = mutableListOf(),
 ) : OrganizationAccess {
     override suspend fun evaluate(

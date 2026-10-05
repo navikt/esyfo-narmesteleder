@@ -18,6 +18,7 @@ import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
+import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerRevokeActiveNarmestelederrelasjonApi
@@ -64,6 +65,7 @@ private fun Route.registerApiV1Routes() {
         linemanagerRequirementRestHandler = get(),
         fulfillNarmestelederbehov = get(),
     )
+    registerGetNarmestelederbehovApi(getNarmestelederbehov = get(), texasHttpClient = get())
     registerSubmitNarmestelederrelasjonApi(submit = get(), texasHttpClient = get())
     registerRevokeActiveNarmestelederrelasjonApi(revoke = get(), texasHttpClient = get())
     registerAccessOrganizationsApi(altinnTilgangerService = get(), texasHttpClient = get())

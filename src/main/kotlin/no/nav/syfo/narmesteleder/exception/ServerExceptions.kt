@@ -6,4 +6,3 @@ sealed class LinemanagerException(message: String) : RuntimeException(message) {
 }
 
 class MissingIDException(message: String) : LinemanagerException.ServerErrorException(message)
-class LinemanagerRequirementNotFoundException(message: String) : LinemanagerException.NotFoundException(message)

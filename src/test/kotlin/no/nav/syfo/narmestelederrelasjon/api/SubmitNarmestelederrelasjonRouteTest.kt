@@ -39,6 +39,7 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
+import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
@@ -226,7 +227,7 @@ private data class HttpCase(
 
 private class SubmitFixture(
     private val relationResult: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false)),
-    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted },
+    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
     private val failure: Exception? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
@@ -291,6 +292,7 @@ private class SubmitFixture(
                             texas,
                         )
                         registerRevokeActiveNarmestelederrelasjonApi(mockk(), texas)
+                        registerGetNarmestelederbehovApi(getNarmestelederbehov = mockk(), texasHttpClient = texas)
                     }
                     route(INTERNAL_API_V1_PATH) {
                         install(AddTokenIssuerPlugin)

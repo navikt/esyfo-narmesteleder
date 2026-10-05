@@ -23,7 +23,7 @@ class RevokeNarmestelederrelasjonUseCase(
 
         val initiator = accessSubject.partyInRelation(relation)
             ?: when (val access = organizationAccess.evaluate(accessSubject, relation.organizationNumber)) {
-                OrganizationAccessResult.Granted -> accessSubject.employerInitiator()
+                is OrganizationAccessResult.Granted -> accessSubject.employerInitiator()
                 is OrganizationAccessResult.Denied -> return accessDenied(id, accessSubject, access.reason)
             }
 

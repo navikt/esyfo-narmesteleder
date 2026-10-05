@@ -60,7 +60,7 @@ class FulfillNarmestelederbehovUseCase(
     private suspend fun verifyOrganizationAccess(subject: OrganizationAccessSubject, behov: Narmestelederbehov): FulfillStep<Unit> {
         val organizationNumber = behov.employee.organizationNumber
         return when (val access = organizationAccess.evaluate(subject, organizationNumber)) {
-            OrganizationAccessResult.Granted -> Step.Proceed
+            is OrganizationAccessResult.Granted -> Step.Proceed
             is OrganizationAccessResult.Denied ->
                 Step.Stop(FulfillNarmestelederbehovResult.AccessDenied(access.reason, organizationNumber))
         }

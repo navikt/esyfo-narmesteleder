@@ -5,7 +5,6 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldNotThrowAny
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.CapturingSlot
@@ -26,11 +25,8 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.Person
-import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
@@ -354,90 +350,6 @@ class NarmestelederServiceTest :
                 // Assert
                 coVerify(exactly = 0) { nlDb.insertNlBehov(any()) }
                 coVerify(exactly = 0) { aaregService.findArbeidsforholdByPersonIdent(any()) }
-            }
-        }
-
-        describe("getLinemanagerRequirementReadById") {
-            it("returns mapped read DTO with name from database") {
-                // Arrange
-                val id = UUID.randomUUID()
-                val entity = NarmestelederBehovEntity(
-                    id = id,
-                    orgnummer = "123456789",
-                    hovedenhetOrgnummer = "987654321",
-                    sykmeldtFnr = "12345678910",
-                    narmestelederFnr = "01987654321",
-                    behovReason = BehovReason.DEAKTIVERT_LEDER,
-                    behovStatus = BehovStatus.BEHOV_CREATED,
-                    avbruttNarmesteLederId = UUID.randomUUID(),
-                    fornavn = "Kari",
-                    mellomnavn = null,
-                    etternavn = "Nordmann",
-                )
-                coEvery { nlDb.findBehovById(id) } returns entity
-                coVerify(exactly = 0) { pdlService.getPersonFor(any()) }
-                val read = service().getLinemanagerRequirementReadById(id)
-                read.id shouldBe id
-                read.orgNumber.value shouldBe entity.orgnummer
-                read.mainOrgNumber.value shouldBe entity.hovedenhetOrgnummer
-                read.employeeIdentificationNumber.value shouldBe entity.sykmeldtFnr
-                read.managerIdentificationNumber?.value shouldBe entity.narmestelederFnr
-                read.name.firstName shouldBe entity.fornavn
-                read.name.middleName shouldBe entity.mellomnavn
-                read.name.lastName shouldBe entity.etternavn
-            }
-
-            it("throws when missing") {
-                // Arrange
-                val id = UUID.randomUUID()
-                coEvery { nlDb.findBehovById(id) } returns null
-
-                // Act + Assert
-                shouldThrow<LinemanagerRequirementNotFoundException> { service().getLinemanagerRequirementReadById(id) }
-            }
-
-            it("returns mapped read DTO with name from PDL when empty name in entity") {
-                // Arrange
-                val id = UUID.randomUUID()
-                val entity = NarmestelederBehovEntity(
-                    id = id,
-                    orgnummer = "123456789",
-                    hovedenhetOrgnummer = "987654321",
-                    sykmeldtFnr = "12345678910",
-                    narmestelederFnr = "01987654321",
-                    behovReason = BehovReason.DEAKTIVERT_LEDER,
-                    behovStatus = BehovStatus.BEHOV_CREATED,
-                    avbruttNarmesteLederId = UUID.randomUUID(),
-                )
-                val navn = Navn(fornavn = "Ola", mellomnavn = null, etternavn = "Nordmann")
-                coEvery { nlDb.findBehovById(id) } returns entity
-                coEvery { pdlService.getPersonFor(entity.sykmeldtFnr) } returns Person(
-                    name = navn,
-                    nationalIdentificationNumber = PersonalIdentificationNumber(entity.sykmeldtFnr)
-                )
-                // Act
-                val read = service().getLinemanagerRequirementReadById(id)
-
-                // Assert
-                coVerify(exactly = 1) { pdlService.getPersonFor(eq(entity.sykmeldtFnr)) }
-                coVerify(exactly = 1) { nlDb.updateNlBehov(any()) }
-                read.id shouldBe id
-                read.orgNumber.value shouldBe entity.orgnummer
-                read.mainOrgNumber.value shouldBe entity.hovedenhetOrgnummer
-                read.employeeIdentificationNumber.value shouldBe entity.sykmeldtFnr
-                read.managerIdentificationNumber?.value shouldBe entity.narmestelederFnr
-                read.name.firstName shouldBe navn.fornavn
-                read.name.lastName shouldBe navn.etternavn
-                read.name.middleName shouldBe navn.mellomnavn
-            }
-
-            it("throws when missing") {
-                // Arrange
-                val id = UUID.randomUUID()
-                coEvery { nlDb.findBehovById(id) } returns null
-
-                // Act + Assert
-                shouldThrow<LinemanagerRequirementNotFoundException> { service().getLinemanagerRequirementReadById(id) }
             }
         }
 

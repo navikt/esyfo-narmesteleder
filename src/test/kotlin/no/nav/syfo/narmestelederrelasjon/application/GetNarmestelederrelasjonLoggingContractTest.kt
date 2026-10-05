@@ -59,7 +59,7 @@ class GetNarmestelederrelasjonLoggingContractTest :
 
         fun useCase(
             lookup: NarmestelederrelasjonLookup? = lookup(),
-            access: OrganizationAccessResult = OrganizationAccessResult.Granted,
+            access: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
             activeSykmelding: Boolean = true,
         ) = GetNarmestelederrelasjonUseCase(
             repository = object : NarmestelederrelasjonRepository {

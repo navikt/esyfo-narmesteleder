@@ -50,7 +50,7 @@ class SubmitNarmestelederrelasjonUseCase(
     }
 
     private suspend fun verifyAccess(subject: OrganizationAccessSubject, organizationNumber: OrganizationNumber): SubmitStep<Unit> = when (val result = organizationAccess.evaluate(subject, organizationNumber)) {
-        OrganizationAccessResult.Granted -> Step.Proceed
+        is OrganizationAccessResult.Granted -> Step.Proceed
         is OrganizationAccessResult.Denied -> Step.Stop(SubmitNarmestelederrelasjonResult.AccessDenied(result.reason, organizationNumber))
     }
 

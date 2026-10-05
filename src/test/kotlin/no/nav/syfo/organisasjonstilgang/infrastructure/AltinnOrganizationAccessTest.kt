@@ -32,9 +32,15 @@ class AltinnOrganizationAccessTest :
             test("is granted with the narmesteleder resource for the organization") {
                 val fixture = AccessFixture()
                 fixture.altinn.addAccess(PERSON_IDENT, REQUESTED_ORG)
+                val accessPolicy = fixture.altinn.accessPolicy.single()
+                fixture.altinn.accessPolicy[0] = accessPolicy.copy(
+                    altinnTilgangerResponse = accessPolicy.altinnTilgangerResponse.copy(
+                        hierarki = accessPolicy.altinnTilgangerResponse.hierarki.map { it.copy(navn = "  Test Org  ") },
+                    ),
+                )
 
                 fixture.access.evaluate(personnelManager(), OrganizationNumber(REQUESTED_ORG)) shouldBe
-                    OrganizationAccessResult.Granted
+                    OrganizationAccessResult.Granted("Test Org")
             }
 
             test("is denied missing organization access without Altinn access to the organization") {
@@ -59,7 +65,7 @@ class AltinnOrganizationAccessTest :
                 fixture.pdp.permit(REQUESTED_ORG)
 
                 fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG)) shouldBe
-                    OrganizationAccessResult.Granted
+                    OrganizationAccessResult.Granted(null)
                 fixture.pdp.requestedOrganizations shouldContainExactly listOf(setOf(REQUESTED_ORG))
             }
 
@@ -69,7 +75,7 @@ class AltinnOrganizationAccessTest :
                 fixture.ereg.organisasjoner[REQUESTED_ORG] = organisationWithParent(SYSTEM_USER_ORG)
 
                 fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG)) shouldBe
-                    OrganizationAccessResult.Granted
+                    OrganizationAccessResult.Granted(null)
                 fixture.pdp.requestedOrganizations shouldContainExactly
                     listOf(setOf(REQUESTED_ORG), setOf(SYSTEM_USER_ORG))
             }

@@ -379,6 +379,6 @@ internal fun createUseCase(
 private data class Case(
     val result: FulfillNarmestelederbehovResult,
     val behovForFulfillment: Narmestelederbehov? = behov,
-    val accessResult: OrganizationAccessResult = OrganizationAccessResult.Granted,
+    val accessResult: OrganizationAccessResult = OrganizationAccessResult.Granted(null),
     val expectedEffects: List<String>,
 )

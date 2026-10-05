@@ -42,7 +42,7 @@ class SubmitNarmestelederrelasjonPublicationTest :
                     KafkaPublishNarmestelederrelasjon(producer),
                 )
                 val submit = SubmitNarmestelederrelasjonUseCase(
-                    OrganizationAccess { _, _ -> OrganizationAccessResult.Granted },
+                    OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(null) },
                     establish,
                 )
 

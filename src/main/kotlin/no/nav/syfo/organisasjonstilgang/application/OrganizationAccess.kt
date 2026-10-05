@@ -33,7 +33,11 @@ class AccessToken(private val value: String) {
 }
 
 sealed interface OrganizationAccessResult {
-    data object Granted : OrganizationAccessResult
+    /**
+     * [organizationName] is the name of the requested organization as registered in Altinn.
+     * It is only known when a personnel manager is granted access; null for system users.
+     */
+    data class Granted(val organizationName: String?) : OrganizationAccessResult
     data class Denied(val reason: DenialReason) : OrganizationAccessResult
 }
 

@@ -41,7 +41,7 @@ class AltinnOrganizationAccess(
             return OrganizationAccessResult.Denied(DenialReason.MISSING_RESOURCE_ACCESS)
         }
         COUNT_HAS_ALTINN3_RESOURCE.increment()
-        return OrganizationAccessResult.Granted
+        return OrganizationAccessResult.Granted(altinnTilgang.navn.trim())
     }
 
     private suspend fun evaluateSystemUser(
@@ -50,12 +50,12 @@ class AltinnOrganizationAccess(
     ): OrganizationAccessResult {
         val directDecision = decisionFor(subject, organizationNumber)
         if (directDecision == Decision.Permit) {
-            return OrganizationAccessResult.Granted
+            return OrganizationAccessResult.Granted(null)
         }
 
         val fallbackDecision = decisionThroughSystemUserOrganization(subject, organizationNumber)
         if (fallbackDecision == Decision.Permit) {
-            return OrganizationAccessResult.Granted
+            return OrganizationAccessResult.Granted(null)
         }
 
         logger.event(systemUserAccessRejected, SystemUserAccessRejection(directDecision, fallbackDecision))

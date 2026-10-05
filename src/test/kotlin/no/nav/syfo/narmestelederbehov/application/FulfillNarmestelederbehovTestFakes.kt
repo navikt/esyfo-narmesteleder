@@ -37,7 +37,7 @@ internal class FakeBehovRepository(
 }
 
 internal class FakeOrganizationAccess(
-    private val result: OrganizationAccessResult = OrganizationAccessResult.Granted,
+    private val result: OrganizationAccessResult = OrganizationAccessResult.Granted(null),
     private val effects: MutableList<String> = mutableListOf(),
 ) : OrganizationAccess {
     override suspend fun evaluate(

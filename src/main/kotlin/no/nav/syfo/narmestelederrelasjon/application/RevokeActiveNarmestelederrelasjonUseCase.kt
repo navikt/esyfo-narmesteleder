@@ -32,7 +32,7 @@ class RevokeActiveNarmestelederrelasjonUseCase(
     }
 
     private suspend fun verifyAccess(command: RevokeActiveNarmestelederrelasjonCommand): RevokeActiveStep<Unit> = when (val access = organizationAccess.evaluate(command.accessSubject, command.organizationNumber)) {
-        OrganizationAccessResult.Granted -> Step.Proceed
+        is OrganizationAccessResult.Granted -> Step.Proceed
         is OrganizationAccessResult.Denied -> Step.Stop(RevokeActiveNarmestelederrelasjonResult.AccessDenied(access.reason, command.organizationNumber))
     }
 

@@ -226,7 +226,7 @@ private data class HttpCase(
 
 private class SubmitFixture(
     private val relationResult: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false)),
-    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted },
+    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(null) },
     private val failure: Exception? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()

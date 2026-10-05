@@ -30,7 +30,7 @@ class RevokeNarmestelederrelasjonUseCaseTest :
 
         fun fixture(
             lookup: RevocableNarmestelederrelasjon? = relation(),
-            access: OrganizationAccessResult = OrganizationAccessResult.Granted,
+            access: OrganizationAccessResult = OrganizationAccessResult.Granted(null),
         ): RevokeFixture {
             val relationId = id
             val effects = mutableListOf<String>()

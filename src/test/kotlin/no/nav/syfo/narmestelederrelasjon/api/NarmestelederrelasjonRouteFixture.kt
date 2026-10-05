@@ -114,7 +114,7 @@ internal class NarmestelederrelasjonRouteFixture {
             TexasIntrospectionResponse(active = true, acr = "Level4", pid = employeeIdent)
         coEvery { repository.findById(id) } returns lookup()
         coEvery { repository.findRevocableById(id) } returns revocableLookup()
-        coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns OrganizationAccessResult.Granted
+        coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns OrganizationAccessResult.Granted(null)
         coEvery { organization.findName(OrganizationNumber("123456789")) } returns "Organization"
     }
 }

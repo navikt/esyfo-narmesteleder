@@ -18,11 +18,18 @@ class GetNarmestelederbehovUseCase(
         val behov = repository.findForRead(id) ?: return GetNarmestelederbehovResult.NotFound.log()
         // Legacy parity: the name is resolved and persisted before access is checked. Redesign tracked in #602.
         val name = if (behov.firstName != null && behov.lastName != null) {
-            BehovPersonName(behov.firstName, behov.middleName, behov.lastName)
+            BehovPersonName(
+                firstName = behov.firstName,
+                middleName = behov.middleName,
+                lastName = behov.lastName,
+            )
         } else {
             val details = personLookup.find(behov.employeeIdent) ?: return GetNarmestelederbehovResult.PersonNotFound.log()
-            BehovPersonName(details.name.firstName, details.name.middleName, details.name.lastName)
-                .also { repository.saveEmployeeName(behov.id, it) }
+            BehovPersonName(
+                firstName = details.name.firstName,
+                middleName = details.name.middleName,
+                lastName = details.name.lastName,
+            ).also { repository.saveEmployeeName(behov.id, it) }
         }
         val organizationName = when (val access = organizationAccess.evaluate(subject, behov.organizationNumber)) {
             is OrganizationAccessResult.Denied ->

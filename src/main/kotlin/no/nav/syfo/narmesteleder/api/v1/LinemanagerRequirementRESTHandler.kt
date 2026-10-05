@@ -1,17 +1,12 @@
 package no.nav.syfo.narmesteleder.api.v1
 
-import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.auth.Principal
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.util.logger
 import java.time.Instant
-import java.util.UUID
 
 class LinemanagerRequirementRESTHandler(
     private val narmesteLederService: NarmestelederService,
@@ -19,24 +14,6 @@ class LinemanagerRequirementRESTHandler(
 ) {
     companion object {
         val logger = logger()
-    }
-
-    suspend fun handleGetLinemanagerRequirement(requirementId: UUID, principal: Principal): LinemanagerRequirementRead = try {
-        narmesteLederService.getLinemanagerRequirementReadById(requirementId).let {
-            val orgNavn = validationService.validatePrincipalAccessToOrgnumber(principal, it.orgNumber)
-            it.copy(orgName = orgNavn)
-        }
-    } catch (e: LinemanagerRequirementNotFoundException) {
-        throw ApiErrorException.NotFoundException("LinemanagerRequirement", e)
-    } catch (e: ApiErrorException) {
-        throw e
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        throw ApiErrorException.InternalServerErrorException(
-            "Something went wrong while fetching LinemanagerRequirement",
-            e
-        )
     }
 
     suspend fun handleGetLinemanagerRequirementsCollection(

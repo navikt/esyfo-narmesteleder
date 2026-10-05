@@ -16,7 +16,6 @@ import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.RevokedBy
-import no.nav.syfo.narmesteleder.exception.LinemanagerRequirementNotFoundException
 import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
 import no.nav.syfo.pdl.PdlService
@@ -79,11 +78,6 @@ class NarmestelederService(
         logger.logEvent(behovStoredDegraded, source.logDetails(reason))
     }
 
-    suspend fun getLinemanagerRequirementReadById(id: UUID): LinemanagerRequirementRead = with(findBehovEntityById(id)) {
-        val name = getName()
-        toEmployeeLinemanagerRead(name)
-    }
-
     private suspend fun NarmestelederBehovEntity.getName(): Name = if (fornavn != null && etternavn != null) {
         Name(
             firstName = fornavn,
@@ -104,9 +98,6 @@ class NarmestelederService(
             middleName = details.name.mellomnavn,
         )
     }
-
-    private suspend fun findBehovEntityById(id: UUID): NarmestelederBehovEntity = nlDb.findBehovById(id)
-        ?: throw LinemanagerRequirementNotFoundException("NarmestelederBehovEntity not found for id: $id")
 
     suspend fun updateNlBehov(
         behovEntity: NarmestelederBehovEntity,

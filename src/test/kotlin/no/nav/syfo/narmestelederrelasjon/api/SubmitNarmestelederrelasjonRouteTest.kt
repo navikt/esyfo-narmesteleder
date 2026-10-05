@@ -39,6 +39,7 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
+import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
@@ -291,6 +292,7 @@ private class SubmitFixture(
                             texas,
                         )
                         registerRevokeActiveNarmestelederrelasjonApi(mockk(), texas)
+                        registerGetNarmestelederbehovApi(mockk(), texas)
                     }
                     route(INTERNAL_API_V1_PATH) {
                         install(AddTokenIssuerPlugin)

@@ -11,11 +11,12 @@ value class EmailAddress(val value: String) {
     }
 
     companion object {
-        fun fromSeparatedList(value: String): List<EmailAddress> = value
-            .split(",", ";")
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .map(::EmailAddress)
+        fun fromSeparatedList(value: String): List<EmailAddress> = splitEmailAddresses(value).map(::EmailAddress)
+
+        fun parseSeparatedList(value: String): ParsedEmailAddresses {
+            val (valid, discarded) = splitEmailAddresses(value).partition { validationReason(it) == null }
+            return ParsedEmailAddresses(valid.map(::EmailAddress), discarded.size)
+        }
 
         internal fun validationReason(value: String): ManagerContactValidationReason? {
             if (value.isBlank()) return ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_BE_BLANK
@@ -32,3 +33,13 @@ value class EmailAddress(val value: String) {
         }
     }
 }
+
+data class ParsedEmailAddresses(
+    val validEmailAddresses: List<EmailAddress>,
+    val discardedEmailAddressCount: Int,
+)
+
+private fun splitEmailAddresses(value: String): List<String> = value
+    .split(",", ";")
+    .map(String::trim)
+    .filter(String::isNotEmpty)

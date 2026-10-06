@@ -15,7 +15,7 @@ class LinemanagerSearchCursorTest :
             LinemanagerSearchCursor(firstName = null, lastName = "", id = Int.MAX_VALUE),
         ).forEach { cursor ->
             test("round-trips $cursor") {
-                cursor.toOpaqueCursor().toLinemanagerSearchCursor().getOrThrow() shouldBe cursor
+                LinemanagerSearchCursor.fromPageToken(cursor.toPageToken()).getOrThrow() shouldBe cursor
             }
         }
 
@@ -24,13 +24,13 @@ class LinemanagerSearchCursorTest :
             LinemanagerSearchCursor(firstName = "ola", lastName = "nordmann", id = 1) to "djI6c2IyeGg6c2JtOXlaRzFoYm00OjE",
         ).forEach { (cursor, token) ->
             test("encodes $cursor as the published v2 token $token") {
-                cursor.toOpaqueCursor() shouldBe token
-                token.toLinemanagerSearchCursor().getOrThrow() shouldBe cursor
+                cursor.toPageToken() shouldBe token
+                LinemanagerSearchCursor.fromPageToken(token).getOrThrow() shouldBe cursor
             }
         }
 
         test("decodes an absent token to no cursor") {
-            null.toLinemanagerSearchCursor().getOrThrow() shouldBe null
+            LinemanagerSearchCursor.fromPageToken(null).getOrThrow() shouldBe null
         }
 
         listOf(
@@ -47,14 +47,14 @@ class LinemanagerSearchCursorTest :
             Base64.getUrlEncoder().encodeToString(byteArrayOf(0xff.toByte())) to "token that is not UTF-8",
         ).forEach { (raw, description) ->
             test("rejects $description") {
-                raw.toLinemanagerSearchCursor().shouldBeFailure()
+                LinemanagerSearchCursor.fromPageToken(raw).shouldBeFailure()
             }
         }
 
         listOf(0, -1).forEach { id ->
-            test("refuses to encode id $id") {
+            test("refuses to create a cursor with id $id") {
                 shouldThrow<IllegalArgumentException> {
-                    LinemanagerSearchCursor(firstName = null, lastName = null, id = id).toOpaqueCursor()
+                    LinemanagerSearchCursor(firstName = null, lastName = null, id = id)
                 }
             }
         }

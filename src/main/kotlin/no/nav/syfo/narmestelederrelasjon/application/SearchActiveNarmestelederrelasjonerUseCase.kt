@@ -27,7 +27,7 @@ class SearchActiveNarmestelederrelasjonerUseCase(
             return SearchActiveNarmestelederrelasjonerResult.InvalidText
         }
         val pageSize = command.pageSize?.takeIf { it in 1..DEFAULT_PAGE_SIZE } ?: DEFAULT_PAGE_SIZE
-        val cursor = command.pageToken.toLinemanagerSearchCursor()
+        val cursor = LinemanagerSearchCursor.fromPageToken(command.pageToken)
             .getOrElse { return SearchActiveNarmestelederrelasjonerResult.InvalidPageToken }
         val identText = text?.takeIf { it.length == 11 && it.all(Char::isDigit) }
         val results = repository.search(
@@ -48,7 +48,7 @@ class SearchActiveNarmestelederrelasjonerUseCase(
             linemanagers = visibleResults.map(NarmestelederrelasjonSearchRow::linemanager),
             pageSize = pageSize,
             hasMore = hasMore,
-            nextPageToken = if (hasMore) visibleResults.lastOrNull()?.cursor?.toOpaqueCursor() else null,
+            nextPageToken = if (hasMore) visibleResults.lastOrNull()?.cursor?.toPageToken() else null,
         )
     }
 }

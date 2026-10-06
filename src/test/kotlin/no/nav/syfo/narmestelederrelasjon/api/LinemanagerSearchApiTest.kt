@@ -42,7 +42,6 @@ import no.nav.syfo.narmestelederrelasjon.application.SearchManager
 import no.nav.syfo.narmestelederrelasjon.application.SearchName
 import no.nav.syfo.narmestelederrelasjon.application.SearchNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.SearchPerson
-import no.nav.syfo.narmestelederrelasjon.application.toOpaqueCursor
 import no.nav.syfo.narmestelederrelasjon.observability.LINEMANAGER_SEARCH_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -115,7 +114,7 @@ class LinemanagerSearchApiTest :
                 body.path("meta").path("pageSize").asInt() shouldBe 1
                 body.path("meta").path("hasMore").asBoolean() shouldBe true
                 body.path("meta").path("nextPageToken").asText() shouldBe
-                    LinemanagerSearchCursor(firstName = "ola", lastName = "nordmann", id = 1).toOpaqueCursor()
+                    LinemanagerSearchCursor(firstName = "ola", lastName = "nordmann", id = 1).toPageToken()
                 access.calls shouldBe listOf(
                     OrganizationAccessSubject.LpsSystemUser(SYSTEM_USER_ID, organizationNumber) to organizationNumber,
                 )
@@ -141,7 +140,7 @@ class LinemanagerSearchApiTest :
             val cursor = LinemanagerSearchCursor(firstName = "ola", lastName = "nordmann", id = 1)
             withSearchApi(useCase, texasHttpClient) {
                 val response = client.search(
-                    """{"orgNumber":"${organizationNumber.value}","pageToken":"${cursor.toOpaqueCursor()}"}""",
+                    """{"orgNumber":"${organizationNumber.value}","pageToken":"${cursor.toPageToken()}"}""",
                 )
 
                 response.status shouldBe HttpStatusCode.OK

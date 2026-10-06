@@ -99,7 +99,7 @@ class SearchActiveNarmestelederrelasjonerUseCaseTest :
 
         test("passes a decoded pageToken to the repository as cursor") {
             val cursor = LinemanagerSearchCursor("ø:ystein", null, 42)
-            useCase.execute(subject, SearchActiveNarmestelederrelasjonerCommand(organizationNumber, pageToken = cursor.toOpaqueCursor()))
+            useCase.execute(subject, SearchActiveNarmestelederrelasjonerCommand(organizationNumber, pageToken = cursor.toPageToken()))
             repository.calls.single().cursor shouldBe cursor
         }
 
@@ -116,7 +116,7 @@ class SearchActiveNarmestelederrelasjonerUseCaseTest :
                 as SearchActiveNarmestelederrelasjonerResult.Success
             result.linemanagers shouldBe repository.rows.take(2).map { it.linemanager }
             result.hasMore shouldBe true
-            result.nextPageToken shouldBe repository.rows[1].cursor.toOpaqueCursor()
+            result.nextPageToken shouldBe repository.rows[1].cursor.toPageToken()
         }
 
         listOf(0, 1, 2).forEach { size ->

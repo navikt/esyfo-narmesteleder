@@ -9,43 +9,44 @@ data class LinemanagerSearchCursor(
     val firstName: String?,
     val lastName: String?,
     val id: Int,
-)
-
-fun String?.toLinemanagerSearchCursor(): Result<LinemanagerSearchCursor?> = runCatching {
-    this?.let { cursor ->
-        val cursorParts = Base64.getUrlDecoder()
-            .decode(cursor)
-            .toStrictUtf8String()
-            .split(":")
-        require(cursorParts.size == 4 && cursorParts.first() == LINEMANAGER_SEARCH_CURSOR_VERSION) {
-            "Unsupported cursor format"
-        }
-        val id = cursorParts.last().toInt()
+) {
+    init {
         require(id > 0) {
             "Cursor id must be positive"
         }
-        LinemanagerSearchCursor(
-            firstName = cursorParts[1].toCursorName(),
-            lastName = cursorParts[2].toCursorName(),
-            id = id,
-        )
     }
-}
 
-fun LinemanagerSearchCursor.toOpaqueCursor(): String {
-    require(id > 0) {
-        "Cursor id must be positive"
+    fun toPageToken(): String {
+        val cursor = listOf(
+            LINEMANAGER_SEARCH_CURSOR_VERSION,
+            firstName.toCursorNameField(),
+            lastName.toCursorNameField(),
+            id,
+        ).joinToString(":")
+
+        return Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(cursor.toByteArray(UTF_8))
     }
-    val cursor = listOf(
-        LINEMANAGER_SEARCH_CURSOR_VERSION,
-        firstName.toCursorNameField(),
-        lastName.toCursorNameField(),
-        id,
-    ).joinToString(":")
 
-    return Base64.getUrlEncoder()
-        .withoutPadding()
-        .encodeToString(cursor.toByteArray(UTF_8))
+    companion object {
+        fun fromPageToken(pageToken: String?): Result<LinemanagerSearchCursor?> = runCatching {
+            pageToken?.let { token ->
+                val cursorParts = Base64.getUrlDecoder()
+                    .decode(token)
+                    .toStrictUtf8String()
+                    .split(":")
+                require(cursorParts.size == 4 && cursorParts.first() == LINEMANAGER_SEARCH_CURSOR_VERSION) {
+                    "Unsupported cursor format"
+                }
+                LinemanagerSearchCursor(
+                    firstName = cursorParts[1].toCursorName(),
+                    lastName = cursorParts[2].toCursorName(),
+                    id = cursorParts.last().toInt(),
+                )
+            }
+        }
+    }
 }
 
 private const val LINEMANAGER_SEARCH_CURSOR_VERSION = "v2"

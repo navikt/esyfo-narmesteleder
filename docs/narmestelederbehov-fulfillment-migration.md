@@ -9,8 +9,7 @@ is tracked separately in #544.
 
 The legacy PUT handler and its dedicated service methods have been removed.
 PUT HTTP contract tests now live in
-`src/test/kotlin/no/nav/syfo/narmestelederbehov/api/FulfillNarmestelederbehovRouteTest.kt`;
-the legacy requirement API suite covers GET only.
+`src/test/kotlin/no/nav/syfo/narmestelederbehov/api/FulfillNarmestelederbehovRouteTest.kt`.
 
 ## Acceptance criteria
 

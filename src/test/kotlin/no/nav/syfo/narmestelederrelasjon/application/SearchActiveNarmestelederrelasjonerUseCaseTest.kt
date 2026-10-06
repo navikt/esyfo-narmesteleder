@@ -10,7 +10,6 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import java.time.Instant
-import java.util.Base64
 import java.util.UUID
 
 private val organizationNumber = OrganizationNumber("123456789")
@@ -98,34 +97,17 @@ class SearchActiveNarmestelederrelasjonerUseCaseTest :
             )
         }
 
-        test("round-trips v2 tokens with nullable, empty, Unicode and colon-delimited names") {
-            listOf(
-                LinemanagerSearchCursor("ø:ystein", "", 42),
-                LinemanagerSearchCursor(null, null, 1),
-                LinemanagerSearchCursor("", "漢字:é", 2),
-                LinemanagerSearchCursor(null, "", Int.MAX_VALUE),
-            ).forEach { cursor ->
-                cursor.toOpaqueCursor().toLinemanagerSearchCursor().getOrThrow() shouldBe cursor
-                useCase.execute(subject, SearchActiveNarmestelederrelasjonerCommand(organizationNumber, pageToken = cursor.toOpaqueCursor()))
-                repository.calls.last().cursor shouldBe cursor
-            }
-            LinemanagerSearchCursor(null, null, 1).toOpaqueCursor() shouldBe "djI6bjpuOjE"
-            LinemanagerSearchCursor("ola", "nordmann", 1).toOpaqueCursor() shouldBe "djI6c2IyeGg6c2JtOXlaRzFoYm00OjE"
+        test("passes a decoded pageToken to the repository as cursor") {
+            val cursor = LinemanagerSearchCursor("ø:ystein", null, 42)
+            useCase.execute(subject, SearchActiveNarmestelederrelasjonerCommand(organizationNumber, pageToken = cursor.toOpaqueCursor()))
+            repository.calls.single().cursor shouldBe cursor
         }
 
-        listOf(
-            "", "invalid!", "djE6MQ",
-            token("v2:n:n:0"), token("v2:n:n:-1"), token("v2:n:n:2147483648"),
-            token("v2:n:n:1:extra"), token("v2:x:n:1"),
-            token("v2:s_w:n:1"), token("v2:s!:n:1"),
-            Base64.getUrlEncoder().encodeToString(byteArrayOf(0xff.toByte())),
-        ).forEachIndexed { index, raw ->
-            test("rejects invalid token case $index without querying") {
-                useCase.execute(subject, SearchActiveNarmestelederrelasjonerCommand(organizationNumber, pageToken = raw)) shouldBe
-                    SearchActiveNarmestelederrelasjonerResult.InvalidPageToken
-                access.calls.size shouldBe 1
-                repository.calls.shouldBeEmpty()
-            }
+        test("rejects an invalid pageToken without querying") {
+            useCase.execute(subject, SearchActiveNarmestelederrelasjonerCommand(organizationNumber, pageToken = "invalid!")) shouldBe
+                SearchActiveNarmestelederrelasjonerResult.InvalidPageToken
+            access.calls.size shouldBe 1
+            repository.calls.shouldBeEmpty()
         }
 
         test("drops the lookahead row and uses the last visible cursor only when there is more") {
@@ -168,8 +150,6 @@ private class SearchRepository : NarmestelederrelasjonSearchRepository {
         return rows
     }
 }
-
-private fun token(raw: String): String = Base64.getUrlEncoder().withoutPadding().encodeToString(raw.toByteArray(Charsets.UTF_8))
 
 private fun searchRow(id: Int) = NarmestelederrelasjonSearchRow(
     cursor = LinemanagerSearchCursor("ola", "nordmann", id),

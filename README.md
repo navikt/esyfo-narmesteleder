@@ -53,6 +53,10 @@ Tjenesten konsumerer Kafka-topics for å opprette og vedlikeholde data som bruke
 - Konsumenten oppretter fortsatt ikke nye personer fra `pdl.leesah-v1`; kun eksisterende personer i registeret oppdateres.
 - `Personhendelse.avsc` er hentet fra `navikt/narmesteleder` (`src/main/avro/no/nav/person/pdl/leesah/Personhendelse.avsc`, SHA `24c9a2cd2921e9cc423df8c343542ff0967564ae`).
 
+## Kafka-topics vi eier
+
+- `team-esyfo.syfo-narmesteleder-leesah`: se [topic-dokumentasjonen](docs/kafka/syfo-narmesteleder-leesah.md) og [JSON Schema](docs/kafka/syfo-narmesteleder-leesah.schema.json).
+
 
 ## Diagrams
 An always up-to-date diagram can be viewed in the excellent service from [Flex Arkitektur](https://flex-arkitektur.nav.no/?apper=prod-gcp.team-esyfo.esyfo-narmesteleder).

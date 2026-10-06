@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/kafka/syfo-narmesteleder-leesah.schema.json",
+  "title": "NarmestelederLeesah",
+  "description": "Value of a non-tombstone record on team-esyfo.syfo-narmesteleder-leesah. One record describes the current state of one narmesteleder relation. All properties are always present; nullable properties are written as null. Properties may be added, so consumers must ignore unknown properties.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "narmesteLederId",
+    "fnr",
+    "orgnummer",
+    "narmesteLederFnr",
+    "narmesteLederTelefonnummer",
+    "narmesteLederEpost",
+    "aktivFom",
+    "aktivTom",
+    "arbeidsgiverForskutterer",
+    "timestamp",
+    "status"
+  ],
+  "properties": {
+    "narmesteLederId": {
+      "description": "Id of the narmesteleder relation. Same value as the record key.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "fnr": {
+      "description": "National identity number of the employee (arbeidstaker).",
+      "type": "string",
+      "pattern": "^[0-9]{11}$"
+    },
+    "orgnummer": {
+      "description": "Organization number of the employer (virksomhet).",
+      "type": "string",
+      "pattern": "^[0-9]{9}$"
+    },
+    "narmesteLederFnr": {
+      "description": "National identity number of the narmeste leder.",
+      "type": "string",
+      "pattern": "^[0-9]{11}$"
+    },
+    "narmesteLederTelefonnummer": {
+      "description": "Phone number of the narmeste leder, as registered by the employer.",
+      "type": "string",
+      "maxLength": 255
+    },
+    "narmesteLederEpost": {
+      "description": "Email address of the narmeste leder, as registered by the employer.",
+      "type": "string",
+      "maxLength": 255
+    },
+    "aktivFom": {
+      "description": "First day the relation is active.",
+      "type": "string",
+      "format": "date"
+    },
+    "aktivTom": {
+      "description": "Last day the relation is active. null while the relation is active.",
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "arbeidsgiverForskutterer": {
+      "description": "Whether the employer continues to pay salary during sick leave. null when unknown.",
+      "type": ["boolean", "null"]
+    },
+    "timestamp": {
+      "description": "When the record was published, in UTC.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "description": "Source of the latest change. The examples are the values produced today; new values may be added, so consumers should map unknown values to a fallback.",
+      "type": ["string", "null"],
+      "examples": [
+        "NY_LEDER",
+        "DEAKTIVERT_ARBEIDSTAKER",
+        "DEAKTIVERT_ARBEIDSTAKER_INNSENDT_SYKMELDING",
+        "DEAKTIVERT_LEDER",
+        "DEAKTIVERT_ARBEIDSFORHOLD",
+        "DEAKTIVERT_NY_LEDER",
+        "IDENTENDRING",
+        "DEAKTIVERT_PERSONALLEDER",
+        "DEAKTIVERT_LPS",
+        null
+      ]
+    }
+  }
+}

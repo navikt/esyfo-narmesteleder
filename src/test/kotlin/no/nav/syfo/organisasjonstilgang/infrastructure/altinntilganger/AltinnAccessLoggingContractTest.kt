@@ -24,7 +24,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.ContentConverter
-import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
@@ -42,6 +41,10 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamExceptionType
 import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.organisasjonstilgang.application.AccessToken
+import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
+import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
@@ -129,9 +132,8 @@ class AltinnAccessLoggingContractTest :
                     "https://altinn.test",
                 )
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(upstreamClient).getFilteredOrganizations(UserPrincipal("12345678901", "token-canary"))
-                }
+                AltinnTilgangerService(upstreamClient).find(personnelManager("12345678901", "token-canary")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val serialized = logLines().single()
                 val record = jacksonObjectMapper().readTree(serialized)
@@ -177,10 +179,12 @@ class AltinnAccessLoggingContractTest :
                         installStatusPages()
                         routing {
                             get("/accessible-organizations/{ignored}") {
-                                service.getFilteredOrganizations(
-                                    UserPrincipal(nationalIdentificationNumberCanary, tokenCanary),
+                                service.find(personnelManager(nationalIdentificationNumberCanary, tokenCanary)) shouldBe
+                                    ListAccessibleOrganizationsResult.Unavailable
+                                throw ApiErrorException.InternalServerErrorException(
+                                    errorMessage = "An error occurred when fetching altinn tilganger",
+                                    isAlreadyLogged = true,
                                 )
-                                call.respond(HttpStatusCode.OK)
                             }
                         }
                     }
@@ -255,11 +259,8 @@ class AltinnAccessLoggingContractTest :
                         )
                 }
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(
-                        UserPrincipal(nationalIdentificationNumberCanary, tokenCanary),
-                    )
-                }
+                AltinnTilgangerService(client).find(personnelManager(nationalIdentificationNumberCanary, tokenCanary)) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val serializedLogs = logOutput.toString(Charsets.UTF_8)
                 val logRecord = jacksonObjectMapper().readTree(
@@ -305,9 +306,8 @@ class AltinnAccessLoggingContractTest :
                             )
                     }
 
-                    shouldThrow<ApiErrorException.InternalServerErrorException> {
-                        AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                    }
+                    AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                        ListAccessibleOrganizationsResult.Unavailable
 
                     val logLines = logLines()
                     logLines shouldHaveSize 1
@@ -329,9 +329,8 @@ class AltinnAccessLoggingContractTest :
                         )
                 }
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val logRecord = jacksonObjectMapper().readTree(
                     logLines().single(),
@@ -373,9 +372,8 @@ class AltinnAccessLoggingContractTest :
                         )
                 }
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val logRecord = jacksonObjectMapper().readTree(
                     logLines().single(),
@@ -395,9 +393,8 @@ class AltinnAccessLoggingContractTest :
                         )
                 }
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val logRecord = jacksonObjectMapper().readTree(
                     logLines().single(),
@@ -415,7 +412,7 @@ class AltinnAccessLoggingContractTest :
                 val principal = UserPrincipal("12345678901", "token")
 
                 service.getAltinnTilgangForOrgnr(principal, "999999999") shouldBe null
-                service.getFilteredOrganizations(principal) shouldBe emptyList()
+                service.find(personnelManager(principal.ident, principal.token)) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
 
                 val logLines = logLines()
                 logLines shouldBe emptyList()
@@ -439,11 +436,8 @@ class AltinnAccessLoggingContractTest :
                     baseUrl = "https://altinn-tilganger.test",
                 )
 
-                val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
-
-                exception.isAlreadyLogged shouldBe true
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
                 val logLines = logLines()
                 logLines shouldHaveSize 1
                 val logRecord = jacksonObjectMapper().readTree(logLines.single())
@@ -465,7 +459,7 @@ class AltinnAccessLoggingContractTest :
                 )
 
                 shouldThrow<CancellationException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                    AltinnTilgangerService(client).find(personnelManager("12345678901", "token"))
                 }
 
                 logLines() shouldHaveSize 0
@@ -511,7 +505,7 @@ class AltinnAccessLoggingContractTest :
                 )
 
                 shouldThrow<CancellationException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                    AltinnTilgangerService(client).find(personnelManager("12345678901", "token"))
                 }
 
                 logLines() shouldHaveSize 0
@@ -527,7 +521,8 @@ class AltinnAccessLoggingContractTest :
                     )
                 }
 
-                AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token")) shouldBe emptyList()
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Listed(emptyList())
 
                 val logLines = logLines()
                 logLines shouldHaveSize 1
@@ -552,9 +547,8 @@ class AltinnAccessLoggingContractTest :
 
                 MDC.put("trace_id", traceId)
                 try {
-                    shouldThrow<ApiErrorException.InternalServerErrorException> {
-                        AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                    }
+                    AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                        ListAccessibleOrganizationsResult.Unavailable
                 } finally {
                     MDC.remove("trace_id")
                 }
@@ -606,3 +600,5 @@ class AltinnAccessLoggingContractTest :
             }
         }
     })
+
+private fun personnelManager(ident: String, token: String): OrganizationAccessSubject.PersonnelManager = OrganizationAccessSubject.PersonnelManager(PersonIdent(ident), AccessToken(token))

@@ -441,6 +441,8 @@ the final repository-wide rules can replace the migration-specific checks.
 
 ## Migration approach
 
+`GET /api/v1/access/organizations` now lives in `organisasjonstilgang` as `ListAccessibleOrganizationsUseCase`.
+
 `GET /internal/api/v1/employee/linemanager` now lives in `narmestelederrelasjon` as `ListActiveNarmesteledereForEmployeeUseCase`.
 
 `POST /internal/api/v1/linemanager/search` now lives in `narmestelederrelasjon` as `SearchActiveNarmestelederrelasjonerUseCase`.

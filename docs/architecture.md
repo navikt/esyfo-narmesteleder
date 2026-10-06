@@ -387,6 +387,8 @@ the final repository-wide rules can replace the migration-specific checks.
 
 `GET /internal/api/v1/employee/linemanager` now lives in `narmestelederrelasjon` as `ListActiveNarmesteledereForEmployeeUseCase`.
 
+`POST /internal/api/v1/linemanager/search` now lives in `narmestelederrelasjon` as `SearchActiveNarmestelederrelasjonerUseCase`.
+
 The fulfillment foundation and its remaining activation work are described in
 [Fulfillment migration status](narmestelederbehov-fulfillment-migration.md).
 

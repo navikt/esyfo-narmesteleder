@@ -127,6 +127,9 @@ tasks {
 
     test {
         useJUnitPlatform()
+        inputs.dir("docs/kafka")
+            .withPropertyName("kafkaTopicDocs")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
         testlogger {
             theme = ThemeType.MOCHA_PARALLEL
             showFullStackTraces = true

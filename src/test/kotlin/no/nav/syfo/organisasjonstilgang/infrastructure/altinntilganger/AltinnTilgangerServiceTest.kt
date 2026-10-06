@@ -1,4 +1,4 @@
-package no.nav.syfo.altinntilganger
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -6,12 +6,9 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.spyk
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.client.AltinnTilgang
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
-import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
+import no.nav.syfo.altinntilganger.AccessibleOrganization
 import no.nav.syfo.application.auth.UserPrincipal
+import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 
 class AltinnTilgangerServiceTest :
     DescribeSpec({

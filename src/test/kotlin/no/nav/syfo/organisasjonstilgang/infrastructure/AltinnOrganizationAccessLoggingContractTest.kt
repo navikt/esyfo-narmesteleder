@@ -21,8 +21,6 @@ import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
-import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.application.valkey.EregCache
@@ -39,6 +37,8 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Altin
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 

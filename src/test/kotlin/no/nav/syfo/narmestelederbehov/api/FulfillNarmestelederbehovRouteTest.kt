@@ -30,8 +30,6 @@ import linemanager
 import manager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.TestAaregClient
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
-import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
@@ -74,6 +72,8 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Altin
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationResponse
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.util.UUID

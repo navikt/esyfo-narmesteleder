@@ -22,16 +22,17 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import io.mockk.clearAllMocks
 import io.mockk.mockk
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.client.AltinnTilgang
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
-import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
+import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgang
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerResponse
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 

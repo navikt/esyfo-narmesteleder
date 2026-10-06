@@ -1,13 +1,13 @@
-package no.nav.syfo.altinntilganger
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
-import no.nav.syfo.altinntilganger.client.AltinnTilgang
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
+import no.nav.syfo.altinntilganger.AccessibleOrganization
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.failureDiagnostics
+import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 
 class AltinnTilgangerService(
     val altinnTilgangerClient: AltinnTilgangerClient,
@@ -50,6 +50,10 @@ class AltinnTilgangerService(
                 isAlreadyLogged = true,
             )
         }
+    }
+
+    companion object {
+        private val logger = applicationLogger(AltinnTilgangerService::class.java)
     }
 
     private fun logAltinnTilgangerLookupFailure(
@@ -107,12 +111,6 @@ class AltinnTilgangerService(
             tilgang.underenheter.findByOrgnr(targetOrgnr)?.let { return it }
         }
         return null
-    }
-
-    companion object {
-        const val OPPGI_NARMESTELEDER_RESOURCE =
-            "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn3 to access NL relasjon
-        private val logger = applicationLogger(AltinnTilgangerService::class.java)
     }
 }
 

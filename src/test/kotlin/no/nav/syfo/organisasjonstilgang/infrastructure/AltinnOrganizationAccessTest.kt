@@ -7,8 +7,6 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
-import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
@@ -24,6 +22,8 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Altin
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 
 class AltinnOrganizationAccessTest :
     FunSpec({

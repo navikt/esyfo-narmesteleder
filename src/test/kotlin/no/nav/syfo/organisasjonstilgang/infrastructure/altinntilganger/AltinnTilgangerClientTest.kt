@@ -1,4 +1,4 @@
-package no.nav.syfo.altinntilganger.client
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec

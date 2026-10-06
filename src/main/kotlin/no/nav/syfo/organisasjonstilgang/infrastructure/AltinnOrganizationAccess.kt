@@ -1,13 +1,11 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure
 
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
-import no.nav.syfo.altinntilganger.COUNT_HAS_ALTINN3_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -15,6 +13,8 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Altin
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.System
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.result
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.COUNT_HAS_ALTINN3_RESOURCE
 
 class AltinnOrganizationAccess(
     private val altinnTilgangerService: AltinnTilgangerService,

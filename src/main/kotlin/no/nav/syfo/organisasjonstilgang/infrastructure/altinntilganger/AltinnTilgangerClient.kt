@@ -1,4 +1,4 @@
-package no.nav.syfo.altinntilganger.client
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.client.HttpClient
@@ -12,12 +12,12 @@ import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CancellationException
-import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.OAuthFailureCode
 import no.nav.syfo.application.exception.UpstreamExceptionType
 import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
 
@@ -115,15 +115,6 @@ class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = d
         failure = null
     }
 
-    private fun emptyResponse() = AltinnTilgangerResponse(
-        isError = false,
-        hierarki = emptyList(),
-        orgNrTilTilganger = emptyMap(),
-        tilgangTilOrgNr = emptyMap(),
-    )
-
-    private fun loadTilganger(fixtureLoader: JsonFixtureLoader): List<FakeArbeidsforholdOversikt> = fixtureLoader.loadOrNull(FIXTURE_FILE) ?: emptyList()
-
     data class FakeArbeidsforholdOversikt(
         val hasAccess: MutableList<String>,
         val altinnTilgangerResponse: AltinnTilgangerResponse,
@@ -133,6 +124,15 @@ class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = d
         private const val FIXTURE_FILE = "tilganger.json"
         private val defaultFixtureLoader = JsonFixtureLoader("classpath:fake-clients/altinn-tilganger")
     }
+
+    private fun emptyResponse() = AltinnTilgangerResponse(
+        isError = false,
+        hierarki = emptyList(),
+        orgNrTilTilganger = emptyMap(),
+        tilgangTilOrgNr = emptyMap(),
+    )
+
+    private fun loadTilganger(fixtureLoader: JsonFixtureLoader): List<FakeArbeidsforholdOversikt> = fixtureLoader.loadOrNull(FIXTURE_FILE) ?: emptyList()
 }
 
 class HttpAltinnTilgangerClient(

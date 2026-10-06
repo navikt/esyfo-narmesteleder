@@ -1,4 +1,4 @@
-package no.nav.syfo.altinntilganger
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import no.nav.esyfo.observability.Event
 import no.nav.syfo.application.exception.UpstreamExceptionType

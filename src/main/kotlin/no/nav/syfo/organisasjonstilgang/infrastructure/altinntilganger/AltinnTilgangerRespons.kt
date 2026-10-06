@@ -1,4 +1,4 @@
-package no.nav.syfo.altinntilganger.client
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 data class AltinnTilgangerResponse(
     val isError: Boolean?,

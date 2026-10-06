@@ -1,4 +1,4 @@
-package no.nav.syfo.altinntilganger
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
@@ -34,9 +34,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
-import no.nav.syfo.altinntilganger.client.HttpAltinnTilgangerClient
 import no.nav.syfo.application.api.STATUS_PAGES_LOGGER_NAME
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
@@ -241,7 +238,7 @@ class AltinnAccessLoggingContractTest :
                 ).apply {
                     stackTrace = arrayOf(
                         StackTraceElement(
-                            "no.nav.syfo.altinntilganger.client.TransportOrigin",
+                            "no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.TransportOrigin",
                             "connect",
                             "TransportOrigin.kt",
                             73,
@@ -271,7 +268,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord["exception_type"].asText() shouldBe UpstreamExceptionType.TRANSPORT_EXCEPTION.logValue
                 logRecord["cause_type"].asText() shouldBe "IllegalStateException"
                 logRecord["stack_trace"].asText().contains(
-                    "no.nav.syfo.altinntilganger.client.TransportOrigin.connect(TransportOrigin.kt:73)",
+                    "no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.TransportOrigin.connect(TransportOrigin.kt:73)",
                 ) shouldBe true
                 listOf(
                     nationalIdentificationNumberCanary,

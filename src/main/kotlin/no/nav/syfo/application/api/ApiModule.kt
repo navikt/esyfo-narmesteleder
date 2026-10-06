@@ -9,7 +9,6 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
-import no.nav.syfo.altinntilganger.registerAccessOrganizationsApi
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.isProdEnv
@@ -24,6 +23,7 @@ import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerRevokeActiveNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerSubmitNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederstatistikk.api.registerLinemanagerStatisticsApi
+import no.nav.syfo.organisasjonstilgang.api.registerAccessibleOrganizationsApi
 import org.koin.ktor.ext.get
 
 fun Application.configureRouting() {
@@ -66,7 +66,7 @@ private fun Route.registerApiV1Routes() {
     registerListNarmestelederbehovApi(listNarmestelederbehov = get(), texasHttpClient = get())
     registerSubmitNarmestelederrelasjonApi(submit = get(), texasHttpClient = get())
     registerRevokeActiveNarmestelederrelasjonApi(revoke = get(), texasHttpClient = get())
-    registerAccessOrganizationsApi(altinnTilgangerService = get(), texasHttpClient = get())
+    registerAccessibleOrganizationsApi(listAccessibleOrganizations = get(), texasHttpClient = get())
 }
 
 private fun Route.registerInternalApiV1Routes() {

@@ -1,17 +1,20 @@
-package no.nav.syfo.altinntilganger
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
-import no.nav.syfo.altinntilganger.client.AltinnTilgang
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.failureDiagnostics
+import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganization
+import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganizationsLookup
+import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
+import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 
 class AltinnTilgangerService(
     val altinnTilgangerClient: AltinnTilgangerClient,
-) {
+) : AccessibleOrganizationsLookup {
     suspend fun getAltinnTilgangForOrgnr(
         userPrincipal: UserPrincipal,
         orgnummer: String,
@@ -30,26 +33,27 @@ class AltinnTilgangerService(
         }
     }
 
-    suspend fun getFilteredOrganizations(userPrincipal: UserPrincipal): List<AccessibleOrganization> {
+    override suspend fun find(subject: OrganizationAccessSubject.PersonnelManager): ListAccessibleOrganizationsResult {
         try {
+            val userPrincipal = UserPrincipal(subject.personIdent.value, subject.accessToken.value())
             val response = altinnTilgangerClient.fetchAltinnTilganger(userPrincipal)
-                ?: return emptyList()
+                ?: return ListAccessibleOrganizationsResult.Listed(emptyList())
             if (response.isError == true) {
                 logAltinnTilgangerLookupFailure(
                     errorCode = AltinnTilgangerErrorCode.ERROR_RESPONSE,
                     operation = AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS,
                 )
-                return emptyList()
+                return ListAccessibleOrganizationsResult.Listed(emptyList())
             }
-            return response.hierarki.filterToOrganizations()
+            return ListAccessibleOrganizationsResult.Listed(response.hierarki.filterToOrganizations())
         } catch (e: UpstreamRequestException) {
             logAltinnTilgangerLookupFailure(e, AltinnTilgangerOperation.LIST_ACCESSIBLE_ORGANIZATIONS)
-            throw ApiErrorException.InternalServerErrorException(
-                errorMessage = "An error occurred when fetching altinn tilganger",
-                cause = e,
-                isAlreadyLogged = true,
-            )
+            return ListAccessibleOrganizationsResult.Unavailable
         }
+    }
+
+    companion object {
+        private val logger = applicationLogger(AltinnTilgangerService::class.java)
     }
 
     private fun logAltinnTilgangerLookupFailure(
@@ -88,7 +92,7 @@ class AltinnTilgangerService(
 
         return if (hasAccess || filteredSubOrganizations.isNotEmpty()) {
             AccessibleOrganization(
-                orgNumber = orgnr,
+                organizationNumber = orgnr,
                 name = navn,
                 subOrganizations = filteredSubOrganizations,
             )
@@ -107,12 +111,6 @@ class AltinnTilgangerService(
             tilgang.underenheter.findByOrgnr(targetOrgnr)?.let { return it }
         }
         return null
-    }
-
-    companion object {
-        const val OPPGI_NARMESTELEDER_RESOURCE =
-            "nav_syfo_oppgi-narmesteleder" // Access resource in Altinn3 to access NL relasjon
-        private val logger = applicationLogger(AltinnTilgangerService::class.java)
     }
 }
 

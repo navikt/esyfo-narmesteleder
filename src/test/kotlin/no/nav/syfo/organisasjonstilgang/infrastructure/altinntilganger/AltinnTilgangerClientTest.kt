@@ -1,7 +1,7 @@
-package no.nav.syfo.altinntilganger.client
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.HttpClient
@@ -25,7 +25,7 @@ import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
 
 class AltinnTilgangerClientTest :
-    DescribeSpec({
+    FunSpec({
 
         val mockTexasClient = mockk<TexasHttpClient>()
         beforeTest {
@@ -53,8 +53,8 @@ class AltinnTilgangerClientTest :
                 else -> error("Unhandled request ${request.url.fullPath}")
             }
         }
-        describe("fetchAltinnTilganger") {
-            it("should return AltinnTilgangerResponse when fetchAltinnTilganger responds with 200") {
+        context("fetchAltinnTilganger") {
+            test("should return AltinnTilgangerResponse when fetchAltinnTilganger responds with 200") {
                 val userPrincipal = UserPrincipal("12345678901", "token")
                 val getPersonResponse = """
 {
@@ -119,7 +119,7 @@ class AltinnTilgangerClientTest :
                 result?.hierarki?.firstOrNull()?.orgnr shouldBe "987654321"
             }
 
-            it("should preserve actionable HTTP failure details from AltinnTilganger") {
+            test("should preserve actionable HTTP failure details from AltinnTilganger") {
                 val userPrincipal = UserPrincipal("12345678901", "token")
                 coEvery {
                     mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
@@ -161,7 +161,7 @@ class AltinnTilgangerClientTest :
                 }
             }
 
-            it("should classify token exchange separately without exposing an invalid status") {
+            test("should classify token exchange separately without exposing an invalid status") {
                 val userPrincipal = UserPrincipal("12345678901", "privacy-canary-token")
                 val originalFailure = IllegalStateException("privacy-canary-cause-message")
                 coEvery {
@@ -183,7 +183,7 @@ class AltinnTilgangerClientTest :
                 exception.message shouldNotContain originalFailure.message!!
             }
 
-            it("should preserve a bounded HTTP status from token exchange") {
+            test("should preserve a bounded HTTP status from token exchange") {
                 val userPrincipal = UserPrincipal("12345678901", "privacy-canary-token")
                 val texasClient = TexasHttpClient(
                     client = httpClientDefault(
@@ -212,7 +212,7 @@ class AltinnTilgangerClientTest :
                 exception.upstreamExceptionType shouldBe UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION
             }
 
-            it("should classify malformed successful responses as response failures with the response status") {
+            test("should classify malformed successful responses as response failures with the response status") {
                 val userPrincipal = UserPrincipal("12345678901", "token")
                 coEvery {
                     mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
@@ -231,7 +231,7 @@ class AltinnTilgangerClientTest :
                 exception.upstreamExceptionType shouldBe UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION
             }
 
-            it("should propagate cancellation without wrapping it as an upstream failure") {
+            test("should propagate cancellation without wrapping it as an upstream failure") {
                 val userPrincipal = UserPrincipal("12345678901", "token")
                 coEvery {
                     mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
@@ -249,7 +249,7 @@ class AltinnTilgangerClientTest :
                 shouldThrow<CancellationException> { client.fetchAltinnTilganger(userPrincipal) }
             }
 
-            it("should propagate cancellation from token exchange without calling AltinnTilganger") {
+            test("should propagate cancellation from token exchange without calling AltinnTilganger") {
                 val userPrincipal = UserPrincipal("12345678901", "token")
                 coEvery {
                     mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))

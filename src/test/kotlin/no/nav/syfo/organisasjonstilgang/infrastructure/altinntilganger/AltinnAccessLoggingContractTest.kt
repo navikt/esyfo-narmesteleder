@@ -1,4 +1,4 @@
-package no.nav.syfo.altinntilganger
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
@@ -8,7 +8,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.OutputStreamAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
@@ -24,7 +24,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.ContentConverter
-import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
@@ -34,9 +33,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerResponse
-import no.nav.syfo.altinntilganger.client.HttpAltinnTilgangerClient
 import no.nav.syfo.application.api.STATUS_PAGES_LOGGER_NAME
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
@@ -45,6 +41,10 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamExceptionType
 import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.organisasjonstilgang.application.AccessToken
+import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
+import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
@@ -54,7 +54,7 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 
 class AltinnAccessLoggingContractTest :
-    DescribeSpec({
+    FunSpec({
         val logOutput = ByteArrayOutputStream()
         val serviceLogger = LoggerFactory.getLogger(AltinnTilgangerService::class.java) as Logger
         val statusPagesLogger = LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME) as Logger
@@ -118,8 +118,8 @@ class AltinnAccessLoggingContractTest :
             logLines()
         }
 
-        describe("AltinnTilganger runtime error contract") {
-            it("retains an OAuth failure code without logging the token response or description") {
+        context("AltinnTilganger runtime error contract") {
+            test("retains an OAuth failure code without logging the token response or description") {
                 val payload = """{"error":"invalid_grant","error_description":"token-description-canary"}"""
                 val response = HttpClient(MockEngine { respond(payload, HttpStatusCode.BadRequest) })
                     .get("https://texas.test/exchange")
@@ -132,9 +132,8 @@ class AltinnAccessLoggingContractTest :
                     "https://altinn.test",
                 )
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(upstreamClient).getFilteredOrganizations(UserPrincipal("12345678901", "token-canary"))
-                }
+                AltinnTilgangerService(upstreamClient).find(personnelManager("12345678901", "token-canary")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val serialized = logLines().single()
                 val record = jacksonObjectMapper().readTree(serialized)
@@ -148,7 +147,7 @@ class AltinnAccessLoggingContractTest :
                 serialized shouldNotContain "12345678901"
             }
 
-            it("serializes one terminal error event through the production encoder without privacy canaries") {
+            test("serializes one terminal error event through the production encoder without privacy canaries") {
                 val nationalIdentificationNumberCanary = "12345678901"
                 val tokenCanary = "privacy-canary-token"
                 val oboTokenCanary = "safe-obo-token"
@@ -180,10 +179,12 @@ class AltinnAccessLoggingContractTest :
                         installStatusPages()
                         routing {
                             get("/accessible-organizations/{ignored}") {
-                                service.getFilteredOrganizations(
-                                    UserPrincipal(nationalIdentificationNumberCanary, tokenCanary),
+                                service.find(personnelManager(nationalIdentificationNumberCanary, tokenCanary)) shouldBe
+                                    ListAccessibleOrganizationsResult.Unavailable
+                                throw ApiErrorException.InternalServerErrorException(
+                                    errorMessage = "An error occurred when fetching altinn tilganger",
+                                    isAlreadyLogged = true,
                                 )
-                                call.respond(HttpStatusCode.OK)
                             }
                         }
                     }
@@ -231,7 +232,7 @@ class AltinnAccessLoggingContractTest :
                 }
             }
 
-            it("serializes the concrete transport cause and its origin stack without dynamic exception data") {
+            test("serializes the concrete transport cause and its origin stack without dynamic exception data") {
                 val nationalIdentificationNumberCanary = "12345678901"
                 val tokenCanary = "privacy-canary-token"
                 val upstreamResponseCanary = "privacy-canary-upstream-response-body"
@@ -241,7 +242,7 @@ class AltinnAccessLoggingContractTest :
                 ).apply {
                     stackTrace = arrayOf(
                         StackTraceElement(
-                            "no.nav.syfo.altinntilganger.client.TransportOrigin",
+                            "no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.TransportOrigin",
                             "connect",
                             "TransportOrigin.kt",
                             73,
@@ -258,11 +259,8 @@ class AltinnAccessLoggingContractTest :
                         )
                 }
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(
-                        UserPrincipal(nationalIdentificationNumberCanary, tokenCanary),
-                    )
-                }
+                AltinnTilgangerService(client).find(personnelManager(nationalIdentificationNumberCanary, tokenCanary)) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val serializedLogs = logOutput.toString(Charsets.UTF_8)
                 val logRecord = jacksonObjectMapper().readTree(
@@ -271,7 +269,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord["exception_type"].asText() shouldBe UpstreamExceptionType.TRANSPORT_EXCEPTION.logValue
                 logRecord["cause_type"].asText() shouldBe "IllegalStateException"
                 logRecord["stack_trace"].asText().contains(
-                    "no.nav.syfo.altinntilganger.client.TransportOrigin.connect(TransportOrigin.kt:73)",
+                    "no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.TransportOrigin.connect(TransportOrigin.kt:73)",
                 ) shouldBe true
                 listOf(
                     nationalIdentificationNumberCanary,
@@ -283,7 +281,7 @@ class AltinnAccessLoggingContractTest :
                 }
             }
 
-            it("keeps actionable HTTP distinctions and serializes bounded upstream status as a number") {
+            test("keeps actionable HTTP distinctions and serializes bounded upstream status as a number") {
                 val cases = listOf(
                     301 to AltinnTilgangerErrorCode.UPSTREAM_UNEXPECTED_REDIRECT,
                     401 to AltinnTilgangerErrorCode.UPSTREAM_UNAUTHORIZED,
@@ -308,9 +306,8 @@ class AltinnAccessLoggingContractTest :
                             )
                     }
 
-                    shouldThrow<ApiErrorException.InternalServerErrorException> {
-                        AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                    }
+                    AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                        ListAccessibleOrganizationsResult.Unavailable
 
                     val logLines = logLines()
                     logLines shouldHaveSize 1
@@ -321,7 +318,7 @@ class AltinnAccessLoggingContractTest :
                 }
             }
 
-            it("uses the remaining client-error code for other 4xx statuses") {
+            test("uses the remaining client-error code for other 4xx statuses") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
@@ -332,9 +329,8 @@ class AltinnAccessLoggingContractTest :
                         )
                 }
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val logRecord = jacksonObjectMapper().readTree(
                     logLines().single(),
@@ -343,7 +339,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord["upstream_status"].asInt() shouldBe 422
             }
 
-            it("preserves the organization-access operation and its single terminal error") {
+            test("preserves the organization-access operation and its single terminal error") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
@@ -365,7 +361,7 @@ class AltinnAccessLoggingContractTest :
                 record["upstream_status"].asInt() shouldBe 503
             }
 
-            it("omits upstream status for non-HTTP failures") {
+            test("omits upstream status for non-HTTP failures") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
@@ -376,9 +372,8 @@ class AltinnAccessLoggingContractTest :
                         )
                 }
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val logRecord = jacksonObjectMapper().readTree(
                     logLines().single(),
@@ -387,7 +382,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord.has("upstream_status") shouldBe false
             }
 
-            it("keeps token exchange separate while preserving its bounded HTTP status") {
+            test("keeps token exchange separate while preserving its bounded HTTP status") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
@@ -398,9 +393,8 @@ class AltinnAccessLoggingContractTest :
                         )
                 }
 
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
 
                 val logRecord = jacksonObjectMapper().readTree(
                     logLines().single(),
@@ -410,7 +404,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord.has("failure_stage") shouldBe false
             }
 
-            it("preserves nullable client results without emitting an error") {
+            test("preserves nullable client results without emitting an error") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = null
                 }
@@ -418,13 +412,13 @@ class AltinnAccessLoggingContractTest :
                 val principal = UserPrincipal("12345678901", "token")
 
                 service.getAltinnTilgangForOrgnr(principal, "999999999") shouldBe null
-                service.getFilteredOrganizations(principal) shouldBe emptyList()
+                service.find(personnelManager(principal.ident, principal.token)) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
 
                 val logLines = logLines()
                 logLines shouldBe emptyList()
             }
 
-            it("emits one terminal response-decoding error for an actual HTTP 200 JSON null body") {
+            test("emits one terminal response-decoding error for an actual HTTP 200 JSON null body") {
                 val texasClient = mockk<TexasHttpClient>()
                 coEvery {
                     texasClient.exchangeTokenForIsAltinnTilganger("token")
@@ -442,11 +436,8 @@ class AltinnAccessLoggingContractTest :
                     baseUrl = "https://altinn-tilganger.test",
                 )
 
-                val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                }
-
-                exception.isAlreadyLogged shouldBe true
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Unavailable
                 val logLines = logLines()
                 logLines shouldHaveSize 1
                 val logRecord = jacksonObjectMapper().readTree(logLines.single())
@@ -456,7 +447,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord.has("failure_stage") shouldBe false
             }
 
-            it("does not log or classify cancellation from token exchange") {
+            test("does not log or classify cancellation from token exchange") {
                 val texasClient = mockk<TexasHttpClient>()
                 coEvery {
                     texasClient.exchangeTokenForIsAltinnTilganger("token")
@@ -468,13 +459,13 @@ class AltinnAccessLoggingContractTest :
                 )
 
                 shouldThrow<CancellationException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                    AltinnTilgangerService(client).find(personnelManager("12345678901", "token"))
                 }
 
                 logLines() shouldHaveSize 0
             }
 
-            it("does not log or classify cancellation from response decoding") {
+            test("does not log or classify cancellation from response decoding") {
                 val cancellation = CancellationException("Response decoding cancelled")
                 val cancellingConverter = object : ContentConverter {
                     override suspend fun serialize(
@@ -514,13 +505,13 @@ class AltinnAccessLoggingContractTest :
                 )
 
                 shouldThrow<CancellationException> {
-                    AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
+                    AltinnTilgangerService(client).find(personnelManager("12345678901", "token"))
                 }
 
                 logLines() shouldHaveSize 0
             }
 
-            it("emits the canonical terminal event when the upstream response reports an error") {
+            test("emits the canonical terminal event when the upstream response reports an error") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal) = AltinnTilgangerResponse(
                         isError = true,
@@ -530,7 +521,8 @@ class AltinnAccessLoggingContractTest :
                     )
                 }
 
-                AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token")) shouldBe emptyList()
+                AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                    ListAccessibleOrganizationsResult.Listed(emptyList())
 
                 val logLines = logLines()
                 logLines shouldHaveSize 1
@@ -543,7 +535,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord.has("stack_trace") shouldBe false
             }
 
-            it("serializes trace_id from MDC with the production encoder") {
+            test("serializes trace_id from MDC with the production encoder") {
                 val traceId = "0123456789abcdef0123456789abcdef"
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw UpstreamRequestException(
@@ -555,9 +547,8 @@ class AltinnAccessLoggingContractTest :
 
                 MDC.put("trace_id", traceId)
                 try {
-                    shouldThrow<ApiErrorException.InternalServerErrorException> {
-                        AltinnTilgangerService(client).getFilteredOrganizations(UserPrincipal("12345678901", "token"))
-                    }
+                    AltinnTilgangerService(client).find(personnelManager("12345678901", "token")) shouldBe
+                        ListAccessibleOrganizationsResult.Unavailable
                 } finally {
                     MDC.remove("trace_id")
                 }
@@ -568,7 +559,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord["trace_id"].asText() shouldBe traceId
             }
 
-            it("uses one lookup failure name with distinct operations") {
+            test("uses one lookup failure name with distinct operations") {
                 AltinnTilgangerOperation.entries.map { it.failureEvent.name }.toSet() shouldBe setOf(
                     "altinn_tilganger_lookup_failed",
                 )
@@ -609,3 +600,5 @@ class AltinnAccessLoggingContractTest :
             }
         }
     })
+
+private fun personnelManager(ident: String, token: String): OrganizationAccessSubject.PersonnelManager = OrganizationAccessSubject.PersonnelManager(PersonIdent(ident), AccessToken(token))

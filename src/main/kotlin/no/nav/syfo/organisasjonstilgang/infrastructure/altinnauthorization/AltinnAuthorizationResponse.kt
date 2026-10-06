@@ -1,6 +1,6 @@
-package no.nav.syfo.altinn.pdp.client
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization
 
-data class PdpResponse(
+data class AltinnAuthorizationResponse(
     val response: List<DecisionResult>,
 )
 
@@ -15,4 +15,4 @@ enum class Decision {
     Deny,
 }
 
-fun PdpResponse.result() = response.first().decision
+fun AltinnAuthorizationResponse.result() = response.first().decision

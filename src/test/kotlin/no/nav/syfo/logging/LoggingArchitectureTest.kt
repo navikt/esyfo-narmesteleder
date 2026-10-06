@@ -3,7 +3,7 @@ package no.nav.syfo.logging
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
-import no.nav.syfo.altinntilganger.AltinnTilgangerService
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import org.slf4j.LoggerFactory
 import java.lang.classfile.ClassFile
 import java.lang.classfile.constantpool.ClassEntry
@@ -47,8 +47,7 @@ class LoggingArchitectureTest :
         }
     })
 
-private fun isMigrated(name: String): Boolean = name.startsWith("no/nav/syfo/altinntilganger/") ||
-    name.startsWith("no/nav/syfo/narmestelederbehov/") ||
+private fun isMigrated(name: String): Boolean = name.startsWith("no/nav/syfo/narmestelederbehov/") ||
     name.startsWith("no/nav/syfo/organisasjonstilgang/") ||
     (name.startsWith("no/nav/syfo/logging/") && name !in setOf("no/nav/syfo/logging/ApplicationLoggingKt", "no/nav/syfo/logging/FailureEventKt"))
 

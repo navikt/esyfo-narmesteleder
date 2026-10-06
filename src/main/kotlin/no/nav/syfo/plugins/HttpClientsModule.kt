@@ -6,18 +6,18 @@ import no.nav.syfo.aareg.client.HttpAaregClient
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.altinn.pdp.client.FakePdpClient
-import no.nav.syfo.altinn.pdp.client.HttpPdpClient
-import no.nav.syfo.altinn.pdp.client.PdpClient
-import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
-import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
-import no.nav.syfo.altinntilganger.client.HttpAltinnTilgangerClient
 import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.dinesykmeldte.client.HttpDinesykmeldteClient
 import no.nav.syfo.ereg.client.EregClient
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.HttpEregClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.FakeAltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpAltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.pdl.client.HttpPdlClient
 import no.nav.syfo.pdl.client.PdlClient
@@ -101,11 +101,11 @@ internal fun httpClientsModule(isLocalEnv: Boolean) = module {
         local = { FakeEregClient() },
         remote = { HttpEregClient(eregBaseUrl = env().clientProperties.eregBaseUrl) },
     )
-    localOrRemote<PdpClient>(
+    localOrRemote<AltinnAuthorizationClient>(
         isLocalEnv,
-        local = { FakePdpClient() },
+        local = { FakeAltinnAuthorizationClient() },
         remote = {
-            HttpPdpClient(
+            HttpAltinnAuthorizationClient(
                 httpClient = get(),
                 baseUrl = env().clientProperties.altinn3BaseUrl,
                 subscriptionKey = env().clientProperties.pdpSubscriptionKey,

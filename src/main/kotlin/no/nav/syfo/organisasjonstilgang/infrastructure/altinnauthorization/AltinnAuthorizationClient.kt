@@ -1,4 +1,4 @@
-package no.nav.syfo.altinn.pdp.client
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -12,26 +12,26 @@ import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
 
-interface PdpClient {
+interface AltinnAuthorizationClient {
     suspend fun authorize(
         user: User,
         orgNumberSet: Set<String>,
         resource: String
-    ): PdpResponse
+    ): AltinnAuthorizationResponse
 }
 
-class HttpPdpClient(
+class HttpAltinnAuthorizationClient(
     private val baseUrl: String,
     private val httpClient: HttpClient,
     private val altinnTokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
-) : PdpClient {
+) : AltinnAuthorizationClient {
     override suspend fun authorize(
         user: User,
         orgNumberSet: Set<String>,
         resource: String
-    ): PdpResponse {
-        val request = createPdpRequest(user, orgNumberSet, resource)
+    ): AltinnAuthorizationResponse {
+        val request = createAltinnAuthorizationRequest(user, orgNumberSet, resource)
         val response = try {
             val token = altinnTokenProvider.token(PDP_TARGET_SCOPE)
                 .accessToken
@@ -44,7 +44,7 @@ class HttpPdpClient(
                     bearerAuth(token)
                     setBody(request)
                 }
-                .body<PdpResponse>()
+                .body<AltinnAuthorizationResponse>()
         } catch (e: ResponseException) {
             throw UpstreamRequestException(
                 "Error while calling PDP",

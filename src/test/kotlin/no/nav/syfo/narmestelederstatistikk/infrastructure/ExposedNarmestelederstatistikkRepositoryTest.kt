@@ -32,13 +32,13 @@ class ExposedNarmestelederstatistikkRepositoryTest :
             insertBehov("12345678910", BehovStatus.BEHOV_CREATED)
             insertBehov("12345678910", BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
             insertBehov("12345678911", BehovStatus.BEHOV_FULFILLED)
-            insertBehov("12345678912", BehovStatus.BEHOV_CREATED, otherOrganization)
+            insertBehov("12345678912", BehovStatus.BEHOV_CREATED, OTHER_ORGANIZATION)
             insertRelation("12345678920")
             insertRelation("12345678920")
             insertRelation("12345678921")
             insertRelation("12345678922", activeTo = now.minusDays(1))
             insertRelation("12345678923", activeFrom = now.plusDays(1))
-            insertRelation("12345678924", organization = otherOrganization)
+            insertRelation("12345678924", organization = OTHER_ORGANIZATION)
             insertSykmelding("12345678920", to = today)
             insertSykmelding("12345678921", to = today.plusDays(1), revokedDate = today.minusDays(1))
 
@@ -61,11 +61,11 @@ class ExposedNarmestelederstatistikkRepositoryTest :
         }
 
         test("excludes other organizations and correlates sykmelding by employee and organization") {
-            insertBehov("12345678910", BehovStatus.BEHOV_CREATED, otherOrganization)
-            insertRelation("12345678920", organization = otherOrganization)
-            insertSykmelding("12345678920", organization = otherOrganization)
+            insertBehov("12345678910", BehovStatus.BEHOV_CREATED, OTHER_ORGANIZATION)
+            insertRelation("12345678920", organization = OTHER_ORGANIZATION)
+            insertSykmelding("12345678920", organization = OTHER_ORGANIZATION)
             insertRelation("12345678921")
-            insertSykmelding("12345678921", organization = otherOrganization)
+            insertSykmelding("12345678921", organization = OTHER_ORGANIZATION)
             insertSykmelding("12345678922")
 
             repository.countFor(organizationNumber) shouldBe Narmestelederstatistikk(0, 0, 1)
@@ -114,7 +114,7 @@ private val fixedClock = Clock.fixed(Instant.parse("2026-02-01T12:00:00Z"), Zone
 private val now = OffsetDateTime.now(fixedClock)
 private val today = now.toLocalDate()
 private val organizationNumber = OrganizationNumber("123456789")
-private const val otherOrganization = "987654321"
+private const val OTHER_ORGANIZATION = "987654321"
 
 private fun insertBehov(
     employeeIdent: String,

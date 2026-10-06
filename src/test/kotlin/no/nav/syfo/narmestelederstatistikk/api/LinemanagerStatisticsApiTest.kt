@@ -45,7 +45,7 @@ class LinemanagerStatisticsApiTest :
                 val principalType = if (user) "user" else "system"
                 val before = requestCount(principalType)
                 fixture.withApplication {
-                    val response = client.get("$statisticsPath?orgNumber=$organizationNumber") {
+                    val response = client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") {
                         bearerAuth(fixture.token())
                     }
                     response.status shouldBe HttpStatusCode.OK
@@ -53,14 +53,14 @@ class LinemanagerStatisticsApiTest :
                         """{"employeesOnSickLeaveWithoutLinemanager":1,"employeesOnSickLeaveWithLinemanager":2,"employeesNotOnSickLeaveWithLinemanager":3}""",
                     )
                     fixture.effects shouldBe listOf("access", "count")
-                    fixture.organizations shouldBe listOf(OrganizationNumber(organizationNumber))
-                    fixture.evaluations.single().second shouldBe OrganizationNumber(organizationNumber)
+                    fixture.organizations shouldBe listOf(OrganizationNumber(ORGANIZATION_NUMBER))
+                    fixture.evaluations.single().second shouldBe OrganizationNumber(ORGANIZATION_NUMBER)
                     if (user) {
                         val subject = fixture.evaluations.single().first as OrganizationAccessSubject.PersonnelManager
-                        subject.personIdent shouldBe PersonIdent(employeeIdent)
+                        subject.personIdent shouldBe PersonIdent(EMPLOYEE_IDENT)
                         (subject.accessToken.value() == fixture.token()) shouldBe true
                     } else {
-                        fixture.evaluations.single().first shouldBe OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(organizationNumber))
+                        fixture.evaluations.single().first shouldBe OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(ORGANIZATION_NUMBER))
                     }
                     requestCount(principalType) shouldBe before + 1
                 }
@@ -76,7 +76,7 @@ class LinemanagerStatisticsApiTest :
                 val fixture = StatisticsApiFixture()
                 val before = requestCount("system")
                 fixture.withApplication {
-                    val response = client.get("$statisticsPath$query") { bearerAuth(fixture.token()) }
+                    val response = client.get("$STATISTICS_PATH$query") { bearerAuth(fixture.token()) }
                     response.status shouldBe HttpStatusCode.BadRequest
                     val error = mapper.readTree(response.bodyAsText())
                     error.path("type").asText() shouldBe type.name
@@ -88,15 +88,15 @@ class LinemanagerStatisticsApiTest :
         }
 
         listOf(
-            Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: $organizationNumber"),
-            Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: $organizationNumber"),
+            Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: $ORGANIZATION_NUMBER"),
+            Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: $ORGANIZATION_NUMBER"),
             Triple(DenialReason.SYSTEM_USER_REJECTED, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "System user does not have access to nav_syfo_oppgi-narmesteleder resource"),
         ).forEach { (reason, type, message) ->
             test("returns 403 for $reason without counting") {
                 val fixture = StatisticsApiFixture(denialReason = reason)
                 val before = requestCount("system")
                 fixture.withApplication {
-                    val response = client.get("$statisticsPath?orgNumber=$organizationNumber") { bearerAuth(fixture.token()) }
+                    val response = client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") { bearerAuth(fixture.token()) }
                     response.status shouldBe HttpStatusCode.Forbidden
                     val error = mapper.readTree(response.bodyAsText())
                     error.path("type").asText() shouldBe type.name
@@ -105,14 +105,14 @@ class LinemanagerStatisticsApiTest :
                     fixture.organizations shouldBe emptyList()
                     requestCount("system") shouldBe before
                 }
-                reason.toForbiddenException(OrganizationNumber(organizationNumber)).isAlreadyLogged shouldBe (reason == DenialReason.SYSTEM_USER_REJECTED)
+                reason.toForbiddenException(OrganizationNumber(ORGANIZATION_NUMBER)).isAlreadyLogged shouldBe (reason == DenialReason.SYSTEM_USER_REJECTED)
             }
         }
 
         test("is not available through the external API") {
             val fixture = StatisticsApiFixture()
             fixture.withApplication {
-                client.get("$API_V1_PATH$LINEMANAGER_STATISTICS_API_PATH?orgNumber=$organizationNumber") {
+                client.get("$API_V1_PATH$LINEMANAGER_STATISTICS_API_PATH?orgNumber=$ORGANIZATION_NUMBER") {
                     bearerAuth(fixture.token())
                 }.status shouldBe HttpStatusCode.NotFound
                 fixture.effects shouldBe emptyList()
@@ -123,7 +123,7 @@ class LinemanagerStatisticsApiTest :
             val fixture = StatisticsApiFixture(activeToken = false)
             val before = requestCount("system")
             fixture.withApplication {
-                client.get("$statisticsPath?orgNumber=$organizationNumber") {
+                client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") {
                     bearerAuth(fixture.token())
                 }.status shouldBe HttpStatusCode.Unauthorized
                 fixture.effects shouldBe emptyList()
@@ -132,10 +132,10 @@ class LinemanagerStatisticsApiTest :
         }
     })
 
-private const val organizationNumber = "910000001"
-private const val employeeIdent = "12345678901"
-private const val tokenXIssuer = "https://tokenx.nav.no"
-private const val statisticsPath = "$INTERNAL_API_V1_PATH$LINEMANAGER_STATISTICS_API_PATH"
+private const val ORGANIZATION_NUMBER = "910000001"
+private const val EMPLOYEE_IDENT = "12345678901"
+private const val TOKENX_ISSUER = "https://tokenx.nav.no"
+private const val STATISTICS_PATH = "$INTERNAL_API_V1_PATH$LINEMANAGER_STATISTICS_API_PATH"
 private val mapper = jacksonObjectMapper()
 
 private class StatisticsApiFixture(
@@ -148,8 +148,8 @@ private class StatisticsApiFixture(
     val evaluations = mutableListOf<Pair<OrganizationAccessSubject, OrganizationNumber>>()
     private val texas = mockk<TexasHttpClient>()
     private val bearerToken = createMockToken(
-        if (user) employeeIdent else organizationNumber,
-        issuer = if (user) tokenXIssuer else "https://test.maskinporten.no",
+        if (user) EMPLOYEE_IDENT else ORGANIZATION_NUMBER,
+        issuer = if (user) TOKENX_ISSUER else "https://test.maskinporten.no",
     )
     private val useCase = GetNarmestelederstatistikkUseCase(
         organizationAccess = OrganizationAccess { subject, organization ->
@@ -166,9 +166,9 @@ private class StatisticsApiFixture(
 
     init {
         texas.defaultMocks(
-            pid = if (user) employeeIdent else null,
+            pid = if (user) EMPLOYEE_IDENT else null,
             acr = if (user) "Level4" else null,
-            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$organizationNumber"),
+            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"),
             scope = MASKINPORTEN_NL_SCOPE,
         )
         if (!activeToken) {

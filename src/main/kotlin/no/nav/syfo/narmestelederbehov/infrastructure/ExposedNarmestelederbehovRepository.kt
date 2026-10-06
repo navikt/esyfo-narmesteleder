@@ -129,10 +129,9 @@ class ExposedNarmestelederbehovRepository(private val database: Database) :
 
 private val openStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
 
-private fun isOpen(organizationNumber: OrganizationNumber, createdAfter: Instant): Op<Boolean> =
-    (NarmestelederbehovTable.orgnummer eq organizationNumber.value) and
-        (NarmestelederbehovTable.behovStatus inList openStatuses) and
-        (NarmestelederbehovTable.created greater createdAfter.atOffset(ZoneOffset.UTC))
+private fun isOpen(organizationNumber: OrganizationNumber, createdAfter: Instant): Op<Boolean> = (NarmestelederbehovTable.orgnummer eq organizationNumber.value) and
+    (NarmestelederbehovTable.behovStatus inList openStatuses) and
+    (NarmestelederbehovTable.created greater createdAfter.atOffset(ZoneOffset.UTC))
 
 private fun ResultRow.toDetails() = NarmestelederbehovDetails(
     id = NarmestelederbehovId(this[NarmestelederbehovTable.id]),

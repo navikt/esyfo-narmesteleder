@@ -261,7 +261,9 @@ private class ListRouteFixture(
     }
 }
 
-private class ListRouteRepository : OpenNarmestelederbehovRepository, NarmestelederbehovRepository {
+private class ListRouteRepository :
+    OpenNarmestelederbehovRepository,
+    NarmestelederbehovRepository {
     val rows = mutableListOf(routeDetails())
     val savedNames = mutableListOf<Pair<NarmestelederbehovId, BehovPersonName>>()
     var requestedLimit: Int? = null

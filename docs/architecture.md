@@ -25,6 +25,11 @@ no.nav.syfo
 │   ├── kafka
 │   ├── observability
 │   └── scheduling
+├── integration                   # shared external clients, not a module
+│   ├── aareg
+│   ├── dinesykmeldte
+│   ├── ereg
+│   └── pdl
 ├── ident                         # shared value types, not a module
 ├── organisasjonstilgang
 │   ├── application
@@ -39,6 +44,10 @@ no.nav.syfo
 │   ├── api
 │   ├── application
 │   ├── domain
+│   └── infrastructure
+├── narmestelederstatistikk
+│   ├── api
+│   ├── application
 │   └── infrastructure
 └── sykmelding
     ├── application
@@ -91,7 +100,7 @@ Owns established and revoked narmesteleder relations:
 - publish relation messages;
 - ingest and republish relation events;
 - own the local relation register;
-- provide lookup, search and statistics;
+- provide lookup and search;
 - maintain the relation-owned `RelationPerson` projection.
 
 `RelationPerson` is the code-level name for person details needed by relation
@@ -137,6 +146,45 @@ Owns reusable business authorization for acting on behalf of an organization:
 It does not load narmestelederbehov or narmestelederrelasjon records. The
 calling use case owns resource lookup, authorization order and non-disclosure
 rules.
+
+### `narmestelederstatistikk`
+
+Owns the read model for narmesteleder statistics per organization
+(`GET /api/v1/linemanager/statistics`):
+
+- check organization access through `organisasjonstilgang`;
+- count employees on sick leave with and without a narmesteleder, and
+  employees with a narmesteleder who are not on sick leave.
+
+The counts span tables owned by other modules (`nl_behov`, `narmeste_leder`
+and `sendt_sykmelding`). The module defines its own private, read-only Exposed
+DSL table definitions over those tables in its `infrastructure` instead of
+importing another module's tables or repositories. It never writes, and the
+owning modules keep ownership of the tables and schema. It has no `domain`
+package because it has no business rules beyond the query. It depends only on
+`organisasjonstilgang`, and no other module depends on it.
+
+### `integration`
+
+`integration` is a supporting package, not a module. It holds clients for
+external systems used by more than one module, one package per system:
+`integration/aareg`, `integration/dinesykmeldte`, `integration/ereg` and
+`integration/pdl`.
+
+A client is transport only: HTTP, token exchange, caching, error handling and
+response DTOs. It contains no business rules and no module's ports or domain
+types.
+
+Each module keeps its own port in `application` and its own adapter in
+`infrastructure`. The adapter calls the client directly and maps the response
+to the module's own types. Modules never share ports or adapters for external
+systems; for example, `narmestelederbehov` has its own PDL adapter instead of
+reusing one from `narmestelederrelasjon`.
+
+A client used by only one module lives in that module's `infrastructure`. It
+moves to `integration` when a second module needs it.
+
+Moving the existing root-level clients into `integration` is tracked in #616.
 
 ### `ident`
 
@@ -186,10 +234,12 @@ sykmelding -> narmestelederbehov -> narmestelederrelasjon
 
 narmestelederbehov -> organisasjonstilgang
 narmestelederrelasjon -> organisasjonstilgang
+narmestelederstatistikk -> organisasjonstilgang
 
 business modules -> ident value types
 business infrastructure -> focused platform mechanisms
-bootstrap -> all modules
+business infrastructure -> integration clients
+bootstrap -> all modules and integration
 ```
 
 Rules:
@@ -210,8 +260,12 @@ Rules:
   `narmestelederrelasjon`. A calling module does not repeat another module's
   validation.
 - A module never imports another module's repositories, tables, transport
-  models, adapters or Koin registration.
-- `platform` and `ident` never import business modules.
+  models, adapters or Koin registration. When a read model or adapter must
+  query a table owned by another module, it defines its own private, read-only
+  table definition.
+- Only `*.infrastructure` packages and `bootstrap` import `integration`.
+  `api`, `application` and `domain` never do.
+- `platform`, `integration` and `ident` never import business modules.
 - Architecture tests enforce rules for each migrated flow. Rules expand as the
   migration progresses.
 
@@ -315,7 +369,9 @@ class PostgresNarmestelederbehovRepository(
 ```
 
 Ports live in `application`. Adapters live in the owning module's
-`infrastructure` package. Name ports by capability and adapters by mechanism.
+`infrastructure` package. An adapter for an external system used by several
+modules calls the shared client in `integration`; see
+[`integration`](#integration). Name ports by capability and adapters by mechanism.
 Do not use `I` prefixes or generic `Impl` suffixes in migrated code.
 
 ## Persistence and transactions

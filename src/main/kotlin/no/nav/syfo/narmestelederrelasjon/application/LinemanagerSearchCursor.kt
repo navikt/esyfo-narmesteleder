@@ -36,13 +36,14 @@ data class LinemanagerSearchCursor(
                     .decode(token)
                     .toStrictUtf8String()
                     .split(":")
-                require(cursorParts.size == 4 && cursorParts.first() == LINEMANAGER_SEARCH_CURSOR_VERSION) {
+                require(cursorParts.isSupportedCursorFormat()) {
                     "Unsupported cursor format"
                 }
+                val (_, firstName, lastName, id) = cursorParts
                 LinemanagerSearchCursor(
-                    firstName = cursorParts[1].toCursorName(),
-                    lastName = cursorParts[2].toCursorName(),
-                    id = cursorParts.last().toInt(),
+                    firstName = firstName.toCursorName(),
+                    lastName = lastName.toCursorName(),
+                    id = id.toInt(),
                 )
             }
         }
@@ -50,8 +51,11 @@ data class LinemanagerSearchCursor(
 }
 
 private const val LINEMANAGER_SEARCH_CURSOR_VERSION = "v2"
+private const val CURSOR_PART_COUNT = 4
 private const val CURSOR_NULL_NAME_FIELD = "n"
 private const val CURSOR_STRING_NAME_FIELD_PREFIX = "s"
+
+private fun List<String>.isSupportedCursorFormat(): Boolean = size == CURSOR_PART_COUNT && first() == LINEMANAGER_SEARCH_CURSOR_VERSION
 
 private fun String?.toCursorNameField(): String = this?.let {
     "$CURSOR_STRING_NAME_FIELD_PREFIX${Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray(UTF_8))}"

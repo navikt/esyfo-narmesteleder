@@ -6,6 +6,8 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.application.Step
+import no.nav.syfo.platform.application.orStop
 
 private const val DEFAULT_PAGE_SIZE = 50
 private const val TEXT_MAX_LENGTH = 50
@@ -18,32 +20,45 @@ class SearchActiveNarmestelederrelasjonerUseCase(
         subject: OrganizationAccessSubject,
         command: SearchActiveNarmestelederrelasjonerCommand,
     ): SearchActiveNarmestelederrelasjonerResult {
-        val access = organizationAccess.evaluate(subject, command.orgNumber)
-        if (access is OrganizationAccessResult.Denied) {
-            return SearchActiveNarmestelederrelasjonerResult.AccessDenied(access.reason)
-        }
-        val text = command.text?.trim()?.takeIf(String::isNotEmpty)
+        verifyAccess(subject, command.orgNumber).orStop { return it }
+        val query = command.toSearchQuery().orStop { return it }
+        return repository.search(query).toSuccess(query.pageSize)
+    }
+
+    private suspend fun verifyAccess(
+        subject: OrganizationAccessSubject,
+        orgNumber: OrganizationNumber,
+    ): SearchStep<Unit> = when (val access = organizationAccess.evaluate(subject, orgNumber)) {
+        is OrganizationAccessResult.Granted -> Step.Proceed
+        is OrganizationAccessResult.Denied -> Step.Stop(SearchActiveNarmestelederrelasjonerResult.AccessDenied(access.reason))
+    }
+
+    private fun SearchActiveNarmestelederrelasjonerCommand.toSearchQuery(): SearchStep<NarmestelederrelasjonSearchQuery> {
+        val text = text?.trim()?.takeIf(String::isNotEmpty)
         if (text != null && text.length > TEXT_MAX_LENGTH) {
-            return SearchActiveNarmestelederrelasjonerResult.InvalidText
+            return Step.Stop(SearchActiveNarmestelederrelasjonerResult.InvalidText)
         }
-        val pageSize = command.pageSize?.takeIf { it in 1..DEFAULT_PAGE_SIZE } ?: DEFAULT_PAGE_SIZE
-        val cursor = LinemanagerSearchCursor.fromPageToken(command.pageToken)
-            .getOrElse { return SearchActiveNarmestelederrelasjonerResult.InvalidPageToken }
-        val identText = text?.takeIf { it.length == 11 && it.all(Char::isDigit) }
-        val results = repository.search(
+        val pageSize = pageSize?.takeIf { it in 1..DEFAULT_PAGE_SIZE } ?: DEFAULT_PAGE_SIZE
+        val cursor = LinemanagerSearchCursor.fromPageToken(pageToken)
+            .getOrElse { return Step.Stop(SearchActiveNarmestelederrelasjonerResult.InvalidPageToken) }
+        val identText = text?.takeIf { PersonIdent.isValid(it) }
+        return Step.Continue(
             NarmestelederrelasjonSearchQuery(
-                orgNumber = command.orgNumber,
-                managerNationalIdentificationNumber = command.managerNationalIdentificationNumber,
-                employeeNationalIdentificationNumber = command.employeeNationalIdentificationNumber,
+                orgNumber = orgNumber,
+                managerNationalIdentificationNumber = managerNationalIdentificationNumber,
+                employeeNationalIdentificationNumber = employeeNationalIdentificationNumber,
                 nationalIdentificationNumber = identText?.let(::PersonIdent),
                 text = text?.takeUnless { identText != null },
-                hasActiveSickLeave = command.hasActiveSickLeave,
+                hasActiveSickLeave = hasActiveSickLeave,
                 pageSize = pageSize,
                 cursor = cursor,
             ),
         )
-        val hasMore = results.size > pageSize
-        val visibleResults = if (hasMore) results.dropLast(1) else results
+    }
+
+    private fun List<NarmestelederrelasjonSearchRow>.toSuccess(pageSize: Int): SearchActiveNarmestelederrelasjonerResult.Success {
+        val hasMore = size > pageSize
+        val visibleResults = if (hasMore) dropLast(1) else this
         return SearchActiveNarmestelederrelasjonerResult.Success(
             linemanagers = visibleResults.map(NarmestelederrelasjonSearchRow::linemanager),
             pageSize = pageSize,
@@ -74,3 +89,5 @@ sealed interface SearchActiveNarmestelederrelasjonerResult {
         val nextPageToken: String?,
     ) : SearchActiveNarmestelederrelasjonerResult
 }
+
+private typealias SearchStep<T> = Step<T, SearchActiveNarmestelederrelasjonerResult>

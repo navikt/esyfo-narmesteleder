@@ -1,31 +1,22 @@
-package no.nav.syfo.application.api
+package no.nav.syfo.narmestelederrelasjon.api
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.syfo.narmesteleder.domain.LinemanagerManagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerPersonRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerReadCollection
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchPageInfo
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchRequest
-import no.nav.syfo.narmesteleder.domain.Name
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerManagerRead
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerPersonRead
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRead
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerReadCollection
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchPageInfo
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchRequest
+import no.nav.syfo.narmestelederrelasjon.api.model.Name
 import org.yaml.snakeyaml.Yaml
 import kotlin.reflect.full.memberProperties
 
 class OpenApiLinemanagerSearchSchemaTest :
-    StringSpec({
-        fun schemas(): Map<*, *> {
-            val yamlText = this::class.java.classLoader
-                .getResource("openapi/internal-linemanager-search.yaml")!!
-                .readText()
-
-            val root = Yaml().load<Map<String, Any>>(yamlText)
-            return (root["components"] as Map<*, *>)["schemas"] as Map<*, *>
-        }
-
-        "openapi LinemanagerSearchRequest schema matches domain properties" {
+    FunSpec({
+        test("openapi LinemanagerSearchRequest schema matches domain properties") {
             val requestSchema = schemas()["LinemanagerSearchRequest"] as Map<*, *>
             val requestProps =
                 (requestSchema["properties"] as Map<*, *>).keys.map { it as String }.toSet()
@@ -34,7 +25,7 @@ class OpenApiLinemanagerSearchSchemaTest :
             requestProps.shouldContainAll(domainProps)
         }
 
-        "openapi LinemanagerReadCollection schema matches domain properties and refs" {
+        test("openapi LinemanagerReadCollection schema matches domain properties and refs") {
             val collectionSchema = schemas()["LinemanagerReadCollection"] as Map<*, *>
             val collectionProps = collectionSchema["properties"] as Map<*, *>
 
@@ -43,7 +34,7 @@ class OpenApiLinemanagerSearchSchemaTest :
             (collectionProps["meta"] as Map<*, *>)[$$"$ref"] shouldBe "#/components/schemas/LinemanagerSearchPageInfo"
         }
 
-        "openapi linemanager search read schemas match domain properties" {
+        test("openapi linemanager search read schemas match domain properties") {
             val schemaMap = schemas()
 
             (schemaMap["LinemanagerRead"] as Map<*, *>)["properties"]
@@ -72,7 +63,16 @@ class OpenApiLinemanagerSearchSchemaTest :
 
             val nameSchema = schemaMap["Name"] as Map<*, *>?
             nameSchema shouldNotBe null
-            (nameSchema!!["properties"] as Map<*, *>).keys.map { it as String }.toSet()
+            (requireNotNull(nameSchema)["properties"] as Map<*, *>).keys.map { it as String }.toSet()
                 .shouldContainAll(Name::class.memberProperties.map { it.name }.toSet())
         }
     })
+
+private fun schemas(): Map<*, *> {
+    val yamlText = OpenApiLinemanagerSearchSchemaTest::class.java.classLoader
+        .getResource("openapi/internal-linemanager-search.yaml")
+        ?.readText()
+        ?: error("Missing search OpenAPI documentation")
+    val root = Yaml().load<Map<String, Any>>(yamlText)
+    return (root["components"] as Map<*, *>)["schemas"] as Map<*, *>
+}

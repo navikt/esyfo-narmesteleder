@@ -1,14 +1,17 @@
-package no.nav.syfo.narmesteleder.exposed
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchQuery
-import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
+import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
+import no.nav.syfo.narmesteleder.exposed.personTable
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
+import no.nav.syfo.narmestelederrelasjon.application.SearchName
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -19,11 +22,11 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
-class LinemanagerSearchRepositoryTest :
-    DescribeSpec({
+class ExposedNarmestelederrelasjonSearchRepositoryTest :
+    FunSpec({
         val fixedInstant = Instant.parse("2026-02-01T12:00:00Z")
         val fixedClock = Clock.fixed(fixedInstant, ZoneOffset.UTC)
-        val repository = PostgresLinemanagerSearchRepository(TestDB.exposedDatabase, fixedClock)
+        val repository = ExposedNarmestelederrelasjonSearchRepository(TestDB.exposedDatabase, fixedClock)
         val now = OffsetDateTime.ofInstant(fixedInstant, ZoneOffset.UTC)
         val orgNumber = OrganizationNumber("123456789")
 
@@ -33,72 +36,8 @@ class LinemanagerSearchRepositoryTest :
             TestDB.clearSendtSykmeldingData()
         }
 
-        fun insertPerson(
-            fnr: String,
-            firstName: String? = null,
-            middleName: String? = null,
-            lastName: String? = null,
-        ) {
-            transaction(TestDB.exposedDatabase) {
-                personTable.batchInsertIgnoreExisting(
-                    listOf(
-                        PersonBatchInsertRow(
-                            fnr = fnr,
-                            status = "ENRICHED",
-                            fornavn = firstName,
-                            mellomnavn = middleName,
-                            etternavn = lastName,
-                            foedselsdato = LocalDate.parse("1990-01-01"),
-                        ),
-                    ),
-                )
-            }
-        }
-
-        fun insertRelation(
-            employeeFnr: String,
-            managerFnr: String,
-            orgnummer: String = orgNumber.value,
-            aktivFom: OffsetDateTime = now.minusDays(1),
-            aktivTom: OffsetDateTime? = null,
-            email: String = "leder@example.com",
-            mobile: String = "99999999",
-            narmestelederId: UUID = UUID.randomUUID(),
-        ): Int = transaction(TestDB.exposedDatabase) {
-            NarmestelederEntity.new {
-                narmesteLederId = narmestelederId
-                this.orgnummer = orgnummer
-                sykmeldtFnr = employeeFnr
-                narmestelederFnr = managerFnr
-                narmestelederTelefonnummer = mobile
-                narmestelederEpost = email
-                arbeidsgiverForskutterer = true
-                this.aktivFom = aktivFom
-                this.aktivTom = aktivTom
-            }.id.value
-        }
-
-        fun insertSendtSykmelding(
-            fnr: String,
-            orgnummer: String = orgNumber.value,
-            tom: LocalDate,
-            revokedDate: LocalDate? = null,
-        ) {
-            transaction(TestDB.exposedDatabase) {
-                SendtSykmeldingTable.insert {
-                    it[sykmeldingId] = UUID.randomUUID()
-                    it[SendtSykmeldingTable.orgnummer] = orgnummer
-                    it[syketilfelleStartDato] = tom.minusDays(10)
-                    it[SendtSykmeldingTable.fnr] = fnr
-                    it[fom] = tom.minusDays(20)
-                    it[SendtSykmeldingTable.tom] = tom
-                    it[SendtSykmeldingTable.revokedDate] = revokedDate
-                }
-            }
-        }
-
-        describe("search") {
-            it("returns active linemanager relations with names for both employee and manager") {
+        context("search") {
+            test("returns active linemanager relations with names for both employee and manager") {
                 val employeeFnr = "12345678910"
                 val managerFnr = "10987654321"
                 val narmestelederId = UUID.randomUUID()
@@ -113,7 +52,7 @@ class LinemanagerSearchRepositoryTest :
                 )
 
                 val results = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 50,
                     ),
@@ -124,14 +63,14 @@ class LinemanagerSearchRepositoryTest :
                 relation.id shouldBe narmestelederId
                 relation.orgNumber shouldBe orgNumber
                 relation.activeFrom shouldBe now.minusDays(1).toInstant()
-                relation.employee.nationalIdentificationNumber shouldBe PersonalIdentificationNumber(employeeFnr)
-                relation.employee.name shouldBe Name(
+                relation.employee.nationalIdentificationNumber shouldBe PersonIdent(employeeFnr)
+                relation.employee.name shouldBe SearchName(
                     firstName = "Ola",
                     middleName = "Mellom",
                     lastName = "Nordmann",
                 )
-                relation.manager.nationalIdentificationNumber shouldBe PersonalIdentificationNumber(managerFnr)
-                relation.manager.name shouldBe Name(
+                relation.manager.nationalIdentificationNumber shouldBe PersonIdent(managerFnr)
+                relation.manager.name shouldBe SearchName(
                     firstName = "Kari",
                     middleName = null,
                     lastName = "Nordmann",
@@ -140,14 +79,14 @@ class LinemanagerSearchRepositoryTest :
                 relation.manager.mobile shouldBe "90000000"
             }
 
-            it("keeps active relations when person rows are missing and returns null names") {
+            test("keeps active relations when person rows are missing and returns null names") {
                 insertRelation(
                     employeeFnr = "12345678910",
                     managerFnr = "10987654321",
                 )
 
                 val results = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 50,
                     ),
@@ -159,7 +98,7 @@ class LinemanagerSearchRepositoryTest :
                 relation.manager.name.shouldBeNull()
             }
 
-            it("filters on orgnumber, manager fnr, activeTom null and activeFrom not in the future") {
+            test("filters on orgnumber, manager fnr, activeTom null and activeFrom not in the future") {
                 val expectedEmployeeFnr = "12345678910"
                 val expectedManagerFnr = "10987654321"
                 insertRelation(
@@ -187,9 +126,9 @@ class LinemanagerSearchRepositoryTest :
                 )
 
                 val results = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
-                        managerNationalIdentificationNumber = PersonalIdentificationNumber(expectedManagerFnr),
+                        managerNationalIdentificationNumber = PersonIdent(expectedManagerFnr),
                         pageSize = 50,
                     ),
                 )
@@ -197,7 +136,7 @@ class LinemanagerSearchRepositoryTest :
                 results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe listOf(expectedEmployeeFnr)
             }
 
-            it("filters on employee national identification number") {
+            test("filters on employee national identification number") {
                 val expectedEmployeeFnr = "12345678910"
                 insertRelation(
                     employeeFnr = expectedEmployeeFnr,
@@ -209,9 +148,9 @@ class LinemanagerSearchRepositoryTest :
                 )
 
                 val results = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
-                        employeeNationalIdentificationNumber = PersonalIdentificationNumber(expectedEmployeeFnr),
+                        employeeNationalIdentificationNumber = PersonIdent(expectedEmployeeFnr),
                         pageSize = 50,
                     ),
                 )
@@ -219,7 +158,7 @@ class LinemanagerSearchRepositoryTest :
                 results.map { it.linemanager.employee.nationalIdentificationNumber.value } shouldBe listOf(expectedEmployeeFnr)
             }
 
-            it("searches names for either employee or manager") {
+            test("searches names for either employee or manager") {
                 val employeeFnr = "12345678910"
                 val managerFnr = "10987654321"
                 val otherEmployeeFnr = "12345678911"
@@ -232,7 +171,7 @@ class LinemanagerSearchRepositoryTest :
                 insertRelation(employeeFnr = otherEmployeeFnr, managerFnr = otherManagerFnr)
 
                 val results = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         text = "ola",
                         pageSize = 50,
@@ -243,13 +182,13 @@ class LinemanagerSearchRepositoryTest :
                     listOf(otherEmployeeFnr, employeeFnr)
             }
 
-            it("treats LIKE wildcard characters in name searches as literals") {
+            test("treats LIKE wildcard characters in name searches as literals") {
                 val employeeFnr = "12345678910"
                 insertPerson(employeeFnr, firstName = "Ola", lastName = "Nordmann")
                 insertRelation(employeeFnr = employeeFnr, managerFnr = "10987654321")
 
                 val results = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         text = "%",
                         pageSize = 50,
@@ -259,15 +198,15 @@ class LinemanagerSearchRepositoryTest :
                 results.shouldHaveSize(0)
             }
 
-            it("searches national identification numbers for either employee or manager") {
-                val nationalIdentificationNumber = PersonalIdentificationNumber("12345678910")
+            test("searches national identification numbers for either employee or manager") {
+                val nationalIdentificationNumber = PersonIdent("12345678910")
                 val employeeFnr = "12345678911"
                 val managerFnr = "10987654321"
                 insertRelation(employeeFnr = nationalIdentificationNumber.value, managerFnr = managerFnr)
                 insertRelation(employeeFnr = employeeFnr, managerFnr = nationalIdentificationNumber.value)
 
                 val results = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         nationalIdentificationNumber = nationalIdentificationNumber,
                         pageSize = 50,
@@ -278,7 +217,7 @@ class LinemanagerSearchRepositoryTest :
                     listOf(nationalIdentificationNumber.value, employeeFnr)
             }
 
-            it("filters on whether an employee has an active sick leave") {
+            test("filters on whether an employee has an active sick leave") {
                 val activeEmployeeFnr = "12345678910"
                 val expiredEmployeeFnr = "12345678911"
                 val revokedEmployeeFnr = "12345678912"
@@ -313,21 +252,21 @@ class LinemanagerSearchRepositoryTest :
                 )
 
                 val activeResults = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         hasActiveSickLeave = true,
                         pageSize = 50,
                     ),
                 )
                 val inactiveResults = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         hasActiveSickLeave = false,
                         pageSize = 50,
                     ),
                 )
                 val unfilteredResults = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 50,
                     ),
@@ -347,7 +286,7 @@ class LinemanagerSearchRepositoryTest :
                     )
             }
 
-            it("sorts employee names case-insensitively by first name, last name, and relation id") {
+            test("sorts employee names case-insensitively by first name, last name, and relation id") {
                 val benteId = insertRelation(
                     employeeFnr = "12345678910",
                     managerFnr = "10987654321",
@@ -374,7 +313,7 @@ class LinemanagerSearchRepositoryTest :
                 insertPerson("12345678913", firstName = "ADA", lastName = "Sol")
 
                 val results = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 50,
                     ),
@@ -384,7 +323,7 @@ class LinemanagerSearchRepositoryTest :
                     listOf(firstAdaId, secondAdaId, adaSolId, benteId, missingPersonId)
             }
 
-            it("paginates stably through equal and missing employee names") {
+            test("paginates stably through equal and missing employee names") {
                 val benteId = insertRelation(
                     employeeFnr = "12345678910",
                     managerFnr = "10987654321",
@@ -420,20 +359,20 @@ class LinemanagerSearchRepositoryTest :
                 insertPerson("12345678914", firstName = "ada")
 
                 val firstPage = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 2,
                     ),
                 )
                 val secondPage = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 2,
                         cursor = firstPage.take(2).last().cursor,
                     ),
                 )
                 val thirdPage = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 2,
                         cursor = secondPage.take(2).last().cursor,
@@ -441,7 +380,7 @@ class LinemanagerSearchRepositoryTest :
                 )
 
                 val fourthPage = repository.search(
-                    LinemanagerSearchQuery(
+                    NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
                         pageSize = 2,
                         cursor = thirdPage.take(2).last().cursor,
@@ -465,3 +404,67 @@ class LinemanagerSearchRepositoryTest :
             }
         }
     })
+
+private fun insertPerson(
+    fnr: String,
+    firstName: String? = null,
+    middleName: String? = null,
+    lastName: String? = null,
+) {
+    transaction(TestDB.exposedDatabase) {
+        personTable.batchInsertIgnoreExisting(
+            listOf(
+                PersonBatchInsertRow(
+                    fnr = fnr,
+                    status = "ENRICHED",
+                    fornavn = firstName,
+                    mellomnavn = middleName,
+                    etternavn = lastName,
+                    foedselsdato = LocalDate.parse("1990-01-01"),
+                ),
+            ),
+        )
+    }
+}
+
+private fun insertRelation(
+    employeeFnr: String,
+    managerFnr: String,
+    orgnummer: String = "123456789",
+    aktivFom: OffsetDateTime = OffsetDateTime.parse("2026-01-31T12:00:00Z"),
+    aktivTom: OffsetDateTime? = null,
+    email: String = "leder@example.com",
+    mobile: String = "99999999",
+    narmestelederId: UUID = UUID.randomUUID(),
+): Int = transaction(TestDB.exposedDatabase) {
+    NarmestelederEntity.new {
+        narmesteLederId = narmestelederId
+        this.orgnummer = orgnummer
+        sykmeldtFnr = employeeFnr
+        narmestelederFnr = managerFnr
+        narmestelederTelefonnummer = mobile
+        narmestelederEpost = email
+        arbeidsgiverForskutterer = true
+        this.aktivFom = aktivFom
+        this.aktivTom = aktivTom
+    }.id.value
+}
+
+private fun insertSendtSykmelding(
+    fnr: String,
+    orgnummer: String = "123456789",
+    tom: LocalDate,
+    revokedDate: LocalDate? = null,
+) {
+    transaction(TestDB.exposedDatabase) {
+        SendtSykmeldingTable.insert {
+            it[sykmeldingId] = UUID.randomUUID()
+            it[SendtSykmeldingTable.orgnummer] = orgnummer
+            it[syketilfelleStartDato] = tom.minusDays(10)
+            it[SendtSykmeldingTable.fnr] = fnr
+            it[fom] = tom.minusDays(20)
+            it[SendtSykmeldingTable.tom] = tom
+            it[SendtSykmeldingTable.revokedDate] = revokedDate
+        }
+    }
+}

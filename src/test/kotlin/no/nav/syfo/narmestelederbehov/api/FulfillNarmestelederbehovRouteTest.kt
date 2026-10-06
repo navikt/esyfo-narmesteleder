@@ -30,8 +30,6 @@ import linemanager
 import manager
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.client.TestAaregClient
-import no.nav.syfo.altinn.pdp.client.Decision
-import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.api.API_V1_PATH
@@ -72,6 +70,10 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelede
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.FakeSykmeldingNarmestelederProducer
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationResponse
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.util.UUID
@@ -186,7 +188,8 @@ class FulfillNarmestelederbehovRouteTest :
                     consumer = DefaultOrganization.copy(ID = "0192:000000000"),
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
-                coEvery { fixture.pdp.accessDecisionForResource(any(), any(), any()) } returns Decision.Deny
+                coEvery { fixture.pdp.authorize(any(), any(), any()) } returns
+                    AltinnAuthorizationResponse(listOf(DecisionResult(Decision.Deny)))
                 fixture.ereg.organisasjoner[fixture.orgNumber] = Organisasjon(
                     organisasjonsnummer = fixture.orgNumber,
                     inngaarIJuridiskEnheter = emptyList(),
@@ -251,7 +254,7 @@ private class PutFixture {
     val repository = FakePutBehovRepository()
     val aareg = TestAaregClient()
     val texas = mockk<TexasHttpClient>()
-    val pdp = mockk<PdpService>(relaxed = true)
+    val pdp = mockk<AltinnAuthorizationClient>(relaxed = true)
     val ereg = FakeEregClient()
     val people = FakePersonLookup()
     val sykmelding: DinesykmeldteService = spyk(ClientDinesykmeldteService(FakeDinesykmeldteClient()))
@@ -280,7 +283,8 @@ private class PutFixture {
             systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgNumber"),
             scope = MASKINPORTEN_NL_SCOPE,
         )
-        coEvery { pdp.accessDecisionForResource(any(), any(), any()) } returns Decision.Permit
+        coEvery { pdp.authorize(any(), any(), any()) } returns
+            AltinnAuthorizationResponse(listOf(DecisionResult(Decision.Permit)))
     }
 
     suspend fun seed(seedEmployment: Boolean = true): UUID {

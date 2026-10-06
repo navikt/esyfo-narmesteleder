@@ -7,12 +7,6 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
-import no.nav.syfo.altinn.pdp.client.Decision
-import no.nav.syfo.altinn.pdp.client.DecisionResult
-import no.nav.syfo.altinn.pdp.client.PdpClient
-import no.nav.syfo.altinn.pdp.client.PdpResponse
-import no.nav.syfo.altinn.pdp.client.User
-import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.valkey.EregCache
@@ -25,6 +19,11 @@ import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationResponse
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 
 class AltinnOrganizationAccessTest :
     FunSpec({
@@ -107,7 +106,7 @@ private const val UNRELATED_ORG = "910000003"
 
 private class AccessFixture {
     val altinn = FakeAltinnTilgangerClient().also { it.accessPolicy.clear() }
-    val pdp = RecordingPdpClient()
+    val pdp = RecordingAltinnAuthorizationClient()
     val ereg = FakeEregClient().also { it.organisasjoner.clear() }
     private val eregCache = mockk<EregCache> {
         every { getOrganisasjon(any()) } returns null
@@ -115,12 +114,12 @@ private class AccessFixture {
     }
     val access = AltinnOrganizationAccess(
         AltinnTilgangerService(altinn),
-        PdpService(pdp),
+        pdp,
         EregService(ereg, eregCache),
     )
 }
 
-private class RecordingPdpClient : PdpClient {
+private class RecordingAltinnAuthorizationClient : AltinnAuthorizationClient {
     private val permitted = mutableSetOf<String>()
     val requestedOrganizations = mutableListOf<Set<String>>()
 
@@ -128,10 +127,10 @@ private class RecordingPdpClient : PdpClient {
         permitted += orgNumber
     }
 
-    override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): PdpResponse {
+    override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): AltinnAuthorizationResponse {
         requestedOrganizations += orgNumberSet
         val decision = if (orgNumberSet.all { it in permitted }) Decision.Permit else Decision.Deny
-        return PdpResponse(listOf(DecisionResult(decision)))
+        return AltinnAuthorizationResponse(listOf(DecisionResult(decision)))
     }
 }
 

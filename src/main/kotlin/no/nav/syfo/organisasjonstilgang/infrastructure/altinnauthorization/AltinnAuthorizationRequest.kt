@@ -1,8 +1,8 @@
-package no.nav.syfo.altinn.pdp.client
+package no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization
 
 import kotlinx.serialization.json.Json
 
-data class PdpRequest(
+data class AltinnAuthorizationRequest(
     val request: XacmlJsonRequestExternal,
 ) {
     data class XacmlJsonRequestExternal(
@@ -38,20 +38,20 @@ class System(
     id: String,
 ) : User(id, "urn:altinn:systemuser:uuid")
 
-fun createPdpRequest(
+fun createAltinnAuthorizationRequest(
     user: User,
     orgNumberSet: Set<String>,
     resource: String,
-) = PdpRequest(
+) = AltinnAuthorizationRequest(
     request =
-    PdpRequest.XacmlJsonRequestExternal(
+    AltinnAuthorizationRequest.XacmlJsonRequestExternal(
         returnPolicyIdList = true,
         accessSubject =
         listOf(
-            PdpRequest.XacmlJsonCategoryExternal(
+            AltinnAuthorizationRequest.XacmlJsonCategoryExternal(
                 attribute =
                 listOf(
-                    PdpRequest.XacmlJsonAttributeExternal(
+                    AltinnAuthorizationRequest.XacmlJsonAttributeExternal(
                         attributeId = user.attributeId,
                         value = user.id,
                     ),
@@ -60,10 +60,10 @@ fun createPdpRequest(
         ),
         action =
         listOf(
-            PdpRequest.XacmlJsonCategoryExternal(
+            AltinnAuthorizationRequest.XacmlJsonCategoryExternal(
                 attribute =
                 listOf(
-                    PdpRequest.XacmlJsonAttributeExternal(
+                    AltinnAuthorizationRequest.XacmlJsonAttributeExternal(
                         attributeId = "urn:oasis:names:tc:xacml:1.0:action:action-id",
                         value = "access",
                         dataType = "http://www.w3.org/2001/XMLSchema#string",
@@ -73,14 +73,14 @@ fun createPdpRequest(
         ),
         resource =
         orgNumberSet.map { orgnr ->
-            PdpRequest.XacmlJsonCategoryExternal(
+            AltinnAuthorizationRequest.XacmlJsonCategoryExternal(
                 attribute =
                 listOf(
-                    PdpRequest.XacmlJsonAttributeExternal(
+                    AltinnAuthorizationRequest.XacmlJsonAttributeExternal(
                         attributeId = "urn:altinn:resource",
                         value = resource,
                     ),
-                    PdpRequest.XacmlJsonAttributeExternal(
+                    AltinnAuthorizationRequest.XacmlJsonAttributeExternal(
                         attributeId = "urn:altinn:organization:identifier-no",
                         value = orgnr,
                     ),

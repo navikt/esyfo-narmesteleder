@@ -1,8 +1,5 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure
 
-import no.nav.syfo.altinn.pdp.client.Decision
-import no.nav.syfo.altinn.pdp.client.System
-import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService.Companion.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.altinntilganger.COUNT_HAS_ALTINN3_RESOURCE
@@ -14,10 +11,14 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.System
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.result
 
 class AltinnOrganizationAccess(
     private val altinnTilgangerService: AltinnTilgangerService,
-    private val pdpService: PdpService,
+    private val client: AltinnAuthorizationClient,
     private val eregService: EregService,
 ) : OrganizationAccess {
     override suspend fun evaluate(
@@ -26,6 +27,10 @@ class AltinnOrganizationAccess(
     ): OrganizationAccessResult = when (subject) {
         is OrganizationAccessSubject.PersonnelManager -> evaluatePersonnelManager(subject, organizationNumber)
         is OrganizationAccessSubject.LpsSystemUser -> evaluateSystemUser(subject, organizationNumber)
+    }
+
+    companion object {
+        private val logger = applicationLogger(AltinnOrganizationAccess::class.java)
     }
 
     private suspend fun evaluatePersonnelManager(
@@ -77,13 +82,9 @@ class AltinnOrganizationAccess(
     private suspend fun decisionFor(
         subject: OrganizationAccessSubject.LpsSystemUser,
         organizationNumber: OrganizationNumber,
-    ): Decision = pdpService.accessDecisionForResource(
+    ): Decision = client.authorize(
         user = System(subject.systemUserId),
         orgNumberSet = setOf(organizationNumber.value),
         resource = OPPGI_NARMESTELEDER_RESOURCE,
-    )
-
-    companion object {
-        private val logger = applicationLogger(AltinnOrganizationAccess::class.java)
-    }
+    ).result()
 }

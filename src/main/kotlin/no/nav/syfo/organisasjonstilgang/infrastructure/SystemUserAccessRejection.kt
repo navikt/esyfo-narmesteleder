@@ -1,7 +1,7 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure
 
 import no.nav.esyfo.observability.apiRequestRejected
-import no.nav.syfo.altinn.pdp.client.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
 
 internal const val SYSTEM_USER_ACCESS_NOT_GRANTED = "SYSTEM_USER_ACCESS_NOT_GRANTED"
 

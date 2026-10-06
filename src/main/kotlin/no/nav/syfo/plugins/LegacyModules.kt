@@ -3,7 +3,6 @@ package no.nav.syfo.plugins
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -49,7 +48,6 @@ internal fun legacyServicesModule() = module {
     single { PdlService(pdlClient = get()) }
     single { PdlLeesahNameUpdateService(database = get(), pdlService = get()) }
     single { AltinnTilgangerService(altinnTilgangerClient = get()) }
-    single { PdpService(pdpClient = get()) }
     single { EregService(eregClient = get(), eregCache = get()) }
     single { PersonEnrichmentService(database = get(), pdlService = get()) }
     single {

@@ -21,12 +21,6 @@ import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
-import no.nav.syfo.altinn.pdp.client.Decision
-import no.nav.syfo.altinn.pdp.client.DecisionResult
-import no.nav.syfo.altinn.pdp.client.PdpClient
-import no.nav.syfo.altinn.pdp.client.PdpResponse
-import no.nav.syfo.altinn.pdp.client.User
-import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.application.exception.ApiErrorException
@@ -40,6 +34,11 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationResponse
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 
@@ -253,12 +252,12 @@ private class LoggingFixture(
 ) {
     val checkedOrganizations = mutableListOf<String>()
     private val decisions = mapOf(REQUESTED_ORG to directDecision, SYSTEM_USER_ORG to fallbackDecision)
-    private val pdp = object : PdpClient {
-        override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): PdpResponse {
+    private val pdp = object : AltinnAuthorizationClient {
+        override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): AltinnAuthorizationResponse {
             val organization = orgNumberSet.single()
             checkedOrganizations += organization
             pdpFailures[organization]?.let { throw it }
-            return PdpResponse(listOf(DecisionResult(decisions.getValue(organization))))
+            return AltinnAuthorizationResponse(listOf(DecisionResult(decisions.getValue(organization))))
         }
     }
     private val ereg = FakeEregClient().also {
@@ -275,7 +274,7 @@ private class LoggingFixture(
     }
     val access = AltinnOrganizationAccess(
         AltinnTilgangerService(FakeAltinnTilgangerClient().also { it.accessPolicy.clear() }),
-        PdpService(pdp),
+        pdp,
         EregService(ereg, eregCache),
     )
 }

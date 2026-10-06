@@ -2,7 +2,8 @@
 
 **Dato:** 2026-09-17  
 **Status:** Godkjent  
-**Beslutningstakere:** Deltakende utviklere i team-esyfo
+**Beslutningstakere:** Deltakende utviklere i team-esyfo  
+**Utvidet:** 2026-10-06 med `narmestelederstatistikk` og `integration` (#615)
 
 ## Beslutning
 
@@ -14,11 +15,15 @@ forretningskapabilitet:
 - `narmestelederrelasjon`
 - `sykmelding`
 - `organisasjonstilgang`
+- `narmestelederstatistikk`
 
 Følgende støttestrukturer skal ha avgrensede roller:
 
 - `platform` inneholder delte tekniske mekanismer uten domeneregler, som
   autentisering, databaseoppsett, Kafka-livssyklus og observerbarhet.
+- `integration` inneholder klienter mot eksterne systemer som brukes av flere
+  moduler, som Ereg, PDL, Aareg og Dinesykmeldte. En klient er bare transport:
+  HTTP, token, cache og respons-DTO-er, uten forretningsregler.
 - `bootstrap` leser konfigurasjon, velger adaptere og setter sammen
   applikasjonen.
 
@@ -57,7 +62,7 @@ Et narmestelederbehov og en narmestelederrelasjon har ulike livsløp:
   med Dialogporten.
 - En **narmestelederrelasjon** er koblingen mellom en arbeidstaker, en
   narmesteleder og en organisasjon. Modulen eier relasjonsregisteret,
-  etablering, brudd, publisering, oppslag, søk og statistikk.
+  etablering, brudd, publisering, oppslag og søk.
 
 Når et behov fullføres, kaller `narmestelederbehov` en smal application-kontrakt
 som eies av `narmestelederrelasjon`. Vi beholder dagens synkrone
@@ -76,6 +81,26 @@ en organisasjon via Altinn Tilganger, PDP og Ereg. Ktor/Texas-autentisering
 forblir i `platform.auth`. Hver use case eier selv ressursoppslag,
 rekkefølge og eventuell skjerming av om en ressurs finnes.
 
+`narmestelederstatistikk` er en lesemodell for statistikk per organisasjon.
+Statistikken teller på tvers av tabeller som eies av andre moduler
+(`nl_behov`, `narmeste_leder` og `sendt_sykmelding`). Modulen har derfor egne,
+skrivebeskyttede tabelldefinisjoner over disse tabellene i stedet for å
+importere andre modulers tabeller eller repositories. Den avhenger bare av
+`organisasjonstilgang`, og ingen annen modul avhenger av den. Modulen skriver
+aldri, og eierskapet til tabellene og skjemaet ligger fortsatt hos de eiende
+modulene.
+
+Flere moduler trenger de samme eksterne systemene. For eksempel slår både
+`narmestelederrelasjon` og `narmestelederbehov` opp personer i PDL og
+arbeidsforhold i Aareg. Klienten mot et slikt system ligger i
+`integration/<system>`. Hver modul har sin egen port i `application` og sin egen
+adapter i `infrastructure`, som bruker klienten direkte og mapper responsen til
+modulens egne typer. Moduler deler ikke porter eller adaptere for eksterne
+systemer. Bare `*.infrastructure` og `bootstrap` får importere `integration`, og
+`integration` importerer aldri forretningsmoduler. En klient med bare én bruker
+ligger i den modulens `infrastructure` og flyttes til `integration` først når en
+modul til trenger den.
+
 ## Alternativer vurdert
 
 ### Ett stort `narmesteleder`-modul
@@ -89,6 +114,14 @@ uklart eierskap.
 Globale pakker for controllers, services, repositories og clients er kjent,
 men sprer én forretningsflyt over hele kodebasen og gjør tekniske mekanismer til
 den primære strukturen.
+
+### Delte eksterne klienter i `platform` eller i én eiermodul
+
+Å legge klientene i `platform` ville gjort `platform` til mer enn tekniske
+mekanismer, fordi klientene kjenner konkrete eksterne systemer og deres
+datamodeller. Å la én forretningsmodul eie klienten og andre moduler importere
+den, ville skapt avhengigheter mellom moduler som ikke handler om
+forretningskapabiliteter.
 
 ### Separate Gradle-moduler nå
 
@@ -108,7 +141,8 @@ teameierskap som forsvarer nye nettverksgrenser, kontrakter og driftsansvar.
 - Vi lager interfaces for faktiske grenser, særlig mellom moduler og mot
   eksterne systemer. Vi lager ikke et interface for hver klasse.
 - Ports ligger i `application`. PostgreSQL-, HTTP-, Kafka- og andre adaptere
-  ligger i modulens `infrastructure`.
+  ligger i modulens `infrastructure`. Adaptere mot eksterne systemer som flere
+  moduler bruker, kaller en klient i `integration`.
 - Repository-adaptere eier transaksjoner. Use cases skal ikke bruke Exposed,
   JDBC eller database-transaksjoner direkte.
 - Forventede feil returneres som typede resultater. HTTP-adaptere oversetter

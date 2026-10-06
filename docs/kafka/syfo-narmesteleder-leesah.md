@@ -116,6 +116,10 @@ removes earlier records for the key. Consumers must accept a `null` value.
   key is always the latest state.
 - **Ordered per key.** Records for one relation are published in order.
 - **No ordering across keys.**
+- **Only validated records.** During the transition, records that fail
+  validation are not republished, see
+  [what is validated](#what-is-validated). The topic then keeps the previous
+  state for that key.
 
 ## Personal data
 
@@ -143,16 +147,19 @@ changes.
 
 `PersistNarmestelederRegisterFromLeesahConsumer` consumes the team-sykmelding
 topic (consumer group `esyfo-narmesteleder-leesah-persist-consumer`), stores
-valid relations, and then republishes the original key and value unchanged
-with `NarmestelederLeesahProducer`. Publishing is enabled by
-`PERSIST_NARMESTELEDER_REGISTER` (enabled in dev and prod).
+valid relations, and then republishes the original key and value of the
+validated records unchanged with `NarmestelederLeesahProducer`. Publishing is
+enabled by `PERSIST_NARMESTELEDER_REGISTER` (enabled in dev and prod).
 
 Because values are republished byte for byte, format changes made by
 team-sykmelding, such as new properties or `status` values, appear on this
 topic without a change in this repository. Coordinate such changes with
 team-sykmelding until the takeover is complete.
 
-Records are **not** republished when:
+### What is validated
+
+Only records that pass validation are republished. Records are **not**
+republished when:
 
 - the value is not valid JSON, or a non-nullable field is missing or has the
   wrong type;
@@ -161,7 +168,13 @@ Records are **not** republished when:
 - `narmesteLederTelefonnummer` or `narmesteLederEpost` is longer than 255
   characters.
 
+Unknown properties and unknown `status` values do not cause a record to be
+skipped. Skipped records are logged, and their offsets are committed, so
+they are not retried.
+
 Tombstones from the team-sykmelding topic are forwarded unchanged.
+
+### Retries and duplicates
 
 Records are published after a batch is stored and before the consumed offset
 is committed. If publishing fails partway, the whole batch is retried, which

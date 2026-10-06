@@ -15,7 +15,6 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
-import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederrelasjon.api.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
@@ -23,6 +22,7 @@ import no.nav.syfo.narmestelederrelasjon.api.registerLinemanagerSearchApi
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerRevokeActiveNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerSubmitNarmestelederrelasjonApi
+import no.nav.syfo.narmestelederstatistikk.api.registerLinemanagerStatisticsApi
 import org.koin.ktor.ext.get
 
 fun Application.configureRouting() {
@@ -78,7 +78,7 @@ private fun Route.registerInternalApiV1Routes() {
         preAuthorizedApps = get<Environment>().texas.azurePreAuthorizedApps,
     )
     registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = get(), texasHttpClient = get())
-    registerLinemanagerStatisticsApi(texasHttpClient = get(), linemanagerStatisticsService = get())
+    registerLinemanagerStatisticsApi(getNarmestelederstatistikk = get(), texasHttpClient = get())
     registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = get(), texasHttpClient = get())
     registerNarmestelederrelasjonApi(
         getNarmestelederrelasjon = get(),

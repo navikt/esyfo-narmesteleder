@@ -27,7 +27,6 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
 import no.nav.syfo.altinntilganger.registerAccessOrganizationsApi
 import no.nav.syfo.application.api.API_V1_PATH
-import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
@@ -38,8 +37,6 @@ import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
-import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
 import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
@@ -89,11 +86,9 @@ abstract class LinemanagerApiV1TestBase(
     internal val tokenXIssuer = "https://tokenx.nav.no"
 
     internal lateinit var fakeRepo: FakeNarmestelederDb
-    internal lateinit var linemanagerStatisticsRepository: LinemanagerStatisticsRepository
     internal lateinit var narmesteLederService: NarmestelederService
     internal lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
     internal lateinit var fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase
-    internal lateinit var linemanagerStatisticsService: LinemanagerStatisticsService
 
     init {
         beforeTest {
@@ -101,7 +96,6 @@ abstract class LinemanagerApiV1TestBase(
             fakeAltinnTilgangerClient.accessPolicy.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
-            linemanagerStatisticsRepository = mockk()
             narmesteLederService =
                 NarmestelederService(
                     nlDb = fakeRepo,
@@ -128,11 +122,6 @@ abstract class LinemanagerApiV1TestBase(
                 ),
                 DialogportenNarmestelederbehovDialog(FakeDialogportenClient()),
             )
-            linemanagerStatisticsService =
-                LinemanagerStatisticsService(
-                    validationService = validationServiceSpy,
-                    linemanagerStatisticsRepository = linemanagerStatisticsRepository,
-                )
             coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Permit
             fakeRepo.clear()
         }
@@ -164,10 +153,6 @@ abstract class LinemanagerApiV1TestBase(
                             fulfillNarmestelederbehov,
                         )
                         registerAccessOrganizationsApi(altinnAccessServiceSpy, texasHttpClientMock)
-                    }
-                    route(INTERNAL_API_V1_PATH) {
-                        install(AddTokenIssuerPlugin)
-                        registerLinemanagerStatisticsApi(texasHttpClientMock, linemanagerStatisticsService)
                     }
                 }
             }

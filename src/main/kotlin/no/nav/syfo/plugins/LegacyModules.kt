@@ -11,10 +11,7 @@ import no.nav.syfo.ereg.EregService
 import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
-import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
-import no.nav.syfo.narmesteleder.exposed.PostgresLinemanagerStatisticsRepository
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -46,7 +43,6 @@ internal fun legacyRepositoriesModule() = module {
         PostgresSendtSykmeldingNarmestelederBruddRepository(database = get())
     }
     single<SykmeldingRetentionRepository> { ExposedSykmeldingRetentionRepository(database = get()) }
-    single<LinemanagerStatisticsRepository> { PostgresLinemanagerStatisticsRepository(database = get()) }
 }
 
 internal fun legacyServicesModule() = module {
@@ -100,7 +96,4 @@ internal fun legacyServicesModule() = module {
     single { NarmestelederRegisterService(database = get()) }
     single { NlBehovLeesahHandler(narmesteLederService = get()) }
     single { LinemanagerRequirementRESTHandler(narmesteLederService = get(), validationService = get()) }
-    single {
-        LinemanagerStatisticsService(validationService = get(), linemanagerStatisticsRepository = get())
-    }
 }

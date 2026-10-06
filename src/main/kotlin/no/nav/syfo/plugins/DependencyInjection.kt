@@ -9,6 +9,7 @@ import no.nav.syfo.application.environment.NaisEnvironment
 import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
+import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkModule
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
 import org.koin.core.module.Module
 import org.koin.core.scope.Scope
@@ -36,6 +37,7 @@ fun applicationModules(isLocalEnv: Boolean): List<Module> = listOf(
     tasksModule(),
     narmestelederbehovModule(),
     narmestelederrelasjonModule(),
+    narmestelederstatistikkModule(),
     organisasjonstilgangModule(),
 )
 

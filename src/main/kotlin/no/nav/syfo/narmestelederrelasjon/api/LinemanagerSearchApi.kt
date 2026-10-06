@@ -13,8 +13,6 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchRequest
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerCommand
@@ -61,19 +59,15 @@ fun Route.registerLinemanagerSearchApi(
     }
 }
 
-private fun LinemanagerSearchRequest.toCommand(): SearchActiveNarmestelederrelasjonerCommand = runCatching {
-    SearchActiveNarmestelederrelasjonerCommand(
-        orgNumber = OrganizationNumber(orgNumber),
-        managerNationalIdentificationNumber = managerNationalIdentificationNumber?.let(::PersonIdent),
-        employeeNationalIdentificationNumber = employeeNationalIdentificationNumber?.let(::PersonIdent),
-        hasActiveSickLeave = hasActiveSickLeave,
-        text = text,
-        pageSize = pageSize,
-        pageToken = pageToken,
-    )
-}.getOrElse {
-    throw ApiErrorException.BadRequestException("Invalid search request", type = ErrorType.INVALID_FORMAT)
-}
+private fun LinemanagerSearchRequest.toCommand() = SearchActiveNarmestelederrelasjonerCommand(
+    orgNumber = orgNumber,
+    managerNationalIdentificationNumber = managerNationalIdentificationNumber,
+    employeeNationalIdentificationNumber = employeeNationalIdentificationNumber,
+    hasActiveSickLeave = hasActiveSickLeave,
+    text = text,
+    pageSize = pageSize,
+    pageToken = pageToken,
+)
 
 private suspend fun io.ktor.server.routing.RoutingCall.receiveLinemanagerSearchRequest(): LinemanagerSearchRequest = try {
     strictLinemanagerSearchRequestMapper.readValue(receiveText())

@@ -10,5 +10,5 @@ fun ListNarmestelederbehovResult.toLinemanagerRequirementCollection(pageSize: In
     )
     is ListNarmestelederbehovResult.AccessDenied -> throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
     ListNarmestelederbehovResult.PersonNotFound ->
-        throw ApiErrorException.InternalServerErrorException(errorMessage = "Internal server error", isAlreadyLogged = true)
+        throw ApiErrorException.InternalServerErrorException(errorMessage = "Internal server error")
 }

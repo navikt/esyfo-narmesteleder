@@ -9,16 +9,8 @@ import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.domain.RevokedBy
-import no.nav.syfo.narmesteleder.exception.MissingIDException
 import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
-import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
@@ -68,7 +60,6 @@ class NarmestelederService(
     private val nlDb: NarmestelederDb,
     private val persistLeesahNlBehov: Boolean,
     private val aaregService: AaregService,
-    private val pdlService: PdlService,
     private val dinesykmeldteService: DinesykmeldteService,
     private val dialogportenService: DialogportenService,
 ) {
@@ -76,27 +67,6 @@ class NarmestelederService(
 
     private fun logDegraded(source: BehovSource, reason: BehovDegradedReason) {
         logger.logEvent(behovStoredDegraded, source.logDetails(reason))
-    }
-
-    private suspend fun NarmestelederBehovEntity.getName(): Name = if (fornavn != null && etternavn != null) {
-        Name(
-            firstName = fornavn,
-            lastName = etternavn,
-            middleName = mellomnavn,
-        )
-    } else {
-        val details = pdlService.getPersonFor(sykmeldtFnr)
-        val updated = this.copy(
-            fornavn = details.name.fornavn,
-            mellomnavn = details.name.mellomnavn,
-            etternavn = details.name.etternavn,
-        )
-        nlDb.updateNlBehov(updated)
-        Name(
-            firstName = details.name.fornavn,
-            lastName = details.name.etternavn,
-            middleName = details.name.mellomnavn,
-        )
     }
 
     suspend fun updateNlBehov(
@@ -226,26 +196,6 @@ class NarmestelederService(
         }
     }
 
-    suspend fun getNlBehovList(
-        orgNumber: OrganizationNumber,
-        createdAfter: Instant,
-        pageSize: Int
-    ): List<LinemanagerRequirementRead> = nlDb.findBehovByParameters(
-        orgNumber = orgNumber.value,
-        createdAfter = createdAfter,
-        status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
-        limit = pageSize + 1,
-    ).map { it.toEmployeeLinemanagerRead(it.getName()) }
-
-    suspend fun countNlBehov(
-        orgNumber: OrganizationNumber,
-        createdAfter: Instant,
-    ): Long = nlDb.countBehovByParameters(
-        orgNumber = orgNumber.value,
-        createdAfter = createdAfter,
-        status = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
-    )
-
     suspend fun updateStatusOnExpiredBehovs(validDaysAfterTom: Long) {
         var count: Int
         var totalUpdated = 0
@@ -270,16 +220,3 @@ class NarmestelederService(
         const val UPDATE_EXPIRED_BEHOVS_DELAY_MS = 500
     }
 }
-
-fun NarmestelederBehovEntity.toEmployeeLinemanagerRead(name: Name): LinemanagerRequirementRead = LinemanagerRequirementRead(
-    id = this.id ?: throw MissingIDException("NarmestelederBehovEntity entity id is null"),
-    employeeIdentificationNumber = PersonalIdentificationNumber(this.sykmeldtFnr),
-    orgNumber = OrganizationNumber(this.orgnummer),
-    mainOrgNumber = OrganizationNumber(this.hovedenhetOrgnummer),
-    managerIdentificationNumber = this.narmestelederFnr?.let(::PersonalIdentificationNumber),
-    name = name,
-    created = this.created,
-    updated = this.updated,
-    status = LineManagerRequirementStatus.from(this.behovStatus),
-    revokedBy = RevokedBy.from(this.behovReason),
-)

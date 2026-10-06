@@ -38,6 +38,7 @@ import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -188,10 +189,13 @@ private class GetFixture(
             effects += "access"
             denialReason?.let { OrganizationAccessResult.Denied(it) } ?: OrganizationAccessResult.Granted(organizationName)
         },
-        personLookup = PersonLookup {
-            effects += "person"
-            person
-        },
+        employeeName = NarmestelederbehovEmployeeName(
+            repository,
+            PersonLookup {
+                effects += "person"
+                person
+            },
+        ),
     )
 
     init {

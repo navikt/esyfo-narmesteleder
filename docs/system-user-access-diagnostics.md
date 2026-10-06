@@ -8,8 +8,7 @@ and, if so, asks PDP for that organization. Only `Permit` grants access.
 ## One event for the final rejection
 
 When neither check grants access, the access check emits one `WARN` through the
-shared `esyfo-logger` adapter. Both `AltinnOrganizationAccess` (new capability
-flows) and the legacy `PrincipalAccessValidator` emit the same event. The
+shared `esyfo-logger` adapter. `AltinnOrganizationAccess` emits the event. The
 `SystemUserAccessRejection` definition in `organisasjonstilgang/infrastructure`
 owns the operation, reason, message and typed PDP context:
 

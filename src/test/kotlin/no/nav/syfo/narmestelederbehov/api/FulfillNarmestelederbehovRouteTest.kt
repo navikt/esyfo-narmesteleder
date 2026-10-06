@@ -49,9 +49,6 @@ import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.REQUIREMENT_PATH
-import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -87,7 +84,7 @@ class FulfillNarmestelederbehovRouteTest :
                 val submittedManager = fixture.newManager()
                 fixture.people.registerPerson(submittedManager.nationalIdentificationNumber.value, submittedManager.lastName)
 
-                val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
                     setBody(submittedManager)
                     bearerAuth(createMockToken(fixture.orgNumber))
@@ -116,7 +113,7 @@ class FulfillNarmestelederbehovRouteTest :
                 )
                 fixture.people.registerPerson(submittedManager.nationalIdentificationNumber.value, submittedManager.lastName)
 
-                val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
                     setBody(submittedManager)
                     bearerAuth(createMockToken(fixture.orgNumber))
@@ -138,7 +135,7 @@ class FulfillNarmestelederbehovRouteTest :
                     mobile = "90-00-00-00",
                     email = "gyldig@example.com; invalid @example.com",
                 )
-                val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
                     setBody(submittedManager)
                     bearerAuth(createMockToken(fixture.orgNumber))
@@ -158,7 +155,7 @@ class FulfillNarmestelederbehovRouteTest :
 
         test("PUT /requirement/{id} 404 when behov not found") {
             withPutApplication { fixture ->
-                val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/${UUID.randomUUID()}") {
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/${UUID.randomUUID()}") {
                     contentType(ContentType.Application.Json)
                     setBody(manager())
                     bearerAuth(createMockToken(fixture.orgNumber))
@@ -172,7 +169,7 @@ class FulfillNarmestelederbehovRouteTest :
         test("PUT /requirement/{id} 400 invalid payload") {
             withPutApplication { fixture ->
                 val id = fixture.seed()
-                val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
                     setBody("""{ "foo": "bar" }""")
                     bearerAuth(createMockToken(fixture.orgNumber))
@@ -194,7 +191,7 @@ class FulfillNarmestelederbehovRouteTest :
                     organisasjonsnummer = fixture.orgNumber,
                     inngaarIJuridiskEnheter = emptyList(),
                 )
-                val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
                     setBody(manager())
                     bearerAuth(createMockToken("000000000"))
@@ -210,7 +207,7 @@ class FulfillNarmestelederbehovRouteTest :
             withPutApplication { fixture ->
                 val id = fixture.seed()
                 coEvery { fixture.sykmelding.getIsActiveSykmelding(fixture.employeeIdent, fixture.orgNumber) } returns false
-                val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
                     setBody(manager())
                     bearerAuth(createMockToken(fixture.orgNumber))
@@ -233,7 +230,7 @@ class FulfillNarmestelederbehovRouteTest :
                     if (otherOrganization) {
                         fixture.aareg.seedEmployment(fixture.employeeIdent, "999999999", "999999999")
                     }
-                    val response = client.put("$API_V1_PATH/$REQUIREMENT_PATH/$id") {
+                    val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                         contentType(ContentType.Application.Json)
                         setBody(manager())
                         bearerAuth(createMockToken(fixture.orgNumber))
@@ -341,11 +338,7 @@ private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture
             routing {
                 route(API_V1_PATH) {
                     install(AddTokenIssuerPlugin)
-                    registerLinemanagerApiV1(
-                        fixture.texas,
-                        mockk<LinemanagerRequirementRESTHandler>(relaxed = true),
-                        fixture.useCase,
-                    )
+                    registerFulfillNarmestelederbehovApi(fixture.useCase, fixture.texas)
                 }
             }
         }

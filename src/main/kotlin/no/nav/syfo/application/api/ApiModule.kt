@@ -14,8 +14,9 @@ import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
-import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
+import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
+import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
 import no.nav.syfo.narmestelederrelasjon.api.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLinemanagerSearchApi
@@ -60,12 +61,9 @@ fun Application.configureRouting() {
 }
 
 private fun Route.registerApiV1Routes() {
-    registerLinemanagerApiV1(
-        texasHttpClient = get(),
-        linemanagerRequirementRestHandler = get(),
-        fulfillNarmestelederbehov = get(),
-    )
     registerGetNarmestelederbehovApi(getNarmestelederbehov = get(), texasHttpClient = get())
+    registerFulfillNarmestelederbehovApi(fulfillNarmestelederbehov = get(), texasHttpClient = get())
+    registerListNarmestelederbehovApi(listNarmestelederbehov = get(), texasHttpClient = get())
     registerSubmitNarmestelederrelasjonApi(submit = get(), texasHttpClient = get())
     registerRevokeActiveNarmestelederrelasjonApi(revoke = get(), texasHttpClient = get())
     registerAccessOrganizationsApi(altinnTilgangerService = get(), texasHttpClient = get())

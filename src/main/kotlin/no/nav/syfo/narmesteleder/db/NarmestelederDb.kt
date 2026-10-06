@@ -11,7 +11,7 @@ import no.nav.syfo.util.logger
 import org.slf4j.event.Level
 import java.sql.Timestamp
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 private data class QueryLimitDetails(val requestedLimit: Int, val usedLimit: Int)
 
@@ -36,19 +36,6 @@ interface NarmestelederDb {
     ): List<NarmestelederBehovEntity>
 
     suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int = 100) = getNlBehovByStatus(listOf(status), limit)
-    suspend fun findBehovByParameters(
-        orgNumber: String,
-        createdAfter: Instant,
-        status: List<BehovStatus>,
-        limit: Int
-    ): List<NarmestelederBehovEntity>
-
-    suspend fun countBehovByParameters(
-        orgNumber: String,
-        createdAfter: Instant,
-        status: List<BehovStatus>,
-    ): Long
-
     suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
         tomBefore: Instant,
         newStatus: BehovStatus,
@@ -236,80 +223,6 @@ class PostgresNarmestelederDb(
                         nlBehov.add(resultSet.toNarmestelederBehovEntity())
                     }
                     nlBehov
-                }
-        }
-    }
-
-    override suspend fun findBehovByParameters(
-        orgNumber: String,
-        createdAfter: Instant,
-        status: List<BehovStatus>,
-        limit: Int
-    ): List<NarmestelederBehovEntity> = withContext(dispatcher) {
-        return@withContext database.connection.use { connection ->
-            val placeholders = status.joinToString(", ") { "?" }
-            connection
-                .prepareStatement(
-                    """
-                        SELECT *
-                        FROM nl_behov
-                        WHERE 
-                            orgnummer = ?
-                        AND
-                            behov_status in ($placeholders) 
-                        AND
-                            created > ? 
-                        ORDER BY created
-                        LIMIT ?
-                    """.trimIndent()
-                ).use { preparedStatement ->
-                    var idx = 1
-                    preparedStatement.setString(idx++, orgNumber)
-                    status.forEach { status ->
-                        preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
-                    }
-                    preparedStatement.setTimestamp(idx++, Timestamp.from(createdAfter))
-                    preparedStatement.setInt(idx++, limit)
-                    val resultSet = preparedStatement.executeQuery()
-                    val nlBehov = mutableListOf<NarmestelederBehovEntity>()
-                    while (resultSet.next()) {
-                        nlBehov.add(resultSet.toNarmestelederBehovEntity())
-                    }
-                    nlBehov
-                }
-        }
-    }
-
-    override suspend fun countBehovByParameters(
-        orgNumber: String,
-        createdAfter: Instant,
-        status: List<BehovStatus>,
-    ): Long = withContext(dispatcher) {
-        if (status.isEmpty()) return@withContext 0L
-        return@withContext database.connection.use { connection ->
-            val placeholders = status.joinToString(", ") { "?" }
-            connection
-                .prepareStatement(
-                    """
-                        SELECT COUNT(*) AS total
-                        FROM nl_behov
-                        WHERE
-                            orgnummer = ?
-                        AND
-                            behov_status in ($placeholders)
-                        AND
-                            created > ?
-                    """.trimIndent()
-                ).use { preparedStatement ->
-                    var idx = 1
-                    preparedStatement.setString(idx++, orgNumber)
-                    status.forEach { status ->
-                        preparedStatement.setObject(idx++, status, java.sql.Types.OTHER)
-                    }
-                    preparedStatement.setTimestamp(idx, Timestamp.from(createdAfter))
-                    preparedStatement.executeQuery().use { resultSet ->
-                        if (resultSet.next()) resultSet.getLong("total") else 0L
-                    }
                 }
         }
     }

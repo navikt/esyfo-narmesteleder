@@ -50,9 +50,6 @@ class LoggingArchitectureTest :
 private fun isMigrated(name: String): Boolean = name.startsWith("no/nav/syfo/altinntilganger/") ||
     name.startsWith("no/nav/syfo/narmestelederbehov/") ||
     name.startsWith("no/nav/syfo/organisasjonstilgang/") ||
-    name.substringBefore('$') in setOf(
-        "no/nav/syfo/narmesteleder/service/validators/PrincipalAccessValidator",
-    ) ||
     (name.startsWith("no/nav/syfo/logging/") && name !in setOf("no/nav/syfo/logging/ApplicationLoggingKt", "no/nav/syfo/logging/FailureEventKt"))
 
 private fun forbiddenLogging(bytes: ByteArray): List<String> = ClassFile.of().parse(bytes).constantPool().mapNotNull { entry ->

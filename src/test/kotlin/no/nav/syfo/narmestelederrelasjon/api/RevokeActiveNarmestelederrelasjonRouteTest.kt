@@ -32,10 +32,11 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
-import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
+import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
@@ -262,7 +263,8 @@ private class RevokeRouteFixture(
                 routing {
                     route(API_V1_PATH) {
                         install(AddTokenIssuerPlugin)
-                        registerLinemanagerApiV1(texas, mockk<LinemanagerRequirementRESTHandler>(), mockk<FulfillNarmestelederbehovUseCase>())
+                        registerFulfillNarmestelederbehovApi(mockk<FulfillNarmestelederbehovUseCase>(), texas)
+                        registerListNarmestelederbehovApi(mockk<ListNarmestelederbehovUseCase>(), texas)
                         registerRevokeActiveNarmestelederrelasjonApi(useCase, texas)
                     }
                 }

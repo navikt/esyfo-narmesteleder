@@ -402,8 +402,8 @@ and authorization order, configuration names/defaults, logging safety and
 side-effect ordering.
 
 The direct submission and employee-and-organization revoke routes now live in
-`narmestelederrelasjon`; the legacy `/linemanager` handler retains the
-requirement routes. Revocation triggered by sendt sykmelding goes through the
+`narmestelederrelasjon`; the requirement routes live in `narmestelederbehov`.
+Revocation triggered by sendt sykmelding goes through the
 `RevokeNarmestelederrelasjonFromSendtSykmelding` contract, so no legacy code
 publishes relation revocations any more.
 

@@ -26,28 +26,25 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
-import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
-import java.util.*
+import java.util.UUID
 
 class NarmestelederServiceTest :
     DescribeSpec({
         val nlDb = mockk<NarmestelederDb>(relaxed = true)
         val aaregService = mockk<AaregService>()
-        val pdlService = mockk<PdlService>()
         val dinesykmeldteService = mockk<DinesykmeldteService>()
 
         beforeTest {
-            clearMocks(nlDb, aaregService, pdlService, dinesykmeldteService)
+            clearMocks(nlDb, aaregService, dinesykmeldteService)
         }
 
         fun service(persist: Boolean = true) = NarmestelederService(
             nlDb = nlDb,
             persistLeesahNlBehov = persist,
             aaregService = aaregService,
-            pdlService = pdlService,
             dinesykmeldteService = dinesykmeldteService,
             dialogportenService = mockk(relaxed = true)
         )

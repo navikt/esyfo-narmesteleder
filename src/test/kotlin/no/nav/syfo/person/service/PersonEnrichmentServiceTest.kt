@@ -7,6 +7,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.TestDB
+import no.nav.syfo.integration.pdl.Foedselsdato
+import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
@@ -14,8 +16,6 @@ import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
-import no.nav.syfo.pdl.client.Foedselsdato
-import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction

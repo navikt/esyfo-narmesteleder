@@ -15,9 +15,9 @@ import io.mockk.mockk
 import io.mockk.slot
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.aareg.Arbeidsforhold
-import no.nav.syfo.aareg.client.ArbeidsstedType
-import no.nav.syfo.aareg.client.OpplysningspliktigType
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.integration.aareg.ArbeidsstedType
+import no.nav.syfo.integration.aareg.OpplysningspliktigType
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason

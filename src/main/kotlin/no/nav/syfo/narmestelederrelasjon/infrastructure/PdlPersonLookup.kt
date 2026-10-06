@@ -1,17 +1,17 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.integration.pdl.GetPersonResponse
+import no.nav.syfo.integration.pdl.Ident.Companion.GRUPPE_IDENT_FNR
+import no.nav.syfo.integration.pdl.Navn
+import no.nav.syfo.integration.pdl.PdlClient
+import no.nav.syfo.integration.pdl.PdlRequestException
+import no.nav.syfo.integration.pdl.PdlResourceNotFoundException
+import no.nav.syfo.integration.pdl.ResponseData
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
-import no.nav.syfo.pdl.client.GetPersonResponse
-import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
-import no.nav.syfo.pdl.client.Navn
-import no.nav.syfo.pdl.client.PdlClient
-import no.nav.syfo.pdl.client.ResponseData
-import no.nav.syfo.pdl.exception.PdlRequestException
-import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 
 class PdlPersonLookup(private val client: PdlClient) : PersonLookup {
     override suspend fun find(personIdent: PersonIdent): PersonDetails? = fetchPerson(personIdent)?.toPersonDetails()

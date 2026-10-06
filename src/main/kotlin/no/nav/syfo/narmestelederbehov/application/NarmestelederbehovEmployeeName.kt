@@ -1,10 +1,8 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
-
 class NarmestelederbehovEmployeeName(
     private val repository: NarmestelederbehovRepository,
-    private val personLookup: PersonLookup,
+    private val employeeNameLookup: EmployeeNameLookup,
 ) {
     suspend fun resolve(behov: NarmestelederbehovDetails): BehovPersonName? {
         if (behov.firstName != null && behov.lastName != null) {
@@ -14,11 +12,7 @@ class NarmestelederbehovEmployeeName(
                 lastName = behov.lastName,
             )
         }
-        val details = personLookup.find(behov.employeeIdent) ?: return null
-        return BehovPersonName(
-            firstName = details.name.firstName,
-            middleName = details.name.middleName,
-            lastName = details.name.lastName,
-        ).also { repository.saveEmployeeName(id = behov.id, name = it) }
+        val name = employeeNameLookup.find(behov.employeeIdent) ?: return null
+        return name.also { repository.saveEmployeeName(id = behov.id, name = it) }
     }
 }

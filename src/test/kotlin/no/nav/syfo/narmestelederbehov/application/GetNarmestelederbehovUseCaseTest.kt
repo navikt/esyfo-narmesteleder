@@ -7,9 +7,6 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
-import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -33,10 +30,7 @@ class GetNarmestelederbehovUseCaseTest :
 
         test("missing name is looked up and persisted before access is checked") {
             val fixture = ReadFixture(row = behovDetails().copy(firstName = null, lastName = null))
-            fixture.person = PersonDetails(
-                personIdent = requireNotNull(fixture.row).employeeIdent,
-                name = PersonNameDetails(firstName = "Looked", lastName = "Up", middleName = "Middle", registeredNames = listOf()),
-            )
+            fixture.person = BehovPersonName(firstName = "Looked", lastName = "Up", middleName = "Middle")
             fixture.execute() shouldBe GetNarmestelederbehovResult.Found(
                 behov = requireNotNull(fixture.row),
                 name = BehovPersonName(firstName = "Looked", middleName = "Middle", lastName = "Up"),
@@ -55,10 +49,7 @@ class GetNarmestelederbehovUseCaseTest :
         DenialReason.entries.forEach { reason ->
             test("denial $reason is evaluated after the name is resolved") {
                 val fixture = ReadFixture(row = behovDetails().copy(firstName = null), access = OrganizationAccessResult.Denied(reason))
-                fixture.person = PersonDetails(
-                    personIdent = requireNotNull(fixture.row).employeeIdent,
-                    name = PersonNameDetails(firstName = "Looked", lastName = "Up", middleName = null, registeredNames = listOf()),
-                )
+                fixture.person = BehovPersonName(firstName = "Looked", lastName = "Up", middleName = null)
                 fixture.execute() shouldBe GetNarmestelederbehovResult.AccessDenied(
                     reason = reason,
                     organizationNumber = requireNotNull(fixture.row).organizationNumber,
@@ -90,7 +81,7 @@ private class ReadFixture(
     val access: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = "Org"),
 ) {
     val effects = mutableListOf<String>()
-    var person: PersonDetails? = null
+    var person: BehovPersonName? = null
     val savedNames = mutableListOf<BehovPersonName>()
     private val repository = object : NarmestelederbehovRepository {
         override suspend fun findDetails(id: NarmestelederbehovId) = row.also { effects += "read" }
@@ -105,7 +96,7 @@ private class ReadFixture(
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,
         organizationAccess = OrganizationAccess { _, _ -> access.also { effects += "access" } },
-        employeeName = NarmestelederbehovEmployeeName(repository, PersonLookup { person.also { effects += "person" } }),
+        employeeName = NarmestelederbehovEmployeeName(repository, EmployeeNameLookup { person.also { effects += "person" } }),
     )
 
     suspend fun execute(

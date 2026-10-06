@@ -5,19 +5,19 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.integration.pdl.GetPersonBolkResponse
+import no.nav.syfo.integration.pdl.GetPersonResponse
+import no.nav.syfo.integration.pdl.Ident
+import no.nav.syfo.integration.pdl.IdentResponse
+import no.nav.syfo.integration.pdl.Navn
+import no.nav.syfo.integration.pdl.PdlClient
+import no.nav.syfo.integration.pdl.PdlRequestException
+import no.nav.syfo.integration.pdl.PdlResourceNotFoundException
+import no.nav.syfo.integration.pdl.PersonResponse
+import no.nav.syfo.integration.pdl.ResponseData
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
-import no.nav.syfo.pdl.client.GetPersonBolkResponse
-import no.nav.syfo.pdl.client.GetPersonResponse
-import no.nav.syfo.pdl.client.Ident
-import no.nav.syfo.pdl.client.IdentResponse
-import no.nav.syfo.pdl.client.Navn
-import no.nav.syfo.pdl.client.PdlClient
-import no.nav.syfo.pdl.client.PersonResponse
-import no.nav.syfo.pdl.client.ResponseData
-import no.nav.syfo.pdl.exception.PdlRequestException
-import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 
 class PdlPersonLookupTest :
     FunSpec({

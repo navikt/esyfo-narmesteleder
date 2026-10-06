@@ -1,7 +1,7 @@
 package no.nav.syfo.plugins
 
-import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.application.valkey.ValkeyCache
+import no.nav.syfo.integration.ereg.EregCache
 import org.koin.dsl.module
 
 internal fun cacheModule() = module {

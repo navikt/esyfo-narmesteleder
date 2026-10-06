@@ -11,9 +11,9 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.verify
 import linemanager
+import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.Person
-import no.nav.syfo.pdl.client.Navn
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.RecordMetadata

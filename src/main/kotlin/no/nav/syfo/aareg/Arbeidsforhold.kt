@@ -1,7 +1,7 @@
 package no.nav.syfo.aareg
 
-import no.nav.syfo.aareg.client.ArbeidsstedType
-import no.nav.syfo.aareg.client.OpplysningspliktigType
+import no.nav.syfo.integration.aareg.ArbeidsstedType
+import no.nav.syfo.integration.aareg.OpplysningspliktigType
 
 data class Arbeidsforhold(
     val orgnummer: String,

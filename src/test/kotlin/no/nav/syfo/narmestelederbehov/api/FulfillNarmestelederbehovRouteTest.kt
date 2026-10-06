@@ -28,23 +28,21 @@ import io.mockk.mockk
 import io.mockk.spyk
 import linemanager
 import manager
-import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.aareg.client.TestAaregClient
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
-import no.nav.syfo.application.valkey.EregCache
-import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.ereg.EregService
-import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.integration.aareg.TestAaregClient
+import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
+import no.nav.syfo.integration.dinesykmeldte.FakeDinesykmeldteClient
+import no.nav.syfo.integration.ereg.CachedEregClient
+import no.nav.syfo.integration.ereg.EregCache
+import no.nav.syfo.integration.ereg.FakeEregClient
+import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -257,20 +255,20 @@ private class PutFixture {
     val pdp = mockk<AltinnAuthorizationClient>(relaxed = true)
     val ereg = FakeEregClient()
     val people = FakePersonLookup()
-    val sykmelding: DinesykmeldteService = spyk(ClientDinesykmeldteService(FakeDinesykmeldteClient()))
+    val sykmelding: DinesykmeldteClient = spyk(FakeDinesykmeldteClient())
     val producer = spyk(FakeSykmeldingNarmestelederProducer())
     val altinn = AltinnTilgangerService(FakeAltinnTilgangerClient())
     private val organizationAccess = AltinnOrganizationAccess(
         altinn,
         pdp,
-        EregService(ereg, mockk<EregCache>(relaxed = true)),
+        CachedEregClient(ereg, mockk<EregCache>(relaxed = true)),
     )
     val useCase = FulfillNarmestelederbehovUseCase(
         repository,
         organizationAccess,
         EstablishNarmestelederrelasjonUseCase(
             DinesykmeldteActiveSykmeldingLookup(sykmelding),
-            AaregEmploymentLookup(AaregService(aareg)),
+            AaregEmploymentLookup(aareg),
             people,
             MicrometerNameValidationMetrics(),
             KafkaPublishNarmestelederrelasjon(producer),

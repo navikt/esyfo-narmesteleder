@@ -10,7 +10,7 @@ import io.mockk.coEvery
 import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.application.auth.SystemPrincipal
-import no.nav.syfo.ereg.client.Organisasjon
+import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -37,7 +37,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
-import no.nav.syfo.ereg.client.Navn as EregNavn
+import no.nav.syfo.integration.ereg.Navn as EregNavn
 
 val faker = Faker(Random(Instant.now().epochSecond))
 

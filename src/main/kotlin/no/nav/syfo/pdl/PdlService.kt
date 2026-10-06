@@ -4,13 +4,16 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import no.nav.syfo.integration.pdl.GetPersonBolkResponse
+import no.nav.syfo.integration.pdl.Ident.Companion.GRUPPE_IDENT_FNR
+import no.nav.syfo.integration.pdl.PdlClient
+import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
+import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
+import no.nav.syfo.integration.pdl.PdlRequestException
+import no.nav.syfo.integration.pdl.PdlResourceNotFoundException
+import no.nav.syfo.integration.pdl.pdlLookupDegraded
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.pdl.client.GetPersonBolkResponse
-import no.nav.syfo.pdl.client.Ident.Companion.GRUPPE_IDENT_FNR
-import no.nav.syfo.pdl.client.PdlClient
-import no.nav.syfo.pdl.exception.PdlRequestException
-import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
 import no.nav.syfo.util.logger
 
 private const val PDL_CHUNK_SIZE = 100

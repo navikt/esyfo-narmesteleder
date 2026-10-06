@@ -23,12 +23,12 @@ import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
-import no.nav.syfo.application.valkey.EregCache
-import no.nav.syfo.ereg.EregService
-import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.integration.ereg.CachedEregClient
+import no.nav.syfo.integration.ereg.EregCache
+import no.nav.syfo.integration.ereg.FakeEregClient
+import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -275,7 +275,7 @@ private class LoggingFixture(
     val access = AltinnOrganizationAccess(
         AltinnTilgangerService(FakeAltinnTilgangerClient().also { it.accessPolicy.clear() }),
         pdp,
-        EregService(ereg, eregCache),
+        CachedEregClient(ereg, eregCache),
     )
 }
 

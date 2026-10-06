@@ -1,0 +1,96 @@
+package no.nav.syfo.integration.pdl
+
+import java.time.LocalDate
+
+data class GetPersonResponse(
+    val data: ResponseData?,
+    val errors: List<ResponseError>?,
+)
+
+data class ResponseData(
+    val person: PersonResponse?,
+    val identer: IdentResponse?,
+)
+
+data class IdentResponse(
+    val identer: List<Ident>,
+)
+
+data class Ident(
+    val ident: String,
+    val gruppe: String,
+) {
+    companion object {
+        const val GRUPPE_IDENT_FNR = "FOLKEREGISTERIDENT"
+    }
+}
+
+data class Foedselsdato(
+    val foedselsdato: LocalDate?,
+)
+
+data class PersonResponse(
+    val navn: List<Navn>?,
+    val foedselsdato: List<Foedselsdato>? = null,
+)
+
+data class Navn(
+    val fornavn: String,
+    val mellomnavn: String?,
+    val etternavn: String,
+) {
+    fun navnFullt() = listOfNotNull(fornavn, mellomnavn, etternavn).joinToString(" ")
+}
+
+data class ResponseError(
+    val message: String?,
+    val locations: List<ErrorLocation>?,
+    val path: List<String>?,
+    val extensions: ErrorExtension?,
+)
+
+data class ErrorLocation(
+    val line: String?,
+    val column: String?,
+)
+
+data class ErrorExtension(
+    val code: String?,
+    val details: ErrorDetails?,
+    val classification: String?,
+)
+
+data class ErrorDetails(
+    val type: String? = null,
+    val cause: String? = null,
+    val policy: String? = null,
+)
+
+data class HentPersonBolk(
+    val ident: String,
+    val person: Person?,
+    val code: String,
+)
+
+data class Person(
+    val navn: List<Navn>?,
+    val foedselsdato: List<Foedselsdato>? = null,
+)
+
+data class HentIdenterBolk(
+    val ident: String,
+    val identer: List<PdlIdent>?,
+    val code: String,
+)
+
+data class PdlIdent(val ident: String, val gruppe: String)
+
+data class GetPersonBolkResponse(
+    val data: PersonBolkResponseData?,
+    val errors: List<ResponseError>?,
+)
+
+data class PersonBolkResponseData(
+    val hentPersonBolk: List<HentPersonBolk>?,
+    val hentIdenterBolk: List<HentIdenterBolk>?,
+)

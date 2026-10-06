@@ -7,9 +7,6 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
-import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -136,10 +133,10 @@ private class ListFixture(
         },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
-            PersonLookup {
+            EmployeeNameLookup {
                 effects += "person"
                 lookedUp += it
-                if (personFound) PersonDetails(it, PersonNameDetails("Looked", "Up", registeredNames = emptyList())) else null
+                if (personFound) BehovPersonName("Looked", null, "Up") else null
             },
         ),
     )

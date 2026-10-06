@@ -7,14 +7,17 @@ import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.Appender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
+import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
@@ -26,6 +29,8 @@ import no.nav.syfo.altinn.pdp.client.User
 import no.nav.syfo.altinn.pdp.service.PdpService
 import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.altinntilganger.client.FakeAltinnTilgangerClient
+import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.application.valkey.EregCache
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
@@ -33,8 +38,10 @@ import no.nav.syfo.ereg.client.Organisasjon
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
+import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 
 class AltinnOrganizationAccessLoggingContractTest :
     FunSpec({
@@ -90,6 +97,7 @@ class AltinnOrganizationAccessLoggingContractTest :
 
             val record = rejectionRecord()
             record["level"].asText() shouldBe "WARN"
+            record["message"].asText() shouldBe "System user access was not granted after resource and organization checks"
             record["logger_name"].asText() shouldBe AltinnOrganizationAccess::class.java.name
             record["event_type"].asText() shouldBe "api_request_rejected"
             record["operation"].asText() shouldBe "validate_system_user_access"
@@ -127,6 +135,106 @@ class AltinnOrganizationAccessLoggingContractTest :
 
             capture.records.shouldBeEmpty()
         }
+        Decision.entries.forEach { directDecision ->
+            test("direct $directDecision outside the hierarchy never checks a fallback decision") {
+                val fixture = LoggingFixture(directDecision, parentOrgNumber = UNRELATED_ORG)
+
+                val result = fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+
+                fixture.checkedOrganizations shouldBe listOf(REQUESTED_ORG)
+                if (directDecision == Decision.Permit) {
+                    result.shouldBeInstanceOf<OrganizationAccessResult.Granted>()
+                    capture.records.shouldBeEmpty()
+                } else {
+                    result.shouldBeInstanceOf<OrganizationAccessResult.Denied>()
+                    val record = rejectionRecord()
+                    record["pdp_decision"].asText() shouldBe directDecision.name
+                    record["pdp_fallback_decision"].asText() shouldBe "not_checked"
+                }
+            }
+
+            Decision.entries.forEach { fallbackDecision ->
+                test("direct $directDecision and hierarchy $fallbackDecision keep the authorization outcome") {
+                    val fixture = LoggingFixture(directDecision, fallbackDecision, parentOrgNumber = SYSTEM_USER_ORG)
+
+                    val result = fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+
+                    fixture.checkedOrganizations shouldBe if (directDecision == Decision.Permit) {
+                        listOf(REQUESTED_ORG)
+                    } else {
+                        listOf(REQUESTED_ORG, SYSTEM_USER_ORG)
+                    }
+                    if (directDecision == Decision.Permit || fallbackDecision == Decision.Permit) {
+                        result.shouldBeInstanceOf<OrganizationAccessResult.Granted>()
+                        capture.records.shouldBeEmpty()
+                    } else {
+                        result.shouldBeInstanceOf<OrganizationAccessResult.Denied>()
+                        val record = rejectionRecord()
+                        record["pdp_decision"].asText() shouldBe directDecision.name
+                        record["pdp_fallback_decision"].asText() shouldBe fallbackDecision.name
+                    }
+                }
+            }
+        }
+
+        listOf(REQUESTED_ORG, SYSTEM_USER_ORG).forEach { failingOrganization ->
+            test("propagates a PDP transport failure for $failingOrganization without logging a rejection") {
+                val fixture = LoggingFixture(
+                    Decision.Deny,
+                    parentOrgNumber = SYSTEM_USER_ORG,
+                    pdpFailures = mapOf(failingOrganization to UpstreamRequestException("PDP unavailable")),
+                )
+
+                shouldThrow<UpstreamRequestException> {
+                    fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+                }
+
+                capture.records.shouldBeEmpty()
+            }
+        }
+
+        test("propagates an organization hierarchy failure without logging a rejection") {
+            val fixture = LoggingFixture(
+                Decision.Deny,
+                parentOrgNumber = SYSTEM_USER_ORG,
+                eregFailure = UpstreamRequestException("Ereg unavailable"),
+            )
+
+            shouldThrow<ApiErrorException.InternalServerErrorException> {
+                fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+            }
+
+            fixture.checkedOrganizations shouldBe listOf(REQUESTED_ORG)
+            capture.records.shouldBeEmpty()
+        }
+
+        test("propagates cancellation without logging a rejection") {
+            val fixture = LoggingFixture(
+                Decision.Deny,
+                parentOrgNumber = SYSTEM_USER_ORG,
+                pdpFailures = mapOf(REQUESTED_ORG to CancellationException("Request cancelled")),
+            )
+
+            shouldThrow<CancellationException> {
+                fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+            }
+
+            capture.records.shouldBeEmpty()
+        }
+
+        test("keeps an existing trace id without synthesizing a new one") {
+            val traceId = "0123456789abcdef0123456789abcdef"
+            val fixture = LoggingFixture(Decision.Deny, parentOrgNumber = UNRELATED_ORG)
+
+            MDC.put("trace_id", traceId)
+            try {
+                fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+            } finally {
+                MDC.remove("trace_id")
+            }
+
+            rejectionRecord()["trace_id"].asText() shouldBe traceId
+        }
     })
 
 private const val REQUESTED_ORG = "910000011"
@@ -140,10 +248,18 @@ private class LoggingFixture(
     directDecision: Decision,
     fallbackDecision: Decision = Decision.Deny,
     parentOrgNumber: String,
+    pdpFailures: Map<String, Throwable> = emptyMap(),
+    eregFailure: Throwable? = null,
 ) {
+    val checkedOrganizations = mutableListOf<String>()
     private val decisions = mapOf(REQUESTED_ORG to directDecision, SYSTEM_USER_ORG to fallbackDecision)
     private val pdp = object : PdpClient {
-        override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String) = PdpResponse(listOf(DecisionResult(decisions.getValue(orgNumberSet.single()))))
+        override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): PdpResponse {
+            val organization = orgNumberSet.single()
+            checkedOrganizations += organization
+            pdpFailures[organization]?.let { throw it }
+            return PdpResponse(listOf(DecisionResult(decisions.getValue(organization))))
+        }
     }
     private val ereg = FakeEregClient().also {
         it.organisasjoner.clear()
@@ -151,6 +267,7 @@ private class LoggingFixture(
             organisasjonsnummer = REQUESTED_ORG,
             inngaarIJuridiskEnheter = listOf(Organisasjon(organisasjonsnummer = parentOrgNumber)),
         )
+        if (eregFailure != null) it.setFailure(eregFailure)
     }
     private val eregCache = mockk<EregCache> {
         every { getOrganisasjon(any()) } returns null

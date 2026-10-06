@@ -15,11 +15,11 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
-import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederrelasjon.api.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
+import no.nav.syfo.narmestelederrelasjon.api.registerLinemanagerSearchApi
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerRevokeActiveNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerSubmitNarmestelederrelasjonApi
@@ -77,7 +77,7 @@ private fun Route.registerInternalApiV1Routes() {
         texasHttpClient = get(),
         preAuthorizedApps = get<Environment>().texas.azurePreAuthorizedApps,
     )
-    registerLinemanagerSearchApi(texasHttpClient = get(), linemanagerSearchService = get())
+    registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = get(), texasHttpClient = get())
     registerLinemanagerStatisticsApi(texasHttpClient = get(), linemanagerStatisticsService = get())
     registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = get(), texasHttpClient = get())
     registerNarmestelederrelasjonApi(

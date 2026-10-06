@@ -1,18 +1,17 @@
-package no.nav.syfo.narmesteleder.exposed
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.syfo.narmesteleder.domain.LinemanagerManagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerPersonRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchQuery
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
-import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.infrastructure.NarmestelederTable
-import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmestelederrelasjon.application.LinemanagerSearchCursor
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchRepository
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchRow
+import no.nav.syfo.narmestelederrelasjon.application.SearchManager
+import no.nav.syfo.narmestelederrelasjon.application.SearchName
+import no.nav.syfo.narmestelederrelasjon.application.SearchNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.SearchPerson
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
 import org.jetbrains.exposed.v1.core.JoinType
@@ -20,6 +19,7 @@ import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -32,6 +32,7 @@ import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.core.notExists
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
@@ -41,16 +42,12 @@ import java.time.OffsetDateTime
 
 private const val LIKE_ESCAPE_CHARACTER = '\\'
 
-interface LinemanagerSearchRepository {
-    suspend fun search(query: LinemanagerSearchQuery): List<LinemanagerSearchResult>
-}
-
-class PostgresLinemanagerSearchRepository(
+class ExposedNarmestelederrelasjonSearchRepository(
     private val database: Database,
     private val clock: Clock = Clock.systemUTC(),
-) : LinemanagerSearchRepository {
+) : NarmestelederrelasjonSearchRepository {
 
-    override suspend fun search(query: LinemanagerSearchQuery): List<LinemanagerSearchResult> {
+    override suspend fun search(query: NarmestelederrelasjonSearchQuery): List<NarmestelederrelasjonSearchRow> {
         val now = OffsetDateTime.now(clock)
         val employeePerson = PersonTable.alias("employee_person")
         val managerPerson = PersonTable.alias("manager_person")
@@ -112,26 +109,26 @@ class PostgresLinemanagerSearchRepository(
                     )
                     .limit(query.pageSize + 1)
                     .map { row ->
-                        LinemanagerSearchResult(
+                        NarmestelederrelasjonSearchRow(
                             cursor = LinemanagerSearchCursor(
                                 firstName = row[employeeFirstNameLower],
                                 lastName = row[employeeLastNameLower],
                                 id = row[NarmestelederTable.id].value,
                             ),
-                            linemanager = LinemanagerRead(
+                            linemanager = SearchNarmestelederrelasjon(
                                 id = row[NarmestelederTable.narmestelederId],
                                 orgNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
                                 activeFrom = row[NarmestelederTable.aktivFom].toInstant(),
-                                employee = LinemanagerPersonRead(
-                                    nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
+                                employee = SearchPerson(
+                                    nationalIdentificationNumber = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
                                     name = row.toName(
                                         firstName = employeePerson[PersonTable.fornavn],
                                         middleName = employeePerson[PersonTable.mellomnavn],
                                         lastName = employeePerson[PersonTable.etternavn],
                                     ),
                                 ),
-                                manager = LinemanagerManagerRead(
-                                    nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.narmestelederFnr]),
+                                manager = SearchManager(
+                                    nationalIdentificationNumber = PersonIdent(row[NarmestelederTable.narmestelederFnr]),
                                     name = row.toName(
                                         firstName = managerPerson[PersonTable.fornavn],
                                         middleName = managerPerson[PersonTable.mellomnavn],
@@ -147,7 +144,7 @@ class PostgresLinemanagerSearchRepository(
         }
     }
 
-    private fun LinemanagerSearchQuery.toWhereClause(
+    private fun NarmestelederrelasjonSearchQuery.toWhereClause(
         now: OffsetDateTime,
         employeePerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
         managerPerson: org.jetbrains.exposed.v1.core.Alias<PersonTable>,
@@ -248,12 +245,12 @@ private fun ResultRow.toName(
     firstName: Expression<String?>,
     middleName: Expression<String?>,
     lastName: Expression<String?>,
-): Name? {
+): SearchName? {
     val resolvedFirstName = this[firstName]
     val resolvedLastName = this[lastName]
 
     return if (resolvedFirstName != null && resolvedLastName != null) {
-        Name(
+        SearchName(
             firstName = resolvedFirstName,
             middleName = this[middleName],
             lastName = resolvedLastName,
@@ -261,4 +258,13 @@ private fun ResultRow.toName(
     } else {
         null
     }
+}
+
+// Read-only projection for the correlated active sykmelding EXISTS query.
+private object SendtSykmeldingTable : Table("sendt_sykmelding") {
+    val id = integer("id")
+    val fnr = text("fnr")
+    val orgnummer = varchar("orgnummer", 9)
+    val tom = date("tom")
+    val revokedDate = date("revoked_date").nullable()
 }

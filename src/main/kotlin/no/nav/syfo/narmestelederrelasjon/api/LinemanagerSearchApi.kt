@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.api.v1
+package no.nav.syfo.narmestelederrelasjon.api
 
 import com.fasterxml.jackson.core.JacksonException
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -13,8 +13,13 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchRequest
-import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
+import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchRequest
+import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
+import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerCommand
+import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerResult
+import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
+import no.nav.syfo.narmestelederrelasjon.observability.countLinemanagerSearch
+import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -25,8 +30,8 @@ private val strictLinemanagerSearchRequestMapper = jacksonObjectMapper()
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
 
 fun Route.registerLinemanagerSearchApi(
+    searchActiveNarmestelederrelasjoner: SearchActiveNarmestelederrelasjonerUseCase,
     texasHttpClient: TexasHttpClient,
-    linemanagerSearchService: LinemanagerSearchService,
 ) {
     route(LINEMANAGER_SEARCH_API_PATH) {
         install(MaskinportenAndTokenXTokenAuthPlugin) {
@@ -35,15 +40,34 @@ fun Route.registerLinemanagerSearchApi(
 
         post {
             val principal = call.getMyPrincipal()
-            val collection = linemanagerSearchService.search(
-                request = call.receiveLinemanagerSearchRequest(),
-                principal = principal,
+            val command = call.receiveLinemanagerSearchRequest().toCommand()
+            val result = searchActiveNarmestelederrelasjoner.execute(
+                subject = principal.toOrganizationAccessSubject(),
+                command = command,
             )
+            val collection = when (result) {
+                is SearchActiveNarmestelederrelasjonerResult.AccessDenied -> throw result.reason.toForbiddenException(command.orgNumber)
+                SearchActiveNarmestelederrelasjonerResult.InvalidText ->
+                    throw ApiErrorException.BadRequestException("text must be at most 50 characters")
+                SearchActiveNarmestelederrelasjonerResult.InvalidPageToken ->
+                    throw ApiErrorException.BadRequestException("Invalid pageToken", type = ErrorType.INVALID_FORMAT)
+                is SearchActiveNarmestelederrelasjonerResult.Success -> result.toResponse()
+            }
             countLinemanagerSearch(principal)
             call.respond(HttpStatusCode.OK, collection)
         }
     }
 }
+
+private fun LinemanagerSearchRequest.toCommand() = SearchActiveNarmestelederrelasjonerCommand(
+    orgNumber = orgNumber,
+    managerNationalIdentificationNumber = managerNationalIdentificationNumber,
+    employeeNationalIdentificationNumber = employeeNationalIdentificationNumber,
+    hasActiveSickLeave = hasActiveSickLeave,
+    text = text,
+    pageSize = pageSize,
+    pageToken = pageToken,
+)
 
 private suspend fun io.ktor.server.routing.RoutingCall.receiveLinemanagerSearchRequest(): LinemanagerSearchRequest = try {
     strictLinemanagerSearchRequestMapper.readValue(receiveText())

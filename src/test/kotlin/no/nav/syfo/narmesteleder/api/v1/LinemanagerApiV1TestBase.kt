@@ -38,17 +38,7 @@ import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
-import no.nav.syfo.narmesteleder.domain.LinemanagerManagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerPersonRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerRead
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchCursor
-import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
-import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
-import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.narmesteleder.service.ValidationService
@@ -67,8 +57,6 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.texas.client.TexasHttpClient
-import java.time.Instant
-import java.util.UUID
 
 abstract class LinemanagerApiV1TestBase(
     body: LinemanagerApiV1TestBase.() -> Unit,
@@ -101,12 +89,10 @@ abstract class LinemanagerApiV1TestBase(
     internal val tokenXIssuer = "https://tokenx.nav.no"
 
     internal lateinit var fakeRepo: FakeNarmestelederDb
-    internal lateinit var linemanagerSearchRepository: LinemanagerSearchRepository
     internal lateinit var linemanagerStatisticsRepository: LinemanagerStatisticsRepository
     internal lateinit var narmesteLederService: NarmestelederService
     internal lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
     internal lateinit var fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase
-    internal lateinit var linemanagerSearchService: LinemanagerSearchService
     internal lateinit var linemanagerStatisticsService: LinemanagerStatisticsService
 
     init {
@@ -115,7 +101,6 @@ abstract class LinemanagerApiV1TestBase(
             fakeAltinnTilgangerClient.accessPolicy.clear()
             fakeAaregClient.arbeidsForholdForIdent.clear()
             fakeRepo = spyk(FakeNarmestelederDb())
-            linemanagerSearchRepository = mockk()
             linemanagerStatisticsRepository = mockk()
             narmesteLederService =
                 NarmestelederService(
@@ -143,11 +128,6 @@ abstract class LinemanagerApiV1TestBase(
                 ),
                 DialogportenNarmestelederbehovDialog(FakeDialogportenClient()),
             )
-            linemanagerSearchService =
-                LinemanagerSearchService(
-                    validationService = validationServiceSpy,
-                    linemanagerSearchRepository = linemanagerSearchRepository,
-                )
             linemanagerStatisticsService =
                 LinemanagerStatisticsService(
                     validationService = validationServiceSpy,
@@ -187,7 +167,6 @@ abstract class LinemanagerApiV1TestBase(
                     }
                     route(INTERNAL_API_V1_PATH) {
                         install(AddTokenIssuerPlugin)
-                        registerLinemanagerSearchApi(texasHttpClientMock, linemanagerSearchService)
                         registerLinemanagerStatisticsApi(texasHttpClientMock, linemanagerStatisticsService)
                     }
                 }
@@ -195,42 +174,4 @@ abstract class LinemanagerApiV1TestBase(
             fn(this)
         }
     }
-
-    internal fun linemanagerSearchResult(
-        cursorId: Int,
-        employeeFirstName: String = "Ola",
-        employeeLastName: String = "Nordmann",
-        orgNumber: OrganizationNumber = narmesteLederRelasjon.orgNumber,
-        employeeFnr: String = "12345678910",
-        managerFnr: String = "10987654321",
-    ) = LinemanagerSearchResult(
-        cursor = LinemanagerSearchCursor(
-            firstName = employeeFirstName.lowercase(),
-            lastName = employeeLastName.lowercase(),
-            id = cursorId,
-        ),
-        linemanager = LinemanagerRead(
-            id = UUID(0, cursorId.toLong()),
-            orgNumber = orgNumber,
-            activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
-            employee = LinemanagerPersonRead(
-                nationalIdentificationNumber = PersonalIdentificationNumber(employeeFnr),
-                name = Name(
-                    firstName = employeeFirstName,
-                    middleName = null,
-                    lastName = employeeLastName,
-                ),
-            ),
-            manager = LinemanagerManagerRead(
-                nationalIdentificationNumber = PersonalIdentificationNumber(managerFnr),
-                name = Name(
-                    firstName = "Kari",
-                    middleName = null,
-                    lastName = "Nordmann",
-                ),
-                email = "kari@example.com",
-                mobile = "99999999",
-            ),
-        ),
-    )
 }

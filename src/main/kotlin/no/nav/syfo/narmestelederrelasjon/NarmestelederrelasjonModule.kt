@@ -13,6 +13,7 @@ import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUs
 import no.nav.syfo.narmestelederrelasjon.application.NameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
@@ -20,6 +21,7 @@ import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederre
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.CachedPersonLookup
@@ -28,6 +30,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.EregNarmestelederrelasjo
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedEmployeeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonSearchRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
@@ -43,6 +46,8 @@ fun narmestelederrelasjonModule() = module {
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }
     single<ActiveNarmestelederrelasjonRepository> { ExposedActiveNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
     single { LookupActiveNarmestelederUseCase(get()) }
+    single<NarmestelederrelasjonSearchRepository> { ExposedNarmestelederrelasjonSearchRepository(get<ExposedDatabase>()) }
+    single { SearchActiveNarmestelederrelasjonerUseCase(get(), get()) }
     single<EmployeeNarmestelederrelasjonRepository> { ExposedEmployeeNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
     single<DiscardedEmailAddressMetrics> { MicrometerDiscardedEmailAddressMetrics() }
     single { ListActiveNarmesteledereForEmployeeUseCase(get(), get()) }

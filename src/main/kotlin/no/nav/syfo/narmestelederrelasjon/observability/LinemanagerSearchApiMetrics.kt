@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.api.v1
+package no.nav.syfo.narmestelederrelasjon.observability
 
 import io.micrometer.core.instrument.Counter
 import no.nav.syfo.application.auth.Principal

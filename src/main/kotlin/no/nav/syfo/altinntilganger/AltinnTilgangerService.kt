@@ -2,7 +2,6 @@ package no.nav.syfo.altinntilganger
 
 import no.nav.syfo.altinntilganger.client.AltinnTilgang
 import no.nav.syfo.altinntilganger.client.AltinnTilgangerClient
-import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamFailureStage
@@ -13,30 +12,6 @@ import no.nav.syfo.logging.failureDiagnostics
 class AltinnTilgangerService(
     val altinnTilgangerClient: AltinnTilgangerClient,
 ) {
-    suspend fun getAuthorizedAltinnTilgang(
-        userPrincipal: UserPrincipal,
-        orgnummer: String,
-    ): AltinnTilgang = getAltinnTilgangForOrgnr(userPrincipal, orgnummer)
-        .requireNarmestelederAccess(orgnummer)
-
-    private fun AltinnTilgang?.requireNarmestelederAccess(
-        orgnummer: String
-    ): AltinnTilgang {
-        val altinnTilgang = this ?: throw ApiErrorException.ForbiddenException(
-            errorMessage = "User lacks access to organization: $orgnummer",
-            type = ErrorType.MISSING_ORG_ACCESS,
-        )
-        if (!altinnTilgang.hasNarmestelederTilgang()) {
-            throw ApiErrorException.ForbiddenException(
-                errorMessage = "User lacks access to required Altinn resource for organization: $orgnummer",
-                type = ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-            )
-        }
-
-        COUNT_HAS_ALTINN3_RESOURCE.increment()
-        return altinnTilgang
-    }
-
     suspend fun getAltinnTilgangForOrgnr(
         userPrincipal: UserPrincipal,
         orgnummer: String,

@@ -3,10 +3,7 @@ package no.nav.syfo.narmesteleder.api.v1
 import io.ktor.server.routing.RoutingCall
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementCollection
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import java.time.Instant
-import java.time.format.DateTimeParseException
 import java.util.UUID
 
 fun RoutingCall.getUUIDFromPathVariable(name: String): UUID {
@@ -29,25 +26,3 @@ fun RoutingCall.getRequiredOrganizationNumberQueryParameter(name: String): Organ
             type = ErrorType.INVALID_FORMAT
         )
     }
-
-fun RoutingCall.getCreatedAfter(): Instant {
-    val createdAfter = getRequiredQueryParameter("createdAfter")
-    try {
-        return Instant.parse(createdAfter)
-    } catch (e: DateTimeParseException) {
-        throw ApiErrorException.BadRequestException(
-            "Invalid date format for createdAfter parameter. Expected ISO-8601 format.",
-            type = ErrorType.BAD_REQUEST
-        )
-    }
-}
-
-fun RoutingCall.getPageSize(): Int {
-    val pageSize = this.queryParameters["pageSize"]
-        ?.toIntOrNull()
-    return when (pageSize) {
-        null -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
-        in 1..LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE -> pageSize
-        else -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
-    }
-}

@@ -8,14 +8,11 @@ import no.nav.syfo.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.ereg.EregService
-import no.nav.syfo.narmesteleder.api.v1.LinemanagerRequirementRESTHandler
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
-import no.nav.syfo.narmesteleder.service.ValidationService
-import no.nav.syfo.narmesteleder.service.validators.PrincipalAccessValidator
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
 import no.nav.syfo.person.service.PersonEnrichmentService
@@ -76,24 +73,15 @@ internal fun legacyServicesModule() = module {
         )
     }
 
-    single { PrincipalAccessValidator(altinnTilgangerService = get(), pdpService = get(), eregService = get()) }
-    single {
-        ValidationService(
-            principalAccessValidator = get(),
-        )
-    }
-
     single {
         NarmestelederService(
             nlDb = get(),
             persistLeesahNlBehov = env().otherProperties.persistLeesahNlBehov,
             aaregService = get(),
-            pdlService = get(),
             dinesykmeldteService = get(),
             dialogportenService = get(),
         )
     }
     single { NarmestelederRegisterService(database = get()) }
     single { NlBehovLeesahHandler(narmesteLederService = get()) }
-    single { LinemanagerRequirementRESTHandler(narmesteLederService = get(), validationService = get()) }
 }

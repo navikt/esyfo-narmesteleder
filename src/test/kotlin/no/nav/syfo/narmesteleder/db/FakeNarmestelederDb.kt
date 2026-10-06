@@ -3,7 +3,7 @@ package no.nav.syfo.narmesteleder.db
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import java.time.Duration
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 class FakeNarmestelederDb : NarmestelederDb {
@@ -66,29 +66,6 @@ class FakeNarmestelederDb : NarmestelederDb {
             it.sykmeldtFnr == sykmeldtFnr &&
             behovStatus.contains(it.behovStatus)
     }
-
-    override suspend fun findBehovByParameters(
-        orgNumber: String,
-        createdAfter: Instant,
-        status: List<BehovStatus>,
-        limit: Int
-    ): List<NarmestelederBehovEntity> = store.values.filter {
-        it.orgnummer == orgNumber &&
-            it.created.isAfter(createdAfter) &&
-            it.created.isBefore(Instant.now()) &&
-            status.contains(it.behovStatus)
-    }.take(limit)
-
-    override suspend fun countBehovByParameters(
-        orgNumber: String,
-        createdAfter: Instant,
-        status: List<BehovStatus>,
-    ): Long = store.values.count {
-        it.orgnummer == orgNumber &&
-            it.created.isAfter(createdAfter) &&
-            it.created.isBefore(Instant.now()) &&
-            status.contains(it.behovStatus)
-    }.toLong()
 
     override suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus in status }
 

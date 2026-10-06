@@ -11,18 +11,29 @@ import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
+import java.time.Instant
+import java.time.ZoneOffset
 
-class ExposedNarmestelederbehovRepository(private val database: Database) : NarmestelederbehovRepository {
+class ExposedNarmestelederbehovRepository(private val database: Database) :
+    NarmestelederbehovRepository,
+    OpenNarmestelederbehovRepository {
     override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {
             NarmestelederbehovTable.select(
@@ -38,22 +49,23 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
                 NarmestelederbehovTable.updated,
                 NarmestelederbehovTable.behovStatus,
                 NarmestelederbehovTable.behovReason,
-            ).where { NarmestelederbehovTable.id eq id.value }.singleOrNull()?.let { row ->
-                NarmestelederbehovDetails(
-                    id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
-                    employeeIdent = PersonIdent(row[NarmestelederbehovTable.sykmeldtFnr]),
-                    organizationNumber = OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
-                    mainOrganizationNumber = requireNotNull(row[NarmestelederbehovTable.hovedenhetOrgnummer]),
-                    managerIdent = row[NarmestelederbehovTable.narmestelederFnr]?.let(::PersonIdent),
-                    firstName = row[NarmestelederbehovTable.fornavn],
-                    middleName = row[NarmestelederbehovTable.mellomnavn],
-                    lastName = row[NarmestelederbehovTable.etternavn],
-                    created = row[NarmestelederbehovTable.created].toInstant(),
-                    updated = row[NarmestelederbehovTable.updated].toInstant(),
-                    status = row[NarmestelederbehovTable.behovStatus],
-                    reason = BehovReason.valueOf(row[NarmestelederbehovTable.behovReason]),
-                )
-            }
+            ).where { NarmestelederbehovTable.id eq id.value }.singleOrNull()?.toDetails()
+        }
+    }
+
+    override suspend fun findOpen(organizationNumber: OrganizationNumber, createdAfter: Instant, limit: Int): List<NarmestelederbehovDetails> = withContext(Dispatchers.IO) {
+        suspendTransaction(db = database) {
+            NarmestelederbehovTable.selectAll()
+                .where { isOpen(organizationNumber, createdAfter) }
+                .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
+                .limit(limit)
+                .map { it.toDetails() }
+        }
+    }
+
+    override suspend fun countOpen(organizationNumber: OrganizationNumber, createdAfter: Instant): Long = withContext(Dispatchers.IO) {
+        suspendTransaction(db = database) {
+            NarmestelederbehovTable.selectAll().where { isOpen(organizationNumber, createdAfter) }.count()
         }
     }
 
@@ -114,3 +126,25 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
         }
     }
 }
+
+private val openStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
+
+private fun isOpen(organizationNumber: OrganizationNumber, createdAfter: Instant): Op<Boolean> =
+    (NarmestelederbehovTable.orgnummer eq organizationNumber.value) and
+        (NarmestelederbehovTable.behovStatus inList openStatuses) and
+        (NarmestelederbehovTable.created greater createdAfter.atOffset(ZoneOffset.UTC))
+
+private fun ResultRow.toDetails() = NarmestelederbehovDetails(
+    id = NarmestelederbehovId(this[NarmestelederbehovTable.id]),
+    employeeIdent = PersonIdent(this[NarmestelederbehovTable.sykmeldtFnr]),
+    organizationNumber = OrganizationNumber(this[NarmestelederbehovTable.orgnummer]),
+    mainOrganizationNumber = requireNotNull(this[NarmestelederbehovTable.hovedenhetOrgnummer]),
+    managerIdent = this[NarmestelederbehovTable.narmestelederFnr]?.let(::PersonIdent),
+    firstName = this[NarmestelederbehovTable.fornavn],
+    middleName = this[NarmestelederbehovTable.mellomnavn],
+    lastName = this[NarmestelederbehovTable.etternavn],
+    created = this[NarmestelederbehovTable.created].toInstant(),
+    updated = this[NarmestelederbehovTable.updated].toInstant(),
+    status = this[NarmestelederbehovTable.behovStatus],
+    reason = BehovReason.valueOf(this[NarmestelederbehovTable.behovReason]),
+)

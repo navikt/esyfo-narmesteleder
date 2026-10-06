@@ -37,7 +37,6 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
 import no.nav.syfo.ereg.EregService
 import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.LinemanagerManagerRead
 import no.nav.syfo.narmesteleder.domain.LinemanagerPersonRead
@@ -47,10 +46,8 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerSearchResult
 import no.nav.syfo.narmesteleder.domain.Name
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.exposed.EmployeeLinemanagerRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerSearchRepository
 import no.nav.syfo.narmesteleder.exposed.LinemanagerStatisticsRepository
-import no.nav.syfo.narmesteleder.service.EmployeeLinemanagerService
 import no.nav.syfo.narmesteleder.service.LinemanagerSearchService
 import no.nav.syfo.narmesteleder.service.LinemanagerStatisticsService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
@@ -106,13 +103,11 @@ abstract class LinemanagerApiV1TestBase(
     internal lateinit var fakeRepo: FakeNarmestelederDb
     internal lateinit var linemanagerSearchRepository: LinemanagerSearchRepository
     internal lateinit var linemanagerStatisticsRepository: LinemanagerStatisticsRepository
-    internal lateinit var employeeLinemanagerRepository: EmployeeLinemanagerRepository
     internal lateinit var narmesteLederService: NarmestelederService
     internal lateinit var nlBehovHandler: LinemanagerRequirementRESTHandler
     internal lateinit var fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase
     internal lateinit var linemanagerSearchService: LinemanagerSearchService
     internal lateinit var linemanagerStatisticsService: LinemanagerStatisticsService
-    internal lateinit var employeeLinemanagerService: EmployeeLinemanagerService
 
     init {
         beforeTest {
@@ -122,7 +117,6 @@ abstract class LinemanagerApiV1TestBase(
             fakeRepo = spyk(FakeNarmestelederDb())
             linemanagerSearchRepository = mockk()
             linemanagerStatisticsRepository = mockk()
-            employeeLinemanagerRepository = mockk()
             narmesteLederService =
                 NarmestelederService(
                     nlDb = fakeRepo,
@@ -159,8 +153,6 @@ abstract class LinemanagerApiV1TestBase(
                     validationService = validationServiceSpy,
                     linemanagerStatisticsRepository = linemanagerStatisticsRepository,
                 )
-            employeeLinemanagerService =
-                EmployeeLinemanagerService(employeeLinemanagerRepository)
             coEvery { pdpService.accessDecisionForResource(any(), any(), any()) } returns Decision.Permit
             fakeRepo.clear()
         }
@@ -197,7 +189,6 @@ abstract class LinemanagerApiV1TestBase(
                         install(AddTokenIssuerPlugin)
                         registerLinemanagerSearchApi(texasHttpClientMock, linemanagerSearchService)
                         registerLinemanagerStatisticsApi(texasHttpClientMock, linemanagerStatisticsService)
-                        registerEmployeeLinemanagerApi(texasHttpClientMock, employeeLinemanagerService)
                     }
                 }
             }

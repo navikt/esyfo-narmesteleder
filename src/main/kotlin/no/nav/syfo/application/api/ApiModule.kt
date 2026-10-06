@@ -14,11 +14,11 @@ import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.application.metric.registerMetricApi
-import no.nav.syfo.narmesteleder.api.internal.v1.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerApiV1
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerSearchApi
 import no.nav.syfo.narmesteleder.api.v1.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
+import no.nav.syfo.narmestelederrelasjon.api.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerRevokeActiveNarmestelederrelasjonApi
@@ -79,7 +79,7 @@ private fun Route.registerInternalApiV1Routes() {
     )
     registerLinemanagerSearchApi(texasHttpClient = get(), linemanagerSearchService = get())
     registerLinemanagerStatisticsApi(texasHttpClient = get(), linemanagerStatisticsService = get())
-    registerEmployeeLinemanagerApi(texasHttpClient = get(), employeeLinemanagerService = get())
+    registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = get(), texasHttpClient = get())
     registerNarmestelederrelasjonApi(
         getNarmestelederrelasjon = get(),
         revokeNarmestelederrelasjon = get(),

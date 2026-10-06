@@ -1,6 +1,6 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -16,7 +16,7 @@ import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 
 class AltinnTilgangerServiceTest :
-    DescribeSpec({
+    FunSpec({
         val altinnTilgangerClient = spyk(FakeAltinnTilgangerClient())
         val altinnTilgangerService = AltinnTilgangerService(altinnTilgangerClient)
 
@@ -25,11 +25,11 @@ class AltinnTilgangerServiceTest :
             altinnTilgangerClient.reset()
         }
 
-        describe("find") {
+        context("find") {
             val userPrincipal = UserPrincipal("12345678910", "token")
             val subject = OrganizationAccessSubject.PersonnelManager(PersonIdent(userPrincipal.ident), AccessToken(userPrincipal.token))
 
-            it("should preserve empty results when the client returns null") {
+            test("should preserve empty results when the client returns null") {
                 val nullableClient = mockk<AltinnTilgangerClient>()
                 coEvery { nullableClient.fetchAltinnTilganger(any()) } returns null
                 val service = AltinnTilgangerService(nullableClient)
@@ -38,19 +38,19 @@ class AltinnTilgangerServiceTest :
                 service.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
             }
 
-            it("should return unavailable when the upstream request fails") {
+            test("should return unavailable when the upstream request fails") {
                 coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } throws UpstreamRequestException("Upstream unavailable")
 
                 altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Unavailable
             }
 
-            it("should pass the personnel manager identity and access token to the client") {
+            test("should pass the personnel manager identity and access token to the client") {
                 coEvery { altinnTilgangerClient.fetchAltinnTilganger(userPrincipal) } returns altinnTilgangerResponse()
 
                 altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
             }
 
-            it("should return an empty list when the upstream response reports an error") {
+            test("should return an empty list when the upstream response reports an error") {
                 coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(
                     altinnTilgang("999999999", setOf(OPPGI_NARMESTELEDER_RESOURCE)),
                 ).copy(isError = true)
@@ -58,7 +58,7 @@ class AltinnTilgangerServiceTest :
                 altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
             }
 
-            it("should keep parent as context when only child has narmesteleder access to document OR semantics") {
+            test("should keep parent as context when only child has narmesteleder access to document OR semantics") {
                 val childWithAccess = altinnTilgang(
                     orgnr = "222222222",
                     altinn3Tilganger = setOf(OPPGI_NARMESTELEDER_RESOURCE),
@@ -87,7 +87,7 @@ class AltinnTilgangerServiceTest :
                 )
             }
 
-            it("should keep parent with access while filtering out child without access") {
+            test("should keep parent with access while filtering out child without access") {
                 val childWithoutAccess = altinnTilgang(orgnr = "555555555")
                 val parentWithAccess = altinnTilgang(
                     orgnr = "444444444",
@@ -108,7 +108,7 @@ class AltinnTilgangerServiceTest :
                 )
             }
 
-            it("should return empty list when neither parent nor children have narmesteleder access") {
+            test("should return empty list when neither parent nor children have narmesteleder access") {
                 val childWithoutAccess = altinnTilgang(orgnr = "777777777")
                 val parentWithoutAccess = altinnTilgang(
                     orgnr = "666666666",

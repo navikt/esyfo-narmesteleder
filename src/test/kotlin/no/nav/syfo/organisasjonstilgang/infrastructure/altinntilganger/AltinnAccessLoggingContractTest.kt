@@ -8,7 +8,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.OutputStreamAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
@@ -54,7 +54,7 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 
 class AltinnAccessLoggingContractTest :
-    DescribeSpec({
+    FunSpec({
         val logOutput = ByteArrayOutputStream()
         val serviceLogger = LoggerFactory.getLogger(AltinnTilgangerService::class.java) as Logger
         val statusPagesLogger = LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME) as Logger
@@ -118,8 +118,8 @@ class AltinnAccessLoggingContractTest :
             logLines()
         }
 
-        describe("AltinnTilganger runtime error contract") {
-            it("retains an OAuth failure code without logging the token response or description") {
+        context("AltinnTilganger runtime error contract") {
+            test("retains an OAuth failure code without logging the token response or description") {
                 val payload = """{"error":"invalid_grant","error_description":"token-description-canary"}"""
                 val response = HttpClient(MockEngine { respond(payload, HttpStatusCode.BadRequest) })
                     .get("https://texas.test/exchange")
@@ -147,7 +147,7 @@ class AltinnAccessLoggingContractTest :
                 serialized shouldNotContain "12345678901"
             }
 
-            it("serializes one terminal error event through the production encoder without privacy canaries") {
+            test("serializes one terminal error event through the production encoder without privacy canaries") {
                 val nationalIdentificationNumberCanary = "12345678901"
                 val tokenCanary = "privacy-canary-token"
                 val oboTokenCanary = "safe-obo-token"
@@ -232,7 +232,7 @@ class AltinnAccessLoggingContractTest :
                 }
             }
 
-            it("serializes the concrete transport cause and its origin stack without dynamic exception data") {
+            test("serializes the concrete transport cause and its origin stack without dynamic exception data") {
                 val nationalIdentificationNumberCanary = "12345678901"
                 val tokenCanary = "privacy-canary-token"
                 val upstreamResponseCanary = "privacy-canary-upstream-response-body"
@@ -281,7 +281,7 @@ class AltinnAccessLoggingContractTest :
                 }
             }
 
-            it("keeps actionable HTTP distinctions and serializes bounded upstream status as a number") {
+            test("keeps actionable HTTP distinctions and serializes bounded upstream status as a number") {
                 val cases = listOf(
                     301 to AltinnTilgangerErrorCode.UPSTREAM_UNEXPECTED_REDIRECT,
                     401 to AltinnTilgangerErrorCode.UPSTREAM_UNAUTHORIZED,
@@ -318,7 +318,7 @@ class AltinnAccessLoggingContractTest :
                 }
             }
 
-            it("uses the remaining client-error code for other 4xx statuses") {
+            test("uses the remaining client-error code for other 4xx statuses") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
@@ -339,7 +339,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord["upstream_status"].asInt() shouldBe 422
             }
 
-            it("preserves the organization-access operation and its single terminal error") {
+            test("preserves the organization-access operation and its single terminal error") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
@@ -361,7 +361,7 @@ class AltinnAccessLoggingContractTest :
                 record["upstream_status"].asInt() shouldBe 503
             }
 
-            it("omits upstream status for non-HTTP failures") {
+            test("omits upstream status for non-HTTP failures") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
@@ -382,7 +382,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord.has("upstream_status") shouldBe false
             }
 
-            it("keeps token exchange separate while preserving its bounded HTTP status") {
+            test("keeps token exchange separate while preserving its bounded HTTP status") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw
                         UpstreamRequestException(
@@ -404,7 +404,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord.has("failure_stage") shouldBe false
             }
 
-            it("preserves nullable client results without emitting an error") {
+            test("preserves nullable client results without emitting an error") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = null
                 }
@@ -418,7 +418,7 @@ class AltinnAccessLoggingContractTest :
                 logLines shouldBe emptyList()
             }
 
-            it("emits one terminal response-decoding error for an actual HTTP 200 JSON null body") {
+            test("emits one terminal response-decoding error for an actual HTTP 200 JSON null body") {
                 val texasClient = mockk<TexasHttpClient>()
                 coEvery {
                     texasClient.exchangeTokenForIsAltinnTilganger("token")
@@ -447,7 +447,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord.has("failure_stage") shouldBe false
             }
 
-            it("does not log or classify cancellation from token exchange") {
+            test("does not log or classify cancellation from token exchange") {
                 val texasClient = mockk<TexasHttpClient>()
                 coEvery {
                     texasClient.exchangeTokenForIsAltinnTilganger("token")
@@ -465,7 +465,7 @@ class AltinnAccessLoggingContractTest :
                 logLines() shouldHaveSize 0
             }
 
-            it("does not log or classify cancellation from response decoding") {
+            test("does not log or classify cancellation from response decoding") {
                 val cancellation = CancellationException("Response decoding cancelled")
                 val cancellingConverter = object : ContentConverter {
                     override suspend fun serialize(
@@ -511,7 +511,7 @@ class AltinnAccessLoggingContractTest :
                 logLines() shouldHaveSize 0
             }
 
-            it("emits the canonical terminal event when the upstream response reports an error") {
+            test("emits the canonical terminal event when the upstream response reports an error") {
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal) = AltinnTilgangerResponse(
                         isError = true,
@@ -535,7 +535,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord.has("stack_trace") shouldBe false
             }
 
-            it("serializes trace_id from MDC with the production encoder") {
+            test("serializes trace_id from MDC with the production encoder") {
                 val traceId = "0123456789abcdef0123456789abcdef"
                 val client = object : AltinnTilgangerClient {
                     override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): AltinnTilgangerResponse? = throw UpstreamRequestException(
@@ -559,7 +559,7 @@ class AltinnAccessLoggingContractTest :
                 logRecord["trace_id"].asText() shouldBe traceId
             }
 
-            it("uses one lookup failure name with distinct operations") {
+            test("uses one lookup failure name with distinct operations") {
                 AltinnTilgangerOperation.entries.map { it.failureEvent.name }.toSet() shouldBe setOf(
                     "altinn_tilganger_lookup_failed",
                 )

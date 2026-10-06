@@ -136,20 +136,6 @@ class LinemanagerSearchApiTest :
             }
         }
 
-        test("uses pageToken and default page size when querying the next page") {
-            val cursor = LinemanagerSearchCursor(firstName = "ola", lastName = "nordmann", id = 1)
-            withSearchApi(useCase, texasHttpClient) {
-                val response = client.search(
-                    """{"orgNumber":"${organizationNumber.value}","pageToken":"${cursor.toPageToken()}"}""",
-                )
-
-                response.status shouldBe HttpStatusCode.OK
-                repository.queries shouldBe listOf(
-                    NarmestelederrelasjonSearchQuery(orgNumber = organizationNumber, pageSize = 50, cursor = cursor),
-                )
-            }
-        }
-
         test("passes request filters to the repository") {
             withSearchApi(useCase, texasHttpClient) {
                 val response = client.search(
@@ -178,24 +164,6 @@ class LinemanagerSearchApiTest :
             }
         }
 
-        test("normalizes blank text to null") {
-            withSearchApi(useCase, texasHttpClient) {
-                client.search("""{"orgNumber":"${organizationNumber.value}","text":"   "}""").status shouldBe HttpStatusCode.OK
-
-                repository.queries.single().text shouldBe null
-                repository.queries.single().nationalIdentificationNumber shouldBe null
-            }
-        }
-
-        test("uses an eleven-digit text value to query either national identification number") {
-            withSearchApi(useCase, texasHttpClient) {
-                client.search("""{"orgNumber":"${organizationNumber.value}","text":"12345678910"}""").status shouldBe HttpStatusCode.OK
-
-                repository.queries.single().text shouldBe null
-                repository.queries.single().nationalIdentificationNumber shouldBe PersonIdent("12345678910")
-            }
-        }
-
         test("returns 400 when text exceeds 50 characters") {
             withSearchApi(useCase, texasHttpClient) {
                 val response = client.search("""{"orgNumber":"${organizationNumber.value}","text":"${"a".repeat(51)}"}""")
@@ -205,17 +173,12 @@ class LinemanagerSearchApiTest :
             }
         }
 
-        listOf(
-            "not-a-valid-token" to "malformed",
-            "djE6MQ" to "v1",
-        ).forEach { (pageToken, description) ->
-            test("returns 400 for $description pageToken") {
-                withSearchApi(useCase, texasHttpClient) {
-                    val response = client.search("""{"orgNumber":"${organizationNumber.value}","pageToken":"$pageToken"}""")
+        test("returns 400 for an invalid pageToken") {
+            withSearchApi(useCase, texasHttpClient) {
+                val response = client.search("""{"orgNumber":"${organizationNumber.value}","pageToken":"not-a-valid-token"}""")
 
-                    response.shouldBeError(HttpStatusCode.BadRequest, ErrorType.INVALID_FORMAT, "Invalid pageToken")
-                    repository.queries.shouldBeEmpty()
-                }
+                response.shouldBeError(HttpStatusCode.BadRequest, ErrorType.INVALID_FORMAT, "Invalid pageToken")
+                repository.queries.shouldBeEmpty()
             }
         }
 

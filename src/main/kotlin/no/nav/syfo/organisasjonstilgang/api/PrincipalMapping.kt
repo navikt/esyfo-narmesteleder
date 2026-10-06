@@ -9,12 +9,14 @@ import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 
 fun Principal.toOrganizationAccessSubject(): OrganizationAccessSubject = when (this) {
-    is UserPrincipal -> OrganizationAccessSubject.PersonnelManager(
-        personIdent = PersonIdent(ident),
-        accessToken = AccessToken(token),
-    )
+    is UserPrincipal -> toPersonnelManager()
     is SystemPrincipal -> OrganizationAccessSubject.LpsSystemUser(
         systemUserId = systemUserId,
         systemUserOrganizationNumber = OrganizationNumber(getSystemUserOrgNumber()),
     )
 }
+
+fun UserPrincipal.toPersonnelManager(): OrganizationAccessSubject.PersonnelManager = OrganizationAccessSubject.PersonnelManager(
+    personIdent = PersonIdent(ident),
+    accessToken = AccessToken(token),
+)

@@ -11,7 +11,6 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganization
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsUseCase
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -45,8 +44,7 @@ fun Route.registerAccessibleOrganizationsApi(
                     type = ErrorType.AUTHORIZATION_ERROR,
                 )
             }
-            val subject = principal.toOrganizationAccessSubject() as OrganizationAccessSubject.PersonnelManager
-            when (val result = listAccessibleOrganizations.execute(subject)) {
+            when (val result = listAccessibleOrganizations.execute(principal.toPersonnelManager())) {
                 is ListAccessibleOrganizationsResult.Listed -> call.respond(
                     HttpStatusCode.OK,
                     AccessibleOrganizationsResponse(organizations = result.organizations.map { it.toResponse() }),

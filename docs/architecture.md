@@ -97,6 +97,14 @@ Owns established and revoked narmesteleder relations:
   then publishing a revocation without requiring employment or sick leave;
 - revoke the relation for a sendt sykmelding without validation, publishing
   with the `ARBEIDSTAGER_SYKMELDING_REVOKE` Kafka source;
+- revoke a relation when the employee's employment in the organization has
+  ended, by checking active relations against Aareg at regular intervals (#473,
+  being introduced). It takes over the behavior of team sykmelding's
+  `narmesteleder-arbeidsforhold`: keep the relation while the employee has an
+  employment whose workplace has the relation's organization number and that
+  has not ended or ended no more than four months ago. Otherwise publish with the
+  `narmesteleder-arbeidsforhold` Kafka source. A failed lookup never revokes. The
+  check runs in shadow mode first and publishes only after a separate switch;
 - publish relation messages;
 - ingest and republish relation events;
 - own the local relation register;
@@ -209,7 +217,12 @@ Contains reusable technical mechanisms without domain rules:
 - `database`: data source, Flyway and shared transaction infrastructure;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics;
 - `observability`: metrics, health and common structured logging mechanisms;
-- `scheduling`: reusable scheduling and leader-election mechanics;
+- `scheduling`: reusable scheduling mechanics. New scheduled work runs on
+  all pods in a background loop and shares the work through database claims with a
+  lease, not leader election. See
+  [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
+  The claim table and its states belong to the module that owns the work.
+  Existing `ScheduledLeaderTask` jobs still use leader election until #519;
 - `application`: small use-case mechanics such as `Step`, which lets private
   use-case steps continue with a value or stop with the use case's result.
   `Step` never appears in public use-case contracts or ports.

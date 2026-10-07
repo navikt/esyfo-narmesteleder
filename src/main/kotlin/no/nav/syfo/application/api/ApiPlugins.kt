@@ -53,6 +53,12 @@ private val apiRequestInvalid = applicationEvent<RequestInvalidDetails>(
     ),
 )
 
+fun Application.installApiPlugins() {
+    installCallId()
+    installContentNegotiation()
+    installStatusPages()
+}
+
 fun Application.installContentNegotiation() {
     install(ContentNegotiation) {
         jackson {

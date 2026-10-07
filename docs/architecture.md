@@ -241,6 +241,39 @@ Owns application assembly:
 
 Business classes do not depend on Koin or bootstrap.
 
+`Application.module()` starts the platform module first and then one Ktor
+module per capability:
+
+```kotlin
+fun Application.module() {
+    platformModule(applicationModules(isLocalEnv()))
+    narmestelederstatistikkModule()
+    // ... other capability modules
+}
+```
+
+- `platformModule` installs Koin once with the shared Koin modules
+  (`applicationModules`), CallId, content negotiation, StatusPages, pod and
+  metric endpoints, OpenAPI and Swagger. A capability module never installs
+  Koin.
+- Each capability has an `Application.<capability>Module()` in
+  `<Capability>Module.kt` that owns its dependencies, routes, Kafka consumers
+  and lifecycle. It registers its Koin definitions with
+  `koinModules(<capability>Dependencies())`; the definitions live in
+  `<Capability>Dependencies.kt` and are not listed in `applicationModules`.
+  `DependencyInjectionTest` verifies each `<capability>Dependencies()` together
+  with `applicationModules`, and fails if a type is defined twice (Koin would
+  otherwise let the last definition win silently).
+- Capability modules add routes under `apiV1 { }` or `internalApiV1 { }` from
+  `platform.api`. These helpers install `AddTokenIssuerPlugin` once per prefix,
+  so several modules can share the same prefix.
+- A capability module can start alone with the platform module in
+  `testApplication`; the test registers only the dependencies the module gets
+  from outside, such as other modules' contracts and shared clients.
+- Route tests use the `testApiApplication` test helper. It installs the same
+  request-handling plugins as production (`installApiPlugins()`: CallId,
+  content negotiation and StatusPages) without Koin.
+
 ## Dependency rules
 
 ```text

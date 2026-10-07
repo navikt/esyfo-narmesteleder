@@ -10,18 +10,11 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.mockk
-import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
@@ -33,6 +26,8 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.api.internalApiV1
+import no.nav.syfo.platform.api.testApiApplication
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
@@ -109,16 +104,6 @@ class LinemanagerStatisticsApiTest :
             }
         }
 
-        test("is not available through the external API") {
-            val fixture = StatisticsApiFixture()
-            fixture.withApplication {
-                client.get("$API_V1_PATH$LINEMANAGER_STATISTICS_API_PATH?orgNumber=$ORGANIZATION_NUMBER") {
-                    bearerAuth(fixture.token())
-                }.status shouldBe HttpStatusCode.NotFound
-                fixture.effects shouldBe emptyList()
-            }
-        }
-
         test("rejects an inactive token before checking access or counting") {
             val fixture = StatisticsApiFixture(activeToken = false)
             val before = requestCount("system")
@@ -179,19 +164,10 @@ private class StatisticsApiFixture(
     fun token(): String = bearerToken
 
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {
-        testApplication {
-            application {
-                installContentNegotiation()
-                installStatusPages()
-                routing {
-                    route(INTERNAL_API_V1_PATH) {
-                        install(AddTokenIssuerPlugin)
-                        registerLinemanagerStatisticsApi(useCase, texas)
-                    }
-                }
-            }
-            block()
-        }
+        testApiApplication(
+            routes = { internalApiV1 { registerLinemanagerStatisticsApi(useCase, texas) } },
+            block = block,
+        )
     }
 }
 

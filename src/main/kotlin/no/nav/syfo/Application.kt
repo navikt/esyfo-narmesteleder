@@ -5,12 +5,15 @@ import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import no.nav.syfo.application.api.configureRouting
+import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.metric.bindJvmAndProcessMetrics
+import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkModule
+import no.nav.syfo.plugins.applicationModules
 import no.nav.syfo.plugins.configureBackgroundTasks
-import no.nav.syfo.plugins.configureDependencies
 import no.nav.syfo.plugins.configureKafkaConsumers
 import no.nav.syfo.plugins.configureLeaderMonitoring
 import no.nav.syfo.plugins.configureLifecycleHooks
+import no.nav.syfo.plugins.platformModule
 import org.koin.ktor.ext.get
 
 fun main() {
@@ -31,11 +34,12 @@ fun main() {
 }
 
 fun Application.module() {
-    configureDependencies()
+    platformModule(applicationModules(isLocalEnv()))
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     configureRouting()
+    narmestelederstatistikkModule()
     configureKafkaConsumers()
     configureBackgroundTasks()
 }

@@ -9,6 +9,8 @@ class TestAaregClient : AaregClient {
 
     fun clear() = employmentsByPersonIdent.clear()
 
+    override suspend fun getArbeidsforholdHistorikk(personIdent: String): AaregArbeidsforholdOversikt = getArbeidsforhold(personIdent)
+
     fun seedEmployment(
         personIdent: String,
         orgNumber: String,

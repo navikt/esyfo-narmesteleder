@@ -29,6 +29,11 @@ class FakeAaregClient(
             .toMutableMap()
 
     private val failureRef = AtomicReference<Throwable?>(null)
+    private val historyByPersonIdent = mutableMapOf<String, AaregArbeidsforholdOversikt>()
+
+    fun setEmploymentHistory(personIdent: String, history: AaregArbeidsforholdOversikt) {
+        historyByPersonIdent[personIdent] = history
+    }
 
     /**
      * getArbeidsforhold will throw the configured failure until it is cleared.
@@ -52,6 +57,11 @@ class FakeAaregClient(
         failureRef.get()?.let { throw it }
         val pairs = arbeidsForholdForIdent[personIdent] ?: return AaregArbeidsforholdOversikt()
         return createArbeidsforholdOversikt(*pairs.toTypedArray())
+    }
+
+    override suspend fun getArbeidsforholdHistorikk(personIdent: String): AaregArbeidsforholdOversikt {
+        failureRef.get()?.let { throw it }
+        return historyByPersonIdent[personIdent] ?: getArbeidsforhold(personIdent)
     }
 
     private fun loadArbeidsforhold(fixtureLoader: JsonFixtureLoader): Map<String, AaregArbeidsforholdOversikt> = fixtureLoader.loadOrNull<Map<String, AaregArbeidsforholdOversikt>>(FIXTURE_FILE) ?: emptyMap()

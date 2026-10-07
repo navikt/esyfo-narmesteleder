@@ -1,5 +1,7 @@
 package no.nav.syfo.integration.aareg
 
+import java.time.LocalDate
+
 enum class IdentType {
     AKTORID,
     FOLKEREGISTERIDENT,
@@ -18,6 +20,8 @@ data class AaregArbeidsforholdOversikt(
 data class Arbeidsforholdoversikt(
     val arbeidssted: Arbeidssted,
     val opplysningspliktig: Opplysningspliktig,
+    val startdato: LocalDate? = null,
+    val sluttdato: LocalDate? = null,
 )
 
 data class Opplysningspliktig(

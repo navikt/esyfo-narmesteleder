@@ -66,6 +66,8 @@ class AaregEmploymentLookupTest :
 
 private class StubEmploymentClient(private val result: () -> AaregArbeidsforholdOversikt) : AaregClient {
     val requests = mutableListOf<String>()
+    override suspend fun getArbeidsforholdHistorikk(personIdent: String): AaregArbeidsforholdOversikt = error("History lookup is not used by this adapter")
+
     override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt {
         requests += personIdent
         return result()

@@ -22,13 +22,38 @@ private data class FinnArbeidsforholdoversikterPrArbeidstakerAPIRequest(
     ),
 )
 
+private data class FinnArbeidsforholdhistorikkPrArbeidstakerAPIRequest(
+    val arbeidstakerId: String,
+    val arbeidsforholdtyper: Set<String> = setOf(
+        "ordinaertArbeidsforhold",
+        "maritimtArbeidsforhold",
+        "forenkletOppgjoersordning",
+    ),
+    val rapporteringsordninger: Set<Rapporteringsordning> = setOf(
+        Rapporteringsordning.A_ORDNINGEN,
+        Rapporteringsordning.FOER_A_ORDNINGEN,
+    ),
+    val arbeidsforholdstatuser: Set<String> = setOf("AKTIV", "FREMTIDIG", "AVSLUTTET"),
+)
+
 interface AaregClient {
     suspend fun getArbeidsforhold(
         personIdent: String
     ): AaregArbeidsforholdOversikt
+
+    suspend fun getArbeidsforholdHistorikk(personIdent: String): AaregArbeidsforholdOversikt
 }
 
-class AaregClientException(message: String, cause: Exception) : RuntimeException(message, cause)
+class AaregClientException(
+    message: String,
+    cause: Exception? = null,
+    val reason: Reason = Reason.UNAVAILABLE,
+) : RuntimeException(message, cause) {
+    enum class Reason {
+        PERSON_NOT_FOUND,
+        UNAVAILABLE,
+    }
+}
 
 class HttpAaregClient(
     aaregBaseUrl: String,
@@ -38,21 +63,40 @@ class HttpAaregClient(
 ) : AaregClient {
     private val arbeidsforholdOversiktPath = "${aaregBaseUrl}$ARBEIDSFORHOLD_OVERSIKT_PATH"
 
-    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt {
+    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt = fetchArbeidsforhold(
+        FinnArbeidsforholdoversikterPrArbeidstakerAPIRequest(arbeidstakerId = personIdent)
+    )
+
+    override suspend fun getArbeidsforholdHistorikk(personIdent: String): AaregArbeidsforholdOversikt = try {
+        fetchArbeidsforhold(FinnArbeidsforholdhistorikkPrArbeidstakerAPIRequest(arbeidstakerId = personIdent))
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: AaregClientException) {
+        throw e
+    } catch (e: Exception) {
+        throw AaregClientException("An error occurred when fetching employment history (${e.javaClass.simpleName})")
+    }
+
+    private suspend fun fetchArbeidsforhold(request: Any): AaregArbeidsforholdOversikt {
         val token = getSystemToken()
         return try {
             httpClient.post(arbeidsforholdOversiktPath) {
                 bearerAuth(token)
                 contentType(ContentType.Application.Json)
-                setBody(FinnArbeidsforholdoversikterPrArbeidstakerAPIRequest(arbeidstakerId = personIdent))
+                setBody(request)
             }.body()
         } catch (e: ClientRequestException) {
-            val message = if (e.response.status == HttpStatusCode.NotFound) {
-                "Error fetching arbeidsforhold oversikt for person $personIdent"
+            val notFound = e.response.status == HttpStatusCode.NotFound
+            val message = if (notFound) {
+                "Person not found when fetching arbeidsforhold"
             } else {
                 "An error occurred when fetching arbeidsforhold"
             }
-            throw AaregClientException(message, e)
+            // Ktor exceptions can retain personal data from the upstream response body.
+            throw AaregClientException(
+                "$message (status=${e.response.status.value})",
+                reason = if (notFound) AaregClientException.Reason.PERSON_NOT_FOUND else AaregClientException.Reason.UNAVAILABLE,
+            )
         }
     }
 
@@ -66,7 +110,7 @@ class HttpAaregClient(
     } catch (e: Exception) {
         throw AaregClientException(
             "An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}",
-            e
+            cause = e,
         )
     }
 

@@ -1,6 +1,9 @@
 package no.nav.syfo.maintenance
 
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.shouldBe
 import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -12,13 +15,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
-import no.nav.syfo.narmesteleder.service.NarmestelederService
+import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.sykmelding.retention.application.DeleteOldSykmeldinger
+import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class MaintenanceTaskTest :
     DescribeSpec({
-        val narmestelederService = mockk<NarmestelederService>()
+        val clock = Clock.fixed(Instant.parse("2026-03-17T10:00:00Z"), ZoneOffset.UTC)
         val deleteOldSykmeldinger = mockk<DeleteOldSykmeldinger>()
 
         val env = OtherEnvironmentProperties(
@@ -39,8 +49,13 @@ class MaintenanceTaskTest :
             personEnrichmentTaskEnabled = false,
         )
 
-        fun createTask() = MaintenanceTask(
-            narmestelederService = narmestelederService,
+        fun createTask(expiryRepository: NarmestelederbehovExpiryRepository) = MaintenanceTask(
+            expireNarmestelederbehov = ExpireNarmestelederbehovUseCase(
+                repository = expiryRepository,
+                settings = NarmestelederbehovExpirySettings(daysAfterTom = 16),
+                clock = clock,
+                pauseBetweenBatches = Duration.ZERO,
+            ),
             deleteOldSykmeldinger = deleteOldSykmeldinger,
             env = env,
         )
@@ -51,69 +66,39 @@ class MaintenanceTaskTest :
 
         describe("MaintenanceTask") {
             context("execute") {
-                it("should call updateStatusOnExpiredBehovs") {
-                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
+                it("should expire narmestelederbehov when the scheduled task runs") {
+                    val expiryRepository = RecordingExpiryRepository()
                     coEvery { deleteOldSykmeldinger.execute() } just Runs
 
-                    val task = createTask()
-
                     val job = launch {
-                        task.runTask()
+                        createTask(expiryRepository).runTask()
                     }
 
                     delay(100.milliseconds)
                     job.cancelAndJoin()
 
-                    coVerify(atLeast = 1) {
-                        narmestelederService.updateStatusOnExpiredBehovs(
-                            env.daysAfterTomToExpireBehovs,
-                        )
-                    }
-                }
-
-                it("should use correct daysAfterTomToExpireBehovs value") {
-                    val customDays = 14L
-                    val customEnv = env.copy(daysAfterTomToExpireBehovs = customDays)
-                    val task = MaintenanceTask(
-                        narmestelederService = narmestelederService,
-                        deleteOldSykmeldinger = deleteOldSykmeldinger,
-                        env = customEnv,
-                    )
-
-                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
-                    coEvery { deleteOldSykmeldinger.execute() } just Runs
-
-                    val job = launch {
-                        task.runTask()
-                    }
-
-                    delay(100.milliseconds)
-                    job.cancelAndJoin()
-
-                    coVerify(atLeast = 1) {
-                        narmestelederService.updateStatusOnExpiredBehovs(eq(customDays))
-                    }
+                    expiryRepository.calls.shouldNotBeEmpty()
+                    expiryRepository.calls.first() shouldBe LocalDate.parse("2026-03-01")
                 }
 
                 it("expires behov before deleting old sykmeldinger") {
-                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } just Runs
-                    coEvery { deleteOldSykmeldinger.execute() } just Runs
-
-                    createTask().execute()
-
-                    coVerify(ordering = io.mockk.Ordering.ORDERED) {
-                        narmestelederService.updateStatusOnExpiredBehovs(
-                            env.daysAfterTomToExpireBehovs,
-                        )
-                        deleteOldSykmeldinger.execute()
+                    val expiryRepository = RecordingExpiryRepository()
+                    coEvery { deleteOldSykmeldinger.execute() } answers {
+                        expiryRepository.calls.size shouldBe 1
                     }
+
+                    createTask(expiryRepository).execute()
+
+                    coVerify(exactly = 1) { deleteOldSykmeldinger.execute() }
                 }
 
                 it("does not delete sykmeldinger when behov expiration fails") {
-                    coEvery { narmestelederService.updateStatusOnExpiredBehovs(any()) } throws IllegalStateException("failure")
+                    val failingRepository = object : NarmestelederbehovExpiryRepository {
+                        override suspend fun expireOpenWithSykmeldingTomBefore(tomBefore: LocalDate, limit: Int): Int = throw IllegalStateException("failure")
+                    }
 
-                    io.kotest.assertions.throwables.shouldThrow<IllegalStateException> {
-                        createTask().execute()
+                    shouldThrow<IllegalStateException> {
+                        createTask(failingRepository).execute()
                     }
 
                     coVerify(exactly = 0) { deleteOldSykmeldinger.execute() }
@@ -121,3 +106,12 @@ class MaintenanceTaskTest :
             }
         }
     })
+
+private class RecordingExpiryRepository : NarmestelederbehovExpiryRepository {
+    val calls = mutableListOf<LocalDate>()
+
+    override suspend fun expireOpenWithSykmeldingTomBefore(tomBefore: LocalDate, limit: Int): Int {
+        calls += tomBefore
+        return 0
+    }
+}

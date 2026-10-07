@@ -17,17 +17,17 @@ class ExpireNarmestelederbehovUseCase(
     private val pauseBetweenBatches: Duration = DEFAULT_PAUSE_BETWEEN_BATCHES,
 ) {
     suspend fun execute() {
-        val tomBefore = LocalDate.now(clock).minusDays(settings.daysAfterTom)
+        val sykmeldingMaxDate = LocalDate.now(clock).minusDays(settings.daysAfterTom)
         var expiredInBatch: Int
         var totalExpired = 0
 
         do {
-            expiredInBatch = repository.expireOpenWithSykmeldingTomBefore(tomBefore, batchSize)
+            expiredInBatch = repository.expireBehov(sykmeldingMaxDate, batchSize)
             totalExpired += expiredInBatch
             delay(pauseBetweenBatches)
         } while (expiredInBatch > 0)
 
-        logger.event(expiryCompleted, ExpiryCompleted(totalExpired, tomBefore))
+        logger.event(expiryCompleted, ExpiryCompleted(totalExpired, sykmeldingMaxDate))
     }
 
     companion object {
@@ -37,7 +37,7 @@ class ExpireNarmestelederbehovUseCase(
     }
 }
 
-private data class ExpiryCompleted(val expiredCount: Int, val tomBefore: LocalDate)
+private data class ExpiryCompleted(val expiredCount: Int, val sykmeldingMaxDate: LocalDate)
 
 private val expiryCompleted = Event<ExpiryCompleted>(
     name = "narmestelederbehov_expiry_completed",
@@ -46,6 +46,6 @@ private val expiryCompleted = Event<ExpiryCompleted>(
     operation = "expire_narmestelederbehov",
     fields = mapOf(
         "expired_count" to { it.expiredCount },
-        "tom_before" to { it.tomBefore.toString() },
+        "sykmelding_max_date" to { it.sykmeldingMaxDate.toString() },
     ),
 )

@@ -55,8 +55,8 @@ private class RecordingExpiryRepository(results: List<Int>) : Narmestelederbehov
     private val results = ArrayDeque(results)
     val calls = mutableListOf<Pair<LocalDate, Int>>()
 
-    override suspend fun expireOpenWithSykmeldingTomBefore(tomBefore: LocalDate, limit: Int): Int {
-        calls += tomBefore to limit
+    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int {
+        calls += sykmeldingMaxDate to limit
         return results.removeFirst()
     }
 }

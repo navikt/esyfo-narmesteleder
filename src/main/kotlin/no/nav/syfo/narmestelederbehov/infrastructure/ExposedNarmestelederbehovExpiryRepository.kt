@@ -19,7 +19,7 @@ import org.jetbrains.exposed.v1.jdbc.update
 import java.time.LocalDate
 
 class ExposedNarmestelederbehovExpiryRepository(private val database: Database) : NarmestelederbehovExpiryRepository {
-    override suspend fun expireOpenWithSykmeldingTomBefore(tomBefore: LocalDate, limit: Int): Int = withContext(Dispatchers.IO) {
+    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {
             val ids = NarmestelederbehovTable
                 .join(
@@ -31,7 +31,7 @@ class ExposedNarmestelederbehovExpiryRepository(private val database: Database) 
                     },
                 )
                 .select(NarmestelederbehovTable.id)
-                .where { (SendtSykmeldingTomTable.tom less tomBefore) and (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses) }
+                .where { (SendtSykmeldingTomTable.tom less sykmeldingMaxDate) and (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses) }
                 .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
                 .limit(limit)
                 .map { it[NarmestelederbehovTable.id] }

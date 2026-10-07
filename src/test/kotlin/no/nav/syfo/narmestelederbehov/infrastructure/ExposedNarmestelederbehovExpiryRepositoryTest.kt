@@ -39,7 +39,7 @@ class ExposedNarmestelederbehovExpiryRepositoryTest :
             val otherOrganization = setupDb.insertNlBehov(nlBehovEntity().copy(sykmeldtFnr = "30000000002", orgnummer = "910000002", behovStatus = BehovStatus.BEHOV_CREATED))
             val withoutSykmelding = setupDb.insertNlBehov(nlBehovEntity().copy(sykmeldtFnr = "30000000003", orgnummer = organization, behovStatus = BehovStatus.BEHOV_CREATED))
 
-            repository.expireOpenWithSykmeldingTomBefore(cutoff, limit = 500) shouldBe openStatuses.size
+            repository.expireBehov(cutoff, limit = 500) shouldBe openStatuses.size
 
             byStatus.forEach { (status, id) ->
                 val expected = if (status in openStatuses) BehovStatus.BEHOV_EXPIRED else status
@@ -48,7 +48,7 @@ class ExposedNarmestelederbehovExpiryRepositoryTest :
             listOf(tomAtCutoff, otherOrganization, withoutSykmelding).forEach {
                 requireNotNull(setupDb.findBehovById(requireNotNull(it.id))).behovStatus shouldBe BehovStatus.BEHOV_CREATED
             }
-            repository.expireOpenWithSykmeldingTomBefore(cutoff, limit = 500) shouldBe 0
+            repository.expireBehov(cutoff, limit = 500) shouldBe 0
         }
 
         test("expires the oldest open behov first in bounded batches") {
@@ -62,12 +62,12 @@ class ExposedNarmestelederbehovExpiryRepositoryTest :
                 id
             }
 
-            repository.expireOpenWithSykmeldingTomBefore(cutoff, limit = 2) shouldBe 2
+            repository.expireBehov(cutoff, limit = 2) shouldBe 2
 
             ids.map { requireNotNull(setupDb.findBehovById(it)).behovStatus } shouldBe
                 listOf(BehovStatus.BEHOV_CREATED, BehovStatus.BEHOV_EXPIRED, BehovStatus.BEHOV_EXPIRED)
-            repository.expireOpenWithSykmeldingTomBefore(cutoff, limit = 2) shouldBe 1
-            repository.expireOpenWithSykmeldingTomBefore(cutoff, limit = 2) shouldBe 0
+            repository.expireBehov(cutoff, limit = 2) shouldBe 1
+            repository.expireBehov(cutoff, limit = 2) shouldBe 0
         }
     })
 

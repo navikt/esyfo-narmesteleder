@@ -35,8 +35,8 @@ class ExpireNarmestelederbehovTaskTest :
 private class RecordingExpiryRepository : NarmestelederbehovExpiryRepository {
     val calls = mutableListOf<LocalDate>()
 
-    override suspend fun expireOpenWithSykmeldingTomBefore(tomBefore: LocalDate, limit: Int): Int {
-        calls += tomBefore
+    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int {
+        calls += sykmeldingMaxDate
         return 0
     }
 }

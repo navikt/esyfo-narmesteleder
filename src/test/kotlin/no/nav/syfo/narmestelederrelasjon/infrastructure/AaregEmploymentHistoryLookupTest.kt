@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.aareg.AaregArbeidsforholdOversikt
@@ -41,11 +42,15 @@ class AaregEmploymentHistoryLookupTest :
         }
 
         test("returns PERSON_NOT_FOUND for the typed not-found failure") {
-            val client = StubHistoryClient {
-                throw AaregClientException("Person not found", reason = AaregClientException.Reason.PERSON_NOT_FOUND)
-            }
-            AaregEmploymentHistoryLookup(client).findEmploymentHistory(personIdent) shouldBe
-                EmploymentHistoryResult.Failed(EmploymentHistoryFailureReason.PERSON_NOT_FOUND)
+            val failure = AaregClientException(
+                "Person not found",
+                cause = IllegalStateException("Upstream failure"),
+                reason = AaregClientException.Reason.PERSON_NOT_FOUND,
+            )
+            val client = StubHistoryClient { throw failure }
+            val result = AaregEmploymentHistoryLookup(client).findEmploymentHistory(personIdent)
+            result shouldBe EmploymentHistoryResult.Failed(EmploymentHistoryFailureReason.PERSON_NOT_FOUND, failure)
+            (result as EmploymentHistoryResult.Failed).cause shouldBeSameInstanceAs failure
         }
 
         test("treats Person workplaces as non-organizations even if they contain an organization ident") {
@@ -92,9 +97,11 @@ class AaregEmploymentHistoryLookupTest :
         }
 
         test("returns UNAVAILABLE for other client failures rather than an empty history") {
-            val client = StubHistoryClient { throw AaregClientException("Aareg unavailable") }
-            AaregEmploymentHistoryLookup(client).findEmploymentHistory(personIdent) shouldBe
-                EmploymentHistoryResult.Failed(EmploymentHistoryFailureReason.UNAVAILABLE)
+            val failure = AaregClientException("Aareg unavailable", cause = IllegalStateException("Upstream failure"))
+            val client = StubHistoryClient { throw failure }
+            val result = AaregEmploymentHistoryLookup(client).findEmploymentHistory(personIdent)
+            result shouldBe EmploymentHistoryResult.Failed(EmploymentHistoryFailureReason.UNAVAILABLE, failure)
+            (result as EmploymentHistoryResult.Failed).cause shouldBeSameInstanceAs failure
         }
 
         test("propagates the original cancellation") {

@@ -138,7 +138,7 @@ class FakeAaregClientTest :
                     val client = FakeAaregClient(JsonFixtureLoader("classpath:nonexistent"))
                     val history = client.createArbeidsforholdOversikt("910000001" to "910000002")
                     client.setEmploymentHistory("test-fnr", history)
-                    val failure = AaregClientException("Test error")
+                    val failure = AaregClientException("Test error", RuntimeException())
                     client.setFailure(failure)
 
                     shouldThrow<AaregClientException> { client.getArbeidsforholdHistorikk("test-fnr") } shouldBe failure

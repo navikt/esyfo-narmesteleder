@@ -22,7 +22,7 @@ class AaregEmploymentHistoryLookup(private val client: AaregClient) : Employment
                 AaregClientException.Reason.PERSON_NOT_FOUND -> EmploymentHistoryFailureReason.PERSON_NOT_FOUND
                 AaregClientException.Reason.UNAVAILABLE -> EmploymentHistoryFailureReason.UNAVAILABLE
             }
-            return EmploymentHistoryResult.Failed(reason)
+            return EmploymentHistoryResult.Failed(reason, cause = e)
         }
         val employments = overview.arbeidsforholdoversikter.map { employment ->
             Employment(

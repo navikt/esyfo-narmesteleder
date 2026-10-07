@@ -10,7 +10,7 @@ fun interface EmploymentHistoryLookup {
 sealed interface EmploymentHistoryResult {
     data class Found(val employments: List<Employment>) : EmploymentHistoryResult
 
-    data class Failed(val reason: EmploymentHistoryFailureReason) : EmploymentHistoryResult
+    data class Failed(val reason: EmploymentHistoryFailureReason, val cause: Throwable) : EmploymentHistoryResult
 }
 
 enum class EmploymentHistoryFailureReason {

@@ -5,7 +5,6 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
@@ -15,7 +14,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
 import no.nav.syfo.TestDB
 import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.aareg.client.TestAaregClient
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
@@ -23,6 +21,8 @@ import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
+import no.nav.syfo.integration.aareg.TestAaregClient
+import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.narmesteleder.db.ActiveNarmestelederbehovAlreadyExistsException
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
@@ -34,7 +34,6 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.client.FakePdlClient
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
 import java.sql.SQLException

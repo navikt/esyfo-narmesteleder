@@ -37,7 +37,7 @@ class HttpAaregClient(
 ) : AaregClient {
     private val arbeidsforholdOversiktPath = "${aaregBaseUrl}$ARBEIDSFORHOLD_OVERSIKT_PATH"
 
-    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt = getArbeidsforholdInAareg(personIdent, getSystemToken())
+    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt = fetchArbeidsforholdoversikt(personIdent, getSystemToken())
 
     private suspend fun getSystemToken() = runCatching {
         texasHttpClient.systemToken(
@@ -52,7 +52,7 @@ class HttpAaregClient(
         }
     }
 
-    private suspend fun getArbeidsforholdInAareg(
+    private suspend fun fetchArbeidsforholdoversikt(
         personIdent: String,
         token: String
     ): AaregArbeidsforholdOversikt {

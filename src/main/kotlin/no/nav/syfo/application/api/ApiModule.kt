@@ -15,7 +15,6 @@ import no.nav.syfo.narmestelederrelasjon.api.registerLinemanagerSearchApi
 import no.nav.syfo.narmestelederrelasjon.api.registerNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerRevokeActiveNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederrelasjon.api.registerSubmitNarmestelederrelasjonApi
-import no.nav.syfo.narmestelederstatistikk.api.registerLinemanagerStatisticsApi
 import no.nav.syfo.organisasjonstilgang.api.registerAccessibleOrganizationsApi
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.internalApiV1
@@ -52,7 +51,6 @@ private fun Route.registerInternalApiV1Routes() {
         preAuthorizedApps = get<Environment>().texas.azurePreAuthorizedApps,
     )
     registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = get(), texasHttpClient = get())
-    registerLinemanagerStatisticsApi(getNarmestelederstatistikk = get(), texasHttpClient = get())
     registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = get(), texasHttpClient = get())
     registerNarmestelederrelasjonApi(
         getNarmestelederrelasjon = get(),

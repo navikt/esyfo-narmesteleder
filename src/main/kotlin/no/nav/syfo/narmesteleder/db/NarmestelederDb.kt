@@ -33,6 +33,15 @@ private val queryLimitAdjusted = applicationEvent<QueryLimitDetails>(
 interface NarmestelederDb {
     suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity
     suspend fun updateNlBehov(nlBehov: NarmestelederBehovEntity)
+
+    /** Returns false when the behov is no longer BEHOV_CREATED, leaving the row untouched. */
+    suspend fun markDialogCreated(
+        id: UUID,
+        dialogId: UUID,
+        fornavn: String?,
+        mellomnavn: String?,
+        etternavn: String?,
+    ): Boolean
     suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
     suspend fun findBehovByParameters(
         sykmeldtFnr: String,
@@ -154,6 +163,41 @@ class PostgresNarmestelederDb(
                         preparedStatement.setObject(12, id)
                     }
                     preparedStatement.executeUpdate()
+                }.also {
+                    connection.commit()
+                }
+        }
+    }
+
+    override suspend fun markDialogCreated(
+        id: UUID,
+        dialogId: UUID,
+        fornavn: String?,
+        mellomnavn: String?,
+        etternavn: String?,
+    ): Boolean = withContext(dispatcher) {
+        database.connection.use { connection ->
+            connection
+                .prepareStatement(
+                    """
+                    UPDATE nl_behov
+                    SET behov_status = ?,
+                        dialog_id    = ?,
+                        fornavn      = ?,
+                        mellomnavn   = ?,
+                        etternavn    = ?
+                    WHERE id = ?
+                      AND behov_status = ?;
+                    """.trimIndent()
+                ).use { preparedStatement ->
+                    preparedStatement.setObject(1, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, java.sql.Types.OTHER)
+                    preparedStatement.setObject(2, dialogId)
+                    preparedStatement.setString(3, fornavn)
+                    preparedStatement.setString(4, mellomnavn)
+                    preparedStatement.setString(5, etternavn)
+                    preparedStatement.setObject(6, id)
+                    preparedStatement.setObject(7, BehovStatus.BEHOV_CREATED, java.sql.Types.OTHER)
+                    preparedStatement.executeUpdate() == 1
                 }.also {
                     connection.commit()
                 }

@@ -64,6 +64,13 @@ private val dialogportenDialogFailed = applicationEvent<DialogFailureDetails>(
     fields = dialogFailureFields + ("action" to { it: DialogFailureDetails -> it.action?.name }),
 )
 
+private val dialogCreatedForClosedBehov = applicationEvent<DialogFailureDetails>(
+    name = "dialog_created_for_closed_behov",
+    level = Level.WARN,
+    message = "Behov left BEHOV_CREATED while its dialog was created; the behov was not updated",
+    fields = dialogFailureFields,
+)
+
 const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
 
 class DialogportenService(
@@ -114,16 +121,16 @@ class DialogportenService(
             }
 
             val dialogId = dialogportenClient.createDialog(dialog)
-            narmestelederDb.updateNlBehov(
-                behov.copy(
-                    dialogId = dialogId,
-                    behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
-                    fornavn = personInfo?.name?.fornavn,
-                    mellomnavn = personInfo?.name?.mellomnavn,
-
-                    etternavn = personInfo?.name?.etternavn,
-                )
+            val marked = narmestelederDb.markDialogCreated(
+                id = behov.id,
+                dialogId = dialogId,
+                fornavn = personInfo?.name?.fornavn,
+                mellomnavn = personInfo?.name?.mellomnavn,
+                etternavn = personInfo?.name?.etternavn,
             )
+            if (!marked) {
+                logger.logEvent(dialogCreatedForClosedBehov, DialogFailureDetails(behov.id.toString(), dialogId.toString()))
+            }
         } catch (ex: Exception) {
             ex.rethrowCancellation()
             logDialogFailure(behov, DialogAction.CREATE, ex)

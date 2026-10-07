@@ -113,7 +113,7 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(eq(BehovStatus.BEHOV_CREATED)) }
                     coVerify(exactly = 0) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
+                    coVerify(exactly = 0) { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) }
                 }
             }
 
@@ -135,15 +135,9 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
                     coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 1) {
-                        spyNarmestelederDb.updateNlBehov(
-                            match {
-                                it.id == it.id &&
-                                    it.dialogId == dialogId &&
-                                    it.behovStatus == BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-                            },
-                        )
-                    }
+                    val updated = spyNarmestelederDb.findBehovById(behovEntity.id!!)!!
+                    updated.dialogId shouldBe dialogId
+                    updated.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                     coVerify(exactly = 1) { pdlService.getPersonFor(eq(behovEntity.sykmeldtFnr)) }
 
                     val capturedDialog = dialogSlot.captured
@@ -184,7 +178,7 @@ class DialogportenServiceTest :
                             behovEntity2,
                         )
                     coEvery { dialogportenClient.createDialog(any()) } returnsMany listOf(dialogId1, dialogId2)
-                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+                    coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
 
                     // Act
                     dialogportenService.sendDocumentsToDialogporten()
@@ -192,7 +186,7 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
                     coVerify(exactly = 2) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 2) { spyNarmestelederDb.updateNlBehov(any()) }
+                    coVerify(exactly = 2) { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) }
                 }
             }
 
@@ -209,7 +203,7 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
                     coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 0) { spyNarmestelederDb.updateNlBehov(any()) }
+                    coVerify(exactly = 0) { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) }
                 }
             }
 
@@ -228,7 +222,7 @@ class DialogportenServiceTest :
                             behovEntity2,
                             behovEntity3,
                         )
-                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+                    coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
 
                     // First call succeeds, second fails, third succeeds
                     var callCount = 0
@@ -248,7 +242,40 @@ class DialogportenServiceTest :
                     // Assert
                     coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
                     coVerify(exactly = 3) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 2) { spyNarmestelederDb.updateNlBehov(any()) } // Only 2 successful updates
+                    coVerify(exactly = 2) { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } // Only 2 successful updates
+                }
+            }
+
+            context("when the behov leaves BEHOV_CREATED while the dialog is created") {
+                it("should keep the new status and log the created dialog") {
+                    val logger = LoggerFactory.getLogger(DialogportenService::class.java) as Logger
+                    val appender = ListAppender<ILoggingEvent>()
+                    val originalLevel = logger.level
+                    logger.level = ch.qos.logback.classic.Level.WARN
+                    appender.start()
+                    logger.addAppender(appender)
+                    try {
+                        val behovEntity = spyNarmestelederDb.insertNlBehov(nlBehovEntity())
+                        val dialogId = UUID.randomUUID()
+                        coEvery { dialogportenClient.createDialog(any()) } coAnswers {
+                            spyNarmestelederDb.updateNlBehov(behovEntity.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
+                            dialogId
+                        }
+
+                        dialogportenService.sendToDialogporten(behovEntity)
+
+                        val stored = spyNarmestelederDb.findBehovById(behovEntity.id!!)!!
+                        stored.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                        stored.dialogId shouldBe null
+                        val fields = appender.list.single().keyValuePairs.associate { it.key to it.value }
+                        fields["event_type"] shouldBe "dialog_created_for_closed_behov"
+                        fields["behov_id"] shouldBe behovEntity.id.toString()
+                        fields["dialog_id"] shouldBe dialogId.toString()
+                    } finally {
+                        logger.detachAppender(appender)
+                        appender.stop()
+                        logger.level = originalLevel
+                    }
                 }
             }
 
@@ -261,7 +288,7 @@ class DialogportenServiceTest :
 
                     coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
-                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+                    coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
 
                     // Act
                     dialogportenService.sendDocumentsToDialogporten()
@@ -281,7 +308,7 @@ class DialogportenServiceTest :
 
                     coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
                     coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
-                    coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
+                    coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
 
                     // Act
                     dialogportenService.sendDocumentsToDialogporten()

@@ -6,6 +6,7 @@ import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
+import no.nav.syfo.narmesteleder.db.ActiveNarmestelederbehovAlreadyExistsException
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -122,9 +123,13 @@ class NarmestelederService(
             hovedenhetOrgnummer = hovedenhetOrgnummer,
             behovStatus = behovStatus,
         )
-        val insertedEntity = nlDb.insertNlBehov(entity).also {
-            logger.info("Inserted NarmestelederBehovEntity with id: ${it.id}")
+        val insertedEntity = try {
+            nlDb.insertNlBehov(entity)
+        } catch (_: ActiveNarmestelederbehovAlreadyExistsException) {
+            recordSkippedDueToExistingBehov()
+            return null
         }
+        logger.info("Inserted NarmestelederBehovEntity with id: ${insertedEntity.id}")
         if (!BehovStatus.errorStatusList().contains(entity.behovStatus)) {
             dialogportenService.sendToDialogporten(insertedEntity)
         }
@@ -154,14 +159,16 @@ class NarmestelederService(
             .isNotEmpty()
 
         return if (registeredPreviousBehov) {
-            COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING.increment()
-            logger.info(
-                "Not inserting NarmestelederBehovEntity since one already for employee and org"
-            )
+            recordSkippedDueToExistingBehov()
             true
         } else {
             false
         }
+    }
+
+    private fun recordSkippedDueToExistingBehov() {
+        COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING.increment()
+        logger.info("Not inserting NarmestelederBehovEntity since one already for employee and org")
     }
 
     private suspend fun getStatusAndHovedEnhetOrgnummerFromArbeidsforhold(

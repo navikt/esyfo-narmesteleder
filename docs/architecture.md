@@ -498,6 +498,9 @@ the final repository-wide rules can replace the migration-specific checks.
 The fulfillment foundation and its remaining activation work are described in
 [Fulfillment migration status](narmestelederbehov-fulfillment-migration.md).
 
+Deployment and recovery of the active narmestelederbehov uniqueness constraint
+are described in the [unique active index runbook](narmestelederbehov-unik-aktiv-indeks.md).
+
 The first implementation slice is fulfillment of a narmestelederbehov. It
 creates only the target packages, Koin seams, application contracts and
 architecture rules required by that complete flow.

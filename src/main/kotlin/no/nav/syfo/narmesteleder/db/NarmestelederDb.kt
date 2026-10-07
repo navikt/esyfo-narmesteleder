@@ -8,12 +8,17 @@ import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.util.logger
+import org.postgresql.util.PSQLException
 import org.slf4j.event.Level
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
 
+private const val ACTIVE_NARMESTELEDERBEHOV_INDEX = "uq_nl_behov_active_employee_org"
+
 private data class QueryLimitDetails(val requestedLimit: Int, val usedLimit: Int)
+
+class ActiveNarmestelederbehovAlreadyExistsException : RuntimeException("An active narmestelederbehov already exists")
 
 private val queryLimitAdjusted = applicationEvent<QueryLimitDetails>(
     name = "query_limit_adjusted",
@@ -55,48 +60,57 @@ class PostgresNarmestelederDb(
 ) : NarmestelederDb {
     override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity = withContext(dispatcher) {
         return@withContext database.connection.use { connection ->
-            connection
-                .prepareStatement(
-                    """
-                    INSERT INTO nl_behov(orgnummer,
-                                         hovedenhet_orgnummer,
-                                         sykemeldt_fnr,
-                                         narmeste_leder_fnr,
-                                         behov_reason,
-                                         behov_status,
-                                         avbrutt_narmesteleder_id,
-                                         fornavn,
-                                         mellomnavn,
-                                         etternavn)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    RETURNING *;
-                    """.trimIndent()
-                ).use { preparedStatement ->
-                    preparedStatement.setString(1, nlBehov.orgnummer)
-                    preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
-                    preparedStatement.setString(3, nlBehov.sykmeldtFnr)
-                    preparedStatement.setString(4, nlBehov.narmestelederFnr)
-                    preparedStatement.setString(5, nlBehov.behovReason.name)
-                    preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
-                    preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
-                    preparedStatement.setString(8, nlBehov.fornavn)
-                    preparedStatement.setString(9, nlBehov.mellomnavn)
-                    preparedStatement.setString(10, nlBehov.etternavn)
-                    preparedStatement.execute()
+            runCatching {
+                connection
+                    .prepareStatement(
+                        """
+                        INSERT INTO nl_behov(orgnummer,
+                                             hovedenhet_orgnummer,
+                                             sykemeldt_fnr,
+                                             narmeste_leder_fnr,
+                                             behov_reason,
+                                             behov_status,
+                                             avbrutt_narmesteleder_id,
+                                             fornavn,
+                                             mellomnavn,
+                                             etternavn)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        RETURNING *;
+                        """.trimIndent()
+                    ).use { preparedStatement ->
+                        preparedStatement.setString(1, nlBehov.orgnummer)
+                        preparedStatement.setString(2, nlBehov.hovedenhetOrgnummer)
+                        preparedStatement.setString(3, nlBehov.sykmeldtFnr)
+                        preparedStatement.setString(4, nlBehov.narmestelederFnr)
+                        preparedStatement.setString(5, nlBehov.behovReason.name)
+                        preparedStatement.setObject(6, nlBehov.behovStatus, java.sql.Types.OTHER)
+                        preparedStatement.setObject(7, nlBehov.avbruttNarmesteLederId)
+                        preparedStatement.setString(8, nlBehov.fornavn)
+                        preparedStatement.setString(9, nlBehov.mellomnavn)
+                        preparedStatement.setString(10, nlBehov.etternavn)
+                        preparedStatement.execute()
 
-                    runCatching {
                         if (preparedStatement.resultSet.next()) {
                             preparedStatement.resultSet.toNarmestelederBehovEntity()
                         } else {
                             throw NarmestelederBehovEntityInsertException("Could not get the inserted document.")
                         }
-                    }.getOrElse {
-                        connection.rollback()
-                        throw it
+                    }.also {
+                        connection.commit()
                     }
-                }.also {
-                    connection.commit()
+            }.getOrElse { failure ->
+                runCatching { connection.rollback() }.onFailure {
+                    failure.addSuppressed(it)
+                    throw failure
                 }
+                if (failure is PSQLException &&
+                    failure.sqlState == "23505" &&
+                    failure.serverErrorMessage?.constraint == ACTIVE_NARMESTELEDERBEHOV_INDEX
+                ) {
+                    throw ActiveNarmestelederbehovAlreadyExistsException()
+                }
+                throw failure
+            }
         }
     }
 

@@ -1,7 +1,13 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import org.jetbrains.exposed.v1.core.ColumnType
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
@@ -22,6 +28,23 @@ object NarmestelederbehovTable : Table("nl_behov") {
     val behovStatus = registerColumn("behov_status", BehovStatusColumnType())
     val dialogId = javaUUID("dialog_id").nullable()
 }
+
+internal val openNarmestelederbehovStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
+
+internal fun ResultRow.toNarmestelederbehovDetails() = NarmestelederbehovDetails(
+    id = NarmestelederbehovId(this[NarmestelederbehovTable.id]),
+    employeeIdent = PersonIdent(this[NarmestelederbehovTable.sykmeldtFnr]),
+    organizationNumber = OrganizationNumber(this[NarmestelederbehovTable.orgnummer]),
+    mainOrganizationNumber = requireNotNull(this[NarmestelederbehovTable.hovedenhetOrgnummer]),
+    managerIdent = this[NarmestelederbehovTable.narmestelederFnr]?.let(::PersonIdent),
+    firstName = this[NarmestelederbehovTable.fornavn],
+    middleName = this[NarmestelederbehovTable.mellomnavn],
+    lastName = this[NarmestelederbehovTable.etternavn],
+    created = this[NarmestelederbehovTable.created].toInstant(),
+    updated = this[NarmestelederbehovTable.updated].toInstant(),
+    status = this[NarmestelederbehovTable.behovStatus],
+    reason = BehovReason.valueOf(this[NarmestelederbehovTable.behovReason]),
+)
 
 private class BehovStatusColumnType : ColumnType<BehovStatus>() {
     override fun sqlType(): String = "BEHOV_STATUS"

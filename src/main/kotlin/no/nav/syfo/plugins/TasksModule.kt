@@ -2,19 +2,25 @@ package no.nav.syfo.plugins
 
 import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
 import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
-import no.nav.syfo.maintenance.MaintenanceTask
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
+import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
 import no.nav.syfo.person.task.PersonEnrichmentTask
+import no.nav.syfo.sykmelding.retention.infrastructure.DeleteOldSykmeldingerTask
 import org.koin.dsl.module
 import kotlin.time.Duration
 
 internal fun tasksModule() = module {
     single { NarmestelederbehovExpirySettings(daysAfterTom = env().otherProperties.daysAfterTomToExpireBehovs) }
     single {
-        MaintenanceTask(
+        ExpireNarmestelederbehovTask(
             expireNarmestelederbehov = get(),
+            interval = Duration.parse(env().otherProperties.maintenanceTaskDelay),
+        )
+    }
+    single {
+        DeleteOldSykmeldingerTask(
             deleteOldSykmeldinger = get(),
-            env = env().otherProperties,
+            interval = Duration.parse(env().otherProperties.maintenanceTaskDelay),
         )
     }
     single { SendDialogTask(dialogportenService = get()) }

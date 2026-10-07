@@ -9,8 +9,9 @@ import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.events.LeaderChange
 import no.nav.syfo.application.events.LeaderChangeEvent
-import no.nav.syfo.maintenance.MaintenanceTask
+import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
 import no.nav.syfo.person.task.PersonEnrichmentTask
+import no.nav.syfo.sykmelding.retention.infrastructure.DeleteOldSykmeldingerTask
 import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject
 import java.util.Collections
@@ -21,7 +22,8 @@ fun Application.configureBackgroundTasks() {
     val environment by inject<Environment>()
     val sendDialogTask by inject<SendDialogTask>()
     val updateDialogTask by inject<UpdateDialogTask>()
-    val maintenanceTask by inject<MaintenanceTask>()
+    val expireNarmestelederbehovTask by inject<ExpireNarmestelederbehovTask>()
+    val deleteOldSykmeldingerTask by inject<DeleteOldSykmeldingerTask>()
     val personEnrichmentTask by inject<PersonEnrichmentTask>()
 
     val taskJobs: MutableList<Job> = Collections.synchronizedList(mutableListOf())
@@ -45,10 +47,11 @@ fun Application.configureBackgroundTasks() {
                         )
                     }
                     if (environment.otherProperties.maintenanceTaskEnabled) {
-                        logger.info("Maintenance task is enabled. Starting maintenanceTask.")
-                        jobs += launch { maintenanceTask.runTask() }
+                        logger.info("Maintenance tasks are enabled. Starting behov expiry and sykmelding retention tasks.")
+                        jobs += launch { expireNarmestelederbehovTask.runTask() }
+                        jobs += launch { deleteOldSykmeldingerTask.runTask() }
                     } else {
-                        logger.info("Maintenance task is NOT enabled. Skipping maintenanceTask.")
+                        logger.info("Maintenance tasks are NOT enabled. Skipping behov expiry and sykmelding retention tasks.")
                     }
                 }
             }

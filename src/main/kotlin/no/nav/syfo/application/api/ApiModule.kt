@@ -1,18 +1,11 @@
 package no.nav.syfo.application.api
 
 import io.ktor.server.application.Application
-import io.ktor.server.http.content.staticResources
-import io.ktor.server.plugins.swagger.swaggerUI
-import io.ktor.server.response.respondRedirect
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
-import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.isProdEnv
-import no.nav.syfo.application.metric.registerMetricApi
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
@@ -24,38 +17,21 @@ import no.nav.syfo.narmestelederrelasjon.api.registerRevokeActiveNarmestelederre
 import no.nav.syfo.narmestelederrelasjon.api.registerSubmitNarmestelederrelasjonApi
 import no.nav.syfo.narmestelederstatistikk.api.registerLinemanagerStatisticsApi
 import no.nav.syfo.organisasjonstilgang.api.registerAccessibleOrganizationsApi
+import no.nav.syfo.platform.api.apiV1
+import no.nav.syfo.platform.api.internalApiV1
 import org.koin.ktor.ext.get
 
 fun Application.configureRouting() {
-    installCallId()
-    installContentNegotiation()
-    installStatusPages()
-
     routing {
-        registerPodApi(applicationState = get(), database = get())
-        registerMetricApi()
-        route(API_V1_PATH) {
-            install(AddTokenIssuerPlugin)
+        apiV1 {
             registerApiV1Routes()
         }
-        route(INTERNAL_API_V1_PATH) {
-            install(AddTokenIssuerPlugin)
+        internalApiV1 {
             registerInternalApiV1Routes()
         }
-        // Static openAPI spec + swagger
-        staticResources("/openapi", "openapi")
-        swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
-        swaggerUI(path = "internal/swagger", swaggerFile = "openapi/internal-documentation.yaml")
-        swaggerUI(
-            path = "internal/linemanager-search/swagger",
-            swaggerFile = "openapi/internal-linemanager-search.yaml",
-        )
         if (!isProdEnv()) {
             // TODO: Remove this endpoint later
             registerDialogportenTokenApi(texasHttpClient = get(), altinnTokenProvider = get())
-        }
-        get("/") {
-            call.respondRedirect("/swagger")
         }
     }
 }

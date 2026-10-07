@@ -181,7 +181,8 @@ external systems used by more than one module, one package per system:
 
 A client is transport only: HTTP, token exchange, caching, error handling and
 response DTOs. It contains no business rules and no module's ports or domain
-types.
+types. Clients return `UpstreamResult<T>` instead of throwing when the external
+system fails; see [Errors and HTTP mapping](#errors-and-http-mapping).
 
 Each module keeps its own port in `application` and its own adapter in
 `infrastructure`. The adapter calls the client directly and maps the response
@@ -225,7 +226,10 @@ Contains reusable technical mechanisms without domain rules:
   Existing `ScheduledLeaderTask` jobs still use leader election until #519;
 - `application`: small use-case mechanics such as `Step`, which lets private
   use-case steps continue with a value or stop with the use case's result.
-  `Step` never appears in public use-case contracts or ports.
+  `Step` never appears in public use-case contracts or ports;
+- `upstream`: `UpstreamResult` and `UpstreamFailure`, the result types
+  returned by clients for external systems. See
+  [ADR-0004](adr/ADR-0004-feil-fra-eksterne-systemer-er-resultater-ikke-exceptions.md).
 
 `platform` must not depend on a business module.
 
@@ -395,6 +399,26 @@ failures safely to HTTP 500.
 
 Use cases do not import Ktor or HTTP error types. Kafka adapters classify
 failures using Kafka-specific retry, permanent-error and fatal-error rules.
+
+Failures in external systems are results, not exceptions
+([ADR-0004](adr/ADR-0004-feil-fra-eksterne-systemer-er-resultater-ikke-exceptions.md),
+being introduced from #642):
+
+- Clients catch Ktor and Texas exceptions once and return
+  `UpstreamResult.Failure(UpstreamFailure)` with the upstream, failure stage,
+  status and cause. `CancellationException` is always rethrown. Expected
+  answers such as "not found" are part of the success value.
+- Ports and use-case results have their own `Unavailable` variant carrying the
+  `UpstreamFailure`. Use cases stop with it through `Step`.
+- The edge decides the outcome and logs once. HTTP adapters map it to
+  `ApiErrorException` with `UPSTREAM_SERVICE_UNAVAILABLE` and the failure
+  attached; Kafka consumers and scheduled jobs apply their own retry or
+  postponement rule.
+- Legacy code that has not moved yet calls `getOrThrow()`, which throws
+  `UpstreamRequestException`. Both are removed with the last legacy caller.
+
+Database failures, Kafka publishing failures and programming errors remain
+exceptions.
 
 ## Ports and adapters
 

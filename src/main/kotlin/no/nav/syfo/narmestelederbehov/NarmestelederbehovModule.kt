@@ -11,18 +11,17 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryReposi
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeeNameLookup
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.koin.dsl.binds
 import org.koin.dsl.module
 
 fun narmestelederbehovModule() = module {
-    single { ExposedNarmestelederbehovRepository(get<Database>()) } binds arrayOf(
-        NarmestelederbehovRepository::class,
-        OpenNarmestelederbehovRepository::class,
-        NarmestelederbehovExpiryRepository::class,
-    )
+    single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
+    single<OpenNarmestelederbehovRepository> { ExposedOpenNarmestelederbehovRepository(get<Database>()) }
+    single<NarmestelederbehovExpiryRepository> { ExposedNarmestelederbehovExpiryRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }
     single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get()) }
     single<EmployeeNameLookup> { PdlEmployeeNameLookup(get()) }

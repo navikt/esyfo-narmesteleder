@@ -10,7 +10,6 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
 import java.sql.Timestamp
-import java.time.Instant
 import java.util.UUID
 
 private data class QueryLimitDetails(val requestedLimit: Int, val usedLimit: Int)
@@ -36,13 +35,6 @@ interface NarmestelederDb {
     ): List<NarmestelederBehovEntity>
 
     suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int = 100) = getNlBehovByStatus(listOf(status), limit)
-    suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
-        tomBefore: Instant,
-        newStatus: BehovStatus,
-        fromStatus: List<BehovStatus>,
-        limit: Int = 500
-    ): Int
-
     suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int = 100): List<NarmestelederBehovEntity>
 
     suspend fun getNlBehovForExpireInDialogporten(limit: Int = 100, status: List<BehovStatus>): List<NarmestelederBehovEntity>
@@ -224,48 +216,6 @@ class PostgresNarmestelederDb(
                     }
                     nlBehov
                 }
-        }
-    }
-
-    override suspend fun setBehovStatusForSykmeldingWithTomBeforeAndStatus(
-        tomBefore: Instant,
-        newStatus: BehovStatus,
-        fromStatus: List<BehovStatus>,
-        limit: Int
-    ): Int = withContext(dispatcher) {
-        if (fromStatus.isEmpty()) return@withContext 0
-
-        database.connection.use { connection ->
-            val fromStatusPlaceholders = fromStatus.joinToString(", ") { "?" }
-
-            connection.prepareStatement(
-                """
-                WITH expired_behov AS (
-                    SELECT eb.id 
-                        FROM nl_behov eb
-                        JOIN sendt_sykmelding es ON eb.sykemeldt_fnr = es.fnr AND eb.orgnummer = es.orgnummer
-                        WHERE es.tom < ?
-                        AND eb.behov_status IN ($fromStatusPlaceholders)
-                        ORDER BY eb.created
-                        LIMIT ? 
-                )
-                UPDATE nl_behov b
-                SET behov_status = ?
-                FROM expired_behov e
-                WHERE b.id = e.id
-                """.trimIndent()
-            ).use { preparedStatement ->
-                var idx = 0
-                preparedStatement.setTimestamp(++idx, Timestamp.from(tomBefore))
-                fromStatus.forEach { status ->
-                    preparedStatement.setObject(++idx, status, java.sql.Types.OTHER)
-                }
-                preparedStatement.setInt(++idx, limit)
-                preparedStatement.setObject(++idx, newStatus, java.sql.Types.OTHER)
-                preparedStatement.executeUpdate().also {
-                    connection.commit()
-                }
-            }
         }
     }
 

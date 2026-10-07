@@ -1,6 +1,5 @@
 package no.nav.syfo.narmesteleder.service
 
-import kotlinx.coroutines.delay
 import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
@@ -15,10 +14,7 @@ import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
-import java.time.Duration
-import java.time.Instant
 import java.util.UUID
-import kotlin.time.Duration.Companion.milliseconds
 
 private data class BehovSourceLogDetails(
     val source: String,
@@ -194,29 +190,5 @@ class NarmestelederService(
         } else {
             return Pair(BehovStatus.BEHOV_CREATED, arbeidsgiver.juridiskOrgnummer)
         }
-    }
-
-    suspend fun updateStatusOnExpiredBehovs(validDaysAfterTom: Long) {
-        var count: Int
-        var totalUpdated = 0
-        logger.info("Starting loop for setBehovStatusForSykmeldingWithTomBeforeAndStatus")
-        do {
-            logger.info("Before call to setBehovStatusForSykmeldingWithTomBeforeAndStatus")
-            count = nlDb.setBehovStatusForSykmeldingWithTomBeforeAndStatus(
-                tomBefore = Instant.now().minus(Duration.ofDays(validDaysAfterTom)),
-                fromStatus = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION),
-                newStatus = BehovStatus.BEHOV_EXPIRED,
-            )
-            totalUpdated += count
-            logger.info("Update $count in iteration with setBehovStatusForSykmeldingWithTomBeforeAndStatus")
-            delay(UPDATE_EXPIRED_BEHOVS_DELAY_MS.milliseconds)
-        }
-        while (count > 0)
-
-        logger.info("Updated total of $totalUpdated behovs to BEHOV_EXPIRED with tom before ${Instant.now().minus(Duration.ofDays(validDaysAfterTom))}")
-    }
-
-    companion object {
-        const val UPDATE_EXPIRED_BEHOVS_DELAY_MS = 500
     }
 }

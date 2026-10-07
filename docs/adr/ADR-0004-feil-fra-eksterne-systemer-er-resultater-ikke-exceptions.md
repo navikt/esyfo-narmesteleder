@@ -39,9 +39,10 @@ Mønsteret har seks deler:
 
   Forventede svar er en del av verdien, ikke av feilen. Ereg 404 og PDL
   `not_found` gir `Success(null)`. Andre feilkoder fra PDL, eller et svar uten
-  data, gir `Failure`. Aareg 404 gir også `Failure`, fordi det ikke er
-  dokumentert at 404 betyr «ingen arbeidsforhold». En tom liste kan føre til at
-  jobben i #473 bryter en relasjon.
+  data, gir `Failure`. Aareg 404 gir også `Failure`. Aareg svarer 404 med
+  «Ukjent ident» når personen ikke finnes i PDL. En kjent person uten
+  arbeidsforhold får 200 med tom liste. Hvis 404 ble gjort om til en tom liste,
+  kunne jobben i #473 bryte en relasjon for en person Aareg ikke kjenner.
 
   Klienten tolker protokollen, som HTTP-status og PDLs
   `errors[].extensions.code`, men har ingen forretningsregler. Det er i tråd

@@ -446,6 +446,16 @@ system. The use case owns and tests the order between those effects.
 A small domain object or transition function owns valid status changes. It
 does not call repositories or remote systems.
 
+An employee has at most one active narmestelederbehov per organization. The
+partial unique index `uq_nl_behov_active_employee_org` enforces this for
+`BEHOV_CREATED` and `DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION`, because
+several sources (sendt sykmelding and narmesteleder Leesah events) can request
+the same behov concurrently and each active behov becomes a Dialogporten
+dialog for the employer. A check before insert cannot stop that race on its
+own. A conflicting insert means the behov already exists and is skipped, not
+an error. A write that moves a behov into an active status must require the
+expected current status, so that a stale snapshot cannot reopen a closed behov.
+
 The current `BehovStatus` values and persisted Dialogporten-related states
 remain unchanged during structural migration. Separating business state from
 Dialogporten synchronization state requires a later schema and rollout

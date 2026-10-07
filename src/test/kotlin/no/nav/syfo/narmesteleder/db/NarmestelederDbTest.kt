@@ -88,6 +88,32 @@ class NarmestelederDbTest :
             }
         }
 
+        describe("markDialogCreated") {
+            it("should set dialog and status when the behov is BEHOV_CREATED") {
+                val id = db.insertNlBehov(nlBehovEntity()).id!!
+                val dialogId = UUID.randomUUID()
+
+                db.markDialogCreated(id, dialogId, "Fornavn", null, "Etternavn") shouldBe true
+
+                val stored = db.findBehovById(id)!!
+                stored.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                stored.dialogId shouldBe dialogId
+                stored.fornavn shouldBe "Fornavn"
+                stored.etternavn shouldBe "Etternavn"
+            }
+
+            it("should leave the row untouched when the behov is no longer BEHOV_CREATED") {
+                val created = db.insertNlBehov(nlBehovEntity())
+                db.updateNlBehov(created.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
+
+                db.markDialogCreated(created.id!!, UUID.randomUUID(), "Fornavn", null, "Etternavn") shouldBe false
+
+                val stored = db.findBehovById(created.id)!!
+                stored.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                stored.dialogId shouldBe null
+            }
+        }
+
         describe("getNlBehovByStatus") {
             it("should retrieve only entities with the matching status and created in the past") {
                 // Arrange
@@ -194,7 +220,7 @@ class NarmestelederDbTest :
                             nlBehovEntity().copy(
                                 sykmeldtFnr = defaultSykmledteFnr,
                                 orgnummer = defaultOrgnummer,
-                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
                             )
                         )
                     val earlier = Instant.now().minusSeconds(3 * 60L)
@@ -210,10 +236,10 @@ class NarmestelederDbTest :
                     )
 
                     // Assert
-                    retrievedEntities.size shouldBe 2
+                    retrievedEntities.size shouldBe 1
 
                     retrievedEntities.shouldContainAllIgnoringFields(
-                        setOf(nlBehovEntity1, nlBehovEntity3),
+                        setOf(nlBehovEntity1),
                         NarmestelederBehovEntity::created,
                         NarmestelederBehovEntity::updated
                     )

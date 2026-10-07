@@ -30,7 +30,7 @@ class ExposedNarmestelederstatistikkRepositoryTest :
 
         test("counts unique employees in each legacy statistic category") {
             insertBehov("12345678910", BehovStatus.BEHOV_CREATED)
-            insertBehov("12345678910", BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
+            insertBehov("12345678910", BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED)
             insertBehov("12345678911", BehovStatus.BEHOV_FULFILLED)
             insertBehov("12345678912", BehovStatus.BEHOV_CREATED, OTHER_ORGANIZATION)
             insertRelation("12345678920")
@@ -49,9 +49,10 @@ class ExposedNarmestelederstatistikkRepositoryTest :
             repository.countFor(organizationNumber) shouldBe Narmestelederstatistikk(0, 0, 0)
         }
 
-        test("counts duplicate behov and relations only once in both relation categories") {
+        test("counts one active behov alongside repeated history and duplicate relations") {
+            insertBehov("12345678910", BehovStatus.BEHOV_CREATED)
             repeat(2) {
-                insertBehov("12345678910", BehovStatus.BEHOV_CREATED)
+                insertBehov("12345678910", BehovStatus.BEHOV_FULFILLED)
                 insertRelation("12345678920")
                 insertRelation("12345678921")
             }

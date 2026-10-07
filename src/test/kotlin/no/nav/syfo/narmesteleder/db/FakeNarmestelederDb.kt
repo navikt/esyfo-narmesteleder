@@ -34,6 +34,24 @@ class FakeNarmestelederDb : NarmestelederDb {
         store[id] = toStore
     }
 
+    override suspend fun markDialogCreated(
+        id: UUID,
+        dialogId: UUID,
+        fornavn: String?,
+        mellomnavn: String?,
+        etternavn: String?,
+    ): Boolean {
+        val existing = store[id]?.takeIf { it.behovStatus == BehovStatus.BEHOV_CREATED } ?: return false
+        store[id] = existing.copy(
+            behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+            dialogId = dialogId,
+            fornavn = fornavn,
+            mellomnavn = mellomnavn,
+            etternavn = etternavn,
+        )
+        return true
+    }
+
     override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = getNlBehovByStatus(listOf(status), limit)
 
     override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]

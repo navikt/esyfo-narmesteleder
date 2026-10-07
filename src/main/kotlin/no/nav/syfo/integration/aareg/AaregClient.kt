@@ -48,7 +48,7 @@ class HttpAaregClient(
             }.body()
         } catch (e: ClientRequestException) {
             val message = if (e.response.status == HttpStatusCode.NotFound) {
-                "Error fetching arbeidsforhold oversikt for person $personIdent"
+                "Arbeidsforhold oversikt not found in Aareg"
             } else {
                 "An error occurred when fetching arbeidsforhold"
             }

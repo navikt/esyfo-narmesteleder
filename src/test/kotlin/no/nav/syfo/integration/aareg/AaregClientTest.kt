@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -48,9 +49,10 @@ class AaregClientTest :
         test("wraps 404 responses in AaregClientException") {
             val client = aaregClient(aareg = { respondJson("", HttpStatusCode.NotFound) })
 
-            shouldThrow<AaregClientException> {
+            val exception = shouldThrow<AaregClientException> {
                 client.getArbeidsforhold(personIdent)
             }
+            exception.message shouldNotContain personIdent
         }
 
         test("wraps system token failures in AaregClientException") {

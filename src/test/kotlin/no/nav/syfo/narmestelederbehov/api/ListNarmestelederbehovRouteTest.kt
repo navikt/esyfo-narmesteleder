@@ -32,6 +32,7 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
+import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
@@ -40,9 +41,6 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
-import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -224,8 +222,8 @@ private class ListRouteFixture(
         organizationAccess = OrganizationAccess { _, _ -> access },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
-            PersonLookup {
-                if (personFound) PersonDetails(it, PersonNameDetails("Looked", "Up", registeredNames = emptyList())) else null
+            EmployeeNameLookup {
+                if (personFound) BehovPersonName("Looked", null, "Up") else null
             },
         ),
     )

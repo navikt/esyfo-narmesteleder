@@ -1,5 +1,6 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -7,12 +8,15 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
-import no.nav.syfo.application.valkey.EregCache
-import no.nav.syfo.ereg.EregService
-import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.ereg.client.Organisasjon
+import no.nav.syfo.application.api.ErrorType
+import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.integration.ereg.CachedEregClient
+import no.nav.syfo.integration.ereg.EregCache
+import no.nav.syfo.integration.ereg.FakeEregClient
+import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -59,6 +63,27 @@ class AltinnOrganizationAccessTest :
         }
 
         context("LPS system user") {
+            test("missing organization preserves the bad request contract") {
+                val fixture = AccessFixture()
+                val failure = shouldThrow<ApiErrorException.BadRequestException> {
+                    fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+                }
+                failure.message shouldBe "Unable to look up the organization"
+                failure.type shouldBe ErrorType.ORGANIZATION_NOT_FOUND
+            }
+
+            test("upstream failure preserves the internal server error contract") {
+                val fixture = AccessFixture()
+                val upstreamFailure = UpstreamRequestException("Ereg unavailable")
+                fixture.ereg.setFailure(upstreamFailure)
+                val failure = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+                }
+                failure.message shouldBe "Could not get organization"
+                failure.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                failure.cause shouldBe upstreamFailure
+            }
+
             test("is granted when PDP permits the requested organization") {
                 val fixture = AccessFixture()
                 fixture.pdp.permit(REQUESTED_ORG)
@@ -115,7 +140,7 @@ private class AccessFixture {
     val access = AltinnOrganizationAccess(
         AltinnTilgangerService(altinn),
         pdp,
-        EregService(ereg, eregCache),
+        CachedEregClient(ereg, eregCache),
     )
 }
 

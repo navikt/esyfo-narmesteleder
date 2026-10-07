@@ -7,8 +7,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.FakesWrapper
-import no.nav.syfo.aareg.client.FakeAaregClient
 import no.nav.syfo.application.auth.SystemPrincipal
+import no.nav.syfo.integration.aareg.FakeAaregClient
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus

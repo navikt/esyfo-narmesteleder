@@ -17,11 +17,11 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.pdl.PdlLookupDegradedDetails
-import no.nav.syfo.pdl.PdlLookupDegradedReason
-import no.nav.syfo.pdl.client.ErrorExtension
-import no.nav.syfo.pdl.client.ResponseError
-import no.nav.syfo.pdl.pdlLookupDegraded
+import no.nav.syfo.integration.pdl.ErrorExtension
+import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
+import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
+import no.nav.syfo.integration.pdl.ResponseError
+import no.nav.syfo.integration.pdl.pdlLookupDegraded
 import org.slf4j.event.Level
 import java.net.ConnectException
 import java.net.SocketTimeoutException

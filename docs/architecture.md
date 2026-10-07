@@ -184,7 +184,9 @@ reusing one from `narmestelederrelasjon`.
 A client used by only one module lives in that module's `infrastructure`. It
 moves to `integration` when a second module needs it.
 
-Moving the existing root-level clients into `integration` is tracked in #616.
+The shared Ereg, PDL, Aareg and Dinesykmeldte clients live in `integration`.
+Ereg caching is provided by the `CachedEregClient` decorator; module adapters
+own the mapping from client results and failures to their ports.
 
 ### `ident`
 

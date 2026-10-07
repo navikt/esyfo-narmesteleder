@@ -1,8 +1,12 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure
 
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.ereg.EregService
+import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.integration.ereg.EregClient
+import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
@@ -19,7 +23,7 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.COUNT_HAS
 class AltinnOrganizationAccess(
     private val altinnTilgangerService: AltinnTilgangerService,
     private val client: AltinnAuthorizationClient,
-    private val eregService: EregService,
+    private val eregClient: EregClient,
 ) : OrganizationAccess {
     override suspend fun evaluate(
         subject: OrganizationAccessSubject,
@@ -71,7 +75,7 @@ class AltinnOrganizationAccess(
         subject: OrganizationAccessSubject.LpsSystemUser,
         organizationNumber: OrganizationNumber,
     ): Decision? {
-        val hierarchy = eregService.getOrganization(organizationNumber.value).aggregerOrgnummereFraHierarki()
+        val hierarchy = getOrganization(organizationNumber.value).aggregerOrgnummereFraHierarki()
         return if (subject.systemUserOrganizationNumber.value in hierarchy) {
             decisionFor(subject, subject.systemUserOrganizationNumber)
         } else {
@@ -87,4 +91,17 @@ class AltinnOrganizationAccess(
         orgNumberSet = setOf(organizationNumber.value),
         resource = OPPGI_NARMESTELEDER_RESOURCE,
     ).result()
+
+    private suspend fun getOrganization(orgNumber: String): Organisasjon = try {
+        eregClient.getOrganisasjon(orgNumber)
+    } catch (e: UpstreamRequestException) {
+        throw ApiErrorException.InternalServerErrorException(
+            "Could not get organization",
+            type = ErrorType.UPSTREAM_SERVICE_UNAVAILABLE,
+            cause = e,
+        )
+    } ?: throw ApiErrorException.BadRequestException(
+        "Unable to look up the organization",
+        type = ErrorType.ORGANIZATION_NOT_FOUND,
+    )
 }

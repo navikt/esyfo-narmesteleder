@@ -28,11 +28,11 @@ import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
+import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.client.FakePdlClient
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.util.*

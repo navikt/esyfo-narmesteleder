@@ -1,6 +1,6 @@
 package no.nav.syfo.dinesykmeldte
 
-import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
+import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
 
 class ClientDinesykmeldteService(private val dinesykmeldteClient: DinesykmeldteClient) : DinesykmeldteService {
     override suspend fun getIsActiveSykmelding(

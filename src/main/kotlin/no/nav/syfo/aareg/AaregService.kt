@@ -1,10 +1,10 @@
 package no.nav.syfo.aareg
 
-import no.nav.syfo.aareg.client.AaregClient
-import no.nav.syfo.aareg.client.AaregClientException
-import no.nav.syfo.aareg.client.Arbeidsforholdoversikt
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.integration.aareg.AaregClient
+import no.nav.syfo.integration.aareg.AaregClientException
+import no.nav.syfo.integration.aareg.Arbeidsforholdoversikt
 import no.nav.syfo.util.logger
 
 class AaregService(private val arbeidsforholdOversiktClient: AaregClient) {

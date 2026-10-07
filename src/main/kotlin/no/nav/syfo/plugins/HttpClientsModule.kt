@@ -1,26 +1,27 @@
 package no.nav.syfo.plugins
 
-import no.nav.syfo.aareg.client.AaregClient
-import no.nav.syfo.aareg.client.FakeAaregClient
-import no.nav.syfo.aareg.client.HttpAaregClient
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.dinesykmeldte.client.DinesykmeldteClient
-import no.nav.syfo.dinesykmeldte.client.FakeDinesykmeldteClient
-import no.nav.syfo.dinesykmeldte.client.HttpDinesykmeldteClient
-import no.nav.syfo.ereg.client.EregClient
-import no.nav.syfo.ereg.client.FakeEregClient
-import no.nav.syfo.ereg.client.HttpEregClient
+import no.nav.syfo.integration.aareg.AaregClient
+import no.nav.syfo.integration.aareg.FakeAaregClient
+import no.nav.syfo.integration.aareg.HttpAaregClient
+import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
+import no.nav.syfo.integration.dinesykmeldte.FakeDinesykmeldteClient
+import no.nav.syfo.integration.dinesykmeldte.HttpDinesykmeldteClient
+import no.nav.syfo.integration.ereg.CachedEregClient
+import no.nav.syfo.integration.ereg.EregClient
+import no.nav.syfo.integration.ereg.FakeEregClient
+import no.nav.syfo.integration.ereg.HttpEregClient
+import no.nav.syfo.integration.pdl.FakePdlClient
+import no.nav.syfo.integration.pdl.HttpPdlClient
+import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.FakeAltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpAltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
-import no.nav.syfo.pdl.client.FakePdlClient
-import no.nav.syfo.pdl.client.HttpPdlClient
-import no.nav.syfo.pdl.client.PdlClient
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
@@ -96,11 +97,12 @@ internal fun httpClientsModule(isLocalEnv: Boolean) = module {
             )
         },
     )
-    localOrRemote<EregClient>(
-        isLocalEnv,
-        local = { FakeEregClient() },
-        remote = { HttpEregClient(eregBaseUrl = env().clientProperties.eregBaseUrl) },
-    )
+    single<EregClient> {
+        CachedEregClient(
+            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = env().clientProperties.eregBaseUrl),
+            cache = get(),
+        )
+    }
     localOrRemote<AltinnAuthorizationClient>(
         isLocalEnv,
         local = { FakeAltinnAuthorizationClient() },

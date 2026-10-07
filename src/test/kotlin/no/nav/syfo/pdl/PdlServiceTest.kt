@@ -8,22 +8,22 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
+import no.nav.syfo.integration.pdl.GetPersonBolkResponse
+import no.nav.syfo.integration.pdl.GetPersonResponse
+import no.nav.syfo.integration.pdl.HentIdenterBolk
+import no.nav.syfo.integration.pdl.HentPersonBolk
+import no.nav.syfo.integration.pdl.Ident
+import no.nav.syfo.integration.pdl.IdentResponse
+import no.nav.syfo.integration.pdl.Navn
+import no.nav.syfo.integration.pdl.PdlClient
+import no.nav.syfo.integration.pdl.PdlIdent
+import no.nav.syfo.integration.pdl.PdlRequestException
+import no.nav.syfo.integration.pdl.PdlResourceNotFoundException
+import no.nav.syfo.integration.pdl.PersonBolkResponseData
+import no.nav.syfo.integration.pdl.PersonResponse
+import no.nav.syfo.integration.pdl.ResponseData
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.pdl.client.GetPersonBolkResponse
-import no.nav.syfo.pdl.client.GetPersonResponse
-import no.nav.syfo.pdl.client.HentIdenterBolk
-import no.nav.syfo.pdl.client.HentPersonBolk
-import no.nav.syfo.pdl.client.Ident
-import no.nav.syfo.pdl.client.IdentResponse
-import no.nav.syfo.pdl.client.Navn
-import no.nav.syfo.pdl.client.PdlClient
-import no.nav.syfo.pdl.client.PdlIdent
-import no.nav.syfo.pdl.client.PersonBolkResponseData
-import no.nav.syfo.pdl.client.PersonResponse
-import no.nav.syfo.pdl.client.ResponseData
-import no.nav.syfo.pdl.exception.PdlRequestException
-import no.nav.syfo.pdl.exception.PdlResourceNotFoundException
-import no.nav.syfo.pdl.client.Person as PdlClientPerson
+import no.nav.syfo.integration.pdl.Person as PdlClientPerson
 
 class PdlServiceTest :
     DescribeSpec({

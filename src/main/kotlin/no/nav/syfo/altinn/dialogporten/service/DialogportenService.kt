@@ -16,6 +16,8 @@ import no.nav.syfo.altinn.dialogporten.domain.Url
 import no.nav.syfo.altinn.dialogporten.domain.create
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
+import no.nav.syfo.integration.pdl.Foedselsdato
+import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.logging.rethrowCancellation
@@ -24,8 +26,6 @@ import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.client.Foedselsdato
-import no.nav.syfo.pdl.client.Navn
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
 import java.time.Instant

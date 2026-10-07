@@ -15,6 +15,9 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import no.nav.syfo.TestDB
 import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.integration.pdl.Foedselsdato
+import no.nav.syfo.integration.pdl.Navn
+import no.nav.syfo.integration.pdl.PdlRequestException
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
@@ -22,9 +25,6 @@ import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
-import no.nav.syfo.pdl.client.Foedselsdato
-import no.nav.syfo.pdl.client.Navn
-import no.nav.syfo.pdl.exception.PdlRequestException
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -148,7 +148,7 @@ class PdlLeesahNameUpdateServiceTest :
                 coEvery { pdlService.getPersonsBolk(listOf(fnr)) } returns emptyMap()
 
                 runTest {
-                    val failure = shouldThrow<no.nav.syfo.pdl.exception.PdlIncompleteResponseException> {
+                    val failure = shouldThrow<no.nav.syfo.integration.pdl.PdlIncompleteResponseException> {
                         service.processNameChanges(listOf(fnr))
                     }
                     failure.missingCount shouldBe 1
@@ -244,7 +244,7 @@ class PdlLeesahNameUpdateServiceTest :
                 coEvery { pdlService.getPersonsBolk(listOf(fnr)) } returns emptyMap()
 
                 runTest {
-                    val failure = shouldThrow<no.nav.syfo.pdl.exception.PdlIncompleteResponseException> {
+                    val failure = shouldThrow<no.nav.syfo.integration.pdl.PdlIncompleteResponseException> {
                         service.processNameChanges(listOf(fnr))
                     }
                     failure.missingCount shouldBe 1

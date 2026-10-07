@@ -3,11 +3,11 @@ package no.nav.syfo.aareg
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.aareg.client.AaregClientException
-import no.nav.syfo.aareg.client.ArbeidsstedType
-import no.nav.syfo.aareg.client.FakeAaregClient
-import no.nav.syfo.aareg.client.OpplysningspliktigType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.integration.aareg.AaregClientException
+import no.nav.syfo.integration.aareg.ArbeidsstedType
+import no.nav.syfo.integration.aareg.FakeAaregClient
+import no.nav.syfo.integration.aareg.OpplysningspliktigType
 
 class AaregServiceTest :
     DescribeSpec({

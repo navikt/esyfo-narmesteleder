@@ -22,7 +22,7 @@ import no.nav.syfo.application.kafka.kafkaRecordSkipped
 import no.nav.syfo.application.kafka.kafkaRecordSkippedError
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.pdl.exception.PdlIncompleteResponseException
+import no.nav.syfo.integration.pdl.PdlIncompleteResponseException
 import no.nav.syfo.util.logger
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerConfig

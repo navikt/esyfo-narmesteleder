@@ -5,7 +5,6 @@ import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
 import no.nav.syfo.dinesykmeldte.DinesykmeldteService
-import no.nav.syfo.ereg.EregService
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
@@ -46,7 +45,6 @@ internal fun legacyServicesModule() = module {
     single<DinesykmeldteService> { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
     single { PdlService(pdlClient = get()) }
     single { PdlLeesahNameUpdateService(database = get(), pdlService = get()) }
-    single { EregService(eregClient = get(), eregCache = get()) }
     single { PersonEnrichmentService(database = get(), pdlService = get()) }
     single {
         DialogportenService(

@@ -34,6 +34,7 @@ import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
+import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
@@ -42,9 +43,6 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
-import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -175,10 +173,7 @@ private const val MAIN_ORGANIZATION_NUMBER = "910000002"
 private class GetFixture(
     organizationName: String? = null,
     denialReason: DenialReason? = null,
-    person: PersonDetails? = PersonDetails(
-        personIdent = PersonIdent(EMPLOYEE_IDENT),
-        name = PersonNameDetails(firstName = "Looked", lastName = "Up", registeredNames = emptyList()),
-    ),
+    person: BehovPersonName? = BehovPersonName(firstName = "Looked", middleName = null, lastName = "Up"),
 ) {
     val effects = mutableListOf<String>()
     val repository = FakeReadBehovRepository()
@@ -191,7 +186,7 @@ private class GetFixture(
         },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
-            PersonLookup {
+            EmployeeNameLookup {
                 effects += "person"
                 person
             },

@@ -28,8 +28,8 @@ import no.nav.person.pdl.leesah.navn.Navn
 import no.nav.person.pdl.leesah.navn.OriginaltNavn
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.pdl.exception.PdlIncompleteResponseException
-import no.nav.syfo.pdl.exception.PdlRequestException
+import no.nav.syfo.integration.pdl.PdlIncompleteResponseException
+import no.nav.syfo.integration.pdl.PdlRequestException
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer

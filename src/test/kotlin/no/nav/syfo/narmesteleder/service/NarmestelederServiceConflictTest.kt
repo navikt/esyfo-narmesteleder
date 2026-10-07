@@ -58,7 +58,6 @@ private fun conflictTestService(db: NarmestelederDb, dialog: RecordingDialogport
         nlDb = db,
         persistLeesahNlBehov = true,
         aaregService = AaregService(TestAaregClient()),
-        pdlService = pdl,
         dinesykmeldteService = DinesykmeldteService { _, _ -> error("Unexpected sykmelding lookup") },
         dialogportenService = DialogportenService(dialog, db, OtherEnvironmentProperties.createForLocal(), pdl),
     )

@@ -10,6 +10,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import no.nav.syfo.texas.client.TexasHttpClient
 import org.slf4j.LoggerFactory
+import kotlin.coroutines.cancellation.CancellationException
 
 private data class GetIsActiveSykmeldingRequest(
     val sykmeldtFnr: String,
@@ -28,56 +29,33 @@ class HttpDinesykmeldteClient(
     private val texasHttpClient: TexasHttpClient,
     private val scope: String
 ) : DinesykmeldteClient {
-    private val arbeidsforholdOversiktPath = "${dinesykmeldteBaseUrl}$DINESYKMELDTE_ACTIVE_SYKMELDING_PATH"
+    private val isActiveSykmeldingPath = "${dinesykmeldteBaseUrl}$DINESYKMELDTE_ACTIVE_SYKMELDING_PATH"
 
-    override suspend fun getIsActiveSykmelding(fnr: String, orgnummer: String): Boolean = getDineSykmeldteIsActiveSykmelding(
-        fnr,
-        orgnummer,
-        getSystemToken()
-    )
-    private suspend fun getSystemToken() = runCatching {
+    override suspend fun getIsActiveSykmelding(fnr: String, orgnummer: String): Boolean {
+        val token = getSystemToken()
+        return try {
+            httpClient.post(isActiveSykmeldingPath) {
+                bearerAuth(token)
+                contentType(ContentType.Application.Json)
+                setBody(GetIsActiveSykmeldingRequest(sykmeldtFnr = fnr, orgnummer = orgnummer))
+            }.body()
+        } catch (e: ClientRequestException) {
+            throw DinesykmeldteClientException("An error occurred when fetching sick leave status", e)
+        }
+    }
+
+    private suspend fun getSystemToken(): String = try {
         texasHttpClient.systemToken(
             TexasHttpClient.IDENTITY_PROVIDER_AZUREAD,
             TexasHttpClient.getTarget(scope)
         ).accessToken
-    }.getOrElse {
-        if (it is Exception) {
-            throw DinesykmeldteClientException("An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}", it)
-        } else {
-            throw it
-        }
-    }
-
-    private suspend fun getDineSykmeldteIsActiveSykmelding(
-        personIdent: String,
-        orgnummer: String,
-        token: String
-    ): Boolean {
-        val res = runCatching<Boolean> {
-            httpClient.post(arbeidsforholdOversiktPath) {
-                bearerAuth(token)
-                contentType(ContentType.Application.Json)
-                setBody(
-                    GetIsActiveSykmeldingRequest(
-                        sykmeldtFnr = personIdent,
-                        orgnummer = orgnummer
-                    )
-                )
-            }.body()
-        }
-
-        return res.getOrElse { ex ->
-            when (ex) {
-                is ClientRequestException -> {
-                    throw DinesykmeldteClientException(
-                        "An error occurred when fetching sick leave status",
-                        ex
-                    )
-                }
-
-                else -> throw ex
-            }
-        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        throw DinesykmeldteClientException(
+            "An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}",
+            e
+        )
     }
 
     companion object {

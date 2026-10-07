@@ -12,6 +12,7 @@ import io.ktor.http.contentType
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import org.slf4j.LoggerFactory
+import kotlin.coroutines.cancellation.CancellationException
 
 private data class FinnArbeidsforholdoversikterPrArbeidstakerAPIRequest(
     val arbeidstakerId: String,
@@ -37,53 +38,36 @@ class HttpAaregClient(
 ) : AaregClient {
     private val arbeidsforholdOversiktPath = "${aaregBaseUrl}$ARBEIDSFORHOLD_OVERSIKT_PATH"
 
-    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt = fetchArbeidsforholdoversikt(personIdent, getSystemToken())
+    override suspend fun getArbeidsforhold(personIdent: String): AaregArbeidsforholdOversikt {
+        val token = getSystemToken()
+        return try {
+            httpClient.post(arbeidsforholdOversiktPath) {
+                bearerAuth(token)
+                contentType(ContentType.Application.Json)
+                setBody(FinnArbeidsforholdoversikterPrArbeidstakerAPIRequest(arbeidstakerId = personIdent))
+            }.body()
+        } catch (e: ClientRequestException) {
+            val message = if (e.response.status == HttpStatusCode.NotFound) {
+                "Error fetching arbeidsforhold oversikt for person $personIdent"
+            } else {
+                "An error occurred when fetching arbeidsforhold"
+            }
+            throw AaregClientException(message, e)
+        }
+    }
 
-    private suspend fun getSystemToken() = runCatching {
+    private suspend fun getSystemToken(): String = try {
         texasHttpClient.systemToken(
             TexasHttpClient.IDENTITY_PROVIDER_AZUREAD,
             TexasHttpClient.getTarget(scope)
         ).accessToken
-    }.getOrElse {
-        if (it is Exception) {
-            throw AaregClientException("An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}", it)
-        } else {
-            throw it
-        }
-    }
-
-    private suspend fun fetchArbeidsforholdoversikt(
-        personIdent: String,
-        token: String
-    ): AaregArbeidsforholdOversikt {
-        val res = runCatching<AaregArbeidsforholdOversikt> {
-            httpClient.post(arbeidsforholdOversiktPath) {
-                bearerAuth(token)
-                contentType(ContentType.Application.Json)
-                setBody(
-                    FinnArbeidsforholdoversikterPrArbeidstakerAPIRequest(
-                        arbeidstakerId = personIdent
-                    )
-                )
-            }.body()
-        }
-
-        return res.getOrElse { ex ->
-            when (ex) {
-                is ClientRequestException if ex.response.status == HttpStatusCode.NotFound -> {
-                    throw AaregClientException("Error fetching arbeidsforhold oversikt for person $personIdent", ex)
-                }
-
-                is ClientRequestException -> {
-                    throw AaregClientException(
-                        "An error occurred when fetching arbeidsforhold",
-                        ex
-                    )
-                }
-
-                else -> throw ex
-            }
-        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        throw AaregClientException(
+            "An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}",
+            e
+        )
     }
 
     companion object {

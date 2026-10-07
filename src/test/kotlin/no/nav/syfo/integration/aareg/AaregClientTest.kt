@@ -1,104 +1,90 @@
 package no.nav.syfo.integration.aareg
 
-import DefaultOrganization
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import defaultMocks
-import getMockEngine
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.ContentType
+import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
-import io.mockk.coVerify
-import io.mockk.mockk
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.util.httpClientDefault
+import no.nav.syfo.integration.TEST_SYSTEM_TOKEN
+import no.nav.syfo.integration.respondJson
+import no.nav.syfo.integration.respondWithSystemToken
+import no.nav.syfo.integration.texasHttpClient
+import no.nav.syfo.integration.upstreamHttpClient
+import kotlin.coroutines.cancellation.CancellationException
 
 class AaregClientTest :
-    DescribeSpec({
-        val texasHttpClient = mockk<TexasHttpClient>(relaxed = true)
-        val arbeidstakerEnhet = DefaultOrganization
-        val personIdent = "12345"
+    FunSpec({
+        val personIdent = "12345678910"
 
-        describe("Successful responses from Aareg") {
-            val fakeAaregClient = FakeAaregClient()
-            fakeAaregClient.arbeidsForholdForIdent.put(personIdent, listOf(arbeidstakerEnhet.ID to arbeidstakerEnhet.ID))
-            val arbeidsforhold = FakeAaregClient().getArbeidsforhold(personIdent)
-
-            val mockEngine = MockEngine.Companion { req ->
-                when (req.method) {
-                    HttpMethod.Companion.Post -> respond(
-                        content = jacksonObjectMapper().writeValueAsString(arbeidsforhold),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    )
-
-                    else -> mockk()
+        test("fetches arbeidsforhold from Aareg with a system token") {
+            val expected = FakeAaregClient()
+                .apply { arbeidsForholdForIdent[personIdent] = listOf("123456789" to "987654321") }
+                .getArbeidsforhold(personIdent)
+            var authorization: String? = null
+            var path: String? = null
+            val client = aaregClient(
+                aareg = { request ->
+                    authorization = request.headers[HttpHeaders.Authorization]
+                    path = request.url.encodedPath
+                    respondJson(jacksonObjectMapper().writeValueAsString(expected))
                 }
-            }
-            val httpClient = httpClientDefault(HttpClient(mockEngine))
-            val aaregClient = HttpAaregClient(
-                aaregBaseUrl = "base",
-                texasHttpClient = texasHttpClient,
-                scope = "scope",
-                httpClient = httpClient,
             )
 
-            it("Fetches arbeidsforhold in Aareg") {
-                texasHttpClient.defaultMocks()
-                val res = aaregClient.getArbeidsforhold(personIdent)
-                res shouldBe arbeidsforhold
-                coVerify(exactly = 1) {
-                    texasHttpClient.systemToken(any(), any())
-                }
-                res shouldBe arbeidsforhold
+            client.getArbeidsforhold(personIdent) shouldBe expected
+            authorization shouldBe "Bearer $TEST_SYSTEM_TOKEN"
+            path shouldBe HttpAaregClient.ARBEIDSFORHOLD_OVERSIKT_PATH
+        }
+
+        test("wraps 4xx responses in AaregClientException") {
+            val client = aaregClient(aareg = { respondJson("", HttpStatusCode.BadRequest) })
+
+            shouldThrow<AaregClientException> {
+                client.getArbeidsforhold(personIdent)
             }
         }
-        describe("Error responses from Aareg") {
 
-            it("It should re-throw with internal server error if 4xx error except 404") {
-                texasHttpClient.defaultMocks()
-                val mockEngine = getMockEngine(
-                    path = HttpAaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH,
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                    status = HttpStatusCode.Companion.BadRequest,
-                    content = ""
-                )
-                val client = httpClientDefault(HttpClient(mockEngine))
-                val arClient = HttpAaregClient(
-                    aaregBaseUrl = "",
-                    texasHttpClient = texasHttpClient,
-                    scope = "scope",
-                    httpClient = client,
-                )
-                shouldThrow<AaregClientException> {
-                    arClient.getArbeidsforhold(personIdent)
-                }
+        test("wraps 404 responses in AaregClientException") {
+            val client = aaregClient(aareg = { respondJson("", HttpStatusCode.NotFound) })
+
+            shouldThrow<AaregClientException> {
+                client.getArbeidsforhold(personIdent)
             }
+        }
 
-            it("Should re-throw with internal server error if 4xx error") {
-                texasHttpClient.defaultMocks()
-                val mockEngine = getMockEngine(
-                    path = HttpAaregClient.Companion.ARBEIDSFORHOLD_OVERSIKT_PATH,
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                    status = HttpStatusCode.Companion.NotFound,
-                    content = ""
-                )
-                val client = httpClientDefault(HttpClient(mockEngine))
-                val arClient = HttpAaregClient(
-                    aaregBaseUrl = "",
-                    texasHttpClient = texasHttpClient,
-                    scope = "scope",
-                    httpClient = client,
-                )
-                shouldThrow<AaregClientException> {
-                    arClient.getArbeidsforhold(personIdent)
-                }
+        test("wraps system token failures in AaregClientException") {
+            val client = aaregClient(
+                token = { respondJson("", HttpStatusCode.InternalServerError) },
+                aareg = { respondJson("") },
+            )
+
+            shouldThrow<AaregClientException> {
+                client.getArbeidsforhold(personIdent)
+            }
+        }
+
+        test("propagates cancellation while acquiring system token") {
+            val client = aaregClient(
+                token = { throw CancellationException("cancelled") },
+                aareg = { respondJson("") },
+            )
+
+            shouldThrow<CancellationException> {
+                client.getArbeidsforhold(personIdent)
             }
         }
     })
+
+private fun aaregClient(
+    token: MockRequestHandler = respondWithSystemToken,
+    aareg: MockRequestHandler,
+): HttpAaregClient {
+    val httpClient = upstreamHttpClient(token = token, upstream = aareg)
+    return HttpAaregClient(
+        aaregBaseUrl = "http://aareg",
+        texasHttpClient = texasHttpClient(httpClient),
+        scope = "scope",
+        httpClient = httpClient,
+    )
+}

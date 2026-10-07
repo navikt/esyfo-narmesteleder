@@ -78,8 +78,7 @@ arbeid mellom podder.
 Teamet har flere apper med varianter av samme mønster, og et felles bibliotek
 kan bli riktig på sikt. Nå ville det krevd et API på tvers av team, publisering
 og versjonering, og at variantene ble samkjørt først. Det tas opp som et eget
-team-initiativ. `esyfo-observability` er et logging- og observerbarhetsbibliotek
-og er ikke riktig sted for denne mekanismen.
+team-initiativ.
 
 ## Konsekvenser
 

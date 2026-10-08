@@ -6,6 +6,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -90,6 +91,7 @@ private class ReadFixture(
             savedNames += name
         }
         override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("GET must not use fulfillment lookup")
+        override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("GET must not look up open behov")
         override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("GET must not write")
         override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("GET must not write")
     }

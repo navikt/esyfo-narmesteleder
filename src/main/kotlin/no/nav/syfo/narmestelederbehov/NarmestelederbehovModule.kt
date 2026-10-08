@@ -11,7 +11,6 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovForEmployee
 import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovExpiryRepository
@@ -23,18 +22,14 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 
 fun narmestelederbehovModule() = module {
-    single { ExposedNarmestelederbehovRepository(get<Database>()) }
-    single<NarmestelederbehovRepository> { get<ExposedNarmestelederbehovRepository>() }
-    single { ExposedOpenNarmestelederbehovRepository(get<Database>()) }
-    single<OpenNarmestelederbehovRepository> { get<ExposedOpenNarmestelederbehovRepository>() }
-    single<OpenNarmestelederbehovForEmployee> { get<ExposedOpenNarmestelederbehovRepository>() }
+    single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
+    single<OpenNarmestelederbehovRepository> { ExposedOpenNarmestelederbehovRepository(get<Database>()) }
     single<NarmestelederbehovExpiryRepository> { ExposedNarmestelederbehovExpiryRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }
     single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get()) }
     single<LeesahFulfillmentMetrics> { MicrometerLeesahFulfillmentMetrics() }
     single {
         FulfillNarmestelederbehovFromLeesahUseCase(
-            openBehov = get(),
             behovRepository = get(),
             metrics = get(),
             dialog = get(),

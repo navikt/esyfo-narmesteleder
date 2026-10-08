@@ -343,6 +343,8 @@ private class FakePutBehovRepository : NarmestelederbehovRepository {
 
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov[id]
 
+    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("Fulfillment must not look up open behov")
+
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult {
         if (id !in behov) return MarkFulfilledResult.Missing
         fulfilled += id

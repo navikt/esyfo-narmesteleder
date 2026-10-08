@@ -14,9 +14,13 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
     FunSpec({
         test("fulfills every open behov and saves the status before completing its dialog") {
             val effects = mutableListOf<String>()
-            val repository = LeesahBehovRepository(effects, dialogIds = mapOf(WITH_DIALOG to DIALOG_ID, WITHOUT_DIALOG to null))
+            val repository = LeesahBehovRepository(
+                effects,
+                openBehov = listOf(WITH_DIALOG, WITHOUT_DIALOG),
+                dialogIds = mapOf(WITH_DIALOG to DIALOG_ID, WITHOUT_DIALOG to null),
+            )
 
-            useCase(effects, repository, openBehov = listOf(WITH_DIALOG, WITHOUT_DIALOG)).execute(EMPLOYEE)
+            useCase(effects, repository).execute(EMPLOYEE)
 
             effects shouldBe listOf(
                 "find",
@@ -30,52 +34,49 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
         }
 
         test("looks up open behov for the employee in the message") {
-            var requested: Employee? = null
-            val useCase = FulfillNarmestelederbehovFromLeesahUseCase(
-                openBehov = { employee -> emptyList<NarmestelederbehovId>().also { requested = employee } },
-                behovRepository = LeesahBehovRepository(),
-                metrics = {},
-                dialog = FakeDialog(),
-            )
+            val repository = LeesahBehovRepository()
 
-            useCase.execute(EMPLOYEE)
+            useCase(mutableListOf(), repository).execute(EMPLOYEE)
 
-            requested shouldBe EMPLOYEE
+            repository.requestedEmployee shouldBe EMPLOYEE
         }
 
         test("does nothing when the employee has no open behov") {
             val effects = mutableListOf<String>()
 
-            useCase(effects, LeesahBehovRepository(effects), openBehov = emptyList()).execute(EMPLOYEE)
+            useCase(effects, LeesahBehovRepository(effects)).execute(EMPLOYEE)
 
             effects shouldBe listOf("find")
         }
 
         test("skips a behov that disappeared before it was fulfilled") {
             val effects = mutableListOf<String>()
-            val repository = LeesahBehovRepository(effects, missing = setOf(WITH_DIALOG))
+            val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), missing = setOf(WITH_DIALOG))
 
-            useCase(effects, repository, openBehov = listOf(WITH_DIALOG)).execute(EMPLOYEE)
+            useCase(effects, repository).execute(EMPLOYEE)
 
             effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG")
         }
 
         test("keeps the behov fulfilled and continues when Dialogporten fails") {
             val effects = mutableListOf<String>()
-            val repository = LeesahBehovRepository(effects, dialogIds = mapOf(WITH_DIALOG to DIALOG_ID, WITHOUT_DIALOG to null))
+            val repository = LeesahBehovRepository(
+                effects,
+                openBehov = listOf(WITH_DIALOG, WITHOUT_DIALOG),
+                dialogIds = mapOf(WITH_DIALOG to DIALOG_ID, WITHOUT_DIALOG to null),
+            )
 
-            useCase(effects, repository, openBehov = listOf(WITH_DIALOG, WITHOUT_DIALOG), dialogFailure = IllegalStateException("down"))
-                .execute(EMPLOYEE)
+            useCase(effects, repository, dialogFailure = IllegalStateException("down")).execute(EMPLOYEE)
 
             effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "dialog", "fulfilled:$WITHOUT_DIALOG", "metric")
         }
 
         test("propagates a status save failure so the record is retried") {
             val effects = mutableListOf<String>()
-            val repository = LeesahBehovRepository(effects, fulfillFailure = IllegalStateException("database down"))
+            val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), fulfillFailure = IllegalStateException("database down"))
 
             shouldThrow<IllegalStateException> {
-                useCase(effects, repository, openBehov = listOf(WITH_DIALOG)).execute(EMPLOYEE)
+                useCase(effects, repository).execute(EMPLOYEE)
             }
 
             effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG")
@@ -83,11 +84,10 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
 
         test("propagates cancellation from Dialogporten") {
             val effects = mutableListOf<String>()
-            val repository = LeesahBehovRepository(effects, dialogIds = mapOf(WITH_DIALOG to DIALOG_ID))
+            val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), dialogIds = mapOf(WITH_DIALOG to DIALOG_ID))
 
             shouldThrow<CancellationException> {
-                useCase(effects, repository, openBehov = listOf(WITH_DIALOG), dialogFailure = CancellationException("stopping"))
-                    .execute(EMPLOYEE)
+                useCase(effects, repository, dialogFailure = CancellationException("stopping")).execute(EMPLOYEE)
             }
         }
     })
@@ -99,15 +99,24 @@ private val DIALOG_ID = UUID.fromString("00000000-0000-0000-0000-0000000000d1")
 
 private class LeesahBehovRepository(
     private val effects: MutableList<String> = mutableListOf(),
+    private val openBehov: List<NarmestelederbehovId> = emptyList(),
     private val dialogIds: Map<NarmestelederbehovId, UUID?> = emptyMap(),
     private val missing: Set<NarmestelederbehovId> = emptySet(),
     private val fulfillFailure: Throwable? = null,
 ) : NarmestelederbehovRepository {
+    var requestedEmployee: Employee? = null
+
     override suspend fun findDetails(id: NarmestelederbehovId) = error("Leesah fulfillment must not read details")
 
     override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Leesah fulfillment must not save names")
 
     override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Leesah fulfillment must not read for fulfillment")
+
+    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> {
+        effects += "find"
+        requestedEmployee = employee
+        return openBehov
+    }
 
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult {
         effects += "fulfilled:$id"
@@ -124,10 +133,8 @@ private class LeesahBehovRepository(
 private fun useCase(
     effects: MutableList<String>,
     repository: NarmestelederbehovRepository,
-    openBehov: List<NarmestelederbehovId>,
     dialogFailure: Throwable? = null,
 ) = FulfillNarmestelederbehovFromLeesahUseCase(
-    openBehov = { openBehov.also { effects += "find" } },
     behovRepository = repository,
     metrics = { effects += "metric" },
     dialog = FakeDialog(effects, dialogFailure),

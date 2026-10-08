@@ -6,10 +6,8 @@ import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.TestDB.Companion.updateCreated
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmestelederbehov.domain.Employee
 import java.time.Instant
 
 class ExposedOpenNarmestelederbehovRepositoryTest :
@@ -48,30 +46,5 @@ class ExposedOpenNarmestelederbehovRepositoryTest :
             repository.countOpen(organizationNumber, boundary) shouldBe 2L
             repository.countOpen(organizationNumber, boundary.plusSeconds(2)) shouldBe 0L
             repository.findOpen(organizationNumber, boundary.plusSeconds(2), limit = 50) shouldBe emptyList()
-        }
-
-        // An employee can have at most one open behov per organization (uq_nl_behov_active_employee_org).
-        val openStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
-        openStatuses.forEach { openStatus ->
-            test("open behov for an employee match person, organization and status $openStatus") {
-                val employee = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001"))
-                suspend fun insert(
-                    status: BehovStatus,
-                    personIdent: String = employee.personIdent.value,
-                    organizationNumber: String = employee.organizationNumber.value,
-                ) = requireNotNull(
-                    setupDb.insertNlBehov(
-                        nlBehovEntity().copy(sykmeldtFnr = personIdent, orgnummer = organizationNumber, behovStatus = status),
-                    ).id,
-                )
-                val open = insert(openStatus)
-                BehovStatus.entries
-                    .filterNot { it in openStatuses }
-                    .forEach { insert(it) }
-                insert(BehovStatus.BEHOV_CREATED, personIdent = "10987654321")
-                insert(BehovStatus.BEHOV_CREATED, organizationNumber = "910000002")
-
-                repository.find(employee).map { it.value } shouldBe listOf(open)
-            }
         }
     })

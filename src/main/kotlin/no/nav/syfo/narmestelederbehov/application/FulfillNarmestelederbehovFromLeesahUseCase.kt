@@ -13,13 +13,12 @@ import org.slf4j.event.Level
  * The status is saved before the Dialogporten dialog is completed, so a dialog failure leaves the behov fulfilled.
  */
 class FulfillNarmestelederbehovFromLeesahUseCase(
-    private val openBehov: OpenNarmestelederbehovForEmployee,
     private val behovRepository: NarmestelederbehovRepository,
     private val metrics: LeesahFulfillmentMetrics,
     private val dialog: NarmestelederbehovDialog,
 ) {
     suspend fun execute(employee: Employee) {
-        openBehov.find(employee).forEach { fulfill(it) }
+        behovRepository.findOpenFor(employee).forEach { fulfill(it) }
     }
 
     private suspend fun fulfill(id: NarmestelederbehovId) {

@@ -15,6 +15,7 @@ import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
@@ -72,6 +73,18 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
                         ),
                     )
                 }
+        }
+    }
+
+    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = withContext(Dispatchers.IO) {
+        suspendTransaction(db = database) {
+            NarmestelederbehovTable.select(NarmestelederbehovTable.id)
+                .where {
+                    (NarmestelederbehovTable.sykmeldtFnr eq employee.personIdent.value) and
+                        (NarmestelederbehovTable.orgnummer eq employee.organizationNumber.value) and
+                        (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
+                }
+                .map { NarmestelederbehovId(it[NarmestelederbehovTable.id]) }
         }
     }
 

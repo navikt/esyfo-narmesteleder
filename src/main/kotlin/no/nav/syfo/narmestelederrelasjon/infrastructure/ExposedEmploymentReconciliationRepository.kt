@@ -9,6 +9,7 @@ import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentReconciliationRepository
 import org.jetbrains.exposed.v1.core.Coalesce
+import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.QueryBuilder
@@ -44,29 +45,24 @@ class ExposedEmploymentReconciliationRepository(
         require(limit > 0) { "limit must be greater than zero" }
         return withContext(dispatcher) {
             suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+                // Each target column is paired with its value so the INSERT and SELECT lists cannot drift apart.
+                val values: List<Pair<Column<*>, Expression<*>>> = listOf(
+                    EmploymentReconciliationTable.narmestelederId to NarmestelederTable.narmestelederId,
+                    EmploymentReconciliationTable.status to stringLiteral("KLAR"),
+                    EmploymentReconciliationTable.nesteKontroll to firstCheck,
+                    EmploymentReconciliationTable.opprettet to
+                        QueryParameter(now.atOffset(ZoneOffset.UTC), EmploymentReconciliationTable.opprettet.columnType),
+                )
                 val missing = NarmestelederTable.join(
-                    EmploymentReconciliationTable,
-                    JoinType.LEFT,
-                    NarmestelederTable.narmestelederId,
-                    EmploymentReconciliationTable.narmestelederId,
-                ).select(
-                    NarmestelederTable.narmestelederId,
-                    stringLiteral("KLAR"),
-                    firstCheck,
-                    QueryParameter(now.atOffset(ZoneOffset.UTC), EmploymentReconciliationTable.opprettet.columnType),
-                ).where {
+                    otherTable = EmploymentReconciliationTable,
+                    joinType = JoinType.LEFT,
+                    onColumn = NarmestelederTable.narmestelederId,
+                    otherColumn = EmploymentReconciliationTable.narmestelederId,
+                ).select(values.map { it.second }).where {
                     NarmestelederTable.aktivTom.isNull() and EmploymentReconciliationTable.narmestelederId.isNull()
                 }.orderBy(NarmestelederTable.narmestelederId to SortOrder.ASC).limit(limit)
 
-                EmploymentReconciliationTable.insertIgnore(
-                    missing,
-                    columns = listOf(
-                        EmploymentReconciliationTable.narmestelederId,
-                        EmploymentReconciliationTable.status,
-                        EmploymentReconciliationTable.nesteKontroll,
-                        EmploymentReconciliationTable.opprettet,
-                    ),
-                ) ?: 0
+                EmploymentReconciliationTable.insertIgnore(missing, columns = values.map { it.first }) ?: 0
             }
         }
     }
@@ -79,10 +75,10 @@ class ExposedEmploymentReconciliationRepository(
             suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
                 val token = UUID.randomUUID()
                 val claimed = EmploymentReconciliationTable.join(
-                    NarmestelederTable,
-                    JoinType.INNER,
-                    EmploymentReconciliationTable.narmestelederId,
-                    NarmestelederTable.narmestelederId,
+                    otherTable = NarmestelederTable,
+                    joinType = JoinType.INNER,
+                    onColumn = EmploymentReconciliationTable.narmestelederId,
+                    otherColumn = NarmestelederTable.narmestelederId,
                 ).select(
                     EmploymentReconciliationTable.narmestelederId,
                     NarmestelederTable.orgnummer,
@@ -155,10 +151,10 @@ class ExposedEmploymentReconciliationRepository(
     override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean = withContext(dispatcher) {
         suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             !EmploymentReconciliationTable.join(
-                NarmestelederTable,
-                JoinType.INNER,
-                EmploymentReconciliationTable.narmestelederId,
-                NarmestelederTable.narmestelederId,
+                otherTable = NarmestelederTable,
+                joinType = JoinType.INNER,
+                onColumn = EmploymentReconciliationTable.narmestelederId,
+                otherColumn = NarmestelederTable.narmestelederId,
             ).select(EmploymentReconciliationTable.narmestelederId).where {
                 (EmploymentReconciliationTable.narmestelederId eq claim.narmesteLederId) and
                     (EmploymentReconciliationTable.status eq "CLAIMED") and

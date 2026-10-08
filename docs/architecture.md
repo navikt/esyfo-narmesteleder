@@ -70,6 +70,9 @@ narmesteleder:
 - verify that the need exists and is not already fulfilled;
 - authorize access through `organisasjonstilgang`;
 - fulfill, expire and query needs;
+- fulfill the employee's open needs when Leesah reports an active
+  narmesteleder (`aktivTom` is empty), saving the status before completing
+  the Dialogporten dialog;
 - own `nl_behov`;
 - coordinate Dialogporten state and retry behavior.
 

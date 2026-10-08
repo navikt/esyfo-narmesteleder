@@ -1,13 +1,16 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.TestDB.Companion.updateCreated
 import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import java.time.Instant
 
 class ExposedOpenNarmestelederbehovRepositoryTest :
@@ -46,5 +49,27 @@ class ExposedOpenNarmestelederbehovRepositoryTest :
             repository.countOpen(organizationNumber, boundary) shouldBe 2L
             repository.countOpen(organizationNumber, boundary.plusSeconds(2)) shouldBe 0L
             repository.findOpen(organizationNumber, boundary.plusSeconds(2), limit = 50) shouldBe emptyList()
+        }
+
+        test("open behov for an employee match person, organization and open statuses only") {
+            val employee = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001"))
+            suspend fun insert(
+                status: BehovStatus,
+                personIdent: String = employee.personIdent.value,
+                organizationNumber: String = employee.organizationNumber.value,
+            ) = requireNotNull(
+                setupDb.insertNlBehov(
+                    nlBehovEntity().copy(sykmeldtFnr = personIdent, orgnummer = organizationNumber, behovStatus = status),
+                ).id,
+            )
+            val created = insert(BehovStatus.BEHOV_CREATED)
+            val requiresAttention = insert(BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
+            BehovStatus.entries
+                .filterNot { it in listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION) }
+                .forEach { insert(it) }
+            insert(BehovStatus.BEHOV_CREATED, personIdent = "10987654321")
+            insert(BehovStatus.BEHOV_CREATED, organizationNumber = "910000002")
+
+            repository.find(employee).map { it.value } shouldContainExactlyInAnyOrder listOf(created, requiresAttention)
         }
     })

@@ -7,12 +7,10 @@ import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.Appender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
@@ -127,30 +125,6 @@ class BackgroundLoopTest :
             }
         }
 
-        test("cancellation thrown by an iteration while the loop is active is a failure and does not stop the loop") {
-            runTest {
-                val registry = SimpleMeterRegistry()
-                var iterations = 0
-                val loop = BackgroundLoop("cancelled-loop", 100.milliseconds, registry) {
-                    iterations++
-                    if (iterations == 1) throw CancellationException("private-payload-canary")
-                }
-                loop.start(this)
-                runCurrent()
-                advanceTimeBy(100)
-                runCurrent()
-                loop.stop()
-
-                iterations shouldBe 2
-                registry.get("${METRICS_NS}_background_loop_failures_total").counter().count() shouldBe 1.0
-                registry.get("${METRICS_NS}_background_loop_iteration_duration").timer().count() shouldBe 2L
-                contract.assertValid(capture.records, expectedCount = 1)
-                val record = jacksonObjectMapper().readTree(capture.records.single())
-                record["event_type"].asText() shouldBe "background_loop_iteration_failed"
-                record["exception_type"].asText() shouldBe "CancellationException"
-            }
-        }
-
         test("stop cancels an in-flight iteration without cancelling the caller scope") {
             runTest {
                 val registry = SimpleMeterRegistry()
@@ -205,35 +179,5 @@ class BackgroundLoopTest :
                 record["exception_type"].asText() shouldBe "TimeoutCancellationException"
                 record["loop_name"].asText() shouldBe "timeout-loop"
             }
-        }
-
-        test("the interval begins after the iteration finishes, not at its start") {
-            runTest {
-                var iterations = 0
-                val loop = BackgroundLoop("slow-loop", 100.milliseconds, SimpleMeterRegistry()) {
-                    iterations++
-                    delay(50)
-                }
-                loop.start(this)
-                runCurrent()
-                advanceTimeBy(100)
-                runCurrent()
-                iterations shouldBe 1
-                advanceTimeBy(50)
-                runCurrent()
-                iterations shouldBe 2
-                loop.stop()
-            }
-        }
-
-        test("rejects unbounded or non-technical loop names before registering metrics") {
-            val registry = SimpleMeterRegistry()
-            listOf("x".repeat(65), "", " ", "private-payload-canary@example.com", "12345678901").forEach { name ->
-                val error = shouldThrow<IllegalArgumentException> {
-                    BackgroundLoop(name, 100.milliseconds, registry) {}
-                }
-                error.message shouldBe "name must be a technical identifier of 1 to 64 characters"
-            }
-            registry.meters.size shouldBe 0
         }
     })

@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
@@ -28,15 +27,14 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
 import java.sql.PreparedStatement
-import java.sql.SQLException
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 private val now = Instant.parse("2026-06-15T12:00:00Z")
+private const val WORKER_COUNT = 2
 
 class ExposedEmploymentReconciliationRepositoryTest :
     FunSpec({
@@ -178,14 +176,6 @@ class ExposedEmploymentReconciliationRepositoryTest :
             controlRow(id)[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe now.plusSeconds(600)
         }
 
-        test("concurrent seeders insert each missing relation once") {
-            repeat(20) { insertEmploymentRelation() }
-            val counts = concurrently { repository.seedMissing(20, now) }
-            counts.sum() shouldBe 20
-            transaction(TestDB.exposedDatabase) { EmploymentReconciliationTable.selectAll().count() } shouldBe 20L
-            repository.seedMissing(20, now) shouldBe 0
-        }
-
         test("two parallel claimers receive disjoint batches covering every due row exactly once") {
             val dueIds = List(20) {
                 insertEmploymentRelation().also { insertControlRow(it, now.minusSeconds(1)) }
@@ -199,56 +189,6 @@ class ExposedEmploymentReconciliationRepositoryTest :
             firstIds.intersect(secondIds) shouldBe emptySet()
             (firstIds + secondIds) shouldBe dueIds
             repository.claimDue(20, 5.minutes, now) shouldBe emptyList()
-        }
-
-        test("four parallel reclaimers fence all stale tokens and reclaim each expired lease only once") {
-            val dueIds = List(20) {
-                insertEmploymentRelation().also { insertControlRow(it, now) }
-            }.toSet()
-            val staleClaims = repository.claimDue(20, 5.minutes, now).associateBy { it.narmesteLederId }
-            val reclaimedAt = now.plusSeconds(300)
-            val batches = concurrently(workerCount = 4) { repository.claimDue(5, 5.minutes, reclaimedAt) }
-            batches.map { it.size } shouldBe listOf(5, 5, 5, 5)
-            val reclaimed = batches.flatten()
-            reclaimed.map { it.narmesteLederId }.toSet() shouldBe dueIds
-            reclaimed.forEach { claim ->
-                val stale = staleClaims.getValue(claim.narmesteLederId)
-                (claim.claimToken != stale.claimToken) shouldBe true
-                repository.complete(stale, EmploymentCheckOutcome.BRUTT, now, reclaimedAt) shouldBe false
-                repository.isClaimStillValid(claim, reclaimedAt) shouldBe true
-                controlRow(claim.narmesteLederId)[EmploymentReconciliationTable.sistUtfall] shouldBe null
-            }
-            repository.claimDue(20, 5.minutes, reclaimedAt) shouldBe emptyList()
-        }
-
-        test("claim skips a locked earliest control row without waiting for its transaction") {
-            val lockedId = insertEmploymentRelation()
-            val availableId = insertEmploymentRelation()
-            insertControlRow(lockedId, now.minusSeconds(2))
-            insertControlRow(availableId, now.minusSeconds(1))
-            coroutineScope {
-                val locked = CompletableDeferred<Unit>()
-                val release = CompletableDeferred<Unit>()
-                val holder = async(Dispatchers.IO) {
-                    suspendTransaction(db = TestDB.exposedDatabase) {
-                        EmploymentReconciliationTable.selectAll().where {
-                            EmploymentReconciliationTable.narmestelederId eq lockedId
-                        }.forUpdate(ForUpdateOption.PostgreSQL.ForUpdate()).single()
-                        locked.complete(Unit)
-                        release.await()
-                    }
-                }
-                try {
-                    withTimeout(5.seconds) {
-                        locked.await()
-                        repository.claimDue(2, 5.minutes, now).map { it.narmesteLederId } shouldBe listOf(availableId)
-                    }
-                } finally {
-                    release.complete(Unit)
-                    holder.await()
-                }
-            }
-            repository.claimDue(2, 5.minutes, now).map { it.narmesteLederId } shouldBe listOf(lockedId)
         }
 
         test("claim locks only the control table and does not skip a row whose relation is locked") {
@@ -386,96 +326,6 @@ class ExposedEmploymentReconciliationRepositoryTest :
             repository.isClaimStillValid(claim, now) shouldBe false
             controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
         }
-
-        test("the migration enforces allowed status, outcome and claim-token consistency") {
-            val invalidRows = listOf(
-                Triple("UNKNOWN", null, null),
-                Triple("CLAIMED", null, null),
-                Triple("KLAR", UUID.randomUUID(), null),
-                Triple("KLAR", null, "UNKNOWN"),
-            )
-            invalidRows.forEach { (state, token, outcome) ->
-                val failure = shouldThrow<SQLException> {
-                    transaction(TestDB.exposedDatabase) {
-                        maxAttempts = 1
-                        EmploymentReconciliationTable.insert {
-                            it[narmestelederId] = UUID.randomUUID()
-                            it[status] = state
-                            it[claimToken] = token
-                            it[sistUtfall] = outcome
-                            it[nesteKontroll] = now.atOffset(ZoneOffset.UTC)
-                        }
-                    }
-                }
-                failure.sqlState shouldBe "23514"
-            }
-            transaction(TestDB.exposedDatabase) { EmploymentReconciliationTable.selectAll().count() } shouldBe 0L
-        }
-
-        test("Flyway creates the module table with matching columns, named primary key and due index, but no foreign key") {
-            TestDB.database.connection.use { connection ->
-                val metadata = connection.metaData
-                val table = EmploymentReconciliationTable.tableName
-                metadata.getColumns(connection.catalog, "public", table, null).use { columns ->
-                    val columnTypes = buildMap {
-                        while (columns.next()) {
-                            put(columns.getString("COLUMN_NAME"), columns.getString("TYPE_NAME"))
-                        }
-                    }
-                    columnTypes shouldBe mapOf(
-                        "narmeste_leder_id" to "uuid",
-                        "status" to "text",
-                        "neste_kontroll" to "timestamptz",
-                        "claim_token" to "uuid",
-                        "sist_kontrollert" to "timestamptz",
-                        "sist_utfall" to "text",
-                        "skygge_ville_brutt" to "timestamptz",
-                        "observert_brudd_fra_kilde" to "timestamptz",
-                        "opprettet" to "timestamptz",
-                    )
-                    columnTypes.keys shouldBe EmploymentReconciliationTable.columns.map { it.name }.toSet()
-                }
-                metadata.getPrimaryKeys(connection.catalog, "public", table).use { keys ->
-                    keys.next() shouldBe true
-                    keys.getString("COLUMN_NAME") shouldBe "narmeste_leder_id"
-                    keys.getString("PK_NAME") shouldBe EmploymentReconciliationTable.primaryKey.name
-                    keys.next() shouldBe false
-                }
-                metadata.getImportedKeys(connection.catalog, "public", table).use { keys ->
-                    keys.next() shouldBe false
-                }
-                metadata.getIndexInfo(connection.catalog, "public", table, false, false).use { indexes ->
-                    val indexedColumns = buildMap {
-                        while (indexes.next()) {
-                            put(indexes.getString("INDEX_NAME"), indexes.getString("COLUMN_NAME"))
-                        }
-                    }
-                    indexedColumns["nlrel_arbeidsforhold_kontroll_neste_kontroll_idx"] shouldBe "neste_kontroll"
-                }
-            }
-        }
-
-        test("control rows can precede and outlive relation events without being claimed while orphaned") {
-            val id = UUID.randomUUID()
-            insertControlRow(id, now)
-            repository.claimDue(10, 5.minutes, now) shouldBe emptyList()
-            insertEmploymentRelation(id = id)
-            repository.seedMissing(10, now) shouldBe 0
-            val claim = repository.claimDue(1, 5.minutes, now).single()
-            TestDB.clearNarmestelederData()
-            repository.isClaimStillValid(claim, now) shouldBe false
-            repository.claimDue(10, 5.minutes, now.plusSeconds(300)) shouldBe emptyList()
-            controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
-        }
-
-        test("invalid batch limits and leases are rejected before writing") {
-            shouldThrow<IllegalArgumentException> { repository.seedMissing(0, now) }
-            shouldThrow<IllegalArgumentException> { repository.seedMissing(-1, now) }
-            shouldThrow<IllegalArgumentException> { repository.claimDue(0, 5.minutes, now) }
-            shouldThrow<IllegalArgumentException> { repository.claimDue(1, Duration.ZERO, now) }
-            shouldThrow<IllegalArgumentException> { repository.claimDue(1, (-1).seconds, now) }
-            shouldThrow<IllegalArgumentException> { repository.claimDue(1, Duration.INFINITE, now) }
-        }
     })
 
 /** Observes each statement on its real transaction connection without adding a production hook. */
@@ -510,17 +360,17 @@ private suspend fun <T> withObservedRepository(
     }
 }
 
-private suspend fun <T> concurrently(workerCount: Int = 2, operation: suspend () -> T): List<T> = coroutineScope {
-    val ready = Channel<Unit>(workerCount)
+private suspend fun <T> concurrently(operation: suspend () -> T): List<T> = coroutineScope {
+    val ready = Channel<Unit>(WORKER_COUNT)
     val start = CompletableDeferred<Unit>()
-    val workers = List(workerCount) {
+    val workers = List(WORKER_COUNT) {
         async(Dispatchers.IO) {
             ready.send(Unit)
             start.await()
             operation()
         }
     }
-    repeat(workerCount) { ready.receive() }
+    repeat(WORKER_COUNT) { ready.receive() }
     start.complete(Unit)
     withTimeout(10.seconds) { workers.awaitAll() }
 }

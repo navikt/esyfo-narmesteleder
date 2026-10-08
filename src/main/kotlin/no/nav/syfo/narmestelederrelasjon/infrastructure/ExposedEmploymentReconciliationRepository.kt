@@ -22,7 +22,6 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
-import org.jetbrains.exposed.v1.core.stringLiteral
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
@@ -53,10 +52,11 @@ class ExposedEmploymentReconciliationRepository(
                 // Each target column is paired with its value so the INSERT and SELECT lists cannot drift apart.
                 val values: List<Pair<Column<*>, Expression<*>>> = listOf(
                     EmploymentReconciliationTable.narmestelederId to NarmestelederTable.narmestelederId,
-                    EmploymentReconciliationTable.status to stringLiteral("KLAR"),
-                    EmploymentReconciliationTable.nesteKontroll to firstCheck,
-                    EmploymentReconciliationTable.opprettet to
-                        QueryParameter(now.atOffset(ZoneOffset.UTC), EmploymentReconciliationTable.opprettet.columnType),
+                    EmploymentReconciliationTable.status to
+                        QueryParameter(EmploymentCheckStatus.READY, EmploymentReconciliationTable.status.columnType),
+                    EmploymentReconciliationTable.nextCheckAt to firstCheck,
+                    EmploymentReconciliationTable.created to
+                        QueryParameter(now.atOffset(ZoneOffset.UTC), EmploymentReconciliationTable.created.columnType),
                 )
                 val missing = NarmestelederTable.join(
                     otherTable = EmploymentReconciliationTable,
@@ -90,10 +90,13 @@ class ExposedEmploymentReconciliationRepository(
                     NarmestelederTable.sykmeldtFnr,
                 ).where {
                     NarmestelederTable.aktivTom.isNull() and
-                        ((EmploymentReconciliationTable.status eq "KLAR") or (EmploymentReconciliationTable.status eq "CLAIMED")) and
-                        (EmploymentReconciliationTable.nesteKontroll lessEq now.atOffset(ZoneOffset.UTC))
+                        (
+                            (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY) or
+                                (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED)
+                            ) and
+                        (EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC))
                 }.orderBy(
-                    EmploymentReconciliationTable.nesteKontroll to SortOrder.ASC,
+                    EmploymentReconciliationTable.nextCheckAt to SortOrder.ASC,
                     EmploymentReconciliationTable.narmestelederId to SortOrder.ASC,
                 ).limit(limit)
                     // Lock only the control rows, so Leesah upserts on narmeste_leder neither block nor get skipped.
@@ -116,9 +119,9 @@ class ExposedEmploymentReconciliationRepository(
                     EmploymentReconciliationTable.update({
                         EmploymentReconciliationTable.narmestelederId inList claimed.map { it.narmesteLederId }
                     }) {
-                        it[status] = "CLAIMED"
+                        it[status] = EmploymentCheckStatus.CLAIMED
                         it[claimToken] = token
-                        it[nesteKontroll] = leaseUntil
+                        it[nextCheckAt] = leaseUntil
                     }
                 }
                 // suspendTransaction commits before this list leaves the repository.
@@ -136,18 +139,18 @@ class ExposedEmploymentReconciliationRepository(
         suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             EmploymentReconciliationTable.update({
                 (EmploymentReconciliationTable.narmestelederId eq claim.narmesteLederId) and
-                    (EmploymentReconciliationTable.status eq "CLAIMED") and
+                    (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and
                     (EmploymentReconciliationTable.claimToken eq claim.claimToken)
             }) {
-                it[status] = "KLAR"
+                it[status] = EmploymentCheckStatus.READY
                 it[claimToken] = null
-                it[sistKontrollert] = now.atOffset(ZoneOffset.UTC)
-                it[sistUtfall] = outcome.name
-                it[nesteKontroll] = nextCheck.atOffset(ZoneOffset.UTC)
-                if (outcome == EmploymentCheckOutcome.VILLE_BRUTT) {
-                    it[skyggeVilleBrutt] = Coalesce(
-                        skyggeVilleBrutt,
-                        QueryParameter(now.atOffset(ZoneOffset.UTC), skyggeVilleBrutt.columnType),
+                it[lastCheckedAt] = now.atOffset(ZoneOffset.UTC)
+                it[lastOutcome] = outcome
+                it[nextCheckAt] = nextCheck.atOffset(ZoneOffset.UTC)
+                if (outcome == EmploymentCheckOutcome.WOULD_REVOKE) {
+                    it[shadowWouldRevokeAt] = Coalesce(
+                        shadowWouldRevokeAt,
+                        QueryParameter(now.atOffset(ZoneOffset.UTC), shadowWouldRevokeAt.columnType),
                     )
                 }
             } > 0
@@ -163,9 +166,9 @@ class ExposedEmploymentReconciliationRepository(
                 otherColumn = NarmestelederTable.narmestelederId,
             ).select(EmploymentReconciliationTable.narmestelederId).where {
                 (EmploymentReconciliationTable.narmestelederId eq claim.narmesteLederId) and
-                    (EmploymentReconciliationTable.status eq "CLAIMED") and
+                    (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and
                     (EmploymentReconciliationTable.claimToken eq claim.claimToken) and
-                    (EmploymentReconciliationTable.nesteKontroll greater now.atOffset(ZoneOffset.UTC)) and
+                    (EmploymentReconciliationTable.nextCheckAt greater now.atOffset(ZoneOffset.UTC)) and
                     (NarmestelederTable.orgnummer eq claim.organizationNumber.value) and
                     (NarmestelederTable.sykmeldtFnr eq claim.employeeIdent.value) and
                     NarmestelederTable.aktivTom.isNull()

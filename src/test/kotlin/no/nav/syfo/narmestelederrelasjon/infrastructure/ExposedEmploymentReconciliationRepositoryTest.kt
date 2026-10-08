@@ -74,7 +74,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
                 assertReadCommitted { claim = observedRepository.claimDue(1, 5.minutes, now).single() }
                 assertReadCommitted { observedRepository.isClaimStillValid(claim, now) shouldBe true }
                 assertReadCommitted {
-                    observedRepository.complete(claim, EmploymentCheckOutcome.GYLDIG, now.plusSeconds(600), now) shouldBe true
+                    observedRepository.complete(claim, EmploymentCheckOutcome.VALID, now.plusSeconds(600), now) shouldBe true
                 }
             }
         }
@@ -92,12 +92,12 @@ class ExposedEmploymentReconciliationRepositoryTest :
                 EmploymentReconciliationTable.selectAll().associateBy { it[EmploymentReconciliationTable.narmestelederId] }
             }
             rows.keys shouldBe setOf(oldId, newId)
-            rows.getValue(oldId)[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe
+            rows.getValue(oldId)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe
                 Instant.parse("2026-02-28T12:00:00Z")
-            rows.getValue(newId)[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe
+            rows.getValue(newId)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe
                 Instant.parse("2026-07-15T12:00:00Z")
             rows.values.forEach {
-                it[EmploymentReconciliationTable.status] shouldBe "KLAR"
+                it[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
                 it[EmploymentReconciliationTable.claimToken] shouldBe null
             }
         }
@@ -130,7 +130,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
             }
             observedTimeZone shouldBe true
             cases.forEach { (id, due) ->
-                controlRow(id)[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe due
+                controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe due
             }
         }
 
@@ -150,15 +150,15 @@ class ExposedEmploymentReconciliationRepositoryTest :
             first.employeeIdent shouldBe PersonIdent("12345678901")
             first.claimedAt shouldBe now
             val row = controlRow(older)
-            row[EmploymentReconciliationTable.status] shouldBe "CLAIMED"
+            row[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.CLAIMED
             row[EmploymentReconciliationTable.claimToken] shouldBe first.claimToken
-            row[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe now.plusSeconds(300)
+            row[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
 
             repository.claimDue(10, 5.minutes, now).map { it.narmesteLederId } shouldBe listOf(newer)
             repository.claimDue(10, 5.minutes, now) shouldBe emptyList()
-            controlRow(inactive)[EmploymentReconciliationTable.status] shouldBe "KLAR"
-            controlRow(inactive)[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe now.minusSeconds(30)
-            controlRow(future)[EmploymentReconciliationTable.status] shouldBe "KLAR"
+            controlRow(inactive)[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
+            controlRow(inactive)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.minusSeconds(30)
+            controlRow(future)[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
         }
 
         test("claim does not extend a live lease and reclaims at expiry with a new token") {
@@ -167,13 +167,13 @@ class ExposedEmploymentReconciliationRepositoryTest :
             val first = repository.claimDue(1, 5.minutes, now).single()
             repository.claimDue(1, 5.minutes, now.plusSeconds(299)) shouldBe emptyList()
             controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe first.claimToken
-            controlRow(id)[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe now.plusSeconds(300)
+            controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
 
             val reclaimed = repository.claimDue(1, 5.minutes, now.plusSeconds(300)).single()
             reclaimed.narmesteLederId shouldBe id
             (reclaimed.claimToken != first.claimToken) shouldBe true
             reclaimed.claimedAt shouldBe now.plusSeconds(300)
-            controlRow(id)[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe now.plusSeconds(600)
+            controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(600)
         }
 
         test("two parallel claimers receive disjoint batches covering every due row exactly once") {
@@ -225,15 +225,15 @@ class ExposedEmploymentReconciliationRepositoryTest :
             val completedAt = now.plusSeconds(10)
             val nextCheck = now.plusSeconds(30 * 86_400)
 
-            repository.complete(claim, EmploymentCheckOutcome.GYLDIG, nextCheck, completedAt) shouldBe true
+            repository.complete(claim, EmploymentCheckOutcome.VALID, nextCheck, completedAt) shouldBe true
             val row = controlRow(id)
-            row[EmploymentReconciliationTable.status] shouldBe "KLAR"
+            row[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
             row[EmploymentReconciliationTable.claimToken] shouldBe null
-            row[EmploymentReconciliationTable.sistUtfall] shouldBe "GYLDIG"
-            row[EmploymentReconciliationTable.sistKontrollert]?.toInstant() shouldBe completedAt
-            row[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe nextCheck
-            repository.complete(claim, EmploymentCheckOutcome.FEILET, now, completedAt) shouldBe false
-            controlRow(id)[EmploymentReconciliationTable.sistUtfall] shouldBe "GYLDIG"
+            row[EmploymentReconciliationTable.lastOutcome] shouldBe EmploymentCheckOutcome.VALID
+            row[EmploymentReconciliationTable.lastCheckedAt]?.toInstant() shouldBe completedAt
+            row[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe nextCheck
+            repository.complete(claim, EmploymentCheckOutcome.FAILED, now, completedAt) shouldBe false
+            controlRow(id)[EmploymentReconciliationTable.lastOutcome] shouldBe EmploymentCheckOutcome.VALID
         }
 
         test("stale-token completion after reclaim cannot overwrite the current claim") {
@@ -242,34 +242,34 @@ class ExposedEmploymentReconciliationRepositoryTest :
             val stale = repository.claimDue(1, 5.minutes, now).single()
             val current = repository.claimDue(1, 5.minutes, now.plusSeconds(300)).single()
 
-            repository.complete(stale, EmploymentCheckOutcome.VILLE_BRUTT, now, now.plusSeconds(301)) shouldBe false
+            repository.complete(stale, EmploymentCheckOutcome.WOULD_REVOKE, now, now.plusSeconds(301)) shouldBe false
             val row = controlRow(id)
-            row[EmploymentReconciliationTable.status] shouldBe "CLAIMED"
+            row[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.CLAIMED
             row[EmploymentReconciliationTable.claimToken] shouldBe current.claimToken
-            row[EmploymentReconciliationTable.nesteKontroll].toInstant() shouldBe now.plusSeconds(600)
-            row[EmploymentReconciliationTable.sistUtfall] shouldBe null
-            row[EmploymentReconciliationTable.sistKontrollert] shouldBe null
-            row[EmploymentReconciliationTable.skyggeVilleBrutt] shouldBe null
+            row[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(600)
+            row[EmploymentReconciliationTable.lastOutcome] shouldBe null
+            row[EmploymentReconciliationTable.lastCheckedAt] shouldBe null
+            row[EmploymentReconciliationTable.shadowWouldRevokeAt] shouldBe null
         }
 
-        test("VILLE_BRUTT records the first shadow timestamp only, across subsequent claims and outcomes") {
+        test("WOULD_REVOKE records the first shadow timestamp only, across subsequent claims and outcomes") {
             val id = insertEmploymentRelation()
             insertControlRow(id, now)
             val first = repository.claimDue(1, 5.minutes, now).single()
             val firstShadow = now.plusSeconds(10)
-            repository.complete(first, EmploymentCheckOutcome.VILLE_BRUTT, now.plusSeconds(20), firstShadow) shouldBe true
-            controlRow(id)[EmploymentReconciliationTable.skyggeVilleBrutt]?.toInstant() shouldBe firstShadow
+            repository.complete(first, EmploymentCheckOutcome.WOULD_REVOKE, now.plusSeconds(20), firstShadow) shouldBe true
+            controlRow(id)[EmploymentReconciliationTable.shadowWouldRevokeAt]?.toInstant() shouldBe firstShadow
 
             val second = repository.claimDue(1, 5.minutes, now.plusSeconds(20)).single()
-            repository.complete(second, EmploymentCheckOutcome.VILLE_BRUTT, now.plusSeconds(30), now.plusSeconds(21)) shouldBe true
-            controlRow(id)[EmploymentReconciliationTable.skyggeVilleBrutt]?.toInstant() shouldBe firstShadow
+            repository.complete(second, EmploymentCheckOutcome.WOULD_REVOKE, now.plusSeconds(30), now.plusSeconds(21)) shouldBe true
+            controlRow(id)[EmploymentReconciliationTable.shadowWouldRevokeAt]?.toInstant() shouldBe firstShadow
 
-            listOf(EmploymentCheckOutcome.GYLDIG, EmploymentCheckOutcome.BRUTT, EmploymentCheckOutcome.FEILET).forEach { outcome ->
+            listOf(EmploymentCheckOutcome.VALID, EmploymentCheckOutcome.REVOKED, EmploymentCheckOutcome.FAILED).forEach { outcome ->
                 val claim = repository.claimDue(1, 5.minutes, now.plusSeconds(30)).single()
                 repository.complete(claim, outcome, now.plusSeconds(30), now.plusSeconds(31)) shouldBe true
                 val row = controlRow(id)
-                row[EmploymentReconciliationTable.skyggeVilleBrutt]?.toInstant() shouldBe firstShadow
-                row[EmploymentReconciliationTable.sistUtfall] shouldBe outcome.name
+                row[EmploymentReconciliationTable.shadowWouldRevokeAt]?.toInstant() shouldBe firstShadow
+                row[EmploymentReconciliationTable.lastOutcome] shouldBe outcome
                 row[EmploymentReconciliationTable.claimToken] shouldBe null
             }
         }
@@ -285,7 +285,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
             val second = repository.claimDue(1, 5.minutes, now.plusSeconds(300)).single()
             repository.isClaimStillValid(first, now.plusSeconds(301)) shouldBe false
             repository.isClaimStillValid(second, now.plusSeconds(301)) shouldBe true
-            repository.complete(second, EmploymentCheckOutcome.GYLDIG, now.plusSeconds(400), now.plusSeconds(302)) shouldBe true
+            repository.complete(second, EmploymentCheckOutcome.VALID, now.plusSeconds(400), now.plusSeconds(302)) shouldBe true
             repository.isClaimStillValid(second, now.plusSeconds(303)) shouldBe false
 
             val third = repository.claimDue(1, 5.minutes, now.plusSeconds(400)).single()
@@ -385,8 +385,8 @@ private fun insertControlRow(id: UUID, due: Instant) {
     transaction(TestDB.exposedDatabase) {
         EmploymentReconciliationTable.insert {
             it[narmestelederId] = id
-            it[status] = "KLAR"
-            it[nesteKontroll] = due.atOffset(ZoneOffset.UTC)
+            it[status] = EmploymentCheckStatus.READY
+            it[nextCheckAt] = due.atOffset(ZoneOffset.UTC)
         }
     }
 }

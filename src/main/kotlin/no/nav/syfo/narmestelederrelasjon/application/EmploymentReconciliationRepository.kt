@@ -42,14 +42,14 @@ data class ClaimedEmploymentCheck(
 
 enum class EmploymentCheckOutcome {
     /** The employee still has qualifying employment in the organization. */
-    GYLDIG,
+    VALID,
 
-    /** Shadow mode: the relation would have been revoked, but nothing was published. */
-    VILLE_BRUTT,
+    /** Shadow mode decided the relation would be revoked, but nothing was published. */
+    WOULD_REVOKE,
 
     /** The revocation was published. */
-    BRUTT,
+    REVOKED,
 
     /** The lookup failed; the relation is never revoked on failure. */
-    FEILET,
+    FAILED,
 }

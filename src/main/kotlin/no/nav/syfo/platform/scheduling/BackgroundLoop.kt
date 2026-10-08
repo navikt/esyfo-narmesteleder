@@ -33,8 +33,8 @@ internal val backgroundLoopIterationFailed = applicationEvent<String>(
 /**
  * A per-pod loop without leader election. The caller owns the scope and supplies
  * the work; this mechanism knows nothing about claims or business rules.
- * [name] must be a static, bounded technical identifier, never derived from
- * personal data. It starts with a letter and contains letters, digits, "_" or "-".
+ * [name] must be a static technical identifier: it is used as a metric tag and
+ * log field, and must never be derived from personal data.
  */
 class BackgroundLoop(
     val name: String,
@@ -43,9 +43,7 @@ class BackgroundLoop(
     private val iteration: suspend () -> Unit,
 ) {
     init {
-        require(name.matches(Regex("[A-Za-z][A-Za-z0-9_-]{0,63}"))) {
-            "name must be a technical identifier of 1 to 64 characters"
-        }
+        require(name.isNotBlank()) { "name must not be blank" }
         require(interval.isPositive() && interval.isFinite()) { "interval must be positive and finite" }
     }
 

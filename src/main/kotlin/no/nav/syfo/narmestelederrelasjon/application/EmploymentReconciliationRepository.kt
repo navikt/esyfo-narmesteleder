@@ -6,6 +6,11 @@ import java.time.Instant
 import java.util.UUID
 import kotlin.time.Duration
 
+/**
+ * Queue of periodic employment checks, one per active narmestelederrelasjon (#473).
+ * Every pod may claim work: a claim takes a time-limited lease and a new claim token, and
+ * all later writes compare-and-set on that token (ADR-0003).
+ */
 interface EmploymentReconciliationRepository {
     /** Seeds active relations only, with first due one calendar month after aktiv_fom. */
     suspend fun seedMissing(limit: Int, now: Instant): Int
@@ -36,8 +41,15 @@ data class ClaimedEmploymentCheck(
 }
 
 enum class EmploymentCheckOutcome {
+    /** The employee still has qualifying employment in the organization. */
     GYLDIG,
+
+    /** Shadow mode: the relation would have been revoked, but nothing was published. */
     VILLE_BRUTT,
+
+    /** The revocation was published. */
     BRUTT,
+
+    /** The lookup failed; the relation is never revoked on failure. */
     FEILET,
 }

@@ -37,6 +37,11 @@ import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.toJavaDuration
 
+/**
+ * All transactions use READ COMMITTED explicitly. The pool default is REPEATABLE READ, where
+ * `FOR UPDATE SKIP LOCKED` on rows changed by another pod gives serialization failures instead
+ * of re-checking the row. Do not remove it.
+ */
 class ExposedEmploymentReconciliationRepository(
     private val database: Database,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -91,6 +96,7 @@ class ExposedEmploymentReconciliationRepository(
                     EmploymentReconciliationTable.nesteKontroll to SortOrder.ASC,
                     EmploymentReconciliationTable.narmestelederId to SortOrder.ASC,
                 ).limit(limit)
+                    // Lock only the control rows, so Leesah upserts on narmeste_leder neither block nor get skipped.
                     .forUpdate(
                         ForUpdateOption.PostgreSQL.ForUpdate(
                             ForUpdateOption.PostgreSQL.MODE.SKIP_LOCKED,

@@ -11,6 +11,16 @@ import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.javatime.CurrentTimestampWithTimeZone
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 
+/**
+ * Work queue for checking relations against Aareg (V31). One row per relation id.
+ *
+ * - `neste_kontroll` has two meanings: when `status = KLAR` it is when the next check is due;
+ *   when `status = CLAIMED` it is when the lease expires and another pod may reclaim the row.
+ * - `claim_token` is set only while CLAIMED and fences writes from a pod that lost its claim.
+ * - No foreign key to `narmeste_leder`: Leesah events may arrive in any order, and rows are kept
+ *   after a relation ends for the shadow comparison.
+ * - `skygge_ville_brutt` and `observert_brudd_fra_kilde` are used by the shadow comparison (#473).
+ */
 internal object EmploymentReconciliationTable : Table("narmestelederrelasjon_arbeidsforhold_kontroll") {
     val narmestelederId = javaUUID("narmeste_leder_id")
     val status = text("status")

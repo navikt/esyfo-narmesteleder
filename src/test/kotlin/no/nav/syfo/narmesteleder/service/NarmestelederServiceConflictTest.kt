@@ -20,7 +20,6 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.integration.aareg.TestAaregClient
 import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.narmesteleder.db.ActiveNarmestelederbehovAlreadyExistsException

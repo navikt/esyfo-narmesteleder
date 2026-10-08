@@ -15,6 +15,8 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
+import no.nav.esyfo.observability.createLogger
+import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.integration.pdl.ErrorExtension
@@ -22,6 +24,9 @@ import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
 import no.nav.syfo.integration.pdl.ResponseError
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.event.Level
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -68,6 +73,55 @@ class RuntimeDiagnosticsTest :
                         record.has("upstream_status") shouldBe false
                         listOf("12345678901", "token-secret", "upstream-body-canary", "authorization-canary", "request-body-canary")
                             .forEach { json shouldNotContain it }
+                    }
+                }
+            }
+        }
+
+        "upstream metadata overrides throwable metadata without changing classification or cause types" {
+            val failure = UpstreamFailure(
+                UpstreamName("texas"),
+                UpstreamFailureStage.TOKEN_EXCHANGE,
+                503,
+                SocketTimeoutException("private-canary"),
+            )
+            val wrapped = ApiErrorException.InternalServerErrorException(cause = failure.cause)
+            val diagnostics = wrapped.failureDiagnostics(failure)
+            diagnostics.upstream shouldBe "texas"
+            diagnostics.failureStage shouldBe "token_exchange"
+            diagnostics.upstreamStatus shouldBe 503
+            diagnostics.failureKind shouldBe "timeout"
+            diagnostics.exceptionType shouldBe "ApiErrorException\$InternalServerErrorException"
+            diagnostics.causeType shouldBe "SocketTimeoutException"
+            failure.failureDiagnostics().exceptionType shouldBe "SocketTimeoutException"
+            listOf<Int?>(null, 42, 600).forEach { status ->
+                failure.copy(status = status).failureDiagnostics().upstreamStatus shouldBe null
+            }
+        }
+
+        "both logEvent overloads use the upstream failure cause when no explicit cause is given" {
+            val failure = UpstreamFailure(
+                UpstreamName("aareg"),
+                UpstreamFailureStage.REQUEST,
+                null,
+                ConnectException("private-canary"),
+            )
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
+                    createLogger(logger).logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
+                    RuntimeLogContract.forEvents(
+                        diagnosticTestEvent,
+                        exceptionTypes = setOf("ConnectException"),
+                    ).assertValid(capture.records, expectedCount = 2)
+                    capture.records.forEach { serialized ->
+                        serialized shouldNotContain "private-canary"
+                        val record = jacksonObjectMapper().readTree(serialized)
+                        record["upstream"].asText() shouldBe "aareg"
+                        record["failure_stage"].asText() shouldBe "request"
+                        record.has("upstream_status") shouldBe false
+                        record["cause_type"].asText() shouldBe "ConnectException"
+                        record["failure_kind"].asText() shouldBe "connection"
                     }
                 }
             }

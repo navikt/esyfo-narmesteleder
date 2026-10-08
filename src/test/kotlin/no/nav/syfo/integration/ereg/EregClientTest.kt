@@ -13,8 +13,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.mockk.clearAllMocks
 import io.mockk.mockk
-import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.httpClientDefault
 import organisasjon

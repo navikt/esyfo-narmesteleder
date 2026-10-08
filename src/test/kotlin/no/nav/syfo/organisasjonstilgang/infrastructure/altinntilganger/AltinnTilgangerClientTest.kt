@@ -17,9 +17,9 @@ import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.UpstreamExceptionType
-import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.application.texas.TexasEnvironment
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault

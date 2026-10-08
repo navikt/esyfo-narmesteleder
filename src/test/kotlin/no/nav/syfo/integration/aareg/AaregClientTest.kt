@@ -8,6 +8,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -15,7 +16,6 @@ import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.get
 import io.ktor.http.HttpHeaders
@@ -24,6 +24,7 @@ import io.ktor.http.HttpStatusCode
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.api.NAV_CALL_ID_HEADER
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.integration.TEST_SYSTEM_TOKEN
 import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
@@ -31,6 +32,10 @@ import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.getOrThrow
+import no.nav.syfo.texas.client.TEXAS
 import org.slf4j.MDC
 import org.slf4j.event.Level
 import java.net.SocketTimeoutException
@@ -53,6 +58,7 @@ class AaregClientTest :
             val expected = FakeAaregClient()
                 .apply { arbeidsForholdForIdent[personIdent] = listOf("123456789" to "987654321") }
                 .getArbeidsforhold(personIdent)
+                .getOrThrow()
             var authorization: String? = null
             var path: String? = null
             val client = aaregClient(
@@ -67,7 +73,7 @@ class AaregClientTest :
                 }
             )
 
-            client.getArbeidsforhold(personIdent) shouldBe expected
+            client.getArbeidsforhold(personIdent) shouldBe UpstreamResult.Success(expected)
             authorization shouldBe "Bearer $TEST_SYSTEM_TOKEN"
             path shouldBe HttpAaregClient.ARBEIDSFORHOLD_OVERSIKT_PATH
         }
@@ -92,7 +98,7 @@ class AaregClientTest :
                 }
             )
 
-            client.getArbeidsforholdHistorikk(personIdent) shouldBe AaregArbeidsforholdOversikt()
+            client.getArbeidsforholdHistorikk(personIdent) shouldBe UpstreamResult.Success(AaregArbeidsforholdOversikt())
         }
 
         test("keeps both serialized request bodies byte-identical") {
@@ -165,96 +171,84 @@ class AaregClientTest :
                 }
             )
 
-            val employments = client.getArbeidsforholdHistorikk(personIdent).arbeidsforholdoversikter
+            val employments = client.getArbeidsforholdHistorikk(personIdent).getOrThrow().arbeidsforholdoversikter
             employments.map { it.startdato } shouldBe listOf(LocalDate.of(2025, 1, 1), null, null)
             employments.map { it.sluttdato } shouldBe listOf(LocalDate.of(2026, 3, 31), null, null)
         }
 
-        test("wraps 4xx responses in AaregClientException") {
-            val client = aaregClient(aareg = { respondJson("sensitive upstream body", HttpStatusCode.BadRequest) })
+        val operations: List<Pair<String, suspend HttpAaregClient.(String) -> UpstreamResult<AaregArbeidsforholdOversikt>>> = listOf(
+            "arbeidsforhold" to { getArbeidsforhold(it) },
+            "history" to { getArbeidsforholdHistorikk(it) },
+        )
 
-            val failure = shouldThrow<AaregClientException> {
-                client.getArbeidsforhold(personIdent)
-            }
-            failure.reason shouldBe AaregClientException.Reason.UNAVAILABLE
-            failure.message shouldBe "An error occurred when fetching arbeidsforhold (status=400)"
-            (failure.cause as ClientRequestException).response.status shouldBe HttpStatusCode.BadRequest
-            failure.shouldNotExposePersonIdent(personIdent)
-        }
+        operations.forEach { (operation, fetch) ->
+            listOf(HttpStatusCode.Found, HttpStatusCode.BadRequest, HttpStatusCode.NotFound, HttpStatusCode.InternalServerError).forEach { status ->
+                test("$operation returns an Aareg response failure for HTTP ${status.value} without exposing the error body") {
+                    val client = aaregClient(aareg = { respondJson("sensitive upstream body $personIdent", status) })
 
-        test("wraps 404 with the Ktor cause but without personal data in the message") {
-            val client = aaregClient(aareg = { respondJson("sensitive upstream body $personIdent", HttpStatusCode.NotFound) })
-
-            val failure = shouldThrow<AaregClientException> {
-                client.getArbeidsforhold(personIdent)
-            }
-            failure.message.orEmpty().contains(personIdent) shouldBe false
-            failure.message shouldBe "Person not found when fetching arbeidsforhold (status=404)"
-            (failure.cause as ClientRequestException).response.status shouldBe HttpStatusCode.NotFound
-            failure.reason shouldBe AaregClientException.Reason.PERSON_NOT_FOUND
-            failure.shouldNotExposePersonIdent(personIdent)
-        }
-
-        test("history 404 preserves its Ktor cause and reason without exposing the person ident") {
-            val client = aaregClient(aareg = { respondJson("sensitive upstream body $personIdent", HttpStatusCode.NotFound) })
-
-            val failure = shouldThrow<AaregClientException> {
-                client.getArbeidsforholdHistorikk(personIdent)
-            }
-            failure.reason shouldBe AaregClientException.Reason.PERSON_NOT_FOUND
-            failure.message shouldBe "Person not found when fetching arbeidsforhold (status=404)"
-            (failure.cause as ClientRequestException).response.status shouldBe HttpStatusCode.NotFound
-            failure.shouldNotExposePersonIdent(personIdent)
-        }
-
-        test("history client and server errors preserve Ktor causes without exposing personal data") {
-            listOf(HttpStatusCode.BadRequest, HttpStatusCode.InternalServerError).forEach { status ->
-                val client = aaregClient(aareg = { respondJson("sensitive upstream body $personIdent", status) })
-                val failure = shouldThrow<AaregClientException> {
-                    client.getArbeidsforholdHistorikk(personIdent)
+                    val result = client.fetch(personIdent).shouldBeInstanceOf<UpstreamResult.Failure>()
+                    result.failure.upstream shouldBe AAREG
+                    result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                    result.failure.status shouldBe status.value
+                    result.shouldNotExposePersonIdent(personIdent)
                 }
-                failure.reason shouldBe AaregClientException.Reason.UNAVAILABLE
-                failure.message shouldBe when (status) {
-                    HttpStatusCode.BadRequest -> "An error occurred when fetching arbeidsforhold (status=400)"
-                    else -> "An error occurred when fetching employment history"
+            }
+
+            test("$operation returns an Aareg request failure without status for a transport error") {
+                val timeout = SocketTimeoutException("sensitive upstream body $personIdent").apply {
+                    initCause(IllegalStateException("sensitive upstream cause $personIdent"))
                 }
-                failure.message.orEmpty().contains(personIdent) shouldBe false
-                failure.message.orEmpty().contains("sensitive upstream body") shouldBe false
-                (failure.cause as ResponseException).response.status shouldBe status
-                failure.cause?.javaClass?.simpleName shouldBe when (status) {
-                    HttpStatusCode.BadRequest -> "ClientRequestException"
-                    else -> "ServerResponseException"
-                }
-                failure.shouldNotExposePersonIdent(personIdent)
+                val client = aaregClient(aareg = { throw timeout })
+
+                val result = client.fetch(personIdent).shouldBeInstanceOf<UpstreamResult.Failure>()
+                result.failure.upstream shouldBe AAREG
+                result.failure.stage shouldBe UpstreamFailureStage.REQUEST
+                result.failure.status shouldBe null
+                result.failure.cause shouldBeSameInstanceAs timeout
+                result.shouldNotExposePersonIdent(personIdent)
+            }
+
+            test("$operation returns an Aareg response failure with the successful status for a malformed body") {
+                val client = aaregClient(aareg = { respondJson("""{"arbeidsforholdoversikter":"sensitive upstream body $personIdent"}""") })
+
+                val result = client.fetch(personIdent).shouldBeInstanceOf<UpstreamResult.Failure>()
+                result.failure.upstream shouldBe AAREG
+                result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                result.failure.status shouldBe 200
+                result.failure.cause.javaClass.simpleName shouldBe "JsonConvertException"
+                result.shouldNotExposePersonIdent(personIdent)
+            }
+
+            test("$operation propagates a Texas token exchange failure without sending the employee ident") {
+                val client = aaregClient(
+                    token = { request ->
+                        String(request.body.toByteArray()).contains(personIdent) shouldBe false
+                        respondJson("token endpoint unavailable", HttpStatusCode.ServiceUnavailable)
+                    },
+                    aareg = { error("No Aareg request should be made without a token") },
+                )
+
+                val result = client.fetch(personIdent).shouldBeInstanceOf<UpstreamResult.Failure>()
+                result.failure.upstream shouldBe TEXAS
+                result.failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                result.failure.status shouldBe 503
+                result.shouldNotExposePersonIdent(personIdent)
+            }
+
+            test("$operation rethrows cancellation while acquiring a token or sending the request") {
+                val cancelled = CancellationException("cancelled")
+                val tokenClient = aaregClient(
+                    token = { throw cancelled },
+                    aareg = { error("No Aareg request should be made after cancellation") },
+                )
+                shouldThrow<CancellationException> { tokenClient.fetch(personIdent) } shouldBe cancelled
+
+                val requestClient = aaregClient(aareg = { throw cancelled })
+                shouldThrow<CancellationException> { requestClient.fetch(personIdent) } shouldBe cancelled
             }
         }
 
-        test("malformed history responses retain the parsing failure without exposing its message") {
-            val client = aaregClient(aareg = { respondJson("""{"arbeidsforholdoversikter":"sensitive upstream body $personIdent"}""") })
-            val failure = shouldThrow<AaregClientException> {
-                client.getArbeidsforholdHistorikk(personIdent)
-            }
-            failure.reason shouldBe AaregClientException.Reason.UNAVAILABLE
-            failure.message shouldBe "An error occurred when fetching employment history"
-            failure.cause?.javaClass?.simpleName shouldBe "JsonConvertException"
-            failure.shouldNotExposePersonIdent(personIdent)
-        }
-
-        test("history transport failures preserve the original cause chain without exposing its messages") {
-            val timeout = SocketTimeoutException("sensitive upstream body $personIdent").apply {
-                initCause(IllegalStateException("sensitive upstream cause $personIdent"))
-            }
-            val client = aaregClient(aareg = { throw timeout })
-            val failure = shouldThrow<AaregClientException> {
-                client.getArbeidsforholdHistorikk(personIdent)
-            }
-            failure.reason shouldBe AaregClientException.Reason.UNAVAILABLE
-            failure.message shouldBe "An error occurred when fetching employment history"
-            failure.cause shouldBeSameInstanceAs timeout
-            failure.shouldNotExposePersonIdent(personIdent)
-        }
-
-        test("preserves original Ktor causes and logs upstream status without the ident canary") {
+        test("logs the Aareg failure with upstream status and Ktor cause without the ident canary") {
             val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
             try {
                 context.putProperty("NAIS_CLUSTER_NAME", "test")
@@ -265,7 +259,7 @@ class AaregClientTest :
                 val logger = context.getLogger("aareg-client-diagnostics-test")
                 val contract = RuntimeLogContract.forEvents(
                     aaregDiagnosticTestEvent,
-                    exceptionTypes = setOf("AaregClientException", "ClientRequestException", "ServerResponseException"),
+                    exceptionTypes = setOf("ClientRequestException", "ServerResponseException"),
                 )
                 listOf(HttpStatusCode.NotFound, HttpStatusCode.InternalServerError).forEach { status ->
                     HttpClient(MockEngine { respond("sensitive upstream body $personIdent", status) }).use { responseClient ->
@@ -276,19 +270,18 @@ class AaregClientTest :
                             ServerResponseException(response, "sensitive upstream body $personIdent")
                         }
                         val client = aaregClient(aareg = { throw original })
-                        val failure = shouldThrow<AaregClientException> { client.getArbeidsforholdHistorikk(personIdent) }
-                        failure.cause shouldBeSameInstanceAs original
-                        failure.shouldNotExposePersonIdent(personIdent)
+                        val result = client.getArbeidsforholdHistorikk(personIdent).shouldBeInstanceOf<UpstreamResult.Failure>()
+                        result.failure.cause shouldBeSameInstanceAs original
 
                         captureLogs(logger, "stdout_json").use { capture ->
-                            logger.logEvent(aaregDiagnosticTestEvent, Unit, cause = failure)
+                            logger.logEvent(aaregDiagnosticTestEvent, Unit, upstreamFailure = result.failure)
                             contract.assertValid(capture.records, expectedCount = 1)
                             val output = capture.records.single()
                             val record = jacksonObjectMapper().readTree(output)
+                            record["upstream"].asText() shouldBe "aareg"
                             record["upstream_status"].asInt() shouldBe status.value
-                            record["failure_kind"].asText() shouldBe "http"
-                            record["exception_type"].asText() shouldBe "AaregClientException"
-                            record["cause_type"].asText() shouldBe original.javaClass.simpleName
+                            record["failure_stage"].asText() shouldBe "response"
+                            record["exception_type"].asText() shouldBe original.javaClass.simpleName
                             output shouldNotContain personIdent
                             output shouldNotContain "sensitive upstream body"
                         }
@@ -298,81 +291,12 @@ class AaregClientTest :
                 context.stop()
             }
         }
-
-        test("current employment still propagates original server and transport errors without wrapping") {
-            val timeout = SocketTimeoutException("upstream timeout")
-            val transportClient = aaregClient(aareg = { throw timeout })
-            shouldThrow<SocketTimeoutException> { transportClient.getArbeidsforhold(personIdent) } shouldBeSameInstanceAs timeout
-
-            HttpClient(MockEngine { respond("upstream unavailable", HttpStatusCode.InternalServerError) }).use { responseClient ->
-                val original = ServerResponseException(responseClient.get("http://aareg/"), "upstream unavailable")
-                val client = aaregClient(aareg = { throw original })
-                shouldThrow<ServerResponseException> { client.getArbeidsforhold(personIdent) } shouldBeSameInstanceAs original
-            }
-        }
-
-        test("retains system token failure cause for diagnostics without retaining the employee ident") {
-            val client = aaregClient(
-                token = { request ->
-                    String(request.body.toByteArray()).contains(personIdent) shouldBe false
-                    respondJson("token endpoint unavailable", HttpStatusCode.InternalServerError)
-                },
-                aareg = { respondJson("") },
-            )
-
-            val failure = shouldThrow<AaregClientException> {
-                client.getArbeidsforhold(personIdent)
-            }
-            failure.reason shouldBe AaregClientException.Reason.UNAVAILABLE
-            failure.cause?.javaClass?.simpleName shouldBe "ServerResponseException"
-            (failure.cause as ServerResponseException).response.status shouldBe HttpStatusCode.InternalServerError
-            failure.shouldNotExposePersonIdent(personIdent)
-        }
-
-        test("history system token failures retain their cause without retaining the employee ident") {
-            val client = aaregClient(
-                token = { request ->
-                    String(request.body.toByteArray()).contains(personIdent) shouldBe false
-                    respondJson("token endpoint unavailable", HttpStatusCode.InternalServerError)
-                },
-                aareg = { error("No Aareg request should be made without a token") },
-            )
-            val failure = shouldThrow<AaregClientException> {
-                client.getArbeidsforholdHistorikk(personIdent)
-            }
-            failure.reason shouldBe AaregClientException.Reason.UNAVAILABLE
-            failure.cause?.javaClass?.simpleName shouldBe "ServerResponseException"
-            (failure.cause as ServerResponseException).response.status shouldBe HttpStatusCode.InternalServerError
-            failure.shouldNotExposePersonIdent(personIdent)
-        }
-
-        test("propagates cancellation while acquiring system token") {
-            val client = aaregClient(
-                token = { throw CancellationException("cancelled") },
-                aareg = { respondJson("") },
-            )
-
-            shouldThrow<CancellationException> {
-                client.getArbeidsforhold(personIdent)
-            }
-        }
-
-        test("history propagates cancellation while acquiring a token or fetching history") {
-            val cancelled = CancellationException("cancelled")
-            val tokenClient = aaregClient(
-                token = { throw cancelled },
-                aareg = { error("No Aareg request should be made after cancellation") },
-            )
-            shouldThrow<CancellationException> { tokenClient.getArbeidsforholdHistorikk(personIdent) } shouldBe cancelled
-
-            val historyClient = aaregClient(aareg = { throw cancelled })
-            shouldThrow<CancellationException> { historyClient.getArbeidsforholdHistorikk(personIdent) } shouldBe cancelled
-        }
     })
 
-private fun AaregClientException.shouldNotExposePersonIdent(personIdent: String) {
-    message.orEmpty() shouldNotContain personIdent
-    message.orEmpty() shouldNotContain "sensitive upstream body"
+private fun UpstreamResult.Failure.shouldNotExposePersonIdent(personIdent: String) {
+    toString() shouldNotContain personIdent
+    failure.toString() shouldNotContain personIdent
+    shouldThrow<UpstreamRequestException> { getOrThrow() }.message.orEmpty() shouldNotContain personIdent
 }
 
 private suspend fun withTraceId(traceId: String?, action: suspend () -> Unit) {

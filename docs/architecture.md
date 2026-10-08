@@ -228,7 +228,9 @@ Contains reusable technical mechanisms without domain rules:
   use-case steps continue with a value or stop with the use case's result.
   `Step` never appears in public use-case contracts or ports;
 - `upstream`: `UpstreamResult` and `UpstreamFailure`, the result types
-  returned by clients for external systems. See
+  returned by clients for external systems. `UpstreamName` is a validated log
+  name; each client defines its own constant, so `platform` does not know the
+  concrete systems. See
   [ADR-0004](adr/ADR-0004-feil-fra-eksterne-systemer-er-resultater-ikke-exceptions.md).
 
 `platform` must not depend on a business module.

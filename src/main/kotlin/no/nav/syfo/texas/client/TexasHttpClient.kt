@@ -2,11 +2,19 @@ package no.nav.syfo.texas.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import no.nav.syfo.application.texas.TexasEnvironment
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
+import kotlin.coroutines.cancellation.CancellationException
+
+internal val TEXAS = UpstreamName("texas")
 
 class TexasHttpClient(
     val client: HttpClient,
@@ -32,6 +40,16 @@ class TexasHttpClient(
             )
         )
     }.body<TexasResponse>()
+
+    suspend fun azureAdSystemToken(scope: String): UpstreamResult<String> = try {
+        UpstreamResult.Success(systemToken(IDENTITY_PROVIDER_AZUREAD, getTarget(scope)).accessToken)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: ResponseException) {
+        UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, e.response.status.value, e))
+    } catch (e: Exception) {
+        UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, null, e))
+    }
 
     private suspend fun exchangeToken(identityProvider: String, target: String, token: String): TexasResponse = client.post(environment.tokenExchangeEndpoint) {
         contentType(ContentType.Application.Json)

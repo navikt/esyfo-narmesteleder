@@ -72,6 +72,9 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decis
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.util.UUID
@@ -101,6 +104,34 @@ class FulfillNarmestelederbehovRouteTest :
                     )
                 }
                 fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
+            }
+        }
+
+        test("PUT /requirement/{id} returns upstream unavailable without publication or fulfilling the behov") {
+            val failures = listOf(
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 400, IllegalStateException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 404, IllegalStateException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 500, IllegalStateException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, java.net.SocketTimeoutException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, java.io.IOException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 200, IllegalStateException()),
+                UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException()),
+            )
+            failures.forEach { failure ->
+                withPutApplication { fixture ->
+                    val id = fixture.seed()
+                    fixture.aareg.setFailure(failure)
+                    val response = client.put("/api/v1/linemanager/requirement/$id") {
+                        contentType(ContentType.Application.Json)
+                        bearerAuth(createMockToken(fixture.orgNumber))
+                        setBody(fixture.newManager())
+                    }
+                    response.status shouldBe HttpStatusCode.InternalServerError
+                    response.body<ApiError>().type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                    response.body<ApiError>().message shouldBe "An upstream service is unavailable"
+                    fixture.repository.fulfilled shouldBe emptyList()
+                    coVerify(exactly = 0) { fixture.producer.sendSykmeldingNLRelasjon(any(), any()) }
+                }
             }
         }
 

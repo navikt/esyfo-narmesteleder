@@ -1,5 +1,7 @@
 package no.nav.syfo.integration.aareg
 
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.util.JsonFixtureLoader
 import java.util.concurrent.atomic.AtomicReference
 
@@ -28,7 +30,7 @@ class FakeAaregClient(
             }
             .toMutableMap()
 
-    private val failureRef = AtomicReference<Throwable?>(null)
+    private val failureRef = AtomicReference<UpstreamFailure?>(null)
     private val historyByPersonIdent = mutableMapOf<String, AaregArbeidsforholdOversikt>()
 
     fun setEmploymentHistory(personIdent: String, history: AaregArbeidsforholdOversikt) {
@@ -36,11 +38,11 @@ class FakeAaregClient(
     }
 
     /**
-     * getArbeidsforhold will throw the configured failure until it is cleared.
+     * Both lookups return the configured failure until it is cleared.
      *
-     * @param failure the exception to throw
+     * @param failure the upstream failure to return
      */
-    fun setFailure(failure: Throwable) {
+    fun setFailure(failure: UpstreamFailure) {
         failureRef.set(failure)
     }
 
@@ -48,20 +50,19 @@ class FakeAaregClient(
 
     /**
      * @param personIdent the fnr to look up
-     * @returns the arbeidsforhold for the given fnr, or an empty response if not found
-     * @throws the configured failure if set
+     * @return Success with arbeidsforhold, empty when unknown, or the configured Failure
      */
     override suspend fun getArbeidsforhold(
         personIdent: String
-    ): AaregArbeidsforholdOversikt {
-        failureRef.get()?.let { throw it }
-        val pairs = arbeidsForholdForIdent[personIdent] ?: return AaregArbeidsforholdOversikt()
-        return createArbeidsforholdOversikt(*pairs.toTypedArray())
+    ): UpstreamResult<AaregArbeidsforholdOversikt> {
+        failureRef.get()?.let { return UpstreamResult.Failure(it) }
+        val pairs = arbeidsForholdForIdent[personIdent].orEmpty()
+        return UpstreamResult.Success(createArbeidsforholdOversikt(*pairs.toTypedArray()))
     }
 
-    override suspend fun getArbeidsforholdHistorikk(personIdent: String): AaregArbeidsforholdOversikt {
-        failureRef.get()?.let { throw it }
-        return historyByPersonIdent[personIdent] ?: getArbeidsforhold(personIdent)
+    override suspend fun getArbeidsforholdHistorikk(personIdent: String): UpstreamResult<AaregArbeidsforholdOversikt> {
+        failureRef.get()?.let { return UpstreamResult.Failure(it) }
+        return historyByPersonIdent[personIdent]?.let { UpstreamResult.Success(it) } ?: getArbeidsforhold(personIdent)
     }
 
     private fun loadArbeidsforhold(fixtureLoader: JsonFixtureLoader): Map<String, AaregArbeidsforholdOversikt> = fixtureLoader.loadOrNull<Map<String, AaregArbeidsforholdOversikt>>(FIXTURE_FILE) ?: emptyMap()

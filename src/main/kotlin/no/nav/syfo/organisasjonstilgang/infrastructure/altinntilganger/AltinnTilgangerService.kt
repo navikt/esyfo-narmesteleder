@@ -2,7 +2,6 @@ package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.failureDiagnostics
@@ -11,6 +10,7 @@ import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganizationsLooku
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
 
 class AltinnTilgangerService(
     val altinnTilgangerClient: AltinnTilgangerClient,

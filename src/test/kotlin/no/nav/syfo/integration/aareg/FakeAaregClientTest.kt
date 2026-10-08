@@ -1,111 +1,58 @@
 package no.nav.syfo.integration.aareg
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.util.JsonFixtureLoader
 
 class FakeAaregClientTest :
-    DescribeSpec({
+    FunSpec({
+        test("loads employment from the default fixture") {
+            FakeAaregClient().arbeidsForholdForIdent.size shouldBe 3
+        }
 
-        describe("FakeAaregClient") {
-            describe("with default fixture loader") {
-                val client = FakeAaregClient()
+        test("loads and parses a custom fixture") {
+            val client = FakeAaregClient(JsonFixtureLoader("classpath:fixtures"))
+            client.arbeidsForholdForIdent.keys shouldContainExactlyInAnyOrder listOf("test-fnr-001", "test-fnr-002")
+            client.arbeidsForholdForIdent["test-fnr-001"] shouldBe listOf("111111111" to "222222222")
+            requireNotNull(client.arbeidsForholdForIdent["test-fnr-002"]) shouldHaveSize 2
+        }
 
-                it("should load arbeidsforhold from default JSON file") {
-                    // From src/main/resources/fake-clients/aareg/arbeidsforhold.json
-                    client.arbeidsForholdForIdent.keys shouldContainExactlyInAnyOrder listOf(
-                        "15436803416",
-                        "13468329780",
-                        "01518721689"
-                    )
-                }
+        test("has no employment when the fixture is missing") {
+            FakeAaregClient(JsonFixtureLoader("classpath:nonexistent")).arbeidsForholdForIdent.size shouldBe 0
+        }
 
-                it("should parse arbeidsforhold as pairs of (orgnummer, juridiskOrgnummer)") {
-                    val arbeidsforhold = client.arbeidsForholdForIdent["15436803416"]!!
+        test("returns success with fixture employment") {
+            val client = FakeAaregClient(JsonFixtureLoader("classpath:fixtures"))
+            val overview = client.getArbeidsforhold("test-fnr-001").shouldBeInstanceOf<UpstreamResult.Success<AaregArbeidsforholdOversikt>>().value
+            overview.arbeidsforholdoversikter shouldHaveSize 1
+            overview.arbeidsforholdoversikter.single().arbeidssted.getOrgnummer() shouldBe "111111111"
+            overview.arbeidsforholdoversikter.single().opplysningspliktig.getJuridiskOrgnummer() shouldBe "222222222"
+        }
 
-                    arbeidsforhold shouldHaveSize 2
-                    arbeidsforhold shouldContainExactlyInAnyOrder listOf(
-                        "215649202" to "310667633",
-                        "972674818" to "963743254"
-                    )
-                }
-            }
+        test("returns an empty success for an unknown ident") {
+            FakeAaregClient().getArbeidsforhold("unknown-fnr") shouldBe UpstreamResult.Success(AaregArbeidsforholdOversikt())
+        }
 
-            describe("with custom fixture loader") {
-                val loader = JsonFixtureLoader("classpath:fixtures")
-                val client = FakeAaregClient(loader)
+        test("reflects changes to the seeded employment") {
+            val client = FakeAaregClient()
+            client.arbeidsForholdForIdent["new-fnr"] = listOf("999999999" to "888888888")
+            val overview = client.getArbeidsforhold("new-fnr").shouldBeInstanceOf<UpstreamResult.Success<AaregArbeidsforholdOversikt>>().value
+            overview.arbeidsforholdoversikter shouldHaveSize 1
+            overview.arbeidsforholdoversikter.single().arbeidssted.getOrgnummer() shouldBe "999999999"
+        }
 
-                it("should load arbeidsforhold from custom JSON file") {
-                    client.arbeidsForholdForIdent.keys shouldContainExactlyInAnyOrder listOf(
-                        "test-fnr-001",
-                        "test-fnr-002"
-                    )
-                }
-
-                it("should parse arbeidsforhold correctly") {
-                    client.arbeidsForholdForIdent["test-fnr-001"] shouldBe listOf("111111111" to "222222222")
-                    client.arbeidsForholdForIdent["test-fnr-002"]!! shouldHaveSize 2
-                }
-            }
-
-            describe("with missing fixture file") {
-                val loader = JsonFixtureLoader("classpath:nonexistent")
-                val client = FakeAaregClient(loader)
-
-                it("should have empty arbeidsforhold when fixture file not found") {
-                    client.arbeidsForholdForIdent.size shouldBe 0
-                }
-            }
-
-            describe("getArbeidsforhold") {
-                val client = FakeAaregClient()
-
-                it("should return AaregArbeidsforholdOversikt for known fnr") {
-                    val result = client.getArbeidsforhold("15436803416")
-
-                    result.arbeidsforholdoversikter shouldHaveSize 2
-                    result.arbeidsforholdoversikter[0].arbeidssted.getOrgnummer() shouldBe "215649202"
-                    result.arbeidsforholdoversikter[0].opplysningspliktig.getJuridiskOrgnummer() shouldBe "310667633"
-                }
-
-                it("should return empty response for unknown fnr") {
-                    val result = client.getArbeidsforhold("unknown-fnr")
-
-                    result.arbeidsforholdoversikter shouldHaveSize 0
-                }
-
-                it("should reflect changes made to arbeidsForHoldForIdent") {
-                    client.arbeidsForholdForIdent["new-fnr"] = listOf("999999999" to "888888888")
-
-                    val result = client.getArbeidsforhold("new-fnr")
-
-                    result.arbeidsforholdoversikter shouldHaveSize 1
-                    result.arbeidsforholdoversikter[0].arbeidssted.getOrgnummer() shouldBe "999999999"
-                }
-            }
-
-            describe("failure simulation") {
-                val client = FakeAaregClient()
-
-                it("should throw configured failure") {
-                    val expectedException = AaregClientException("Test error", RuntimeException())
-                    client.setFailure(expectedException)
-
-                    val exception = runCatching { client.getArbeidsforhold("15436803416") }.exceptionOrNull()
-
-                    exception shouldBe expectedException
-                }
-
-                it("should work normally after clearing failure") {
-                    client.setFailure(RuntimeException("Should be cleared"))
-                    client.clearFailure()
-
-                    val result = client.getArbeidsforhold("15436803416")
-
-                    result.arbeidsforholdoversikter shouldHaveSize 2
-                }
-            }
+        test("returns the configured failure until cleared") {
+            val client = FakeAaregClient(JsonFixtureLoader("classpath:fixtures"))
+            val failure = UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            client.setFailure(failure)
+            repeat(2) { client.getArbeidsforhold("test-fnr-001") shouldBe UpstreamResult.Failure(failure) }
+            client.clearFailure()
+            client.getArbeidsforhold("test-fnr-001").shouldBeInstanceOf<UpstreamResult.Success<AaregArbeidsforholdOversikt>>()
         }
     })

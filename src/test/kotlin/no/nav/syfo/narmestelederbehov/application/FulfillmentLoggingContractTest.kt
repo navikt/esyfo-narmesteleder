@@ -21,6 +21,9 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 
@@ -140,6 +143,13 @@ class FulfillmentLoggingContractTest :
             }
         }
 
+        test("leaves upstream unavailable logging to the HTTP edge without a fulfillment rejection") {
+            val failure = UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("private-exception-canary"))
+            val relation = FakeRelationEstablisher(result = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure))
+            createUseCase(relation = relation).execute(command()) shouldBe FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
+            contract.assertValid(capture.records, expectedCount = 0)
+        }
+
         test("logs a bounded status persistence failure with behov id only in its field") {
             createUseCase(
                 repository = FakeBehovRepository(
@@ -176,7 +186,7 @@ class FulfillmentLoggingContractTest :
             ),
             Triple(
                 "NO_EMPLOYMENT",
-                { createUseCase(relation = FakeRelationEstablisher(result = EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NONE))) },
+                { createUseCase(relation = FakeRelationEstablisher(result = EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None))) },
                 command(),
             ),
             Triple(

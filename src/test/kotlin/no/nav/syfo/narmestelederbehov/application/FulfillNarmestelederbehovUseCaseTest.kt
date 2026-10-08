@@ -27,6 +27,9 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.LoggerFactory
 import java.util.UUID
 
@@ -136,10 +139,10 @@ class FulfillNarmestelederbehovUseCaseTest :
             listOf(
                 EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber) to
                     FulfillNarmestelederbehovResult.NoActiveSykmelding(organizationNumber),
-                EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NONE) to
-                    FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NONE),
-                EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NOT_IN_ORGANIZATION) to
-                    FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NOT_IN_ORGANIZATION),
+                EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None) to
+                    FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.None),
+                EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization) to
+                    FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NotInOrganization),
                 EstablishNarmestelederrelasjonResult.PersonNotFound to FulfillNarmestelederbehovResult.PersonNotFound,
                 EstablishNarmestelederrelasjonResult.ManagerNameMismatch(mismatch) to
                     FulfillNarmestelederbehovResult.ManagerNameMismatch(mismatch),
@@ -149,6 +152,15 @@ class FulfillNarmestelederbehovUseCaseTest :
                     .execute(command()) shouldBe expected
                 effects shouldBe listOf("load", "access", "establish")
             }
+        }
+
+        test("propagates upstream unavailable without marking the behov or completing dialog") {
+            val effects = mutableListOf<String>()
+            val failure = UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, IllegalStateException())
+            val relation = FakeRelationEstablisher(effects, result = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure))
+            createUseCase(relation = relation, effects = effects).execute(command()) shouldBe
+                FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
+            effects shouldBe listOf("load", "access", "establish")
         }
 
         test("keeps fulfillment successful when Dialogporten completion fails") {

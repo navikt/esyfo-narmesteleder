@@ -26,6 +26,10 @@ logger.logEvent(dialogFailed, details, cause = exception)
   cause: `failure_kind`, `exception_type`, `cause_type(s)`, `upstream`,
   `upstream_status`, `failure_stage` and `sql_state`. It also logs a sanitized
   stack trace that contains class names and frames, never exception messages.
+- `logEvent` also accepts `upstreamFailure`. Its `upstream`, `failure_stage` and
+  validated `upstream_status` override throwable-derived metadata; the cause
+  still supplies classification and the sanitized stack. Without an explicit
+  cause, `upstreamFailure.cause` is used.
 - The contract fields `exception_type`, `cause_type`, `upstream_status` and
   `sql_state` come from the esyfo-logger 0.3.0 helpers, so they always match the
   team's runtime-error contract. Nested classes keep their binary name, so
@@ -44,6 +48,8 @@ logger.logEvent(dialogFailed, details, cause = exception)
 - StatusPages logs only what has not already been logged: unexpected 5xx as
   ERROR `api_request_failed` with the cause, other 4xx as WARN
   `api_request_invalid` with `error_type`, and 404 as INFO.
+- `ApiErrorException.upstreamFailure` is passed to `api_request_failed` by
+  StatusPages, which logs the upstream failure once at the HTTP edge.
 - A deliberate, domain-owned rejection worth following up, such as rejected
   system-user access, uses the library's shared `apiRequestRejected` with an
   `operation` and a `rejection_reason`. Do not use it for ordinary client errors.

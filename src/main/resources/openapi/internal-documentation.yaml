@@ -422,6 +422,7 @@ components:
           pattern: '^\d{11}$'
         emailAddresses:
           type: array
+          description: Invalid email addresses are omitted. The list can be empty.
           items:
             type: string
             format: email

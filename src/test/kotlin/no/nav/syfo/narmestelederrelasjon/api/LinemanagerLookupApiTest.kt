@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import createMockToken
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.doubles.shouldBeExactly
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -30,6 +31,7 @@ import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.api.installContentNegotiation
 import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
+import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupRequest
@@ -38,6 +40,8 @@ import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerResponse
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
+import no.nav.syfo.narmestelederrelasjon.infrastructure.LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
@@ -53,7 +57,7 @@ class LinemanagerLookupApiTest :
     FunSpec({
         val texasHttpClient = mockk<TexasHttpClient>()
         val repository = FakeActiveNarmestelederrelasjonRepository()
-        val lookupActiveNarmesteleder = LookupActiveNarmestelederUseCase(repository)
+        val lookupActiveNarmesteleder = LookupActiveNarmestelederUseCase(repository, MicrometerDiscardedEmailAddressMetrics.lookupNarmesteleder())
 
         beforeTest {
             repository.reset()
@@ -81,6 +85,39 @@ class LinemanagerLookupApiTest :
                         emailAddresses = listOf("leder@example.com", "annen@example.com"),
                     )
                 )
+            }
+        }
+
+        test("returns only valid email addresses and counts the discarded ones") {
+            repository.rows = listOf(activeRelation("leder@example.com;not-an-email, annen@example.com,ugyldig@"))
+            val before = discardedCount()
+
+            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
+                val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
+
+                response.status shouldBe HttpStatusCode.OK
+                response.body<LinemanagerLookupResponse>().lineManager?.emailAddresses shouldBe
+                    listOf("leder@example.com", "annen@example.com")
+                discardedCount() shouldBeExactly before + 2
+            }
+        }
+
+        test("returns the line manager with empty emailAddresses when no address is valid") {
+            repository.rows = listOf(activeRelation("not-an-email;ugyldig@"))
+            val before = discardedCount()
+
+            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
+                val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
+
+                response.status shouldBe HttpStatusCode.OK
+                response.body<LinemanagerLookupResponse>() shouldBe LinemanagerLookupResponse(
+                    lineManager = LinemanagerResponse(
+                        id = narmestelederId,
+                        nationalIdentificationNumber = "10987654321",
+                        emailAddresses = emptyList(),
+                    )
+                )
+                discardedCount() shouldBeExactly before + 2
             }
         }
 
@@ -121,6 +158,18 @@ class LinemanagerLookupApiTest :
             }
         }
     })
+
+private fun activeRelation(managerEmail: String) = ActiveNarmestelederrelasjon(
+    id = narmestelederId,
+    managerIdent = PersonIdent("10987654321"),
+    managerEmail = managerEmail,
+    activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
+)
+
+private fun discardedCount(): Double = METRICS_REGISTRY
+    .find(LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL)
+    .counter()
+    ?.count() ?: 0.0
 
 private fun TexasHttpClient.authorizes(azp: String) {
     coEvery { introspectToken("azuread", any()) } returns TexasIntrospectionResponse(active = true, azp = azp)

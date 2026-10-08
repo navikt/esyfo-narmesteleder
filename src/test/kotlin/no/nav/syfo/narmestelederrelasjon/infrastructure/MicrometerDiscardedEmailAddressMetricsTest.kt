@@ -6,22 +6,30 @@ import no.nav.syfo.application.metric.METRICS_REGISTRY
 
 class MicrometerDiscardedEmailAddressMetricsTest :
     FunSpec({
-        val metrics = MicrometerDiscardedEmailAddressMetrics()
+        test("employee line manager metrics increment only their own counter") {
+            val employeeBefore = count(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL)
+            val lookupBefore = count(LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL)
+            MicrometerDiscardedEmailAddressMetrics.employeeLinemanager().record(3)
+            count(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL) shouldBeExactly employeeBefore + 3.0
+            count(LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL) shouldBeExactly lookupBefore
+        }
 
-        test("increments the counter by the discarded count") {
-            val before = discardedCount()
-            metrics.record(3)
-            discardedCount() shouldBeExactly before + 3.0
+        test("lookup metrics increment only their own counter") {
+            val employeeBefore = count(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL)
+            val lookupBefore = count(LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL)
+            MicrometerDiscardedEmailAddressMetrics.lookupNarmesteleder().record(2)
+            count(LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL) shouldBeExactly lookupBefore + 2.0
+            count(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL) shouldBeExactly employeeBefore
         }
 
         test("does not increment the counter when nothing was discarded") {
-            val before = discardedCount()
-            metrics.record(0)
-            discardedCount() shouldBeExactly before
+            val before = count(LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL)
+            MicrometerDiscardedEmailAddressMetrics.lookupNarmesteleder().record(0)
+            count(LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL) shouldBeExactly before
         }
     })
 
-private fun discardedCount(): Double = METRICS_REGISTRY
-    .find(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL)
+private fun count(name: String): Double = METRICS_REGISTRY
+    .find(name)
     .counter()
     ?.count() ?: 0.0

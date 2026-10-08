@@ -16,9 +16,13 @@ import no.nav.syfo.application.kafka.KafkaListener
 import no.nav.syfo.application.kafka.KafkaReason
 import no.nav.syfo.application.kafka.kafkaConsumerCrashed
 import no.nav.syfo.application.kafka.kafkaConsumerFailed
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.BehovSource
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -41,6 +45,7 @@ class LeesahNLKafkaConsumer(
     private val kafkaConsumer: KafkaConsumer<String, String>,
     private val jacksonMapper: ObjectMapper,
     private val handler: NlBehovLeesahHandler,
+    private val fulfillBehovFromLeesah: FulfillNarmestelederbehovFromLeesahUseCase,
     private val scope: CoroutineScope,
 ) : KafkaListener {
     private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.NL_LEESAH)
@@ -103,7 +108,7 @@ class LeesahNLKafkaConsumer(
 
                 logger.info("Processing NL message with id: ${nlKafkaMessage.narmesteLederId}")
                 if (nlKafkaMessage.aktivTom == null) {
-                    handler.updateStatusForRequirement(nlKafkaMessage)
+                    fulfillOpenBehov(nlKafkaMessage)
                 } else {
                     handler.handleByLeesahStatus(
                         nlKafkaMessage.toNlBehovWrite(),
@@ -119,6 +124,12 @@ class LeesahNLKafkaConsumer(
         }.getOrElse {
             handleProccessingError(record, it)
         }
+    }
+
+    private suspend fun fulfillOpenBehov(message: NarmestelederLeesahKafkaMessage) {
+        val employee = message.employeeOrNull()
+            ?: return logger.info("Skipping behov fulfillment for NL message ${message.narmesteLederId}: invalid employee identifiers")
+        fulfillBehovFromLeesah.execute(employee)
     }
 
     private fun commitProcessedSync() {
@@ -163,4 +174,11 @@ class LeesahNLKafkaConsumer(
         private const val DELAY_ON_ERROR_SECONDS = 60L
         private const val POLL_DURATION_SECONDS = 1L
     }
+}
+
+// Malformed identifiers cannot match a stored behov, so they must not fail the record.
+private fun NarmestelederLeesahKafkaMessage.employeeOrNull(): Employee? = try {
+    Employee(PersonIdent(fnr), OrganizationNumber(orgnummer))
+} catch (_: IllegalArgumentException) {
+    null
 }

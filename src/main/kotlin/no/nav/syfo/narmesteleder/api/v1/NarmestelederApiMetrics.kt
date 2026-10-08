@@ -18,11 +18,6 @@ val COUNT_FULFILL_LINEMANAGER_BY_PERSONNEL_MANAGER: Counter = Counter.builder(FU
     .description("Counts the number of fulfilled requirements performed by personnel manager")
     .register(METRICS_REGISTRY)
 
-const val FULFILL_LINEMANAGER_BY_LEGACY_SYSTEM = "${METRICS_NS}_fulfill_linemanager_requirement_by_legacy_system"
-val COUNT_FULFILL_LINEMANAGER_BY_LEGACY_SYSTEM: Counter = Counter.builder(FULFILL_LINEMANAGER_BY_LEGACY_SYSTEM)
-    .description("Counts the number of fulfilled requirements performed by legacy system")
-    .register(METRICS_REGISTRY)
-
 const val CREATE_LINEMANAGER_REQUIREMENT = "${METRICS_NS}_create_linemanager_requirement"
 val COUNT_CREATE_LINEMANAGER_REQUIREMENT: Counter = Counter.builder(CREATE_LINEMANAGER_REQUIREMENT)
     .description("Counts the number of created requirements")

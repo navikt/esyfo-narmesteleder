@@ -166,7 +166,7 @@ class FulfillNarmestelederbehovUseCaseTest :
         test("keeps fulfillment successful when Dialogporten completion fails") {
             val effects = mutableListOf<String>()
             val failure = IllegalStateException("private-exception-canary")
-            val logger = LoggerFactory.getLogger(NarmestelederbehovDialogCompletion::class.java) as Logger
+            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
             val appender = ListAppender<ILoggingEvent>().apply { start() }
             val previousLevel = logger.level
             logger.level = Level.WARN
@@ -193,7 +193,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                 event.level shouldBe Level.WARN
                 fields["behov_id"] shouldBe behovId.value.toString()
                 fields.containsKey("dialog_id") shouldBe false
-                fields["operation"] shouldBe "complete_narmestelederbehov_dialog"
+                fields["operation"] shouldBe "fulfill_narmestelederbehov"
                 fields["upstream"] shouldBe "dialogporten"
                 event.throwableProxy.message shouldBe "java.lang.IllegalStateException"
                 (event.formattedMessage + fields.toString() + event.throwableProxy.message)
@@ -225,7 +225,7 @@ class FulfillNarmestelederbehovUseCaseTest :
 
         test("status persistence failure leaves the fulfilled request successful") {
             val effects = mutableListOf<String>()
-            val logger = LoggerFactory.getLogger(NarmestelederbehovDialogCompletion::class.java) as Logger
+            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
             val appender = ListAppender<ILoggingEvent>().apply { start() }
             val previousLevel = logger.level
             logger.level = Level.WARN
@@ -255,7 +255,7 @@ class FulfillNarmestelederbehovUseCaseTest :
 
         test("reports Completed without logging when another writer changed the status") {
             val effects = mutableListOf<String>()
-            val logger = LoggerFactory.getLogger(NarmestelederbehovDialogCompletion::class.java) as Logger
+            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
             val appender = ListAppender<ILoggingEvent>().apply { start() }
             val previousLevel = logger.level
             logger.level = Level.WARN
@@ -381,18 +381,12 @@ internal fun createUseCase(
     relation: FakeRelationEstablisher? = null,
     dialog: FakeDialog? = null,
     effects: MutableList<String> = mutableListOf(),
-): FulfillNarmestelederbehovUseCase {
-    val behovRepository = repository ?: FakeBehovRepository(behov, effects)
-    return FulfillNarmestelederbehovUseCase(
-        behovRepository = behovRepository,
-        organizationAccess = access ?: FakeOrganizationAccess(effects = effects),
-        establishRelation = relation ?: FakeRelationEstablisher(effects),
-        dialogCompletion = NarmestelederbehovDialogCompletion(
-            dialog = dialog ?: FakeDialog(effects = effects),
-            dialogStatus = behovRepository,
-        ),
-    )
-}
+) = FulfillNarmestelederbehovUseCase(
+    behovRepository = repository ?: FakeBehovRepository(behov, effects),
+    organizationAccess = access ?: FakeOrganizationAccess(effects = effects),
+    establishRelation = relation ?: FakeRelationEstablisher(effects),
+    dialog = dialog ?: FakeDialog(effects = effects),
+)
 
 private data class Case(
     val result: FulfillNarmestelederbehovResult,

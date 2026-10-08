@@ -1,6 +1,8 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
@@ -21,7 +23,7 @@ class FulfillNarmestelederbehovUseCase(
     private val behovRepository: NarmestelederbehovRepository,
     private val organizationAccess: OrganizationAccess,
     private val establishRelation: EstablishNarmestelederrelasjon,
-    private val dialogCompletion: NarmestelederbehovDialogCompletion,
+    private val dialog: NarmestelederbehovDialog,
 ) {
     suspend fun execute(command: FulfillNarmestelederbehovCommand): FulfillNarmestelederbehovResult = fulfill(command).log()
 
@@ -41,7 +43,7 @@ class FulfillNarmestelederbehovUseCase(
         val marked = markFulfilled(behov).orStop { return it }
         return FulfillNarmestelederbehovResult.Fulfilled(
             relationSource = relationSource,
-            dialogCompletion = dialogCompletion.complete(marked),
+            dialogCompletion = completeDialog(marked),
             managerNameMatch = published.managerNameMatch,
         )
     }
@@ -82,6 +84,30 @@ class FulfillNarmestelederbehovUseCase(
     private suspend fun markFulfilled(behov: Narmestelederbehov): FulfillStep<MarkFulfilledResult.Marked> = when (val result = behovRepository.markFulfilled(behov.id)) {
         is MarkFulfilledResult.Marked -> Step.Continue(result)
         MarkFulfilledResult.Missing -> Step.Stop(FulfillNarmestelederbehovResult.BehovMissingAfterPublication)
+    }
+
+    private suspend fun completeDialog(marked: MarkFulfilledResult.Marked): DialogportenCompletionAttempt {
+        val dialogId = marked.dialogId ?: return DialogportenCompletionAttempt.NotApplicable
+        try {
+            dialog.complete(dialogId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.logEvent(dialogportenCompletionFailed, marked.id.value.toString(), cause = e)
+            return DialogportenCompletionAttempt.Failed
+        }
+        return try {
+            when (behovRepository.markDialogCompleted(marked.id)) {
+                MarkDialogCompletedResult.Marked,
+                MarkDialogCompletedResult.NotFulfilled,
+                -> DialogportenCompletionAttempt.Completed
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.logEvent(dialogStatusPersistenceFailed, marked.id.value.toString(), cause = e)
+            DialogportenCompletionAttempt.Failed
+        }
     }
 
     private fun FulfillNarmestelederbehovResult.log(): FulfillNarmestelederbehovResult = also { result ->

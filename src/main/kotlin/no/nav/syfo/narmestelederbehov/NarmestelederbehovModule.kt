@@ -8,8 +8,6 @@ import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.LeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCompletion
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogStatus
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
@@ -27,13 +25,11 @@ import org.koin.dsl.module
 fun narmestelederbehovModule() = module {
     single { ExposedNarmestelederbehovRepository(get<Database>()) }
     single<NarmestelederbehovRepository> { get<ExposedNarmestelederbehovRepository>() }
-    single<NarmestelederbehovDialogStatus> { get<ExposedNarmestelederbehovRepository>() }
     single { ExposedOpenNarmestelederbehovRepository(get<Database>()) }
     single<OpenNarmestelederbehovRepository> { get<ExposedOpenNarmestelederbehovRepository>() }
     single<OpenNarmestelederbehovForEmployee> { get<ExposedOpenNarmestelederbehovRepository>() }
     single<NarmestelederbehovExpiryRepository> { ExposedNarmestelederbehovExpiryRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }
-    single { NarmestelederbehovDialogCompletion(dialog = get(), dialogStatus = get()) }
     single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get()) }
     single<LeesahFulfillmentMetrics> { MicrometerLeesahFulfillmentMetrics() }
     single {
@@ -41,7 +37,7 @@ fun narmestelederbehovModule() = module {
             openBehov = get(),
             behovRepository = get(),
             metrics = get(),
-            dialogCompletion = get(),
+            dialog = get(),
         )
     }
     single<EmployeeNameLookup> { PdlEmployeeNameLookup(get()) }

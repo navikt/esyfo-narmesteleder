@@ -47,9 +47,10 @@ import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCompletion
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
@@ -303,10 +304,7 @@ private class PutFixture {
             MicrometerNameValidationMetrics(),
             KafkaPublishNarmestelederrelasjon(producer),
         ),
-        NarmestelederbehovDialogCompletion(
-            dialog = { },
-            dialogStatus = { error("Behov without a dialog must not record dialog status") },
-        ),
+        NarmestelederbehovDialog { },
     )
 
     init {
@@ -350,6 +348,8 @@ private class FakePutBehovRepository : NarmestelederbehovRepository {
         fulfilled += id
         return MarkFulfilledResult.Marked(id, null)
     }
+
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId) = MarkDialogCompletedResult.Marked
 }
 
 private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture) -> Unit) {

@@ -91,6 +91,7 @@ private class ReadFixture(
         }
         override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("GET must not use fulfillment lookup")
         override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("GET must not write")
+        override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("GET must not write")
     }
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,

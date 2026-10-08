@@ -35,10 +35,7 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
                 openBehov = { employee -> emptyList<NarmestelederbehovId>().also { requested = employee } },
                 behovRepository = LeesahBehovRepository(),
                 metrics = {},
-                dialogCompletion = NarmestelederbehovDialogCompletion(
-                    dialog = FakeDialog(),
-                    dialogStatus = { MarkDialogCompletedResult.Marked },
-                ),
+                dialog = FakeDialog(),
             )
 
             useCase.execute(EMPLOYEE)
@@ -117,6 +114,11 @@ private class LeesahBehovRepository(
         fulfillFailure?.let { throw it }
         return if (id in missing) MarkFulfilledResult.Missing else MarkFulfilledResult.Marked(id, dialogIds[id])
     }
+
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult {
+        effects += "dialog-status:$id"
+        return MarkDialogCompletedResult.Marked
+    }
 }
 
 private fun useCase(
@@ -128,11 +130,5 @@ private fun useCase(
     openBehov = { openBehov.also { effects += "find" } },
     behovRepository = repository,
     metrics = { effects += "metric" },
-    dialogCompletion = NarmestelederbehovDialogCompletion(
-        dialog = FakeDialog(effects, dialogFailure),
-        dialogStatus = {
-            effects += "dialog-status:$it"
-            MarkDialogCompletedResult.Marked
-        },
-    ),
+    dialog = FakeDialog(effects, dialogFailure),
 )

@@ -1,7 +1,9 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.Event
 import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import org.slf4j.event.Level
@@ -14,7 +16,7 @@ class FulfillNarmestelederbehovFromLeesahUseCase(
     private val openBehov: OpenNarmestelederbehovForEmployee,
     private val behovRepository: NarmestelederbehovRepository,
     private val metrics: LeesahFulfillmentMetrics,
-    private val dialogCompletion: NarmestelederbehovDialogCompletion,
+    private val dialog: NarmestelederbehovDialog,
 ) {
     suspend fun execute(employee: Employee) {
         openBehov.find(employee).forEach { fulfill(it) }
@@ -24,10 +26,34 @@ class FulfillNarmestelederbehovFromLeesahUseCase(
         when (val marked = behovRepository.markFulfilled(id)) {
             is MarkFulfilledResult.Marked -> {
                 metrics.recordFulfilled()
-                val completion = dialogCompletion.complete(marked)
+                val completion = completeDialog(marked)
                 logger.event(fulfilledFromLeesah, FulfilledFromLeesah(id, completion))
             }
             MarkFulfilledResult.Missing -> Unit
+        }
+    }
+
+    private suspend fun completeDialog(marked: MarkFulfilledResult.Marked): DialogportenCompletionAttempt {
+        val dialogId = marked.dialogId ?: return DialogportenCompletionAttempt.NotApplicable
+        try {
+            dialog.complete(dialogId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.logEvent(dialogportenCompletionFailed, marked.id.value.toString(), cause = e)
+            return DialogportenCompletionAttempt.Failed
+        }
+        return try {
+            when (behovRepository.markDialogCompleted(marked.id)) {
+                MarkDialogCompletedResult.Marked,
+                MarkDialogCompletedResult.NotFulfilled,
+                -> DialogportenCompletionAttempt.Completed
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.logEvent(dialogStatusPersistenceFailed, marked.id.value.toString(), cause = e)
+            DialogportenCompletionAttempt.Failed
         }
     }
 
@@ -45,6 +71,12 @@ private val fulfilledFromLeesah = Event<FulfilledFromLeesah>(
     operation = "fulfill_narmestelederbehov_from_leesah",
     fields = mapOf(
         "behov_id" to { it.id.value.toString() },
-        "dialogporten_completion" to { it.dialogCompletion.logValue },
+        "dialogporten_completion" to {
+            when (it.dialogCompletion) {
+                DialogportenCompletionAttempt.Completed -> "COMPLETED"
+                DialogportenCompletionAttempt.Failed -> "FAILED"
+                DialogportenCompletionAttempt.NotApplicable -> "NOT_APPLICABLE"
+            }
+        },
     ),
 )

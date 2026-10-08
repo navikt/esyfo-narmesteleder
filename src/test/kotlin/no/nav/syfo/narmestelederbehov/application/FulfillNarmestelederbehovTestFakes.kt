@@ -19,8 +19,7 @@ internal class FakeBehovRepository(
     private val markResult: MarkFulfilledResult? = null,
     private val dialogStatusFailure: Throwable? = null,
     private val dialogStatusResult: MarkDialogCompletedResult = MarkDialogCompletedResult.Marked,
-) : NarmestelederbehovRepository,
-    NarmestelederbehovDialogStatus {
+) : NarmestelederbehovRepository {
     override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = null
 
     override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Fulfillment must not save employee name")

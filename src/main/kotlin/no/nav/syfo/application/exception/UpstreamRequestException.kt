@@ -1,5 +1,7 @@
 package no.nav.syfo.application.exception
 
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+
 enum class UpstreamExceptionType(
     val logValue: String,
 ) {
@@ -10,14 +12,6 @@ enum class UpstreamExceptionType(
     TRANSPORT_EXCEPTION("TransportException"),
     RESPONSE_DECODING_EXCEPTION("ResponseDecodingException"),
     UNEXPECTED_EXCEPTION("UnexpectedException"),
-}
-
-enum class UpstreamFailureStage(
-    val logValue: String,
-) {
-    TOKEN_EXCHANGE("token_exchange"),
-    REQUEST("request"),
-    RESPONSE("response"),
 }
 
 class UpstreamRequestException(

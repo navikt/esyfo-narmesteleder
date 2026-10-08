@@ -9,6 +9,7 @@ import no.nav.esyfo.observability.sqlState
 import no.nav.esyfo.observability.validUpstreamStatus
 import no.nav.syfo.application.exception.UpstreamExceptionType
 import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.platform.upstream.UpstreamFailure
 import java.net.ConnectException
 import java.net.SocketException
 import java.net.SocketTimeoutException
@@ -30,7 +31,9 @@ internal data class FailureDiagnostics(
     val sqlState: String?,
 )
 
-internal fun Throwable.failureDiagnostics(): FailureDiagnostics {
+internal fun UpstreamFailure.failureDiagnostics(): FailureDiagnostics = cause.failureDiagnostics(this)
+
+internal fun Throwable.failureDiagnostics(upstreamFailure: UpstreamFailure? = null): FailureDiagnostics {
     val chain = causeChain()
     val upstreamStatus = chain.firstNotNullOfOrNull {
         when (it) {
@@ -53,7 +56,7 @@ internal fun Throwable.failureDiagnostics(): FailureDiagnostics {
         chain.any { it is ResponseException } || upstreamStatus != null -> "http"
         else -> "unknown"
     }
-    return FailureDiagnostics(
+    val diagnostics = FailureDiagnostics(
         exceptionType = exceptionType(),
         causeType = causeType(),
         causeTypes = chain.map { it.safeTypeName() },
@@ -71,6 +74,15 @@ internal fun Throwable.failureDiagnostics(): FailureDiagnostics {
         stack = chain.toTechnicalFailure(),
         sqlState = sqlState(),
     )
+    return if (upstreamFailure == null) {
+        diagnostics
+    } else {
+        diagnostics.copy(
+            upstream = upstreamFailure.upstream.value,
+            failureStage = upstreamFailure.stage.logValue,
+            upstreamStatus = validUpstreamStatus(upstreamFailure.status),
+        )
+    }
 }
 
 internal fun Throwable.rethrowCancellation() {

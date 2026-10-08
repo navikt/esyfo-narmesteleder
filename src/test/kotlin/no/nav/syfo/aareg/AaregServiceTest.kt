@@ -3,11 +3,16 @@ package no.nav.syfo.aareg
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.integration.aareg.AaregClientException
+import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.integration.aareg.ArbeidsstedType
 import no.nav.syfo.integration.aareg.FakeAaregClient
 import no.nav.syfo.integration.aareg.OpplysningspliktigType
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
 
 class AaregServiceTest :
     DescribeSpec({
@@ -35,18 +40,22 @@ class AaregServiceTest :
                 arbeidsforhold.opplysningspliktigType shouldBe OpplysningspliktigType.Hovedenhet
             }
 
-            it("Should convert AaregClientException to ApiErrorException") {
+            it("converts a Failure through the legacy bridge to UPSTREAM_SERVICE_UNAVAILABLE") {
                 // Arrange
                 val fnr = "12345678901"
                 val fakeAaregClient = FakeAaregClient()
-                fakeAaregClient.setFailure(AaregClientException("Forced failure", Exception()))
+                val cause = IllegalStateException("Unavailable")
+                fakeAaregClient.setFailure(UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, 503, cause))
                 val service = AaregService(fakeAaregClient)
 
                 // Act
                 // Assert
-                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                val error = shouldThrow<ApiErrorException.InternalServerErrorException> {
                     service.findArbeidsforholdByPersonIdent(fnr)
                 }
+                error.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                error.message shouldBe "Could not fetch employment status fra Aareg"
+                error.cause.shouldBeInstanceOf<UpstreamRequestException>().cause shouldBe cause
             }
         }
 

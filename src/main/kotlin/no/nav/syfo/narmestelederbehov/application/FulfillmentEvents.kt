@@ -36,6 +36,7 @@ internal val fulfillmentRejected = Event<FulfillNarmestelederbehovResult>(
                 is FulfillNarmestelederbehovResult.AccessDenied -> "ACCESS_DENIED"
                 is FulfillNarmestelederbehovResult.NoActiveSykmelding -> "NO_ACTIVE_SYKMELDING"
                 is FulfillNarmestelederbehovResult.NoEmployment -> "NO_EMPLOYMENT"
+                is FulfillNarmestelederbehovResult.UpstreamUnavailable -> "UPSTREAM_UNAVAILABLE"
                 FulfillNarmestelederbehovResult.PersonNotFound -> "PERSON_NOT_FOUND"
                 is FulfillNarmestelederbehovResult.ManagerNameMismatch -> "MANAGER_NAME_MISMATCH"
             }

@@ -3,12 +3,14 @@ package no.nav.syfo.application.exception
 import io.ktor.http.HttpStatusCode
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
+import no.nav.syfo.platform.upstream.UpstreamFailure
 
 sealed class ApiErrorException(
     message: String,
     val type: ErrorType,
     cause: Throwable?,
     val isAlreadyLogged: Boolean = false,
+    val upstreamFailure: UpstreamFailure? = null,
 ) : RuntimeException(message, cause) {
     abstract fun toApiError(path: String): ApiError
 
@@ -31,7 +33,8 @@ sealed class ApiErrorException(
         cause: Throwable? = null,
         type: ErrorType = ErrorType.INTERNAL_SERVER_ERROR,
         isAlreadyLogged: Boolean = false,
-    ) : ApiErrorException(errorMessage, type, cause, isAlreadyLogged) {
+        upstreamFailure: UpstreamFailure? = null,
+    ) : ApiErrorException(errorMessage, type, cause, isAlreadyLogged, upstreamFailure) {
         override fun toApiError(path: String) = ApiError(
             path = path,
             status = HttpStatusCode.InternalServerError,
@@ -82,3 +85,10 @@ sealed class ApiErrorException(
         )
     }
 }
+
+fun UpstreamFailure.toUpstreamUnavailableException(): ApiErrorException.InternalServerErrorException = ApiErrorException.InternalServerErrorException(
+    errorMessage = "An upstream service is unavailable",
+    type = ErrorType.UPSTREAM_SERVICE_UNAVAILABLE,
+    cause = cause,
+    upstreamFailure = this,
+)

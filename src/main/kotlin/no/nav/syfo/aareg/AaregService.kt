@@ -2,9 +2,10 @@ package no.nav.syfo.aareg
 
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.integration.aareg.AaregClient
-import no.nav.syfo.integration.aareg.AaregClientException
 import no.nav.syfo.integration.aareg.Arbeidsforholdoversikt
+import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.util.logger
 
 class AaregService(private val arbeidsforholdOversiktClient: AaregClient) {
@@ -14,8 +15,8 @@ class AaregService(private val arbeidsforholdOversiktClient: AaregClient) {
         val arbeidsforholdOversikt = try {
             arbeidsforholdOversiktClient.getArbeidsforhold(
                 personIdent = personIdent
-            )
-        } catch (e: AaregClientException) {
+            ).getOrThrow()
+        } catch (e: UpstreamRequestException) {
             throw ApiErrorException.InternalServerErrorException(
                 errorMessage = "Could not fetch employment status fra Aareg",
                 cause = e,

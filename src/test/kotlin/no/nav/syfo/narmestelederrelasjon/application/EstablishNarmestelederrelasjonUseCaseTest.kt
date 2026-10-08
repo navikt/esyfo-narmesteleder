@@ -16,6 +16,9 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.narmestelederrelasjon.domain.normalize
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 
 class EstablishNarmestelederrelasjonUseCaseTest :
     FunSpec({
@@ -46,12 +49,12 @@ class EstablishNarmestelederrelasjonUseCaseTest :
                 name = manager.name.copy(lastName = "Different", registeredNames = listOf(RegisteredName("Different"))),
             )
             listOf(
-                RejectionCase(false, EmploymentResult.IN_ORGANIZATION, defaultPeople, EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber), listOf("sykmelding")),
-                RejectionCase(true, EmploymentResult.NONE, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NONE), listOf("sykmelding", "employment")),
-                RejectionCase(true, EmploymentResult.NOT_IN_ORGANIZATION, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NOT_IN_ORGANIZATION), listOf("sykmelding", "employment")),
-                RejectionCase(true, EmploymentResult.IN_ORGANIZATION, mapOf(managerIdent to manager), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee")),
-                RejectionCase(true, EmploymentResult.IN_ORGANIZATION, mapOf(employeeIdent to employee), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee", "manager")),
-                RejectionCase(true, EmploymentResult.IN_ORGANIZATION, mapOf(employeeIdent to employee, managerIdent to mismatchingManager), EstablishNarmestelederrelasjonResult.ManagerNameMismatch(mismatch), listOf("sykmelding", "employment", "employee", "manager", "metric")),
+                RejectionCase(false, EmploymentResult.InOrganization, defaultPeople, EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber), listOf("sykmelding")),
+                RejectionCase(true, EmploymentResult.None, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None), listOf("sykmelding", "employment")),
+                RejectionCase(true, EmploymentResult.NotInOrganization, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization), listOf("sykmelding", "employment")),
+                RejectionCase(true, EmploymentResult.InOrganization, mapOf(managerIdent to manager), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee")),
+                RejectionCase(true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee", "manager")),
+                RejectionCase(true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee, managerIdent to mismatchingManager), EstablishNarmestelederrelasjonResult.ManagerNameMismatch(mismatch), listOf("sykmelding", "employment", "employee", "manager", "metric")),
             ).forEach { case ->
                 val effects = mutableListOf<String>()
                 val publisher = RecordingPublisher(effects)
@@ -77,6 +80,21 @@ class EstablishNarmestelederrelasjonUseCaseTest :
                 effects shouldBe case.effects
                 publisher.command shouldBe null
             }
+        }
+
+        test("returns upstream unavailable before person lookup or publication") {
+            val effects = mutableListOf<String>()
+            val publisher = RecordingPublisher(effects)
+            val failure = UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val useCase = createEstablisher(
+                effects = effects,
+                employment = EmploymentResult.Unavailable(failure),
+                publisher = publisher,
+            )
+
+            useCase.execute(command()) shouldBe EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            effects shouldBe listOf("sykmelding", "employment")
+            publisher.command shouldBe null
         }
 
         test("records a name match before a publisher failure and propagates it") {
@@ -185,7 +203,7 @@ private fun createEstablisher(
     effects: MutableList<String>,
     active: Boolean = true,
     activeFailure: Throwable? = null,
-    employment: EmploymentResult = EmploymentResult.IN_ORGANIZATION,
+    employment: EmploymentResult = EmploymentResult.InOrganization,
     people: Map<PersonIdent, PersonDetails> = defaultPeople,
     metrics: NameValidationMetrics = NameValidationMetrics { effects += "metric" },
     publisher: RecordingPublisher = RecordingPublisher(effects),

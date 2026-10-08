@@ -7,8 +7,8 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import no.nav.syfo.application.exception.UpstreamFailureStage
 import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
 

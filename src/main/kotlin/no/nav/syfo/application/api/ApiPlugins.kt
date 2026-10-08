@@ -88,6 +88,7 @@ private fun logException(cause: Throwable, error: ApiError) {
             apiRequestFailed,
             RequestFailedDetails(error.status.value),
             cause = cause,
+            upstreamFailure = (cause as? ApiErrorException)?.upstreamFailure,
         )
         error.status.value in 400..499 && error.status != HttpStatusCode.NotFound -> statusPagesLogger.logEvent(
             apiRequestInvalid,

@@ -12,6 +12,9 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 
 private val employeeIdent = PersonIdent("12345678901")
 private val organizationNumber = OrganizationNumber("123456789")
@@ -45,6 +48,15 @@ class SubmitNarmestelederrelasjonUseCaseTest :
                 established?.employeeLastName shouldBe "Employee"
                 established?.source shouldBe source
             }
+        }
+
+        test("maps upstream unavailable to its own result without wrapping it as an establish rejection") {
+            val failure = UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException())
+            val useCase = SubmitNarmestelederrelasjonUseCase(
+                OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
+                EstablishNarmestelederrelasjon { EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure) },
+            )
+            useCase.execute(command(systemUser)) shouldBe SubmitNarmestelederrelasjonResult.UpstreamUnavailable(failure)
         }
 
         test("invalid contact stops before access or establishment") {

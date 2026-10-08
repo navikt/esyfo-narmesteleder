@@ -26,12 +26,19 @@ Mønsteret har seks deler:
   }
 
   data class UpstreamFailure(
-      val upstream: Upstream,          // avgrenset enum, for eksempel AAREG eller PDL
+      val upstream: UpstreamName,      // loggnavn, for eksempel "aareg" eller "pdl"
       val stage: UpstreamFailureStage, // TOKEN_EXCHANGE, REQUEST eller RESPONSE
       val status: Int?,
       val cause: Throwable,
   )
   ```
+
+  `UpstreamName` er en value class som krever små bokstaver
+  (`[a-z][a-z0-9_-]*`). `platform` kjenner ikke de konkrete systemene, i tråd
+  med ADR-0002. Hver klient definerer sin egen konstant, for eksempel
+  `AAREG` i `integration/aareg`. Derfor kan ingen bruke `when` uttømmende på
+  `upstream`, og det trengs heller ikke: use casene forgrener på sine egne
+  resultattyper, ikke på hvilket system som feilet.
 
   Klienten fanger exceptions fra Ktor og Texas én gang, ved grensen, og gjør
   dem om til `Failure`. `CancellationException` sendes alltid videre og blir

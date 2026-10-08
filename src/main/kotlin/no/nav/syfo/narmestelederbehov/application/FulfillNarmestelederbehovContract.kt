@@ -9,6 +9,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
 
 data class FulfillNarmestelederbehovCommand(
     val behovId: NarmestelederbehovId,
@@ -29,7 +30,8 @@ sealed interface FulfillNarmestelederbehovResult {
     data object BehovMissingAfterPublication : FulfillNarmestelederbehovResult
     data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
     data class NoActiveSykmelding(val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
-    data class NoEmployment(val reason: EmploymentResult) : FulfillNarmestelederbehovResult
+    data class NoEmployment(val reason: EmploymentResult.Missing) : FulfillNarmestelederbehovResult
+    data class UpstreamUnavailable(val failure: UpstreamFailure) : FulfillNarmestelederbehovResult
     data object PersonNotFound : FulfillNarmestelederbehovResult
     data class ManagerNameMismatch(
         val managerNameMatch: LastNameMatch.NoMatch,

@@ -72,6 +72,8 @@ class FulfillNarmestelederbehovUseCase(
             Step.Stop(FulfillNarmestelederbehovResult.NoActiveSykmelding(result.organizationNumber))
         is EstablishNarmestelederrelasjonResult.NoEmployment ->
             Step.Stop(FulfillNarmestelederbehovResult.NoEmployment(result.reason))
+        is EstablishNarmestelederrelasjonResult.UpstreamUnavailable ->
+            Step.Stop(FulfillNarmestelederbehovResult.UpstreamUnavailable(result.failure))
         EstablishNarmestelederrelasjonResult.PersonNotFound -> Step.Stop(FulfillNarmestelederbehovResult.PersonNotFound)
         is EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
             Step.Stop(FulfillNarmestelederbehovResult.ManagerNameMismatch(result.managerNameMatch))
@@ -111,6 +113,7 @@ class FulfillNarmestelederbehovUseCase(
     private fun FulfillNarmestelederbehovResult.log(): FulfillNarmestelederbehovResult = also { result ->
         when (result) {
             is FulfillNarmestelederbehovResult.Fulfilled -> logger.event(fulfillmentCompleted, result)
+            is FulfillNarmestelederbehovResult.UpstreamUnavailable -> Unit
             else -> logger.event(fulfillmentRejected, result)
         }
     }

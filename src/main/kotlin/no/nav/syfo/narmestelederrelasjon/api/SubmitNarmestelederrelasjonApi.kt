@@ -8,6 +8,7 @@ import io.ktor.server.routing.method
 import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
@@ -62,6 +63,7 @@ fun Route.registerSubmitNarmestelederrelasjonApi(
 
 internal fun SubmitNarmestelederrelasjonResult.throwIfRejected(): SubmitNarmestelederrelasjonResult.Established = when (this) {
     is SubmitNarmestelederrelasjonResult.Established -> this
+    is SubmitNarmestelederrelasjonResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()
     is SubmitNarmestelederrelasjonResult.InvalidManagerContactDetails ->
         throw ApiErrorException.BadRequestException(
             issues.joinToString(prefix = "Invalid manager contact details: ", separator = "; ") {
@@ -79,10 +81,9 @@ internal fun SubmitNarmestelederrelasjonResult.throwIfRejected(): SubmitNarmeste
             )
         is EstablishNarmestelederrelasjonResult.NoEmployment -> throw ApiErrorException.BadRequestException(
             when (rejection.reason) {
-                EmploymentResult.NONE -> "Employee on sick leave is missing employment in any organization"
-                EmploymentResult.NOT_IN_ORGANIZATION ->
+                EmploymentResult.None -> "Employee on sick leave is missing employment in any organization"
+                EmploymentResult.NotInOrganization ->
                     "Employee on sick leave is missing employment in the organization indicated in the request"
-                EmploymentResult.IN_ORGANIZATION -> error("An existing employment cannot be a rejection")
             },
             type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
         )
@@ -99,5 +100,7 @@ internal fun SubmitNarmestelederrelasjonResult.throwIfRejected(): SubmitNarmeste
                 type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
             )
         is EstablishNarmestelederrelasjonResult.Published -> error("A published relation cannot be a rejection")
+        is EstablishNarmestelederrelasjonResult.UpstreamUnavailable ->
+            error("UpstreamUnavailable is mapped to SubmitNarmestelederrelasjonResult.UpstreamUnavailable")
     }
 }

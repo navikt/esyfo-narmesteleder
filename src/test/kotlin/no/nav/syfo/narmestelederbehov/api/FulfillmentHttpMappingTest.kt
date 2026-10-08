@@ -17,6 +17,9 @@ import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.LoggerFactory
 
 class FulfillmentHttpMappingTest :
@@ -50,13 +53,13 @@ class FulfillmentHttpMappingTest :
                 "No active sick leave found for the given organization number: 123456789"
             ),
             Case(
-                FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NONE),
+                FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.None),
                 HttpStatusCode.BadRequest,
                 ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
                 "Employee on sick leave is missing employment in any organization"
             ),
             Case(
-                FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NOT_IN_ORGANIZATION),
+                FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NotInOrganization),
                 HttpStatusCode.BadRequest,
                 ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
                 "Employee on sick leave is missing employment in the organization indicated in the request"
@@ -94,6 +97,20 @@ class FulfillmentHttpMappingTest :
                 response.message shouldBe case.message
                 error.isAlreadyLogged shouldBe true
             }
+        }
+
+        test("maps upstream unavailable to an unlogged server error carrying the failure") {
+            val failure = UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val error = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                FulfillNarmestelederbehovResult.UpstreamUnavailable(failure).throwIfRejected()
+            }
+            error.upstreamFailure shouldBe failure
+            error.cause shouldBe failure.cause
+            error.isAlreadyLogged shouldBe false
+            val response = error.toApiError("/api/v1/linemanager/requirement/id")
+            response.status shouldBe HttpStatusCode.InternalServerError
+            response.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+            response.message shouldBe "An upstream service is unavailable"
         }
 
         test("invalid contact mapping emits no second rejection event") {

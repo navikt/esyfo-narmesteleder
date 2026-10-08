@@ -30,7 +30,7 @@ class SubmitNarmestelederrelasjonPublicationTest :
                 val producer = RecordingProducer()
                 val establish = EstablishNarmestelederrelasjonUseCase(
                     ActiveSykmeldingLookup { _, _ -> true },
-                    EmploymentLookup { _, _ -> EmploymentResult.IN_ORGANIZATION },
+                    EmploymentLookup { _, _ -> EmploymentResult.InOrganization },
                     PersonLookup { ident ->
                         when (ident) {
                             employee -> PersonDetails(employee, name("Employee", "Middle", "Employee"))

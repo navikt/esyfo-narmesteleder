@@ -3,6 +3,7 @@ package no.nav.syfo.logging
 import no.nav.esyfo.observability.ApplicationLogger
 import no.nav.esyfo.observability.Event
 import no.nav.esyfo.observability.createLogger
+import no.nav.syfo.platform.upstream.UpstreamFailure
 import org.slf4j.Logger
 import org.slf4j.event.Level
 
@@ -43,8 +44,13 @@ internal fun <T> applicationEvent(
     )
 }
 
-internal fun <T> ApplicationLogger.logEvent(event: Event<EventContext<T>>, details: T, cause: Throwable? = null) {
-    val failure = cause?.failureDiagnostics()
+internal fun <T> ApplicationLogger.logEvent(
+    event: Event<EventContext<T>>,
+    details: T,
+    cause: Throwable? = null,
+    upstreamFailure: UpstreamFailure? = null,
+) {
+    val failure = (cause ?: upstreamFailure?.cause)?.failureDiagnostics(upstreamFailure)
     event(event, EventContext(details, failure), failure?.stack)
 }
 
@@ -52,4 +58,5 @@ internal fun <T> Logger.logEvent(
     event: Event<EventContext<T>>,
     details: T,
     cause: Throwable? = null,
-) = createLogger(this).logEvent(event, details, cause)
+    upstreamFailure: UpstreamFailure? = null,
+) = createLogger(this).logEvent(event, details, cause, upstreamFailure)

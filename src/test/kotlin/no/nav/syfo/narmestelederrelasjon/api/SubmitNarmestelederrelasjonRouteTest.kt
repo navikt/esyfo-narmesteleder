@@ -56,6 +56,9 @@ import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 
@@ -84,8 +87,8 @@ class SubmitNarmestelederrelasjonRouteTest :
         test("every rejected relation result maps to the legacy HTTP contract") {
             val cases = listOf(
                 HttpCase(EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organization), ErrorType.NO_ACTIVE_SICK_LEAVE, "No active sick leave found for the given organization number: 123456789"),
-                HttpCase(EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NONE), ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG, "Employee on sick leave is missing employment in any organization"),
-                HttpCase(EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NOT_IN_ORGANIZATION), ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG, "Employee on sick leave is missing employment in the organization indicated in the request"),
+                HttpCase(EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None), ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG, "Employee on sick leave is missing employment in any organization"),
+                HttpCase(EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization), ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG, "Employee on sick leave is missing employment in the organization indicated in the request"),
                 HttpCase(EstablishNarmestelederrelasjonResult.PersonNotFound, ErrorType.BAD_REQUEST, "Could not find person in PDL"),
                 HttpCase(EstablishNarmestelederrelasjonResult.ManagerNameMismatch(noMatch), ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH, "Last name for linemanager does not correspond with registered value for the given national identification number"),
                 HttpCase(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch(noMatch), ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH, "Last name for employee on sick leave does not correspond with registered value for the given national identification number"),
@@ -201,6 +204,37 @@ class SubmitNarmestelederrelasjonRouteTest :
                     response.status shouldBe HttpStatusCode.BadRequest
                     response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
                 }
+            }
+        }
+
+        test("upstream failures return HTTP 500 with UPSTREAM_SERVICE_UNAVAILABLE") {
+            val failures = listOf(
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 400, IllegalStateException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 404, IllegalStateException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 500, IllegalStateException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, java.net.SocketTimeoutException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, java.io.IOException()),
+                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 200, IllegalStateException()),
+                UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException()),
+            )
+            failures.forEach { failure ->
+                val result = SubmitNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+                val error = shouldThrow<ApiErrorException.InternalServerErrorException> { result.throwIfRejected() }
+                error.upstreamFailure shouldBe failure
+                error.cause shouldBe failure.cause
+                error.isAlreadyLogged shouldBe false
+                val fixture = SubmitFixture(relationResult = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure))
+                fixture.authorize("tokenx")
+                val before = COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.count()
+                fixture.withApplication {
+                    val response = client.postSubmission()
+                    response.status shouldBe HttpStatusCode.InternalServerError
+                    response.body<ApiError>().let {
+                        it.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                        it.message shouldBe "An upstream service is unavailable"
+                    }
+                }
+                COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.count() shouldBe before
             }
         }
 

@@ -334,7 +334,7 @@ class FulfillNarmestelederbehovUseCase(
     private val repository: NarmestelederbehovRepository,
     private val organizationAccess: OrganizationAccess,
     private val establishRelation: EstablishNarmestelederrelasjon,
-    private val dialogporten: NarmestelederbehovDialog,
+    private val dialogCompletion: NarmestelederbehovDialogCompletion,
 ) {
     suspend fun execute(
         command: FulfillNarmestelederbehovCommand,

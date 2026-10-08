@@ -32,10 +32,13 @@ class FulfillmentLoggingContractTest :
         val mapper = jacksonObjectMapper()
         val contract = RuntimeLogContract.forEvents(fulfillmentCompleted, fulfillmentRejected)
         val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
-        val originalSettings = logger.level to logger.isAdditive
+        val dialogLogger = LoggerFactory.getLogger(NarmestelederbehovDialogCompletion::class.java) as Logger
+        val loggers = listOf(logger, dialogLogger)
+        val originalSettings = loggers.associateWith { it.level to it.isAdditive }
         val productionLogging = LoggerContext()
         lateinit var productionAppender: Appender<ILoggingEvent>
         lateinit var capture: LogCapture
+        lateinit var dialogCapture: LogCapture
         val privacyCanaries = listOf(
             employeeIdent.value, managerIdent.value, organizationNumber.value,
             employee.name.firstName, requireNotNull(employee.name.middleName), employee.name.lastName,
@@ -63,6 +66,14 @@ class FulfillmentLoggingContractTest :
             it["logger_name"].asText() shouldBe FulfillNarmestelederbehovUseCase::class.java.name
         }
 
+        fun checkDialogFailure(name: String) = mapper.readTree(dialogCapture.records.single()).also {
+            it["event_type"].asText() shouldBe name
+            it["level"].asText() shouldBe "WARN"
+            it["operation"].asText() shouldBe "complete_narmestelederbehov_dialog"
+            it["logger_name"].asText() shouldBe NarmestelederbehovDialogCompletion::class.java.name
+            it["behov_id"].asText() shouldBe behovId.value.toString()
+        }
+
         beforeSpec {
             productionLogging.putProperty("NAIS_CLUSTER_NAME", "test")
             JoranConfigurator().apply {
@@ -70,22 +81,27 @@ class FulfillmentLoggingContractTest :
                 doConfigure("src/main/resources/logback.xml")
             }
             productionAppender = requireNotNull(productionLogging.getLogger(Logger.ROOT_LOGGER_NAME).getAppender("stdout_json"))
-            logger.level = Level.TRACE
-            logger.isAdditive = false
-            logger.addAppender(productionAppender)
+            loggers.forEach {
+                it.level = Level.TRACE
+                it.isAdditive = false
+                it.addAppender(productionAppender)
+            }
         }
         afterSpec {
-            logger.detachAppender(productionAppender)
-            logger.level = originalSettings.first
-            logger.isAdditive = originalSettings.second
+            originalSettings.forEach { (it, settings) ->
+                it.detachAppender(productionAppender)
+                it.level = settings.first
+                it.isAdditive = settings.second
+            }
             productionLogging.stop()
         }
         beforeTest {
             capture = captureLogs(logger, "stdout_json")
+            dialogCapture = captureLogs(dialogLogger, "stdout_json")
         }
         afterTest {
             try {
-                capture.records.forEach { line ->
+                (capture.records + dialogCapture.records).forEach { line ->
                     privacyCanaries.forEach { line shouldNotContain it }
                     val record = mapper.readTree(line)
                     if (record["event_type"].asText() in failureEventsWithBehovId) {
@@ -99,6 +115,7 @@ class FulfillmentLoggingContractTest :
                 }
             } finally {
                 capture.close()
+                dialogCapture.close()
             }
         }
 
@@ -126,18 +143,11 @@ class FulfillmentLoggingContractTest :
                     record["relation_source"].asText() shouldBe source
                     record["dialogporten_completion"].asText() shouldBe code
                     record.has("outcome_code") shouldBe false
+                    capture.records.size shouldBe 1
                     if (completion == DialogportenCompletionAttempt.Failed) {
-                        val failureRecord = mapper.readTree(
-                            capture.records.single {
-                                mapper.readTree(it)["event_type"].asText() == "narmestelederbehov_dialogporten_completion_failed"
-                            }
-                        )
-                        failureRecord["level"].asText() shouldBe "WARN"
-                        failureRecord["behov_id"].asText() shouldBe behovId.value.toString()
-                        failureRecord.has("dialog_id") shouldBe false
-                        capture.records.size shouldBe 2
+                        checkDialogFailure("narmestelederbehov_dialogporten_completion_failed").has("dialog_id") shouldBe false
                     } else {
-                        capture.records.size shouldBe 1
+                        dialogCapture.records shouldBe emptyList()
                     }
                 }
             }
@@ -160,14 +170,8 @@ class FulfillmentLoggingContractTest :
 
             val record = checkEvent("narmestelederbehov_fulfillment_completed", "INFO")
             record["dialogporten_completion"].asText() shouldBe "FAILED"
-            val failureRecord = mapper.readTree(
-                capture.records.single {
-                    mapper.readTree(it)["event_type"].asText() == "narmestelederbehov_dialog_status_persistence_failed"
-                },
-            )
-            failureRecord["level"].asText() shouldBe "WARN"
-            failureRecord["behov_id"].asText() shouldBe behovId.value.toString()
-            capture.records.size shouldBe 2
+            checkDialogFailure("narmestelederbehov_dialog_status_persistence_failed")
+            capture.records.size shouldBe 1
         }
 
         val rejectionCases: List<Triple<String, () -> FulfillNarmestelederbehovUseCase, FulfillNarmestelederbehovCommand>> = listOf(
@@ -247,6 +251,7 @@ class FulfillmentLoggingContractTest :
                     shouldThrow<Exception> { useCase.execute(command()) } shouldBe failure
 
                     capture.records shouldBe emptyList()
+                    dialogCapture.records shouldBe emptyList()
                 }
             }
         }

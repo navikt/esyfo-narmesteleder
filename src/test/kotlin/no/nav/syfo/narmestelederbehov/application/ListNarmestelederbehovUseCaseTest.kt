@@ -106,7 +106,6 @@ private class ListFixture(
         }
         override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("List must not read for fulfillment")
         override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("List must not fulfill")
-        override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("List must not complete dialogs")
     }
     private val openRepository = object : OpenNarmestelederbehovRepository {
         override suspend fun findOpen(organizationNumber: OrganizationNumber, createdAfter: Instant, limit: Int): List<NarmestelederbehovDetails> {

@@ -1,7 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import no.nav.esyfo.observability.Event
-import no.nav.syfo.logging.applicationEvent
 import org.slf4j.event.Level
 
 internal val fulfillmentCompleted = Event<FulfillNarmestelederbehovResult.Fulfilled>(
@@ -11,13 +10,7 @@ internal val fulfillmentCompleted = Event<FulfillNarmestelederbehovResult.Fulfil
     operation = "fulfill_narmestelederbehov",
     fields = mapOf(
         "relation_source" to { it.relationSource.name },
-        "dialogporten_completion" to {
-            when (it.dialogCompletion) {
-                DialogportenCompletionAttempt.Completed -> "COMPLETED"
-                DialogportenCompletionAttempt.Failed -> "FAILED"
-                DialogportenCompletionAttempt.NotApplicable -> "NOT_APPLICABLE"
-            }
-        },
+        "dialogporten_completion" to { it.dialogCompletion.logValue },
     ),
 )
 
@@ -48,21 +41,4 @@ internal val fulfillmentRejected = Event<FulfillNarmestelederbehovResult>(
         },
         "issue_count" to { (it as? FulfillNarmestelederbehovResult.InvalidManagerContactDetails)?.issues?.size },
     ),
-)
-
-internal val dialogStatusPersistenceFailed = applicationEvent<String>(
-    name = "narmestelederbehov_dialog_status_persistence_failed",
-    level = Level.WARN,
-    message = "Dialogporten completed but behov status could not be persisted",
-    operation = "fulfill_narmestelederbehov",
-    fields = mapOf("behov_id" to { it }),
-)
-
-internal val dialogportenCompletionFailed = applicationEvent<String>(
-    name = "narmestelederbehov_dialogporten_completion_failed",
-    level = Level.WARN,
-    message = "Dialogporten completion failed; pending behov remains retryable",
-    operation = "fulfill_narmestelederbehov",
-    upstream = "dialogporten",
-    fields = mapOf("behov_id" to { it }),
 )

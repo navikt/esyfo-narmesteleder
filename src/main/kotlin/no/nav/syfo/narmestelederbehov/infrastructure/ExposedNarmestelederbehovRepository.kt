@@ -9,6 +9,7 @@ import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogStatus
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
@@ -21,7 +22,9 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
 
-class ExposedNarmestelederbehovRepository(private val database: Database) : NarmestelederbehovRepository {
+class ExposedNarmestelederbehovRepository(private val database: Database) :
+    NarmestelederbehovRepository,
+    NarmestelederbehovDialogStatus {
     override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {
             NarmestelederbehovTable.select(

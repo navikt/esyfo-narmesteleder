@@ -6,6 +6,8 @@ import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCa
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCompletion
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogStatus
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
@@ -19,10 +21,13 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 
 fun narmestelederbehovModule() = module {
-    single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
+    single { ExposedNarmestelederbehovRepository(get<Database>()) }
+    single<NarmestelederbehovRepository> { get<ExposedNarmestelederbehovRepository>() }
+    single<NarmestelederbehovDialogStatus> { get<ExposedNarmestelederbehovRepository>() }
     single<OpenNarmestelederbehovRepository> { ExposedOpenNarmestelederbehovRepository(get<Database>()) }
     single<NarmestelederbehovExpiryRepository> { ExposedNarmestelederbehovExpiryRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }
+    single { NarmestelederbehovDialogCompletion(dialog = get(), dialogStatus = get()) }
     single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get()) }
     single<EmployeeNameLookup> { PdlEmployeeNameLookup(get()) }
     single { NarmestelederbehovEmployeeName(repository = get(), employeeNameLookup = get()) }

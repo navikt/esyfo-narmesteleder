@@ -27,11 +27,11 @@ data class RelationPersonNameResponse(
 
 data class OrganizationResponse(
     val orgNumber: String,
-    val name: String,
+    val name: String?,
 )
 
 fun Narmestelederrelasjon.toResponse(
-    organizationName: String,
+    organizationName: String?,
 ) = NarmestelederrelasjonApiResponse(
     linemanagerRelation = NarmestelederrelasjonResponse(
         id = id,

@@ -4,13 +4,14 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.ereg.CachedEregClient
@@ -28,6 +29,9 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decis
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 
 class AltinnOrganizationAccessTest :
     FunSpec({
@@ -72,16 +76,26 @@ class AltinnOrganizationAccessTest :
                 failure.type shouldBe ErrorType.ORGANIZATION_NOT_FOUND
             }
 
-            test("upstream failure preserves the internal server error contract") {
+            test("Ereg failure stops the access check without granting or denying access") {
                 val fixture = AccessFixture()
-                val upstreamFailure = UpstreamRequestException("Ereg unavailable")
+                fixture.pdp.permit(SYSTEM_USER_ORG)
+                fixture.ereg.organisasjoner[REQUESTED_ORG] = organisationWithParent(SYSTEM_USER_ORG)
+                val upstreamFailure = UpstreamFailure(
+                    UpstreamName("ereg"),
+                    UpstreamFailureStage.RESPONSE,
+                    503,
+                    IllegalStateException("private upstream body $REQUESTED_ORG"),
+                )
                 fixture.ereg.setFailure(upstreamFailure)
                 val failure = shouldThrow<ApiErrorException.InternalServerErrorException> {
                     fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
                 }
-                failure.message shouldBe "Could not get organization"
+                failure.message shouldBe "An upstream service is unavailable"
                 failure.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
-                failure.cause shouldBe upstreamFailure
+                failure.upstreamFailure shouldBeSameInstanceAs upstreamFailure
+                failure.cause shouldBeSameInstanceAs upstreamFailure.cause
+                failure.message.orEmpty() shouldNotContain REQUESTED_ORG
+                fixture.pdp.requestedOrganizations shouldContainExactly listOf(setOf(REQUESTED_ORG))
             }
 
             test("is granted when PDP permits the requested organization") {

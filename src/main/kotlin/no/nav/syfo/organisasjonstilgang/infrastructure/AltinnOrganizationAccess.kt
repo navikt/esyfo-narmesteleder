@@ -3,7 +3,7 @@ package no.nav.syfo.organisasjonstilgang.infrastructure
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.integration.ereg.EregClient
 import no.nav.syfo.integration.ereg.Organisasjon
@@ -19,6 +19,7 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Syste
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.result
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.COUNT_HAS_ALTINN3_RESOURCE
+import no.nav.syfo.platform.upstream.getOrElse
 
 class AltinnOrganizationAccess(
     private val altinnTilgangerService: AltinnTilgangerService,
@@ -92,16 +93,10 @@ class AltinnOrganizationAccess(
         resource = OPPGI_NARMESTELEDER_RESOURCE,
     ).result()
 
-    private suspend fun getOrganization(orgNumber: String): Organisasjon = try {
-        eregClient.getOrganisasjon(orgNumber)
-    } catch (e: UpstreamRequestException) {
-        throw ApiErrorException.InternalServerErrorException(
-            "Could not get organization",
-            type = ErrorType.UPSTREAM_SERVICE_UNAVAILABLE,
-            cause = e,
+    // Remove this bridge in #687 when OrganizationAccessResult has an Unavailable variant.
+    private suspend fun getOrganization(orgNumber: String): Organisasjon = eregClient.getOrganisasjon(orgNumber).getOrElse { throw it.toUpstreamUnavailableException() }
+        ?: throw ApiErrorException.BadRequestException(
+            "Unable to look up the organization",
+            type = ErrorType.ORGANIZATION_NOT_FOUND,
         )
-    } ?: throw ApiErrorException.BadRequestException(
-        "Unable to look up the organization",
-        type = ErrorType.ORGANIZATION_NOT_FOUND,
-    )
 }

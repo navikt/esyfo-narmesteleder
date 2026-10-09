@@ -316,6 +316,7 @@ components:
           pattern: '^\d{9}$'
         name:
           type: string
+          nullable: true
       required:
         - orgNumber
         - name

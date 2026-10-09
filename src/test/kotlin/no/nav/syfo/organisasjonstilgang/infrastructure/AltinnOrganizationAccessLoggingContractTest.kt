@@ -21,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
+import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.ident.OrganizationNumber
@@ -39,6 +40,9 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decis
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 
@@ -192,19 +196,31 @@ class AltinnOrganizationAccessLoggingContractTest :
             }
         }
 
-        test("propagates an organization hierarchy failure without logging a rejection") {
-            val fixture = LoggingFixture(
-                Decision.Deny,
-                parentOrgNumber = SYSTEM_USER_ORG,
-                eregFailure = UpstreamRequestException("Ereg unavailable"),
-            )
+        Decision.entries.filter { it != Decision.Permit }.forEach { directDecision ->
+            test("Ereg failure after direct $directDecision stops before fallback without logging a rejection") {
+                val failure = UpstreamFailure(
+                    UpstreamName("ereg"),
+                    UpstreamFailureStage.RESPONSE,
+                    503,
+                    IllegalStateException("private upstream body $REQUESTED_ORG"),
+                )
+                val fixture = LoggingFixture(
+                    directDecision,
+                    fallbackDecision = Decision.Permit,
+                    parentOrgNumber = SYSTEM_USER_ORG,
+                    eregFailure = failure,
+                )
 
-            shouldThrow<ApiErrorException.InternalServerErrorException> {
-                fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+                val error = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+                }
+                error.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                error.message shouldBe "An upstream service is unavailable"
+                error.upstreamFailure shouldBe failure
+
+                fixture.checkedOrganizations shouldBe listOf(REQUESTED_ORG)
+                capture.records.shouldBeEmpty()
             }
-
-            fixture.checkedOrganizations shouldBe listOf(REQUESTED_ORG)
-            capture.records.shouldBeEmpty()
         }
 
         test("propagates cancellation without logging a rejection") {
@@ -248,7 +264,7 @@ private class LoggingFixture(
     fallbackDecision: Decision = Decision.Deny,
     parentOrgNumber: String,
     pdpFailures: Map<String, Throwable> = emptyMap(),
-    eregFailure: Throwable? = null,
+    eregFailure: UpstreamFailure? = null,
 ) {
     val checkedOrganizations = mutableListOf<String>()
     private val decisions = mapOf(REQUESTED_ORG to directDecision, SYSTEM_USER_ORG to fallbackDecision)

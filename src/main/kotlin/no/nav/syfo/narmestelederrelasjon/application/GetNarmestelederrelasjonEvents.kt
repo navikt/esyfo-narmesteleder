@@ -13,3 +13,10 @@ internal val narmestelederrelasjonNotFound = Event<GetNarmestelederrelasjonResul
         "denial_reason" to { it.denialReason?.name },
     ),
 )
+
+internal val narmestelederrelasjonOrganizationNameMissing = Event<Unit>(
+    name = "narmestelederrelasjon_organization_name_missing",
+    level = Level.WARN,
+    message = "Organization name was not found in Ereg",
+    operation = "get_narmestelederrelasjon",
+)

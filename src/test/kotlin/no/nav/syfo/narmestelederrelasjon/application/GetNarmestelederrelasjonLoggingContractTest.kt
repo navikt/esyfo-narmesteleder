@@ -10,6 +10,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
@@ -19,13 +20,19 @@ import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.LoggerFactory
 import java.util.UUID
 
 class GetNarmestelederrelasjonLoggingContractTest :
     FunSpec({
         val mapper = jacksonObjectMapper()
-        val contract = RuntimeLogContract.forEvents(narmestelederrelasjonNotFound)
+        val contract = RuntimeLogContract.forEvents(
+            narmestelederrelasjonNotFound,
+            narmestelederrelasjonOrganizationNameMissing,
+        )
         val logger = LoggerFactory.getLogger(GetNarmestelederrelasjonUseCase::class.java) as Logger
         val originalSettings = logger.level to logger.isAdditive
         val productionLogging = LoggerContext()
@@ -61,6 +68,7 @@ class GetNarmestelederrelasjonLoggingContractTest :
             lookup: NarmestelederrelasjonLookup? = lookup(),
             access: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
             activeSykmelding: Boolean = true,
+            organizationName: OrganizationNameResult = OrganizationNameResult.Found("Organization"),
         ) = GetNarmestelederrelasjonUseCase(
             repository = object : NarmestelederrelasjonRepository {
                 override suspend fun findById(id: UUID) = lookup
@@ -69,7 +77,7 @@ class GetNarmestelederrelasjonLoggingContractTest :
             organizationAccess = { _, _ -> access },
             activeSykmeldingLookup = { _, _ -> activeSykmelding },
             organization = object : NarmestelederrelasjonOrganization {
-                override suspend fun findName(orgNumber: OrganizationNumber) = "Organization"
+                override suspend fun findName(orgNumber: OrganizationNumber) = organizationName
             },
         )
 
@@ -131,6 +139,34 @@ class GetNarmestelederrelasjonLoggingContractTest :
 
         test("does not log a not-found event when the relation is returned") {
             useCase().execute(id, caller)
+            capture.records.size shouldBe 0
+        }
+
+        test("logs exactly one identifier-free WARN when the organization name is missing") {
+            useCase(organizationName = OrganizationNameResult.Missing).execute(id, caller)
+                .shouldBeInstanceOf<GetNarmestelederrelasjonResult.Found>().organizationName shouldBe null
+
+            contract.assertValid(capture.records, expectedCount = 1)
+            val record = mapper.readTree(capture.records.single())
+            record["event_type"].asText() shouldBe "narmestelederrelasjon_organization_name_missing"
+            record["level"].asText() shouldBe "WARN"
+            record["operation"].asText() shouldBe "get_narmestelederrelasjon"
+            record["message"].asText() shouldBe "Organization name was not found in Ereg"
+            record.has("outcome_code") shouldBe false
+            record.has("denial_reason") shouldBe false
+        }
+
+        test("does not log when the upstream is unavailable because the edge owns failure logging") {
+            val failure = UpstreamFailure(
+                UpstreamName("ereg"),
+                UpstreamFailureStage.RESPONSE,
+                503,
+                IllegalStateException("private upstream body ${orgNumber.value}"),
+            )
+
+            useCase(organizationName = OrganizationNameResult.Unavailable(failure)).execute(id, caller) shouldBe
+                GetNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+
             capture.records.size shouldBe 0
         }
     })

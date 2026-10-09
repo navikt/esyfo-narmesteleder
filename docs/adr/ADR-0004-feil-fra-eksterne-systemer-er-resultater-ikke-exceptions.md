@@ -1,7 +1,7 @@
 # ADR-0004: Feil fra eksterne systemer er resultater, ikke exceptions
 
 **Dato:** 2026-10-07  
-**Status:** Foreslått  
+**Status:** Akseptert  
 **Beslutningstakere:** Deltakende utviklere i team-esyfo
 
 ## Beslutning
@@ -12,7 +12,8 @@ kanten: HTTP-ruten, Kafka-konsumenten eller den planlagte jobben. Kanten
 avgjør utfallet og logger én gang.
 
 Beslutningen gjelder Aareg, Dinesykmeldte, Ereg, PDL, Altinn Tilganger,
-Altinn Authorization og token-steget mot Texas. Feil i databasen, ved
+Altinn Authorization, Dialogporten, token-vekslingen hos Altinn
+(`AltinnTokenProvider`) og token-steget mot Texas. Feil i databasen, ved
 Kafka-publisering og programmeringsfeil er fortsatt exceptions.
 
 Mønsteret har seks deler:
@@ -156,7 +157,7 @@ exceptions en varig del av mønsteret bare for å bære loggfelter.
 - `AaregClientException`, `DinesykmeldteClientException`, `PdlRequestException`
   og `PdlResourceNotFoundException` slettes.
 - Mønsteret innføres klient for klient. De fire delte klientene i `integration`
-  og token-steget kommer først (#642), deretter Altinn-klientene i
-  `organisasjonstilgang`.
+  og token-steget kommer først, deretter Altinn-klientene i
+  `organisasjonstilgang`, Dialogporten og token-vekslingen hos Altinn (#681).
 - `getOrThrow()` brukes bare i legacy-kode. Når den siste legacy-kalleren er
   slettet, slettes også `getOrThrow()` og `UpstreamRequestException`.

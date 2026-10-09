@@ -411,7 +411,7 @@ failures using Kafka-specific retry, permanent-error and fatal-error rules.
 
 Failures in external systems are results, not exceptions
 ([ADR-0004](adr/ADR-0004-feil-fra-eksterne-systemer-er-resultater-ikke-exceptions.md),
-being introduced from #642):
+being introduced through #681):
 
 - Clients catch Ktor and Texas exceptions once and return
   `UpstreamResult.Failure(UpstreamFailure)` with the upstream, failure stage,

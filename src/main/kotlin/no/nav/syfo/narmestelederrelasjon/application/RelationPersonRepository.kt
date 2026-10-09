@@ -9,4 +9,10 @@ interface RelationPersonRepository {
 
     /** Stores the enrichment outcome for a batch of pending persons in one transaction. */
     suspend fun saveEnrichment(enriched: Map<PersonIdent, RegisteredPerson>, notFound: Collection<PersonIdent>)
+
+    /** Returns the given persons that exist in the projection. */
+    suspend fun findExisting(personIdents: Collection<PersonIdent>): List<PersonIdent>
+
+    /** Replaces the registered details of existing persons and returns the persons that were updated. */
+    suspend fun updateRegisteredDetails(persons: Map<PersonIdent, RegisteredPerson>): Set<PersonIdent>
 }

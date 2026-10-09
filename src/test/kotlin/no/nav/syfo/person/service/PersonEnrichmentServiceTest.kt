@@ -13,7 +13,8 @@ import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmesteleder.exposed.PersonTable
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonBatchInsertRow
-import no.nav.syfo.narmestelederrelasjon.infrastructure.personTable
+import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonTable as NarmestelederrelasjonPersonTable
+import no.nav.syfo.narmestelederrelasjon.infrastructure.batchInsertIgnoreExisting
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.Person
 import no.nav.syfo.person.domain.PersonStatus
@@ -32,7 +33,7 @@ class PersonEnrichmentServiceTest :
 
         fun insertPerson(fnr: String, status: PersonStatus) {
             transaction(TestDB.exposedDatabase) {
-                personTable.batchInsertIgnoreExisting(
+                NarmestelederrelasjonPersonTable.batchInsertIgnoreExisting(
                     listOf(PersonBatchInsertRow(fnr = fnr, status = status.name)),
                 )
             }

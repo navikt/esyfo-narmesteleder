@@ -410,7 +410,7 @@ private fun insertPerson(
     lastName: String? = null,
 ) {
     transaction(TestDB.exposedDatabase) {
-        personTable.batchInsertIgnoreExisting(
+        PersonTable.batchInsertIgnoreExisting(
             listOf(
                 PersonBatchInsertRow(
                     fnr = fnr,

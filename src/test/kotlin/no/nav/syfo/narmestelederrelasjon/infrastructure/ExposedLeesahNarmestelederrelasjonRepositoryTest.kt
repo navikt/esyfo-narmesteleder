@@ -65,7 +65,7 @@ class ExposedLeesahNarmestelederrelasjonRepositoryTest :
 
             it("keeps existing persons without overwriting them") {
                 transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(
+                    PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",

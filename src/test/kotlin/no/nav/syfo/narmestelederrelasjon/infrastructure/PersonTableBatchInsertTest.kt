@@ -41,7 +41,7 @@ class PersonTableBatchInsertTest :
                 )
 
                 val insertedPersons = transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(rows)
+                    PersonTable.batchInsertIgnoreExisting(rows)
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -85,7 +85,7 @@ class PersonTableBatchInsertTest :
 
             it("should ignore fnr that already exists in database") {
                 val initiallyInserted = transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(
+                    PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",
@@ -96,7 +96,7 @@ class PersonTableBatchInsertTest :
                 }
 
                 val insertedPersons = transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(
+                    PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",
@@ -126,7 +126,7 @@ class PersonTableBatchInsertTest :
 
             it("should return only newly inserted rows when batch contains both existing and new fnr values") {
                 transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(
+                    PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",
@@ -139,7 +139,7 @@ class PersonTableBatchInsertTest :
                 }
 
                 val insertedPersons = transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(
+                    PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",
@@ -178,7 +178,7 @@ class PersonTableBatchInsertTest :
             it("should ignore duplicate fnr values within the same batch") {
 
                 val insertedPersons = transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(
+                    PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",
@@ -237,7 +237,7 @@ class PersonTableBatchInsertTest :
 
             it("should not overwrite existing row when conflict is ignored") {
                 transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(
+                    PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",
@@ -251,7 +251,7 @@ class PersonTableBatchInsertTest :
                 }
 
                 val insertedPersons = transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(
+                    PersonTable.batchInsertIgnoreExisting(
                         listOf(
                             PersonBatchInsertRow(
                                 fnr = "12345678901",
@@ -276,7 +276,7 @@ class PersonTableBatchInsertTest :
 
             it("should handle empty input safely") {
                 val insertedPersons = transaction(TestDB.exposedDatabase) {
-                    personTable.batchInsertIgnoreExisting(emptyList())
+                    PersonTable.batchInsertIgnoreExisting(emptyList())
                 }
 
                 insertedPersons shouldBe emptyList()

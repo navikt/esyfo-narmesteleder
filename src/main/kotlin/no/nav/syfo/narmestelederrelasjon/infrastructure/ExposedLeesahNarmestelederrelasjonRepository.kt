@@ -12,7 +12,7 @@ class ExposedLeesahNarmestelederrelasjonRepository(
     override fun upsertAll(relasjoner: List<LeesahNarmestelederrelasjon>, personFnrs: List<String>) {
         transaction(database) {
             relasjoner.forEach { narmestelederTable.upsertFromLeesah(it) }
-            personTable.batchInsertIgnoreExisting(
+            PersonTable.batchInsertIgnoreExisting(
                 personFnrs.map { PersonBatchInsertRow(fnr = it, status = PersonStatus.PENDING.name) },
             )
         }

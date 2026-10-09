@@ -56,7 +56,7 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
         fun insertPerson(ident: String, firstName: String, middleName: String? = null, lastName: String) {
             transaction(TestDB.exposedDatabase) {
-                personTable.batchInsertIgnoreExisting(
+                PersonTable.batchInsertIgnoreExisting(
                     listOf(
                         PersonBatchInsertRow(
                             fnr = ident,

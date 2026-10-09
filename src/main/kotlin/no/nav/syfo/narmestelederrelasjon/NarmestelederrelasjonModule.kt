@@ -8,12 +8,15 @@ import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonStore
 import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.application.NameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederRegisterMetrics
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchRepository
+import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
@@ -29,12 +32,14 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykme
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EregNarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedEmployeeNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedLeesahNarmestelederrelasjonStore
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonSearchRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNarmestelederRegisterMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ValkeyPersonDetailsCache
 import org.koin.core.qualifier.named
@@ -69,4 +74,7 @@ fun narmestelederrelasjonModule() = module {
     single<RevokeNarmestelederrelasjonUseCase> { RevokeNarmestelederrelasjonUseCase(get(), get(), get()) }
     single { RevokeActiveNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
     single<RevokeNarmestelederrelasjonFromSendtSykmelding> { RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase(get()) }
+    single<LeesahNarmestelederrelasjonStore> { ExposedLeesahNarmestelederrelasjonStore(get<ExposedDatabase>()) }
+    single<NarmestelederRegisterMetrics> { MicrometerNarmestelederRegisterMetrics() }
+    single { PersistNarmestelederrelasjonerFromLeesahUseCase(get(), get()) }
 }

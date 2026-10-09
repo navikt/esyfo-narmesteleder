@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
+import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjon
 import org.jetbrains.exposed.v1.core.Transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 import java.time.ZoneOffset
@@ -8,9 +8,9 @@ import java.time.ZoneOffset
 internal class NarmestelederTableOps(private val transaction: Transaction) {
 
     /**
-     * Upserts a row in [NarmestelederTable] from a [NarmestelederLeesahKafkaMessage].
+     * Upserts a row in [NarmestelederTable] from a relation reported on Leesah.
      *
-     * **On INSERT** — all data fields from the Kafka message are written.
+     * **On INSERT** — all data fields from the relation are written.
      * `brukerNavn` and `narmestelederNavn` are set to `null` (PDL-owned, populated separately).
      * `created` and `updated` use their DB default expressions.
      *
@@ -28,7 +28,7 @@ internal class NarmestelederTableOps(private val transaction: Transaction) {
      * - `created` — insert-only timestamp
      * - `updated` — managed by a DB trigger
      */
-    fun upsertFromLeesahKafkaMessage(kafkaMessage: NarmestelederLeesahKafkaMessage) {
+    fun upsertFromLeesah(relasjon: LeesahNarmestelederrelasjon) {
         NarmestelederTable.upsert(
             NarmestelederTable.narmestelederId,
             onUpdate = {
@@ -42,15 +42,15 @@ internal class NarmestelederTableOps(private val transaction: Transaction) {
                 it[NarmestelederTable.aktivTom] = insertValue(NarmestelederTable.aktivTom)
             },
         ) {
-            it[NarmestelederTable.narmestelederId] = kafkaMessage.narmesteLederId
-            it[NarmestelederTable.orgnummer] = kafkaMessage.orgnummer
-            it[NarmestelederTable.sykmeldtFnr] = kafkaMessage.fnr
-            it[NarmestelederTable.narmestelederFnr] = kafkaMessage.narmesteLederFnr
-            it[NarmestelederTable.narmestelederTelefonnummer] = kafkaMessage.narmesteLederTelefonnummer
-            it[NarmestelederTable.narmestelederEpost] = kafkaMessage.narmesteLederEpost
-            it[NarmestelederTable.arbeidsgiverForskutterer] = kafkaMessage.arbeidsgiverForskutterer
-            it[NarmestelederTable.aktivFom] = kafkaMessage.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC)
-            it[NarmestelederTable.aktivTom] = kafkaMessage.aktivTom?.atStartOfDay()?.atOffset(ZoneOffset.UTC)
+            it[NarmestelederTable.narmestelederId] = relasjon.narmestelederId
+            it[NarmestelederTable.orgnummer] = relasjon.orgnummer
+            it[NarmestelederTable.sykmeldtFnr] = relasjon.sykmeldtFnr
+            it[NarmestelederTable.narmestelederFnr] = relasjon.narmestelederFnr
+            it[NarmestelederTable.narmestelederTelefonnummer] = relasjon.narmestelederTelefonnummer
+            it[NarmestelederTable.narmestelederEpost] = relasjon.narmestelederEpost
+            it[NarmestelederTable.arbeidsgiverForskutterer] = relasjon.arbeidsgiverForskutterer
+            it[NarmestelederTable.aktivFom] = relasjon.aktivFom.atStartOfDay().atOffset(ZoneOffset.UTC)
+            it[NarmestelederTable.aktivTom] = relasjon.aktivTom?.atStartOfDay()?.atOffset(ZoneOffset.UTC)
         }
     }
 }

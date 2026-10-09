@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka.model
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper

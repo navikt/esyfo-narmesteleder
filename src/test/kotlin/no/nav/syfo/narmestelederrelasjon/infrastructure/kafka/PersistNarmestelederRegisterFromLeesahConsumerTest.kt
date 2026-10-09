@@ -1,6 +1,5 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
-import defaultLeesahKafkaMessage
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -9,15 +8,15 @@ import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.jacksonMapper
-import no.nav.syfo.narmesteleder.service.LeesahBatchProcessResult
-import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
+import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
+import no.nav.syfo.narmestelederrelasjon.application.RecordingLeesahNarmestelederrelasjonStore
+import no.nav.syfo.narmestelederrelasjon.application.RecordingNarmestelederRegisterMetrics
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
@@ -25,14 +24,14 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import kotlin.coroutines.EmptyCoroutineContext
 
-class LeesahNarmestelederReplayKafkaConsumerTest :
+class PersistNarmestelederRegisterFromLeesahConsumerTest :
     DescribeSpec({
         val kafkaConsumer = mockk<KafkaConsumer<String, String?>>(relaxed = true)
-        val registerService = mockk<NarmestelederRegisterService>()
+        val store = RecordingLeesahNarmestelederrelasjonStore()
         val producer = mockk<NarmestelederLeesahProducer>(relaxed = true)
         val objectMapper = jacksonMapper()
         val consumer = PersistNarmestelederRegisterFromLeesahConsumer(
-            handler = registerService,
+            persistFromLeesah = PersistNarmestelederrelasjonerFromLeesahUseCase(store, RecordingNarmestelederRegisterMetrics()),
             narmestelederLeesahProducer = producer,
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,
@@ -41,12 +40,13 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
         )
 
         beforeTest {
-            clearMocks(kafkaConsumer, registerService, producer)
+            clearMocks(kafkaConsumer, producer)
+            store.calls.clear()
         }
 
         describe("processBatch") {
             it("should republish valid records with original key and value before committing offsets") {
-                val validMessage = defaultLeesahKafkaMessage()
+                val validMessage = narmestelederLeesahKafkaMessage()
                 val validValue = objectMapper.writeValueAsString(validMessage)
                 val records = consumerRecords(
                     consumerRecord(
@@ -60,25 +60,12 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                         value = "{not-valid-json",
                     ),
                 )
-                val capturedRecords = slot<List<LeesahNarmestelederRecord>>()
-                every { registerService.processLeesahBatchWithResult(capture(capturedRecords)) } returns LeesahBatchProcessResult(
-                    insertedPersons = emptyList(),
-                    validRecords = listOf(
-                        LeesahNarmestelederRecord(
-                            offset = 1L,
-                            partition = 0,
-                            message = validMessage,
-                        )
-                    )
-                )
                 every { producer.sendLeesahBatch(any()) } just Runs
                 every { kafkaConsumer.commitSync() } returns Unit
 
                 consumer.processBatch(records, kafkaConsumer)
 
-                capturedRecords.captured.size shouldBe 1
-                capturedRecords.captured.single().offset shouldBe 1L
-                capturedRecords.captured.single().message.narmesteLederId shouldBe validMessage.narmesteLederId
+                store.calls.single().relasjoner shouldBe listOf(validMessage.toLeesahNarmestelederrelasjon())
                 verify(exactly = 1) {
                     producer.sendLeesahBatch(
                         listOf(
@@ -93,7 +80,7 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
             }
 
             it("should republish tombstones together with valid records") {
-                val validMessage = defaultLeesahKafkaMessage()
+                val validMessage = narmestelederLeesahKafkaMessage()
                 val validValue = objectMapper.writeValueAsString(validMessage)
                 val records = consumerRecords(
                     consumerRecord(
@@ -108,16 +95,6 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                     ),
                 )
 
-                every { registerService.processLeesahBatchWithResult(any()) } returns LeesahBatchProcessResult(
-                    insertedPersons = emptyList(),
-                    validRecords = listOf(
-                        LeesahNarmestelederRecord(
-                            offset = 1L,
-                            partition = 0,
-                            message = validMessage,
-                        )
-                    )
-                )
                 every { producer.sendLeesahBatch(any()) } just Runs
                 every { kafkaConsumer.commitSync() } returns Unit
 
@@ -141,9 +118,9 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
             }
 
             it("should not republish malformed or invalid records") {
-                val validMessage = defaultLeesahKafkaMessage()
+                val validMessage = narmestelederLeesahKafkaMessage()
                 val validValue = objectMapper.writeValueAsString(validMessage)
-                val invalidMessage = defaultLeesahKafkaMessage().copy(fnr = "123")
+                val invalidMessage = narmestelederLeesahKafkaMessage().copy(fnr = "123")
                 val invalidValue = objectMapper.writeValueAsString(invalidMessage)
                 val records = consumerRecords(
                     consumerRecord(
@@ -163,16 +140,6 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                     ),
                 )
 
-                every { registerService.processLeesahBatchWithResult(any()) } returns LeesahBatchProcessResult(
-                    insertedPersons = emptyList(),
-                    validRecords = listOf(
-                        LeesahNarmestelederRecord(
-                            offset = 1L,
-                            partition = 0,
-                            message = validMessage,
-                        )
-                    )
-                )
                 every { producer.sendLeesahBatch(any()) } just Runs
                 every { kafkaConsumer.commitSync() } returns Unit
 
@@ -196,27 +163,17 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                     consumerRecord(
                         offset = 1L,
                         key = "key-1",
-                        value = objectMapper.writeValueAsString(defaultLeesahKafkaMessage()),
+                        value = objectMapper.writeValueAsString(narmestelederLeesahKafkaMessage()),
                     ),
                 )
 
-                every { registerService.processLeesahBatchWithResult(any()) } returns LeesahBatchProcessResult(
-                    insertedPersons = emptyList(),
-                    validRecords = listOf(
-                        LeesahNarmestelederRecord(
-                            offset = 1L,
-                            partition = 0,
-                            message = defaultLeesahKafkaMessage(),
-                        )
-                    )
-                )
                 every { producer.sendLeesahBatch(any()) } throws IllegalStateException("boom")
 
                 shouldThrow<IllegalStateException> {
                     consumer.processBatch(records, kafkaConsumer)
                 }
 
-                verify(exactly = 1) { registerService.processLeesahBatchWithResult(any()) }
+                store.calls.size shouldBe 1
                 verify(exactly = 1) { producer.sendLeesahBatch(any()) }
                 verify(exactly = 0) { kafkaConsumer.commitSync() }
             }
@@ -227,27 +184,17 @@ class LeesahNarmestelederReplayKafkaConsumerTest :
                     consumerRecord(
                         offset = 1L,
                         key = "key-1",
-                        value = objectMapper.writeValueAsString(defaultLeesahKafkaMessage()),
+                        value = objectMapper.writeValueAsString(narmestelederLeesahKafkaMessage()),
                     ),
                 )
 
-                every { registerService.processLeesahBatchWithResult(any()) } returns LeesahBatchProcessResult(
-                    insertedPersons = emptyList(),
-                    validRecords = listOf(
-                        LeesahNarmestelederRecord(
-                            offset = 1L,
-                            partition = 0,
-                            message = defaultLeesahKafkaMessage(),
-                        )
-                    )
-                )
                 every { producer.sendLeesahBatch(any()) } throws IllegalStateException("boom")
 
                 shouldThrow<IllegalStateException> {
                     consumer.processBatch(records, kafkaConsumer)
                 }
 
-                verify(exactly = 1) { registerService.processLeesahBatchWithResult(any()) }
+                store.calls.size shouldBe 1
                 verify(exactly = 1) { producer.sendLeesahBatch(any()) }
                 verify(exactly = 0) { kafkaConsumer.commitSync() }
             }

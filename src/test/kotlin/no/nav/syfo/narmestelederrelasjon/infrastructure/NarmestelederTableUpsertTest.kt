@@ -1,12 +1,12 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import defaultLeesahKafkaMessage
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.narmestelederLeesahKafkaMessage
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -26,14 +26,14 @@ class NarmestelederTableUpsertTest :
                 }
             }
         }
-        describe("NarmestelederTable narmestelederTable.upsertFromLeesahKafkaMessage") {
+        describe("NarmestelederTable narmestelederTable.upsertFromLeesah") {
             it("should insert new entity when no existing row") {
-                val message = defaultLeesahKafkaMessage().copy(
+                val message = narmestelederLeesahKafkaMessage().copy(
                     aktivTom = LocalDate.of(2024, 12, 31),
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesahKafkaMessage(message)
+                    narmestelederTable.upsertFromLeesah(message.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -62,12 +62,12 @@ class NarmestelederTableUpsertTest :
             it("should update mutable fields when row with same narmesteLederId exists") {
                 val narmesteLederId = UUID.randomUUID()
 
-                val originalMessage = defaultLeesahKafkaMessage().copy(
+                val originalMessage = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesahKafkaMessage(originalMessage)
+                    narmestelederTable.upsertFromLeesah(originalMessage.toLeesahNarmestelederrelasjon())
                 }
 
                 val originalEntity = transaction(TestDB.exposedDatabase) {
@@ -79,13 +79,13 @@ class NarmestelederTableUpsertTest :
                 val originalId = originalEntity.first
                 val originalCreated = originalEntity.second
 
-                val updatedMessage = defaultLeesahKafkaMessage().copy(
+                val updatedMessage = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
                     aktivTom = LocalDate.of(2025, 1, 31),
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesahKafkaMessage(updatedMessage)
+                    narmestelederTable.upsertFromLeesah(updatedMessage.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -110,7 +110,7 @@ class NarmestelederTableUpsertTest :
 
             it("should persist last mutable field update after repeated upserts in same transaction") {
                 val narmesteLederId = UUID.randomUUID()
-                val baseMessage = defaultLeesahKafkaMessage().copy(
+                val baseMessage = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
                 )
                 val messages = listOf(
@@ -134,7 +134,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     messages.forEach { message ->
-                        narmestelederTable.upsertFromLeesahKafkaMessage(message)
+                        narmestelederTable.upsertFromLeesah(message.toLeesahNarmestelederrelasjon())
                     }
                 }
 
@@ -155,20 +155,20 @@ class NarmestelederTableUpsertTest :
             it("should not overwrite sykmeldtFnr and narmestelederFnr on update") {
                 val narmesteLederId = UUID.randomUUID()
 
-                val originalMessage = defaultLeesahKafkaMessage().copy(
+                val originalMessage = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesahKafkaMessage(originalMessage)
+                    narmestelederTable.upsertFromLeesah(originalMessage.toLeesahNarmestelederrelasjon())
                 }
 
-                val messageWithDifferentFnr = defaultLeesahKafkaMessage().copy(
+                val messageWithDifferentFnr = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesahKafkaMessage(messageWithDifferentFnr)
+                    narmestelederTable.upsertFromLeesah(messageWithDifferentFnr.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -184,14 +184,14 @@ class NarmestelederTableUpsertTest :
                 val narmesteLederId = UUID.randomUUID()
 
                 // Step a: Insert with nulls
-                val messageWithNulls = defaultLeesahKafkaMessage().copy(
+                val messageWithNulls = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
                     aktivTom = null,
                     arbeidsgiverForskutterer = null,
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesahKafkaMessage(messageWithNulls)
+                    narmestelederTable.upsertFromLeesah(messageWithNulls.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -203,14 +203,14 @@ class NarmestelederTableUpsertTest :
                 }
 
                 // Step b: Update with non-null values
-                val messageWithValues = defaultLeesahKafkaMessage().copy(
+                val messageWithValues = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
                     aktivTom = LocalDate.of(2024, 12, 31),
                     arbeidsgiverForskutterer = true,
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesahKafkaMessage(messageWithValues)
+                    narmestelederTable.upsertFromLeesah(messageWithValues.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -222,14 +222,14 @@ class NarmestelederTableUpsertTest :
                 }
 
                 // Step c: Update back to nulls
-                val messageBackToNulls = defaultLeesahKafkaMessage().copy(
+                val messageBackToNulls = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
                     aktivTom = null,
                     arbeidsgiverForskutterer = null,
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesahKafkaMessage(messageBackToNulls)
+                    narmestelederTable.upsertFromLeesah(messageBackToNulls.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {

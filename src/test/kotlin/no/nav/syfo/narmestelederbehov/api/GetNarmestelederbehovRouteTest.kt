@@ -41,6 +41,7 @@ import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -229,6 +230,8 @@ private class GetFixture(
 }
 
 private class FakeReadBehovRepository : NarmestelederbehovRepository {
+    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
+
     private val behov = mutableMapOf<NarmestelederbehovId, NarmestelederbehovDetails>()
     val savedNames = mutableListOf<Pair<NarmestelederbehovId, BehovPersonName>>()
     var failure: Exception? = null

@@ -104,6 +104,8 @@ private class LeesahBehovRepository(
     private val missing: Set<NarmestelederbehovId> = emptySet(),
     private val fulfillFailure: Throwable? = null,
 ) : NarmestelederbehovRepository {
+    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
+
     var requestedEmployee: Employee? = null
 
     override suspend fun findDetails(id: NarmestelederbehovId) = error("Leesah fulfillment must not read details")

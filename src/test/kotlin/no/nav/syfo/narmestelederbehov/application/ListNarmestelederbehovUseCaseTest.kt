@@ -100,6 +100,8 @@ private class ListFixture(
     var requestedCreatedAfter: Instant? = null
     var subject: OrganizationAccessSubject? = null
     private val repository = object : NarmestelederbehovRepository {
+        override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
+
         override suspend fun findDetails(id: NarmestelederbehovId) = error("List must not find by id")
         override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) {
             effects += "save"

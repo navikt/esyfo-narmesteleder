@@ -85,6 +85,8 @@ private class ReadFixture(
     var person: BehovPersonName? = null
     val savedNames = mutableListOf<BehovPersonName>()
     private val repository = object : NarmestelederbehovRepository {
+        override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
+
         override suspend fun findDetails(id: NarmestelederbehovId) = row.also { effects += "read" }
         override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) {
             effects += "save-name"

@@ -3,6 +3,10 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
@@ -11,8 +15,10 @@ import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
+import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
+import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -163,5 +169,63 @@ class ExposedNarmestelederbehovRepositoryTest :
 
                 repository.findOpenFor(employee).map { it.value } shouldBe listOf(open)
             }
+        }
+        val newBehov = NewNarmestelederbehov(
+            employee = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001")),
+            mainOrganizationNumber = "910000009",
+            manager = PersonIdent("10987654321"),
+            reason = BehovReason.DEAKTIVERT_LEDER,
+            status = BehovStatus.BEHOV_CREATED,
+            revokedRelationId = UUID.fromString("00000000-0000-0000-0000-000000000044"),
+        )
+
+        test("creates a behov with every column") {
+            val result = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+
+            val row = requireNotNull(setupDb.findBehovById(result.id.value))
+            row.sykmeldtFnr shouldBe "12345678901"
+            row.orgnummer shouldBe "910000001"
+            row.hovedenhetOrgnummer shouldBe "910000009"
+            row.narmestelederFnr shouldBe "10987654321"
+            row.behovReason shouldBe BehovReason.DEAKTIVERT_LEDER
+            row.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+            row.avbruttNarmesteLederId shouldBe newBehov.revokedRelationId
+            row.dialogId.shouldBeNull()
+            row.fornavn.shouldBeNull()
+        }
+
+        test("creates a behov without manager or revoked relation") {
+            val result = repository.create(newBehov.copy(manager = null, revokedRelationId = null))
+                .shouldBeInstanceOf<CreateBehovResult.Created>()
+
+            val row = requireNotNull(setupDb.findBehovById(result.id.value))
+            row.narmestelederFnr.shouldBeNull()
+            row.avbruttNarmesteLederId.shouldBeNull()
+        }
+
+        test("reports AlreadyExists without storing when the employee has an open behov in the organization") {
+            val existing = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+
+            repository.create(newBehov.copy(status = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)) shouldBe CreateBehovResult.AlreadyExists
+
+            repository.findOpenFor(newBehov.employee) shouldBe listOf(existing.id)
+        }
+
+        test("stores exactly one open behov when concurrent creates race") {
+            val results = coroutineScope {
+                (1..2).map { async { repository.create(newBehov) } }.awaitAll()
+            }
+
+            results.count { it is CreateBehovResult.Created } shouldBe 1
+            results.count { it == CreateBehovResult.AlreadyExists } shouldBe 1
+            repository.findOpenFor(newBehov.employee).size shouldBe 1
+        }
+
+        test("creates a behov alongside closed and error behov for the same employee and organization") {
+            repository.create(newBehov.copy(status = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND)).shouldBeInstanceOf<CreateBehovResult.Created>()
+            val closed = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+            repository.markFulfilled(closed.id)
+
+            repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
         }
     })

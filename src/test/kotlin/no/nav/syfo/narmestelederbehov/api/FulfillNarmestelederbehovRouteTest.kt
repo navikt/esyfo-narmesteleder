@@ -47,6 +47,7 @@ import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -305,6 +306,8 @@ private class PutFixture {
 }
 
 private class FakePutBehovRepository : NarmestelederbehovRepository {
+    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
+
     private val behov = mutableMapOf<NarmestelederbehovId, Narmestelederbehov>()
     val fulfilled = mutableListOf<NarmestelederbehovId>()
 

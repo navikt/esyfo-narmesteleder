@@ -39,6 +39,7 @@ import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -263,6 +264,8 @@ private class ListRouteFixture(
 private class ListRouteRepository :
     OpenNarmestelederbehovRepository,
     NarmestelederbehovRepository {
+    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
+
     val rows = mutableListOf(routeDetails())
     val savedNames = mutableListOf<Pair<NarmestelederbehovId, BehovPersonName>>()
     var requestedLimit: Int? = null

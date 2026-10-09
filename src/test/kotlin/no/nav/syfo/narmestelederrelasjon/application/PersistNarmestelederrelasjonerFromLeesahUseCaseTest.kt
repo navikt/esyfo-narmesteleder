@@ -10,7 +10,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.ident.PersonIdent
 import org.slf4j.LoggerFactory
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
@@ -50,6 +53,55 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
             repository.calls.single().relasjoner shouldBe listOf(valid.relasjon.validated())
             metrics.upserted shouldBe listOf(1)
             metrics.invalid shouldBe 1
+        }
+
+        test("observes only valid employment-ended revocations after upsert and metrics, continuing after a failure") {
+            val now = Instant.parse("2026-06-15T12:00:00Z")
+            val observedAt = now.minusSeconds(60)
+            val failing = record(relasjon(sourceEmploymentRevocationAt = observedAt))
+            val succeeding = record(relasjon(sourceEmploymentRevocationAt = observedAt))
+            val otherChange = record(relasjon())
+            val invalid = record(relasjon(sykmeldtFnr = "123", sourceEmploymentRevocationAt = observedAt))
+            val validRecords = listOf(failing, succeeding, otherChange)
+            val reconciliations = RecordingEmploymentReconciliationRepository()
+            val observationMetrics = RecordingEmploymentCheckMetrics()
+            val observedIds = mutableListOf<UUID>()
+            val observationRepository = object : EmploymentReconciliationRepository by reconciliations {
+                override fun recordSourceRevocation(narmesteLederId: UUID, observedAt: Instant, now: Instant): Boolean {
+                    repository.calls.single().relasjoner shouldBe validRecords.map { it.relasjon.validated() }
+                    metrics.upserted shouldBe listOf(3)
+                    observedIds += narmesteLederId
+                    if (narmesteLederId == failing.relasjon.narmestelederId) error("Observation unavailable")
+                    return reconciliations.recordSourceRevocation(narmesteLederId, observedAt, now)
+                }
+            }
+            val observingUseCase = PersistNarmestelederrelasjonerFromLeesahUseCase(
+                repository,
+                metrics,
+                RecordSourceEmploymentRevocationUseCase(observationRepository, Clock.fixed(now, ZoneOffset.UTC), observationMetrics),
+            )
+
+            observingUseCase.execute(validRecords + invalid) shouldBe validRecords
+
+            observedIds shouldBe listOf(failing.relasjon.narmestelederId, succeeding.relasjon.narmestelederId)
+            reconciliations.observations shouldBe listOf(Triple(succeeding.relasjon.narmestelederId, observedAt, now))
+            observationMetrics.observations shouldBe listOf(SourceObservationOutcome.FAILED, SourceObservationOutcome.RECORDED)
+            metrics.invalid shouldBe 1
+        }
+
+        test("persists employment-ended revocations normally when the observation dependency is null") {
+            val revoked = record(relasjon(sourceEmploymentRevocationAt = Instant.parse("2026-06-15T12:00:00Z")))
+            val disabledUseCase = PersistNarmestelederrelasjonerFromLeesahUseCase(
+                repository,
+                metrics,
+                recordSourceEmploymentRevocation = null,
+            )
+
+            disabledUseCase.execute(listOf(revoked)) shouldBe listOf(revoked)
+
+            repository.calls.single().relasjoner shouldBe listOf(revoked.relasjon.validated())
+            metrics.upserted shouldBe listOf(1)
+            metrics.invalid shouldBe 0
         }
 
         listOf(
@@ -121,8 +173,11 @@ private fun captureInvalidRecordLogs(block: () -> Unit): List<ILoggingEvent> {
 
 private fun ILoggingEvent.fields() = keyValuePairs.associate { it.key to it.value }
 
-private fun record(relasjon: LeesahNarmestelederrelasjon, partition: Int = 0, offset: Long = 0) =
-    LeesahNarmestelederrelasjonRecord(partition = partition, offset = offset, relasjon = relasjon)
+private fun record(
+    relasjon: LeesahNarmestelederrelasjon,
+    partition: Int = 0,
+    offset: Long = 0,
+) = LeesahNarmestelederrelasjonRecord(partition = partition, offset = offset, relasjon = relasjon)
 
 private fun relasjon(
     sykmeldtFnr: String = "12345678901",
@@ -130,6 +185,7 @@ private fun relasjon(
     narmestelederFnr: String = "10987654321",
     narmestelederTelefonnummer: String = "12345678",
     narmestelederEpost: String = "leder@example.com",
+    sourceEmploymentRevocationAt: Instant? = null,
 ) = LeesahNarmestelederrelasjon(
     narmestelederId = UUID.randomUUID(),
     sykmeldtFnr = sykmeldtFnr,
@@ -140,4 +196,5 @@ private fun relasjon(
     aktivFom = LocalDate.of(2024, 1, 1),
     aktivTom = null,
     arbeidsgiverForskutterer = true,
+    sourceEmploymentRevocationAt = sourceEmploymentRevocationAt,
 )

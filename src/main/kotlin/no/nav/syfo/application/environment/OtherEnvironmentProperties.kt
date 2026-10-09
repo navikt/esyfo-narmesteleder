@@ -16,6 +16,13 @@ data class OtherEnvironmentProperties(
     val pdlLeesahConsumerEnabled: Boolean,
     val personEnrichmentTaskDelay: String,
     val personEnrichmentTaskEnabled: Boolean,
+    val employmentCheckEnabled: Boolean,
+    val employmentCheckObserveSourceEnabled: Boolean,
+    val employmentCheckBatchSize: Int,
+    val employmentCheckInterval: String,
+    val employmentCheckLease: String,
+    val employmentCheckSeedInterval: String,
+    val employmentCheckSeedLimit: Int,
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -37,6 +44,13 @@ data class OtherEnvironmentProperties(
             pdlLeesahConsumerEnabled = getEnvVar("PDL_LEESAH_CONSUMER_ENABLED", "false").toBoolean(),
             personEnrichmentTaskDelay = getEnvVar("PERSON_ENRICHMENT_TASK_DELAY", "5m"),
             personEnrichmentTaskEnabled = getEnvVar("PERSON_ENRICHMENT_TASK_ENABLED", "false").toBoolean(),
+            employmentCheckEnabled = getEnvVar("EMPLOYMENT_CHECK_ENABLED", "false").toBooleanStrict(),
+            employmentCheckObserveSourceEnabled = getEnvVar("EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED", "false").toBooleanStrict(),
+            employmentCheckBatchSize = getEnvVar("EMPLOYMENT_CHECK_BATCH_SIZE", "50").toInt(),
+            employmentCheckInterval = getEnvVar("EMPLOYMENT_CHECK_INTERVAL", "30s"),
+            employmentCheckLease = getEnvVar("EMPLOYMENT_CHECK_LEASE", "15m"),
+            employmentCheckSeedInterval = getEnvVar("EMPLOYMENT_CHECK_SEED_INTERVAL", "1h"),
+            employmentCheckSeedLimit = getEnvVar("EMPLOYMENT_CHECK_SEED_LIMIT", "1000").toInt(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -55,6 +69,13 @@ data class OtherEnvironmentProperties(
             pdlLeesahConsumerEnabled = true,
             personEnrichmentTaskDelay = "1m",
             personEnrichmentTaskEnabled = true,
+            employmentCheckEnabled = false,
+            employmentCheckObserveSourceEnabled = false,
+            employmentCheckBatchSize = 50,
+            employmentCheckInterval = "30s",
+            employmentCheckLease = "15m",
+            employmentCheckSeedInterval = "1h",
+            employmentCheckSeedLimit = 1000,
         )
     }
 }

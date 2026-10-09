@@ -160,6 +160,28 @@ team-sykmelding, such as new properties or `status` values, appear on this
 topic without a change in this repository. Coordinate such changes with
 team-sykmelding until the takeover is complete.
 
+### Employment-check shadow comparison
+
+After the register transaction commits, an optional hook records valid
+`DEAKTIVERT_ARBEIDSFORHOLD` events per `narmesteLederId` and makes recent
+observations due for comparison against Aareg. Observations older than seven
+days are ignored. Hook failures are counted and logged without failing ingestion.
+Shadow checks never publish revocations.
+
+- `EMPLOYMENT_CHECK_ENABLED` (default `false`): start check and seed loops on every pod.
+- `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` (default `false`): enable the post-commit observation hook.
+- `EMPLOYMENT_CHECK_BATCH_SIZE` (default `50`): maximum claims per check batch.
+- `EMPLOYMENT_CHECK_INTERVAL` (default `30s`): pause between check batches.
+- `EMPLOYMENT_CHECK_LEASE` (default `15m`): claim lease duration.
+- `EMPLOYMENT_CHECK_SEED_INTERVAL` (default `1h`): pause between seeding and global gauge refreshes.
+- `EMPLOYMENT_CHECK_SEED_LIMIT` (default `1000`): maximum rows per seed round.
+
+Comparisons are not exhaustive: one may be lost if our regular check of the
+same relation completes between the source publishing its revocation and our
+ingestion. Disable `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` before enabling
+live publishing, or our own revocations will return as `DEAKTIVERT_ARBEIDSFORHOLD`
+and be mistaken for source observations.
+
 ### What is validated
 
 Only records that pass validation are republished. Records are **not**

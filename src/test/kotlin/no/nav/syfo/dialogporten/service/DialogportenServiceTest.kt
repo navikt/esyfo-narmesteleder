@@ -74,6 +74,13 @@ class DialogportenServiceTest :
                         pdlLeesahConsumerEnabled = false,
                         personEnrichmentTaskDelay = "5m",
                         personEnrichmentTaskEnabled = false,
+                        employmentCheckEnabled = false,
+                        employmentCheckObserveSourceEnabled = false,
+                        employmentCheckBatchSize = 50,
+                        employmentCheckInterval = "30s",
+                        employmentCheckLease = "15m",
+                        employmentCheckSeedInterval = "1h",
+                        employmentCheckSeedLimit = 1000,
                     ),
                     pdlService = pdlService,
                 )

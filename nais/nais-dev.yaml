@@ -161,6 +161,10 @@ spec:
       value: "true"
     - name: PERSIST_NARMESTELEDER_REGISTER
       value: "true"
+    - name: EMPLOYMENT_CHECK_ENABLED
+      value: "true"
+    - name: EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED
+      value: "true"
     - name: PDL_LEESAH_CONSUMER_ENABLED
       value: "true"
     - name: PERSON_ENRICHMENT_TASK_ENABLED

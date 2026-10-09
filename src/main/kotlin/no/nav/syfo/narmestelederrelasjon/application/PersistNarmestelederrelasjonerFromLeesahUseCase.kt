@@ -37,37 +37,36 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
     private val metrics: NarmestelederRegisterMetrics,
 ) {
     fun execute(records: List<LeesahNarmestelederrelasjonRecord>): List<LeesahNarmestelederrelasjonRecord> {
-        val validated = records.mapNotNull { record -> validate(record)?.let { record to it } }
-        if (validated.isEmpty()) {
+        val validRecords = records.filter(::isValid)
+        if (validRecords.isEmpty()) {
             return emptyList()
         }
 
-        val relasjoner = validated.map { (_, relasjon) -> relasjon }
-        val persons = relasjoner
-            .flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }
-            .distinct()
-        repository.upsertAll(relasjoner, persons)
+        val relasjoner = validRecords.map { it.relasjon.toValid() }
+        repository.upsertAll(relasjoner, relasjoner.involvedPersons())
         metrics.recordUpserted(relasjoner.size)
 
-        return validated.map { (record, _) -> record }
+        return validRecords
     }
 
-    private fun validate(record: LeesahNarmestelederrelasjonRecord): ValidLeesahNarmestelederrelasjon? {
-        val relasjon = record.relasjon
-        val validationError = relasjon.validationError() ?: return relasjon.toValid()
+    private fun isValid(record: LeesahNarmestelederrelasjonRecord): Boolean {
+        val validationError = record.relasjon.validationError() ?: return true
 
         logger.logEvent(
             nlRegisterRecordInvalid,
             NlRegisterRecordInvalidDetails(
-                narmestelederId = relasjon.narmestelederId.toString(),
+                narmestelederId = record.relasjon.narmestelederId.toString(),
                 partition = record.partition,
                 offset = record.offset,
                 validationReason = validationError,
             ),
         )
         metrics.recordInvalid()
-        return null
+        return false
     }
+
+    private fun List<ValidLeesahNarmestelederrelasjon>.involvedPersons(): List<PersonIdent> =
+        flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }.distinct()
 
     private fun LeesahNarmestelederrelasjon.toValid() = ValidLeesahNarmestelederrelasjon(
         narmestelederId = narmestelederId,

@@ -1,19 +1,20 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.Runs
 import io.mockk.clearMocks
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.jacksonMapper
+import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RecordingLeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RecordingNarmestelederRegisterMetrics
@@ -22,203 +23,105 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.WakeupException
 import kotlin.coroutines.EmptyCoroutineContext
 
 class PersistNarmestelederRegisterFromLeesahConsumerTest :
-    DescribeSpec({
-        val kafkaConsumer = mockk<KafkaConsumer<String, String?>>(relaxed = true)
-        val repository = RecordingLeesahNarmestelederrelasjonRepository()
-        val producer = mockk<NarmestelederLeesahProducer>(relaxed = true)
+    FunSpec({
         val objectMapper = jacksonMapper()
-        val consumer = PersistNarmestelederRegisterFromLeesahConsumer(
+        val kafkaConsumer = mockk<KafkaConsumer<String, String?>>(relaxed = true)
+        val producer = mockk<NarmestelederLeesahProducer>(relaxed = true)
+        val repository = RecordingLeesahNarmestelederrelasjonRepository()
+
+        fun consumer(
+            repository: LeesahNarmestelederrelasjonRepository = RecordingLeesahNarmestelederrelasjonRepository(),
+            commitOnAllErrors: Boolean = false,
+        ) = PersistNarmestelederRegisterFromLeesahConsumer(
             persistFromLeesah = PersistNarmestelederrelasjonerFromLeesahUseCase(repository, RecordingNarmestelederRegisterMetrics()),
             narmestelederLeesahProducer = producer,
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,
-            scope = kotlinx.coroutines.CoroutineScope(EmptyCoroutineContext),
+            scope = CoroutineScope(EmptyCoroutineContext),
             env = OtherEnvironmentProperties.createForLocal(),
-        )
+        ).also { it.commitOnAllErrors = commitOnAllErrors }
+
+        fun json(message: NarmestelederLeesahKafkaMessage) = objectMapper.writeValueAsString(message)
 
         beforeTest {
             clearMocks(kafkaConsumer, producer)
             repository.calls.clear()
         }
 
-        describe("processBatch") {
-            it("should republish valid records with original key and value before committing offsets") {
-                val validMessage = narmestelederLeesahKafkaMessage()
-                val validValue = objectMapper.writeValueAsString(validMessage)
+        context("processBatch") {
+            test("persists valid records, republishes them and tombstones with original key and value, then commits") {
+                val valid = narmestelederLeesahKafkaMessage()
                 val records = consumerRecords(
-                    consumerRecord(
-                        offset = 1L,
-                        key = "original-key",
-                        value = validValue,
-                    ),
-                    consumerRecord(
-                        offset = 2L,
-                        key = "malformed-key",
-                        value = "{not-valid-json",
-                    ),
+                    consumerRecord(offset = 1, key = "valid-key", value = json(valid)),
+                    consumerRecord(offset = 2, key = "invalid-key", value = json(narmestelederLeesahKafkaMessage().copy(fnr = "123"))),
+                    consumerRecord(offset = 3, key = "malformed-key", value = "{not-valid-json"),
+                    consumerRecord(offset = 4, key = "tombstone-key", value = null),
                 )
-                every { producer.sendLeesahBatch(any()) } just Runs
-                every { kafkaConsumer.commitSync() } returns Unit
 
-                consumer.processBatch(records, kafkaConsumer)
+                consumer(repository).processBatch(records, kafkaConsumer)
 
-                repository.calls.single().relasjoner shouldBe listOf(validMessage.toLeesahNarmestelederrelasjon())
-                verify(exactly = 1) {
+                repository.calls.single().relasjoner shouldBe listOf(valid.toLeesahNarmestelederrelasjon())
+                verifyOrder {
                     producer.sendLeesahBatch(
                         listOf(
-                            NarmestelederLeesahProducerRecord(
-                                key = "original-key",
-                                value = validValue,
-                            )
-                        )
+                            NarmestelederLeesahProducerRecord(key = "valid-key", value = json(valid)),
+                            NarmestelederLeesahProducerRecord(key = "tombstone-key", value = null),
+                        ),
                     )
+                    kafkaConsumer.commitSync()
                 }
-                verify(exactly = 1) { kafkaConsumer.commitSync() }
             }
 
-            it("should republish tombstones together with valid records") {
-                val validMessage = narmestelederLeesahKafkaMessage()
-                val validValue = objectMapper.writeValueAsString(validMessage)
-                val records = consumerRecords(
-                    consumerRecord(
-                        offset = 1L,
-                        key = "valid-key",
-                        value = validValue,
-                    ),
-                    consumerRecord(
-                        offset = 2L,
-                        key = "tombstone-key",
-                        value = null,
-                    ),
-                )
+            test("does not publish or commit when persistence fails") {
+                val failing = LeesahNarmestelederrelasjonRepository { _, _ -> error("database down") }
+                val records = consumerRecords(consumerRecord(offset = 1, value = json(narmestelederLeesahKafkaMessage())))
 
-                every { producer.sendLeesahBatch(any()) } just Runs
-                every { kafkaConsumer.commitSync() } returns Unit
+                shouldThrow<IllegalStateException> { consumer(failing).processBatch(records, kafkaConsumer) }
 
-                consumer.processBatch(records, kafkaConsumer)
-
-                verify(exactly = 1) {
-                    producer.sendLeesahBatch(
-                        listOf(
-                            NarmestelederLeesahProducerRecord(
-                                key = "valid-key",
-                                value = validValue,
-                            ),
-                            NarmestelederLeesahProducerRecord(
-                                key = "tombstone-key",
-                                value = null,
-                            ),
-                        )
-                    )
-                }
-                verify(exactly = 1) { kafkaConsumer.commitSync() }
-            }
-
-            it("should not republish malformed or invalid records") {
-                val validMessage = narmestelederLeesahKafkaMessage()
-                val validValue = objectMapper.writeValueAsString(validMessage)
-                val invalidMessage = narmestelederLeesahKafkaMessage().copy(fnr = "123")
-                val invalidValue = objectMapper.writeValueAsString(invalidMessage)
-                val records = consumerRecords(
-                    consumerRecord(
-                        offset = 1L,
-                        key = "valid-key",
-                        value = validValue,
-                    ),
-                    consumerRecord(
-                        offset = 2L,
-                        key = "invalid-key",
-                        value = invalidValue,
-                    ),
-                    consumerRecord(
-                        offset = 3L,
-                        key = "malformed-key",
-                        value = "{not-valid-json",
-                    ),
-                )
-
-                every { producer.sendLeesahBatch(any()) } just Runs
-                every { kafkaConsumer.commitSync() } returns Unit
-
-                consumer.processBatch(records, kafkaConsumer)
-
-                verify(exactly = 1) {
-                    producer.sendLeesahBatch(
-                        listOf(
-                            NarmestelederLeesahProducerRecord(
-                                key = "valid-key",
-                                value = validValue,
-                            )
-                        )
-                    )
-                }
-                verify(exactly = 1) { kafkaConsumer.commitSync() }
-            }
-
-            it("should not commit offsets when publish fails after persistence") {
-                val records = consumerRecords(
-                    consumerRecord(
-                        offset = 1L,
-                        key = "key-1",
-                        value = objectMapper.writeValueAsString(narmestelederLeesahKafkaMessage()),
-                    ),
-                )
-
-                every { producer.sendLeesahBatch(any()) } throws IllegalStateException("boom")
-
-                shouldThrow<IllegalStateException> {
-                    consumer.processBatch(records, kafkaConsumer)
-                }
-
-                repository.calls.size shouldBe 1
-                verify(exactly = 1) { producer.sendLeesahBatch(any()) }
+                verify(exactly = 0) { producer.sendLeesahBatch(any()) }
                 verify(exactly = 0) { kafkaConsumer.commitSync() }
             }
 
-            it("should not commit offsets when publish fails and commitOnAllErrors is enabled") {
-                consumer.commitOnAllErrors = true
-                val records = consumerRecords(
-                    consumerRecord(
-                        offset = 1L,
-                        key = "key-1",
-                        value = objectMapper.writeValueAsString(narmestelederLeesahKafkaMessage()),
-                    ),
-                )
+            test("discards the batch and commits when persistence fails and commitOnAllErrors is enabled") {
+                val failing = LeesahNarmestelederrelasjonRepository { _, _ -> error("database down") }
+                val records = consumerRecords(consumerRecord(offset = 1, value = json(narmestelederLeesahKafkaMessage())))
 
-                every { producer.sendLeesahBatch(any()) } throws IllegalStateException("boom")
+                consumer(failing, commitOnAllErrors = true).processBatch(records, kafkaConsumer)
 
-                shouldThrow<IllegalStateException> {
-                    consumer.processBatch(records, kafkaConsumer)
+                verify(exactly = 0) { producer.sendLeesahBatch(any()) }
+                verify(exactly = 1) { kafkaConsumer.commitSync() }
+            }
+
+            listOf(false, true).forEach { commitOnAllErrors ->
+                test("does not commit when publishing fails after persistence (commitOnAllErrors=$commitOnAllErrors)") {
+                    every { producer.sendLeesahBatch(any()) } throws IllegalStateException("boom")
+                    val records = consumerRecords(consumerRecord(offset = 1, value = json(narmestelederLeesahKafkaMessage())))
+
+                    shouldThrow<IllegalStateException> {
+                        consumer(repository, commitOnAllErrors).processBatch(records, kafkaConsumer)
+                    }
+
+                    repository.calls.size shouldBe 1
+                    verify(exactly = 0) { kafkaConsumer.commitSync() }
                 }
-
-                repository.calls.size shouldBe 1
-                verify(exactly = 1) { producer.sendLeesahBatch(any()) }
-                verify(exactly = 0) { kafkaConsumer.commitSync() }
             }
         }
 
-        describe("stop") {
-            it("should wake up, unsubscribe and close the consumer before returning") {
+        context("stop") {
+            test("wakes up, unsubscribes and closes the consumer before returning") {
                 val subscribeStarted = CompletableDeferred<Unit>()
                 val pollReleased = CompletableDeferred<Unit>()
-
-                every { kafkaConsumer.subscribe(any<List<String>>()) } answers {
-                    subscribeStarted.complete(Unit)
-                }
+                every { kafkaConsumer.subscribe(any<List<String>>()) } answers { subscribeStarted.complete(Unit) }
                 every { kafkaConsumer.poll(any()) } answers {
-                    runBlocking {
-                        pollReleased.await()
-                    }
-                    throw org.apache.kafka.common.errors.WakeupException()
+                    runBlocking { pollReleased.await() }
+                    throw WakeupException()
                 }
-                every { kafkaConsumer.wakeup() } answers {
-                    pollReleased.complete(Unit)
-                }
-                every { kafkaConsumer.unsubscribe() } just Runs
-                every { kafkaConsumer.close(any<CloseOptions>()) } returns Unit
+                every { kafkaConsumer.wakeup() } answers { pollReleased.complete(Unit) }
+                val consumer = consumer()
 
                 runTest {
                     consumer.listen()
@@ -238,14 +141,5 @@ private fun consumerRecords(vararg records: ConsumerRecord<String, String?>): Co
     emptyMap(),
 )
 
-private fun consumerRecord(
-    offset: Long,
-    key: String = "key-$offset",
-    value: String?,
-): ConsumerRecord<String, String?> = ConsumerRecord(
-    TEAMSYKMELDING_NL_LEESAH_TOPIC,
-    0,
-    offset,
-    key,
-    value,
-)
+private fun consumerRecord(offset: Long, key: String = "key-$offset", value: String?): ConsumerRecord<String, String?> =
+    ConsumerRecord(TEAMSYKMELDING_NL_LEESAH_TOPIC, 0, offset, key, value)

@@ -4,15 +4,16 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.util.UUID
 
 class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
-    DescribeSpec({
+    FunSpec({
         lateinit var repository: RecordingLeesahNarmestelederrelasjonRepository
         lateinit var metrics: RecordingNarmestelederRegisterMetrics
         lateinit var useCase: PersistNarmestelederrelasjonerFromLeesahUseCase
@@ -23,117 +24,104 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
             useCase = PersistNarmestelederrelasjonerFromLeesahUseCase(repository, metrics)
         }
 
-        describe("execute") {
-            it("stores valid relations with the persons of both parties and returns the valid records") {
-                val first = record(offset = 1, relasjon = relasjon(sykmeldtFnr = "12345678901", narmestelederFnr = "10987654321"))
-                val second = record(offset = 2, relasjon = relasjon(sykmeldtFnr = "11111111111", narmestelederFnr = "22222222222"))
+        test("stores valid relations with each person of both parties once and returns the records") {
+            val records = listOf(
+                record(relasjon(sykmeldtFnr = "12345678901", narmestelederFnr = "10987654321")),
+                record(relasjon(sykmeldtFnr = "10987654321", narmestelederFnr = "12345678901")),
+                record(relasjon(sykmeldtFnr = "11111111111", narmestelederFnr = "11111111111")),
+            )
 
-                val result = useCase.execute(listOf(first, second))
+            useCase.execute(records) shouldBe records
 
-                result shouldBe listOf(first, second)
-                repository.calls.single().relasjoner shouldBe listOf(first.relasjon, second.relasjon)
-                repository.calls.single().personFnrs shouldBe listOf("12345678901", "10987654321", "11111111111", "22222222222")
-                metrics.upserted shouldBe listOf(2)
-                metrics.invalid shouldBe 0
-            }
+            val call = repository.calls.single()
+            call.relasjoner shouldBe records.map { it.relasjon }
+            call.personFnrs shouldBe listOf("12345678901", "10987654321", "11111111111")
+            metrics.upserted shouldBe listOf(3)
+            metrics.invalid shouldBe 0
+        }
 
-            it("registers each person only once") {
-                val records = listOf(
-                    record(offset = 1, relasjon = relasjon(sykmeldtFnr = "12345678901", narmestelederFnr = "12345678901")),
-                    record(offset = 2, relasjon = relasjon(sykmeldtFnr = "12345678901", narmestelederFnr = "10987654321")),
-                    record(offset = 3, relasjon = relasjon(sykmeldtFnr = "10987654321", narmestelederFnr = "12345678901")),
-                )
+        test("skips invalid records without blocking valid records in the same batch") {
+            val valid = record(relasjon())
+            val invalid = record(relasjon(sykmeldtFnr = "123"))
 
-                useCase.execute(records)
+            useCase.execute(listOf(valid, invalid)) shouldBe listOf(valid)
 
-                repository.calls.single().personFnrs shouldBe listOf("12345678901", "10987654321")
-            }
+            repository.calls.single().relasjoner shouldBe listOf(valid.relasjon)
+            metrics.upserted shouldBe listOf(1)
+            metrics.invalid shouldBe 1
+        }
 
-            it("skips invalid records without blocking valid records in the same batch") {
-                val valid = record(offset = 1, relasjon = relasjon())
-                val invalid = record(offset = 2, relasjon = relasjon(sykmeldtFnr = "123", narmestelederFnr = "22222222222"))
+        listOf(
+            relasjon(sykmeldtFnr = "123") to "fnr must be exactly 11 digits",
+            relasjon(orgnummer = "12345678a") to "orgnummer must be exactly 9 digits",
+            relasjon(narmestelederFnr = "1234567890a") to "narmesteLederFnr must be exactly 11 digits",
+            relasjon(narmestelederTelefonnummer = "1".repeat(256)) to "narmesteLederTelefonnummer exceeds max length",
+            relasjon(narmestelederEpost = "a".repeat(256)) to "narmesteLederEpost exceeds max length",
+        ).forEach { (relasjon, reason) ->
+            test("skips a record where $reason and does not call the repository") {
+                val logged = captureInvalidRecordLogs { useCase.execute(listOf(record(relasjon))).shouldBeEmpty() }
 
-                val result = useCase.execute(listOf(valid, invalid))
-
-                result shouldBe listOf(valid)
-                repository.calls.single().relasjoner shouldBe listOf(valid.relasjon)
-                repository.calls.single().personFnrs shouldBe listOf(valid.relasjon.sykmeldtFnr, valid.relasjon.narmestelederFnr)
-                metrics.upserted shouldBe listOf(1)
-                metrics.invalid shouldBe 1
-            }
-
-            it("does not call the repository when every record is invalid") {
-                val records = listOf(
-                    record(offset = 1, relasjon = relasjon(sykmeldtFnr = "123")),
-                    record(offset = 2, relasjon = relasjon(orgnummer = "123")),
-                    record(offset = 3, relasjon = relasjon(narmestelederFnr = "1234567890a")),
-                    record(offset = 4, relasjon = relasjon(narmestelederTelefonnummer = "1".repeat(256))),
-                    record(offset = 5, relasjon = relasjon(narmestelederEpost = "a".repeat(256))),
-                )
-
-                val result = useCase.execute(records)
-
-                result.shouldBeEmpty()
+                logged.single().fields()["validation_reason"] shouldBe reason
                 repository.calls.shouldBeEmpty()
                 metrics.upserted.shouldBeEmpty()
-                metrics.invalid shouldBe 5
+                metrics.invalid shouldBe 1
             }
+        }
 
-            it("accepts text fields at the maximum length") {
-                val atLimit = record(
-                    offset = 1,
-                    relasjon = relasjon(narmestelederTelefonnummer = "1".repeat(255), narmestelederEpost = "a".repeat(255)),
-                )
+        test("accepts text fields at the maximum length") {
+            val atLimit = record(relasjon(narmestelederTelefonnummer = "1".repeat(255), narmestelederEpost = "a".repeat(255)))
 
-                useCase.execute(listOf(atLimit)) shouldBe listOf(atLimit)
-            }
+            useCase.execute(listOf(atLimit)) shouldBe listOf(atLimit)
+        }
 
-            it("logs only the register record id, Kafka position and reason for an invalid record") {
-                val invalid = record(partition = 3, offset = 42, relasjon = relasjon(sykmeldtFnr = "123"))
-                val appender = ListAppender<ILoggingEvent>().apply { start() }
-                val logger = LoggerFactory.getLogger(PersistNarmestelederrelasjonerFromLeesahUseCase::class.java) as Logger
-                val previousLevel = logger.level
-                logger.level = Level.WARN
-                logger.addAppender(appender)
-                try {
-                    useCase.execute(listOf(invalid))
+        test("logs only the register record id and Kafka position of an invalid record") {
+            val invalid = record(relasjon(sykmeldtFnr = "123"), partition = 3, offset = 42)
 
-                    val event = appender.list.single()
-                    val fields = event.keyValuePairs.associate { it.key to it.value }
-                    fields["event_type"] shouldBe "nl_register_record_invalid"
-                    fields["narmesteleder_id"] shouldBe invalid.relasjon.narmestelederId.toString()
-                    fields["partition"] shouldBe 3
-                    fields["offset"] shouldBe 42L
-                    fields["validation_reason"] shouldBe "fnr must be exactly 11 digits"
-                    val logged = event.formattedMessage + fields.toString()
-                    logged.contains(invalid.relasjon.sykmeldtFnr) shouldBe false
-                    logged.contains(invalid.relasjon.orgnummer) shouldBe false
-                    logged.contains(invalid.relasjon.narmestelederFnr) shouldBe false
-                } finally {
-                    logger.detachAppender(appender)
-                    logger.level = previousLevel
-                    appender.stop()
-                }
-            }
+            val event = captureInvalidRecordLogs { useCase.execute(listOf(invalid)) }.single()
 
-            it("propagates repository failures without recording upserts") {
-                val failingUseCase = PersistNarmestelederrelasjonerFromLeesahUseCase(
-                    repository = { _, _ -> error("database down") },
-                    metrics = metrics,
-                )
+            val fields = event.fields()
+            fields["event_type"] shouldBe "nl_register_record_invalid"
+            fields["narmesteleder_id"] shouldBe invalid.relasjon.narmestelederId.toString()
+            fields["partition"] shouldBe 3
+            fields["offset"] shouldBe 42L
+            val logged = event.formattedMessage + fields
+            logged shouldNotContain invalid.relasjon.sykmeldtFnr
+            logged shouldNotContain invalid.relasjon.orgnummer
+            logged shouldNotContain invalid.relasjon.narmestelederFnr
+        }
 
-                runCatching { failingUseCase.execute(listOf(record(offset = 1, relasjon = relasjon()))) }
-                    .exceptionOrNull()?.message shouldBe "database down"
-                metrics.upserted.shouldBeEmpty()
-            }
+        test("propagates repository failures without recording upserts") {
+            val failingUseCase = PersistNarmestelederrelasjonerFromLeesahUseCase(
+                repository = { _, _ -> error("database down") },
+                metrics = metrics,
+            )
+
+            runCatching { failingUseCase.execute(listOf(record(relasjon()))) }
+                .exceptionOrNull()?.message shouldBe "database down"
+            metrics.upserted.shouldBeEmpty()
         }
     })
 
-private fun record(partition: Int = 0, offset: Long, relasjon: LeesahNarmestelederrelasjon) = LeesahNarmestelederrelasjonRecord(
-    partition = partition,
-    offset = offset,
-    relasjon = relasjon,
-)
+private fun captureInvalidRecordLogs(block: () -> Unit): List<ILoggingEvent> {
+    val appender = ListAppender<ILoggingEvent>().apply { start() }
+    val logger = LoggerFactory.getLogger(PersistNarmestelederrelasjonerFromLeesahUseCase::class.java) as Logger
+    val previousLevel = logger.level
+    logger.level = Level.WARN
+    logger.addAppender(appender)
+    try {
+        block()
+        return appender.list.toList()
+    } finally {
+        logger.detachAppender(appender)
+        logger.level = previousLevel
+        appender.stop()
+    }
+}
+
+private fun ILoggingEvent.fields() = keyValuePairs.associate { it.key to it.value }
+
+private fun record(relasjon: LeesahNarmestelederrelasjon, partition: Int = 0, offset: Long = 0) =
+    LeesahNarmestelederrelasjonRecord(partition = partition, offset = offset, relasjon = relasjon)
 
 private fun relasjon(
     sykmeldtFnr: String = "12345678901",

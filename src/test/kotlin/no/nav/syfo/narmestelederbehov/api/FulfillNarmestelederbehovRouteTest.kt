@@ -23,9 +23,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.mockk
-import io.mockk.spyk
 import linemanager
 import manager
 import no.nav.syfo.application.api.API_V1_PATH
@@ -36,9 +34,6 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.integration.aareg.TestAaregClient
-import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
-import no.nav.syfo.integration.dinesykmeldte.FakeDinesykmeldteClient
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregCache
 import no.nav.syfo.integration.ereg.FakeEregClient
@@ -55,16 +50,10 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
-import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
-import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
-import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
-import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
-import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
-import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.FakeSykmeldingNarmestelederProducer
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationResponse
@@ -81,11 +70,10 @@ import java.util.UUID
 
 class FulfillNarmestelederbehovRouteTest :
     FunSpec({
-        test("PUT /requirement/{id} 202 updates behov and sends kafka message") {
+        test("PUT /requirement/{id} 202 establishes relation and updates behov") {
             withPutApplication { fixture ->
                 val id = fixture.seed()
                 val submittedManager = fixture.newManager()
-                fixture.people.registerPerson(submittedManager.nationalIdentificationNumber.value, submittedManager.lastName)
 
                 val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
@@ -93,15 +81,11 @@ class FulfillNarmestelederbehovRouteTest :
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
                 response.status shouldBe HttpStatusCode.Accepted
-                coVerify(exactly = 1) {
-                    fixture.producer.sendSykmeldingNLRelasjon(
-                        match {
-                            it.sykmeldt.fnr == fixture.employeeIdent &&
-                                it.orgnummer == fixture.orgNumber &&
-                                it.leder.fnr == submittedManager.nationalIdentificationNumber.value
-                        },
-                        any(),
-                    )
+                fixture.establish.commands.size shouldBe 1
+                fixture.establish.commands.single().let {
+                    it.employeeIdent shouldBe PersonIdent(fixture.employeeIdent)
+                    it.organizationNumber shouldBe OrganizationNumber(fixture.orgNumber)
+                    it.manager.personIdent shouldBe PersonIdent(submittedManager.nationalIdentificationNumber.value)
                 }
                 fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
             }
@@ -120,7 +104,7 @@ class FulfillNarmestelederbehovRouteTest :
             failures.forEach { failure ->
                 withPutApplication { fixture ->
                     val id = fixture.seed()
-                    fixture.aareg.setFailure(failure)
+                    fixture.establish.result = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure)
                     val response = client.put("/api/v1/linemanager/requirement/$id") {
                         contentType(ContentType.Application.Json)
                         bearerAuth(createMockToken(fixture.orgNumber))
@@ -130,7 +114,7 @@ class FulfillNarmestelederbehovRouteTest :
                     response.body<ApiError>().type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
                     response.body<ApiError>().message shouldBe "An upstream service is unavailable"
                     fixture.repository.fulfilled shouldBe emptyList()
-                    coVerify(exactly = 0) { fixture.producer.sendSykmeldingNLRelasjon(any(), any()) }
+                    fixture.establish.commands.size shouldBe 1
                 }
             }
         }
@@ -142,7 +126,6 @@ class FulfillNarmestelederbehovRouteTest :
                     mobile = "+47 90 00 00 00",
                     email = "leder+ø@eksempelø.no; annen@domene.no ",
                 )
-                fixture.people.registerPerson(submittedManager.nationalIdentificationNumber.value, submittedManager.lastName)
 
                 val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
@@ -150,12 +133,12 @@ class FulfillNarmestelederbehovRouteTest :
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
                 response.status shouldBe HttpStatusCode.Accepted
-                coVerify(exactly = 1) {
-                    fixture.producer.sendSykmeldingNLRelasjon(
-                        match { it.leder.mobil == "+4790000000" && it.leder.epost == "leder+ø@eksempelø.no;annen@domene.no" },
-                        any(),
-                    )
+                fixture.establish.commands.size shouldBe 1
+                fixture.establish.commands.single().manager.let {
+                    it.mobile.value shouldBe "+4790000000"
+                    it.email.value shouldBe "leder+ø@eksempelø.no;annen@domene.no"
                 }
+                fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
             }
         }
 
@@ -180,7 +163,8 @@ class FulfillNarmestelederbehovRouteTest :
                 error.message.contains("90-00-00-00") shouldBe false
                 error.message.contains("invalid @example.com") shouldBe false
                 error.message.contains("gyldig@example.com") shouldBe false
-                coVerify(exactly = 0) { fixture.producer.sendSykmeldingNLRelasjon(any(), any()) }
+                fixture.establish.commands shouldBe emptyList()
+                fixture.repository.fulfilled shouldBe emptyList()
             }
         }
 
@@ -194,6 +178,7 @@ class FulfillNarmestelederbehovRouteTest :
                 response.status shouldBe HttpStatusCode.NotFound
                 response.body<ApiError>().type shouldBe ErrorType.NOT_FOUND
                 response.body<ApiError>().message shouldBe "A LinemanagerRequirement was not found"
+                fixture.establish.commands shouldBe emptyList()
             }
         }
 
@@ -207,6 +192,7 @@ class FulfillNarmestelederbehovRouteTest :
                 }
                 response.status shouldBe HttpStatusCode.BadRequest
                 response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
+                fixture.establish.commands shouldBe emptyList()
             }
         }
 
@@ -232,13 +218,15 @@ class FulfillNarmestelederbehovRouteTest :
                 response.body<ApiError>().type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
                 response.body<ApiError>().message shouldBe
                     "System user does not have access to nav_syfo_oppgi-narmesteleder resource"
+                fixture.establish.commands shouldBe emptyList()
+                fixture.repository.fulfilled shouldBe emptyList()
             }
         }
 
         test("PUT /requirement/{id} returns the existing no-active-sykmelding error") {
             withPutApplication { fixture ->
                 val id = fixture.seed()
-                coEvery { fixture.sykmelding.getIsActiveSykmelding(fixture.employeeIdent, fixture.orgNumber) } returns false
+                fixture.establish.result = EstablishNarmestelederrelasjonResult.NoActiveSykmelding(OrganizationNumber(fixture.orgNumber))
                 val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
                     setBody(manager())
@@ -248,7 +236,8 @@ class FulfillNarmestelederbehovRouteTest :
                 response.body<ApiError>().type shouldBe ErrorType.NO_ACTIVE_SICK_LEAVE
                 response.body<ApiError>().message shouldBe
                     "No active sick leave found for the given organization number: ${fixture.orgNumber}"
-                coVerify(exactly = 0) { fixture.producer.sendSykmeldingNLRelasjon(any(), any()) }
+                fixture.establish.commands.size shouldBe 1
+                fixture.repository.fulfilled shouldBe emptyList()
             }
         }
 
@@ -258,10 +247,10 @@ class FulfillNarmestelederbehovRouteTest :
         ).forEach { (otherOrganization, message) ->
             test("PUT /requirement/{id} returns the existing employment error: $message") {
                 withPutApplication { fixture ->
-                    val id = fixture.seed(seedEmployment = false)
-                    if (otherOrganization) {
-                        fixture.aareg.seedEmployment(fixture.employeeIdent, "999999999", "999999999")
-                    }
+                    val id = fixture.seed()
+                    fixture.establish.result = EstablishNarmestelederrelasjonResult.NoEmployment(
+                        if (otherOrganization) EmploymentResult.NotInOrganization else EmploymentResult.None,
+                    )
                     val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                         contentType(ContentType.Application.Json)
                         setBody(manager())
@@ -270,7 +259,8 @@ class FulfillNarmestelederbehovRouteTest :
                     response.status shouldBe HttpStatusCode.BadRequest
                     response.body<ApiError>().type shouldBe ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
                     response.body<ApiError>().message shouldBe message
-                    coVerify(exactly = 0) { fixture.producer.sendSykmeldingNLRelasjon(any(), any()) }
+                    fixture.establish.commands.size shouldBe 1
+                    fixture.repository.fulfilled shouldBe emptyList()
                 }
             }
         }
@@ -281,13 +271,10 @@ private class PutFixture {
     val employeeIdent = relation.employeeIdentificationNumber.value
     val orgNumber = relation.orgNumber.value
     val repository = FakePutBehovRepository()
-    val aareg = TestAaregClient()
     val texas = mockk<TexasHttpClient>()
     val pdp = mockk<AltinnAuthorizationClient>(relaxed = true)
     val ereg = FakeEregClient()
-    val people = FakePersonLookup()
-    val sykmelding: DinesykmeldteClient = spyk(FakeDinesykmeldteClient())
-    val producer = spyk(FakeSykmeldingNarmestelederProducer())
+    val establish = FakePutRelationEstablisher()
     val altinn = AltinnTilgangerService(FakeAltinnTilgangerClient())
     private val organizationAccess = AltinnOrganizationAccess(
         altinn,
@@ -297,13 +284,7 @@ private class PutFixture {
     val useCase = FulfillNarmestelederbehovUseCase(
         repository,
         organizationAccess,
-        EstablishNarmestelederrelasjonUseCase(
-            DinesykmeldteActiveSykmeldingLookup(sykmelding),
-            AaregEmploymentLookup(aareg),
-            people,
-            MicrometerNameValidationMetrics(),
-            KafkaPublishNarmestelederrelasjon(producer),
-        ),
+        establish,
         NarmestelederbehovDialog { },
     )
 
@@ -316,11 +297,7 @@ private class PutFixture {
             AltinnAuthorizationResponse(listOf(DecisionResult(Decision.Permit)))
     }
 
-    suspend fun seed(seedEmployment: Boolean = true): UUID {
-        if (seedEmployment) aareg.seedEmployment(employeeIdent, orgNumber, orgNumber)
-        people.registerPerson(employeeIdent, relation.lastName)
-        return repository.seed(employeeIdent, orgNumber)
-    }
+    fun seed(): UUID = repository.seed(employeeIdent, orgNumber)
 
     fun newManager(): Manager = manager().copy(
         nationalIdentificationNumber = PersonalIdentificationNumber(relation.manager.nationalIdentificationNumber.value.reversed()),
@@ -379,16 +356,12 @@ private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture
     }
 }
 
-private class FakePersonLookup : PersonLookup {
-    private val people = mutableMapOf<PersonIdent, PersonDetails>()
+private class FakePutRelationEstablisher : EstablishNarmestelederrelasjon {
+    val commands = mutableListOf<EstablishNarmestelederrelasjonCommand>()
+    var result: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published
 
-    fun registerPerson(fnr: String, lastName: String) {
-        val personIdent = PersonIdent(fnr)
-        people[personIdent] = PersonDetails(
-            personIdent,
-            PersonNameDetails(firstName = "Test", lastName = lastName, registeredNames = listOf(RegisteredName(lastName))),
-        )
+    override suspend fun execute(command: EstablishNarmestelederrelasjonCommand): EstablishNarmestelederrelasjonResult {
+        commands += command
+        return result
     }
-
-    override suspend fun find(personIdent: PersonIdent): PersonDetails? = people[personIdent]
 }

@@ -51,7 +51,7 @@ fun FulfillNarmestelederbehovResult.throwIfRejected() {
         )
         FulfillNarmestelederbehovResult.PersonNotFound ->
             throw ApiErrorException.BadRequestException("Could not find person in PDL", isAlreadyLogged = true)
-        is FulfillNarmestelederbehovResult.ManagerNameMismatch -> throw ApiErrorException.BadRequestException(
+        FulfillNarmestelederbehovResult.ManagerNameMismatch -> throw ApiErrorException.BadRequestException(
             "Last name for linemanager does not correspond with registered value for the given national identification number",
             type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
             isAlreadyLogged = true,

@@ -33,7 +33,7 @@ class EstablishNarmestelederrelasjonUseCaseTest :
                 publisher = publisher,
             )
 
-            useCase.execute(command()) shouldBe EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false))
+            useCase.execute(command()) shouldBe EstablishNarmestelederrelasjonResult.Published
             effects shouldBe listOf("sykmelding", "employment", "employee", "manager", "metric", "publish")
             publisher.command shouldBe PublishNarmestelederrelasjonCommand(
                 employee = RelationPerson(resolvedEmployee.personIdent, "Employee", "EmployeeMiddle", "Employee"),
@@ -44,7 +44,6 @@ class EstablishNarmestelederrelasjonUseCaseTest :
         }
 
         test("rejects without publishing at the first failing relation check") {
-            val mismatch = LastNameMatch.NoMatch(null, false)
             val mismatchingManager = manager.copy(
                 name = manager.name.copy(lastName = "Different", registeredNames = listOf(RegisteredName("Different"))),
             )
@@ -54,7 +53,7 @@ class EstablishNarmestelederrelasjonUseCaseTest :
                 RejectionCase(true, EmploymentResult.NotInOrganization, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization), listOf("sykmelding", "employment")),
                 RejectionCase(true, EmploymentResult.InOrganization, mapOf(managerIdent to manager), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee")),
                 RejectionCase(true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee", "manager")),
-                RejectionCase(true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee, managerIdent to mismatchingManager), EstablishNarmestelederrelasjonResult.ManagerNameMismatch(mismatch), listOf("sykmelding", "employment", "employee", "manager", "metric")),
+                RejectionCase(true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee, managerIdent to mismatchingManager), EstablishNarmestelederrelasjonResult.ManagerNameMismatch, listOf("sykmelding", "employment", "employee", "manager", "metric")),
             ).forEach { case ->
                 val effects = mutableListOf<String>()
                 val publisher = RecordingPublisher(effects)
@@ -71,10 +70,10 @@ class EstablishNarmestelederrelasjonUseCaseTest :
                     publisher = publisher,
                 )
                 val result = useCase.execute(command())
-                if (case.expected is EstablishNarmestelederrelasjonResult.ManagerNameMismatch) {
-                    result shouldBe EstablishNarmestelederrelasjonResult.ManagerNameMismatch(recordedMatches.single() as LastNameMatch.NoMatch)
+                result shouldBe case.expected
+                if (case.expected == EstablishNarmestelederrelasjonResult.ManagerNameMismatch) {
+                    recordedMatches.single().shouldBeInstanceOf<LastNameMatch.NoMatch>()
                 } else {
-                    result shouldBe case.expected
                     recordedMatches shouldBe emptyList()
                 }
                 effects shouldBe case.effects
@@ -138,7 +137,7 @@ class EstablishNarmestelederrelasjonUseCaseTest :
                 },
             )
 
-            useCase.execute(command(employeeLastName = "employee")) shouldBe EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false))
+            useCase.execute(command(employeeLastName = "employee")) shouldBe EstablishNarmestelederrelasjonResult.Published
             effects shouldBe listOf("sykmelding", "employment", "employee", "manager", "metric", "metric", "publish")
             recordedMatches shouldBe listOf(LastNameMatch.Exact(false), LastNameMatch.Exact(false))
         }
@@ -158,7 +157,9 @@ class EstablishNarmestelederrelasjonUseCaseTest :
 
             val result = useCase.execute(command(employeeLastName = "Different"))
 
-            result shouldBe EstablishNarmestelederrelasjonResult.EmployeeNameMismatch(recordedMatches.last() as LastNameMatch.NoMatch)
+            result shouldBe EstablishNarmestelederrelasjonResult.EmployeeNameMismatch
+            recordedMatches.size shouldBe 2
+            recordedMatches.last().shouldBeInstanceOf<LastNameMatch.NoMatch>()
             recordedMatches.first() shouldBe LastNameMatch.Exact(false)
             effects shouldBe listOf("sykmelding", "employment", "employee", "manager", "metric", "metric")
             publisher.command shouldBe null

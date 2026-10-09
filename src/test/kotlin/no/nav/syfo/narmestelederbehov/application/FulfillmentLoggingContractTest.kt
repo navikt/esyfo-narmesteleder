@@ -18,7 +18,6 @@ import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -38,8 +37,8 @@ class FulfillmentLoggingContractTest :
         lateinit var capture: LogCapture
         val privacyCanaries = listOf(
             employeeIdent.value, managerIdent.value, organizationNumber.value,
-            employee.name.firstName, requireNotNull(employee.name.middleName), employee.name.lastName,
-            manager.name.firstName, requireNotNull(manager.name.middleName), manager.name.lastName,
+            "Employee", "EmployeeMiddle", "Employee",
+            "Manager", "ManagerMiddle", "Manager",
             "manager@example.test", "+4799999999", "system-user", "test-token", "11223344556",
             "private-name-canary", "private-email-canary", "private-phone-canary", "private-exception-canary",
         )
@@ -199,9 +198,7 @@ class FulfillmentLoggingContractTest :
                 {
                     createUseCase(
                         relation = FakeRelationEstablisher(
-                            result = EstablishNarmestelederrelasjonResult.ManagerNameMismatch(
-                                LastNameMatch.NoMatch(0.0, hasParallelNames = false),
-                            ),
+                            result = EstablishNarmestelederrelasjonResult.ManagerNameMismatch,
                         ),
                     )
                 },

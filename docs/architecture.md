@@ -309,6 +309,8 @@ Rules:
   domain types those contracts name, and the parsing of the contracts' input
   types (for example `ManagerContactInput.normalize()`). Parsing lets a caller
   reject invalid input before its own lookups without repeating the rule.
+  Other modules never depend on another module's `infrastructure`, in
+  production code or in tests.
 - Validation lives next to what it validates: the caller in
   `organisasjonstilgang`, a need in `narmestelederbehov` and a relation in
   `narmestelederrelasjon`. A calling module does not repeat another module's

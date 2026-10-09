@@ -15,14 +15,10 @@ import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
-import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
-import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -135,7 +131,6 @@ class FulfillNarmestelederbehovUseCaseTest :
         }
 
         test("maps each establish rejection without fulfilling or completing dialog") {
-            val mismatch = LastNameMatch.NoMatch(0.0, hasParallelNames = false)
             listOf(
                 EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber) to
                     FulfillNarmestelederbehovResult.NoActiveSykmelding(organizationNumber),
@@ -144,8 +139,8 @@ class FulfillNarmestelederbehovUseCaseTest :
                 EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization) to
                     FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NotInOrganization),
                 EstablishNarmestelederrelasjonResult.PersonNotFound to FulfillNarmestelederbehovResult.PersonNotFound,
-                EstablishNarmestelederrelasjonResult.ManagerNameMismatch(mismatch) to
-                    FulfillNarmestelederbehovResult.ManagerNameMismatch(mismatch),
+                EstablishNarmestelederrelasjonResult.ManagerNameMismatch to
+                    FulfillNarmestelederbehovResult.ManagerNameMismatch,
             ).forEach { (rejection, expected) ->
                 val effects = mutableListOf<String>()
                 createUseCase(relation = FakeRelationEstablisher(effects, result = rejection), effects = effects)
@@ -329,24 +324,6 @@ internal val managerIdent = PersonIdent("10987654321")
 internal val organizationNumber = OrganizationNumber("123456789")
 internal val behovId = NarmestelederbehovId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
 internal val behov = Narmestelederbehov(behovId, Employee(employeeIdent, organizationNumber))
-internal val employee = PersonDetails(
-    employeeIdent,
-    PersonNameDetails(
-        firstName = "Employee",
-        lastName = "Employee",
-        middleName = "EmployeeMiddle",
-        registeredNames = listOf(RegisteredName("Employee")),
-    )
-)
-internal val manager = PersonDetails(
-    managerIdent,
-    PersonNameDetails(
-        firstName = "Manager",
-        lastName = "Manager",
-        middleName = "ManagerMiddle",
-        registeredNames = listOf(RegisteredName("Manager")),
-    )
-)
 internal val personnelManager = OrganizationAccessSubject.PersonnelManager(
     personIdent = PersonIdent("11223344556"),
     accessToken = no.nav.syfo.organisasjonstilgang.application.AccessToken("test-token"),
@@ -372,7 +349,6 @@ internal fun fulfilledResult(
 ) = FulfillNarmestelederbehovResult.Fulfilled(
     relationSource = relationSource,
     dialogCompletion = dialogCompletion,
-    managerNameMatch = LastNameMatch.Exact(hasParallelNames = false),
 )
 
 internal fun createUseCase(

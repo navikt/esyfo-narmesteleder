@@ -36,7 +36,7 @@ class SubmitNarmestelederrelasjonUseCase(
                 ),
             )
         ) {
-            is EstablishNarmestelederrelasjonResult.Published -> SubmitNarmestelederrelasjonResult.Established(source)
+            EstablishNarmestelederrelasjonResult.Published -> SubmitNarmestelederrelasjonResult.Established(source)
             is EstablishNarmestelederrelasjonResult.UpstreamUnavailable -> SubmitNarmestelederrelasjonResult.UpstreamUnavailable(result.failure)
             else -> SubmitNarmestelederrelasjonResult.EstablishRejected(result)
         }

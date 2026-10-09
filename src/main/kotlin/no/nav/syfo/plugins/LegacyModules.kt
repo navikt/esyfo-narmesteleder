@@ -1,14 +1,10 @@
 package no.nav.syfo.plugins
 
 import kotlinx.coroutines.Dispatchers
-import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
 import no.nav.syfo.person.service.PersonEnrichmentService
@@ -39,9 +35,6 @@ internal fun legacyRepositoriesModule() = module {
 }
 
 internal fun legacyServicesModule() = module {
-    single { AaregService(arbeidsforholdOversiktClient = get()) }
-    single { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
-    single<DinesykmeldteService> { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
     single { PdlService(pdlClient = get()) }
     single { PdlLeesahNameUpdateService(database = get(), pdlService = get()) }
     single { PersonEnrichmentService(database = get(), pdlService = get()) }
@@ -60,20 +53,11 @@ internal fun legacyServicesModule() = module {
     single { NarmestelederBruddService(revokeNarmestelederrelasjon = get(), bruddRepository = get()) }
     single {
         SendtSykmeldingHandler(
-            narmesteLederService = get(),
+            createNarmestelederbehov = get(),
             sykmeldingService = get(),
             narmestelederBruddService = get(),
         )
     }
 
-    single {
-        NarmestelederService(
-            nlDb = get(),
-            persistLeesahNlBehov = env().otherProperties.persistLeesahNlBehov,
-            aaregService = get(),
-            dinesykmeldteService = get(),
-            dialogportenService = get(),
-        )
-    }
-    single { NlBehovLeesahHandler(narmesteLederService = get()) }
+    single { NlBehovLeesahHandler(createNarmestelederbehov = get()) }
 }

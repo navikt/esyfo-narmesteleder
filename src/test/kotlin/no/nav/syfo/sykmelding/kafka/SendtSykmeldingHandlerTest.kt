@@ -5,7 +5,9 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import defaultSendtSykmeldingMessage
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
 import io.mockk.clearAllMocks
@@ -13,10 +15,19 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.slot
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.service.BehovSource
-import no.nav.syfo.narmesteleder.service.NarmestelederService
+import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.integration.aareg.AAREG
+import no.nav.syfo.narmesteleder.domain.BehovReason
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
+import no.nav.syfo.narmestelederbehov.application.MainOrganizationSource
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovSource
+import no.nav.syfo.narmestelederbehov.domain.Employee
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.sykmelding.model.RiktigNarmesteLeder
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import no.nav.syfo.sykmelding.service.NarmestelederBruddService
@@ -28,15 +39,16 @@ import java.util.UUID
 class SendtSykmeldingHandlerTest :
     DescribeSpec({
 
-        val narmesteLederService = mockk<NarmestelederService>()
+        val createNarmestelederbehov = RecordingCreateNarmestelederbehov()
         val sykmeldingService = mockk<SykmeldingService>()
         val narmestelederBruddService = mockk<NarmestelederBruddService>()
-        val handler = SendtSykmeldingHandler(narmesteLederService, sykmeldingService, narmestelederBruddService)
+        val handler = SendtSykmeldingHandler(createNarmestelederbehov, sykmeldingService, narmestelederBruddService)
 
         beforeEach {
             clearAllMocks(currentThreadOnly = true)
+            createNarmestelederbehov.commands.clear()
+            createNarmestelederbehov.result = CreateNarmestelederbehovResult.Disabled
             coEvery { sykmeldingService.processBatch(any()) } just Runs
-            coEvery { narmesteLederService.createNewNlBehov(any(), any(), any(), any()) } returns null
             coEvery { narmestelederBruddService.revokeFromSendtSykmelding(any(), any(), any(), any(), any()) } just Runs
         }
 
@@ -91,189 +103,40 @@ class SendtSykmeldingHandlerTest :
             }
         }
 
-        describe("skipSykmeldingCheck parameter tests") {
+        describe("sykmeldingKnownActive") {
+            val today = LocalDate.now()
+            listOf(
+                "period includes today" to listOf(today.minusDays(5) to today.plusDays(5)),
+                "today is the first day of the period" to listOf(today to today.plusDays(10)),
+                "today is the last day of the period" to listOf(today.minusDays(10) to today),
+                "at least one of multiple periods includes today" to listOf(
+                    today.minusDays(30) to today.minusDays(20),
+                    today.minusDays(5) to today.plusDays(5),
+                    today.plusDays(10) to today.plusDays(20),
+                ),
+            ).forEach { (name, periods) ->
+                it("is true when $name") {
+                    handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(sykmeldingsperioder = periods.toPeriods()))
 
-            it("should set skipSykmeldingCheck to true when period includes today") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(5), tom = today.plusDays(5))
-                    )
-                )
-
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = true,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
+                    createNarmestelederbehov.commands.single().sykmeldingKnownActive shouldBe true
                 }
             }
 
-            it("should set skipSykmeldingCheck to true when today is the first day of period") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today, tom = today.plusDays(10))
-                    )
-                )
+            listOf(
+                "all periods are in the past" to listOf(today.minusDays(20) to today.minusDays(10)),
+                "all periods are in the future" to listOf(today.plusDays(10) to today.plusDays(20)),
+                "the period ended yesterday" to listOf(today.minusDays(10) to today.minusDays(1)),
+                "the period starts tomorrow" to listOf(today.plusDays(1) to today.plusDays(10)),
+                "multiple periods exist but none include today" to listOf(
+                    today.minusDays(30) to today.minusDays(20),
+                    today.minusDays(15) to today.minusDays(10),
+                    today.plusDays(10) to today.plusDays(20),
+                ),
+            ).forEach { (name, periods) ->
+                it("is false when $name") {
+                    handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(sykmeldingsperioder = periods.toPeriods()))
 
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = true,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
-                }
-            }
-
-            it("should set skipSykmeldingCheck to true when today is the last day of period") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today)
-                    )
-                )
-
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = true,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
-                }
-            }
-
-            it("should set skipSykmeldingCheck to false when all periods are in the past") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(20), tom = today.minusDays(10))
-                    )
-                )
-
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    val createNewNlBehov = narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = false,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
-                }
-            }
-
-            it("should set skipSykmeldingCheck to false when all periods are in the future") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.plusDays(10), tom = today.plusDays(20))
-                    )
-                )
-
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = false,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
-                }
-            }
-
-            it("should set skipSykmeldingCheck to false when period ended yesterday") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(1))
-                    )
-                )
-
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = false,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
-                }
-            }
-
-            it("should set skipSykmeldingCheck to false when period starts tomorrow") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.plusDays(1), tom = today.plusDays(10))
-                    )
-                )
-
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = false,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
-                }
-            }
-
-            it("should set skipSykmeldingCheck to true when at least one of multiple periods includes today") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(30), tom = today.minusDays(20)),
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(5), tom = today.plusDays(5)),
-                        SykmeldingsperiodeAGDTO(fom = today.plusDays(10), tom = today.plusDays(20))
-                    )
-                )
-
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = true,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
-                }
-            }
-
-            it("should set skipSykmeldingCheck to false when multiple periods exist but none include today") {
-                val today = LocalDate.now()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(30), tom = today.minusDays(20)),
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(15), tom = today.minusDays(10)),
-                        SykmeldingsperiodeAGDTO(fom = today.plusDays(10), tom = today.plusDays(20))
-                    )
-                )
-
-                handler.handleNarmestelederbehov(message)
-
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = any(),
-                        skipSykmeldingCheck = false,
-                        behovSource = any(),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
+                    createNarmestelederbehov.commands.single().sykmeldingKnownActive shouldBe false
                 }
             }
         }
@@ -290,9 +153,7 @@ class SendtSykmeldingHandlerTest :
 
                 handler.handleNarmestelederbehov(message)
 
-                coVerify(exactly = 0) {
-                    narmesteLederService.createNewNlBehov(any(), any(), any())
-                }
+                createNarmestelederbehov.commands.shouldBeEmpty()
             }
 
             it("should revoke NL relation and track Kafka metadata when riktigNarmesteLeder is answered NEI") {
@@ -314,44 +175,62 @@ class SendtSykmeldingHandlerTest :
                         kafkaOffset = 42,
                     )
                 }
-                coVerify(exactly = 0) {
-                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
-                }
+                createNarmestelederbehov.commands.shouldBeEmpty()
             }
 
-            it("should create NL behov with correct parameters when riktigNarmesteLeder is null") {
+            it("should create NL behov with correct command when riktigNarmesteLeder is null") {
                 val today = LocalDate.now()
-                val fnr = "12345678901"
-                val orgnummer = "999888777"
-                val juridiskOrgnummer = "111222333"
-
                 val message = defaultSendtSykmeldingMessage(
-                    fnr = fnr,
-                    orgnummer = orgnummer,
-                    juridiskOrgnummer = juridiskOrgnummer,
+                    fnr = "12345678901",
+                    orgnummer = "999888777",
+                    juridiskOrgnummer = "111222333",
                     sykmeldingsperioder = listOf(
                         SykmeldingsperiodeAGDTO(fom = today.minusDays(5), tom = today.plusDays(5))
                     ),
                     riktigNarmesteLeder = null,
                 )
 
-                val nlBehovSlot = slot<LinemanagerRequirementWrite>()
-                val skipCheckSlot = slot<Boolean>()
-
                 handler.handleNarmestelederbehov(message)
 
-                coVerify {
-                    narmesteLederService.createNewNlBehov(
-                        nlBehov = capture(nlBehovSlot),
-                        skipSykmeldingCheck = capture(skipCheckSlot),
-                        behovSource = BehovSource(message.kafkaMetadata.sykmeldingId, source = SENDT_SYKMELDING_TOPIC),
-                        arbeidsgiver = message.event.arbeidsgiver,
-                    )
-                }
+                createNarmestelederbehov.commands.single() shouldBe CreateNarmestelederbehovCommand(
+                    employee = Employee(PersonIdent("12345678901"), OrganizationNumber("999888777")),
+                    manager = null,
+                    reason = BehovReason.INGEN_LEDER_REGISTRERT,
+                    revokedRelationId = null,
+                    sykmeldingKnownActive = true,
+                    mainOrganization = MainOrganizationSource.FromSykmelding("111222333"),
+                    source = NarmestelederbehovSource.SendtSykmelding(message.kafkaMetadata.sykmeldingId),
+                )
+            }
 
-                assert(nlBehovSlot.captured.employeeIdentificationNumber.value == fnr)
-                assert(nlBehovSlot.captured.orgNumber.value == orgnummer)
-                assert(skipCheckSlot.captured)
+            it("passes a missing juridiskOrgnummer on to the use case") {
+                handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(juridiskOrgnummer = null))
+
+                createNarmestelederbehov.commands.single().mainOrganization shouldBe MainOrganizationSource.FromSykmelding(null)
+            }
+
+            it("throws so the record is retried when an upstream is unavailable") {
+                createNarmestelederbehov.result = CreateNarmestelederbehovResult.UpstreamUnavailable(
+                    UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, 503, IllegalStateException()),
+                )
+
+                shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage())
+                }
+            }
+
+            listOf(
+                CreateNarmestelederbehovResult.AlreadyExists,
+                CreateNarmestelederbehovResult.NoActiveSykmelding,
+                CreateNarmestelederbehovResult.Disabled,
+            ).forEach { result ->
+                it("completes without error when the use case returns $result") {
+                    createNarmestelederbehov.result = result
+
+                    handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage())
+
+                    createNarmestelederbehov.commands.size shouldBe 1
+                }
             }
 
             it("should not create NL behov when arbeidsgiver is null") {
@@ -360,29 +239,31 @@ class SendtSykmeldingHandlerTest :
 
                 handler.handleNarmestelederbehov(message)
 
-                coVerify(exactly = 0) {
-                    narmesteLederService.createNewNlBehov(any(), any(), any())
-                }
+                createNarmestelederbehov.commands.shouldBeEmpty()
             }
 
             it("should not create NL behov when fnr is invalid") {
-                val message = defaultSendtSykmeldingMessage(fnr = "123")
+                handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(fnr = "123"))
 
-                handler.handleNarmestelederbehov(message)
-
-                coVerify(exactly = 0) {
-                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
-                }
+                createNarmestelederbehov.commands.shouldBeEmpty()
             }
 
             it("should not create NL behov when orgnummer is invalid") {
-                val message = defaultSendtSykmeldingMessage(orgnummer = "123")
+                handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(orgnummer = "123"))
 
-                handler.handleNarmestelederbehov(message)
-
-                coVerify(exactly = 0) {
-                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
-                }
+                createNarmestelederbehov.commands.shouldBeEmpty()
             }
         }
     })
+
+private class RecordingCreateNarmestelederbehov : CreateNarmestelederbehov {
+    val commands = mutableListOf<CreateNarmestelederbehovCommand>()
+    var result: CreateNarmestelederbehovResult = CreateNarmestelederbehovResult.Disabled
+
+    override suspend fun execute(command: CreateNarmestelederbehovCommand): CreateNarmestelederbehovResult {
+        commands += command
+        return result
+    }
+}
+
+private fun List<Pair<LocalDate, LocalDate>>.toPeriods() = map { (fom, tom) -> SykmeldingsperiodeAGDTO(fom = fom, tom = tom) }

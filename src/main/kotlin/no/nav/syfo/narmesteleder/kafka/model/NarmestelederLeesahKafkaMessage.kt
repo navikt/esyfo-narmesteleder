@@ -1,10 +1,13 @@
 package no.nav.syfo.narmesteleder.kafka.model
 
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
+import no.nav.syfo.narmestelederbehov.application.MainOrganizationSource
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovSource
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -38,12 +41,14 @@ data class NarmestelederLeesahKafkaMessage(
     val status: LeesahStatus?,
 ) {
 
-    fun toNlBehovWrite() = LinemanagerRequirementWrite(
-        employeeIdentificationNumber = PersonalIdentificationNumber(fnr),
-        orgNumber = OrganizationNumber(orgnummer),
-        managerIdentificationNumber = PersonalIdentificationNumber(narmesteLederFnr),
-        behovReason = status?.name?.let { BehovReason.valueOf(it) }
+    fun toCreateNarmestelederbehovCommand() = CreateNarmestelederbehovCommand(
+        employee = Employee(PersonIdent(fnr), OrganizationNumber(orgnummer)),
+        manager = PersonIdent(narmesteLederFnr),
+        reason = status?.name?.let { BehovReason.valueOf(it) }
             ?: BehovReason.UKJENT,
-        revokedLinemanagerId = narmesteLederId,
+        revokedRelationId = narmesteLederId,
+        sykmeldingKnownActive = false,
+        mainOrganization = MainOrganizationSource.FromEmployment,
+        source = NarmestelederbehovSource.NarmestelederLeesah(narmesteLederId),
     )
 }

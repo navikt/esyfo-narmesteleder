@@ -1,13 +1,17 @@
 package no.nav.syfo.sykmelding.kafka
 
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.service.BehovSource
-import no.nav.syfo.narmesteleder.service.NarmestelederService
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
+import no.nav.syfo.narmestelederbehov.application.MainOrganizationSource
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovSource
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.service.NarmestelederBruddService
 import no.nav.syfo.sykmelding.service.SykmeldingService
@@ -50,7 +54,7 @@ private val sickLeaveMessageSkipped = applicationEvent<SickLeaveLogDetails>(
 )
 
 class SendtSykmeldingHandler(
-    private val narmesteLederService: NarmestelederService,
+    private val createNarmestelederbehov: CreateNarmestelederbehov,
     private val sykmeldingService: SykmeldingService,
     private val narmestelederBruddService: NarmestelederBruddService,
 ) {
@@ -106,17 +110,21 @@ class SendtSykmeldingHandler(
             return
         }
 
-        narmesteLederService.createNewNlBehov(
-            nlBehov = LinemanagerRequirementWrite(
-                employeeIdentificationNumber = PersonalIdentificationNumber(message.kafkaMetadata.fnr),
-                orgNumber = OrganizationNumber(arbeidsgiver.orgnummer),
-                behovReason = BehovReason.INGEN_LEDER_REGISTRERT,
-            ),
-            skipSykmeldingCheck = message.sykmelding.sykmeldingsperioder
-                .any { LocalDate.now() in it.fom..it.tom },
-            behovSource = BehovSource(message.kafkaMetadata.sykmeldingId, source = SENDT_SYKMELDING_TOPIC),
-            arbeidsgiver = arbeidsgiver,
+        val result = createNarmestelederbehov.execute(
+            CreateNarmestelederbehovCommand(
+                employee = Employee(PersonIdent(message.kafkaMetadata.fnr), OrganizationNumber(arbeidsgiver.orgnummer)),
+                manager = null,
+                reason = BehovReason.INGEN_LEDER_REGISTRERT,
+                revokedRelationId = null,
+                sykmeldingKnownActive = message.sykmelding.sykmeldingsperioder
+                    .any { LocalDate.now() in it.fom..it.tom },
+                mainOrganization = MainOrganizationSource.FromSykmelding(arbeidsgiver.juridiskOrgnummer),
+                source = NarmestelederbehovSource.SendtSykmelding(message.kafkaMetadata.sykmeldingId),
+            )
         )
+        if (result is CreateNarmestelederbehovResult.UpstreamUnavailable) {
+            throw result.failure.toUpstreamUnavailableException()
+        }
     }
 
     private suspend fun revokeNarmestelederRelation(

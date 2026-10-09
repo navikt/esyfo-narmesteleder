@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
-import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
 import no.nav.syfo.person.domain.PersonStatus

@@ -4,9 +4,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
-import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
 import no.nav.syfo.narmesteleder.exposed.PersonEntity
-import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.narmestelederLeesahKafkaMessage
 import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.core.eq

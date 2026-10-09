@@ -6,7 +6,6 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.exposed.PersonTable
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock

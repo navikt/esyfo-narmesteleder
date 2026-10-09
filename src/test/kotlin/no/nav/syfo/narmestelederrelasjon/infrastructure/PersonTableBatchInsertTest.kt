@@ -1,14 +1,15 @@
-package no.nav.syfo.narmesteleder.exposed
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import org.jetbrains.exposed.v1.core.SortOrder
-import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.LocalDate
+import java.util.UUID
 
 class PersonTableBatchInsertTest :
     DescribeSpec({
@@ -44,15 +45,13 @@ class PersonTableBatchInsertTest :
                 }
 
                 transaction(TestDB.exposedDatabase) {
-                    val personsByFnr = PersonEntity.all()
-                        .orderBy(PersonTable.fnr to SortOrder.ASC)
-                        .associateBy { it.fnr }
+                    val personsByFnr = persistedPersons().associateBy { it.fnr }
                     val firstPerson = personsByFnr["12345678901"].shouldNotBeNull()
                     val secondPerson = personsByFnr["10987654321"].shouldNotBeNull()
 
                     insertedPersons shouldBe listOf(
                         InsertedPerson(
-                            id = firstPerson.id.value,
+                            id = firstPerson.id,
                             fnr = "12345678901",
                             fornavn = "Ada",
                             mellomnavn = "Augusta",
@@ -61,7 +60,7 @@ class PersonTableBatchInsertTest :
                             foedselsdato = LocalDate.now(),
                         ),
                         InsertedPerson(
-                            id = secondPerson.id.value,
+                            id = secondPerson.id,
                             fnr = "10987654321",
                             fornavn = null,
                             mellomnavn = null,
@@ -109,10 +108,10 @@ class PersonTableBatchInsertTest :
 
                 insertedPersons shouldBe emptyList()
                 transaction(TestDB.exposedDatabase) {
-                    val persistedPerson = PersonEntity.all().single()
+                    val persistedPerson = persistedPersons().single()
                     initiallyInserted shouldBe listOf(
                         InsertedPerson(
-                            id = persistedPerson.id.value,
+                            id = persistedPerson.id,
                             fnr = "12345678901",
                             fornavn = null,
                             mellomnavn = null,
@@ -162,12 +161,10 @@ class PersonTableBatchInsertTest :
 
                 insertedPersons.map(InsertedPerson::fnr) shouldBe listOf("10987654321", "11111111111")
                 transaction(TestDB.exposedDatabase) {
-                    val persistedByFnr = PersonEntity.all()
-                        .orderBy(PersonTable.fnr to SortOrder.ASC)
-                        .associateBy { it.fnr }
+                    val persistedByFnr = persistedPersons().associateBy { it.fnr }
 
                     insertedPersons.forEach { insertedPerson ->
-                        insertedPerson.id shouldBe persistedByFnr.getValue(insertedPerson.fnr).id.value
+                        insertedPerson.id shouldBe persistedByFnr.getValue(insertedPerson.fnr).id
                     }
 
                     val existingPerson = persistedByFnr["12345678901"].shouldNotBeNull()
@@ -204,9 +201,7 @@ class PersonTableBatchInsertTest :
 
                 val insertedPersonsByFnr = insertedPersons.associateBy { it.fnr }
                 transaction(TestDB.exposedDatabase) {
-                    val persons = PersonEntity.all()
-                        .orderBy(PersonTable.fnr to SortOrder.ASC)
-                        .toList()
+                    val persons = persistedPersons()
                     val personsByFnr = persons.associateBy { it.fnr }
 
                     persons.size shouldBe 2
@@ -214,7 +209,7 @@ class PersonTableBatchInsertTest :
                     persons.count { it.fnr == "10987654321" } shouldBe 1
                     insertedPersons shouldBe listOf(
                         InsertedPerson(
-                            id = personsByFnr.getValue("12345678901").id.value,
+                            id = personsByFnr.getValue("12345678901").id,
                             fnr = "12345678901",
                             status = "ACTIVE",
                             fornavn = "Ada",
@@ -223,7 +218,7 @@ class PersonTableBatchInsertTest :
                             foedselsdato = null,
                         ),
                         InsertedPerson(
-                            id = personsByFnr.getValue("10987654321").id.value,
+                            id = personsByFnr.getValue("10987654321").id,
                             fnr = "10987654321",
                             status = "PENDING",
                             fornavn = null,
@@ -234,7 +229,7 @@ class PersonTableBatchInsertTest :
                     )
                     insertedPersonsByFnr.keys shouldBe personsByFnr.keys
                     insertedPersons.forEach { insertedPerson ->
-                        insertedPerson.id shouldBe personsByFnr.getValue(insertedPerson.fnr).id.value
+                        insertedPerson.id shouldBe personsByFnr.getValue(insertedPerson.fnr).id
                     }
                     personsByFnr["12345678901"]?.status shouldBe "ACTIVE"
                 }
@@ -271,7 +266,7 @@ class PersonTableBatchInsertTest :
 
                 insertedPersons shouldBe emptyList()
                 transaction(TestDB.exposedDatabase) {
-                    val person = PersonEntity.find { PersonTable.fnr eq "12345678901" }.singleOrNull().shouldNotBeNull()
+                    val person = persistedPersons().singleOrNull { it.fnr == "12345678901" }.shouldNotBeNull()
                     person.status shouldBe "ACTIVE"
                     person.fornavn shouldBe "Ada"
                     person.mellomnavn shouldBe "Augusta"
@@ -286,8 +281,31 @@ class PersonTableBatchInsertTest :
 
                 insertedPersons shouldBe emptyList()
                 transaction(TestDB.exposedDatabase) {
-                    PersonEntity.all().count() shouldBe 0
+                    persistedPersons().size shouldBe 0
                 }
             }
         }
     })
+
+private data class PersistedPerson(
+    val id: UUID,
+    val fnr: String,
+    val fornavn: String?,
+    val mellomnavn: String?,
+    val etternavn: String?,
+    val status: String,
+)
+
+private fun persistedPersons(): List<PersistedPerson> = PersonTable
+    .selectAll()
+    .orderBy(PersonTable.fnr to SortOrder.ASC)
+    .map {
+        PersistedPerson(
+            id = it[PersonTable.id].value,
+            fnr = it[PersonTable.fnr],
+            fornavn = it[PersonTable.fornavn],
+            mellomnavn = it[PersonTable.mellomnavn],
+            etternavn = it[PersonTable.etternavn],
+            status = it[PersonTable.status],
+        )
+    }

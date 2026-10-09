@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.exposed
+package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import org.jetbrains.exposed.v1.core.Transaction
 import org.jetbrains.exposed.v1.jdbc.batchInsert

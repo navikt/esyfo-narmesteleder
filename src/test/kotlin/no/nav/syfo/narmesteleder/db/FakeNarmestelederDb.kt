@@ -54,7 +54,7 @@ class FakeNarmestelederDb : NarmestelederDb {
 
     override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = getNlBehovByStatus(listOf(status), limit)
 
-    override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
+    fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
     override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity> = store.values.filter {
         it.orgnummer == orgnummer &&
             it.sykmeldtFnr == sykmeldtFnr &&

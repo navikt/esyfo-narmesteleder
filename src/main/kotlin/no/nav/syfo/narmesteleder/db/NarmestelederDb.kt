@@ -41,7 +41,6 @@ interface NarmestelederDb {
         mellomnavn: String?,
         etternavn: String?,
     ): Boolean
-    suspend fun findBehovById(id: UUID): NarmestelederBehovEntity?
     suspend fun findBehovByParameters(
         sykmeldtFnr: String,
         orgnummer: String,
@@ -192,27 +191,6 @@ class PostgresNarmestelederDb(
                     preparedStatement.executeUpdate() == 1
                 }.also {
                     connection.commit()
-                }
-        }
-    }
-
-    override suspend fun findBehovById(id: UUID): NarmestelederBehovEntity? = withContext(dispatcher) {
-        return@withContext database.connection.use { connection ->
-            connection
-                .prepareStatement(
-                    """
-                       SELECT * FROM nl_behov WHERE id = ?;
-                    """.trimIndent()
-                ).use { preparedStatement ->
-                    preparedStatement.setObject(1, id)
-
-                    preparedStatement.executeQuery().use { resultSet ->
-                        if (resultSet.next()) {
-                            resultSet.toNarmestelederBehovEntity()
-                        } else {
-                            null
-                        }
-                    }
                 }
         }
     }

@@ -7,11 +7,13 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
 import no.nav.syfo.narmestelederrelasjon.application.SearchName
-import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.java.javaUUID
+import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
 import java.time.Instant
@@ -431,17 +433,27 @@ private fun insertRelation(
     mobile: String = "99999999",
     narmestelederId: UUID = UUID.randomUUID(),
 ): Int = transaction(TestDB.exposedDatabase) {
-    NarmestelederEntity.new {
-        narmesteLederId = narmestelederId
-        this.orgnummer = orgnummer
-        sykmeldtFnr = employeeFnr
-        narmestelederFnr = managerFnr
-        narmestelederTelefonnummer = mobile
-        narmestelederEpost = email
-        arbeidsgiverForskutterer = true
-        this.aktivFom = aktivFom
-        this.aktivTom = aktivTom
-    }.id.value
+    NarmestelederTable.insertAndGetId {
+        it[NarmestelederTable.narmestelederId] = narmestelederId
+        it[NarmestelederTable.orgnummer] = orgnummer
+        it[sykmeldtFnr] = employeeFnr
+        it[narmestelederFnr] = managerFnr
+        it[narmestelederTelefonnummer] = mobile
+        it[narmestelederEpost] = email
+        it[arbeidsgiverForskutterer] = true
+        it[NarmestelederTable.aktivFom] = aktivFom
+        it[NarmestelederTable.aktivTom] = aktivTom
+    }.value
+}
+
+private object SendtSykmeldingSeedTable : Table("sendt_sykmelding") {
+    val sykmeldingId = javaUUID("sykmelding_id")
+    val orgnummer = varchar("orgnummer", 9)
+    val syketilfelleStartDato = date("syketilfelle_startdato").nullable()
+    val fnr = text("fnr")
+    val fom = date("fom")
+    val tom = date("tom")
+    val revokedDate = date("revoked_date").nullable()
 }
 
 private fun insertSendtSykmelding(
@@ -451,14 +463,14 @@ private fun insertSendtSykmelding(
     revokedDate: LocalDate? = null,
 ) {
     transaction(TestDB.exposedDatabase) {
-        SendtSykmeldingTable.insert {
+        SendtSykmeldingSeedTable.insert {
             it[sykmeldingId] = UUID.randomUUID()
-            it[SendtSykmeldingTable.orgnummer] = orgnummer
+            it[SendtSykmeldingSeedTable.orgnummer] = orgnummer
             it[syketilfelleStartDato] = tom.minusDays(10)
-            it[SendtSykmeldingTable.fnr] = fnr
+            it[SendtSykmeldingSeedTable.fnr] = fnr
             it[fom] = tom.minusDays(20)
-            it[SendtSykmeldingTable.tom] = tom
-            it[SendtSykmeldingTable.revokedDate] = revokedDate
+            it[SendtSykmeldingSeedTable.tom] = tom
+            it[SendtSykmeldingSeedTable.revokedDate] = revokedDate
         }
     }
 }

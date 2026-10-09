@@ -17,10 +17,10 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.LeaderControlledKafkaConsumer
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
 import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
+import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederLeesahProducer
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PersistNarmestelederRegisterFromLeesahConsumer
-import no.nav.syfo.pdl.kafka.PdlLeesahConsumer
-import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.kafka.SendtSykmeldingKafkaConsumer
@@ -35,7 +35,7 @@ fun Application.configureKafkaConsumers() {
     val sendtSykmeldingHandler by inject<SendtSykmeldingHandler>()
     val persistNarmestelederrelasjonerFromLeesah by inject<PersistNarmestelederrelasjonerFromLeesahUseCase>()
     val narmestelederLeesahProducer by inject<NarmestelederLeesahProducer>()
-    val pdlLeesahNameUpdateService by inject<PdlLeesahNameUpdateService>()
+    val updateRelationPersonNames by inject<UpdateRelationPersonNamesUseCase>()
     val environment by inject<Environment>()
     val leaderChangeSSEListener by inject<LeaderChangeSSEListener>()
     val logger = logger()
@@ -117,7 +117,7 @@ fun Application.configureKafkaConsumers() {
             ),
             scope = this,
             env = environment.otherProperties,
-            pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
+            updateRelationPersonNames = updateRelationPersonNames,
         )
     } else {
         logger.info("PDL Leesah consumer is disabled, skipping configuration for {}", PdlLeesahConsumer.PDL_LEESAH_TOPIC)

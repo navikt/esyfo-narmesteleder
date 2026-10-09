@@ -1,5 +1,8 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmesteleder.domain.BehovReason
+import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -18,6 +21,23 @@ interface NarmestelederbehovRepository {
     suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult
 
     suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult
+
+    /** Returns [CreateBehovResult.AlreadyExists] when the employee already has an open behov in the organization. */
+    suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult
+}
+
+data class NewNarmestelederbehov(
+    val employee: Employee,
+    val mainOrganizationNumber: String,
+    val manager: PersonIdent?,
+    val reason: BehovReason,
+    val status: BehovStatus,
+    val revokedRelationId: UUID?,
+)
+
+sealed interface CreateBehovResult {
+    data class Created(val id: NarmestelederbehovId) : CreateBehovResult
+    data object AlreadyExists : CreateBehovResult
 }
 
 sealed interface MarkFulfilledResult {

@@ -37,36 +37,49 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
     private val metrics: NarmestelederRegisterMetrics,
 ) {
     fun execute(records: List<LeesahNarmestelederrelasjonRecord>): List<LeesahNarmestelederrelasjonRecord> {
-        val validRecords = records.filter(::isValid)
-        if (validRecords.isEmpty()) {
+        val validated = records.mapNotNull { record -> validate(record)?.let { record to it } }
+        if (validated.isEmpty()) {
             return emptyList()
         }
 
-        val relasjoner = validRecords.map { it.relasjon }
-        val personFnrs = relasjoner
+        val relasjoner = validated.map { (_, relasjon) -> relasjon }
+        val persons = relasjoner
             .flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }
             .distinct()
-        repository.upsertAll(relasjoner, personFnrs)
+        repository.upsertAll(relasjoner, persons)
         metrics.recordUpserted(relasjoner.size)
 
-        return validRecords
+        return validated.map { (record, _) -> record }
     }
 
-    private fun isValid(record: LeesahNarmestelederrelasjonRecord): Boolean {
-        val validationError = record.relasjon.validationError() ?: return true
+    private fun validate(record: LeesahNarmestelederrelasjonRecord): ValidLeesahNarmestelederrelasjon? {
+        val relasjon = record.relasjon
+        val validationError = relasjon.validationError() ?: return relasjon.toValid()
 
         logger.logEvent(
             nlRegisterRecordInvalid,
             NlRegisterRecordInvalidDetails(
-                narmestelederId = record.relasjon.narmestelederId.toString(),
+                narmestelederId = relasjon.narmestelederId.toString(),
                 partition = record.partition,
                 offset = record.offset,
                 validationReason = validationError,
             ),
         )
         metrics.recordInvalid()
-        return false
+        return null
     }
+
+    private fun LeesahNarmestelederrelasjon.toValid() = ValidLeesahNarmestelederrelasjon(
+        narmestelederId = narmestelederId,
+        sykmeldtFnr = PersonIdent(sykmeldtFnr),
+        orgnummer = OrganizationNumber(orgnummer),
+        narmestelederFnr = PersonIdent(narmestelederFnr),
+        narmestelederTelefonnummer = narmestelederTelefonnummer,
+        narmestelederEpost = narmestelederEpost,
+        aktivFom = aktivFom,
+        aktivTom = aktivTom,
+        arbeidsgiverForskutterer = arbeidsgiverForskutterer,
+    )
 
     private fun LeesahNarmestelederrelasjon.validationError(): String? = when {
         !PersonIdent.isValid(sykmeldtFnr) -> "fnr must be exactly 11 digits"

@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.ValidLeesahNarmestelederrelasjon
 import org.jetbrains.exposed.v1.jdbc.upsert
 import java.time.ZoneOffset
 
@@ -25,7 +25,7 @@ import java.time.ZoneOffset
  * - `created` — insert-only timestamp
  * - `updated` — managed by a DB trigger
  */
-internal fun NarmestelederTable.upsertFromLeesah(relasjon: LeesahNarmestelederrelasjon) {
+internal fun NarmestelederTable.upsertFromLeesah(relasjon: ValidLeesahNarmestelederrelasjon) {
     upsert(
         NarmestelederTable.narmestelederId,
         onUpdate = {
@@ -40,9 +40,9 @@ internal fun NarmestelederTable.upsertFromLeesah(relasjon: LeesahNarmestelederre
         },
     ) {
         it[NarmestelederTable.narmestelederId] = relasjon.narmestelederId
-        it[NarmestelederTable.orgnummer] = relasjon.orgnummer
-        it[NarmestelederTable.sykmeldtFnr] = relasjon.sykmeldtFnr
-        it[NarmestelederTable.narmestelederFnr] = relasjon.narmestelederFnr
+        it[NarmestelederTable.orgnummer] = relasjon.orgnummer.value
+        it[NarmestelederTable.sykmeldtFnr] = relasjon.sykmeldtFnr.value
+        it[NarmestelederTable.narmestelederFnr] = relasjon.narmestelederFnr.value
         it[NarmestelederTable.narmestelederTelefonnummer] = relasjon.narmestelederTelefonnummer
         it[NarmestelederTable.narmestelederEpost] = relasjon.narmestelederEpost
         it[NarmestelederTable.arbeidsgiverForskutterer] = relasjon.arbeidsgiverForskutterer

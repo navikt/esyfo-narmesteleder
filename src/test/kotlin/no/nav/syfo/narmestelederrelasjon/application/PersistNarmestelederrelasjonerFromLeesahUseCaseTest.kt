@@ -8,6 +8,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import no.nav.syfo.ident.PersonIdent
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.util.UUID
@@ -34,8 +35,8 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
             useCase.execute(records) shouldBe records
 
             val call = repository.calls.single()
-            call.relasjoner shouldBe records.map { it.relasjon }
-            call.personFnrs shouldBe listOf("12345678901", "10987654321", "11111111111")
+            call.relasjoner shouldBe records.map { it.relasjon.validated() }
+            call.persons shouldBe listOf("12345678901", "10987654321", "11111111111").map(::PersonIdent)
             metrics.upserted shouldBe listOf(3)
             metrics.invalid shouldBe 0
         }
@@ -46,7 +47,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
 
             useCase.execute(listOf(valid, invalid)) shouldBe listOf(valid)
 
-            repository.calls.single().relasjoner shouldBe listOf(valid.relasjon)
+            repository.calls.single().relasjoner shouldBe listOf(valid.relasjon.validated())
             metrics.upserted shouldBe listOf(1)
             metrics.invalid shouldBe 1
         }

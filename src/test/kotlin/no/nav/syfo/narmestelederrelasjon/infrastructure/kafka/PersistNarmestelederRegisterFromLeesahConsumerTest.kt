@@ -18,6 +18,7 @@ import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RecordingLeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RecordingNarmestelederRegisterMetrics
+import no.nav.syfo.narmestelederrelasjon.application.validated
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
@@ -64,7 +65,7 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
 
                 consumer(repository).processBatch(records, kafkaConsumer)
 
-                repository.calls.single().relasjoner shouldBe listOf(valid.toLeesahNarmestelederrelasjon())
+                repository.calls.single().relasjoner shouldBe listOf(valid.toLeesahNarmestelederrelasjon().validated())
                 verifyOrder {
                     producer.sendLeesahBatch(
                         listOf(

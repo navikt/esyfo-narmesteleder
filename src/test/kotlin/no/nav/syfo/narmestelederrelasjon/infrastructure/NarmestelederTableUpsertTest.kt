@@ -4,7 +4,9 @@ import faker
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjon
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.narmestelederrelasjon.application.ValidLeesahNarmestelederrelasjon
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
@@ -74,11 +76,11 @@ private fun relasjon(
     narmestelederId: UUID = UUID.randomUUID(),
     aktivTom: LocalDate? = null,
     arbeidsgiverForskutterer: Boolean? = true,
-) = LeesahNarmestelederrelasjon(
+) = ValidLeesahNarmestelederrelasjon(
     narmestelederId = narmestelederId,
-    sykmeldtFnr = faker.numerify("###########"),
-    orgnummer = faker.numerify("#########"),
-    narmestelederFnr = faker.numerify("###########"),
+    sykmeldtFnr = PersonIdent(faker.numerify("###########")),
+    orgnummer = OrganizationNumber(faker.numerify("#########")),
+    narmestelederFnr = PersonIdent(faker.numerify("###########")),
     narmestelederTelefonnummer = faker.numerify("########"),
     narmestelederEpost = faker.internet().emailAddress(),
     aktivFom = LocalDate.of(2024, 1, 1),
@@ -86,7 +88,7 @@ private fun relasjon(
     arbeidsgiverForskutterer = arbeidsgiverForskutterer,
 )
 
-private fun upsert(relasjon: LeesahNarmestelederrelasjon) = transaction(TestDB.exposedDatabase) {
+private fun upsert(relasjon: ValidLeesahNarmestelederrelasjon) = transaction(TestDB.exposedDatabase) {
     NarmestelederTable.upsertFromLeesah(relasjon)
 }
 
@@ -94,11 +96,11 @@ private fun rows(narmestelederId: UUID): List<ResultRow> = transaction(TestDB.ex
     NarmestelederTable.selectAll().where { NarmestelederTable.narmestelederId eq narmestelederId }.toList()
 }
 
-private fun ResultRow.toRelasjon() = LeesahNarmestelederrelasjon(
+private fun ResultRow.toRelasjon() = ValidLeesahNarmestelederrelasjon(
     narmestelederId = this[NarmestelederTable.narmestelederId],
-    sykmeldtFnr = this[NarmestelederTable.sykmeldtFnr],
-    orgnummer = this[NarmestelederTable.orgnummer],
-    narmestelederFnr = this[NarmestelederTable.narmestelederFnr],
+    sykmeldtFnr = PersonIdent(this[NarmestelederTable.sykmeldtFnr]),
+    orgnummer = OrganizationNumber(this[NarmestelederTable.orgnummer]),
+    narmestelederFnr = PersonIdent(this[NarmestelederTable.narmestelederFnr]),
     narmestelederTelefonnummer = this[NarmestelederTable.narmestelederTelefonnummer],
     narmestelederEpost = this[NarmestelederTable.narmestelederEpost],
     aktivFom = this[NarmestelederTable.aktivFom].withOffsetSameInstant(ZoneOffset.UTC).toLocalDate(),

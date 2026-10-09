@@ -1,5 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import org.slf4j.LoggerFactory
@@ -67,20 +69,16 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
     }
 
     private fun LeesahNarmestelederrelasjon.validationError(): String? = when {
-        !sykmeldtFnr.isDigitsWithLength(FNR_LENGTH) -> "fnr must be exactly $FNR_LENGTH digits"
-        !orgnummer.isDigitsWithLength(ORGNUMMER_LENGTH) -> "orgnummer must be exactly $ORGNUMMER_LENGTH digits"
-        !narmestelederFnr.isDigitsWithLength(FNR_LENGTH) -> "narmesteLederFnr must be exactly $FNR_LENGTH digits"
+        !PersonIdent.isValid(sykmeldtFnr) -> "fnr must be exactly 11 digits"
+        !OrganizationNumber.isValid(orgnummer) -> "orgnummer must be exactly 9 digits"
+        !PersonIdent.isValid(narmestelederFnr) -> "narmesteLederFnr must be exactly 11 digits"
         narmestelederTelefonnummer.length > TEXT_FIELD_MAX_LENGTH -> "narmesteLederTelefonnummer exceeds max length"
         narmestelederEpost.length > TEXT_FIELD_MAX_LENGTH -> "narmesteLederEpost exceeds max length"
         else -> null
     }
 
-    private fun String.isDigitsWithLength(length: Int): Boolean = this.length == length && all(Char::isDigit)
-
     companion object {
         private val logger = LoggerFactory.getLogger(PersistNarmestelederrelasjonerFromLeesahUseCase::class.java)
-        private const val FNR_LENGTH = 11
-        private const val ORGNUMMER_LENGTH = 9
         private const val TEXT_FIELD_MAX_LENGTH = 255
     }
 }

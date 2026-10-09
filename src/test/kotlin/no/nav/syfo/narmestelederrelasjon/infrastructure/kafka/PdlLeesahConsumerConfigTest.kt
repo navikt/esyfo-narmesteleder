@@ -1,4 +1,4 @@
-package no.nav.syfo.pdl.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe

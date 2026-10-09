@@ -128,7 +128,7 @@ class LeesahNLKafkaConsumer(
 
     private suspend fun fulfillOpenBehov(message: NarmestelederLeesahKafkaMessage) {
         val employee = message.employeeOrNull()
-            ?: return logger.info("Skipping behov fulfillment for NL message ${message.narmesteLederId}: invalid employee identifiers")
+            ?: return logger.error("Skipping behov fulfillment for NL message ${message.narmesteLederId}: invalid employee identifiers")
         fulfillBehovFromLeesah.execute(employee)
     }
 

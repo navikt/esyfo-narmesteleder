@@ -26,7 +26,7 @@ class NarmestelederTableUpsertTest :
                 }
             }
         }
-        describe("NarmestelederTable NarmestelederTable.upsertFromLeesah") {
+        describe("NarmestelederTable.upsertFromLeesah") {
             it("should insert new entity when no existing row") {
                 val message = narmestelederLeesahKafkaMessage().copy(
                     aktivTom = LocalDate.of(2024, 12, 31),

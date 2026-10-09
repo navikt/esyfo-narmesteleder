@@ -8,6 +8,7 @@ import no.nav.syfo.narmesteleder.exposed.PersonEntity
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.narmestelederLeesahKafkaMessage
 import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.LocalDate
 
@@ -65,16 +66,12 @@ class ExposedLeesahNarmestelederrelasjonRepositoryTest :
 
             it("keeps existing persons without overwriting them") {
                 transaction(TestDB.exposedDatabase) {
-                    PersonTable.batchInsertIgnoreExisting(
-                        listOf(
-                            PersonBatchInsertRow(
-                                fnr = "12345678901",
-                                status = "ACTIVE",
-                                fornavn = "Ada",
-                                etternavn = "Lovelace",
-                            ),
-                        ),
-                    )
+                    PersonTable.insert {
+                        it[PersonTable.fnr] = "12345678901"
+                        it[PersonTable.status] = "ACTIVE"
+                        it[PersonTable.fornavn] = "Ada"
+                        it[PersonTable.etternavn] = "Lovelace"
+                    }
                 }
 
                 repository.upsertAll(

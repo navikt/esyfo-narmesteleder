@@ -410,18 +410,14 @@ private fun insertPerson(
     lastName: String? = null,
 ) {
     transaction(TestDB.exposedDatabase) {
-        PersonTable.batchInsertIgnoreExisting(
-            listOf(
-                PersonBatchInsertRow(
-                    fnr = fnr,
-                    status = "ENRICHED",
-                    fornavn = firstName,
-                    mellomnavn = middleName,
-                    etternavn = lastName,
-                    foedselsdato = LocalDate.parse("1990-01-01"),
-                ),
-            ),
-        )
+        PersonTable.insert {
+            it[PersonTable.fnr] = fnr
+            it[PersonTable.status] = "ENRICHED"
+            it[PersonTable.fornavn] = firstName
+            it[PersonTable.mellomnavn] = middleName
+            it[PersonTable.etternavn] = lastName
+            it[PersonTable.foedselsdato] = LocalDate.parse("1990-01-01")
+        }
     }
 }
 

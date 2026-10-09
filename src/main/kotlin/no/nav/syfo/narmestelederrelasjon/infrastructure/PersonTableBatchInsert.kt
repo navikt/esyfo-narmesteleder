@@ -4,7 +4,7 @@ import org.jetbrains.exposed.v1.jdbc.batchInsert
 import java.time.LocalDate
 import java.util.UUID
 
-data class PersonBatchInsertRow(
+internal data class PersonBatchInsertRow(
     val fnr: String,
     val status: String,
     val fornavn: String? = null,
@@ -13,7 +13,7 @@ data class PersonBatchInsertRow(
     val foedselsdato: LocalDate? = null,
 )
 
-data class InsertedPerson(
+internal data class InsertedPerson(
     val id: UUID,
     val fnr: String,
     val status: String,

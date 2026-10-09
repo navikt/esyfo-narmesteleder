@@ -43,7 +43,17 @@ class EmailAddressTest :
 
         test("parseSeparatedList keeps deliverable addresses and discards the rest") {
             val valid = listOf("øystein+tag@example.com", "a@sub.example-domain.no", "first.last@example.com")
-            val invalid = listOf("no-at", "a@localhost", "a@-example.com", "a@example-.com", "a b@example.com", "a@example..com")
+            val invalid = listOf(
+                "no-at",
+                "a@localhost",
+                "a@-example.com",
+                "a@example-.com",
+                "a b@example.com",
+                "a@example..com",
+                "ola..nordmann@example.com",
+                "o'neill@example.com",
+                "björn@example.com",
+            )
             val result = EmailAddress.parseSeparatedList((valid + invalid).joinToString(";"))
             result.validEmailAddresses.map { it.value } shouldBe valid
             result.discardedEmailAddressCount shouldBe invalid.size
@@ -60,6 +70,7 @@ class EmailAddressTest :
                 "a@${"a".repeat(63)}.no",
                 "a@b.abcdefghijklmn",
                 "a@${List(9) { "d" }.joinToString(".")}.no",
+                "${"a".repeat(254 - "@firma.no".length)}@firma.no",
             ).forEach { address ->
                 withClue(address) { EmailAddress.validationReason(address) shouldBe null }
             }
@@ -75,6 +86,9 @@ class EmailAddressTest :
                 "björn@firma.se",
                 "müller@firma.de",
                 "ola@münchen.de",
+                // Altinn 3 allows only ASCII digits, while arbeidsgiver-notifikasjon allows every Unicode digit
+                "ola\u0663@firma.no",
+                "ola@firma\u0663.no",
                 // Altinn 3 rejects leading, trailing and consecutive dots in the local-part
                 "ola..nordmann@firma.no",
                 ".ola@firma.no",
@@ -97,6 +111,9 @@ class EmailAddressTest :
                 "no-at",
                 "a@b@firma.no",
                 "a@firma.no,b@firma.no",
+                // RFC 5321 limits an address to 254 characters
+                "${"a".repeat(255 - "@firma.no".length)}@firma.no",
+                "${"a.".repeat(5000)}a@firma.no",
             ).forEach { address ->
                 withClue(address) {
                     EmailAddress.validationReason(address) shouldBe ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID

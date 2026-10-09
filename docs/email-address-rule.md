@@ -14,15 +14,16 @@ Et e-postvarsel går gjennom to valideringer før det sendes:
 1. [arbeidsgiver-notifikasjon](https://github.com/navikt/arbeidsgiver-notifikasjon-produsent-api) validerer `epostadresse` med `Validators.Email` i `GraphQLValidation.kt`: `^[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}$`.
 2. arbeidsgiver-notifikasjon bestiller varselet hos [Altinn 3 notifications](https://github.com/Altinn/altinn-notifications) (`/notifications/api/v1/future/orders`). Altinn validerer adressen med `RecipientRules.IsValidEmail`.
 
-Regelen vår er snittet av de to. En adresse som en av dem avviser, kan ikke få varsel.
+Regelen vår er snittet av de to. En adresse som en av dem avviser, kan ikke få varsel. I tillegg avviser vi adresser over 254 tegn, som er grensen i RFC 5321. E-postservere avviser lengre adresser, og grensen hindrer at regexen bruker opp stakken på svært lang input.
 
 | Del | arbeidsgiver-notifikasjon | Altinn 3 | Regelen vår |
 |---|---|---|---|
-| Tegn i lokaldelen | Bokstaver, sifre, `.` `_` `%` `+` `-` | a–z, sifre, æøå og ``!#$%&'*+-=?^_`{\|}~`` | a–z, sifre, æøå og `.` `_` `%` `+` `-` |
+| Tegn i lokaldelen | Alle bokstaver og sifre, `.` `_` `%` `+` `-` | a–z, 0–9, æøå og ``!#$%&'*+-=?^_`{\|}~`` | a–z, 0–9, æøå og `.` `_` `%` `+` `-` |
 | Punktum i lokaldelen | Hvor som helst | Ikke først, sist eller to etter hverandre | Ikke først, sist eller to etter hverandre |
-| Tegn i domenet | Bokstaver, sifre, `.` `-` | a–z, sifre, æøå og `-` | a–z, sifre, æøå og `-` |
+| Tegn i domenet | Alle bokstaver og sifre, `.` `-` | a–z, 0–9, æøå og `-` | a–z, 0–9, æøå og `-` |
 | Domenedeler | Ingen grense | Maks 63 tegn, ikke `-` først eller sist, maks ti deler | Maks 63 tegn, ikke `-` først eller sist, maks ti deler |
 | Toppdomene | Minst to bokstaver | 2–14 bokstaver a–z | 2–14 bokstaver a–z |
+| Lengde | Ingen grense | Ingen grense | Maks 254 tegn |
 
 Store og små bokstaver behandles likt.
 
@@ -36,6 +37,7 @@ Store og små bokstaver behandles likt.
 | `björn@firma.se`, `müller@firma.de` | Avvises | Altinn 3 godtar bare æ, ø og å utenom a–z. |
 | `ola..nordmann@firma.no`, `.ola@firma.no` | Avvises | Altinn 3 godtar ikke punktum først, sist eller to etter hverandre. |
 | `ærlig@blåbær.økonomi` | Avvises | Altinn 3 krever toppdomene med bokstavene a–z. |
+| `ola٣@firma.no` | Avvises | Altinn 3 godtar bare sifrene 0–9. |
 
 ## Når regelen må endres
 

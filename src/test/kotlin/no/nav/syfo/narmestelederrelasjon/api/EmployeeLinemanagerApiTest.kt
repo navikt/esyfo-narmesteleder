@@ -49,7 +49,7 @@ private val responseMapper = jacksonObjectMapper()
 class EmployeeLinemanagerApiTest :
     FunSpec({
         val repository = EmployeeApiRepository()
-        val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository, MicrometerDiscardedEmailAddressMetrics())
+        val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository, MicrometerDiscardedEmailAddressMetrics.employeeLinemanager())
         val texasHttpClient = mockk<TexasHttpClient>()
 
         beforeTest {

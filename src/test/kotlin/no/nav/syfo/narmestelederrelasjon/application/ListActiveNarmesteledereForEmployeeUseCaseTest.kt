@@ -88,14 +88,6 @@ private class RecordingEmployeeRepository : EmployeeNarmestelederrelasjonReposit
     }
 }
 
-private class RecordingDiscardedEmailAddressMetrics : DiscardedEmailAddressMetrics {
-    val recorded = mutableListOf<Int>()
-
-    override fun record(count: Int) {
-        recorded.add(count)
-    }
-}
-
 private fun employeeRelation(id: UUID = UUID(0, 1)) = EmployeeNarmestelederrelasjon(
     id = id,
     organizationNumber = OrganizationNumber("123456789"),

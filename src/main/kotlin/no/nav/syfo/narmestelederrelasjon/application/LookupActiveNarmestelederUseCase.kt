@@ -14,6 +14,7 @@ data class ActiveNarmesteleder(
 
 class LookupActiveNarmestelederUseCase(
     private val repository: ActiveNarmestelederrelasjonRepository,
+    private val discardedEmailAddressMetrics: DiscardedEmailAddressMetrics,
 ) {
     suspend fun execute(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber): ActiveNarmesteleder? {
         val activeRelations = repository.findActive(employeeIdent, organizationNumber)
@@ -21,10 +22,12 @@ class LookupActiveNarmestelederUseCase(
             logger.event(multipleActiveRelations, activeRelations.size)
         }
         return activeRelations.firstOrNull()?.let { relation ->
+            val parsedEmailAddresses = EmailAddress.parseSeparatedList(relation.managerEmail)
+            discardedEmailAddressMetrics.record(parsedEmailAddresses.discardedEmailAddressCount)
             ActiveNarmesteleder(
                 id = relation.id,
                 managerIdent = relation.managerIdent,
-                emailAddresses = EmailAddress.fromSeparatedList(relation.managerEmail),
+                emailAddresses = parsedEmailAddresses.validEmailAddresses,
             )
         }
     }

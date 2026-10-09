@@ -37,20 +37,27 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmail
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ValkeyPersonDetailsCache
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
+
+private val LOOKUP_DISCARDED_EMAIL_ADDRESS_METRICS = named("lookupDiscardedEmailAddressMetrics")
+private val EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_METRICS = named("employeeLinemanagerDiscardedEmailAddressMetrics")
 
 fun narmestelederrelasjonModule() = module {
     single<PublishNarmestelederrelasjon> { KafkaPublishNarmestelederrelasjon(get()) }
     single<PublishNarmestelederrelasjonRevocation> { KafkaPublishNarmestelederrelasjonRevocation(get()) }
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }
     single<ActiveNarmestelederrelasjonRepository> { ExposedActiveNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
-    single { LookupActiveNarmestelederUseCase(get()) }
+    single<DiscardedEmailAddressMetrics>(LOOKUP_DISCARDED_EMAIL_ADDRESS_METRICS) { MicrometerDiscardedEmailAddressMetrics.lookupNarmesteleder() }
+    single { LookupActiveNarmestelederUseCase(get(), get(LOOKUP_DISCARDED_EMAIL_ADDRESS_METRICS)) }
     single<NarmestelederrelasjonSearchRepository> { ExposedNarmestelederrelasjonSearchRepository(get<ExposedDatabase>()) }
     single { SearchActiveNarmestelederrelasjonerUseCase(get(), get()) }
     single<EmployeeNarmestelederrelasjonRepository> { ExposedEmployeeNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
-    single<DiscardedEmailAddressMetrics> { MicrometerDiscardedEmailAddressMetrics() }
-    single { ListActiveNarmesteledereForEmployeeUseCase(get(), get()) }
+    single<DiscardedEmailAddressMetrics>(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_METRICS) {
+        MicrometerDiscardedEmailAddressMetrics.employeeLinemanager()
+    }
+    single { ListActiveNarmesteledereForEmployeeUseCase(get(), get(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_METRICS)) }
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }
     single<PersonLookup> { CachedPersonLookup(PdlPersonLookup(get()), ValkeyPersonDetailsCache(get())) }

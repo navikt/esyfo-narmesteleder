@@ -120,4 +120,21 @@ class EmailAddressTest :
                 }
             }
         }
+
+        test("reports whitespace before length for an over-long address") {
+            EmailAddress.validationReason("${"a".repeat(300)} @firma.no") shouldBe
+                ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_CONTAIN_WHITESPACE
+        }
+
+        test("parseSeparatedList discards over-long addresses") {
+            val result = EmailAddress.parseSeparatedList(
+                listOf(
+                    "first@firma.no",
+                    "${"a".repeat(255 - "@firma.no".length)}@firma.no",
+                    "${"a.".repeat(5000)}a@firma.no",
+                ).joinToString(","),
+            )
+            result.validEmailAddresses shouldBe listOf(EmailAddress("first@firma.no"))
+            result.discardedEmailAddressCount shouldBe 2
+        }
     })

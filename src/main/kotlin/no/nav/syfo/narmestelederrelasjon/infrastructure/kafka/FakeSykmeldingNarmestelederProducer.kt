@@ -1,27 +1,14 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import no.nav.syfo.util.logger
-import java.security.MessageDigest
 
 class FakeSykmeldingNarmestelederProducer : SykmeldingNarmestelederProducer {
     val logger = logger()
     override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) {
-        logger.info("FakeSykemeldingNLKafkaProducer sendSykemeldingNLRelasjon to orgnumber: ${sykmeldingNL.orgnummer}")
-        logger.info(sykmeldingNL.hashFnrFields().toString())
+        logger.info("FakeSykemeldingNLKafkaProducer sendSykemeldingNLRelasjon on behalf of source: ${source.name}")
     }
 
     override fun sendSykmldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource) {
-        logger.info("FakeSykemeldingNLKafkaProducer sendSykemeldingNLBrudd to orgnumber: ${nlAvbrutt.orgnummer} on behalf of source: ${source.name}")
-        logger.info(nlAvbrutt.copy(sykmeldtFnr = nlAvbrutt.sykmeldtFnr.sha256()).toString())
-    }
-
-    fun NlResponse.hashFnrFields(): NlResponse = this.copy(
-        leder = this.leder.copy(fnr = this.leder.fnr.sha256()),
-        sykmeldt = this.sykmeldt.copy(fnr = this.sykmeldt.fnr.sha256())
-    )
-
-    private fun String.sha256(): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(this.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
+        logger.info("FakeSykemeldingNLKafkaProducer sendSykemeldingNLBrudd on behalf of source: ${source.name}")
     }
 }

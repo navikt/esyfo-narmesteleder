@@ -9,6 +9,10 @@ internal class InMemoryRelationPersonRepository : RelationPersonRepository {
 
     val rows = linkedMapOf<PersonIdent, Row>()
     val findPendingLimits = mutableListOf<Int>()
+    var updateRegisteredDetailsCalls = 0
+
+    /** Persons removed from the projection between lookup and update. */
+    val disappearBeforeUpdate = mutableSetOf<PersonIdent>()
 
     fun add(fnr: String, status: Status = Status.PENDING) {
         rows[PersonIdent(fnr)] = Row(status)
@@ -27,6 +31,16 @@ internal class InMemoryRelationPersonRepository : RelationPersonRepository {
         enriched.forEach { (ident, person) -> rows[ident] = Row(Status.ENRICHED, person) }
         notFound.forEach { ident -> rows[ident] = rows.getValue(ident).copy(status = Status.NOT_FOUND) }
     }
+
+    override suspend fun findExisting(personIdents: Collection<PersonIdent>): List<PersonIdent> = personIdents.filter(rows::containsKey)
+
+    override suspend fun updateRegisteredDetails(persons: Map<PersonIdent, RegisteredPerson>): Set<PersonIdent> {
+        updateRegisteredDetailsCalls++
+        disappearBeforeUpdate.forEach(rows::remove)
+        return persons.filterKeys(rows::containsKey)
+            .onEach { (ident, person) -> rows[ident] = rows.getValue(ident).copy(details = person) }
+            .keys
+    }
 }
 
 internal class FakeBulkPersonLookup(
@@ -37,6 +51,14 @@ internal class FakeBulkPersonLookup(
     override suspend fun findAll(personIdents: List<PersonIdent>): Map<PersonIdent, BulkPersonLookupResult> {
         requests += personIdents
         return answer(personIdents)
+    }
+}
+
+internal class RecordingRelationPersonNameUpdateMetrics : RelationPersonNameUpdateMetrics {
+    val lookupFailed = mutableListOf<Int>()
+
+    override fun recordLookupFailed(count: Int) {
+        lookupFailed += count
     }
 }
 

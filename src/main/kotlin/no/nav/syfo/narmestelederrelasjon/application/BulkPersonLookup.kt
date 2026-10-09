@@ -15,3 +15,12 @@ sealed interface BulkPersonLookupResult {
 
     data object NotFound : BulkPersonLookupResult
 }
+
+class IncompleteBulkPersonLookupException(
+    val requestedCount: Int,
+    val missingCount: Int,
+) : RuntimeException("PDL bulk response did not contain all requested results") {
+    companion object {
+        const val ERROR_CODE = "PDL_BULK_RESPONSE_INCOMPLETE"
+    }
+}

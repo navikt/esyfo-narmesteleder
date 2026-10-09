@@ -121,8 +121,7 @@ private fun captureInvalidRecordLogs(block: () -> Unit): List<ILoggingEvent> {
 
 private fun ILoggingEvent.fields() = keyValuePairs.associate { it.key to it.value }
 
-private fun record(relasjon: LeesahNarmestelederrelasjon, partition: Int = 0, offset: Long = 0) =
-    LeesahNarmestelederrelasjonRecord(partition = partition, offset = offset, relasjon = relasjon)
+private fun record(relasjon: LeesahNarmestelederrelasjon, partition: Int = 0, offset: Long = 0) = LeesahNarmestelederrelasjonRecord(partition = partition, offset = offset, relasjon = relasjon)
 
 private fun relasjon(
     sykmeldtFnr: String = "12345678901",

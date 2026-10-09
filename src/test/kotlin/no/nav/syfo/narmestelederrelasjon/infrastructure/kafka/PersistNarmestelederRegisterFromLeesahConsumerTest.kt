@@ -142,5 +142,4 @@ private fun consumerRecords(vararg records: ConsumerRecord<String, String?>): Co
     emptyMap(),
 )
 
-private fun consumerRecord(offset: Long, key: String = "key-$offset", value: String?): ConsumerRecord<String, String?> =
-    ConsumerRecord(TEAMSYKMELDING_NL_LEESAH_TOPIC, 0, offset, key, value)
+private fun consumerRecord(offset: Long, key: String = "key-$offset", value: String?): ConsumerRecord<String, String?> = ConsumerRecord(TEAMSYKMELDING_NL_LEESAH_TOPIC, 0, offset, key, value)

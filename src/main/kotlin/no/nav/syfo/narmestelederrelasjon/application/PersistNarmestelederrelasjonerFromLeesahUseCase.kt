@@ -65,8 +65,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
         return false
     }
 
-    private fun List<NarmestelederrelasjonUpsert>.involvedPersons(): List<PersonIdent> =
-        flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }.distinct()
+    private fun List<NarmestelederrelasjonUpsert>.involvedPersons(): List<PersonIdent> = flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }.distinct()
 
     private fun LeesahNarmestelederrelasjon.toValid() = NarmestelederrelasjonUpsert(
         narmestelederId = narmestelederId,

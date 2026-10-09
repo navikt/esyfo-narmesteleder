@@ -109,7 +109,9 @@ Owns established and revoked narmesteleder relations:
   `narmesteleder-arbeidsforhold` Kafka source. A failed lookup never revokes. The
   check runs in shadow mode first and publishes only after a separate switch;
 - publish relation messages;
-- ingest and republish relation events;
+- ingest and republish relation events from Leesah. The module owns the
+  republished topic's message model; other modules that read Leesah keep their
+  own model;
 - own the local relation register;
 - provide lookup and search;
 - maintain the relation-owned `RelationPerson` projection.

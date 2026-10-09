@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -6,7 +6,7 @@ import no.nav.syfo.application.kafka.KafkaEnvironment
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 
-class LeesahNarmestelederReplayConsumerConfigTest :
+class PersistNarmestelederRegisterFromLeesahConsumerConfigTest :
     DescribeSpec({
         describe("leesahNarmestelederReplayConsumerProperties") {
             it("should configure dedicated replay consumer group from earliest offsets") {

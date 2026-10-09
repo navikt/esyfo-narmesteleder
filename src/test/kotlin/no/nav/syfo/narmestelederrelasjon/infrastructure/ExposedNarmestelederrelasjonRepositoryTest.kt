@@ -7,9 +7,8 @@ import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
-import no.nav.syfo.narmesteleder.exposed.PersonBatchInsertRow
-import no.nav.syfo.narmesteleder.exposed.personTable
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
 import java.time.Instant
@@ -58,18 +57,14 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
         fun insertPerson(ident: String, firstName: String, middleName: String? = null, lastName: String) {
             transaction(TestDB.exposedDatabase) {
-                personTable.batchInsertIgnoreExisting(
-                    listOf(
-                        PersonBatchInsertRow(
-                            fnr = ident,
-                            status = "ENRICHED",
-                            fornavn = firstName,
-                            mellomnavn = middleName,
-                            etternavn = lastName,
-                            foedselsdato = LocalDate.parse("1990-01-01"),
-                        ),
-                    ),
-                )
+                PersonTable.insert {
+                    it[PersonTable.fnr] = ident
+                    it[PersonTable.status] = "ENRICHED"
+                    it[PersonTable.fornavn] = firstName
+                    it[PersonTable.mellomnavn] = middleName
+                    it[PersonTable.etternavn] = lastName
+                    it[PersonTable.foedselsdato] = LocalDate.parse("1990-01-01")
+                }
             }
         }
 

@@ -128,8 +128,11 @@ and keep access limited to applications that need it.
 
 ## Changing the contract
 
-The schema is checked against `NarmestelederLeesahKafkaMessage` by
-`NarmestelederLeesahSchemaTest`. When the message model changes, update the
+The `narmestelederrelasjon` module owns this contract. The schema is checked
+against its `NarmestelederLeesahKafkaMessage`
+(`narmestelederrelasjon/infrastructure/kafka`) by
+`NarmestelederLeesahSchemaTest`. Other modules that read the topic keep their
+own model. When the message model changes, update the
 schema and this page in the same change. Breaking changes, such as removing or
 renaming a field or changing a type, must be agreed with all consumers in the
 access table first.
@@ -145,9 +148,10 @@ Until `esyfo-narmesteleder` produces the records itself, they originate in
 `teamsykmelding.syfo-narmesteleder-leesah`. Replace this section when that
 changes.
 
-`PersistNarmestelederRegisterFromLeesahConsumer` consumes the team-sykmelding
-topic (consumer group `esyfo-narmesteleder-leesah-persist-consumer`), stores
-valid relations, and then republishes the original key and value of the
+`PersistNarmestelederRegisterFromLeesahConsumer` in
+`narmestelederrelasjon/infrastructure/kafka` consumes the team-sykmelding topic
+(consumer group `esyfo-narmesteleder-leesah-persist-consumer`), stores valid
+relations through `PersistNarmestelederrelasjonerFromLeesahUseCase`, and then republishes the original key and value of the
 validated records unchanged with `NarmestelederLeesahProducer`. Publishing is
 enabled by `PERSIST_NARMESTELEDER_REGISTER` (enabled in dev and prod).
 

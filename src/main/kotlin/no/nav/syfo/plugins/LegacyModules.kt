@@ -8,7 +8,6 @@ import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
@@ -76,6 +75,5 @@ internal fun legacyServicesModule() = module {
             dialogportenService = get(),
         )
     }
-    single { NarmestelederRegisterService(database = get()) }
     single { NlBehovLeesahHandler(narmesteLederService = get()) }
 }

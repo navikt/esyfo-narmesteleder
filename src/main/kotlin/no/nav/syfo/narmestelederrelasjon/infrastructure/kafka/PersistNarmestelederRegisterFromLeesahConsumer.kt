@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -22,8 +22,8 @@ import no.nav.syfo.application.kafka.kafkaConsumerCrashed
 import no.nav.syfo.application.kafka.kafkaConsumerFailed
 import no.nav.syfo.application.kafka.kafkaRecordSkipped
 import no.nav.syfo.logging.rethrowCancellation
-import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
-import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
+import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRecord
+import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecords
@@ -37,11 +37,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-data class LeesahNarmestelederRecord(
-    val offset: Long,
-    val partition: Int = 0,
-    val message: NarmestelederLeesahKafkaMessage,
-)
+internal const val TEAMSYKMELDING_NL_LEESAH_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
 
 private data class LeesahRecordId(
     val partition: Int,
@@ -62,12 +58,12 @@ private sealed interface LeesahRepublishCandidate {
 }
 
 private data class LeesahDeserializationResult(
-    val parsedRecords: List<LeesahNarmestelederRecord>,
+    val parsedRecords: List<LeesahNarmestelederrelasjonRecord>,
     val republishCandidates: List<LeesahRepublishCandidate>,
 )
 
 class PersistNarmestelederRegisterFromLeesahConsumer(
-    private val handler: NarmestelederRegisterService,
+    private val persistFromLeesah: PersistNarmestelederrelasjonerFromLeesahUseCase,
     private val narmestelederLeesahProducer: NarmestelederLeesahProducer,
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
@@ -78,14 +74,14 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.NL_REPLAY)
 
     constructor(
-        handler: NarmestelederRegisterService,
+        persistFromLeesah: PersistNarmestelederrelasjonerFromLeesahUseCase,
         narmestelederLeesahProducer: NarmestelederLeesahProducer,
         jacksonMapper: ObjectMapper,
         kafkaConsumer: KafkaConsumer<String, String?>,
         scope: CoroutineScope,
         env: OtherEnvironmentProperties,
     ) : this(
-        handler = handler,
+        persistFromLeesah = persistFromLeesah,
         narmestelederLeesahProducer = narmestelederLeesahProducer,
         jacksonMapper = jacksonMapper,
         kafkaConsumerFactory = { kafkaConsumer },
@@ -159,7 +155,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     }
 
     private fun deserializeRecords(records: ConsumerRecords<String, String?>): LeesahDeserializationResult {
-        val parsedRecords = mutableListOf<LeesahNarmestelederRecord>()
+        val parsedRecords = mutableListOf<LeesahNarmestelederrelasjonRecord>()
         val republishCandidates = mutableListOf<LeesahRepublishCandidate>()
 
         records.forEach { record ->
@@ -177,10 +173,11 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
                         )
                     )
                 } else {
-                    val parsedRecord = LeesahNarmestelederRecord(
-                        offset = record.offset(),
+                    val parsedRecord = LeesahNarmestelederrelasjonRecord(
                         partition = record.partition(),
-                        message = jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(value),
+                        offset = record.offset(),
+                        relasjon = jacksonMapper.readValue<NarmestelederLeesahKafkaMessage>(value)
+                            .toLeesahNarmestelederrelasjon(),
                     )
                     parsedRecords.add(parsedRecord)
                     republishCandidates.add(
@@ -218,8 +215,8 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     ) {
         val recordsToRepublish = runCatching {
             val deserializedRecords = deserializeRecords(records)
-            val batchResult = handler.processLeesahBatchWithResult(deserializedRecords.parsedRecords)
-            val validRecordIds = batchResult.validRecords.mapTo(mutableSetOf()) {
+            val validRecords = persistFromLeesah.execute(deserializedRecords.parsedRecords)
+            val validRecordIds = validRecords.mapTo(mutableSetOf()) {
                 LeesahRecordId(
                     partition = it.partition,
                     offset = it.offset,

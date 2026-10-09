@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import no.nav.syfo.util.logger
 import org.apache.kafka.clients.producer.KafkaProducer

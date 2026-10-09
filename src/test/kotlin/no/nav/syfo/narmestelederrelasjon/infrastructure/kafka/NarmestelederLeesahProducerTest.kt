@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec

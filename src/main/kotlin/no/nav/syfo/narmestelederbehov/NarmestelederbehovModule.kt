@@ -2,8 +2,10 @@ package no.nav.syfo.narmestelederbehov
 
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.LeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
@@ -14,6 +16,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbe
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerLeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeeNameLookup
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
@@ -24,6 +27,14 @@ fun narmestelederbehovModule() = module {
     single<NarmestelederbehovExpiryRepository> { ExposedNarmestelederbehovExpiryRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }
     single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get()) }
+    single<LeesahFulfillmentMetrics> { MicrometerLeesahFulfillmentMetrics() }
+    single {
+        FulfillNarmestelederbehovFromLeesahUseCase(
+            behovRepository = get(),
+            metrics = get(),
+            dialog = get(),
+        )
+    }
     single<EmployeeNameLookup> { PdlEmployeeNameLookup(get()) }
     single { NarmestelederbehovEmployeeName(repository = get(), employeeNameLookup = get()) }
     single { ListNarmestelederbehovUseCase(repository = get(), organizationAccess = get(), employeeName = get()) }

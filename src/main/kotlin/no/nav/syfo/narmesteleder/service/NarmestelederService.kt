@@ -66,27 +66,6 @@ class NarmestelederService(
         logger.logEvent(behovStoredDegraded, source.logDetails(reason))
     }
 
-    suspend fun updateNlBehov(
-        behovEntity: NarmestelederBehovEntity,
-        behovStatus: BehovStatus
-    ) {
-        val updatedBehov = behovEntity.copy(
-            behovStatus = behovStatus,
-        )
-        nlDb.updateNlBehov(updatedBehov)
-        logger.info("Updated NarmestelederBehovEntity with id: ${updatedBehov.id} with status: $behovStatus")
-        dialogportenService.setToCompletedInDialogporten(updatedBehov)
-    }
-
-    suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String): List<NarmestelederBehovEntity> = nlDb.findBehovByParameters(
-        sykmeldtFnr = sykmeldtFnr,
-        orgnummer = orgnummer,
-        behovStatus = listOf(
-            BehovStatus.BEHOV_CREATED,
-            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-        )
-    )
-
     suspend fun createNewNlBehov(
         nlBehov: LinemanagerRequirementWrite,
         skipSykmeldingCheck: Boolean = false,
@@ -198,4 +177,13 @@ class NarmestelederService(
             return Pair(BehovStatus.BEHOV_CREATED, arbeidsgiver.juridiskOrgnummer)
         }
     }
+
+    private suspend fun findClosableBehovs(sykmeldtFnr: String, orgnummer: String): List<NarmestelederBehovEntity> = nlDb.findBehovByParameters(
+        sykmeldtFnr = sykmeldtFnr,
+        orgnummer = orgnummer,
+        behovStatus = listOf(
+            BehovStatus.BEHOV_CREATED,
+            BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+        )
+    )
 }

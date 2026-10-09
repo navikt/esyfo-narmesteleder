@@ -26,6 +26,7 @@ class LeesahNLKafkaConsumerLoggingTest :
                     kafkaConsumer = mockk<KafkaConsumer<String, String>>(),
                     jacksonMapper = jacksonObjectMapper(),
                     handler = mockk(),
+                    fulfillBehovFromLeesah = mockk(),
                     scope = CoroutineScope(EmptyCoroutineContext),
                 )
                 consumer.logConsumerFailure(LeesahRecordProcessingException(3, 42, IllegalStateException("private-canary")))
@@ -48,6 +49,7 @@ class LeesahNLKafkaConsumerLoggingTest :
                 kafkaConsumer = mockk<KafkaConsumer<String, String>>(),
                 jacksonMapper = jacksonObjectMapper(),
                 handler = mockk(),
+                fulfillBehovFromLeesah = mockk(),
                 scope = CoroutineScope(EmptyCoroutineContext),
             )
             consumer.commitOnAllErrors = true

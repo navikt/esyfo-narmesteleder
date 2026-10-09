@@ -1,6 +1,7 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
@@ -25,6 +26,8 @@ internal class FakeBehovRepository(
     override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Fulfillment must not save employee name")
 
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov.also { effects += "load" }
+
+    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("Fulfillment must not look up open behov")
 
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult {
         effects += "fulfilled"

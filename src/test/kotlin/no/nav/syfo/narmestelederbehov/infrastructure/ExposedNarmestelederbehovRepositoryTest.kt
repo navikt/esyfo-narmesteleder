@@ -139,4 +139,29 @@ class ExposedNarmestelederbehovRepositoryTest :
         test("reports NotFulfilled for a missing row when persisting completed dialog status") {
             repository.markDialogCompleted(NarmestelederbehovId(UUID.randomUUID())) shouldBe MarkDialogCompletedResult.NotFulfilled
         }
+
+        // An employee can have at most one open behov per organization (uq_nl_behov_active_employee_org).
+        val openStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
+        openStatuses.forEach { openStatus ->
+            test("open behov for an employee match person, organization and status $openStatus") {
+                val employee = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001"))
+                suspend fun insert(
+                    status: BehovStatus,
+                    personIdent: String = employee.personIdent.value,
+                    organizationNumber: String = employee.organizationNumber.value,
+                ) = requireNotNull(
+                    setupDb.insertNlBehov(
+                        nlBehovEntity().copy(sykmeldtFnr = personIdent, orgnummer = organizationNumber, behovStatus = status),
+                    ).id,
+                )
+                val open = insert(openStatus)
+                BehovStatus.entries
+                    .filterNot { it in openStatuses }
+                    .forEach { insert(it) }
+                insert(BehovStatus.BEHOV_CREATED, personIdent = "10987654321")
+                insert(BehovStatus.BEHOV_CREATED, organizationNumber = "910000002")
+
+                repository.findOpenFor(employee).map { it.value } shouldBe listOf(open)
+            }
+        }
     })

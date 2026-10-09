@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import java.util.UUID
@@ -10,6 +11,9 @@ interface NarmestelederbehovRepository {
     suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName)
 
     suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov?
+
+    /** Open statuses are BEHOV_CREATED and DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION. */
+    suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId>
 
     suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult
 

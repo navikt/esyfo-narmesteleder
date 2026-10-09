@@ -40,6 +40,7 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -286,6 +287,8 @@ private class ListRouteRepository :
         savedNames += id to name
     }
     override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("List must not read for fulfillment")
+    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("List must not look up open behov by employee")
+
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("List must not fulfill")
     override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("List must not complete dialogs")
 }

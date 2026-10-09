@@ -3,11 +3,8 @@ package no.nav.syfo.narmesteleder.kafka
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.api.v1.COUNT_CREATE_LINEMANAGER_REQUIREMENT
-import no.nav.syfo.narmesteleder.api.v1.COUNT_FULFILL_LINEMANAGER_BY_LEGACY_SYSTEM
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
-import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.util.logger
@@ -68,13 +65,5 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
                 logger.logEvent(nlMessageStatusSkipped, MissingStatusReason.MISSING)
             }
         }
-    }
-
-    suspend fun updateStatusForRequirement(nlKafkaMessage: NarmestelederLeesahKafkaMessage) {
-        narmesteLederService.findClosableBehovs(nlKafkaMessage.fnr, nlKafkaMessage.orgnummer)
-            .forEach {
-                narmesteLederService.updateNlBehov(it, BehovStatus.BEHOV_FULFILLED)
-                COUNT_FULFILL_LINEMANAGER_BY_LEGACY_SYSTEM.increment()
-            }
     }
 }

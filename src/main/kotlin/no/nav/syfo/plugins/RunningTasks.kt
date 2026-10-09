@@ -18,6 +18,7 @@ import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.kafka.PersistNarmestelederRegisterFromLeesahConsumer
 import no.nav.syfo.narmesteleder.service.LeaderControlledKafkaConsumer
 import no.nav.syfo.narmesteleder.service.NarmestelederRegisterService
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
 import no.nav.syfo.pdl.kafka.PdlLeesahConsumer
 import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
 import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
@@ -30,6 +31,7 @@ import org.koin.ktor.ext.inject
 
 fun Application.configureKafkaConsumers() {
     val nlLeesahHandler by inject<NlBehovLeesahHandler>()
+    val fulfillBehovFromLeesah by inject<FulfillNarmestelederbehovFromLeesahUseCase>()
     val sendtSykmeldingHandler by inject<SendtSykmeldingHandler>()
     val narmestelederRegisterService by inject<NarmestelederRegisterService>()
     val narmestelederLeesahProducer by inject<NarmestelederLeesahProducer>()
@@ -47,6 +49,7 @@ fun Application.configureKafkaConsumers() {
 
     val leesahConsumer = LeesahNLKafkaConsumer(
         handler = nlLeesahHandler,
+        fulfillBehovFromLeesah = fulfillBehovFromLeesah,
         jacksonMapper = jacksonMapper(),
         kafkaConsumer = KafkaConsumer(
             consumerProperties(

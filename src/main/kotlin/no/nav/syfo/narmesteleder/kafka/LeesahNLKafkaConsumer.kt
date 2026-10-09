@@ -20,7 +20,6 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
-import no.nav.syfo.narmesteleder.service.BehovSource
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -111,12 +110,8 @@ class LeesahNLKafkaConsumer(
                     fulfillOpenBehov(nlKafkaMessage)
                 } else {
                     handler.handleByLeesahStatus(
-                        nlKafkaMessage.toNlBehovWrite(),
+                        nlKafkaMessage.toCreateNarmestelederbehovCommand(),
                         nlKafkaMessage.status,
-                        behovSource = BehovSource(
-                            nlKafkaMessage.narmesteLederId.toString(),
-                            source = TEAMSYKMELDING_NL_LEESAH_TOPIC
-                        )
                     )
                 }
             } ?: logger.info("Received record with empty value: ${record.key()}")

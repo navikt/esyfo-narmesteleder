@@ -1,14 +1,10 @@
 package no.nav.syfo.plugins
 
 import kotlinx.coroutines.Dispatchers
-import no.nav.syfo.aareg.AaregService
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.dinesykmeldte.ClientDinesykmeldteService
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.sykmelding.db.PostgresSykmeldingDb
 import no.nav.syfo.sykmelding.db.SykmeldingDb
@@ -37,9 +33,6 @@ internal fun legacyRepositoriesModule() = module {
 }
 
 internal fun legacyServicesModule() = module {
-    single { AaregService(arbeidsforholdOversiktClient = get()) }
-    single { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
-    single<DinesykmeldteService> { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
     single { PdlService(pdlClient = get()) }
     single {
         DialogportenService(
@@ -56,21 +49,12 @@ internal fun legacyServicesModule() = module {
     single { NarmestelederBruddService(revokeNarmestelederrelasjon = get(), bruddRepository = get()) }
     single {
         SendtSykmeldingHandler(
-            narmesteLederService = get(),
+            createNarmestelederbehov = get(),
             sykmeldingService = get(),
             narmestelederBruddService = get(),
             hasActiveNarmestelederrelasjon = get(),
         )
     }
 
-    single {
-        NarmestelederService(
-            nlDb = get(),
-            persistLeesahNlBehov = env().otherProperties.persistLeesahNlBehov,
-            aaregService = get(),
-            dinesykmeldteService = get(),
-            dialogportenService = get(),
-        )
-    }
-    single { NlBehovLeesahHandler(narmesteLederService = get()) }
+    single { NlBehovLeesahHandler(createNarmestelederbehov = get()) }
 }

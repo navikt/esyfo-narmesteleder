@@ -31,7 +31,7 @@ private val nlRegisterRecordInvalid = applicationEvent<NlRegisterRecordInvalidDe
  * Returns the valid records, which are the ones that may be republished.
  */
 class PersistNarmestelederrelasjonerFromLeesahUseCase(
-    private val store: LeesahNarmestelederrelasjonStore,
+    private val repository: LeesahNarmestelederrelasjonRepository,
     private val metrics: NarmestelederRegisterMetrics,
 ) {
     fun execute(records: List<LeesahNarmestelederrelasjonRecord>): List<LeesahNarmestelederrelasjonRecord> {
@@ -44,7 +44,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
         val personFnrs = relasjoner
             .flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }
             .distinct()
-        store.store(relasjoner, personFnrs)
+        repository.upsertAll(relasjoner, personFnrs)
         metrics.recordUpserted(relasjoner.size)
 
         return validRecords

@@ -13,14 +13,14 @@ import java.util.UUID
 
 class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
     DescribeSpec({
-        lateinit var store: RecordingLeesahNarmestelederrelasjonStore
+        lateinit var repository: RecordingLeesahNarmestelederrelasjonRepository
         lateinit var metrics: RecordingNarmestelederRegisterMetrics
         lateinit var useCase: PersistNarmestelederrelasjonerFromLeesahUseCase
 
         beforeTest {
-            store = RecordingLeesahNarmestelederrelasjonStore()
+            repository = RecordingLeesahNarmestelederrelasjonRepository()
             metrics = RecordingNarmestelederRegisterMetrics()
-            useCase = PersistNarmestelederrelasjonerFromLeesahUseCase(store, metrics)
+            useCase = PersistNarmestelederrelasjonerFromLeesahUseCase(repository, metrics)
         }
 
         describe("execute") {
@@ -31,8 +31,8 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
                 val result = useCase.execute(listOf(first, second))
 
                 result shouldBe listOf(first, second)
-                store.calls.single().relasjoner shouldBe listOf(first.relasjon, second.relasjon)
-                store.calls.single().personFnrs shouldBe listOf("12345678901", "10987654321", "11111111111", "22222222222")
+                repository.calls.single().relasjoner shouldBe listOf(first.relasjon, second.relasjon)
+                repository.calls.single().personFnrs shouldBe listOf("12345678901", "10987654321", "11111111111", "22222222222")
                 metrics.upserted shouldBe listOf(2)
                 metrics.invalid shouldBe 0
             }
@@ -46,7 +46,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
 
                 useCase.execute(records)
 
-                store.calls.single().personFnrs shouldBe listOf("12345678901", "10987654321")
+                repository.calls.single().personFnrs shouldBe listOf("12345678901", "10987654321")
             }
 
             it("skips invalid records without blocking valid records in the same batch") {
@@ -56,13 +56,13 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
                 val result = useCase.execute(listOf(valid, invalid))
 
                 result shouldBe listOf(valid)
-                store.calls.single().relasjoner shouldBe listOf(valid.relasjon)
-                store.calls.single().personFnrs shouldBe listOf(valid.relasjon.sykmeldtFnr, valid.relasjon.narmestelederFnr)
+                repository.calls.single().relasjoner shouldBe listOf(valid.relasjon)
+                repository.calls.single().personFnrs shouldBe listOf(valid.relasjon.sykmeldtFnr, valid.relasjon.narmestelederFnr)
                 metrics.upserted shouldBe listOf(1)
                 metrics.invalid shouldBe 1
             }
 
-            it("does not call the store when every record is invalid") {
+            it("does not call the repository when every record is invalid") {
                 val records = listOf(
                     record(offset = 1, relasjon = relasjon(sykmeldtFnr = "123")),
                     record(offset = 2, relasjon = relasjon(orgnummer = "123")),
@@ -74,7 +74,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
                 val result = useCase.execute(records)
 
                 result.shouldBeEmpty()
-                store.calls.shouldBeEmpty()
+                repository.calls.shouldBeEmpty()
                 metrics.upserted.shouldBeEmpty()
                 metrics.invalid shouldBe 5
             }
@@ -116,9 +116,9 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
                 }
             }
 
-            it("propagates store failures without recording upserts") {
+            it("propagates repository failures without recording upserts") {
                 val failingUseCase = PersistNarmestelederrelasjonerFromLeesahUseCase(
-                    store = { _, _ -> error("database down") },
+                    repository = { _, _ -> error("database down") },
                     metrics = metrics,
                 )
 

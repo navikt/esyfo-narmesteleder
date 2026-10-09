@@ -8,7 +8,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonStore
+import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.application.NameValidationMetrics
@@ -32,7 +32,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykme
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EregNarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedEmployeeNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedLeesahNarmestelederrelasjonStore
+import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedLeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonSearchRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
@@ -74,7 +74,7 @@ fun narmestelederrelasjonModule() = module {
     single<RevokeNarmestelederrelasjonUseCase> { RevokeNarmestelederrelasjonUseCase(get(), get(), get()) }
     single { RevokeActiveNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
     single<RevokeNarmestelederrelasjonFromSendtSykmelding> { RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase(get()) }
-    single<LeesahNarmestelederrelasjonStore> { ExposedLeesahNarmestelederrelasjonStore(get<ExposedDatabase>()) }
+    single<LeesahNarmestelederrelasjonRepository> { ExposedLeesahNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
     single<NarmestelederRegisterMetrics> { MicrometerNarmestelederRegisterMetrics() }
     single { PersistNarmestelederrelasjonerFromLeesahUseCase(get(), get()) }
 }

@@ -13,16 +13,16 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.LocalDate
 
-class ExposedLeesahNarmestelederrelasjonStoreTest :
+class ExposedLeesahNarmestelederrelasjonRepositoryTest :
     DescribeSpec({
-        val store = ExposedLeesahNarmestelederrelasjonStore(TestDB.exposedDatabase)
+        val repository = ExposedLeesahNarmestelederrelasjonRepository(TestDB.exposedDatabase)
 
         beforeTest {
             TestDB.clearNarmestelederData()
             TestDB.clearPersonData()
         }
 
-        describe("store") {
+        describe("upsertAll") {
             it("upserts replayed relations idempotently") {
                 val original = narmestelederLeesahKafkaMessage().copy(narmesteLederTelefonnummer = "11111111")
                 val replayed = original.copy(
@@ -31,8 +31,8 @@ class ExposedLeesahNarmestelederrelasjonStoreTest :
                     aktivTom = LocalDate.of(2025, 1, 31),
                 )
 
-                store.store(listOf(original.toLeesahNarmestelederrelasjon()), emptyList())
-                store.store(listOf(replayed.toLeesahNarmestelederrelasjon()), emptyList())
+                repository.upsertAll(listOf(original.toLeesahNarmestelederrelasjon()), emptyList())
+                repository.upsertAll(listOf(replayed.toLeesahNarmestelederrelasjon()), emptyList())
 
                 transaction(TestDB.exposedDatabase) {
                     val results = NarmestelederEntity.find {
@@ -50,7 +50,7 @@ class ExposedLeesahNarmestelederrelasjonStoreTest :
                 val first = narmestelederLeesahKafkaMessage()
                 val second = narmestelederLeesahKafkaMessage()
 
-                store.store(
+                repository.upsertAll(
                     listOf(first.toLeesahNarmestelederrelasjon(), second.toLeesahNarmestelederrelasjon()),
                     listOf("12345678901", "10987654321"),
                 )
@@ -79,7 +79,7 @@ class ExposedLeesahNarmestelederrelasjonStoreTest :
                     )
                 }
 
-                store.store(
+                repository.upsertAll(
                     listOf(narmestelederLeesahKafkaMessage().toLeesahNarmestelederrelasjon()),
                     listOf("12345678901", "10987654321"),
                 )

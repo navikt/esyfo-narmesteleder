@@ -15,7 +15,7 @@ import kotlinx.coroutines.test.runTest
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
-import no.nav.syfo.narmestelederrelasjon.application.RecordingLeesahNarmestelederrelasjonStore
+import no.nav.syfo.narmestelederrelasjon.application.RecordingLeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RecordingNarmestelederRegisterMetrics
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -27,11 +27,11 @@ import kotlin.coroutines.EmptyCoroutineContext
 class PersistNarmestelederRegisterFromLeesahConsumerTest :
     DescribeSpec({
         val kafkaConsumer = mockk<KafkaConsumer<String, String?>>(relaxed = true)
-        val store = RecordingLeesahNarmestelederrelasjonStore()
+        val repository = RecordingLeesahNarmestelederrelasjonRepository()
         val producer = mockk<NarmestelederLeesahProducer>(relaxed = true)
         val objectMapper = jacksonMapper()
         val consumer = PersistNarmestelederRegisterFromLeesahConsumer(
-            persistFromLeesah = PersistNarmestelederrelasjonerFromLeesahUseCase(store, RecordingNarmestelederRegisterMetrics()),
+            persistFromLeesah = PersistNarmestelederrelasjonerFromLeesahUseCase(repository, RecordingNarmestelederRegisterMetrics()),
             narmestelederLeesahProducer = producer,
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,
@@ -41,7 +41,7 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
 
         beforeTest {
             clearMocks(kafkaConsumer, producer)
-            store.calls.clear()
+            repository.calls.clear()
         }
 
         describe("processBatch") {
@@ -65,7 +65,7 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
 
                 consumer.processBatch(records, kafkaConsumer)
 
-                store.calls.single().relasjoner shouldBe listOf(validMessage.toLeesahNarmestelederrelasjon())
+                repository.calls.single().relasjoner shouldBe listOf(validMessage.toLeesahNarmestelederrelasjon())
                 verify(exactly = 1) {
                     producer.sendLeesahBatch(
                         listOf(
@@ -173,7 +173,7 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
                     consumer.processBatch(records, kafkaConsumer)
                 }
 
-                store.calls.size shouldBe 1
+                repository.calls.size shouldBe 1
                 verify(exactly = 1) { producer.sendLeesahBatch(any()) }
                 verify(exactly = 0) { kafkaConsumer.commitSync() }
             }
@@ -194,7 +194,7 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
                     consumer.processBatch(records, kafkaConsumer)
                 }
 
-                store.calls.size shouldBe 1
+                repository.calls.size shouldBe 1
                 verify(exactly = 1) { producer.sendLeesahBatch(any()) }
                 verify(exactly = 0) { kafkaConsumer.commitSync() }
             }

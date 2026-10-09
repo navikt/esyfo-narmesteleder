@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -17,6 +18,8 @@ data class LeesahNarmestelederrelasjon(
     val aktivFom: LocalDate,
     val aktivTom: LocalDate?,
     val arbeidsgiverForskutterer: Boolean?,
+    /** Source publication time for an employment-ended revocation; null for other Leesah changes. */
+    val sourceEmploymentRevocationAt: Instant? = null,
 )
 
 data class LeesahNarmestelederrelasjonRecord(

@@ -7,11 +7,14 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentReconciliationRepository
+import no.nav.syfo.narmestelederrelasjon.application.SOURCE_OBSERVATION_WINDOW
 import org.jetbrains.exposed.v1.core.Coalesce
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.QueryBuilder
 import org.jetbrains.exposed.v1.core.QueryParameter
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -19,7 +22,9 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
@@ -27,6 +32,7 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
 import java.time.Instant
@@ -79,39 +85,51 @@ class ExposedEmploymentReconciliationRepository(
         return withContext(dispatcher) {
             suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
                 val token = UUID.randomUUID()
-                val claimed = EmploymentReconciliationTable.join(
-                    otherTable = NarmestelederTable,
-                    joinType = JoinType.INNER,
-                    onColumn = EmploymentReconciliationTable.narmestelederId,
-                    otherColumn = NarmestelederTable.narmestelederId,
-                ).select(
-                    EmploymentReconciliationTable.narmestelederId,
-                    NarmestelederTable.orgnummer,
-                    NarmestelederTable.sykmeldtFnr,
-                ).where {
-                    NarmestelederTable.aktivTom.isNull() and
+                val pending = comparisonPending(now.atOffset(ZoneOffset.UTC))
+                val claimed = EmploymentReconciliationTable
+                    .join(
+                        otherTable = NarmestelederTable,
+                        joinType = JoinType.INNER,
+                        onColumn = EmploymentReconciliationTable.narmestelederId,
+                        otherColumn = NarmestelederTable.narmestelederId,
+                    )
+                    .select(
+                        EmploymentReconciliationTable.narmestelederId,
+                        NarmestelederTable.orgnummer,
+                        NarmestelederTable.sykmeldtFnr,
+                        EmploymentReconciliationTable.sourceRevocationObservedAt,
+                        pending,
+                    )
+                    .where {
                         (
                             (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY) or
                                 (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED)
                             ) and
-                        (EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC))
-                }.orderBy(
-                    EmploymentReconciliationTable.nextCheckAt to SortOrder.ASC,
-                    EmploymentReconciliationTable.narmestelederId to SortOrder.ASC,
-                ).limit(limit)
-                    // Lock only the control rows, so Leesah upserts on narmeste_leder neither block nor get skipped.
+                            (EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC)) and
+                            (NarmestelederTable.aktivTom.isNull() or pending)
+                    }
+                    .orderBy(
+                        EmploymentReconciliationTable.nextCheckAt to SortOrder.ASC,
+                        EmploymentReconciliationTable.narmestelederId to SortOrder.ASC,
+                    )
+                    .limit(limit)
+                    // Lock control rows only; Leesah may still update the relation.
                     .forUpdate(
                         ForUpdateOption.PostgreSQL.ForUpdate(
                             ForUpdateOption.PostgreSQL.MODE.SKIP_LOCKED,
                             EmploymentReconciliationTable,
                         ),
-                    ).map {
+                    )
+                    .map { row ->
                         ClaimedEmploymentCheck(
-                            narmesteLederId = it[EmploymentReconciliationTable.narmestelederId],
-                            organizationNumber = OrganizationNumber(it[NarmestelederTable.orgnummer]),
-                            employeeIdent = PersonIdent(it[NarmestelederTable.sykmeldtFnr]),
+                            narmesteLederId = row[EmploymentReconciliationTable.narmestelederId],
+                            organizationNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
+                            employeeIdent = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
                             claimToken = token,
                             claimedAt = now,
+                            sourceRevocationObservedAt = row[EmploymentReconciliationTable.sourceRevocationObservedAt]
+                                .takeIf { row[pending] }
+                                ?.toInstant(),
                         )
                     }
                 if (claimed.isNotEmpty()) {
@@ -174,6 +192,88 @@ class ExposedEmploymentReconciliationRepository(
                     NarmestelederTable.aktivTom.isNull()
             }.empty()
         }
+    }
+
+    override fun recordSourceRevocation(narmesteLederId: UUID, observedAt: Instant, now: Instant): Boolean = transaction(
+        db = database,
+        transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
+    ) {
+        EmploymentReconciliationTable.insertIgnore {
+            it[narmestelederId] = narmesteLederId
+            it[status] = EmploymentCheckStatus.READY
+            it[nextCheckAt] = now.atOffset(ZoneOffset.UTC)
+            it[created] = now.atOffset(ZoneOffset.UTC)
+        }
+        val row = EmploymentReconciliationTable
+            .select(
+                EmploymentReconciliationTable.narmestelederId,
+                EmploymentReconciliationTable.status,
+                EmploymentReconciliationTable.sourceRevocationObservedAt,
+            )
+            .where {
+                EmploymentReconciliationTable.narmestelederId eq narmesteLederId
+            }
+            .forUpdate(ForUpdateOption.PostgreSQL.ForUpdate())
+            .single()
+        if (row[EmploymentReconciliationTable.sourceRevocationObservedAt] != null) return@transaction false
+
+        EmploymentReconciliationTable.update({ EmploymentReconciliationTable.narmestelederId eq narmesteLederId }) {
+            it[sourceRevocationObservedAt] = observedAt.atOffset(ZoneOffset.UTC)
+            if (row[EmploymentReconciliationTable.status] == EmploymentCheckStatus.READY) {
+                it[nextCheckAt] = now.atOffset(ZoneOffset.UTC)
+            }
+        }
+        true
+    }
+
+    override suspend fun comparisonStats(now: Instant): EmploymentCheckStats = withContext(dispatcher) {
+        suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            val cutoff = now.minusSeconds(31 * 86_400L).atOffset(ZoneOffset.UTC)
+            val onlyShadow = (EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE) and
+                EmploymentReconciliationTable.sourceRevocationObservedAt.isNull()
+            val lt31d = countMatching(onlyShadow and (EmploymentReconciliationTable.shadowWouldRevokeAt greater cutoff))
+            val gte31d = countMatching(onlyShadow and (EmploymentReconciliationTable.shadowWouldRevokeAt lessEq cutoff))
+            val due = countMatching(
+                (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY) and
+                    (EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC)),
+            )
+            val remaining = countMatching(
+                EmploymentReconciliationTable.lastOutcome.isNull() or
+                    (EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.FAILED),
+            )
+            val row = NarmestelederTable
+                .join(
+                    otherTable = EmploymentReconciliationTable,
+                    joinType = JoinType.LEFT,
+                    onColumn = NarmestelederTable.narmestelederId,
+                    otherColumn = EmploymentReconciliationTable.narmestelederId,
+                )
+                .select(lt31d, gte31d, due, remaining)
+                .where { NarmestelederTable.aktivTom.isNull() }
+                .single()
+
+            EmploymentCheckStats(
+                onlyShadowLt31d = row[lt31d],
+                onlyShadowGte31d = row[gte31d],
+                due = row[due],
+                firstSweepRemaining = row[remaining],
+            )
+        }
+    }
+
+    private fun comparisonPending(now: OffsetDateTime): Op<Boolean> {
+        val observedAt = EmploymentReconciliationTable.sourceRevocationObservedAt
+        val unchecked = EmploymentReconciliationTable.lastCheckedAt.isNull() or
+            (EmploymentReconciliationTable.lastCheckedAt less observedAt) or
+            (EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.FAILED)
+        return observedAt.isNotNull() and
+            (observedAt greater now.minus(SOURCE_OBSERVATION_WINDOW)) and unchecked
+    }
+}
+
+private fun countMatching(condition: Op<Boolean>): Expression<Long> = object : Expression<Long>() {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+        queryBuilder.append("count(*) filter (where ").append(condition).append(")")
     }
 }
 

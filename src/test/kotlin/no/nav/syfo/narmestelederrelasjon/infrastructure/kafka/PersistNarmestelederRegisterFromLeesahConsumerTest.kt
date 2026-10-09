@@ -16,8 +16,12 @@ import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
+import no.nav.syfo.narmestelederrelasjon.application.RecordSourceEmploymentRevocationUseCase
+import no.nav.syfo.narmestelederrelasjon.application.RecordingEmploymentCheckMetrics
+import no.nav.syfo.narmestelederrelasjon.application.RecordingEmploymentReconciliationRepository
 import no.nav.syfo.narmestelederrelasjon.application.RecordingLeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RecordingNarmestelederRegisterMetrics
+import no.nav.syfo.narmestelederrelasjon.application.SourceObservationOutcome
 import no.nav.syfo.narmestelederrelasjon.application.validated
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -25,6 +29,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
+import java.time.Clock
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import kotlin.coroutines.EmptyCoroutineContext
 
 class PersistNarmestelederRegisterFromLeesahConsumerTest :
@@ -37,8 +44,13 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
         fun consumer(
             repository: LeesahNarmestelederrelasjonRepository = RecordingLeesahNarmestelederrelasjonRepository(),
             commitOnAllErrors: Boolean = false,
+            recordSourceEmploymentRevocation: RecordSourceEmploymentRevocationUseCase? = null,
         ) = PersistNarmestelederRegisterFromLeesahConsumer(
-            persistFromLeesah = PersistNarmestelederrelasjonerFromLeesahUseCase(repository, RecordingNarmestelederRegisterMetrics()),
+            persistFromLeesah = PersistNarmestelederrelasjonerFromLeesahUseCase(
+                repository,
+                RecordingNarmestelederRegisterMetrics(),
+                recordSourceEmploymentRevocation,
+            ),
             narmestelederLeesahProducer = producer,
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,
@@ -54,6 +66,33 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
         }
 
         context("processBatch") {
+            test("maps only employment-ended wire statuses to observations with the publication timestamp as an Instant") {
+                val publishedAt = OffsetDateTime.parse("2026-06-15T14:00:00+02:00")
+                val messages = (LeesahStatus.entries + null).map {
+                    narmestelederLeesahKafkaMessage().copy(status = it, timestamp = publishedAt)
+                }
+                val records = consumerRecords(
+                    *messages.mapIndexed { index, message -> consumerRecord(offset = index.toLong(), value = json(message)) }.toTypedArray(),
+                )
+                val reconciliations = RecordingEmploymentReconciliationRepository()
+                val observationMetrics = RecordingEmploymentCheckMetrics()
+                val observer = RecordSourceEmploymentRevocationUseCase(
+                    reconciliations,
+                    Clock.fixed(publishedAt.toInstant(), ZoneOffset.UTC),
+                    observationMetrics,
+                )
+
+                consumer(repository, recordSourceEmploymentRevocation = observer).processBatch(records, kafkaConsumer)
+
+                val sourceRevocation = messages.single { it.status == LeesahStatus.DEAKTIVERT_ARBEIDSFORHOLD }
+                reconciliations.observations shouldBe listOf(
+                    Triple(sourceRevocation.narmesteLederId, publishedAt.toInstant(), publishedAt.toInstant()),
+                )
+                observationMetrics.observations shouldBe listOf(SourceObservationOutcome.RECORDED)
+                repository.calls.single().relasjoner.size shouldBe messages.size
+                verify(exactly = 1) { kafkaConsumer.commitSync() }
+            }
+
             test("persists valid records, republishes them and tombstones with original key and value, then commits") {
                 val valid = narmestelederLeesahKafkaMessage()
                 val records = consumerRecords(
@@ -142,5 +181,8 @@ private fun consumerRecords(vararg records: ConsumerRecord<String, String?>): Co
     emptyMap(),
 )
 
-private fun consumerRecord(offset: Long, key: String = "key-$offset", value: String?): ConsumerRecord<String, String?> =
-    ConsumerRecord(TEAMSYKMELDING_NL_LEESAH_TOPIC, 0, offset, key, value)
+private fun consumerRecord(
+    offset: Long,
+    key: String = "key-$offset",
+    value: String?,
+): ConsumerRecord<String, String?> = ConsumerRecord(TEAMSYKMELDING_NL_LEESAH_TOPIC, 0, offset, key, value)

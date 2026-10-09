@@ -14,6 +14,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
 import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
@@ -49,7 +50,152 @@ class ExposedEmploymentReconciliationRepositoryTest :
             TestDB.clearNarmestelederData()
         }
 
-        test("all four repository operations use READ COMMITTED even when the database defaults to REPEATABLE READ") {
+        test("Source observation inserts missing rows, makes READY rows due and preserves the first timestamp") {
+            val id = insertEmploymentRelation()
+            val missing = UUID.randomUUID()
+            val observedAt = now.minusSeconds(60)
+            insertControlRow(id, now.plusSeconds(86_400))
+
+            listOf(id, missing).forEach { relationId ->
+                repository.recordSourceRevocation(relationId, observedAt, now) shouldBe true
+                controlRow(relationId).also {
+                    it[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
+                    it[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now
+                    it[EmploymentReconciliationTable.sourceRevocationObservedAt]?.toInstant() shouldBe observedAt
+                }
+                repository.recordSourceRevocation(relationId, now, now.plusSeconds(60)) shouldBe false
+                controlRow(relationId)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now
+                controlRow(relationId)[EmploymentReconciliationTable.sourceRevocationObservedAt]?.toInstant() shouldBe observedAt
+            }
+            controlRow(missing)[EmploymentReconciliationTable.created].toInstant() shouldBe now
+        }
+
+        test("Concurrent source redeliveries record once without touching a CLAIMED lease or token") {
+            val id = insertEmploymentRelation()
+            insertControlRow(id, now)
+            val claim = repository.claimDue(1, 5.minutes, now).single()
+            val results = concurrently { repository.recordSourceRevocation(id, now, now) }
+            results.count { it } shouldBe 1
+            results.count { !it } shouldBe 1
+            controlRow(id).also {
+                it[EmploymentReconciliationTable.sourceRevocationObservedAt]?.toInstant() shouldBe now
+                it[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
+                it[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.CLAIMED
+                it[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
+            }
+        }
+
+        test("Recent inactive comparisons are checked once, retry FAILED and exclude old observations and missing relations") {
+            val pending = insertEmploymentRelation(to = now)
+            val checkedBefore = insertEmploymentRelation(to = now)
+            val checkedAfter = insertEmploymentRelation(to = now)
+            val activeCompared = insertEmploymentRelation()
+            val expired = insertEmploymentRelation(to = now)
+            val old = insertEmploymentRelation(to = now)
+            val unobserved = insertEmploymentRelation(to = now)
+            val missingRelation = UUID.randomUUID()
+            val observedAt = now.minusSeconds(60)
+            listOf(pending, checkedBefore, checkedAfter, activeCompared, missingRelation).forEach {
+                repository.recordSourceRevocation(it, observedAt, now) shouldBe true
+            }
+            repository.recordSourceRevocation(expired, now.minusSeconds(7 * 86_400), now)
+            repository.recordSourceRevocation(old, now.minusSeconds(8 * 86_400), now)
+            insertControlRow(unobserved, now)
+            transaction(TestDB.exposedDatabase) {
+                listOf(checkedBefore, checkedAfter, activeCompared).forEach { id ->
+                    EmploymentReconciliationTable.update({ EmploymentReconciliationTable.narmestelederId eq id }) {
+                        it[lastOutcome] = EmploymentCheckOutcome.VALID
+                        it[lastCheckedAt] = (if (id == checkedBefore) observedAt.minusSeconds(1) else observedAt)
+                            .atOffset(ZoneOffset.UTC)
+                    }
+                }
+            }
+
+            val claims = repository.claimDue(10, 5.minutes, now).associateBy { it.narmesteLederId }
+            claims.keys shouldBe setOf(pending, checkedBefore, activeCompared)
+            claims.getValue(pending).sourceRevocationObservedAt shouldBe observedAt
+            claims.getValue(checkedBefore).sourceRevocationObservedAt shouldBe observedAt
+            claims.getValue(activeCompared).sourceRevocationObservedAt shouldBe null
+            repository.isClaimStillValid(claims.getValue(pending), now) shouldBe false
+            repository.claimDue(10, 5.minutes, now) shouldBe emptyList()
+
+            val retryAt = now.plusSeconds(86_400)
+            repository.complete(claims.getValue(pending), EmploymentCheckOutcome.FAILED, nextCheck = retryAt, now = now) shouldBe true
+            listOf(checkedBefore, activeCompared).forEach {
+                repository.complete(
+                    claims.getValue(it),
+                    EmploymentCheckOutcome.VALID,
+                    nextCheck = now.atOffset(ZoneOffset.UTC).plusMonths(1).toInstant(),
+                    now = now,
+                ) shouldBe true
+            }
+            val retry = repository.claimDue(10, 5.minutes, retryAt).single()
+            retry.narmesteLederId shouldBe pending
+            retry.sourceRevocationObservedAt shouldBe observedAt
+            repository.complete(retry, EmploymentCheckOutcome.WOULD_REVOKE, nextCheck = retryAt, now = retryAt) shouldBe true
+            repository.claimDue(10, 5.minutes, retryAt) shouldBe emptyList()
+
+            transaction(TestDB.exposedDatabase) {
+                EmploymentReconciliationTable.update({ EmploymentReconciliationTable.narmestelederId eq pending }) {
+                    it[lastOutcome] = EmploymentCheckOutcome.FAILED
+                }
+            }
+            repository.claimDue(10, 5.minutes, now.plusSeconds(8 * 86_400)) shouldBe emptyList()
+        }
+
+        test("Global stats use one query for active only-shadow ages, due READY rows and first-sweep remaining") {
+            repository.comparisonStats(now) shouldBe EmploymentCheckStats(0, 0, 0, 0)
+            val recent = insertEmploymentRelation()
+            val old = insertEmploymentRelation()
+            val boundary = insertEmploymentRelation()
+            val observed = insertEmploymentRelation()
+            val valid = insertEmploymentRelation()
+            val inactive = insertEmploymentRelation(to = now)
+            val claimed = insertEmploymentRelation()
+            val future = insertEmploymentRelation()
+            val orphan = UUID.randomUUID()
+            val failed = insertEmploymentRelation()
+            insertEmploymentRelation() // Active but not seeded.
+            listOf(recent, old, boundary, observed, valid, inactive, claimed, orphan, failed).forEach { insertControlRow(it, now) }
+            insertControlRow(future, now.plusSeconds(1))
+            transaction(TestDB.exposedDatabase) {
+                mapOf(
+                    recent to 30L,
+                    old to 32L,
+                    boundary to 31L,
+                    observed to 40L,
+                    valid to 40L,
+                    inactive to 40L,
+                    orphan to 40L,
+                ).forEach { (id, days) ->
+                    EmploymentReconciliationTable.update({ EmploymentReconciliationTable.narmestelederId eq id }) {
+                        it[lastOutcome] = if (id == valid) EmploymentCheckOutcome.VALID else EmploymentCheckOutcome.WOULD_REVOKE
+                        it[shadowWouldRevokeAt] = now.minusSeconds(days * 86_400).atOffset(ZoneOffset.UTC)
+                    }
+                }
+                EmploymentReconciliationTable.update({ EmploymentReconciliationTable.narmestelederId eq claimed }) {
+                    it[status] = EmploymentCheckStatus.CLAIMED
+                    it[claimToken] = UUID.randomUUID()
+                }
+                EmploymentReconciliationTable.update({ EmploymentReconciliationTable.narmestelederId eq failed }) {
+                    it[lastOutcome] = EmploymentCheckOutcome.FAILED
+                }
+            }
+            repository.recordSourceRevocation(observed, now, now)
+
+            var statements = 0
+            withObservedRepository(beforeStatement = { statements++ }) { observedRepository ->
+                observedRepository.comparisonStats(now) shouldBe EmploymentCheckStats(
+                    onlyShadowLt31d = 1,
+                    onlyShadowGte31d = 2,
+                    due = 6,
+                    firstSweepRemaining = 4,
+                )
+            }
+            statements shouldBe 1
+        }
+
+        test("all repository operations use READ COMMITTED even when the database defaults to REPEATABLE READ") {
             insertEmploymentRelation()
             val observedIsolation = mutableListOf<String>()
             withObservedRepository(
@@ -76,6 +222,10 @@ class ExposedEmploymentReconciliationRepositoryTest :
                 assertReadCommitted {
                     observedRepository.complete(claim, EmploymentCheckOutcome.VALID, now.plusSeconds(600), now) shouldBe true
                 }
+                assertReadCommitted {
+                    observedRepository.recordSourceRevocation(claim.narmesteLederId, now, now) shouldBe true
+                }
+                assertReadCommitted { observedRepository.comparisonStats(now).due shouldBe 1 }
             }
         }
 
@@ -395,12 +545,14 @@ private fun insertEmploymentRelation(
     id: UUID = UUID.randomUUID(),
     from: Instant = now.minusSeconds(60 * 86_400),
     to: Instant? = null,
+    organizationNumber: String = "123456789",
+    employeeIdent: String = "12345678901",
 ): UUID {
     transaction(TestDB.exposedDatabase) {
         NarmestelederTable.insert {
             it[narmestelederId] = id
-            it[orgnummer] = "123456789"
-            it[sykmeldtFnr] = "12345678901"
+            it[orgnummer] = organizationNumber
+            it[sykmeldtFnr] = employeeIdent
             it[narmestelederFnr] = "10987654321"
             it[narmestelederTelefonnummer] = "99887766"
             it[narmestelederEpost] = "leder@example.com"

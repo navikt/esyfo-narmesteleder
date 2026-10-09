@@ -35,6 +35,7 @@ private val nlRegisterRecordInvalid = applicationEvent<NlRegisterRecordInvalidDe
 class PersistNarmestelederrelasjonerFromLeesahUseCase(
     private val repository: LeesahNarmestelederrelasjonRepository,
     private val metrics: NarmestelederRegisterMetrics,
+    private val recordSourceEmploymentRevocation: RecordSourceEmploymentRevocationUseCase? = null,
 ) {
     fun execute(records: List<LeesahNarmestelederrelasjonRecord>): List<LeesahNarmestelederrelasjonRecord> {
         val validRecords = records.filter(::isValid)
@@ -45,6 +46,12 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
         val relasjoner = validRecords.map { it.relasjon.toValid() }
         repository.upsertAll(relasjoner, relasjoner.involvedPersons())
         metrics.recordUpserted(relasjoner.size)
+
+        validRecords.forEach { record ->
+            record.relasjon.sourceEmploymentRevocationAt?.let { observedAt ->
+                recordSourceEmploymentRevocation?.execute(record.relasjon.narmestelederId, observedAt)
+            }
+        }
 
         return validRecords
     }
@@ -65,8 +72,9 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
         return false
     }
 
-    private fun List<NarmestelederrelasjonUpsert>.involvedPersons(): List<PersonIdent> =
-        flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }.distinct()
+    private fun List<NarmestelederrelasjonUpsert>.involvedPersons(): List<PersonIdent> = flatMap {
+        listOf(it.sykmeldtFnr, it.narmestelederFnr)
+    }.distinct()
 
     private fun LeesahNarmestelederrelasjon.toValid() = NarmestelederrelasjonUpsert(
         narmestelederId = narmestelederId,

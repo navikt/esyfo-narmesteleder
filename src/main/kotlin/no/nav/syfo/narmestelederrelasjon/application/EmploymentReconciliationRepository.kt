@@ -15,7 +15,10 @@ interface EmploymentReconciliationRepository {
     /** Seeds active relations only, with first due one calendar month after aktiv_fom. */
     suspend fun seedMissing(limit: Int, now: Instant): Int
 
-    /** Claims due active relations, including expired leases, and commits before returning. */
+    /**
+     * Claims due active relations or pending recent source comparisons, including expired leases.
+     * Commits before returning.
+     */
     suspend fun claimDue(limit: Int, lease: Duration, now: Instant): List<ClaimedEmploymentCheck>
 
     /** Returns false without writing when status or token no longer matches this claim. */
@@ -28,7 +31,20 @@ interface EmploymentReconciliationRepository {
 
     /** Checks the active relation still matches the claimed employee and organization; not a lock over external effects. */
     suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean
+
+    /** Blocking. Marks the first observation and makes READY rows due without changing a CLAIMED lease. */
+    fun recordSourceRevocation(narmesteLederId: UUID, observedAt: Instant, now: Instant): Boolean
+
+    /** Aggregate comparison and backlog gauges; no relation identifiers leave this query. */
+    suspend fun comparisonStats(now: Instant): EmploymentCheckStats
 }
+
+data class EmploymentCheckStats(
+    val onlyShadowLt31d: Long,
+    val onlyShadowGte31d: Long,
+    val due: Long,
+    val firstSweepRemaining: Long,
+)
 
 data class ClaimedEmploymentCheck(
     val narmesteLederId: UUID,
@@ -36,6 +52,8 @@ data class ClaimedEmploymentCheck(
     val employeeIdent: PersonIdent,
     val claimToken: UUID,
     val claimedAt: Instant,
+    /** Pending, recent source observation at claim time; null after a successful comparison check. */
+    val sourceRevocationObservedAt: Instant? = null,
 ) {
     override fun toString(): String = "ClaimedEmploymentCheck(narmesteLederId=$narmesteLederId, claimToken=$claimToken, claimedAt=$claimedAt)"
 }

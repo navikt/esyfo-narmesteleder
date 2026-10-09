@@ -1,4 +1,4 @@
-package no.nav.syfo.pdl.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 internal data class RelevantNameEventMetricKey(
     val opplysningstype: String,
@@ -22,9 +22,3 @@ internal data class BufferedLeesahEventMetric(
     val result: String,
     val count: Int = 1,
 )
-
-internal fun PdlLeesahNameUpdateResult.emitPersonUpdateMetrics() {
-    countPdlLeesahPersonUpdate(PdlLeesahNameUpdateService.RESULT_UPDATED, updatedCount)
-    countPdlLeesahPersonUpdate(PdlLeesahNameUpdateService.RESULT_NOT_FOUND_IN_REGISTER, notFoundInRegisterCount)
-    countPdlLeesahPersonUpdate(PdlLeesahNameUpdateService.RESULT_PDL_NOT_FOUND, pdlNotFoundCount)
-}

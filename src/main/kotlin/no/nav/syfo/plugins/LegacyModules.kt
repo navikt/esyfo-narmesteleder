@@ -10,7 +10,6 @@ import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.NarmestelederService
 import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.pdl.kafka.PdlLeesahNameUpdateService
 import no.nav.syfo.sykmelding.db.PostgresSykmeldingDb
 import no.nav.syfo.sykmelding.db.SykmeldingDb
 import no.nav.syfo.sykmelding.exposed.ActiveSykmeldingRepository
@@ -42,7 +41,6 @@ internal fun legacyServicesModule() = module {
     single { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
     single<DinesykmeldteService> { ClientDinesykmeldteService(dinesykmeldteClient = get()) }
     single { PdlService(pdlClient = get()) }
-    single { PdlLeesahNameUpdateService(database = get(), pdlService = get()) }
     single {
         DialogportenService(
             dialogportenClient = get(),

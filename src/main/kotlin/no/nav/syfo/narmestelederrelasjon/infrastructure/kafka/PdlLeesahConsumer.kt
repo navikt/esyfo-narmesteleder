@@ -1,4 +1,4 @@
-package no.nav.syfo.pdl.kafka
+package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import io.micrometer.core.instrument.Counter
 import kotlinx.coroutines.CoroutineName
@@ -22,7 +22,9 @@ import no.nav.syfo.application.kafka.kafkaRecordSkipped
 import no.nav.syfo.application.kafka.kafkaRecordSkippedError
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.integration.pdl.PdlIncompleteResponseException
+import no.nav.syfo.narmestelederrelasjon.application.IncompleteBulkPersonLookupException
+import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
+import no.nav.syfo.narmestelederrelasjon.infrastructure.emitPersonUpdateMetrics
 import no.nav.syfo.util.logger
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -43,7 +45,7 @@ class PdlLeesahConsumer(
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, Personhendelse>,
     private val scope: CoroutineScope,
     private val env: OtherEnvironmentProperties,
-    private val pdlLeesahNameUpdateService: PdlLeesahNameUpdateService,
+    private val updateRelationPersonNames: UpdateRelationPersonNamesUseCase,
     private val pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
     private val retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
 ) : KafkaListener,
@@ -54,14 +56,14 @@ class PdlLeesahConsumer(
         kafkaConsumer: KafkaConsumer<String, Personhendelse>,
         scope: CoroutineScope,
         env: OtherEnvironmentProperties,
-        pdlLeesahNameUpdateService: PdlLeesahNameUpdateService,
+        updateRelationPersonNames: UpdateRelationPersonNamesUseCase,
         pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
         retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
     ) : this(
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
         env = env,
-        pdlLeesahNameUpdateService = pdlLeesahNameUpdateService,
+        updateRelationPersonNames = updateRelationPersonNames,
         pollDuration = pollDuration,
         retryDelaySeconds = retryDelaySeconds,
     )
@@ -125,7 +127,7 @@ class PdlLeesahConsumer(
     }
 
     internal fun logConsumerFailure(exception: Exception) {
-        val incomplete = exception as? PdlIncompleteResponseException
+        val incomplete = exception as? IncompleteBulkPersonLookupException
         kafkaLog.log(
             kafkaConsumerFailed,
             KafkaReason.PROCESSING,
@@ -133,7 +135,7 @@ class PdlLeesahConsumer(
             retryDelaySeconds = retryDelaySeconds,
             requestedCount = incomplete?.requestedCount,
             missingCount = incomplete?.missingCount,
-            errorCode = incomplete?.let { PdlIncompleteResponseException.ERROR_CODE },
+            errorCode = incomplete?.let { IncompleteBulkPersonLookupException.ERROR_CODE },
         )
     }
 
@@ -183,7 +185,7 @@ class PdlLeesahConsumer(
         }
 
         val updateResult = if (relevantRecords.isNotEmpty()) {
-            pdlLeesahNameUpdateService.processNameChanges(relevantRecords.flatMap(RecordProcessingResult.RelevantNameRecord::personidenter))
+            updateRelationPersonNames.execute(relevantRecords.flatMap(RecordProcessingResult.RelevantNameRecord::personidenter))
         } else {
             null
         }

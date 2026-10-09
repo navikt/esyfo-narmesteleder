@@ -25,7 +25,7 @@ class NarmestelederDbTest :
         suspend fun insertAndGetBehovWithId(entity: NarmestelederBehovEntity): NarmestelederBehovEntity? {
             val entity = db.insertNlBehov(entity)
             requireNotNull(entity.id)
-            return db.findBehovById(entity.id)
+            return testDb.findBehovById(entity.id)
         }
 
         describe("insertNlBehov") {
@@ -46,7 +46,7 @@ class NarmestelederDbTest :
                 // Assert
                 entity.id shouldNotBe null
 
-                val retrievedEntity = db.findBehovById(entity.id!!)
+                val retrievedEntity = testDb.findBehovById(entity.id!!)
                 retrievedEntity?.shouldBeEqualUsingFields({
                     excludedProperties = setOf(
                         NarmestelederBehovEntity::id,
@@ -62,7 +62,7 @@ class NarmestelederDbTest :
                 // Arrange
                 val nlBehovEntity = nlBehovEntity()
                 val id = db.insertNlBehov(nlBehovEntity).id!!
-                val retrievedEntity = db.findBehovById(id)
+                val retrievedEntity = testDb.findBehovById(id)
                 val mutatedEntity = retrievedEntity!!.copy(
                     orgnummer = faker.numerify("#########"),
                     behovStatus = BehovStatus.BEHOV_FULFILLED,
@@ -76,7 +76,7 @@ class NarmestelederDbTest :
                 db.updateNlBehov(mutatedEntity)
 
                 // Assert
-                val retrievedUpdatedEntity = db.findBehovById(id)
+                val retrievedUpdatedEntity = testDb.findBehovById(id)
                 retrievedUpdatedEntity?.shouldBeEqualUsingFields({
                     excludedProperties = setOf(
                         NarmestelederBehovEntity::id,
@@ -95,7 +95,7 @@ class NarmestelederDbTest :
 
                 db.markDialogCreated(id, dialogId, "Fornavn", null, "Etternavn") shouldBe true
 
-                val stored = db.findBehovById(id)!!
+                val stored = testDb.findBehovById(id)!!
                 stored.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                 stored.dialogId shouldBe dialogId
                 stored.fornavn shouldBe "Fornavn"
@@ -108,7 +108,7 @@ class NarmestelederDbTest :
 
                 db.markDialogCreated(created.id!!, UUID.randomUUID(), "Fornavn", null, "Etternavn") shouldBe false
 
-                val stored = db.findBehovById(created.id)!!
+                val stored = testDb.findBehovById(created.id)!!
                 stored.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
                 stored.dialogId shouldBe null
             }
@@ -334,7 +334,7 @@ class NarmestelederDbTest :
                     expiredInDialogporten = expiredInDialogporten,
                 )
                 db.updateNlBehov(withDialog)
-                return db.findBehovById(inserted.id!!)!!
+                return testDb.findBehovById(inserted.id!!)!!
             }
 
             it("should filter out rows where expired_in_dialogporten is not null") {

@@ -6,7 +6,6 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.exposed.NarmestelederEntity
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -41,16 +40,16 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             manager: String = managerIdent,
         ) {
             transaction(TestDB.exposedDatabase) {
-                NarmestelederEntity.new {
-                    narmesteLederId = id
-                    orgnummer = "123456789"
-                    sykmeldtFnr = employee
-                    narmestelederFnr = manager
-                    narmestelederTelefonnummer = "90000000"
-                    narmestelederEpost = "manager@example.com"
-                    arbeidsgiverForskutterer = true
-                    aktivFom = from
-                    aktivTom = to
+                NarmestelederTable.insert {
+                    it[narmestelederId] = id
+                    it[orgnummer] = "123456789"
+                    it[sykmeldtFnr] = employee
+                    it[narmestelederFnr] = manager
+                    it[narmestelederTelefonnummer] = "90000000"
+                    it[narmestelederEpost] = "manager@example.com"
+                    it[arbeidsgiverForskutterer] = true
+                    it[aktivFom] = from
+                    it[aktivTom] = to
                 }
             }
         }

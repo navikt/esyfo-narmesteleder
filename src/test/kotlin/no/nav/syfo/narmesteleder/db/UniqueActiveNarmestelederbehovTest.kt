@@ -116,7 +116,7 @@ class UniqueActiveNarmestelederbehovTest :
             listOf(BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, BehovStatus.BEHOV_CREATED).forEach { status ->
                 entity = entity.copy(behovStatus = status)
                 db.updateNlBehov(entity)
-                db.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
+                observedDatabase.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
             }
         }
 
@@ -128,7 +128,7 @@ class UniqueActiveNarmestelederbehovTest :
                     db.insertNlBehov(entity.copy(behovStatus = active))
 
                     db.findBehovByParameters(entity.sykmeldtFnr, entity.orgnummer, activeStatuses).size shouldBe 1
-                    db.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
+                    observedDatabase.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
                 }
             }
         }
@@ -144,7 +144,7 @@ class UniqueActiveNarmestelederbehovTest :
                     }
                     failure.sqlState shouldBe "23505"
                     failure.serverErrorMessage?.constraint shouldBe "uq_nl_behov_active_employee_org"
-                    db.findBehovById(requireNotNull(historical.id))?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                    observedDatabase.findBehovById(requireNotNull(historical.id))?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
                     db.findBehovByParameters(active.sykmeldtFnr, active.orgnummer, activeStatuses).size shouldBe 1
                 }
             }
@@ -188,7 +188,7 @@ class UniqueActiveNarmestelederbehovTest :
             observedDatabase.rollbacks shouldBe rollbacks + 1
             observedDatabase.commits shouldBe commits
             // The one-connection pool must remain usable after the failed transaction.
-            db.insertNlBehov(nlBehovEntity()).id?.let { db.findBehovById(it) != null } shouldBe true
+            db.insertNlBehov(nlBehovEntity()).id?.let { observedDatabase.findBehovById(it) != null } shouldBe true
         }
 
         test("has a unique valid index with exactly the two active statuses as its predicate") {

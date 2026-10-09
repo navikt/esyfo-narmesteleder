@@ -5,12 +5,15 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovTable
-import no.nav.syfo.narmestelederrelasjon.infrastructure.NarmestelederTable
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
-import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
+import org.jetbrains.exposed.v1.core.ColumnType
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.java.javaUUID
+import org.jetbrains.exposed.v1.javatime.date
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.postgresql.util.PGobject
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -117,23 +120,46 @@ private val today = now.toLocalDate()
 private val organizationNumber = OrganizationNumber("123456789")
 private const val OTHER_ORGANIZATION = "987654321"
 
+private object NarmestelederbehovSeedTable : Table("nl_behov") {
+    val orgnummer = varchar("orgnummer", 9)
+    val sykmeldtFnr = varchar("sykemeldt_fnr", 11)
+    val behovStatus = registerColumn("behov_status", BehovStatusSeedColumnType())
+}
+
+private class BehovStatusSeedColumnType : ColumnType<BehovStatus>() {
+    override fun sqlType(): String = "BEHOV_STATUS"
+
+    override fun valueFromDB(value: Any): BehovStatus = BehovStatus.valueOf(value.toString())
+
+    override fun notNullValueToDB(value: BehovStatus): Any = PGobject().apply {
+        type = sqlType()
+        this.value = value.name
+    }
+}
+
 private fun insertBehov(
     employeeIdent: String,
     status: BehovStatus,
     organization: String = organizationNumber.value,
 ) {
     transaction(TestDB.exposedDatabase) {
-        NarmestelederbehovTable.insert {
-            it[id] = UUID.randomUUID()
+        NarmestelederbehovSeedTable.insert {
             it[orgnummer] = organization
             it[sykmeldtFnr] = employeeIdent
-            it[hovedenhetOrgnummer] = organization
-            it[created] = now
-            it[updated] = now
-            it[behovReason] = "DEAKTIVERT_LEDER"
             it[behovStatus] = status
         }
     }
+}
+
+private object NarmestelederSeedTable : Table("narmeste_leder") {
+    val narmestelederId = javaUUID("narmeste_leder_id")
+    val orgnummer = varchar("orgnummer", 9)
+    val sykmeldtFnr = varchar("sykmeldt_fnr", 11)
+    val narmestelederFnr = varchar("narmeste_leder_fnr", 11)
+    val narmestelederTelefonnummer = varchar("narmeste_leder_telefonnummer", 255)
+    val narmestelederEpost = varchar("narmeste_leder_epost", 255)
+    val aktivFom = timestampWithTimeZone("aktiv_fom")
+    val aktivTom = timestampWithTimeZone("aktiv_tom").nullable()
 }
 
 private fun insertRelation(
@@ -143,18 +169,27 @@ private fun insertRelation(
     activeTo: OffsetDateTime? = null,
 ) {
     transaction(TestDB.exposedDatabase) {
-        NarmestelederTable.insert {
+        NarmestelederSeedTable.insert {
             it[narmestelederId] = UUID.randomUUID()
             it[orgnummer] = organization
             it[sykmeldtFnr] = employeeIdent
             it[narmestelederFnr] = "10987654321"
             it[narmestelederTelefonnummer] = "99999999"
             it[narmestelederEpost] = "manager@example.com"
-            it[arbeidsgiverForskutterer] = true
             it[aktivFom] = activeFrom
             it[aktivTom] = activeTo
         }
     }
+}
+
+private object SendtSykmeldingSeedTable : Table("sendt_sykmelding") {
+    val sykmeldingId = javaUUID("sykmelding_id")
+    val orgnummer = varchar("orgnummer", 9)
+    val syketilfelleStartDato = date("syketilfelle_startdato").nullable()
+    val fnr = text("fnr")
+    val fom = date("fom")
+    val tom = date("tom")
+    val revokedDate = date("revoked_date").nullable()
 }
 
 private fun insertSykmelding(
@@ -164,14 +199,14 @@ private fun insertSykmelding(
     revokedDate: LocalDate? = null,
 ) {
     transaction(TestDB.exposedDatabase) {
-        SendtSykmeldingTable.insert {
+        SendtSykmeldingSeedTable.insert {
             it[sykmeldingId] = UUID.randomUUID()
             it[orgnummer] = organization
             it[syketilfelleStartDato] = to.minusDays(10)
             it[fnr] = employeeIdent
             it[fom] = to.minusDays(20)
             it[tom] = to
-            it[SendtSykmeldingTable.revokedDate] = revokedDate
+            it[SendtSykmeldingSeedTable.revokedDate] = revokedDate
         }
     }
 }

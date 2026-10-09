@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -15,19 +15,19 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 class NarmestelederTableUpsertTest :
-    DescribeSpec({
+    FunSpec({
         beforeTest {
             TestDB.clearNarmestelederData()
         }
-        describe("NarmestelederTable") {
-            it("should not find issues with indexes in table") {
+        context("NarmestelederTable") {
+            test("should not find issues with indexes in table") {
                 transaction(TestDB.exposedDatabase) {
                     checkMappingConsistence(NarmestelederTable, withLogs = true) shouldBe emptyList()
                 }
             }
         }
-        describe("NarmestelederTable.upsertFromLeesah") {
-            it("should insert new entity when no existing row") {
+        context("NarmestelederTable.upsertFromLeesah") {
+            test("should insert new entity when no existing row") {
                 val message = narmestelederLeesahKafkaMessage().copy(
                     aktivTom = LocalDate.of(2024, 12, 31),
                 )
@@ -59,7 +59,7 @@ class NarmestelederTableUpsertTest :
                 }
             }
 
-            it("should update mutable fields when row with same narmesteLederId exists") {
+            test("should update mutable fields when row with same narmesteLederId exists") {
                 val narmesteLederId = UUID.randomUUID()
 
                 val originalMessage = narmestelederLeesahKafkaMessage().copy(
@@ -108,7 +108,7 @@ class NarmestelederTableUpsertTest :
                 }
             }
 
-            it("should persist last mutable field update after repeated upserts in same transaction") {
+            test("should persist last mutable field update after repeated upserts in same transaction") {
                 val narmesteLederId = UUID.randomUUID()
                 val baseMessage = narmestelederLeesahKafkaMessage().copy(
                     narmesteLederId = narmesteLederId,
@@ -152,7 +152,7 @@ class NarmestelederTableUpsertTest :
                 }
             }
 
-            it("should not overwrite sykmeldtFnr and narmestelederFnr on update") {
+            test("should not overwrite sykmeldtFnr and narmestelederFnr on update") {
                 val narmesteLederId = UUID.randomUUID()
 
                 val originalMessage = narmestelederLeesahKafkaMessage().copy(
@@ -180,7 +180,7 @@ class NarmestelederTableUpsertTest :
                 }
             }
 
-            it("should handle nullable fields correctly across insert and update") {
+            test("should handle nullable fields correctly across insert and update") {
                 val narmesteLederId = UUID.randomUUID()
 
                 // Step a: Insert with nulls

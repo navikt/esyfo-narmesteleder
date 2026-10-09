@@ -26,14 +26,14 @@ class NarmestelederTableUpsertTest :
                 }
             }
         }
-        describe("NarmestelederTable narmestelederTable.upsertFromLeesah") {
+        describe("NarmestelederTable NarmestelederTable.upsertFromLeesah") {
             it("should insert new entity when no existing row") {
                 val message = narmestelederLeesahKafkaMessage().copy(
                     aktivTom = LocalDate.of(2024, 12, 31),
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesah(message.toLeesahNarmestelederrelasjon())
+                    NarmestelederTable.upsertFromLeesah(message.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -67,7 +67,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesah(originalMessage.toLeesahNarmestelederrelasjon())
+                    NarmestelederTable.upsertFromLeesah(originalMessage.toLeesahNarmestelederrelasjon())
                 }
 
                 val originalEntity = transaction(TestDB.exposedDatabase) {
@@ -85,7 +85,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesah(updatedMessage.toLeesahNarmestelederrelasjon())
+                    NarmestelederTable.upsertFromLeesah(updatedMessage.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -134,7 +134,7 @@ class NarmestelederTableUpsertTest :
 
                 transaction(TestDB.exposedDatabase) {
                     messages.forEach { message ->
-                        narmestelederTable.upsertFromLeesah(message.toLeesahNarmestelederrelasjon())
+                        NarmestelederTable.upsertFromLeesah(message.toLeesahNarmestelederrelasjon())
                     }
                 }
 
@@ -160,7 +160,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesah(originalMessage.toLeesahNarmestelederrelasjon())
+                    NarmestelederTable.upsertFromLeesah(originalMessage.toLeesahNarmestelederrelasjon())
                 }
 
                 val messageWithDifferentFnr = narmestelederLeesahKafkaMessage().copy(
@@ -168,7 +168,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesah(messageWithDifferentFnr.toLeesahNarmestelederrelasjon())
+                    NarmestelederTable.upsertFromLeesah(messageWithDifferentFnr.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -191,7 +191,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesah(messageWithNulls.toLeesahNarmestelederrelasjon())
+                    NarmestelederTable.upsertFromLeesah(messageWithNulls.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -210,7 +210,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesah(messageWithValues.toLeesahNarmestelederrelasjon())
+                    NarmestelederTable.upsertFromLeesah(messageWithValues.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {
@@ -229,7 +229,7 @@ class NarmestelederTableUpsertTest :
                 )
 
                 transaction(TestDB.exposedDatabase) {
-                    narmestelederTable.upsertFromLeesah(messageBackToNulls.toLeesahNarmestelederrelasjon())
+                    NarmestelederTable.upsertFromLeesah(messageBackToNulls.toLeesahNarmestelederrelasjon())
                 }
 
                 transaction(TestDB.exposedDatabase) {

@@ -10,7 +10,7 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.events.LeaderChange
 import no.nav.syfo.application.events.LeaderChangeEvent
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
-import no.nav.syfo.person.task.PersonEnrichmentTask
+import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTask
 import no.nav.syfo.sykmelding.retention.infrastructure.DeleteOldSykmeldingerTask
 import no.nav.syfo.util.logger
 import org.koin.ktor.ext.inject

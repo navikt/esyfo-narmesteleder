@@ -6,7 +6,6 @@ import no.nav.syfo.TestDB
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.validated
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.narmestelederLeesahKafkaMessage
-import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction

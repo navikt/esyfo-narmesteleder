@@ -4,7 +4,7 @@ import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
 import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
-import no.nav.syfo.person.task.PersonEnrichmentTask
+import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTask
 import no.nav.syfo.sykmelding.retention.infrastructure.DeleteOldSykmeldingerTask
 import org.koin.dsl.module
 import kotlin.time.Duration
@@ -32,7 +32,7 @@ internal fun tasksModule() = module {
     }
     single {
         PersonEnrichmentTask(
-            personEnrichmentService = get(),
+            enrichPendingPersons = get(),
             pollingInterval = Duration.parse(env().otherProperties.personEnrichmentTaskDelay),
         )
     }

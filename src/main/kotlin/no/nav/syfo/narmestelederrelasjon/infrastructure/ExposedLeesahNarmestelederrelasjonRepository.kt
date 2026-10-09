@@ -2,7 +2,6 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
-import no.nav.syfo.person.domain.PersonStatus
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
@@ -12,9 +11,7 @@ class ExposedLeesahNarmestelederrelasjonRepository(
     override fun upsertAll(relasjoner: List<LeesahNarmestelederrelasjon>, personFnrs: List<String>) {
         transaction(database) {
             relasjoner.forEach { NarmestelederTable.upsertFromLeesah(it) }
-            PersonTable.batchInsertIgnoreExisting(
-                personFnrs.map { PersonBatchInsertRow(fnr = it, status = PersonStatus.PENDING.name) },
-            )
+            PersonTable.insertPendingIgnoringExisting(personFnrs)
         }
     }
 }

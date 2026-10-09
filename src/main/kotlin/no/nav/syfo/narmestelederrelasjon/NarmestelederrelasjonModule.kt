@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederrelasjon
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.CheckNarmestelederrelasjonEmploymentUseCase
 import no.nav.syfo.narmestelederrelasjon.application.DiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
@@ -11,6 +12,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckSettings
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentHistoryLookup
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentReconciliationRepository
+import no.nav.syfo.narmestelederrelasjon.application.EnrichPendingRelationPersonsUseCase
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
@@ -27,6 +29,7 @@ import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.application.RecordSourceEmploymentRevocationUseCase
+import no.nav.syfo.narmestelederrelasjon.application.RelationPersonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase
@@ -45,12 +48,14 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedEmploymentReconci
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedLeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonSearchRepository
+import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedRelationPersonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerEmploymentCheckMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNarmestelederRegisterMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlBulkPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ValkeyPersonDetailsCache
 import org.koin.core.qualifier.named
@@ -112,4 +117,7 @@ fun narmestelederrelasjonModule() = module {
     }
     single { SeedNarmestelederrelasjonEmploymentChecksUseCase(get(), get(), get(), get()) }
     single { RecordSourceEmploymentRevocationUseCase(get(), get(), get()) }
+    single<RelationPersonRepository> { ExposedRelationPersonRepository(get<ExposedDatabase>()) }
+    single<BulkPersonLookup> { PdlBulkPersonLookup(get()) }
+    single { EnrichPendingRelationPersonsUseCase(get(), get()) }
 }

@@ -1,11 +1,11 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmestelederrelasjon.application.ValidLeesahNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonUpsert
 import org.jetbrains.exposed.v1.jdbc.upsert
 import java.time.ZoneOffset
 
 /**
- * Upserts a row in [NarmestelederTable] from a relation reported on Leesah.
+ * Upserts a row in [NarmestelederTable] from a validated relation.
  *
  * **On INSERT** — all data fields from the relation are written.
  * `brukerNavn` and `narmestelederNavn` are set to `null` (PDL-owned, populated separately).
@@ -25,7 +25,7 @@ import java.time.ZoneOffset
  * - `created` — insert-only timestamp
  * - `updated` — managed by a DB trigger
  */
-internal fun NarmestelederTable.upsertFromLeesah(relasjon: ValidLeesahNarmestelederrelasjon) {
+internal fun NarmestelederTable.upsertRelasjon(relasjon: NarmestelederrelasjonUpsert) {
     upsert(
         NarmestelederTable.narmestelederId,
         onUpdate = {

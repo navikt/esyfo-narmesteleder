@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmestelederrelasjon.application.ValidLeesahNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonUpsert
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
@@ -28,7 +28,7 @@ class NarmestelederTableUpsertTest :
             }
         }
 
-        context("NarmestelederTable.upsertFromLeesah") {
+        context("NarmestelederTable.upsertRelasjon") {
             test("inserts every field of a new relation") {
                 val relasjon = relasjon()
 
@@ -76,7 +76,7 @@ private fun relasjon(
     narmestelederId: UUID = UUID.randomUUID(),
     aktivTom: LocalDate? = null,
     arbeidsgiverForskutterer: Boolean? = true,
-) = ValidLeesahNarmestelederrelasjon(
+) = NarmestelederrelasjonUpsert(
     narmestelederId = narmestelederId,
     sykmeldtFnr = PersonIdent(faker.numerify("###########")),
     orgnummer = OrganizationNumber(faker.numerify("#########")),
@@ -88,15 +88,15 @@ private fun relasjon(
     arbeidsgiverForskutterer = arbeidsgiverForskutterer,
 )
 
-private fun upsert(relasjon: ValidLeesahNarmestelederrelasjon) = transaction(TestDB.exposedDatabase) {
-    NarmestelederTable.upsertFromLeesah(relasjon)
+private fun upsert(relasjon: NarmestelederrelasjonUpsert) = transaction(TestDB.exposedDatabase) {
+    NarmestelederTable.upsertRelasjon(relasjon)
 }
 
 private fun rows(narmestelederId: UUID): List<ResultRow> = transaction(TestDB.exposedDatabase) {
     NarmestelederTable.selectAll().where { NarmestelederTable.narmestelederId eq narmestelederId }.toList()
 }
 
-private fun ResultRow.toRelasjon() = ValidLeesahNarmestelederrelasjon(
+private fun ResultRow.toRelasjon() = NarmestelederrelasjonUpsert(
     narmestelederId = this[NarmestelederTable.narmestelederId],
     sykmeldtFnr = PersonIdent(this[NarmestelederTable.sykmeldtFnr]),
     orgnummer = OrganizationNumber(this[NarmestelederTable.orgnummer]),

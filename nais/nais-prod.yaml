@@ -112,7 +112,7 @@ spec:
     - name: JDK_JAVA_OPTIONS
       value: -XX:MaxRAMPercentage=50 -Dlogback.configurationFile=logback.xml
     - name: AZURE_APP_PRE_AUTHORIZED_APPS
-      value: '[{"name":"syfo-budstikka","clientId":"6579b386-43ea-4089-9244-5ac2b1f81c71"},{"name":"syfo-oppfolginsplan-backend","clientId":"2dc3ddfa-0a3d-4a8b-9a8f-1f2b543830f6"}, {"name": "esyfovarsel": "clientId": "ef6f9d9e-d0a2-42c3-942e-5d4d0485daa0"}]'
+      value: '[{"name":"syfo-budstikka","clientId":"6579b386-43ea-4089-9244-5ac2b1f81c71"},{"name":"syfo-oppfolginsplan-backend","clientId":"2dc3ddfa-0a3d-4a8b-9a8f-1f2b543830f6"}, {"name": "esyfovarsel", "clientId": "ef6f9d9e-d0a2-42c3-942e-5d4d0485daa0"}]'
     - name: PDL_BASE_URL
       value: https://pdl-api.prod-fss-pub.nais.io/graphql
     - name: PDL_SCOPE

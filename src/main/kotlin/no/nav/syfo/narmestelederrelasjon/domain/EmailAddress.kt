@@ -1,7 +1,22 @@
 package no.nav.syfo.narmestelederrelasjon.domain
 
+private const val LOCAL_PART_ATOM = "[A-Za-z0-9ÆØÅæøå_%+-]+"
+private const val DOMAIN_LABEL = "[A-Za-z0-9ÆØÅæøå](?:[A-Za-z0-9ÆØÅæøå-]{0,61}[A-Za-z0-9ÆØÅæøå])?"
+
+/**
+ * Matches one address that can receive an external email notification to employers.
+ *
+ * The rule is the intersection of the two validations the address passes on its way:
+ * - arbeidsgiver-notifikasjon-produsent-api, `Validators.Email`, rejects every local-part symbol
+ *   except `.`, `_`, `%`, `+` and `-`.
+ * - Altinn 3 notifications, `RecipientRules.IsValidEmail`, allows only Æ, Ø and Å as non-ASCII letters,
+ *   rejects leading, trailing and consecutive dots in the local-part, allows at most ten domain labels
+ *   and requires a top-level domain of 2–14 ASCII letters.
+ *
+ * See docs/email-address-rule.md.
+ */
 private val EMAIL_ADDRESS_REGEX = Regex(
-    "^[A-Za-z0-9ÆØÅæøå._%+-]+@[A-Za-z0-9ÆØÅæøå](?:[A-Za-z0-9ÆØÅæøå-]{0,61}[A-Za-z0-9ÆØÅæøå])?(?:\\.[A-Za-z0-9ÆØÅæøå](?:[A-Za-z0-9ÆØÅæøå-]{0,61}[A-Za-z0-9ÆØÅæøå])?)+$",
+    "^$LOCAL_PART_ATOM(?:\\.$LOCAL_PART_ATOM)*@(?:$DOMAIN_LABEL\\.){1,9}[A-Za-z]{2,14}$",
 )
 
 @JvmInline
@@ -21,7 +36,7 @@ value class EmailAddress(val value: String) {
         internal fun validationReason(value: String): ManagerContactValidationReason? {
             if (value.isBlank()) return ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_BE_BLANK
 
-            // Preserve the first failing entry and rule used by the existing API validation.
+            // Report the first failing entry so the API error stays stable for multi-address input.
             return value.split(";").firstNotNullOfOrNull { emailPart ->
                 when {
                     emailPart.isBlank() -> ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_CONTAIN_EMPTY_ENTRIES

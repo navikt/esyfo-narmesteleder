@@ -4,7 +4,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.domain.EmailAddress as LegacyEmailAddress
 import no.nav.syfo.narmesteleder.domain.PhoneNumber as LegacyPhoneNumber
 
 class ManagerContactInputTest :
@@ -62,44 +61,42 @@ class ManagerContactInputTest :
         }
 
         listOf(
-            "manager@example.test",
-            " first@example.test ; second@example.test ",
-            " leder+team@arbeids-plass.test ",
-            "ærlig@blåbær.økonomi",
-            " manager@example.test\n",
-            "manager@${"a".repeat(63)}.test",
-            "manager@${"a".repeat(64)}.test",
-            "",
-            " \t ",
-            ";",
-            ";manager@example.test",
-            "manager@example.test;",
-            "manager@example.test; ;second@example.test",
-            "invalid;",
-            "invalid;manager @example.test",
-            "manager @example.test;invalid",
-            "manager\t@example.test",
-            "manager@example.test,second@example.test",
-            "manager@example",
-            "manager@-example.test",
-            "manager@example-.test",
-            "manager@exam_ple.test",
-            "manager@example..test",
-        ).forEachIndexed { index, email ->
-            test("preserves legacy email normalization and validation for case ${index + 1}") {
-                val expected = LegacyEmailAddress.parse(email)
-                when (val actual = managerContact(email = email).normalize()) {
-                    is ManagerContactNormalization.Valid -> actual.manager.email.value shouldBe expected.getOrThrow().value
-                    is ManagerContactNormalization.Invalid -> {
-                        actual.issues.single().field shouldBe ManagerContactField.EMAIL
-                        actual.issues.single().reason.message shouldBe expected.exceptionOrNull()?.message
-                    }
-                }
+            "manager@example.test" to "manager@example.test",
+            " first@example.test ; second@example.test " to "first@example.test;second@example.test",
+            " leder+team@arbeids-plass.test " to "leder+team@arbeids-plass.test",
+            "ærlig@blåbær.no" to "ærlig@blåbær.no",
+            " manager@example.test\n" to "manager@example.test",
+            "manager@${"a".repeat(63)}.test" to "manager@${"a".repeat(63)}.test",
+        ).forEachIndexed { index, (email, expected) ->
+            test("normalizes valid email input for case ${index + 1}") {
+                val actual = managerContact(email = email).normalize() as ManagerContactNormalization.Valid
+                actual.manager.email shouldBe EmailAddress(expected)
+            }
+        }
 
-                val expectedValue = runCatching { LegacyEmailAddress(email) }
-                val actualValue = runCatching { EmailAddress(email) }
-                actualValue.isSuccess shouldBe expectedValue.isSuccess
-                actualValue.exceptionOrNull()?.message shouldBe expectedValue.exceptionOrNull()?.message
+        listOf(
+            "" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_BE_BLANK,
+            " \t " to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_BE_BLANK,
+            ";" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_CONTAIN_EMPTY_ENTRIES,
+            ";manager@example.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_CONTAIN_EMPTY_ENTRIES,
+            "manager@example.test;" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_CONTAIN_EMPTY_ENTRIES,
+            "manager@example.test; ;second@example.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_CONTAIN_EMPTY_ENTRIES,
+            "manager @example.test;invalid" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_CONTAIN_WHITESPACE,
+            "manager\t@example.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_NOT_CONTAIN_WHITESPACE,
+            "manager@example.test,second@example.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+            "manager@${"a".repeat(64)}.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+            "manager@example" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+            "ola..nordmann@example.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+            ".ola@example.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+            "o'neill@example.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+            "björn@example.test" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+            "ærlig@blåbær.økonomi" to ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+        ).forEachIndexed { index, (email, reason) ->
+            test("rejects invalid email input for case ${index + 1}") {
+                managerContact(email = email).normalize() shouldBe ManagerContactNormalization.Invalid(
+                    listOf(ManagerContactValidationIssue(ManagerContactField.EMAIL, reason)),
+                )
+                shouldThrow<IllegalArgumentException> { EmailAddress(email) }.message shouldBe reason.message
             }
         }
 

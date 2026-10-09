@@ -504,7 +504,13 @@ components:
           example: "+4790000000"
         email:
           type: string
-          description: One or more email addresses for the manager. Addresses may be separated with semicolon. A plus sign and the Norwegian letters æ, ø and å are allowed in both the local-part and domain-part.
+          description: >-
+            One or more email addresses for the manager, separated with semicolon. Each address must be one that
+            employer email notifications can be sent to. The local-part may contain letters, digits, the Norwegian
+            letters æ, ø and å, and the symbols `.`, `_`, `%`, `+` and `-`. It must not start or end with a dot or
+            contain two consecutive dots. The domain-part may contain letters, digits, æ, ø, å and hyphens. Each label
+            is at most 63 characters and does not start or end with a hyphen. The domain-part has at most ten labels
+            and ends with a top-level domain of 2–14 letters a–z. Other letters, such as ö and ü, are not allowed.
           example: "leder@example.com"
       required:
         - nationalIdentificationNumber

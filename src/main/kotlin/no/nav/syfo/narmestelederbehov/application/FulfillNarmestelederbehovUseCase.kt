@@ -32,7 +32,7 @@ class FulfillNarmestelederbehovUseCase(
         val behov = findBehov(command.behovId).orStop { return it }
         verifyOrganizationAccess(command.accessSubject, behov).orStop { return it }
         val relationSource = command.accessSubject.relationSource()
-        val published = establish(
+        establish(
             EstablishNarmestelederrelasjonCommand(
                 employeeIdent = behov.employee.personIdent,
                 organizationNumber = behov.employee.organizationNumber,
@@ -44,7 +44,6 @@ class FulfillNarmestelederbehovUseCase(
         return FulfillNarmestelederbehovResult.Fulfilled(
             relationSource = relationSource,
             dialogCompletion = completeDialog(marked),
-            managerNameMatch = published.managerNameMatch,
         )
     }
 
@@ -66,8 +65,8 @@ class FulfillNarmestelederbehovUseCase(
         }
     }
 
-    private suspend fun establish(command: EstablishNarmestelederrelasjonCommand): FulfillStep<EstablishNarmestelederrelasjonResult.Published> = when (val result = establishRelation.execute(command)) {
-        is EstablishNarmestelederrelasjonResult.Published -> Step.Continue(result)
+    private suspend fun establish(command: EstablishNarmestelederrelasjonCommand): FulfillStep<Unit> = when (val result = establishRelation.execute(command)) {
+        EstablishNarmestelederrelasjonResult.Published -> Step.Proceed
         is EstablishNarmestelederrelasjonResult.NoActiveSykmelding ->
             Step.Stop(FulfillNarmestelederbehovResult.NoActiveSykmelding(result.organizationNumber))
         is EstablishNarmestelederrelasjonResult.NoEmployment ->
@@ -75,9 +74,9 @@ class FulfillNarmestelederbehovUseCase(
         is EstablishNarmestelederrelasjonResult.UpstreamUnavailable ->
             Step.Stop(FulfillNarmestelederbehovResult.UpstreamUnavailable(result.failure))
         EstablishNarmestelederrelasjonResult.PersonNotFound -> Step.Stop(FulfillNarmestelederbehovResult.PersonNotFound)
-        is EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
-            Step.Stop(FulfillNarmestelederbehovResult.ManagerNameMismatch(result.managerNameMatch))
-        is EstablishNarmestelederrelasjonResult.EmployeeNameMismatch ->
+        EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
+            Step.Stop(FulfillNarmestelederbehovResult.ManagerNameMismatch)
+        EstablishNarmestelederrelasjonResult.EmployeeNameMismatch ->
             error("Fulfillment does not submit an employee last name")
     }
 

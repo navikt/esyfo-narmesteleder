@@ -47,7 +47,6 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
@@ -63,7 +62,6 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 
 private val organization = OrganizationNumber("123456789")
-private val noMatch = LastNameMatch.NoMatch(null, false)
 
 class SubmitNarmestelederrelasjonRouteTest :
     FunSpec({
@@ -90,8 +88,8 @@ class SubmitNarmestelederrelasjonRouteTest :
                 HttpCase(EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None), ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG, "Employee on sick leave is missing employment in any organization"),
                 HttpCase(EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization), ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG, "Employee on sick leave is missing employment in the organization indicated in the request"),
                 HttpCase(EstablishNarmestelederrelasjonResult.PersonNotFound, ErrorType.BAD_REQUEST, "Could not find person in PDL"),
-                HttpCase(EstablishNarmestelederrelasjonResult.ManagerNameMismatch(noMatch), ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH, "Last name for linemanager does not correspond with registered value for the given national identification number"),
-                HttpCase(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch(noMatch), ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH, "Last name for employee on sick leave does not correspond with registered value for the given national identification number"),
+                HttpCase(EstablishNarmestelederrelasjonResult.ManagerNameMismatch, ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH, "Last name for linemanager does not correspond with registered value for the given national identification number"),
+                HttpCase(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch, ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH, "Last name for employee on sick leave does not correspond with registered value for the given national identification number"),
             )
             cases.forEach { case ->
                 val rejection = SubmitNarmestelederrelasjonResult.EstablishRejected(case.result)
@@ -259,7 +257,7 @@ private data class HttpCase(
 )
 
 private class SubmitFixture(
-    private val relationResult: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published(LastNameMatch.Exact(false)),
+    private val relationResult: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published,
     private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
     private val failure: Exception? = null,
 ) {

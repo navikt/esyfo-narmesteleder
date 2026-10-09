@@ -18,7 +18,7 @@ class EstablishNarmestelederrelasjonUseCase(
         verifyActiveSykmelding(command).orStop { return it }
         verifyEmployment(command).orStop { return it }
         val employeeAndManager = findEmployeeAndManager(command).orStop { return it }
-        val managerNameMatch = verifyManagerName(employeeAndManager.manager, command).orStop { return it }
+        verifyManagerName(employeeAndManager.manager, command).orStop { return it }
         verifyEmployeeName(employeeAndManager.employee, command).orStop { return it }
         relationPublisher.publish(
             PublishNarmestelederrelasjonCommand(
@@ -40,7 +40,7 @@ class EstablishNarmestelederrelasjonUseCase(
                 source = command.source,
             ),
         )
-        return EstablishNarmestelederrelasjonResult.Published(managerNameMatch)
+        return EstablishNarmestelederrelasjonResult.Published
     }
 
     private suspend fun verifyActiveSykmelding(command: EstablishNarmestelederrelasjonCommand): EstablishStep<Unit> = if (activeSykmeldingLookup.hasActiveSykmelding(command.employeeIdent, command.organizationNumber)) {
@@ -65,12 +65,12 @@ class EstablishNarmestelederrelasjonUseCase(
         return Step.Continue(EmployeeAndManager(employee, manager))
     }
 
-    private fun verifyManagerName(manager: PersonDetails, command: EstablishNarmestelederrelasjonCommand): EstablishStep<LastNameMatch> {
+    private fun verifyManagerName(manager: PersonDetails, command: EstablishNarmestelederrelasjonCommand): EstablishStep<Unit> {
         val match = manager.name.matchLastName(command.manager.lastName)
         nameValidationMetrics.record(match)
         return when (match) {
-            is LastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.ManagerNameMismatch(match))
-            else -> Step.Continue(match)
+            is LastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.ManagerNameMismatch)
+            else -> Step.Proceed
         }
     }
 
@@ -79,7 +79,7 @@ class EstablishNarmestelederrelasjonUseCase(
         val match = employee.name.matchLastName(lastName)
         nameValidationMetrics.record(match)
         return when (match) {
-            is LastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch(match))
+            is LastNameMatch.NoMatch -> Step.Stop(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch)
             else -> Step.Proceed
         }
     }

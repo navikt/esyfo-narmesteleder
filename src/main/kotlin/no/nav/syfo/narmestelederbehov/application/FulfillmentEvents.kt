@@ -38,7 +38,7 @@ internal val fulfillmentRejected = Event<FulfillNarmestelederbehovResult>(
                 is FulfillNarmestelederbehovResult.NoEmployment -> "NO_EMPLOYMENT"
                 is FulfillNarmestelederbehovResult.UpstreamUnavailable -> "UPSTREAM_UNAVAILABLE"
                 FulfillNarmestelederbehovResult.PersonNotFound -> "PERSON_NOT_FOUND"
-                is FulfillNarmestelederbehovResult.ManagerNameMismatch -> "MANAGER_NAME_MISMATCH"
+                FulfillNarmestelederbehovResult.ManagerNameMismatch -> "MANAGER_NAME_MISMATCH"
             }
         },
         "validation_issues" to {

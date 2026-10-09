@@ -89,17 +89,17 @@ internal fun SubmitNarmestelederrelasjonResult.throwIfRejected(): SubmitNarmeste
         )
         EstablishNarmestelederrelasjonResult.PersonNotFound ->
             throw ApiErrorException.BadRequestException("Could not find person in PDL")
-        is EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
+        EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
             throw ApiErrorException.BadRequestException(
                 "Last name for linemanager does not correspond with registered value for the given national identification number",
                 type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
             )
-        is EstablishNarmestelederrelasjonResult.EmployeeNameMismatch ->
+        EstablishNarmestelederrelasjonResult.EmployeeNameMismatch ->
             throw ApiErrorException.BadRequestException(
                 "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
                 type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
             )
-        is EstablishNarmestelederrelasjonResult.Published -> error("A published relation cannot be a rejection")
+        EstablishNarmestelederrelasjonResult.Published -> error("A published relation cannot be a rejection")
         is EstablishNarmestelederrelasjonResult.UpstreamUnavailable ->
             error("UpstreamUnavailable is mapped to SubmitNarmestelederrelasjonResult.UpstreamUnavailable")
     }

@@ -37,8 +37,16 @@ class GetNarmestelederrelasjonUseCase(
             return NotFound(NotFoundReason.NO_ACTIVE_SYKMELDING).log()
         }
 
-        val organizationName = organization.findName(lookup.organizationNumber)
-            ?: return GetNarmestelederrelasjonResult.Unavailable
+        val organizationName = when (val result = organization.findName(lookup.organizationNumber)) {
+            is OrganizationNameResult.Found -> result.name
+
+            OrganizationNameResult.Missing -> {
+                logger.event(narmestelederrelasjonOrganizationNameMissing)
+                null
+            }
+
+            is OrganizationNameResult.Unavailable -> return GetNarmestelederrelasjonResult.UpstreamUnavailable(result.failure)
+        }
 
         return GetNarmestelederrelasjonResult.Found(
             relation = lookup.toRelation(),

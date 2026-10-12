@@ -2,6 +2,8 @@ package no.nav.syfo.narmestelederrelasjon.application
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.domain.Narmestelederrelasjon
@@ -11,6 +13,9 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import java.util.UUID
 
 class GetNarmestelederrelasjonUseCaseTest :
@@ -37,7 +42,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             lookup: NarmestelederrelasjonLookup? = lookup(),
             access: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
             activeSykmelding: Boolean = true,
-            organizationName: String? = "Organization",
+            organizationName: OrganizationNameResult = OrganizationNameResult.Found("Organization"),
             effects: MutableList<String> = mutableListOf(),
         ) = GetNarmestelederrelasjonUseCase(
             FakeNarmestelederrelasjonRepository(lookup, effects),
@@ -111,10 +116,27 @@ class GetNarmestelederrelasjonUseCaseTest :
             }
         }
 
-        it("returns unavailable when the organization name is missing") {
+        it("returns the relation with a null organization name when the name is missing") {
             val effects = mutableListOf<String>()
-            query(organizationName = null, effects = effects).execute(id, caller) shouldBe
-                GetNarmestelederrelasjonResult.Unavailable
+            query(organizationName = OrganizationNameResult.Missing, effects = effects).execute(id, caller) shouldBe
+                GetNarmestelederrelasjonResult.Found(
+                    Narmestelederrelasjon(
+                        id = id,
+                        orgNumber = orgNumber,
+                        employee = RelationPerson(employeeIdent, "Employee", null, "Person"),
+                    ),
+                    organizationName = null,
+                )
+            effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
+        }
+
+        it("returns UpstreamUnavailable with the unchanged failure after organization lookup") {
+            val effects = mutableListOf<String>()
+            val failure = UpstreamFailure(UpstreamName("ereg"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+
+            query(organizationName = OrganizationNameResult.Unavailable(failure), effects = effects)
+                .execute(id, caller).shouldBeInstanceOf<GetNarmestelederrelasjonResult.UpstreamUnavailable>()
+                .failure shouldBeSameInstanceAs failure
             effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
         }
 
@@ -149,8 +171,8 @@ private class FakeGetActiveSykmeldingLookup(
 }
 
 private class FakeGetOrganization(
-    private val name: String?,
+    private val result: OrganizationNameResult,
     private val effects: MutableList<String>,
 ) : NarmestelederrelasjonOrganization {
-    override suspend fun findName(orgNumber: OrganizationNumber) = name.also { effects += "organization" }
+    override suspend fun findName(orgNumber: OrganizationNumber) = result.also { effects += "organization" }
 }

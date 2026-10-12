@@ -18,7 +18,7 @@ class EregCache(
         return organisasjon
     }
 
-    fun putOrganisasjon(orgnummer: String, organisasjon: Organisasjon?) {
+    fun putOrganisasjon(orgnummer: String, organisasjon: Organisasjon) {
         valkeyCache.put("$EREG_CACHE_KEY_PREFIX-$orgnummer", organisasjon)
     }
 

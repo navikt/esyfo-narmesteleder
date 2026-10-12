@@ -3,6 +3,10 @@ package no.nav.syfo.integration.ereg
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.util.JsonFixtureLoader
 
 class FakeEregClientTest :
@@ -13,7 +17,7 @@ class FakeEregClientTest :
                 val client = FakeEregClient()
 
                 it("should return organisasjon for known orgnummer") {
-                    val result = client.getOrganisasjon("310667633")
+                    val result = client.getOrganisasjon("310667633").shouldBeInstanceOf<UpstreamResult.Success<Organisasjon?>>().value
 
                     result shouldNotBe null
                     result?.organisasjonsnummer shouldBe "310667633"
@@ -23,7 +27,7 @@ class FakeEregClientTest :
                 it("should return null for unknown orgnummer") {
                     val result = client.getOrganisasjon("unknown-org")
 
-                    result shouldBe null
+                    result shouldBe UpstreamResult.Success(null)
                 }
             }
 
@@ -32,7 +36,7 @@ class FakeEregClientTest :
                 val client = FakeEregClient(loader)
 
                 it("should load organisasjoner from JSON file") {
-                    val result = client.getOrganisasjon("111111111")
+                    val result = client.getOrganisasjon("111111111").shouldBeInstanceOf<UpstreamResult.Success<Organisasjon?>>().value
 
                     result shouldNotBe null
                     result?.organisasjonsnummer shouldBe "111111111"
@@ -40,7 +44,7 @@ class FakeEregClientTest :
                 }
 
                 it("should return related organisasjon") {
-                    val result = client.getOrganisasjon("222222222")
+                    val result = client.getOrganisasjon("222222222").shouldBeInstanceOf<UpstreamResult.Success<Organisasjon?>>().value
 
                     result shouldNotBe null
                     result?.inngaarIJuridiskEnheter?.size shouldBe 1
@@ -55,21 +59,21 @@ class FakeEregClientTest :
                 it("should return null when fixture file not found") {
                     val result = client.getOrganisasjon("any-org")
 
-                    result shouldBe null
+                    result shouldBe UpstreamResult.Success(null)
                 }
             }
 
             describe("failure simulation") {
                 val client = FakeEregClient()
 
-                it("should throw configured failure") {
-                    val expectedException = RuntimeException("Test error")
-                    client.setFailure(expectedException)
+                it("should return configured failure until cleared") {
+                    val failure = UpstreamFailure(EREG, UpstreamFailureStage.REQUEST, null, RuntimeException("Test error"))
+                    client.setFailure(failure)
 
-                    val exception = runCatching { client.getOrganisasjon("310667633") }.exceptionOrNull()
-
-                    exception shouldBe expectedException
+                    client.getOrganisasjon("310667633") shouldBe UpstreamResult.Failure(failure)
+                    client.getOrganisasjon("unknown-org") shouldBe UpstreamResult.Failure(failure)
                     client.clearFailure()
+                    client.getOrganisasjon("310667633").shouldBeInstanceOf<UpstreamResult.Success<Organisasjon?>>().value shouldNotBe null
                 }
             }
         }

@@ -93,6 +93,10 @@ class OpenApiInternalLinemanagerRevokeSchemaTest :
             name["additionalProperties"] shouldBe false
             (organization["properties"] as Map<*, *>).keys.map { it.toString() } shouldContainExactly
                 listOf("orgNumber", "name")
+            (organization["required"] as List<*>).map { it.toString() } shouldContainExactly listOf("orgNumber", "name")
+            val organizationName = (organization["properties"] as Map<*, *>)["name"] as Map<*, *>
+            organizationName["type"] shouldBe "string"
+            organizationName["nullable"] shouldBe true
             organization["additionalProperties"] shouldBe false
         }
 

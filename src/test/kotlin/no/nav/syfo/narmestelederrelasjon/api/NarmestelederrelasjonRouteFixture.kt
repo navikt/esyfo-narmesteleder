@@ -20,6 +20,7 @@ import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUse
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.OrganizationNameResult
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
@@ -115,7 +116,7 @@ internal class NarmestelederrelasjonRouteFixture {
         coEvery { repository.findById(id) } returns lookup()
         coEvery { repository.findRevocableById(id) } returns revocableLookup()
         coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns OrganizationAccessResult.Granted(organizationName = null)
-        coEvery { organization.findName(OrganizationNumber("123456789")) } returns "Organization"
+        coEvery { organization.findName(OrganizationNumber("123456789")) } returns OrganizationNameResult.Found("Organization")
     }
 }
 

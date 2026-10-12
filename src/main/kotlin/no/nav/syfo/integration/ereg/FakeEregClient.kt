@@ -1,7 +1,9 @@
 package no.nav.syfo.integration.ereg
 
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.util.JsonFixtureLoader
-import java.util.concurrent.atomic.*
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Fake implementation of [EregClient] for testing and local development.
@@ -17,9 +19,9 @@ class FakeEregClient(
      * Pre-populated from the fixture file.
      */
     val organisasjoner: MutableMap<String, Organisasjon> = loadOrganisasjoner(fixtureLoader).toMutableMap()
-    private val failureRef = AtomicReference<Throwable?>(null)
+    private val failureRef = AtomicReference<UpstreamFailure?>(null)
 
-    fun setFailure(failure: Throwable) {
+    fun setFailure(failure: UpstreamFailure) {
         failureRef.set(failure)
     }
 
@@ -27,12 +29,13 @@ class FakeEregClient(
 
     override suspend fun getOrganisasjon(
         orgnummer: String
-    ): Organisasjon? {
-        failureRef.get()?.let { throw it }
-        return when (orgnummer) {
+    ): UpstreamResult<Organisasjon?> {
+        failureRef.get()?.let { return UpstreamResult.Failure(it) }
+        val organization = when (orgnummer) {
             "314602374", "987926279" -> defaultFixtureLoader.loadOrNull<Organisasjon>("$orgnummer.json")
             else -> organisasjoner[orgnummer]
         }
+        return UpstreamResult.Success(organization)
     }
 
     companion object {

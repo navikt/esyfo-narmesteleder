@@ -16,6 +16,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.auth.Principal
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.narmesteleder.api.v1.getUUIDFromPathVariable
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult
@@ -97,8 +98,8 @@ fun Route.registerNarmestelederrelasjonApi(
 
                     is GetNarmestelederrelasjonResult.NotFound -> throw notFoundException()
 
-                    GetNarmestelederrelasjonResult.Unavailable ->
-                        throw ApiErrorException.InternalServerErrorException()
+                    is GetNarmestelederrelasjonResult.UpstreamUnavailable ->
+                        throw result.failure.toUpstreamUnavailableException()
                 }
             }
         }

@@ -28,13 +28,15 @@ private val nlRegisterRecordInvalid = applicationEvent<NlRegisterRecordInvalidDe
 
 /**
  * Stores the valid relations from a batch of Leesah records in the local relation register and
- * registers their persons for enrichment. Invalid records are logged and skipped.
+ * registers their persons for enrichment. Invalid records are logged and skipped. When enabled, it then
+ * notes team sykmelding's employment-ended revocations for the shadow comparison.
  *
  * Returns the valid records, which are the ones that may be republished.
  */
 class PersistNarmestelederrelasjonerFromLeesahUseCase(
     private val repository: LeesahNarmestelederrelasjonRepository,
     private val metrics: NarmestelederRegisterMetrics,
+    private val recordSourceEmploymentRevocation: RecordSourceEmploymentRevocationUseCase? = null,
 ) {
     fun execute(records: List<LeesahNarmestelederrelasjonRecord>): List<LeesahNarmestelederrelasjonRecord> {
         val validRecords = records.filter(::isValid)
@@ -45,6 +47,13 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
         val relasjoner = validRecords.map { it.relasjon.toValid() }
         repository.upsertAll(relasjoner, relasjoner.involvedPersons())
         metrics.recordUpserted(relasjoner.size)
+
+        // Runs after the upsert has committed. The observation catches its own failures, so it never stops ingestion.
+        validRecords.forEach { record ->
+            record.relasjon.sourceEmploymentRevocationAt?.let { revokedAt ->
+                recordSourceEmploymentRevocation?.execute(record.relasjon.narmestelederId, revokedAt)
+            }
+        }
 
         return validRecords
     }

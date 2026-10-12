@@ -15,7 +15,10 @@ interface EmploymentReconciliationRepository {
     /** Seeds active relations only, with first due one calendar month after aktiv_fom. */
     suspend fun seedMissing(limit: Int, now: Instant): Int
 
-    /** Claims due active relations, including expired leases, and commits before returning. */
+    /**
+     * Claims due active relations, including expired leases, and relations with a recent source revocation
+     * that are not compared yet. Commits before returning.
+     */
     suspend fun claimDue(limit: Int, lease: Duration, now: Instant): List<ClaimedEmploymentCheck>
 
     /** Returns false without writing when status or token no longer matches this claim. */
@@ -28,6 +31,12 @@ interface EmploymentReconciliationRepository {
 
     /** Checks the active relation still matches the claimed employee and organization; not a lock over external effects. */
     suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean
+
+    /**
+     * Blocking, for the Leesah consumer. Notes when team sykmelding revoked the relation (Leesah `timestamp`) and makes a READY row
+     * due ahead of other checks; a CLAIMED row keeps its lease. Returns false when it was already noted.
+     */
+    fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean
 
     /** Counts over all active relations, for gauges. */
     suspend fun stats(now: Instant): EmploymentCheckStats
@@ -50,6 +59,8 @@ data class ClaimedEmploymentCheck(
     val employeeIdent: PersonIdent,
     val claimToken: UUID,
     val claimedAt: Instant,
+    /** When team sykmelding revoked the relation this check is compared with; null for a regular check. */
+    val sourceRevokedAt: Instant? = null,
 ) {
     override fun toString(): String = "ClaimedEmploymentCheck(narmesteLederId=$narmesteLederId, claimToken=$claimToken, claimedAt=$claimedAt)"
 }

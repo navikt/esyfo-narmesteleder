@@ -9,6 +9,7 @@ import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentReconciliationRepository
+import no.nav.syfo.narmestelederrelasjon.application.SOURCE_OBSERVATION_WINDOW
 import org.jetbrains.exposed.v1.core.Coalesce
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression
@@ -21,7 +22,9 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
@@ -30,6 +33,7 @@ import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
 import java.time.Instant
@@ -83,6 +87,7 @@ class ExposedEmploymentReconciliationRepository(
         return withContext(dispatcher) {
             suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
                 val token = UUID.randomUUID()
+                val pending = comparisonPending(now)
                 val claimed = EmploymentReconciliationTable.join(
                     otherTable = NarmestelederTable,
                     joinType = JoinType.INNER,
@@ -92,8 +97,11 @@ class ExposedEmploymentReconciliationRepository(
                     EmploymentReconciliationTable.narmestelederId,
                     NarmestelederTable.orgnummer,
                     NarmestelederTable.sykmeldtFnr,
+                    EmploymentReconciliationTable.sourceRevocationObservedAt,
+                    pending,
                 ).where {
-                    NarmestelederTable.aktivTom.isNull() and
+                    // The source's revocation has ended the relation, but the comparison still needs a check.
+                    (NarmestelederTable.aktivTom.isNull() or pending) and
                         (
                             (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY) or
                                 (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED)
@@ -109,13 +117,16 @@ class ExposedEmploymentReconciliationRepository(
                             ForUpdateOption.PostgreSQL.MODE.SKIP_LOCKED,
                             EmploymentReconciliationTable,
                         ),
-                    ).map {
+                    ).map { row ->
                         ClaimedEmploymentCheck(
-                            narmesteLederId = it[EmploymentReconciliationTable.narmestelederId],
-                            organizationNumber = OrganizationNumber(it[NarmestelederTable.orgnummer]),
-                            employeeIdent = PersonIdent(it[NarmestelederTable.sykmeldtFnr]),
+                            narmesteLederId = row[EmploymentReconciliationTable.narmestelederId],
+                            organizationNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
+                            employeeIdent = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
                             claimToken = token,
                             claimedAt = now,
+                            sourceRevokedAt = row[EmploymentReconciliationTable.sourceRevocationObservedAt]
+                                .takeIf { row[pending] }
+                                ?.toInstant(),
                         )
                     }
                 if (claimed.isNotEmpty()) {
@@ -183,6 +194,34 @@ class ExposedEmploymentReconciliationRepository(
         }
     }
 
+    override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean = transaction(
+        db = database,
+        transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
+    ) {
+        // A relation that ended before it was seeded still needs a row for the comparison.
+        EmploymentReconciliationTable.insertIgnore {
+            it[narmestelederId] = narmesteLederId
+            it[status] = EmploymentCheckStatus.READY
+            it[nextCheckAt] = COMPARISON_DUE
+        }
+        // The row lock from this update makes concurrent redeliveries wait, and then they match nothing.
+        val firstObservation = EmploymentReconciliationTable.update({
+            (EmploymentReconciliationTable.narmestelederId eq narmesteLederId) and
+                EmploymentReconciliationTable.sourceRevocationObservedAt.isNull()
+        }) {
+            it[sourceRevocationObservedAt] = revokedAt.atOffset(ZoneOffset.UTC)
+        } > 0
+        if (firstObservation) {
+            EmploymentReconciliationTable.update({
+                (EmploymentReconciliationTable.narmestelederId eq narmesteLederId) and
+                    (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY)
+            }) {
+                it[nextCheckAt] = COMPARISON_DUE
+            }
+        }
+        firstObservation
+    }
+
     override suspend fun stats(now: Instant): EmploymentCheckStats = withContext(dispatcher) {
         suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             val shadowCutoff = now.minus(31, ChronoUnit.DAYS).atOffset(ZoneOffset.UTC)
@@ -206,6 +245,23 @@ class ExposedEmploymentReconciliationRepository(
         }
     }
 }
+
+/** Not compared yet: unchecked since the source's revocation, or the check after it failed. */
+private fun comparisonPending(now: Instant): Op<Boolean> {
+    val revokedAt = EmploymentReconciliationTable.sourceRevocationObservedAt
+    val lastCheckedAt = EmploymentReconciliationTable.lastCheckedAt
+    // isNotNull keeps the selected value false rather than SQL null when nothing was observed.
+    return revokedAt.isNotNull() and
+        (revokedAt greater now.minus(SOURCE_OBSERVATION_WINDOW).atOffset(ZoneOffset.UTC)) and
+        (
+            lastCheckedAt.isNull() or
+                (lastCheckedAt less revokedAt) or
+                (EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.FAILED)
+            )
+}
+
+// Before every regular check, so a backlog of regular checks cannot delay a comparison past its window.
+private val COMPARISON_DUE: OffsetDateTime = Instant.EPOCH.atOffset(ZoneOffset.UTC)
 
 // Add a calendar month in UTC, independent of the connection's session TimeZone.
 // The interval and zone are constants; all runtime inputs use DSL parameters.

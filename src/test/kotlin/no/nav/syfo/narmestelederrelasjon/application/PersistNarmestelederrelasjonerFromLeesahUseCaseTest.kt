@@ -10,7 +10,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.ident.PersonIdent
 import org.slf4j.LoggerFactory
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
@@ -50,6 +53,31 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
             repository.calls.single().relasjoner shouldBe listOf(valid.relasjon.validated())
             metrics.upserted shouldBe listOf(1)
             metrics.invalid shouldBe 1
+        }
+
+        test("notes employment-ended revocations from valid records, after the upsert") {
+            val now = Instant.parse("2026-06-15T12:00:00Z")
+            val revoked = record(relasjon(sourceEmploymentRevocationAt = now))
+            val otherChange = record(relasjon())
+            val invalid = record(relasjon(sykmeldtFnr = "123", sourceEmploymentRevocationAt = now))
+            val reconciliations = RecordingEmploymentReconciliationRepository()
+            val checkedAfterUpsert = object : EmploymentReconciliationRepository by reconciliations {
+                override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean {
+                    // The upsert has committed before the observation runs.
+                    repository.calls.size shouldBe 1
+                    return reconciliations.recordSourceRevocation(narmesteLederId, revokedAt)
+                }
+            }
+            val observation = RecordSourceEmploymentRevocationUseCase(
+                checkedAfterUpsert,
+                Clock.fixed(now, ZoneOffset.UTC),
+                RecordingEmploymentCheckMetrics(),
+            )
+
+            PersistNarmestelederrelasjonerFromLeesahUseCase(repository, metrics, observation)
+                .execute(listOf(revoked, otherChange, invalid)) shouldBe listOf(revoked, otherChange)
+
+            reconciliations.observed.keys shouldBe setOf(revoked.relasjon.narmestelederId)
         }
 
         listOf(
@@ -129,6 +157,7 @@ private fun relasjon(
     narmestelederFnr: String = "10987654321",
     narmestelederTelefonnummer: String = "12345678",
     narmestelederEpost: String = "leder@example.com",
+    sourceEmploymentRevocationAt: Instant? = null,
 ) = LeesahNarmestelederrelasjon(
     narmestelederId = UUID.randomUUID(),
     sykmeldtFnr = sykmeldtFnr,
@@ -139,4 +168,5 @@ private fun relasjon(
     aktivFom = LocalDate.of(2024, 1, 1),
     aktivTom = null,
     arbeidsgiverForskutterer = true,
+    sourceEmploymentRevocationAt = sourceEmploymentRevocationAt,
 )

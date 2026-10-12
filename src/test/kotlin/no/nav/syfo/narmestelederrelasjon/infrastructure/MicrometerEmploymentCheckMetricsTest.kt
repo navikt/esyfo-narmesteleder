@@ -5,6 +5,8 @@ import io.kotest.matchers.shouldBe
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.nav.syfo.narmestelederrelasjon.application.ClaimedCheckOutcome
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentComparisonResult
+import no.nav.syfo.narmestelederrelasjon.application.SourceObservationOutcome
 
 class MicrometerEmploymentCheckMetricsTest :
     FunSpec({
@@ -30,5 +32,18 @@ class MicrometerEmploymentCheckMetricsTest :
             registry.get(EMPLOYMENT_CHECK_ONLY_SHADOW).tag("age", "lt_31d").gauge().value() shouldBe 1.0
             registry.get(EMPLOYMENT_CHECK_ONLY_SHADOW).tag("age", "gte_31d").gauge().value() shouldBe 2.0
             registry.get(EMPLOYMENT_CHECK_DUE).gauge().value() shouldBe 3.0
+        }
+
+        test("counts comparisons by result and source observations by outcome") {
+            val registry = SimpleMeterRegistry()
+            val metrics = MicrometerEmploymentCheckMetrics(registry)
+
+            metrics.recordComparison(EmploymentComparisonResult.DISAGREE)
+            metrics.recordObservation(SourceObservationOutcome.FAILED)
+
+            registry.get(EMPLOYMENT_CHECK_COMPARISON_TOTAL).tag("result", "disagree").counter().count() shouldBe 1.0
+            registry.get(EMPLOYMENT_CHECK_COMPARISON_TOTAL).tag("result", "agree").counter().count() shouldBe 0.0
+            registry.get(EMPLOYMENT_CHECK_SOURCE_OBSERVATION_TOTAL).tag("outcome", "failed").counter().count() shouldBe 1.0
+            registry.get(EMPLOYMENT_CHECK_SOURCE_OBSERVATION_TOTAL).tag("outcome", "recorded").counter().count() shouldBe 0.0
         }
     })

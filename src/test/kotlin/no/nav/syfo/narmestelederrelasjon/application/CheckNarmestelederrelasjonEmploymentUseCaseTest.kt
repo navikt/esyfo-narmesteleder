@@ -108,7 +108,8 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.FAILED)
         }
 
-        test("a claim taken over by another pod is counted as lost and not logged as a failure") {
+        test("a claim taken over by another pod is counted as lost, without a comparison or a failure log") {
+            repository.claims = listOf(claim.copy(sourceRevokedAt = now))
             repository.completeSucceeds = false
 
             withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
@@ -117,6 +118,61 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
                 capture.records shouldBe emptyList()
             }
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.CLAIM_LOST)
+            metrics.comparisons shouldBe emptyList()
+        }
+
+        test("compares with the source's revocation and warns when we would keep the relation") {
+            val agrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
+            val disagrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
+            val fails = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
+            repository.claims = listOf(agrees, disagrees, fails)
+            val histories = listOf(
+                EmploymentHistoryResult.Found(emptyList()),
+                EmploymentHistoryResult.Found(listOf(Employment(claim.organizationNumber, null))),
+                EmploymentHistoryResult.Unavailable(aaregFailure),
+            ).iterator()
+
+            withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
+                useCase { histories.next() }.execute()
+
+                RuntimeLogContract.forEvents(
+                    employmentCheckComparisonMismatch,
+                    employmentCheckFailed,
+                    exceptionTypes = setOf("IllegalStateException"),
+                ).assertValid(capture.records, expectedCount = 2)
+                val mismatch = capture.records.map { jacksonObjectMapper().readTree(it) }
+                    .single { it["event_type"].asText() == "employment_check_comparison_mismatch" }
+                mismatch["narmesteleder_id"].asText() shouldBe disagrees.narmesteLederId.toString()
+            }
+            // The failed check is compared when it is retried.
+            metrics.comparisons shouldBe listOf(EmploymentComparisonResult.AGREE, EmploymentComparisonResult.DISAGREE)
+        }
+
+        // The rule is judged on the Norwegian date the source revoked the relation, not when we ingest or check it.
+        listOf(
+            ComparisonDateCase(
+                name = "a revocation ingested the next day",
+                revokedAt = Instant.parse("2026-10-11T12:00:00Z"),
+                checkedAt = Instant.parse("2026-10-12T12:00:00Z"),
+                endDate = LocalDate.parse("2026-06-11"),
+                expected = EmploymentComparisonResult.DISAGREE,
+            ),
+            ComparisonDateCase(
+                name = "a revocation just after Norwegian midnight",
+                revokedAt = Instant.parse("2026-06-30T22:30:00Z"),
+                checkedAt = Instant.parse("2026-06-30T22:30:00Z"),
+                endDate = LocalDate.parse("2026-02-28"),
+                expected = EmploymentComparisonResult.AGREE,
+            ),
+        ).forEach { case ->
+            test("judges ${case.name} on the Norwegian date of the source's revocation") {
+                repository.claims = listOf(claim.copy(claimedAt = case.checkedAt, sourceRevokedAt = case.revokedAt))
+                val employment = Employment(claim.organizationNumber, case.endDate)
+
+                useCase(clock = Clock.fixed(case.checkedAt, ZoneOffset.UTC)) { EmploymentHistoryResult.Found(listOf(employment)) }.execute()
+
+                metrics.comparisons shouldBe listOf(case.expected)
+            }
         }
 
         test("gives up a lookup that would outlast the claim's lease") {
@@ -138,3 +194,11 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             shouldThrow<CancellationException> { useCase { throw CancellationException("Stopping") }.execute() }
         }
     })
+
+private data class ComparisonDateCase(
+    val name: String,
+    val revokedAt: Instant,
+    val checkedAt: Instant,
+    val endDate: LocalDate,
+    val expected: EmploymentComparisonResult,
+)

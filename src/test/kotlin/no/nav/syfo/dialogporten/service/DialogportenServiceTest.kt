@@ -75,6 +75,7 @@ class DialogportenServiceTest :
                         personEnrichmentTaskDelay = "5m",
                         personEnrichmentTaskEnabled = false,
                         employmentCheckEnabled = false,
+                        employmentCheckObserveSourceEnabled = false,
                     ),
                     pdlService = pdlService,
                 )

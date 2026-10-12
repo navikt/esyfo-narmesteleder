@@ -160,6 +160,27 @@ team-sykmelding, such as new properties or `status` values, appear on this
 topic without a change in this repository. Coordinate such changes with
 team-sykmelding until the takeover is complete.
 
+### Comparison with team sykmelding's employment revocations
+
+When `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` is set (dev and prod), every valid
+`DEAKTIVERT_ARBEIDSFORHOLD` record is noted after the register transaction commits,
+and our shadow check of that relation runs ahead of other checks (#473).
+`syfo_narmesteleder_employment_check_comparison_total` counts agreement and
+disagreement. A failed observation is counted and logged, and never fails
+ingestion. Records older than seven days are ignored, so a replay of old offsets
+does not affect the comparison.
+
+We store the record's `timestamp`, which is when team sykmelding revoked the
+relation, and judge the rule on its Norwegian date, as the source does. The seven
+days count from that revocation, so a record ingested after six days has about one
+day left for the comparison and any retries.
+
+A comparison is lost, never wrong, when our own check of the relation runs or
+completes between the source's revocation and our ingestion of it.
+
+Disable the flag before we publish revocations ourselves. Otherwise our own
+revocations return here as `DEAKTIVERT_ARBEIDSFORHOLD` and are counted as theirs.
+
 ### What is validated
 
 Only records that pass validation are republished. Records are **not**

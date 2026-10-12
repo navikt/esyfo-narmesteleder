@@ -77,6 +77,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
                 assertReadCommitted {
                     observedRepository.complete(claim, EmploymentCheckOutcome.VALID, now.plusSeconds(600), now) shouldBe true
                 }
+                assertReadCommitted { observedRepository.recordSourceRevocation(claim.narmesteLederId, now) shouldBe true }
                 assertReadCommitted { observedRepository.stats(now) }
             }
         }
@@ -327,6 +328,64 @@ class ExposedEmploymentReconciliationRepositoryTest :
             }
             repository.isClaimStillValid(claim, now) shouldBe false
             controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
+        }
+
+        test("notes the first source revocation, also for a relation that was never seeded, and makes it due first") {
+            val seeded = insertEmploymentRelation(to = now)
+            insertControlRow(seeded, now.plusSeconds(86_400))
+            val unseeded = insertEmploymentRelation(to = now)
+
+            listOf(seeded, unseeded).forEach { id ->
+                repository.recordSourceRevocation(id, now) shouldBe true
+                repository.recordSourceRevocation(id, now.plusSeconds(60)) shouldBe false
+                controlRow(id).also {
+                    it[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
+                    it[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe Instant.EPOCH
+                    it[EmploymentReconciliationTable.sourceRevocationObservedAt]?.toInstant() shouldBe now
+                }
+            }
+        }
+
+        test("concurrent redeliveries note the source revocation once and leave a claimed lease alone") {
+            val id = insertEmploymentRelation()
+            insertControlRow(id, now)
+            val claim = repository.claimDue(1, 5.minutes, now).single()
+
+            concurrently { repository.recordSourceRevocation(id, now) }.sorted() shouldBe listOf(false, true)
+
+            controlRow(id).also {
+                it[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
+                it[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
+            }
+        }
+
+        test("a revoked relation is claimed for comparison ahead of a backlog, and not again once compared") {
+            val backlog = insertEmploymentRelation()
+            insertControlRow(backlog, now.minusSeconds(365 * 86_400))
+            val revoked = insertEmploymentRelation(to = now)
+            insertControlRow(revoked, now.plusSeconds(86_400))
+            repository.recordSourceRevocation(revoked, now)
+
+            val comparison = repository.claimDue(1, 5.minutes, now).single()
+            comparison.narmesteLederId shouldBe revoked
+            comparison.sourceRevokedAt shouldBe now
+            repository.claimDue(1, 5.minutes, now).single().sourceRevokedAt shouldBe null
+            repository.complete(comparison, EmploymentCheckOutcome.WOULD_REVOKE, now.plusSeconds(86_400), now.plusSeconds(1)) shouldBe true
+
+            repository.claimDue(10, 5.minutes, now.plusSeconds(2 * 86_400)).map { it.narmesteLederId } shouldBe listOf(backlog)
+        }
+
+        test("a failed comparison is retried within seven days of the source's revocation, but not after") {
+            val revoked = insertEmploymentRelation(to = now)
+            repository.recordSourceRevocation(revoked, now)
+            val first = repository.claimDue(1, 5.minutes, now).single()
+            repository.complete(first, EmploymentCheckOutcome.FAILED, now.plusSeconds(86_400), now) shouldBe true
+
+            val retry = repository.claimDue(1, 5.minutes, now.plusSeconds(86_400)).single()
+            retry.sourceRevokedAt shouldBe now
+            repository.complete(retry, EmploymentCheckOutcome.FAILED, now.plusSeconds(7 * 86_400), now.plusSeconds(86_400)) shouldBe true
+
+            repository.claimDue(1, 5.minutes, now.plusSeconds(7 * 86_400)) shouldBe emptyList()
         }
 
         test("stats count due and would-revoke relations by age, for active relations only") {

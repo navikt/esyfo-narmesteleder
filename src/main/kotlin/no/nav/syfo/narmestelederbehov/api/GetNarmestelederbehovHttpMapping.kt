@@ -1,6 +1,7 @@
 package no.nav.syfo.narmestelederbehov.api
 
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.Name
@@ -12,6 +13,7 @@ import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 
 fun GetNarmestelederbehovResult.toLinemanagerRequirementRead(): LinemanagerRequirementRead = when (this) {
+    is GetNarmestelederbehovResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()
     is GetNarmestelederbehovResult.Found -> behov.toLinemanagerRequirementRead(name, organizationName)
     GetNarmestelederbehovResult.NotFound ->
         throw ApiErrorException.NotFoundException(errorMessage = "LinemanagerRequirement", isAlreadyLogged = true)

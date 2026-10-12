@@ -4,15 +4,18 @@ class NarmestelederbehovEmployeeName(
     private val repository: NarmestelederbehovRepository,
     private val employeeNameLookup: EmployeeNameLookup,
 ) {
-    suspend fun resolve(behov: NarmestelederbehovDetails): BehovPersonName? {
+    suspend fun resolve(behov: NarmestelederbehovDetails): EmployeeNameLookupResult {
         if (behov.firstName != null && behov.lastName != null) {
-            return BehovPersonName(
-                firstName = behov.firstName,
-                middleName = behov.middleName,
-                lastName = behov.lastName,
+            return EmployeeNameLookupResult.Found(
+                BehovPersonName(
+                    firstName = behov.firstName,
+                    middleName = behov.middleName,
+                    lastName = behov.lastName,
+                ),
             )
         }
-        val name = employeeNameLookup.find(behov.employeeIdent) ?: return null
-        return name.also { repository.saveEmployeeName(id = behov.id, name = it) }
+        return employeeNameLookup.find(behov.employeeIdent).also {
+            if (it is EmployeeNameLookupResult.Found) repository.saveEmployeeName(id = behov.id, name = it.name)
+        }
     }
 }

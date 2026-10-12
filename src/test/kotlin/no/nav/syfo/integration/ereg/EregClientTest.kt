@@ -107,7 +107,7 @@ class EregClientTest :
                     result.failure.upstream shouldBe EREG
                     result.failure.stage shouldBe UpstreamFailureStage.REQUEST
                     result.failure.status shouldBe null
-                    result.failure.cause.shouldRetainThrownException(original)
+                    requireNotNull(result.failure.cause).shouldRetainThrownException(original)
                     result.shouldNotExposeOrganizationNumber(orgNumber)
                 }
                 requests shouldBe 3
@@ -125,7 +125,7 @@ class EregClientTest :
                     result.failure.upstream shouldBe EREG
                     result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
                     result.failure.status shouldBe status.value
-                    result.failure.cause.javaClass.simpleName shouldBe "JsonConvertException"
+                    result.failure.cause?.javaClass?.simpleName shouldBe "JsonConvertException"
                     result.shouldNotExposeOrganizationNumber(orgNumber)
                 }
             }
@@ -184,7 +184,7 @@ class EregClientTest :
                             record["upstream"].asText() shouldBe "ereg"
                             record["upstream_status"].asInt() shouldBe status.value
                             record["failure_stage"].asText() shouldBe "response"
-                            record["exception_type"].asText() shouldBe result.failure.cause.javaClass.simpleName
+                            record["exception_type"].asText() shouldBe result.failure.cause?.javaClass?.simpleName
                             output shouldNotContain orgNumber
                             output shouldNotContain "private response body"
                             output shouldNotContain "UpstreamRequestException"

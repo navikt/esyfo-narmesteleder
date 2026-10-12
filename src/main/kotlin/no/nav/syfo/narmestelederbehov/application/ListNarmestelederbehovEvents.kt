@@ -11,6 +11,7 @@ internal val listNarmestelederbehovRejected = Event<ListNarmestelederbehovResult
     fields = mapOf(
         "outcome_code" to {
             when (it) {
+                is ListNarmestelederbehovResult.UpstreamUnavailable -> error("Upstream failures are logged at the edge")
                 is ListNarmestelederbehovResult.Listed -> error("A listed behov cannot be rejected")
                 is ListNarmestelederbehovResult.AccessDenied -> "ACCESS_DENIED"
                 ListNarmestelederbehovResult.PersonNotFound -> "PERSON_NOT_FOUND"

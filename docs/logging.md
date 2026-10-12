@@ -27,9 +27,10 @@ logger.logEvent(dialogFailed, details, cause = exception)
   `upstream_status`, `failure_stage` and `sql_state`. It also logs a sanitized
   stack trace that contains class names and frames, never exception messages.
 - `logEvent` also accepts `upstreamFailure`. Its `upstream`, `failure_stage` and
-  validated `upstream_status` override throwable-derived metadata; the cause
-  still supplies classification and the sanitized stack. Without an explicit
-  cause, `upstreamFailure.cause` is used.
+  validated `upstream_status` override throwable-derived metadata.
+  Når `upstreamFailure.cause` finnes, brukes en eksplisitt cause, eller
+  `upstreamFailure.cause`, til klassifisering og renset stack.
+  Uten `upstreamFailure.cause` beskriver diagnostikken selve feilsvaret.
 - The contract fields `exception_type`, `cause_type`, `upstream_status` and
   `sql_state` come from the esyfo-logger 0.3.0 helpers, so they always match the
   team's runtime-error contract. Nested classes keep their binary name, so
@@ -50,6 +51,17 @@ logger.logEvent(dialogFailed, details, cause = exception)
   `api_request_invalid` with `error_type`, and 404 as INFO.
 - `ApiErrorException.upstreamFailure` is passed to `api_request_failed` by
   StatusPages, which logs the upstream failure once at the HTTP edge.
+- For enkeltoppslag i PDL følger feilene kanten som verdier. Feltet
+  `upstream_errors` er en liste med `code`, `detail` og `path` fra
+  `UpstreamFailure.errors`. `cause` er valgfri; minst ett av `cause` og
+  `errors` må ha innhold. Uten `cause` blir `failure_kind = error_response`,
+  og verken exception-meldinger eller stack logges, selv om HTTP-kanten
+  bruker en `ApiErrorException`.
+  PDLs `message` tas aldri med. `detail` er `extensions.id`, og `path` har
+  punktum mellom leddene. Ugyldig ident (`bad_request` med
+  `id = ugyldig_ident`) behandles som ikke funnet, ikke som en oppstrømsfeil.
+  `getPerson` logger derfor ikke `pdl_lookup_degraded`; bolkoppslaget
+  beholder dagens logging.
 - A deliberate, domain-owned rejection worth following up, such as rejected
   system-user access, uses the library's shared `apiRequestRejected` with an
   `operation` and a `rejection_reason`. Do not use it for ordinary client errors.

@@ -29,6 +29,7 @@ import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
+import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -116,6 +117,53 @@ class ApiPluginsStatusPagesTest :
                         record["response_status"].asInt() shouldBe 500
                         record["cause_type"].asText() shouldBe "ServerResponseException"
                         record["failure_kind"].asText() shouldBe "http"
+                        logAppender.list shouldHaveSize 1
+                    }
+                } finally {
+                    logger.detachAppender(appender)
+                    productionLogging.stop()
+                }
+            }
+
+            it("logs a GraphQL failure once with upstream_errors and no stack") {
+                val failure = UpstreamFailure(
+                    UpstreamName("pdl"),
+                    UpstreamFailureStage.RESPONSE,
+                    200,
+                    errors = listOf(UpstreamError("server_error", "technical_id", "hentPerson.navn")),
+                )
+                val productionLogging = LoggerContext()
+                productionLogging.putProperty("NAIS_CLUSTER_NAME", "test")
+                JoranConfigurator().apply {
+                    context = productionLogging
+                    doConfigure("src/main/resources/logback.xml")
+                }
+                val appender = requireNotNull(productionLogging.getLogger(Logger.ROOT_LOGGER_NAME).getAppender("stdout_json"))
+                logger.addAppender(appender)
+                try {
+                    captureLogs(logger, "stdout_json").use { capture ->
+                        testApplication {
+                            application {
+                                installContentNegotiation()
+                                installStatusPages()
+                                routing { get("/graphql-failure") { throw failure.toUpstreamUnavailableException() } }
+                            }
+                            val response = client.get("/graphql-failure")
+                            response.status shouldBe HttpStatusCode.InternalServerError
+                            response.bodyAsText() shouldContain "UPSTREAM_SERVICE_UNAVAILABLE"
+                        }
+                        RuntimeLogContract(mapOf("event_type" to setOf("api_request_failed")))
+                            .assertValid(capture.records, expectedCount = 1)
+                        val record = jacksonObjectMapper().readTree(capture.records.single())
+                        record["failure_kind"].asText() shouldBe "error_response"
+                        record["upstream"].asText() shouldBe "pdl"
+                        record["failure_stage"].asText() shouldBe "response"
+                        record["upstream_status"].asInt() shouldBe 200
+                        record["upstream_errors"][0]["code"].asText() shouldBe "server_error"
+                        record["upstream_errors"][0]["detail"].asText() shouldBe "technical_id"
+                        record["upstream_errors"][0]["path"].asText() shouldBe "hentPerson.navn"
+                        record.has("stack_trace") shouldBe false
+                        record.has("exception_type") shouldBe false
                         logAppender.list shouldHaveSize 1
                     }
                 } finally {

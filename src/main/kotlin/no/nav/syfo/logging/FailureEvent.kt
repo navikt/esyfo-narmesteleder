@@ -15,6 +15,11 @@ private fun <T> failureFields(): Map<String, (EventContext<T>) -> Any?> = mapOf(
     "cause_type" to { it.failure?.causeType },
     "cause_types" to { it.failure?.causeTypes },
     "upstream_status" to { it.failure?.upstreamStatus },
+    "upstream_errors" to { context ->
+        context.failure?.upstreamErrors?.takeIf { it.isNotEmpty() }?.map {
+            mapOf("code" to it.code, "detail" to it.detail, "path" to it.path)
+        }
+    },
     "sql_state" to { it.failure?.sqlState },
 )
 
@@ -50,7 +55,11 @@ internal fun <T> ApplicationLogger.logEvent(
     cause: Throwable? = null,
     upstreamFailure: UpstreamFailure? = null,
 ) {
-    val failure = (cause ?: upstreamFailure?.cause)?.failureDiagnostics(upstreamFailure)
+    val failure = when {
+        upstreamFailure != null && upstreamFailure.cause == null -> upstreamFailure.failureDiagnostics()
+        cause != null -> cause.failureDiagnostics(upstreamFailure)
+        else -> upstreamFailure?.failureDiagnostics()
+    }
     event(event, EventContext(details, failure), failure?.stack)
 }
 

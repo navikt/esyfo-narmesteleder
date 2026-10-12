@@ -28,6 +28,7 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
@@ -35,6 +36,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
+import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
@@ -47,6 +49,10 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.time.Instant
@@ -153,6 +159,24 @@ class GetNarmestelederbehovRouteTest :
             }
         }
 
+        test("upstream failures return HTTP 500 with UPSTREAM_SERVICE_UNAVAILABLE") {
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
+            val fixture = GetFixture(unavailable = failure)
+            val behov = fixture.repository.seed(firstName = null)
+            assertSingleUpstreamFailureLog {
+                fixture.withApplication {
+                    val response = client.get("$API_V1_PATH/linemanager/requirement/${behov.id.value}") {
+                        bearerAuth(createMockToken(ORGANIZATION_NUMBER))
+                    }
+                    response.status shouldBe HttpStatusCode.InternalServerError
+                    response.body<ApiError>().type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                    response.body<ApiError>().message shouldBe "An upstream service is unavailable"
+                    fixture.effects shouldBe listOf("person")
+                    fixture.repository.savedNames shouldBe emptyList()
+                }
+            }
+        }
+
         test("GET /requirement/{id} 500 with the legacy message when reading fails unexpectedly") {
             val fixture = GetFixture()
             fixture.repository.failure = IllegalStateException("database unavailable")
@@ -175,6 +199,7 @@ private class GetFixture(
     organizationName: String? = null,
     denialReason: DenialReason? = null,
     person: BehovPersonName? = BehovPersonName(firstName = "Looked", middleName = null, lastName = "Up"),
+    unavailable: UpstreamFailure? = null,
 ) {
     val effects = mutableListOf<String>()
     val repository = FakeReadBehovRepository()
@@ -189,7 +214,7 @@ private class GetFixture(
             repository,
             EmployeeNameLookup {
                 effects += "person"
-                person
+                unavailable?.let { EmployeeNameLookupResult.Unavailable(it) } ?: person?.let { EmployeeNameLookupResult.Found(it) } ?: EmployeeNameLookupResult.NotFound
             },
         ),
     )

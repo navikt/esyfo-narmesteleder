@@ -8,6 +8,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
+import no.nav.syfo.platform.upstream.UpstreamFailure
 import java.time.Instant
 
 data class ListNarmestelederbehovQuery(
@@ -20,6 +21,7 @@ data class ListNarmestelederbehovQuery(
 data class ListedNarmestelederbehov(val behov: NarmestelederbehovDetails, val name: BehovPersonName)
 
 sealed interface ListNarmestelederbehovResult {
+    data class UpstreamUnavailable(val failure: UpstreamFailure) : ListNarmestelederbehovResult
     data class Listed(
         val behov: List<ListedNarmestelederbehov>,
         val hasMore: Boolean,
@@ -56,14 +58,18 @@ class ListNarmestelederbehovUseCase(
         val named = mutableListOf<ListedNarmestelederbehov>()
         // Legacy parity: resolve all fetched names sequentially, including the overflow row.
         for (behov in fetched) {
-            val name = employeeName.resolve(behov) ?: return Step.Stop(ListNarmestelederbehovResult.PersonNotFound)
+            val name = when (val result = employeeName.resolve(behov)) {
+                is EmployeeNameLookupResult.Found -> result.name
+                EmployeeNameLookupResult.NotFound -> return Step.Stop(ListNarmestelederbehovResult.PersonNotFound)
+                is EmployeeNameLookupResult.Unavailable -> return Step.Stop(ListNarmestelederbehovResult.UpstreamUnavailable(result.failure))
+            }
             named += ListedNarmestelederbehov(behov, name)
         }
         return Step.Continue(named)
     }
 
     private fun ListNarmestelederbehovResult.log(): ListNarmestelederbehovResult = also {
-        if (it !is ListNarmestelederbehovResult.Listed) logger.event(listNarmestelederbehovRejected, it)
+        if (it !is ListNarmestelederbehovResult.Listed && it !is ListNarmestelederbehovResult.UpstreamUnavailable) logger.event(listNarmestelederbehovRejected, it)
     }
 
     private companion object {

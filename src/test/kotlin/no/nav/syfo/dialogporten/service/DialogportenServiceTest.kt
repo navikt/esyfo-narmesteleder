@@ -29,10 +29,16 @@ import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
 import no.nav.syfo.integration.pdl.FakePdlClient
+import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.util.*
@@ -105,6 +111,35 @@ class DialogportenServiceTest :
                 appender.stop()
             }
         }
+        it("creates the dialog without a name on a PDL failure or not found and logs only failures") {
+            val pdlClient = mockk<PdlClient>()
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
+            val logger = LoggerFactory.getLogger(DialogportenService::class.java) as Logger
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            val originalLevel = logger.level
+            logger.level = ch.qos.logback.classic.Level.TRACE
+            logger.addAppender(appender)
+            try {
+                listOf(UpstreamResult.Failure(failure), UpstreamResult.Success(null)).forEach { result ->
+                    appender.list.clear()
+                    val service = DialogportenService(dialogportenClient, spyNarmestelederDb, OtherEnvironmentProperties.createForLocal(), PdlService(pdlClient))
+                    val behov = spyNarmestelederDb.insertNlBehov(nlBehovEntity())
+                    val dialog = slot<Dialog>()
+                    coEvery { pdlClient.getPerson(any()) } returns result
+                    coEvery { dialogportenClient.createDialog(capture(dialog)) } returns UUID.randomUUID()
+                    service.sendToDialogporten(behov)
+                    dialog.isCaptured shouldBe true
+                    requireNotNull(spyNarmestelederDb.findBehovById(requireNotNull(behov.id))).fornavn shouldBe null
+                    val failures = appender.list.filter { event -> event.keyValuePairs.orEmpty().any { it.key == "event_type" && it.value == "dialog_person_enrichment_failed" } }
+                    failures.size shouldBe if (result is UpstreamResult.Failure) 1 else 0
+                }
+            } finally {
+                logger.detachAppender(appender)
+                appender.stop()
+                logger.level = originalLevel
+            }
+        }
+
         describe("sendDocumentsToDialogporten") {
             context("when there are no behov to send") {
                 it("should not call dialogporten client") {

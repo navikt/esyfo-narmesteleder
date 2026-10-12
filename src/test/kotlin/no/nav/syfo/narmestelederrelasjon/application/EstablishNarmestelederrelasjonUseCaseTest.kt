@@ -16,6 +16,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.narmestelederrelasjon.domain.normalize
+import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -115,6 +116,18 @@ class EstablishNarmestelederrelasjonUseCaseTest :
             recordedMatches shouldBe listOf(LastNameMatch.Exact(false))
         }
 
+        test("employee and manager Unavailable stop before validation or publishing") {
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
+            listOf(employeeIdent, managerIdent).forEach { unavailableIdent ->
+                val effects = mutableListOf<String>()
+                val publisher = RecordingPublisher(effects)
+                val useCase = createEstablisher(effects, publisher = publisher, unavailable = unavailableIdent to failure)
+                useCase.execute(command()) shouldBe EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+                effects shouldBe if (unavailableIdent == employeeIdent) listOf("sykmelding", "employment", "employee") else listOf("sykmelding", "employment", "employee", "manager")
+                publisher.command shouldBe null
+            }
+        }
+
         test("propagates cancellation before later effects") {
             val effects = mutableListOf<String>()
             val failure = CancellationException("cancelled")
@@ -206,6 +219,7 @@ private fun createEstablisher(
     activeFailure: Throwable? = null,
     employment: EmploymentResult = EmploymentResult.InOrganization,
     people: Map<PersonIdent, PersonDetails> = defaultPeople,
+    unavailable: Pair<PersonIdent, UpstreamFailure>? = null,
     metrics: NameValidationMetrics = NameValidationMetrics { effects += "metric" },
     publisher: RecordingPublisher = RecordingPublisher(effects),
 ): EstablishNarmestelederrelasjonUseCase = EstablishNarmestelederrelasjonUseCase(
@@ -220,7 +234,7 @@ private fun createEstablisher(
     },
     PersonLookup { ident ->
         effects += if (ident == employeeIdent) "employee" else "manager"
-        people[ident]
+        if (ident == unavailable?.first) PersonLookupResult.Unavailable(unavailable.second) else people[ident]?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
     },
     metrics,
     publisher,

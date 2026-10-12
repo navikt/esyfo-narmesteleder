@@ -4,6 +4,7 @@ import getMockEngine
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.HttpClient
 import io.ktor.http.Headers
 import io.ktor.http.HttpStatusCode
@@ -11,6 +12,9 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
 import no.nav.syfo.util.httpClientDefault
@@ -21,10 +25,11 @@ class PdlClientTest :
         val mockTexasClient = mockk<TexasHttpClient>()
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
+            coEvery { mockTexasClient.azureAdSystemToken(any()) } returns UpstreamResult.Success("token")
         }
 
         describe("getPerson") {
-            it("should return GetPersonResponse when getPerson responds with 200") {
+            it("returns a PdlPerson when getPerson responds with full data") {
                 val fnr = "12345678901"
                 val getPersonResponse = """
                 {
@@ -65,14 +70,14 @@ class PdlClientTest :
                 )
                 val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
-                val result = client.getPerson(fnr)
+                val result = client.getPerson(fnr).getOrThrow()
 
-                result.data?.person?.navn?.firstOrNull()?.fornavn shouldBe "Ola"
-                result.data?.person?.navn?.firstOrNull()?.etternavn shouldBe "Nordmann"
-                result.data?.identer?.identer?.firstOrNull()?.ident shouldBe fnr
+                result?.person?.navn?.firstOrNull()?.fornavn shouldBe "Ola"
+                result?.person?.navn?.firstOrNull()?.etternavn shouldBe "Nordmann"
+                result?.identer?.firstOrNull()?.ident shouldBe fnr
             }
 
-            it("should throw PdlResourceNotFoundException when response contains error") {
+            it("returns failure when an error has no code") {
                 val fnr = "12345678901"
                 val getPersonResponse = """
                 {
@@ -99,9 +104,9 @@ class PdlClientTest :
                 )
                 val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
-                shouldThrow<PdlResourceNotFoundException> { client.getPerson(fnr) }
+                client.getPerson(fnr).shouldBeInstanceOf<UpstreamResult.Failure>().failure.errors.single().code shouldBe "unknown"
             }
-            it("should throw exception when getPerson responds with non 4xx") {
+            it("returns a response failure when getPerson responds with 4xx") {
                 val fnr = "12345678901"
 
                 val mockEngine = getMockEngine(
@@ -120,10 +125,12 @@ class PdlClientTest :
                 )
                 val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
-                shouldThrow<PdlRequestException> { client.getPerson(fnr) }
+                val failure = client.getPerson(fnr).shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                failure.status shouldBe 400
             }
 
-            it("should throw server exception when getPerson responds with 5xx") {
+            it("returns a response failure when getPerson responds with 5xx") {
                 val fnr = "12345678901"
 
                 val mockEngine = getMockEngine(
@@ -142,7 +149,9 @@ class PdlClientTest :
                 )
                 val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
 
-                shouldThrow<PdlRequestException> { client.getPerson(fnr) }
+                val failure = client.getPerson(fnr).shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                failure.status shouldBe 503
             }
         }
 

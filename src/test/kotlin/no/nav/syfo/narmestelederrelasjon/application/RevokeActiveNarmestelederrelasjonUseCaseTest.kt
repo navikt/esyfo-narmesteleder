@@ -13,6 +13,10 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
 import java.util.UUID
 
@@ -34,6 +38,14 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
             val fixture = RevokeActiveFixture(person = null)
             fixture.execute() shouldBe RevokeActiveNarmestelederrelasjonResult.EmployeeNotFound
             fixture.calls shouldBe listOf("access", "person")
+        }
+
+        test("Unavailable stops before name validation active lookup and publishing") {
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
+            val fixture = RevokeActiveFixture(unavailable = failure)
+            fixture.execute() shouldBe RevokeActiveNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            fixture.calls shouldBe listOf("access", "person")
+            fixture.published shouldBe emptyList()
         }
 
         test("last-name mismatch stops before active relation lookup") {
@@ -77,6 +89,7 @@ private class RevokeActiveFixture(
     registeredNames: List<RegisteredName> = listOf(RegisteredName(name)),
     person: PersonDetails? = PersonDetails(resolved, PersonNameDetails("Test", name, registeredNames = registeredNames)),
     private val active: Boolean = true,
+    unavailable: UpstreamFailure? = null,
 ) {
     val calls = mutableListOf<String>()
     val matches = mutableListOf<LastNameMatch>()
@@ -89,7 +102,7 @@ private class RevokeActiveFixture(
         },
         PersonLookup {
             calls += "person"
-            person
+            unavailable?.let { PersonLookupResult.Unavailable(it) } ?: person?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
         },
         NameValidationMetrics {
             calls += "name"

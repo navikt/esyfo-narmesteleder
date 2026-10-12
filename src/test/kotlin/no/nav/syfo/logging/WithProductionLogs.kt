@@ -9,7 +9,7 @@ import no.nav.esyfo.observability.testkit.captureLogs
 import org.slf4j.LoggerFactory
 
 /** Routes [owner]'s logs through the production Logback encoder, as docs/logging.md requires. */
-internal suspend fun <T> withProductionLogs(owner: Class<*>, block: suspend (LogCapture) -> T): T {
+internal suspend fun withProductionLogs(owner: Class<*>, block: suspend (LogCapture) -> Unit) {
     val context = LoggerContext()
     try {
         context.putProperty("NAIS_CLUSTER_NAME", "test")
@@ -24,7 +24,7 @@ internal suspend fun <T> withProductionLogs(owner: Class<*>, block: suspend (Log
         logger.isAdditive = false
         logger.addAppender(appender)
         try {
-            return captureLogs(logger, "stdout_json").use { block(it) }
+            captureLogs(logger, "stdout_json").use { block(it) }
         } finally {
             logger.detachAppender(appender)
             logger.level = previous.first

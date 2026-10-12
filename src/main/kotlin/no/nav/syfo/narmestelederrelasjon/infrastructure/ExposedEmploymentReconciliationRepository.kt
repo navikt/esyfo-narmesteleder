@@ -28,6 +28,7 @@ import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
@@ -186,32 +187,23 @@ class ExposedEmploymentReconciliationRepository(
         suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             val shadowCutoff = now.minus(31, ChronoUnit.DAYS).atOffset(ZoneOffset.UTC)
             val wouldRevoke = EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE
-            val onlyShadowUnder31Days = countWhere(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt greater shadowCutoff))
-            val onlyShadow31DaysOrMore = countWhere(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt lessEq shadowCutoff))
-            // Includes expired leases, like claimDue.
-            val due = countWhere(EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC))
-            val row = EmploymentReconciliationTable.join(
+
+            fun countActive(condition: Op<Boolean>): Long = EmploymentReconciliationTable.join(
                 otherTable = NarmestelederTable,
                 joinType = JoinType.INNER,
                 onColumn = EmploymentReconciliationTable.narmestelederId,
                 otherColumn = NarmestelederTable.narmestelederId,
-            ).select(onlyShadowUnder31Days, onlyShadow31DaysOrMore, due).where {
-                NarmestelederTable.aktivTom.isNull()
-            }.single()
+            ).selectAll().where {
+                NarmestelederTable.aktivTom.isNull() and condition
+            }.count()
 
             EmploymentCheckStats(
-                onlyShadowUnder31Days = row[onlyShadowUnder31Days],
-                onlyShadow31DaysOrMore = row[onlyShadow31DaysOrMore],
-                due = row[due],
+                onlyShadowUnder31Days = countActive(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt greater shadowCutoff)),
+                onlyShadow31DaysOrMore = countActive(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt lessEq shadowCutoff)),
+                // Includes expired leases, like claimDue.
+                due = countActive(EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC)),
             )
         }
-    }
-}
-
-// count(*) filter (where ...) lets one pass over the relations produce every count.
-private fun countWhere(condition: Op<Boolean>): Expression<Long> = object : Expression<Long>() {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
-        queryBuilder.append("count(*) filter (where ").append(condition).append(")")
     }
 }
 

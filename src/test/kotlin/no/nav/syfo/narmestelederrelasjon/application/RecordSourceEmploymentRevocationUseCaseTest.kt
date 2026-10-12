@@ -26,13 +26,14 @@ class RecordSourceEmploymentRevocationUseCaseTest :
             metrics = RecordingEmploymentCheckMetrics()
         }
 
-        test("notes a recent revocation once, with our own observation time") {
+        test("notes a recent revocation once, with the source's revocation time") {
             val id = UUID.randomUUID()
+            val revokedAt = now.minusSeconds(60)
 
-            useCase().execute(id, revokedAt = now.minusSeconds(60))
-            useCase().execute(id, revokedAt = now.minusSeconds(60))
+            useCase().execute(id, revokedAt)
+            useCase().execute(id, revokedAt)
 
-            repository.observed shouldBe mapOf(id to now)
+            repository.observed shouldBe mapOf(id to revokedAt)
             metrics.observations shouldBe listOf(SourceObservationOutcome.RECORDED, SourceObservationOutcome.ALREADY_RECORDED)
         }
 
@@ -46,7 +47,7 @@ class RecordSourceEmploymentRevocationUseCaseTest :
         test("a database failure is counted and logged without the cause message, and does not reach the consumer") {
             val id = UUID.randomUUID()
             val failing = object : EmploymentReconciliationRepository by repository {
-                override fun recordSourceRevocation(narmesteLederId: UUID, observedAt: Instant): Boolean {
+                override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean {
                     error("private-database-canary")
                 }
             }

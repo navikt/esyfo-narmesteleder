@@ -109,7 +109,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
         }
 
         test("a claim taken over by another pod is counted as lost, without a comparison or a failure log") {
-            repository.claims = listOf(claim.copy(sourceRevocationObservedAt = now))
+            repository.claims = listOf(claim.copy(sourceRevokedAt = now))
             repository.completeSucceeds = false
 
             withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
@@ -122,9 +122,9 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
         }
 
         test("compares with the source's revocation and warns when we would keep the relation") {
-            val agrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevocationObservedAt = now)
-            val disagrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevocationObservedAt = now)
-            val fails = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevocationObservedAt = now)
+            val agrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
+            val disagrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
+            val fails = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
             repository.claims = listOf(agrees, disagrees, fails)
             val histories = listOf(
                 EmploymentHistoryResult.Found(emptyList()),
@@ -148,15 +148,31 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.comparisons shouldBe listOf(EmploymentComparisonResult.AGREE, EmploymentComparisonResult.DISAGREE)
         }
 
-        test("judges a late comparison as of the day the revocation was observed") {
-            val observedAt = now.minusSeconds(10 * 86_400)
-            repository.claims = listOf(claim.copy(sourceRevocationObservedAt = observedAt))
-            // Within four months of the observation, but more than four months before the check.
-            val employment = Employment(claim.organizationNumber, endDate = LocalDate.parse("2025-09-25"))
+        // The rule is judged on the Norwegian date the source revoked the relation, not when we ingest or check it.
+        listOf(
+            ComparisonDateCase(
+                name = "a revocation ingested the next day",
+                revokedAt = Instant.parse("2026-10-11T12:00:00Z"),
+                checkedAt = Instant.parse("2026-10-12T12:00:00Z"),
+                endDate = LocalDate.parse("2026-06-11"),
+                expected = EmploymentComparisonResult.DISAGREE,
+            ),
+            ComparisonDateCase(
+                name = "a revocation just after Norwegian midnight",
+                revokedAt = Instant.parse("2026-06-30T22:30:00Z"),
+                checkedAt = Instant.parse("2026-06-30T22:30:00Z"),
+                endDate = LocalDate.parse("2026-02-28"),
+                expected = EmploymentComparisonResult.AGREE,
+            ),
+        ).forEach { case ->
+            test("judges ${case.name} on the Norwegian date of the source's revocation") {
+                repository.claims = listOf(claim.copy(claimedAt = case.checkedAt, sourceRevokedAt = case.revokedAt))
+                val employment = Employment(claim.organizationNumber, case.endDate)
 
-            useCase { EmploymentHistoryResult.Found(listOf(employment)) }.execute()
+                useCase(clock = Clock.fixed(case.checkedAt, ZoneOffset.UTC)) { EmploymentHistoryResult.Found(listOf(employment)) }.execute()
 
-            metrics.comparisons shouldBe listOf(EmploymentComparisonResult.DISAGREE)
+                metrics.comparisons shouldBe listOf(case.expected)
+            }
         }
 
         test("gives up a lookup that would outlast the claim's lease") {
@@ -178,3 +194,11 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             shouldThrow<CancellationException> { useCase { throw CancellationException("Stopping") }.execute() }
         }
     })
+
+private data class ComparisonDateCase(
+    val name: String,
+    val revokedAt: Instant,
+    val checkedAt: Instant,
+    val endDate: LocalDate,
+    val expected: EmploymentComparisonResult,
+)

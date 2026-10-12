@@ -124,7 +124,7 @@ class ExposedEmploymentReconciliationRepository(
                             employeeIdent = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
                             claimToken = token,
                             claimedAt = now,
-                            sourceRevocationObservedAt = row[EmploymentReconciliationTable.sourceRevocationObservedAt]
+                            sourceRevokedAt = row[EmploymentReconciliationTable.sourceRevocationObservedAt]
                                 .takeIf { row[pending] }
                                 ?.toInstant(),
                         )
@@ -194,7 +194,7 @@ class ExposedEmploymentReconciliationRepository(
         }
     }
 
-    override fun recordSourceRevocation(narmesteLederId: UUID, observedAt: Instant): Boolean = transaction(
+    override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean = transaction(
         db = database,
         transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
     ) {
@@ -209,7 +209,7 @@ class ExposedEmploymentReconciliationRepository(
             (EmploymentReconciliationTable.narmestelederId eq narmesteLederId) and
                 EmploymentReconciliationTable.sourceRevocationObservedAt.isNull()
         }) {
-            it[sourceRevocationObservedAt] = observedAt.atOffset(ZoneOffset.UTC)
+            it[sourceRevocationObservedAt] = revokedAt.atOffset(ZoneOffset.UTC)
         } > 0
         if (firstObservation) {
             EmploymentReconciliationTable.update({
@@ -246,16 +246,16 @@ class ExposedEmploymentReconciliationRepository(
     }
 }
 
-/** Not compared yet: unchecked since the observation, or the check after it failed. */
+/** Not compared yet: unchecked since the source's revocation, or the check after it failed. */
 private fun comparisonPending(now: Instant): Op<Boolean> {
-    val observedAt = EmploymentReconciliationTable.sourceRevocationObservedAt
+    val revokedAt = EmploymentReconciliationTable.sourceRevocationObservedAt
     val lastCheckedAt = EmploymentReconciliationTable.lastCheckedAt
     // isNotNull keeps the selected value false rather than SQL null when nothing was observed.
-    return observedAt.isNotNull() and
-        (observedAt greater now.minus(SOURCE_OBSERVATION_WINDOW).atOffset(ZoneOffset.UTC)) and
+    return revokedAt.isNotNull() and
+        (revokedAt greater now.minus(SOURCE_OBSERVATION_WINDOW).atOffset(ZoneOffset.UTC)) and
         (
             lastCheckedAt.isNull() or
-                (lastCheckedAt less observedAt) or
+                (lastCheckedAt less revokedAt) or
                 (EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.FAILED)
             )
 }

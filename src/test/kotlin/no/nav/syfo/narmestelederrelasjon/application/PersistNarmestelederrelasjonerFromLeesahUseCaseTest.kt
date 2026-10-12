@@ -62,9 +62,9 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
             val invalid = record(relasjon(sykmeldtFnr = "123", sourceEmploymentRevocationAt = now))
             val reconciliations = RecordingEmploymentReconciliationRepository()
             val checkedAfterUpsert = object : EmploymentReconciliationRepository by reconciliations {
-                override fun recordSourceRevocation(narmesteLederId: UUID, observedAt: Instant): Boolean {
+                override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean {
                     repository.calls.size shouldBe 1
-                    return reconciliations.recordSourceRevocation(narmesteLederId, observedAt)
+                    return reconciliations.recordSourceRevocation(narmesteLederId, revokedAt)
                 }
             }
             val observation = RecordSourceEmploymentRevocationUseCase(

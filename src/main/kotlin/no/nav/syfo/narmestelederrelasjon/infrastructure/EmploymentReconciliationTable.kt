@@ -24,8 +24,8 @@ internal enum class EmploymentCheckStatus { READY, CLAIMED }
  *   after a relation ends for the shadow comparison.
  * - `shadow_would_revoke_at` records when shadow mode started deciding the relation would be
  *   revoked; nothing was published. A check that keeps the relation clears it.
- * - `source_revocation_observed_at` records when team sykmelding's revocation
- *   (Leesah `DEAKTIVERT_ARBEIDSFORHOLD`) was observed.
+ * - `source_revocation_observed_at` holds when team sykmelding published its revocation
+ *   (Leesah `DEAKTIVERT_ARBEIDSFORHOLD` `timestamp`); the name comes from V31.
  * - Both timestamps are only for the shadow comparison and will be removed after cutover (#647).
  */
 internal object EmploymentReconciliationTable : Table("narmestelederrelasjon_employment_check") {

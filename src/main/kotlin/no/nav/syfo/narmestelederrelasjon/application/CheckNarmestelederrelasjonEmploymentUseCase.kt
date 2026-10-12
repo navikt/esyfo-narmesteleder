@@ -39,7 +39,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
 
         val now = clock.instant()
         // A comparison judges the relation on the Norwegian date the source revoked it, even if we ingest or check it later.
-        val outcome = decide(claim, history, today = LocalDate.ofInstant(claim.sourceRevocationObservedAt ?: now, NORWEGIAN_TIME))
+        val outcome = decide(claim, history, today = LocalDate.ofInstant(claim.sourceRevokedAt ?: now, NORWEGIAN_TIME))
         if (!repository.complete(claim, outcome, nextCheck = nextCheck(outcome, now), now = now)) {
             // Another pod owns the row now and logs its own check.
             return ClaimedCheckOutcome.CLAIM_LOST
@@ -53,7 +53,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
             EmploymentCheckOutcome.FAILED -> ClaimedCheckOutcome.FAILED
             EmploymentCheckOutcome.REVOKED -> error("Shadow mode never revokes")
         }
-        if (claim.sourceRevocationObservedAt != null) compare(claim, checked)
+        if (claim.sourceRevokedAt != null) compare(claim, checked)
         return checked
     }
 

@@ -33,10 +33,10 @@ interface EmploymentReconciliationRepository {
     suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean
 
     /**
-     * Blocking, for the Leesah consumer. Notes when we observed the source's revocation and makes a READY row
+     * Blocking, for the Leesah consumer. Notes when team sykmelding revoked the relation (Leesah `timestamp`) and makes a READY row
      * due ahead of other checks; a CLAIMED row keeps its lease. Returns false when it was already noted.
      */
-    fun recordSourceRevocation(narmesteLederId: UUID, observedAt: Instant): Boolean
+    fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean
 
     /** Counts over all active relations, for gauges. */
     suspend fun stats(now: Instant): EmploymentCheckStats
@@ -59,8 +59,8 @@ data class ClaimedEmploymentCheck(
     val employeeIdent: PersonIdent,
     val claimToken: UUID,
     val claimedAt: Instant,
-    /** When we observed the recent source revocation this check is compared with; null for a regular check. */
-    val sourceRevocationObservedAt: Instant? = null,
+    /** When team sykmelding revoked the relation this check is compared with; null for a regular check. */
+    val sourceRevokedAt: Instant? = null,
 ) {
     override fun toString(): String = "ClaimedEmploymentCheck(narmesteLederId=$narmesteLederId, claimToken=$claimToken, claimedAt=$claimedAt)"
 }

@@ -8,7 +8,11 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-/** Older revocations are ignored, so a Leesah replay does not affect the comparison. A comparison is also given up this long after we observed the revocation. */
+/**
+ * Older revocations are ignored, so a Leesah replay does not affect the comparison. A comparison is also given up this
+ * long after the source's revocation, so a revocation ingested after six days has about one day left for the comparison
+ * and any retries.
+ */
 internal val SOURCE_OBSERVATION_WINDOW: Duration = Duration.ofDays(7)
 
 /**
@@ -26,7 +30,7 @@ class RecordSourceEmploymentRevocationUseCase(
             val now = clock.instant()
             val outcome = when {
                 revokedAt < now.minus(SOURCE_OBSERVATION_WINDOW) -> SourceObservationOutcome.IGNORED_STALE
-                repository.recordSourceRevocation(narmesteLederId, observedAt = now) -> SourceObservationOutcome.RECORDED
+                repository.recordSourceRevocation(narmesteLederId, revokedAt) -> SourceObservationOutcome.RECORDED
                 else -> SourceObservationOutcome.ALREADY_RECORDED
             }
             metrics.recordObservation(outcome)

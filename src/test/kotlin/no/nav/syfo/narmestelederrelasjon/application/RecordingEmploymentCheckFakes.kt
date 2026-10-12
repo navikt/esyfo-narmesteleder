@@ -58,7 +58,7 @@ internal class RecordingEmploymentReconciliationRepository : EmploymentReconcili
 
     override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean = error("Not used in shadow mode")
 
-    override fun recordSourceRevocation(narmesteLederId: UUID, observedAt: Instant): Boolean = observed.putIfAbsent(narmesteLederId, observedAt) == null
+    override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean = observed.putIfAbsent(narmesteLederId, revokedAt) == null
 
     override suspend fun stats(now: Instant): EmploymentCheckStats = stats
 }

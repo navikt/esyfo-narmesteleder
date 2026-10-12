@@ -368,8 +368,8 @@ class ExposedEmploymentReconciliationRepositoryTest :
 
             val comparison = repository.claimDue(1, 5.minutes, now).single()
             comparison.narmesteLederId shouldBe revoked
-            comparison.sourceRevocationObservedAt shouldBe now
-            repository.claimDue(1, 5.minutes, now).single().sourceRevocationObservedAt shouldBe null
+            comparison.sourceRevokedAt shouldBe now
+            repository.claimDue(1, 5.minutes, now).single().sourceRevokedAt shouldBe null
             repository.complete(comparison, EmploymentCheckOutcome.WOULD_REVOKE, now.plusSeconds(86_400), now.plusSeconds(1)) shouldBe true
 
             repository.claimDue(10, 5.minutes, now.plusSeconds(2 * 86_400)).map { it.narmesteLederId } shouldBe listOf(backlog)
@@ -382,7 +382,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
             repository.complete(first, EmploymentCheckOutcome.FAILED, now.plusSeconds(86_400), now) shouldBe true
 
             val retry = repository.claimDue(1, 5.minutes, now.plusSeconds(86_400)).single()
-            retry.sourceRevocationObservedAt shouldBe now
+            retry.sourceRevokedAt shouldBe now
             repository.complete(retry, EmploymentCheckOutcome.FAILED, now.plusSeconds(7 * 86_400), now.plusSeconds(86_400)) shouldBe true
 
             repository.claimDue(1, 5.minutes, now.plusSeconds(7 * 86_400)) shouldBe emptyList()

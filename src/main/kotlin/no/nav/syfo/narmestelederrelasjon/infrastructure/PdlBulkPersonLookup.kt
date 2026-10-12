@@ -12,11 +12,11 @@ import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
 import no.nav.syfo.integration.pdl.PdlRequestException
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
+import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
-import org.slf4j.LoggerFactory
 
 private const val PDL_CHUNK_SIZE = 100
 
@@ -66,7 +66,7 @@ class PdlBulkPersonLookup(
     }
 
     companion object {
-        private val logger = LoggerFactory.getLogger(PdlBulkPersonLookup::class.java)
+        private val logger = applicationLogger(PdlBulkPersonLookup::class.java)
     }
 }
 

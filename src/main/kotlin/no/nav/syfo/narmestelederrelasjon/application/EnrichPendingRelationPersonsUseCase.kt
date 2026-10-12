@@ -1,17 +1,43 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
+import no.nav.esyfo.observability.Event
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult.Found
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult.NotFound
-import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 
-private val personEnrichmentStalled = applicationEvent<Unit>(
+private const val OPERATION = "enrich_relation_persons"
+
+private data class EnrichmentBatchOutcome(
+    val pendingCount: Int,
+    val enrichedCount: Int,
+    val notFoundCount: Int,
+) {
+    val unchangedCount: Int get() = pendingCount - enrichedCount - notFoundCount
+}
+
+private val personEnrichmentBatchCompleted = Event<EnrichmentBatchOutcome>(
+    name = "person_enrichment_batch_completed",
+    level = Level.INFO,
+    message = "Person enrichment batch completed",
+    operation = OPERATION,
+    fields = mapOf(
+        "pending_count" to { it.pendingCount },
+        "enriched_count" to { it.enrichedCount },
+        "not_found_count" to { it.notFoundCount },
+        "unchanged_count" to { it.unchangedCount },
+    ),
+)
+
+private val personEnrichmentStalled = applicationEvent<Int>(
     name = "person_enrichment_stalled",
     level = Level.WARN,
     message = "Person enrichment stopped because the batch made no progress",
+    operation = OPERATION,
+    fields = mapOf("pending_count" to { it }),
 )
 
 /**
@@ -31,23 +57,20 @@ class EnrichPendingRelationPersonsUseCase(
 
     /** Enriches one batch and returns whether any person in it was updated. */
     private suspend fun enrich(pending: List<PersonIdent>): Boolean {
-        logger.info("Enriching ${pending.size} pending persons from PDL")
-
         val results = personLookup.findAll(pending)
         val enriched = pending.mapNotNull { ident -> (results[ident] as? Found)?.let { ident to it.person } }.toMap()
         val notFound = pending.filter { results[it] is NotFound }
         repository.saveEnrichment(enriched, notFound)
 
-        val updatedCount = enriched.size + notFound.size
-        val unchangedCount = pending.size - updatedCount
-        logger.info("Enrichment done: ${enriched.size} enriched, ${notFound.size} not found, $unchangedCount unchanged")
+        logger.event(personEnrichmentBatchCompleted, EnrichmentBatchOutcome(pending.size, enriched.size, notFound.size))
 
-        if (updatedCount == 0) logger.logEvent(personEnrichmentStalled, Unit)
-        return updatedCount > 0
+        val madeProgress = enriched.isNotEmpty() || notFound.isNotEmpty()
+        if (!madeProgress) logger.logEvent(personEnrichmentStalled, pending.size)
+        return madeProgress
     }
 
     companion object {
-        private val logger = LoggerFactory.getLogger(EnrichPendingRelationPersonsUseCase::class.java)
+        private val logger = applicationLogger(EnrichPendingRelationPersonsUseCase::class.java)
         internal const val BATCH_SIZE = 500
     }
 }

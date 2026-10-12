@@ -170,10 +170,10 @@ disagreement. A failed observation is counted and logged, and never fails
 ingestion. Records older than seven days are ignored, so a replay of old offsets
 does not affect the comparison.
 
-The record's `timestamp`, when team sykmelding revoked the relation, is stored, and
-the rule is judged on its Norwegian date, as the source does. The seven days count
-from that revocation, so a record ingested after six days has about one day left for
-the comparison and any retries.
+We store the record's `timestamp`, which is when team sykmelding revoked the
+relation, and judge the rule on its Norwegian date, as the source does. The seven
+days count from that revocation, so a record ingested after six days has about one
+day left for the comparison and any retries.
 
 A comparison is lost, never wrong, when our own check of the relation runs or
 completes between the source's revocation and our ingestion of it.

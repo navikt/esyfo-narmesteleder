@@ -63,6 +63,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
             val reconciliations = RecordingEmploymentReconciliationRepository()
             val checkedAfterUpsert = object : EmploymentReconciliationRepository by reconciliations {
                 override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean {
+                    // The upsert has committed before the observation runs.
                     repository.calls.size shouldBe 1
                     return reconciliations.recordSourceRevocation(narmesteLederId, revokedAt)
                 }

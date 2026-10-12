@@ -16,9 +16,8 @@ import java.util.UUID
 internal val SOURCE_OBSERVATION_WINDOW: Duration = Duration.ofDays(7)
 
 /**
- * Notes employment-ended revocations from the source, team sykmelding's `narmesteleder-arbeidsforhold` that the
- * shadow check is to replace (#473), so the shadow check can compare. Runs after the Leesah register commit and
- * never fails ingestion.
+ * Notes team sykmelding's employment-ended revocations so the shadow check can compare with them (#473).
+ * Runs after the Leesah register commit and never fails ingestion.
  */
 class RecordSourceEmploymentRevocationUseCase(
     private val repository: EmploymentReconciliationRepository,
@@ -26,19 +25,19 @@ class RecordSourceEmploymentRevocationUseCase(
     private val metrics: EmploymentCheckMetrics,
 ) {
     fun execute(narmesteLederId: UUID, revokedAt: Instant) {
-        try {
-            val now = clock.instant()
-            val outcome = when {
-                revokedAt < now.minus(SOURCE_OBSERVATION_WINDOW) -> SourceObservationOutcome.IGNORED_STALE
-                repository.recordSourceRevocation(narmesteLederId, revokedAt) -> SourceObservationOutcome.RECORDED
-                else -> SourceObservationOutcome.ALREADY_RECORDED
+        val outcome = if (revokedAt < clock.instant().minus(SOURCE_OBSERVATION_WINDOW)) {
+            SourceObservationOutcome.IGNORED_STALE
+        } else {
+            try {
+                if (repository.recordSourceRevocation(narmesteLederId, revokedAt)) SourceObservationOutcome.RECORDED else SourceObservationOutcome.ALREADY_RECORDED
+            } catch (exception: Exception) {
+                // Database errors stay exceptions (ADR-0004); here they must not stop Leesah ingestion.
+                exception.rethrowCancellation()
+                logger.logEvent(employmentCheckSourceObservationFailed, narmesteLederId, cause = exception)
+                SourceObservationOutcome.FAILED
             }
-            metrics.recordObservation(outcome)
-        } catch (exception: Exception) {
-            exception.rethrowCancellation()
-            metrics.recordObservation(SourceObservationOutcome.FAILED)
-            logger.logEvent(employmentCheckSourceObservationFailed, narmesteLederId, cause = exception)
         }
+        metrics.recordObservation(outcome)
     }
 
     companion object {

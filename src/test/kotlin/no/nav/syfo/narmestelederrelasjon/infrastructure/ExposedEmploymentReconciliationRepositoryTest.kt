@@ -375,7 +375,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
             repository.claimDue(10, 5.minutes, now.plusSeconds(2 * 86_400)).map { it.narmesteLederId } shouldBe listOf(backlog)
         }
 
-        test("a failed comparison is retried within seven days of the observation, but not after") {
+        test("a failed comparison is retried within seven days of the source's revocation, but not after") {
             val revoked = insertEmploymentRelation(to = now)
             repository.recordSourceRevocation(revoked, now)
             val first = repository.claimDue(1, 5.minutes, now).single()

@@ -18,6 +18,7 @@ import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
@@ -45,8 +46,9 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
 
         fun useCase(
             settings: EmploymentCheckSettings = EmploymentCheckSettings(),
+            clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
             lookup: EmploymentHistoryLookup,
-        ) = CheckNarmestelederrelasjonEmploymentUseCase(repository, lookup, settings, Clock.fixed(now, ZoneOffset.UTC), metrics)
+        ) = CheckNarmestelederrelasjonEmploymentUseCase(repository, lookup, settings, clock, metrics)
 
         beforeTest {
             repository = RecordingEmploymentReconciliationRepository().apply { claims = listOf(claim) }
@@ -69,6 +71,21 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
 
             repository.completed.single().outcome shouldBe EmploymentCheckOutcome.WOULD_REVOKE
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.WOULD_REVOKE)
+        }
+
+        // Just after Norwegian midnight the UTC date is still the day before, which would keep these relations.
+        listOf(
+            Triple("winter", Instant.parse("2026-01-31T23:30:00Z"), LocalDate.parse("2025-09-30")),
+            Triple("summer", Instant.parse("2026-06-30T22:30:00Z"), LocalDate.parse("2026-02-28")),
+        ).forEach { (season, checkedAt, endDate) ->
+            test("judges the rule on the Norwegian date just after midnight in $season") {
+                repository.claims = listOf(claim.copy(claimedAt = checkedAt))
+                val employment = Employment(claim.organizationNumber, endDate)
+
+                useCase(clock = Clock.fixed(checkedAt, ZoneOffset.UTC)) { EmploymentHistoryResult.Found(listOf(employment)) }.execute()
+
+                metrics.checks shouldBe listOf(ClaimedCheckOutcome.WOULD_REVOKE)
+            }
         }
 
         test("a failed lookup is retried the next day and logged once without personal data") {
@@ -111,7 +128,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
                 // One second is left for a fresh claim, and none for a claim taken two seconds ago.
                 repository.claims = listOf(claim, claim.copy(claimedAt = now.minusSeconds(2)))
 
-                useCase(EmploymentCheckSettings(lease = CLAIM_SAFETY_MARGIN + 1.seconds), halfSecondLookup).execute()
+                useCase(EmploymentCheckSettings(lease = CLAIM_SAFETY_MARGIN + 1.seconds), lookup = halfSecondLookup).execute()
 
                 metrics.checks shouldBe listOf(ClaimedCheckOutcome.WOULD_REVOKE, ClaimedCheckOutcome.TIMEOUT)
             }

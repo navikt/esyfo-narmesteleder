@@ -9,8 +9,12 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset.UTC
 import kotlin.time.toKotlinDuration
+
+// The reference app runs with TZ=Europe/Oslo and judges the rule on LocalDate.now().
+private val NORWEGIAN_TIME: ZoneId = ZoneId.of("Europe/Oslo")
 
 /** Shadow mode: records whether a relation would be revoked. It has no publisher, so it cannot revoke anything. */
 class CheckNarmestelederrelasjonEmploymentUseCase(
@@ -34,7 +38,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         } ?: return ClaimedCheckOutcome.TIMEOUT
 
         val now = clock.instant()
-        val outcome = decide(claim, history, today = LocalDate.ofInstant(now, UTC))
+        val outcome = decide(claim, history, today = LocalDate.ofInstant(now, NORWEGIAN_TIME))
         if (!repository.complete(claim, outcome, nextCheck = nextCheck(outcome, now), now = now)) {
             // Another pod owns the row now and logs its own check.
             return ClaimedCheckOutcome.CLAIM_LOST

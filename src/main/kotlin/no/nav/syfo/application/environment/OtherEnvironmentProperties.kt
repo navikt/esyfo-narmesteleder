@@ -16,6 +16,7 @@ data class OtherEnvironmentProperties(
     val pdlLeesahConsumerEnabled: Boolean,
     val personEnrichmentTaskDelay: String,
     val personEnrichmentTaskEnabled: Boolean,
+    val employmentCheckEnabled: Boolean,
 ) {
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
@@ -37,6 +38,7 @@ data class OtherEnvironmentProperties(
             pdlLeesahConsumerEnabled = getEnvVar("PDL_LEESAH_CONSUMER_ENABLED", "false").toBoolean(),
             personEnrichmentTaskDelay = getEnvVar("PERSON_ENRICHMENT_TASK_DELAY", "5m"),
             personEnrichmentTaskEnabled = getEnvVar("PERSON_ENRICHMENT_TASK_ENABLED", "false").toBoolean(),
+            employmentCheckEnabled = getEnvVar("EMPLOYMENT_CHECK_ENABLED", "false").toBoolean(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -55,6 +57,7 @@ data class OtherEnvironmentProperties(
             pdlLeesahConsumerEnabled = true,
             personEnrichmentTaskDelay = "1m",
             personEnrichmentTaskEnabled = true,
+            employmentCheckEnabled = false,
         )
     }
 }

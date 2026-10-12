@@ -107,7 +107,8 @@ Owns established and revoked narmesteleder relations:
   employment whose workplace has the relation's organization number and that
   has not ended or ended no more than four months ago. Otherwise publish with the
   `narmesteleder-arbeidsforhold` Kafka source. A failed lookup never revokes. The
-  check runs in shadow mode first and publishes only after a separate switch;
+  check runs in shadow mode first (`EMPLOYMENT_CHECK_ENABLED`) and publishes
+  only after a separate switch;
 - publish relation messages;
 - ingest and republish relation events from Leesah. The module owns the
   republished topic's message model; other modules that read Leesah keep their

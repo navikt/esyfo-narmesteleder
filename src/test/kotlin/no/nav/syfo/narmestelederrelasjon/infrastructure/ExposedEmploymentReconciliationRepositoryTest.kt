@@ -14,6 +14,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
 import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
@@ -49,7 +50,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
             TestDB.clearNarmestelederData()
         }
 
-        test("all four repository operations use READ COMMITTED even when the database defaults to REPEATABLE READ") {
+        test("all repository operations use READ COMMITTED even when the database defaults to REPEATABLE READ") {
             insertEmploymentRelation()
             val observedIsolation = mutableListOf<String>()
             withObservedRepository(
@@ -76,6 +77,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
                 assertReadCommitted {
                     observedRepository.complete(claim, EmploymentCheckOutcome.VALID, now.plusSeconds(600), now) shouldBe true
                 }
+                assertReadCommitted { observedRepository.stats(now) }
             }
         }
 
@@ -252,7 +254,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
             row[EmploymentReconciliationTable.shadowWouldRevokeAt] shouldBe null
         }
 
-        test("WOULD_REVOKE records the first shadow timestamp only, across subsequent claims and outcomes") {
+        test("WOULD_REVOKE keeps the timestamp of the first decision in a run, and VALID ends the run") {
             val id = insertEmploymentRelation()
             insertControlRow(id, now)
             val first = repository.claimDue(1, 5.minutes, now).single()
@@ -260,11 +262,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
             repository.complete(first, EmploymentCheckOutcome.WOULD_REVOKE, now.plusSeconds(20), firstShadow) shouldBe true
             controlRow(id)[EmploymentReconciliationTable.shadowWouldRevokeAt]?.toInstant() shouldBe firstShadow
 
-            val second = repository.claimDue(1, 5.minutes, now.plusSeconds(20)).single()
-            repository.complete(second, EmploymentCheckOutcome.WOULD_REVOKE, now.plusSeconds(30), now.plusSeconds(21)) shouldBe true
-            controlRow(id)[EmploymentReconciliationTable.shadowWouldRevokeAt]?.toInstant() shouldBe firstShadow
-
-            listOf(EmploymentCheckOutcome.VALID, EmploymentCheckOutcome.REVOKED, EmploymentCheckOutcome.FAILED).forEach { outcome ->
+            listOf(EmploymentCheckOutcome.WOULD_REVOKE, EmploymentCheckOutcome.REVOKED, EmploymentCheckOutcome.FAILED).forEach { outcome ->
                 val claim = repository.claimDue(1, 5.minutes, now.plusSeconds(30)).single()
                 repository.complete(claim, outcome, now.plusSeconds(30), now.plusSeconds(31)) shouldBe true
                 val row = controlRow(id)
@@ -272,6 +270,10 @@ class ExposedEmploymentReconciliationRepositoryTest :
                 row[EmploymentReconciliationTable.lastOutcome] shouldBe outcome
                 row[EmploymentReconciliationTable.claimToken] shouldBe null
             }
+
+            val kept = repository.claimDue(1, 5.minutes, now.plusSeconds(30)).single()
+            repository.complete(kept, EmploymentCheckOutcome.VALID, now.plusSeconds(40), now.plusSeconds(32)) shouldBe true
+            controlRow(id)[EmploymentReconciliationTable.shadowWouldRevokeAt] shouldBe null
         }
 
         test("claim validity requires a current unexpired token and that exact relation to remain active") {
@@ -325,6 +327,19 @@ class ExposedEmploymentReconciliationRepositoryTest :
             }
             repository.isClaimStillValid(claim, now) shouldBe false
             controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
+        }
+
+        test("stats count due and would-revoke relations by age, for active relations only") {
+            insertControlRow(insertEmploymentRelation(), now, EmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 30) // Due.
+            insertControlRow(insertEmploymentRelation(), now.plusSeconds(1), EmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 31)
+            insertControlRow(insertEmploymentRelation(), now.plusSeconds(1), EmploymentCheckOutcome.VALID)
+            insertControlRow(insertEmploymentRelation(), now) // Due, never checked.
+            insertControlRow(insertEmploymentRelation(to = now), now, EmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 40) // Ended.
+            insertControlRow(UUID.randomUUID(), now) // No relation.
+            insertControlRow(insertEmploymentRelation(), now.minusSeconds(300))
+            repository.claimDue(1, 5.minutes, now.minusSeconds(300)) // Due, because the lease expires at now.
+
+            repository.stats(now) shouldBe EmploymentCheckStats(onlyShadowUnder31Days = 1, onlyShadow31DaysOrMore = 1, due = 3)
         }
     })
 
@@ -381,12 +396,19 @@ private fun controlRow(id: UUID) = transaction(TestDB.exposedDatabase) {
     }.single()
 }
 
-private fun insertControlRow(id: UUID, due: Instant) {
+private fun insertControlRow(
+    id: UUID,
+    due: Instant,
+    outcome: EmploymentCheckOutcome? = null,
+    wouldRevokeDaysAgo: Long? = null,
+) {
     transaction(TestDB.exposedDatabase) {
         EmploymentReconciliationTable.insert {
             it[narmestelederId] = id
             it[status] = EmploymentCheckStatus.READY
             it[nextCheckAt] = due.atOffset(ZoneOffset.UTC)
+            it[lastOutcome] = outcome
+            it[shadowWouldRevokeAt] = wouldRevokeDaysAgo?.let { days -> now.minusSeconds(days * 86_400).atOffset(ZoneOffset.UTC) }
         }
     }
 }

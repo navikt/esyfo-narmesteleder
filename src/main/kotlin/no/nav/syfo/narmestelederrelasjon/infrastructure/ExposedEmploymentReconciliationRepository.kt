@@ -7,11 +7,13 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentReconciliationRepository
 import org.jetbrains.exposed.v1.core.Coalesce
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.QueryBuilder
 import org.jetbrains.exposed.v1.core.QueryParameter
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -32,6 +34,7 @@ import java.sql.Connection
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.toJavaDuration
@@ -152,6 +155,9 @@ class ExposedEmploymentReconciliationRepository(
                         shadowWouldRevokeAt,
                         QueryParameter(now.atOffset(ZoneOffset.UTC), shadowWouldRevokeAt.columnType),
                     )
+                } else if (outcome == EmploymentCheckOutcome.VALID) {
+                    // Keeping the relation ends a run of would-revoke decisions; a failed lookup does not.
+                    it[shadowWouldRevokeAt] = null
                 }
             } > 0
         }
@@ -174,6 +180,38 @@ class ExposedEmploymentReconciliationRepository(
                     NarmestelederTable.aktivTom.isNull()
             }.empty()
         }
+    }
+
+    override suspend fun stats(now: Instant): EmploymentCheckStats = withContext(dispatcher) {
+        suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            val shadowCutoff = now.minus(31, ChronoUnit.DAYS).atOffset(ZoneOffset.UTC)
+            val wouldRevoke = EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE
+            val onlyShadowUnder31Days = countWhere(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt greater shadowCutoff))
+            val onlyShadow31DaysOrMore = countWhere(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt lessEq shadowCutoff))
+            // Includes expired leases, like claimDue.
+            val due = countWhere(EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC))
+            val row = EmploymentReconciliationTable.join(
+                otherTable = NarmestelederTable,
+                joinType = JoinType.INNER,
+                onColumn = EmploymentReconciliationTable.narmestelederId,
+                otherColumn = NarmestelederTable.narmestelederId,
+            ).select(onlyShadowUnder31Days, onlyShadow31DaysOrMore, due).where {
+                NarmestelederTable.aktivTom.isNull()
+            }.single()
+
+            EmploymentCheckStats(
+                onlyShadowUnder31Days = row[onlyShadowUnder31Days],
+                onlyShadow31DaysOrMore = row[onlyShadow31DaysOrMore],
+                due = row[due],
+            )
+        }
+    }
+}
+
+// count(*) filter (where ...) lets one pass over the relations produce every count.
+private fun countWhere(condition: Op<Boolean>): Expression<Long> = object : Expression<Long>() {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+        queryBuilder.append("count(*) filter (where ").append(condition).append(")")
     }
 }
 

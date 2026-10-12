@@ -38,7 +38,8 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         } ?: return ClaimedCheckOutcome.TIMEOUT
 
         val now = clock.instant()
-        val outcome = decide(claim, history, today = LocalDate.ofInstant(now, NORWEGIAN_TIME))
+        // A comparison judges the relation on the Norwegian date the source revoked it, even if we ingest or check it later.
+        val outcome = decide(claim, history, today = LocalDate.ofInstant(claim.sourceRevocationObservedAt ?: now, NORWEGIAN_TIME))
         if (!repository.complete(claim, outcome, nextCheck = nextCheck(outcome, now), now = now)) {
             // Another pod owns the row now and logs its own check.
             return ClaimedCheckOutcome.CLAIM_LOST
@@ -46,11 +47,25 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         if (history is EmploymentHistoryResult.Unavailable) {
             logger.logEvent(employmentCheckFailed, claim.narmesteLederId, upstreamFailure = history.failure)
         }
-        return when (outcome) {
+        val checked = when (outcome) {
             EmploymentCheckOutcome.VALID -> ClaimedCheckOutcome.VALID
             EmploymentCheckOutcome.WOULD_REVOKE -> ClaimedCheckOutcome.WOULD_REVOKE
             EmploymentCheckOutcome.FAILED -> ClaimedCheckOutcome.FAILED
             EmploymentCheckOutcome.REVOKED -> error("Shadow mode never revokes")
+        }
+        if (claim.sourceRevocationObservedAt != null) compare(claim, checked)
+        return checked
+    }
+
+    /** Only for a relation team sykmelding revoked because the employment ended. A failed lookup is compared when it is retried. */
+    private fun compare(claim: ClaimedEmploymentCheck, checked: ClaimedCheckOutcome) {
+        when (checked) {
+            ClaimedCheckOutcome.WOULD_REVOKE -> metrics.recordComparison(EmploymentComparisonResult.AGREE)
+            ClaimedCheckOutcome.VALID -> {
+                metrics.recordComparison(EmploymentComparisonResult.DISAGREE)
+                logger.event(employmentCheckComparisonMismatch, claim.narmesteLederId)
+            }
+            ClaimedCheckOutcome.FAILED, ClaimedCheckOutcome.CLAIM_LOST, ClaimedCheckOutcome.TIMEOUT -> Unit
         }
     }
 

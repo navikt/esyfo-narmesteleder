@@ -108,7 +108,8 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.FAILED)
         }
 
-        test("a claim taken over by another pod is counted as lost and not logged as a failure") {
+        test("a claim taken over by another pod is counted as lost, without a comparison or a failure log") {
+            repository.claims = listOf(claim.copy(sourceRevocationObservedAt = now))
             repository.completeSucceeds = false
 
             withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
@@ -117,6 +118,45 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
                 capture.records shouldBe emptyList()
             }
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.CLAIM_LOST)
+            metrics.comparisons shouldBe emptyList()
+        }
+
+        test("compares with the source's revocation and warns when we would keep the relation") {
+            val agrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevocationObservedAt = now)
+            val disagrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevocationObservedAt = now)
+            val fails = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevocationObservedAt = now)
+            repository.claims = listOf(agrees, disagrees, fails)
+            val histories = listOf(
+                EmploymentHistoryResult.Found(emptyList()),
+                EmploymentHistoryResult.Found(listOf(Employment(claim.organizationNumber, null))),
+                EmploymentHistoryResult.Unavailable(aaregFailure),
+            ).iterator()
+
+            withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
+                useCase { histories.next() }.execute()
+
+                RuntimeLogContract.forEvents(
+                    employmentCheckComparisonMismatch,
+                    employmentCheckFailed,
+                    exceptionTypes = setOf("IllegalStateException"),
+                ).assertValid(capture.records, expectedCount = 2)
+                val mismatch = capture.records.map { jacksonObjectMapper().readTree(it) }
+                    .single { it["event_type"].asText() == "employment_check_comparison_mismatch" }
+                mismatch["narmesteleder_id"].asText() shouldBe disagrees.narmesteLederId.toString()
+            }
+            // The failed check is compared when it is retried.
+            metrics.comparisons shouldBe listOf(EmploymentComparisonResult.AGREE, EmploymentComparisonResult.DISAGREE)
+        }
+
+        test("judges a late comparison as of the day the revocation was observed") {
+            val observedAt = now.minusSeconds(10 * 86_400)
+            repository.claims = listOf(claim.copy(sourceRevocationObservedAt = observedAt))
+            // Within four months of the observation, but more than four months before the check.
+            val employment = Employment(claim.organizationNumber, endDate = LocalDate.parse("2025-09-25"))
+
+            useCase { EmploymentHistoryResult.Found(listOf(employment)) }.execute()
+
+            metrics.comparisons shouldBe listOf(EmploymentComparisonResult.DISAGREE)
         }
 
         test("gives up a lookup that would outlast the claim's lease") {

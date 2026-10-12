@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon
 
+import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.CheckNarmestelederrelasjonEmploymentUseCase
@@ -25,6 +26,7 @@ import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjo
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
+import no.nav.syfo.narmestelederrelasjon.application.RecordSourceEmploymentRevocationUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase
@@ -85,11 +87,19 @@ fun narmestelederrelasjonModule() = module {
     single<RevokeNarmestelederrelasjonFromSendtSykmelding> { RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase(get()) }
     single<LeesahNarmestelederrelasjonRepository> { ExposedLeesahNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
     single<NarmestelederRegisterMetrics> { MicrometerNarmestelederRegisterMetrics() }
-    single { PersistNarmestelederrelasjonerFromLeesahUseCase(get(), get()) }
+    single {
+        val observeSource = get<Environment>().otherProperties.employmentCheckObserveSourceEnabled
+        PersistNarmestelederrelasjonerFromLeesahUseCase(
+            repository = get(),
+            metrics = get(),
+            recordSourceEmploymentRevocation = if (observeSource) get() else null,
+        )
+    }
     single { EmploymentCheckSettings() }
     single<EmploymentHistoryLookup> { AaregEmploymentHistoryLookup(get()) }
     single<EmploymentReconciliationRepository> { ExposedEmploymentReconciliationRepository(get<ExposedDatabase>()) }
     single<EmploymentCheckMetrics> { MicrometerEmploymentCheckMetrics() }
     single { CheckNarmestelederrelasjonEmploymentUseCase(get(), get(), get(), get(), get()) }
     single { SeedNarmestelederrelasjonEmploymentChecksUseCase(get(), get(), get(), get()) }
+    single { RecordSourceEmploymentRevocationUseCase(get(), get(), get()) }
 }

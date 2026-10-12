@@ -10,6 +10,7 @@ import no.nav.syfo.application.metric.bindJvmAndProcessMetrics
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkModule
 import no.nav.syfo.plugins.applicationModules
 import no.nav.syfo.plugins.configureBackgroundTasks
+import no.nav.syfo.plugins.configureEmploymentChecks
 import no.nav.syfo.plugins.configureKafkaConsumers
 import no.nav.syfo.plugins.configureLeaderMonitoring
 import no.nav.syfo.plugins.configureLifecycleHooks
@@ -42,4 +43,5 @@ fun Application.module() {
     narmestelederstatistikkModule()
     configureKafkaConsumers()
     configureBackgroundTasks()
+    configureEmploymentChecks()
 }

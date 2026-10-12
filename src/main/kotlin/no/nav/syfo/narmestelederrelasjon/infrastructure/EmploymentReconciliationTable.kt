@@ -22,8 +22,8 @@ internal enum class EmploymentCheckStatus { READY, CLAIMED }
  * - `claim_token` is set only while CLAIMED and fences writes from a pod that lost its claim.
  * - No foreign key to `narmeste_leder`: Leesah events may arrive in any order, and rows are kept
  *   after a relation ends for the shadow comparison.
- * - `shadow_would_revoke_at` records the first time shadow mode decided the relation would be
- *   revoked; nothing was published.
+ * - `shadow_would_revoke_at` records when shadow mode started deciding the relation would be
+ *   revoked; nothing was published. A check that keeps the relation clears it.
  * - `source_revocation_observed_at` records when team sykmelding's revocation
  *   (Leesah `DEAKTIVERT_ARBEIDSFORHOLD`) was observed.
  * - Both timestamps are only for the shadow comparison and will be removed after cutover (#647).

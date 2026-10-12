@@ -28,7 +28,21 @@ interface EmploymentReconciliationRepository {
 
     /** Checks the active relation still matches the claimed employee and organization; not a lock over external effects. */
     suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean
+
+    /** Counts over all active relations, for gauges. */
+    suspend fun stats(now: Instant): EmploymentCheckStats
 }
+
+/**
+ * Counts over active relations. `onlyShadow*` are relations the shadow check would revoke but team sykmelding has
+ * not; after 31 days team sykmelding has checked them too, since it checks each relation about once a month.
+ * [due] is the backlog; it is near zero once the first sweep is done.
+ */
+data class EmploymentCheckStats(
+    val onlyShadowUnder31Days: Long,
+    val onlyShadow31DaysOrMore: Long,
+    val due: Long,
+)
 
 data class ClaimedEmploymentCheck(
     val narmesteLederId: UUID,

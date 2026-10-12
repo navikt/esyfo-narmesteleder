@@ -2,9 +2,14 @@ package no.nav.syfo.narmestelederrelasjon
 
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.application.CheckNarmestelederrelasjonEmploymentUseCase
 import no.nav.syfo.narmestelederrelasjon.application.DiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckMetrics
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckSettings
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentHistoryLookup
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
+import no.nav.syfo.narmestelederrelasjon.application.EmploymentReconciliationRepository
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
@@ -25,19 +30,23 @@ import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
+import no.nav.syfo.narmestelederrelasjon.application.SeedNarmestelederrelasjonEmploymentChecksUseCase
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentHistoryLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.CachedPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EregNarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedEmployeeNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedEmploymentReconciliationRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedLeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonSearchRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.infrastructure.KafkaPublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerEmploymentCheckMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNarmestelederRegisterMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
@@ -77,4 +86,10 @@ fun narmestelederrelasjonModule() = module {
     single<LeesahNarmestelederrelasjonRepository> { ExposedLeesahNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
     single<NarmestelederRegisterMetrics> { MicrometerNarmestelederRegisterMetrics() }
     single { PersistNarmestelederrelasjonerFromLeesahUseCase(get(), get()) }
+    single { EmploymentCheckSettings() }
+    single<EmploymentHistoryLookup> { AaregEmploymentHistoryLookup(get()) }
+    single<EmploymentReconciliationRepository> { ExposedEmploymentReconciliationRepository(get<ExposedDatabase>()) }
+    single<EmploymentCheckMetrics> { MicrometerEmploymentCheckMetrics() }
+    single { CheckNarmestelederrelasjonEmploymentUseCase(get(), get(), get(), get(), get()) }
+    single { SeedNarmestelederrelasjonEmploymentChecksUseCase(get(), get(), get(), get()) }
 }

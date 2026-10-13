@@ -25,7 +25,7 @@ swagger = "3.6.0"
 ktlint = "14.2.0"
 valkey-version = "5.5.0"
 exposed-version = "1.5.0"
-netty = "4.2.18.Final"
+netty = "4.2.19.Final"
 testLogger = "4.0.0"
 
 [libraries]

@@ -20,11 +20,19 @@ enum class UpstreamFailureStage(val logValue: String) {
     RESPONSE("response"),
 }
 
+/** [message] is logged; set it only when the upstream documents that its error messages contain no personal data. */
+data class UpstreamError(val code: String, val detail: String? = null, val path: String? = null, val message: String? = null)
+
 data class UpstreamFailure(
     val upstream: UpstreamName,
     val stage: UpstreamFailureStage,
     val status: Int?,
-    val cause: Throwable,
+    val cause: Throwable? = null,
+    val errors: List<UpstreamError> = emptyList(),
 ) {
-    override fun toString(): String = "UpstreamFailure(upstream=$upstream, stage=$stage, status=$status, cause=${cause.javaClass.simpleName})"
+    init {
+        require(cause != null || errors.isNotEmpty())
+    }
+
+    override fun toString(): String = "UpstreamFailure(upstream=$upstream, stage=$stage, status=$status, cause=${cause?.javaClass?.simpleName}, errorCount=${errors.size})"
 }

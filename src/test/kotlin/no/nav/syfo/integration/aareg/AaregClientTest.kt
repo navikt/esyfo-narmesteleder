@@ -215,7 +215,7 @@ class AaregClientTest :
                 result.failure.upstream shouldBe AAREG
                 result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
                 result.failure.status shouldBe 200
-                result.failure.cause.javaClass.simpleName shouldBe "JsonConvertException"
+                result.failure.cause?.javaClass?.simpleName shouldBe "JsonConvertException"
                 result.shouldNotExposePersonIdent(personIdent)
             }
 

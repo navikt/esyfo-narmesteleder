@@ -11,6 +11,7 @@ internal val getNarmestelederbehovRejected = Event<GetNarmestelederbehovResult>(
     fields = mapOf(
         "outcome_code" to {
             when (it) {
+                is GetNarmestelederbehovResult.UpstreamUnavailable -> error("Upstream failures are logged at the edge")
                 is GetNarmestelederbehovResult.Found -> error("A found behov cannot be rejected")
                 GetNarmestelederbehovResult.NotFound -> "NOT_FOUND"
                 is GetNarmestelederbehovResult.AccessDenied -> "ACCESS_DENIED"

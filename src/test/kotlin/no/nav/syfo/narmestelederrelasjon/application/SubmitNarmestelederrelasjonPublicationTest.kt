@@ -33,9 +33,9 @@ class SubmitNarmestelederrelasjonPublicationTest :
                     EmploymentLookup { _, _ -> EmploymentResult.InOrganization },
                     PersonLookup { ident ->
                         when (ident) {
-                            employee -> PersonDetails(employee, name("Employee", "Middle", "Employee"))
-                            manager -> PersonDetails(manager, name("Manager", "Other", "Manager"))
-                            else -> null
+                            employee -> PersonLookupResult.Found(PersonDetails(employee, name("Employee", "Middle", "Employee")))
+                            manager -> PersonLookupResult.Found(PersonDetails(manager, name("Manager", "Other", "Manager")))
+                            else -> PersonLookupResult.NotFound
                         }
                     },
                     NameValidationMetrics { },

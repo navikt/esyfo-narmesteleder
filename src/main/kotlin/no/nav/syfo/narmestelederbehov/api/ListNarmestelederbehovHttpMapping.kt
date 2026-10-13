@@ -2,6 +2,7 @@ package no.nav.syfo.narmestelederbehov.api
 
 import io.ktor.server.routing.RoutingCall
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmesteleder.api.v1.getRequiredOrganizationNumberQueryParameter
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovQuery
@@ -23,6 +24,7 @@ fun RoutingCall.toListNarmestelederbehovQuery(): ListNarmestelederbehovQuery {
 }
 
 fun ListNarmestelederbehovResult.toLinemanagerRequirementCollection(pageSize: Int): LinemanagerRequirementCollection = when (this) {
+    is ListNarmestelederbehovResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()
     is ListNarmestelederbehovResult.Listed -> LinemanagerRequirementCollection(
         linemanagerRequirements = behov.map { it.behov.toLinemanagerRequirementRead(it.name, organizationName) },
         meta = PageInfo(size = behov.size, pageSize = pageSize, hasMore = hasMore, total = total),

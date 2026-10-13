@@ -24,6 +24,7 @@ import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
 import no.nav.syfo.integration.pdl.ResponseError
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
+import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -122,6 +123,43 @@ class RuntimeDiagnosticsTest :
                         record.has("upstream_status") shouldBe false
                         record["cause_type"].asText() shouldBe "ConnectException"
                         record["failure_kind"].asText() shouldBe "connection"
+                    }
+                }
+            }
+        }
+
+        "error responses log upstream_errors without exception metadata or stack through both overloads" {
+            val failure = UpstreamFailure(
+                UpstreamName("pdl"),
+                UpstreamFailureStage.RESPONSE,
+                200,
+                errors = listOf(UpstreamError("server_error", "technical_id", "hentPerson.navn", "Ukjent problem oppsto"), UpstreamError("unknown")),
+            )
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
+                    createLogger(logger).logEvent(
+                        diagnosticTestEvent,
+                        Unit,
+                        cause = ApiErrorException.InternalServerErrorException("private-canary"),
+                        upstreamFailure = failure,
+                    )
+                    RuntimeLogContract.forEvents(diagnosticTestEvent).assertValid(capture.records, expectedCount = 2)
+                    capture.records.forEach { serialized ->
+                        serialized shouldNotContain "private-canary"
+                        val record = jacksonObjectMapper().readTree(serialized)
+                        record["failure_kind"].asText() shouldBe "error_response"
+                        record["upstream"].asText() shouldBe "pdl"
+                        record["failure_stage"].asText() shouldBe "response"
+                        record["upstream_status"].asInt() shouldBe 200
+                        record["upstream_errors"][0]["code"].asText() shouldBe "server_error"
+                        record["upstream_errors"][0]["detail"].asText() shouldBe "technical_id"
+                        record["upstream_errors"][0]["path"].asText() shouldBe "hentPerson.navn"
+                        record["upstream_errors"][0]["message"].asText() shouldBe "Ukjent problem oppsto"
+                        record["upstream_errors"].size() shouldBe 2
+                        record.has("stack_trace") shouldBe false
+                        record.has("exception_type") shouldBe false
+                        record.has("cause_type") shouldBe false
                     }
                 }
             }

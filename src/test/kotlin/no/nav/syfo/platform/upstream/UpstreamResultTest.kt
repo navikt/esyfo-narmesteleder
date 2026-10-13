@@ -41,4 +41,27 @@ class UpstreamResultTest :
             exception.message.orEmpty() shouldNotContain syntheticIdent
             failure.toString() shouldNotContain syntheticIdent
         }
+
+        test("a failure requires a cause or at least one error") {
+            shouldThrow<IllegalArgumentException> {
+                UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200)
+            }
+        }
+
+        test("legacy bridge accepts error responses without a cause and does not copy their contents into its message") {
+            val failure = UpstreamFailure(
+                UpstreamName("pdl"),
+                UpstreamFailureStage.RESPONSE,
+                200,
+                errors = listOf(UpstreamError("server_error", "technical_id", "hentPerson.navn")),
+            )
+            val exception = shouldThrow<UpstreamRequestException> { UpstreamResult.Failure(failure).getOrThrow() }
+            exception.cause shouldBe null
+            exception.upstream shouldBe "pdl"
+            exception.upstreamStatus shouldBe 200
+            exception.failureStage shouldBe UpstreamFailureStage.RESPONSE
+            exception.message shouldBe "pdl failed at response"
+            failure.toString() shouldNotContain "technical_id"
+            failure.toString() shouldNotContain "hentPerson.navn"
+        }
     })

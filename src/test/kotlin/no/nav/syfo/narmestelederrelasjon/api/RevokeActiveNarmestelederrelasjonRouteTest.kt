@@ -32,7 +32,7 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.integration.pdl.PdlRequestException
+import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
@@ -43,6 +43,7 @@ import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
+import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
@@ -58,6 +59,10 @@ import no.nav.syfo.narmestelederrelasjon.observability.COUNT_REVOKE_LINEMANAGER_
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
@@ -174,15 +179,18 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("PDL technical failures become generic 500 without publishing") {
-            val fixture = RevokeRouteFixture(failure = PdlRequestException("PDL unavailable"))
+        test("upstream failures return HTTP 500 with UPSTREAM_SERVICE_UNAVAILABLE") {
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
+            val fixture = RevokeRouteFixture(unavailable = failure)
             fixture.authorize("maskinporten")
-            fixture.withApplication {
-                client.revoke().let {
-                    it.status shouldBe HttpStatusCode.InternalServerError
-                    it.body<ApiError>().let { error ->
-                        error.type shouldBe ErrorType.INTERNAL_SERVER_ERROR
-                        error.message shouldBe "Internal server error"
+            assertSingleUpstreamFailureLog {
+                fixture.withApplication {
+                    client.revoke().let {
+                        it.status shouldBe HttpStatusCode.InternalServerError
+                        it.body<ApiError>().let { error ->
+                            error.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                            error.message shouldBe "An upstream service is unavailable"
+                        }
                     }
                 }
             }
@@ -196,7 +204,7 @@ private class RevokeRouteFixture(
     private val person: PersonDetails? = PersonDetails(resolvedIdent, PersonNameDetails("Test", name, registeredNames = listOf(RegisteredName(name)))),
     private val managerEmail: String = "manager@example.test",
     private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
-    private val failure: Exception? = null,
+    private val unavailable: UpstreamFailure? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
     val lookups = mutableListOf<PersonIdent>()
@@ -210,8 +218,7 @@ private class RevokeRouteFixture(
     private val useCase = RevokeActiveNarmestelederrelasjonUseCase(
         access,
         PersonLookup {
-            failure?.let { throw it }
-            person
+            unavailable?.let { PersonLookupResult.Unavailable(it) } ?: person?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
         },
         MicrometerNameValidationMetrics(),
         object : ActiveNarmestelederrelasjonRepository {

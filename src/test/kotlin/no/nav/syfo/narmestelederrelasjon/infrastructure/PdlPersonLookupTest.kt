@@ -1,90 +1,52 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.pdl.GetPersonBolkResponse
-import no.nav.syfo.integration.pdl.GetPersonResponse
 import no.nav.syfo.integration.pdl.Ident
-import no.nav.syfo.integration.pdl.IdentResponse
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.integration.pdl.PdlClient
-import no.nav.syfo.integration.pdl.PdlRequestException
-import no.nav.syfo.integration.pdl.PdlResourceNotFoundException
+import no.nav.syfo.integration.pdl.PdlPerson
 import no.nav.syfo.integration.pdl.PersonResponse
-import no.nav.syfo.integration.pdl.ResponseData
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
+import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 
 class PdlPersonLookupTest :
     FunSpec({
-        val personIdent = PersonIdent("12345678901")
+        val ident = PersonIdent("12345678901")
+        val person = PdlPerson(
+            PersonResponse(listOf(Navn("Test", "Middle", "Name"), Navn("Test", null, "Previous"))),
+            listOf(Ident(ident.value, Ident.GRUPPE_IDENT_FNR)),
+        )
 
-        test("maps a found person to person details") {
-            val lookup = lookupReturning(
-                responseWith(
-                    navn = listOf(Navn("Ola", "Mellom", "Nordmann"), Navn("Ola", null, "Tidligere")),
-                    fnr = personIdent.value,
-                ),
-            )
-
-            lookup.find(personIdent) shouldBe PersonDetails(
-                personIdent,
-                PersonNameDetails(
-                    firstName = "Ola",
-                    middleName = "Mellom",
-                    lastName = "Nordmann",
-                    registeredNames = listOf(RegisteredName("Nordmann", "Mellom"), RegisteredName("Tidligere", null)),
-                ),
+        test("maps the resolved ident and registered names") {
+            PdlPersonLookup(StubPdlClient(UpstreamResult.Success(person))).find(ident) shouldBe PersonLookupResult.Found(
+                PersonDetails(ident, PersonNameDetails("Test", "Name", "Middle", listOf(RegisteredName("Name", "Middle"), RegisteredName("Previous", null)))),
             )
         }
 
-        test("returns null when PDL has no name for the person") {
-            lookupReturning(responseWith(navn = emptyList(), fnr = personIdent.value))
-                .find(personIdent)
-                .shouldBeNull()
-        }
-
-        test("returns null when PDL has no national identification number for the person") {
-            lookupReturning(responseWith(navn = listOf(Navn("Ola", null, "Nordmann")), fnr = null))
-                .find(personIdent)
-                .shouldBeNull()
-        }
-
-        test("returns null when PDL reports the person as not found") {
-            PdlPersonLookup(StubPdlClient { throw PdlResourceNotFoundException("Did not find person in PDL") })
-                .find(personIdent)
-                .shouldBeNull()
-        }
-
-        test("propagates request errors from the client") {
-            shouldThrow<PdlRequestException> {
-                PdlPersonLookup(StubPdlClient { throw PdlRequestException("Error when calling PDL") }).find(personIdent)
+        test("not found and missing name or folkeregisterident give NotFound") {
+            listOf(null, person.copy(person = PersonResponse(emptyList())), person.copy(identer = emptyList())).forEach {
+                PdlPersonLookup(StubPdlClient(UpstreamResult.Success(it))).find(ident) shouldBe PersonLookupResult.NotFound
             }
         }
 
-        test("treats a response without data as a request error") {
-            shouldThrow<PdlRequestException> {
-                lookupReturning(GetPersonResponse(data = null, errors = null)).find(personIdent)
-            }
+        test("propagates failure as Unavailable without interpreting the protocol") {
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
+            PdlPersonLookup(StubPdlClient(UpstreamResult.Failure(failure))).find(ident) shouldBe PersonLookupResult.Unavailable(failure)
         }
     })
 
-private fun lookupReturning(response: GetPersonResponse) = PdlPersonLookup(StubPdlClient { response })
-
-private fun responseWith(navn: List<Navn>, fnr: String?) = GetPersonResponse(
-    data = ResponseData(
-        person = PersonResponse(navn = navn),
-        identer = IdentResponse(listOfNotNull(fnr?.let { Ident(it, Ident.GRUPPE_IDENT_FNR) })),
-    ),
-    errors = null,
-)
-
-private class StubPdlClient(private val getPerson: () -> GetPersonResponse) : PdlClient {
+private class StubPdlClient(private val result: UpstreamResult<PdlPerson?>) : PdlClient {
+    override suspend fun getPerson(ident: String) = result
     override suspend fun getSystemToken(): String = error("Not used")
-    override suspend fun getPerson(fnr: String): GetPersonResponse = getPerson()
     override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse = error("Not used")
 }

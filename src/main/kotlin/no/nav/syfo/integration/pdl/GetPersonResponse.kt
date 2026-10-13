@@ -7,6 +7,8 @@ data class GetPersonResponse(
     val errors: List<ResponseError>?,
 )
 
+data class PdlPerson(val person: PersonResponse, val identer: List<Ident>)
+
 data class ResponseData(
     val person: PersonResponse?,
     val identer: IdentResponse?,
@@ -58,6 +60,7 @@ data class ErrorExtension(
     val code: String?,
     val details: ErrorDetails?,
     val classification: String?,
+    val id: String? = null,
 )
 
 data class ErrorDetails(

@@ -2,17 +2,18 @@ package no.nav.syfo.integration.pdl
 
 import net.datafaker.Faker
 import no.nav.syfo.integration.pdl.Ident.Companion.GRUPPE_IDENT_FNR
+import no.nav.syfo.platform.upstream.UpstreamResult
 import java.util.Random
 
 class FakePdlClient : PdlClient {
     override suspend fun getSystemToken(): String = "token"
 
-    override suspend fun getPerson(fnr: String): GetPersonResponse {
-        val faker = Faker(Random(fnr.toLong()))
+    override suspend fun getPerson(ident: String): UpstreamResult<PdlPerson?> {
+        val faker = Faker(Random(ident.toLong()))
         val navn = faker.name()
         val foedselsdato = faker.timeAndDate().birthday()
-        return GetPersonResponse(
-            data = ResponseData(
+        return UpstreamResult.Success(
+            PdlPerson(
                 person = PersonResponse(
                     navn = listOf(
                         Navn(
@@ -23,13 +24,10 @@ class FakePdlClient : PdlClient {
                     ),
                     foedselsdato = listOf(Foedselsdato(foedselsdato)),
                 ),
-                identer = IdentResponse(
-                    identer = listOf(
-                        Ident(ident = fnr, gruppe = GRUPPE_IDENT_FNR),
-                    ),
+                identer = listOf(
+                    Ident(ident = ident, gruppe = GRUPPE_IDENT_FNR),
                 ),
             ),
-            errors = null,
         )
     }
 

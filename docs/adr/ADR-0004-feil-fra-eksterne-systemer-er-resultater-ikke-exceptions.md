@@ -30,8 +30,11 @@ Mønsteret har seks deler:
       val upstream: UpstreamName,      // loggnavn, for eksempel "aareg" eller "pdl"
       val stage: UpstreamFailureStage, // TOKEN_EXCHANGE, REQUEST eller RESPONSE
       val status: Int?,
-      val cause: Throwable,
+      val cause: Throwable? = null,
+      val errors: List<UpstreamError> = emptyList(),
   )
+
+  data class UpstreamError(val code: String, val detail: String? = null, val path: String? = null)
   ```
 
   `UpstreamName` er en value class som krever små bokstaver
@@ -43,10 +46,12 @@ Mønsteret har seks deler:
 
   Klienten fanger exceptions fra Ktor og Texas én gang, ved grensen, og gjør
   dem om til `Failure`. `CancellationException` sendes alltid videre og blir
-  aldri en `Failure`. `cause` logges, men kastes aldri igjen.
+  aldri en `Failure`. Minst ett av `cause` og `errors` må ha innhold.
+  `cause` brukes til teknisk diagnostikk uten exception-meldinger, men kastes aldri igjen.
 
   Forventede svar er en del av verdien, ikke av feilen. Ereg 404 og PDL
-  `not_found` gir `Success(null)`. Andre feilkoder fra PDL, eller et svar uten
+  `not_found` og `bad_request` med `extensions.id = ugyldig_ident` gir
+  `Success(null)`. Andre feilkoder fra PDL, eller et svar uten
   data, gir `Failure`. Aareg 404 gir også `Failure`. Aareg svarer 404 med
   «Ukjent ident» når personen ikke finnes i PDL. En kjent person uten
   arbeidsforhold får 200 med tom liste. Hvis 404 ble gjort om til en tom liste,
@@ -55,6 +60,20 @@ Mønsteret har seks deler:
   Klienten tolker protokollen, som HTTP-status og PDLs
   `errors[].extensions.code`, men har ingen forretningsregler. Det er i tråd
   med ADR-0002.
+
+  Enkeltoppslaget `getPerson` krever både persondata og identer uten feil for
+  å gi `Success(PdlPerson)`. Hvis alle feil gjelder ikke funnet eller ugyldig
+  ident, blir resultatet `Success(null)`. Enhver annen feil vinner, også når
+  svaret inneholder data. Alle feil følger med i `errors`: `code` fra
+  `extensions.code` (eller `unknown`), `detail` fra `extensions.id` og `path`
+  som tekst med punktum mellom leddene. `message` tas med, avkortet til 200
+  tegn, bare for PDL-spesifikke feil (med `extensions.code`). PDL dokumenterer
+  at disse meldingene ikke inneholder personopplysninger og anbefaler å logge
+  dem. Generelle GraphQL-feil uten `extensions` får ikke `message`. Klienten
+  styrer aldri på `message`, fordi innholdet kan endre seg uten varsel.
+  Et svar uten feil, men med manglende data, person eller identer, gir
+  `Failure(RESPONSE, 200)` med `UpstreamError(code = "incomplete_response")`
+  uten `cause`.
 
 - **Porten.** Hver port har sin egen sealed type med en
   `Unavailable(failure)`-variant. Adapteren i modulen gjør `UpstreamResult` om
@@ -72,7 +91,9 @@ Mønsteret har seks deler:
 
 - **Logging.** `logEvent` og `FailureDiagnostics` tar imot `UpstreamFailure`
   direkte og henter `upstream`, `failure_stage` og `upstream_status` fra den.
-  Stack og klassifisering hentes fra `cause`, som i dag.
+  `upstream_errors` inneholder `code`, `detail` og `path` fra `errors`.
+  Stack og klassifisering hentes fra `cause` når den finnes. Uten `cause`
+  blir `failure_kind = error_response`, og diagnostikken har ingen stack.
 
 - **Legacy.** Legacy-tjenester som ennå ikke er flyttet (ADR-0002), kaller
   `getOrThrow()`. Den kaster `UpstreamRequestException` med `cause` bevart.

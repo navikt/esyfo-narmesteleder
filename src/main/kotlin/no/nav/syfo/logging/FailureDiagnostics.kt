@@ -9,6 +9,7 @@ import no.nav.esyfo.observability.sqlState
 import no.nav.esyfo.observability.validUpstreamStatus
 import no.nav.syfo.application.exception.UpstreamExceptionType
 import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import java.net.ConnectException
 import java.net.SocketException
@@ -20,18 +21,31 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /** Technical exception metadata only: request bodies, tokens and exception messages are never copied. */
 internal data class FailureDiagnostics(
-    val exceptionType: String,
-    val causeType: String,
+    val exceptionType: String?,
+    val causeType: String?,
     val causeTypes: List<String>,
     val failureKind: String,
     val upstreamStatus: Int?,
     val upstream: String?,
     val failureStage: String?,
-    val stack: Throwable,
+    val stack: Throwable?,
     val sqlState: String?,
+    val upstreamErrors: List<UpstreamError> = emptyList(),
 )
 
-internal fun UpstreamFailure.failureDiagnostics(): FailureDiagnostics = cause.failureDiagnostics(this)
+internal fun UpstreamFailure.failureDiagnostics(): FailureDiagnostics = cause?.failureDiagnostics(this)
+    ?: FailureDiagnostics(
+        exceptionType = null,
+        causeType = null,
+        causeTypes = emptyList(),
+        failureKind = "error_response",
+        upstreamStatus = validUpstreamStatus(status),
+        upstream = upstream.value,
+        failureStage = stage.logValue,
+        stack = null,
+        sqlState = null,
+        upstreamErrors = errors,
+    )
 
 internal fun Throwable.failureDiagnostics(upstreamFailure: UpstreamFailure? = null): FailureDiagnostics {
     val chain = causeChain()
@@ -81,6 +95,7 @@ internal fun Throwable.failureDiagnostics(upstreamFailure: UpstreamFailure? = nu
             upstream = upstreamFailure.upstream.value,
             failureStage = upstreamFailure.stage.logValue,
             upstreamStatus = validUpstreamStatus(upstreamFailure.status),
+            upstreamErrors = upstreamFailure.errors,
         )
     }
 }

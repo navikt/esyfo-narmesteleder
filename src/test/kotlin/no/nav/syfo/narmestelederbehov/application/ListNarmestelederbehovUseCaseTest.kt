@@ -13,6 +13,10 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
 import java.util.UUID
 
@@ -70,6 +74,14 @@ class ListNarmestelederbehovUseCaseTest :
             fixture.effects shouldBe listOf("access", "find", "person")
         }
 
+        test("Unavailable stops before subsequent lookups writes and count") {
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
+            val fixture = ListFixture(List(2) { listDetails().copy(firstName = null) }, unavailable = failure)
+            fixture.execute(pageSize = 1) shouldBe ListNarmestelederbehovResult.UpstreamUnavailable(failure)
+            fixture.effects shouldBe listOf("access", "find", "person")
+            fixture.savedNames shouldBe emptyList()
+        }
+
         test("an empty page has total zero and never counts") {
             val fixture = ListFixture(emptyList())
             fixture.execute() shouldBe ListNarmestelederbehovResult.Listed(emptyList(), false, 0L, "Org")
@@ -91,6 +103,7 @@ private class ListFixture(
     private val rows: List<NarmestelederbehovDetails> = listOf(listDetails()),
     private val access: OrganizationAccessResult = OrganizationAccessResult.Granted("Org"),
     private val personFound: Boolean = true,
+    private val unavailable: UpstreamFailure? = null,
 ) {
     val effects = mutableListOf<String>()
     val lookedUp = mutableListOf<PersonIdent>()
@@ -138,7 +151,8 @@ private class ListFixture(
             EmployeeNameLookup {
                 effects += "person"
                 lookedUp += it
-                if (personFound) BehovPersonName("Looked", null, "Up") else null
+                unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
+                    ?: if (personFound) EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up")) else EmployeeNameLookupResult.NotFound
             },
         ),
     )

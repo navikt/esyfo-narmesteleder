@@ -29,10 +29,12 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
+import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
@@ -45,6 +47,10 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.time.Instant
@@ -176,6 +182,22 @@ class ListNarmestelederbehovRouteTest :
             }
         }
 
+        test("upstream failures return HTTP 500 with UPSTREAM_SERVICE_UNAVAILABLE") {
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
+            val fixture = ListRouteFixture(unavailable = failure)
+            fixture.repository.rows[0] = routeDetails().copy(firstName = null)
+            assertSingleUpstreamFailureLog {
+                fixture.withApplication {
+                    val response = client.get("$LIST_PATH?$VALID_QUERY") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
+                    response.status shouldBe HttpStatusCode.InternalServerError
+                    response.body<ApiError>().type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                    response.body<ApiError>().message shouldBe "An upstream service is unavailable"
+                    fixture.repository.savedNames shouldBe emptyList()
+                    fixture.repository.countCalls shouldBe 0
+                }
+            }
+        }
+
         test("person not found returns the exact legacy generic 500") {
             val fixture = ListRouteFixture(personFound = false)
             fixture.repository.rows[0] = routeDetails().copy(firstName = null)
@@ -215,6 +237,7 @@ private const val VALID_QUERY = "orgNumber=$ORGANIZATION_NUMBER&createdAfter=197
 private class ListRouteFixture(
     access: OrganizationAccessResult = OrganizationAccessResult.Granted("Bedrift AS"),
     personFound: Boolean = true,
+    unavailable: UpstreamFailure? = null,
 ) {
     val repository = ListRouteRepository()
     private val texas = mockk<TexasHttpClient>()
@@ -224,7 +247,8 @@ private class ListRouteFixture(
         employeeName = NarmestelederbehovEmployeeName(
             repository,
             EmployeeNameLookup {
-                if (personFound) BehovPersonName("Looked", null, "Up") else null
+                unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
+                    ?: if (personFound) EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up")) else EmployeeNameLookupResult.NotFound
             },
         ),
     )

@@ -8,21 +8,23 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.integration.pdl.GetPersonBolkResponse
-import no.nav.syfo.integration.pdl.GetPersonResponse
 import no.nav.syfo.integration.pdl.HentIdenterBolk
 import no.nav.syfo.integration.pdl.HentPersonBolk
 import no.nav.syfo.integration.pdl.Ident
-import no.nav.syfo.integration.pdl.IdentResponse
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.integration.pdl.PdlIdent
+import no.nav.syfo.integration.pdl.PdlPerson
 import no.nav.syfo.integration.pdl.PdlRequestException
-import no.nav.syfo.integration.pdl.PdlResourceNotFoundException
 import no.nav.syfo.integration.pdl.PersonBolkResponseData
 import no.nav.syfo.integration.pdl.PersonResponse
-import no.nav.syfo.integration.pdl.ResponseData
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.integration.pdl.Person as PdlClientPerson
 
 class PdlServiceTest :
@@ -34,13 +36,7 @@ class PdlServiceTest :
         beforeTest {
             clearAllMocks(currentThreadOnly = true)
         }
-        fun getPersonResponse(navn: List<Navn>, identer: List<Ident>) = GetPersonResponse(
-            data = ResponseData(
-                person = PersonResponse(navn = navn),
-                identer = IdentResponse(identer = identer)
-            ),
-            errors = null
-        )
+        fun getPersonResponse(navn: List<Navn>, identer: List<Ident>) = UpstreamResult.Success(PdlPerson(PersonResponse(navn), identer))
         describe("getPersonFor") {
             it("should return person when PDL returns valid data") {
                 val fnr = "12345678901"
@@ -51,60 +47,47 @@ class PdlServiceTest :
 
                 val result = pdlService.getPersonFor(fnr)
 
-                result.nationalIdentificationNumber.value shouldBe fnr
+                requireNotNull(result).nationalIdentificationNumber.value shouldBe fnr
                 result.name shouldBe navn
                 coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }
 
-            it("should pass through exception when PDL client throws exception") {
+            it("bridges a failure through getOrThrow") {
                 val fnr = "12345678901"
                 val exception = PdlRequestException("PDL error")
 
-                coEvery { pdlClient.getPerson(fnr) } throws exception
+                coEvery { pdlClient.getPerson(fnr) } returns UpstreamResult.Failure(UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.REQUEST, null, exception))
 
-                shouldThrow<PdlRequestException> {
+                shouldThrow<UpstreamRequestException> {
                     pdlService.getPersonFor(fnr)
-                }
+                }.cause shouldBe exception
 
                 coVerify(exactly = 1) { pdlClient.getPerson(fnr) }
             }
 
-            it("should pass through throw PdlPersonMissingPropertiesException when fnr is null") {
+            it("returns null without a folkeregisterident") {
                 val fnr = "12345678901"
                 val navn = Navn(fornavn = "Test", mellomnavn = null, etternavn = "Person")
 
                 coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(listOf(navn), emptyList())
-                shouldThrow<PdlResourceNotFoundException> {
-                    pdlService.getPersonFor(fnr)
-                }
+                pdlService.getPersonFor(fnr) shouldBe null
             }
 
-            it("should throw PdlPersonMissingPropertiesException when navn is null") {
+            it("returns null without a name") {
                 val fnr = "12345678901"
                 val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
                 coEvery { pdlClient.getPerson(fnr) } returns getPersonResponse(emptyList(), listOf(ident))
 
-                shouldThrow<PdlResourceNotFoundException> {
-                    pdlService.getPersonFor(fnr)
-                }
+                pdlService.getPersonFor(fnr) shouldBe null
             }
 
-            it("should throw IllegalStateException when person is null") {
+            it("returns null when the person was not found") {
                 val fnr = "12345678901"
-                val ident = Ident(ident = fnr, gruppe = "FOLKEREGISTERIDENT")
-                val response = GetPersonResponse(
-                    data = ResponseData(
-                        person = null,
-                        identer = IdentResponse(identer = listOf(ident))
-                    ),
-                    errors = null
-                )
+                val response = UpstreamResult.Success(null)
 
                 coEvery { pdlClient.getPerson(fnr) } returns response
 
-                shouldThrow<PdlResourceNotFoundException> {
-                    pdlService.getPersonFor(fnr)
-                }
+                pdlService.getPersonFor(fnr) shouldBe null
             }
         }
 

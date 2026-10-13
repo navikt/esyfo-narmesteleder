@@ -36,8 +36,11 @@ class RevokeActiveNarmestelederrelasjonUseCase(
         is OrganizationAccessResult.Denied -> Step.Stop(RevokeActiveNarmestelederrelasjonResult.AccessDenied(access.reason, command.organizationNumber))
     }
 
-    private suspend fun findEmployee(command: RevokeActiveNarmestelederrelasjonCommand): RevokeActiveStep<PersonDetails> = personLookup.find(command.employeeIdent)?.let { Step.Continue(it) }
-        ?: Step.Stop(RevokeActiveNarmestelederrelasjonResult.EmployeeNotFound)
+    private suspend fun findEmployee(command: RevokeActiveNarmestelederrelasjonCommand): RevokeActiveStep<PersonDetails> = when (val result = personLookup.find(command.employeeIdent)) {
+        is PersonLookupResult.Found -> Step.Continue(result.person)
+        PersonLookupResult.NotFound -> Step.Stop(RevokeActiveNarmestelederrelasjonResult.EmployeeNotFound)
+        is PersonLookupResult.Unavailable -> Step.Stop(RevokeActiveNarmestelederrelasjonResult.UpstreamUnavailable(result.failure))
+    }
 
     private fun verifyName(employee: PersonDetails, command: RevokeActiveNarmestelederrelasjonCommand): RevokeActiveStep<Unit> {
         val match = employee.name.matchLastName(command.employeeLastName)

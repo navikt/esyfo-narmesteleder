@@ -10,10 +10,10 @@ import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
 import no.nav.syfo.integration.pdl.PdlRequestException
-import no.nav.syfo.integration.pdl.PdlResourceNotFoundException
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
+import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.util.logger
 
 private const val PDL_CHUNK_SIZE = 100
@@ -27,15 +27,12 @@ class PdlService(
         logger.logEvent(pdlLookupDegraded, details, cause = cause)
     }
 
-    suspend fun getPersonFor(fnr: String): Person {
-        val response = pdlClient.getPerson(fnr)
-        val data = response.data ?: throw PdlRequestException("Unexpected response from upstream service")
+    suspend fun getPersonFor(fnr: String): Person? {
+        val data = pdlClient.getPerson(fnr).getOrThrow() ?: return null
 
         with(data) {
-            val navn = person?.navn?.firstOrNull()
-                ?: throw PdlResourceNotFoundException("Could not find name for person")
-            val fnr = identer?.identer?.firstOrNull { it.gruppe == GRUPPE_IDENT_FNR }?.ident
-                ?: throw PdlResourceNotFoundException("Could not find national identification number for person")
+            val navn = person.navn?.firstOrNull() ?: return null
+            val fnr = identer.firstOrNull { it.gruppe == GRUPPE_IDENT_FNR }?.ident ?: return null
             val foedselsdato = person.foedselsdato?.firstOrNull()
 
             return Person(

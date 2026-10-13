@@ -115,7 +115,8 @@ Owns established and revoked narmesteleder relations:
   republished topic's message model; other modules that read Leesah keep their
   own model;
 - own the local relation register;
-- provide lookup and search;
+- provide lookup and search, including the `HasActiveNarmestelederrelasjon`
+  contract for checking active relations in the local register;
 - maintain the relation-owned `RelationPerson` projection.
 
 `RelationPerson` is the code-level name for person details needed by relation
@@ -130,7 +131,9 @@ Owns processing and local persistence of sendt sykmelding:
 - deduplicate records;
 - apply retention rules;
 - persist and revoke individual sykmeldinger;
-- trigger creation of narmestelederbehov;
+- trigger creation of narmestelederbehov only when the employee has not answered
+  `riktigNarmesteLeder` and has no active narmestelederrelasjon in the organization,
+  checked through the `HasActiveNarmestelederrelasjon` contract;
 - trigger revocation of narmestelederrelasjon through the
   `RevokeNarmestelederrelasjonFromSendtSykmelding` contract. `sykmelding` owns
   the `kilde` it stores for each processed brudd.

@@ -14,6 +14,8 @@ import no.nav.syfo.narmestelederrelasjon.application.EmploymentReconciliationRep
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
@@ -65,6 +67,7 @@ fun narmestelederrelasjonModule() = module {
     single<PublishNarmestelederrelasjonRevocation> { KafkaPublishNarmestelederrelasjonRevocation(get()) }
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }
     single<ActiveNarmestelederrelasjonRepository> { ExposedActiveNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
+    single<HasActiveNarmestelederrelasjon> { HasActiveNarmestelederrelasjonUseCase(get()) }
     single<DiscardedEmailAddressMetrics>(LOOKUP_DISCARDED_EMAIL_ADDRESS_METRICS) { MicrometerDiscardedEmailAddressMetrics.lookupNarmesteleder() }
     single { LookupActiveNarmestelederUseCase(get(), get(LOOKUP_DISCARDED_EMAIL_ADDRESS_METRICS)) }
     single<NarmestelederrelasjonSearchRepository> { ExposedNarmestelederrelasjonSearchRepository(get<ExposedDatabase>()) }

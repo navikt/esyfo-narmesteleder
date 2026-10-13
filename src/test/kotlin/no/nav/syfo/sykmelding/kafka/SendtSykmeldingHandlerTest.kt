@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import defaultSendtSykmeldingMessage
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
@@ -14,9 +15,13 @@ import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.service.BehovSource
+import no.nav.syfo.narmesteleder.service.COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER
 import no.nav.syfo.narmesteleder.service.NarmestelederService
+import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjon
 import no.nav.syfo.sykmelding.model.RiktigNarmesteLeder
 import no.nav.syfo.sykmelding.model.SykmeldingsperiodeAGDTO
 import no.nav.syfo.sykmelding.service.NarmestelederBruddService
@@ -31,10 +36,26 @@ class SendtSykmeldingHandlerTest :
         val narmesteLederService = mockk<NarmestelederService>()
         val sykmeldingService = mockk<SykmeldingService>()
         val narmestelederBruddService = mockk<NarmestelederBruddService>()
-        val handler = SendtSykmeldingHandler(narmesteLederService, sykmeldingService, narmestelederBruddService)
+        var hasActiveRelation = false
+        var relationLookupFailure: IllegalStateException? = null
+        val relationLookups = mutableListOf<Pair<PersonIdent, OrganizationNumber>>()
+        val hasActiveNarmestelederrelasjon = HasActiveNarmestelederrelasjon { employeeIdent, organizationNumber ->
+            relationLookups.add(employeeIdent to organizationNumber)
+            relationLookupFailure?.let { throw it }
+            hasActiveRelation
+        }
+        val handler = SendtSykmeldingHandler(
+            narmesteLederService,
+            sykmeldingService,
+            narmestelederBruddService,
+            hasActiveNarmestelederrelasjon,
+        )
 
         beforeEach {
             clearAllMocks(currentThreadOnly = true)
+            hasActiveRelation = false
+            relationLookupFailure = null
+            relationLookups.clear()
             coEvery { sykmeldingService.processBatch(any()) } just Runs
             coEvery { narmesteLederService.createNewNlBehov(any(), any(), any(), any()) } returns null
             coEvery { narmestelederBruddService.revokeFromSendtSykmelding(any(), any(), any(), any(), any()) } just Runs
@@ -84,6 +105,35 @@ class SendtSykmeldingHandlerTest :
                 fields["reason"] shouldBe "PERSON_ID_INVALID"
                 fields["sykmelding_id"] shouldBe id.toString()
                 fields.toString().contains("private-canary") shouldBe false
+            } finally {
+                logger.detachAppender(appender)
+                appender.stop()
+                logger.level = previousLevel
+            }
+        }
+
+        it("logs an active relation skip at info without employee or organization identifiers") {
+            hasActiveRelation = true
+            val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
+            val previousLevel = logger.level
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            logger.level = Level.INFO
+            logger.addAppender(appender)
+            try {
+                val message = defaultSendtSykmeldingMessage(sykmeldingId = UUID.randomUUID().toString())
+
+                handler.handleNarmestelederbehov(message)
+
+                val event = appender.list.single {
+                    it.keyValuePairs?.any { field -> field.key == "event_type" && field.value == "sick_leave_behov_skipped_active_relation" } == true
+                }
+                event.level shouldBe Level.INFO
+                val fields = event.keyValuePairs.associate { it.key to it.value }
+                fields["sykmelding_id"] shouldBe message.event.sykmeldingId
+                fields["action"] shouldBe "CREATE_BEHOV"
+                val logOutput = appender.list.joinToString { "${it.formattedMessage} ${it.keyValuePairs}" }
+                logOutput.contains(message.kafkaMetadata.fnr) shouldBe false
+                logOutput.contains(requireNotNull(message.event.arbeidsgiver).orgnummer) shouldBe false
             } finally {
                 logger.detachAppender(appender)
                 appender.stop()
@@ -280,6 +330,36 @@ class SendtSykmeldingHandlerTest :
 
         describe("handleSendtSykmelding general behavior") {
 
+            it("does not create NL behov when an active relation exists in the same organization") {
+                hasActiveRelation = true
+                val message = defaultSendtSykmeldingMessage(riktigNarmesteLeder = null)
+                val countBefore = COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count()
+
+                handler.handleNarmestelederbehov(message)
+
+                coVerify(exactly = 0) {
+                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
+                }
+                relationLookups shouldBe listOf(
+                    PersonIdent(message.kafkaMetadata.fnr) to OrganizationNumber(requireNotNull(message.event.arbeidsgiver).orgnummer),
+                )
+                COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count() shouldBe countBefore + 1
+            }
+
+            it("propagates an active relation lookup failure without creating NL behov") {
+                relationLookupFailure = IllegalStateException("Relation lookup unavailable")
+                val countBefore = COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count()
+
+                shouldThrow<IllegalStateException> {
+                    handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage())
+                } shouldBe relationLookupFailure
+
+                coVerify(exactly = 0) {
+                    narmesteLederService.createNewNlBehov(any(), any(), any(), any())
+                }
+                COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count() shouldBe countBefore
+            }
+
             it("should not create NL behov when riktigNarmesteLeder is answered") {
                 val message = defaultSendtSykmeldingMessage(
                     riktigNarmesteLeder = RiktigNarmesteLeder(
@@ -293,6 +373,7 @@ class SendtSykmeldingHandlerTest :
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any())
                 }
+                relationLookups shouldBe emptyList()
             }
 
             it("should revoke NL relation and track Kafka metadata when riktigNarmesteLeder is answered NEI") {
@@ -317,6 +398,7 @@ class SendtSykmeldingHandlerTest :
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any(), any())
                 }
+                relationLookups shouldBe emptyList()
             }
 
             it("should create NL behov with correct parameters when riktigNarmesteLeder is null") {
@@ -352,6 +434,7 @@ class SendtSykmeldingHandlerTest :
                 assert(nlBehovSlot.captured.employeeIdentificationNumber.value == fnr)
                 assert(nlBehovSlot.captured.orgNumber.value == orgnummer)
                 assert(skipCheckSlot.captured)
+                relationLookups shouldBe listOf(PersonIdent(fnr) to OrganizationNumber(orgnummer))
             }
 
             it("should not create NL behov when arbeidsgiver is null") {
@@ -363,6 +446,7 @@ class SendtSykmeldingHandlerTest :
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any())
                 }
+                relationLookups shouldBe emptyList()
             }
 
             it("should not create NL behov when fnr is invalid") {
@@ -373,6 +457,7 @@ class SendtSykmeldingHandlerTest :
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any(), any())
                 }
+                relationLookups shouldBe emptyList()
             }
 
             it("should not create NL behov when orgnummer is invalid") {
@@ -383,6 +468,7 @@ class SendtSykmeldingHandlerTest :
                 coVerify(exactly = 0) {
                     narmesteLederService.createNewNlBehov(any(), any(), any(), any())
                 }
+                relationLookups shouldBe emptyList()
             }
         }
     })

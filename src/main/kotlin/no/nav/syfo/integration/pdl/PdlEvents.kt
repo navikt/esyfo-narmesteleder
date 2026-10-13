@@ -24,7 +24,7 @@ internal val pdlLookupDegraded = applicationEvent<PdlLookupDegradedDetails>(
     fields = mapOf(
         "reason" to { it.reason.name },
         "pdl_errors" to { details ->
-            details.pdlErrors?.map { mapOf("code" to it.code, "detail" to it.detail, "path" to it.path) }
+            details.pdlErrors?.map { mapOf("code" to it.code, "detail" to it.detail, "path" to it.path, "message" to it.message) }
         },
         "error_count" to { it.errorCount },
         "record_count" to { it.recordCount },

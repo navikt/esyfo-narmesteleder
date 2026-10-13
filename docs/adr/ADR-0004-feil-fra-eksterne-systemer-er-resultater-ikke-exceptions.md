@@ -137,8 +137,8 @@ kan feile, så det er lett å glemme.
 PDL svarer HTTP 200 også når oppslaget feiler. Tidligere tolket `PdlClient` alle
 tomme svar som at personen ikke finnes. Nå gir bolkoppslaget `Failure` når
 `hentPersonBolk` mangler, med feilene i `errors`. Når `hentPersonBolk` finnes,
-gir det `Success` selv med toppnivåfeil; `PdlService` logger disse uten `message`
-og tolker fortsatt `code` per ident. En feilet bolk logges og hoppes over.
+gir det `Success` selv med toppnivåfeil; `PdlService` logger disse og tolker
+fortsatt `code` per ident. En feilet bolk logges og hoppes over.
 
 Jobben i #473 kaller Aareg for hver relasjon og kan bryte relasjoner i
 produksjon (ADR-0003). Der er forskjellen mellom «ingen arbeidsforhold» og

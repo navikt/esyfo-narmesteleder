@@ -60,21 +60,21 @@ class PdlPersonBolkClientTest :
             response.errors?.single()?.extensions?.code shouldBe "server_error"
         }
 
-        test("missing hentPersonBolk carries all errors without messages or request idents") {
+        test("missing hentPersonBolk carries all errors with messages only for PDL-specific errors") {
             val failure = batchLookup {
                 respondJson(
                     """{"data":{"hentIdenterBolk":[]},"errors":[
-                    {"message":"private-canary ${SYNTHETIC_IDENTS.joinToString()}","extensions":{"code":"bad_request","id":"missing_behandlingsnummer"},"path":["hentPersonBolk","navn"]},
-                    {"message":"private-canary","extensions":{"code":"server_error"},"path":["hentIdenterBolk"]},
-                    {"message":"private-canary"}
+                    {"message":"Mangler behandlingsnummer","extensions":{"code":"bad_request","id":"missing_behandlingsnummer"},"path":["hentPersonBolk","navn"]},
+                    {"message":"Ukjent problem oppsto","extensions":{"code":"server_error"},"path":["hentIdenterBolk"]},
+                    {"message":"private-canary ${SYNTHETIC_IDENTS.joinToString()}"}
                     ]}""",
                 )
             }.batchFailure()
             failure.assertBatchMetadata(UpstreamFailureStage.RESPONSE, 200)
             failure.cause shouldBe null
             failure.errors shouldBe listOf(
-                UpstreamError("bad_request", "missing_behandlingsnummer", "hentPersonBolk.navn"),
-                UpstreamError("server_error", path = "hentIdenterBolk"),
+                UpstreamError("bad_request", "missing_behandlingsnummer", "hentPersonBolk.navn", "Mangler behandlingsnummer"),
+                UpstreamError("server_error", path = "hentIdenterBolk", message = "Ukjent problem oppsto"),
                 UpstreamError("unknown"),
             )
         }

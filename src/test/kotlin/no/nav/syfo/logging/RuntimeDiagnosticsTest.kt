@@ -246,7 +246,7 @@ class RuntimeDiagnosticsTest :
                         pdlLookupDegraded,
                         PdlLookupDegradedDetails(
                             reason = PdlLookupDegradedReason.GRAPHQL_ERRORS,
-                            pdlErrors = listOf(UpstreamError("not_found", "ugyldig_ident", "hentPersonBolk.navn")),
+                            pdlErrors = listOf(UpstreamError("not_found", "ugyldig_ident", "hentPersonBolk.navn", "Fant ikke person")),
                             errorCount = 1,
                         ),
                     )
@@ -258,8 +258,8 @@ class RuntimeDiagnosticsTest :
                     record["pdl_errors"][0]["code"].asText() shouldBe "not_found"
                     record["pdl_errors"][0]["detail"].asText() shouldBe "ugyldig_ident"
                     record["pdl_errors"][0]["path"].asText() shouldBe "hentPersonBolk.navn"
-                    record["pdl_errors"][0].fieldNames().asSequence().toSet() shouldBe setOf("code", "detail", "path")
-                    record["pdl_errors"][0].has("message") shouldBe false
+                    record["pdl_errors"][0]["message"].asText() shouldBe "Fant ikke person"
+                    record["pdl_errors"][0].fieldNames().asSequence().toSet() shouldBe setOf("code", "detail", "path", "message")
                 }
             }
         }

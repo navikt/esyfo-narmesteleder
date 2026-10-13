@@ -179,6 +179,86 @@ class ExposedEmploymentReconciliationRepositoryTest :
             controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(600)
         }
 
+        test("live cutover claims READY WOULD_REVOKE immediately even when the next check is in the future") {
+            val id = insertEmploymentRelation()
+            insertControlRow(id, now.plusSeconds(86_400), EmploymentCheckOutcome.WOULD_REVOKE)
+
+            val claim = repository.claimDue(1, 5.minutes, now, revokeEnabled = true).single()
+
+            claim.narmesteLederId shouldBe id
+            claim.sourceRevokedAt shouldBe null
+            controlRow(id)[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.CLAIMED
+            controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
+        }
+
+        test("live mode does not claim ended relations with a pending comparison") {
+            val id = insertEmploymentRelation(to = now)
+            insertControlRow(id, now, EmploymentCheckOutcome.WOULD_REVOKE)
+            repository.recordSourceRevocation(id, now)
+
+            repository.claimDue(10, 5.minutes, now, revokeEnabled = true) shouldBe emptyList()
+            controlRow(id)[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
+
+            repository.claimDue(10, 5.minutes, now).single().narmesteLederId shouldBe id
+        }
+
+        test("live cutover never steals an unexpired claim with last outcome WOULD_REVOKE") {
+            val id = insertEmploymentRelation()
+            insertControlRow(id, now, EmploymentCheckOutcome.WOULD_REVOKE)
+            val first = repository.claimDue(1, 5.minutes, now).single()
+
+            repository.claimDue(1, 5.minutes, now.plusSeconds(299), revokeEnabled = true) shouldBe emptyList()
+            controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe first.claimToken
+            controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
+
+            val reclaimed = repository.claimDue(1, 5.minutes, now.plusSeconds(300), revokeEnabled = true).single()
+            reclaimed.narmesteLederId shouldBe id
+            (reclaimed.claimToken != first.claimToken) shouldBe true
+        }
+
+        test("shadow still waits for future WOULD_REVOKE checks and live cutover uses only the latest outcome") {
+            val wouldRevoke = insertEmploymentRelation()
+            insertControlRow(wouldRevoke, now.plusSeconds(86_400), EmploymentCheckOutcome.WOULD_REVOKE)
+            val historicShadow = insertEmploymentRelation()
+            insertControlRow(historicShadow, now.plusSeconds(86_400), EmploymentCheckOutcome.FAILED, wouldRevokeDaysAgo = 10)
+
+            repository.claimDue(10, 5.minutes, now) shouldBe emptyList()
+            repository.claimDue(10, 5.minutes, now, revokeEnabled = true).map { it.narmesteLederId } shouldBe listOf(wouldRevoke)
+            controlRow(historicShadow)[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
+        }
+
+        test("live cutover keeps deterministic due and id ordering with a bounded batch") {
+            val overdue = insertEmploymentRelation()
+            insertControlRow(overdue, now.minusSeconds(1))
+            val futureIds = listOf(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                UUID.fromString("00000000-0000-0000-0000-000000000003"),
+            )
+            futureIds.reversed().forEach {
+                insertEmploymentRelation(id = it)
+                insertControlRow(it, now.plusSeconds(86_400), EmploymentCheckOutcome.WOULD_REVOKE)
+            }
+
+            repository.claimDue(3, 5.minutes, now, revokeEnabled = true).map { it.narmesteLederId } shouldBe
+                listOf(overdue, futureIds[0], futureIds[1])
+            repository.claimDue(3, 5.minutes, now, revokeEnabled = true).map { it.narmesteLederId } shouldBe listOf(futureIds[2])
+        }
+
+        test("parallel live cutover claimers receive disjoint future WOULD_REVOKE batches") {
+            val ids = List(20) {
+                insertEmploymentRelation().also { insertControlRow(it, now.plusSeconds(86_400), EmploymentCheckOutcome.WOULD_REVOKE) }
+            }.toSet()
+
+            val batches = concurrently { repository.claimDue(10, 5.minutes, now, revokeEnabled = true) }
+                .map { batch -> batch.map { it.narmesteLederId }.toSet() }
+
+            batches.forEach { it.size shouldBe 10 }
+            batches[0].intersect(batches[1]) shouldBe emptySet()
+            (batches[0] + batches[1]) shouldBe ids
+            repository.claimDue(20, 5.minutes, now, revokeEnabled = true) shouldBe emptyList()
+        }
+
         test("two parallel claimers receive disjoint batches covering every due row exactly once") {
             val dueIds = List(20) {
                 insertEmploymentRelation().also { insertControlRow(it, now.minusSeconds(1)) }

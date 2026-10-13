@@ -18,7 +18,14 @@ data class OtherEnvironmentProperties(
     val personEnrichmentTaskEnabled: Boolean,
     val employmentCheckEnabled: Boolean,
     val employmentCheckObserveSourceEnabled: Boolean,
+    val employmentCheckRevokeEnabled: Boolean = false,
 ) {
+    init {
+        require(!(employmentCheckRevokeEnabled && employmentCheckObserveSourceEnabled)) {
+            "EMPLOYMENT_CHECK_REVOKE_ENABLED and EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED cannot both be enabled"
+        }
+    }
+
     companion object {
         fun createFromEnvVars() = OtherEnvironmentProperties(
             electorPath = getEnvVar("ELECTOR_PATH"),
@@ -41,6 +48,7 @@ data class OtherEnvironmentProperties(
             personEnrichmentTaskEnabled = getEnvVar("PERSON_ENRICHMENT_TASK_ENABLED", "false").toBoolean(),
             employmentCheckEnabled = getEnvVar("EMPLOYMENT_CHECK_ENABLED", "false").toBoolean(),
             employmentCheckObserveSourceEnabled = getEnvVar("EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED", "false").toBoolean(),
+            employmentCheckRevokeEnabled = getEnvVar("EMPLOYMENT_CHECK_REVOKE_ENABLED", "false").toBoolean(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -61,6 +69,7 @@ data class OtherEnvironmentProperties(
             personEnrichmentTaskEnabled = true,
             employmentCheckEnabled = false,
             employmentCheckObserveSourceEnabled = false,
+            employmentCheckRevokeEnabled = false,
         )
     }
 }

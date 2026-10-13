@@ -8,6 +8,7 @@ enum class RevocationInitiator {
     PERSONNEL_MANAGER,
     LPS,
     EMPLOYEE_SENDT_SYKMELDING,
+    EMPLOYMENT_ENDED,
 }
 
 sealed interface RevokeNarmestelederrelasjonResult {

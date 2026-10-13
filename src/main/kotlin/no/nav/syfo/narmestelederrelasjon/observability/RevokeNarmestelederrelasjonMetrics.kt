@@ -29,7 +29,7 @@ fun countLinemanagerRevokeById(result: RevokeNarmestelederrelasjonResult) {
             RevocationInitiator.LINEMANAGER -> countRevokedByLinemanager.increment()
             RevocationInitiator.PERSONNEL_MANAGER -> countRevokedByPersonnelManager.increment()
             RevocationInitiator.LPS -> countRevokedByLps.increment()
-            RevocationInitiator.EMPLOYEE_SENDT_SYKMELDING -> Unit
+            RevocationInitiator.EMPLOYEE_SENDT_SYKMELDING, RevocationInitiator.EMPLOYMENT_ENDED -> Unit
         }
     }
 }

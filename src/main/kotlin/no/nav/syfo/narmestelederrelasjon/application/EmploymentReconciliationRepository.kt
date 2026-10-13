@@ -16,10 +16,10 @@ interface EmploymentReconciliationRepository {
     suspend fun seedMissing(limit: Int, now: Instant): Int
 
     /**
-     * Claims due active relations, including expired leases, and relations with a recent source revocation
-     * that are not compared yet. Commits before returning.
+     * Claims due active relations, including expired leases. Shadow mode also claims pending source comparisons;
+     * live mode makes READY WOULD_REVOKE rows immediately due at cutover. Commits before returning.
      */
-    suspend fun claimDue(limit: Int, lease: Duration, now: Instant): List<ClaimedEmploymentCheck>
+    suspend fun claimDue(limit: Int, lease: Duration, now: Instant, revokeEnabled: Boolean = false): List<ClaimedEmploymentCheck>
 
     /** Returns false without writing when status or token no longer matches this claim. */
     suspend fun complete(
@@ -75,6 +75,6 @@ enum class EmploymentCheckOutcome {
     /** The revocation was published. */
     REVOKED,
 
-    /** The lookup failed; the relation is never revoked on failure. */
+    /** The lookup or publish failed; a failed lookup never revokes the relation. */
     FAILED,
 }

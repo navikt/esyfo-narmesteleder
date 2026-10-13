@@ -99,7 +99,17 @@ fun narmestelederrelasjonModule() = module {
     single<EmploymentHistoryLookup> { AaregEmploymentHistoryLookup(get()) }
     single<EmploymentReconciliationRepository> { ExposedEmploymentReconciliationRepository(get<ExposedDatabase>()) }
     single<EmploymentCheckMetrics> { MicrometerEmploymentCheckMetrics() }
-    single { CheckNarmestelederrelasjonEmploymentUseCase(get(), get(), get(), get(), get()) }
+    single {
+        CheckNarmestelederrelasjonEmploymentUseCase(
+            repository = get(),
+            employmentHistoryLookup = get(),
+            settings = get(),
+            clock = get(),
+            metrics = get(),
+            publisher = get(),
+            revokeEnabled = get<Environment>().otherProperties.employmentCheckRevokeEnabled,
+        )
+    }
     single { SeedNarmestelederrelasjonEmploymentChecksUseCase(get(), get(), get(), get()) }
     single { RecordSourceEmploymentRevocationUseCase(get(), get(), get()) }
 }

@@ -163,8 +163,10 @@ spec:
       value: "true"
     - name: EMPLOYMENT_CHECK_ENABLED
       value: "true"
-    - name: EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED
+    - name: EMPLOYMENT_CHECK_REVOKE_ENABLED
       value: "true"
+    - name: EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED
+      value: "false"
     - name: PDL_LEESAH_CONSUMER_ENABLED
       value: "true"
     - name: PERSON_ENRICHMENT_TASK_ENABLED

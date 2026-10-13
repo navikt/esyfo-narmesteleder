@@ -45,25 +45,31 @@ class PdlSinglePersonClientTest :
             lookup { throw IOException("private-canary") }.failure().assertMetadata(UpstreamFailureStage.REQUEST, null)
         }
 
-        test("GraphQL errors include all code detail and dot-joined path but never message") {
+        test("GraphQL errors include code detail dot-joined path and message only for PDL-specific errors") {
             val failure = lookup {
                 respondJson(
                     """{"errors":[
-                {"message":"private-canary $SYNTHETIC_IDENT","extensions":{"code":"bad_request","id":"missing_behandlingsnummer"},"path":["hentPerson","navn"]},
-                {"message":"private-canary","extensions":{"code":"server_error"},"path":["hentIdenter"]},
-                {"message":"private-canary"}
+                {"message":"Mangler behandlingsnummer","extensions":{"code":"bad_request","id":"missing_behandlingsnummer"},"path":["hentPerson","navn"]},
+                {"message":"Ukjent problem oppsto","extensions":{"code":"server_error"},"path":["hentIdenter"]},
+                {"message":"private-canary $SYNTHETIC_IDENT"}
                 ]}""",
                 )
             }.failure()
             failure.assertMetadata(UpstreamFailureStage.RESPONSE, 200)
             failure.cause shouldBe null
             failure.errors shouldBe listOf(
-                UpstreamError("bad_request", "missing_behandlingsnummer", "hentPerson.navn"),
-                UpstreamError("server_error", path = "hentIdenter"),
+                UpstreamError("bad_request", "missing_behandlingsnummer", "hentPerson.navn", "Mangler behandlingsnummer"),
+                UpstreamError("server_error", path = "hentIdenter", message = "Ukjent problem oppsto"),
                 UpstreamError("unknown"),
             )
             failure.errors.toString() shouldNotContain "private-canary"
             failure.errors.toString() shouldNotContain SYNTHETIC_IDENT
+        }
+
+        test("PDL error message is truncated") {
+            val message = "x".repeat(300)
+            lookup { respondJson("""{"errors":[{"message":"$message","extensions":{"code":"server_error"}}]}""") }
+                .failure().errors.single().message shouldBe "x".repeat(200)
         }
 
         test("not_found gives Success null") {

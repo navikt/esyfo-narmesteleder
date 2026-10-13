@@ -52,12 +52,15 @@ logger.logEvent(dialogFailed, details, cause = exception)
 - `ApiErrorException.upstreamFailure` is passed to `api_request_failed` by
   StatusPages, which logs the upstream failure once at the HTTP edge.
 - For enkeltoppslag i PDL følger feilene kanten som verdier. Feltet
-  `upstream_errors` er en liste med `code`, `detail` og `path` fra
-  `UpstreamFailure.errors`. `cause` er valgfri; minst ett av `cause` og
+  `upstream_errors` er en liste med `code`, `detail`, `path` og `message` fra
+  `UpstreamFailure.errors`. `message` settes bare når upstream dokumenterer at
+  feilmeldingene ikke inneholder personopplysninger (i dag PDL-spesifikke
+  feil). `cause` er valgfri; minst ett av `cause` og
   `errors` må ha innhold. Uten `cause` blir `failure_kind = error_response`,
   og verken exception-meldinger eller stack logges, selv om HTTP-kanten
   bruker en `ApiErrorException`.
-  PDLs `message` tas aldri med. `detail` er `extensions.id`, og `path` har
+  PDLs `message` tas med (maks 200 tegn) bare når feilen har
+  `extensions.code`. `detail` er `extensions.id`, og `path` har
   punktum mellom leddene. Ugyldig ident (`bad_request` med
   `id = ugyldig_ident`) behandles som ikke funnet, ikke som en oppstrømsfeil.
   `getPerson` logger derfor ikke `pdl_lookup_degraded`; bolkoppslaget

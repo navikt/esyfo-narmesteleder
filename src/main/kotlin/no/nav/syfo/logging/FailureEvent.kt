@@ -17,7 +17,7 @@ private fun <T> failureFields(): Map<String, (EventContext<T>) -> Any?> = mapOf(
     "upstream_status" to { it.failure?.upstreamStatus },
     "upstream_errors" to { context ->
         context.failure?.upstreamErrors?.takeIf { it.isNotEmpty() }?.map {
-            mapOf("code" to it.code, "detail" to it.detail, "path" to it.path)
+            mapOf("code" to it.code, "detail" to it.detail, "path" to it.path, "message" to it.message)
         }
     },
     "sql_state" to { it.failure?.sqlState },

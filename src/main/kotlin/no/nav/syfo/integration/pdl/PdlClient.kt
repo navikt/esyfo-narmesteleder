@@ -110,9 +110,7 @@ class HttpPdlClient(
                     PDL,
                     UpstreamFailureStage.RESPONSE,
                     200,
-                    errors = errors.map {
-                        UpstreamError(it.extensions?.code ?: "unknown", it.extensions?.id, it.path?.joinToString("."))
-                    },
+                    errors = errors.map { it.toUpstreamError() },
                 ),
             )
         }
@@ -152,3 +150,13 @@ class HttpPdlClient(
         }
     }
 }
+
+private const val MAX_ERROR_MESSAGE_LENGTH = 200
+
+// PDL documents that messages on its own errors (those with extensions.code) contain no personal data.
+private fun ResponseError.toUpstreamError() = UpstreamError(
+    code = extensions?.code ?: "unknown",
+    detail = extensions?.id,
+    path = path?.joinToString("."),
+    message = message?.takeIf { extensions?.code != null }?.take(MAX_ERROR_MESSAGE_LENGTH),
+)

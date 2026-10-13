@@ -133,7 +133,7 @@ class RuntimeDiagnosticsTest :
                 UpstreamName("pdl"),
                 UpstreamFailureStage.RESPONSE,
                 200,
-                errors = listOf(UpstreamError("server_error", "technical_id", "hentPerson.navn"), UpstreamError("unknown")),
+                errors = listOf(UpstreamError("server_error", "technical_id", "hentPerson.navn", "Ukjent problem oppsto"), UpstreamError("unknown")),
             )
             withProductionLogger { logger ->
                 captureLogs(logger, "stdout_json").use { capture ->
@@ -155,6 +155,7 @@ class RuntimeDiagnosticsTest :
                         record["upstream_errors"][0]["code"].asText() shouldBe "server_error"
                         record["upstream_errors"][0]["detail"].asText() shouldBe "technical_id"
                         record["upstream_errors"][0]["path"].asText() shouldBe "hentPerson.navn"
+                        record["upstream_errors"][0]["message"].asText() shouldBe "Ukjent problem oppsto"
                         record["upstream_errors"].size() shouldBe 2
                         record.has("stack_trace") shouldBe false
                         record.has("exception_type") shouldBe false

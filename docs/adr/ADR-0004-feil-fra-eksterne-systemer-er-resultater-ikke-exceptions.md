@@ -66,7 +66,11 @@ Mønsteret har seks deler:
   ident, blir resultatet `Success(null)`. Enhver annen feil vinner, også når
   svaret inneholder data. Alle feil følger med i `errors`: `code` fra
   `extensions.code` (eller `unknown`), `detail` fra `extensions.id` og `path`
-  som tekst med punktum mellom leddene. `message` tas aldri med.
+  som tekst med punktum mellom leddene. `message` tas med, avkortet til 200
+  tegn, bare for PDL-spesifikke feil (med `extensions.code`). PDL dokumenterer
+  at disse meldingene ikke inneholder personopplysninger og anbefaler å logge
+  dem. Generelle GraphQL-feil uten `extensions` får ikke `message`. Klienten
+  styrer aldri på `message`, fordi innholdet kan endre seg uten varsel.
   Et svar uten feil, men med manglende data, person eller identer, gir
   `Failure(RESPONSE, 200)` med `UpstreamError(code = "incomplete_response")`
   uten `cause`.

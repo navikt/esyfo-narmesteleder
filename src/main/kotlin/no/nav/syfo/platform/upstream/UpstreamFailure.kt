@@ -20,7 +20,8 @@ enum class UpstreamFailureStage(val logValue: String) {
     RESPONSE("response"),
 }
 
-data class UpstreamError(val code: String, val detail: String? = null, val path: String? = null)
+/** [message] is logged; set it only when the upstream documents that its error messages contain no personal data. */
+data class UpstreamError(val code: String, val detail: String? = null, val path: String? = null, val message: String? = null)
 
 data class UpstreamFailure(
     val upstream: UpstreamName,

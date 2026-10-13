@@ -69,57 +69,14 @@ class HttpPdlClient(
     ).accessToken
 
     override suspend fun getPerson(ident: String): UpstreamResult<PdlPerson?> {
-        val token = texasHttpClient.azureAdSystemToken(scope).getOrElse { return UpstreamResult.Failure(it) }
+        val request = GetPersonRequest(query = getPersonQuery, variables = GetPersonVariables(ident = ident))
+        val response = postQuery<GetPersonResponse>(request).getOrElse { return UpstreamResult.Failure(it) }
+        val errors = response.errors.orEmpty()
 
-        val getPersonRequest =
-            GetPersonRequest(
-                query = getPersonQuery,
-                variables = GetPersonVariables(ident = ident),
-            )
-        val response = try {
-            httpClient
-                .post(pdlBaseUrl) {
-                    setBody(getPersonRequest)
-                    bearerAuth(token)
-                    header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_NARMESTELEDER)
-                    header(HttpHeaders.ContentType, "application/json")
-                }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ResponseException) {
-            return UpstreamResult.Failure(UpstreamFailure(PDL, UpstreamFailureStage.RESPONSE, e.response.status.value, e))
-        } catch (e: Exception) {
-            return UpstreamResult.Failure(UpstreamFailure(PDL, UpstreamFailureStage.REQUEST, null, e))
-        }
-        val decoded = try {
-            response.body<GetPersonResponse>()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return UpstreamResult.Failure(UpstreamFailure(PDL, UpstreamFailureStage.RESPONSE, response.status.value, e))
-        }
-        val errors = decoded.errors.orEmpty()
-        if (errors.isNotEmpty()) {
-            val notFound = errors.all {
-                it.extensions?.code == "not_found" ||
-                    (it.extensions?.code == "bad_request" && it.extensions.id == "ugyldig_ident")
-            }
-            if (notFound) return UpstreamResult.Success(null)
-            return UpstreamResult.Failure(
-                UpstreamFailure(
-                    PDL,
-                    UpstreamFailureStage.RESPONSE,
-                    200,
-                    errors = errors.map { it.toUpstreamError() },
-                ),
-            )
-        }
-        val person = decoded.data?.person
-        val identer = decoded.data?.identer
-        return if (person != null && identer != null) {
-            UpstreamResult.Success(PdlPerson(person, identer.identer))
-        } else {
-            UpstreamResult.Failure(UpstreamFailure(PDL, UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("incomplete_response"))))
+        return when {
+            errors.isEmpty() -> response.toPdlPerson()
+            errors.all { it.meansPersonNotFound() } -> UpstreamResult.Success(null)
+            else -> graphQlFailure(errors.map { it.toUpstreamError() })
         }
     }
 
@@ -148,6 +105,52 @@ class HttpPdlClient(
                 else -> throw PdlRequestException("Error when calling PDL", e)
             }
         }
+    }
+
+    private suspend inline fun <reified T> postQuery(request: Any): UpstreamResult<T> {
+        val token = texasHttpClient.azureAdSystemToken(scope).getOrElse { return UpstreamResult.Failure(it) }
+
+        val response = try {
+            httpClient.post(pdlBaseUrl) {
+                setBody(request)
+                bearerAuth(token)
+                header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_NARMESTELEDER)
+                header(HttpHeaders.ContentType, "application/json")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ResponseException) {
+            return failure(UpstreamFailureStage.RESPONSE, e.response.status.value, e)
+        } catch (e: Exception) {
+            return failure(UpstreamFailureStage.REQUEST, null, e)
+        }
+
+        return try {
+            UpstreamResult.Success(response.body<T>())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
+        }
+    }
+}
+
+private val INCOMPLETE_RESPONSE = UpstreamError("incomplete_response")
+
+private fun failure(stage: UpstreamFailureStage, status: Int?, cause: Throwable) = UpstreamResult.Failure(UpstreamFailure(PDL, stage, status, cause))
+
+// PDL answers GraphQL errors with HTTP 200.
+private fun graphQlFailure(errors: List<UpstreamError>) = UpstreamResult.Failure(UpstreamFailure(PDL, UpstreamFailureStage.RESPONSE, 200, errors = errors))
+
+private fun ResponseError.meansPersonNotFound(): Boolean = extensions?.code == "not_found" || (extensions?.code == "bad_request" && extensions.id == "ugyldig_ident")
+
+private fun GetPersonResponse.toPdlPerson(): UpstreamResult<PdlPerson?> {
+    val person = data?.person
+    val identer = data?.identer
+    return if (person != null && identer != null) {
+        UpstreamResult.Success(PdlPerson(person, identer.identer))
+    } else {
+        graphQlFailure(listOf(INCOMPLETE_RESPONSE))
     }
 }
 

@@ -37,7 +37,6 @@ import no.nav.syfo.application.api.installStatusPages
 import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.integration.pdl.PdlRequestException
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -237,7 +236,7 @@ class SubmitNarmestelederrelasjonRouteTest :
         }
 
         test("PDL failures propagate to StatusPages as internal errors") {
-            val fixture = SubmitFixture(failure = PdlRequestException("PDL unavailable"))
+            val fixture = SubmitFixture(failure = RuntimeException("PDL unavailable"))
             fixture.authorize("tokenx")
             fixture.withApplication {
                 val response = client.postSubmission()

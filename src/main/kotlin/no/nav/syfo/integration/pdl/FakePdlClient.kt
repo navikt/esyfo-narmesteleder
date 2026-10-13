@@ -6,8 +6,6 @@ import no.nav.syfo.platform.upstream.UpstreamResult
 import java.util.Random
 
 class FakePdlClient : PdlClient {
-    override suspend fun getSystemToken(): String = "token"
-
     override suspend fun getPerson(ident: String): UpstreamResult<PdlPerson?> {
         val faker = Faker(Random(ident.toLong()))
         val navn = faker.name()
@@ -31,8 +29,8 @@ class FakePdlClient : PdlClient {
         )
     }
 
-    override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse {
-        val hentPersonBolk = fnrs.map { fnr ->
+    override suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse> {
+        val hentPersonBolk = idents.map { fnr ->
             val faker = Faker(Random(fnr.toLong()))
             val navn = faker.name()
             HentPersonBolk(
@@ -50,19 +48,21 @@ class FakePdlClient : PdlClient {
                 code = "ok",
             )
         }
-        val hentIdenterBolk = fnrs.map { fnr ->
+        val hentIdenterBolk = idents.map { fnr ->
             HentIdenterBolk(
                 ident = fnr,
                 identer = listOf(PdlIdent(ident = fnr, gruppe = GRUPPE_IDENT_FNR)),
                 code = "ok",
             )
         }
-        return GetPersonBolkResponse(
-            data = PersonBolkResponseData(
-                hentPersonBolk = hentPersonBolk,
-                hentIdenterBolk = hentIdenterBolk,
-            ),
-            errors = null,
+        return UpstreamResult.Success(
+            GetPersonBolkResponse(
+                data = PersonBolkResponseData(
+                    hentPersonBolk = hentPersonBolk,
+                    hentIdenterBolk = hentIdenterBolk,
+                ),
+                errors = null,
+            )
         )
     }
 }

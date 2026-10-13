@@ -19,10 +19,8 @@ import no.nav.esyfo.observability.createLogger
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.integration.pdl.ErrorExtension
 import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
-import no.nav.syfo.integration.pdl.ResponseError
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -248,17 +246,20 @@ class RuntimeDiagnosticsTest :
                         pdlLookupDegraded,
                         PdlLookupDegradedDetails(
                             reason = PdlLookupDegradedReason.GRAPHQL_ERRORS,
-                            pdlErrors = listOf(ResponseError("GraphQL failure", null, listOf("person"), ErrorExtension("NOT_FOUND", null, null))),
+                            pdlErrors = listOf(UpstreamError("not_found", "ugyldig_ident", "hentPersonBolk.navn")),
                             errorCount = 1,
                         ),
                     )
+                    RuntimeLogContract.forEvents(pdlLookupDegraded).assertValid(capture.records, expectedCount = 1)
                     val record = jacksonObjectMapper().readTree(capture.records.single())
                     record["event_type"].asText() shouldBe "pdl_lookup_degraded"
                     record["reason"].asText() shouldBe "GRAPHQL_ERRORS"
                     record["error_count"].asInt() shouldBe 1
-                    record["pdl_errors"][0]["message"].asText() shouldBe "GraphQL failure"
-                    record["pdl_errors"][0]["path"][0].asText() shouldBe "person"
-                    record["pdl_errors"][0]["extensions"]["code"].asText() shouldBe "NOT_FOUND"
+                    record["pdl_errors"][0]["code"].asText() shouldBe "not_found"
+                    record["pdl_errors"][0]["detail"].asText() shouldBe "ugyldig_ident"
+                    record["pdl_errors"][0]["path"].asText() shouldBe "hentPersonBolk.navn"
+                    record["pdl_errors"][0].fieldNames().asSequence().toSet() shouldBe setOf("code", "detail", "path")
+                    record["pdl_errors"][0].has("message") shouldBe false
                 }
             }
         }

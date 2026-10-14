@@ -26,7 +26,7 @@ internal fun upstreamHttpClient(
 ): HttpClient = httpClientDefault(
     HttpClient(
         MockEngine { request ->
-            if (request.url.toString() == texasEnvironment.tokenEndpoint) token(request) else upstream(request)
+            if (request.url.toString() in setOf(texasEnvironment.tokenEndpoint, texasEnvironment.tokenExchangeEndpoint)) token(request) else upstream(request)
         }
     )
 )

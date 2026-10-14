@@ -75,6 +75,21 @@ Mønsteret har seks deler:
   `Failure(RESPONSE, 200)` med `UpstreamError(code = "incomplete_response")`
   uten `cause`.
 
+  Altinn Tilganger med `isError = true` gir `Failure(RESPONSE, 200)` med
+  `errors = listOf(UpstreamError("is_error"))` uten `cause`, også når hierarkiet
+  inneholder data. Bare `true` er feil; `false` eller manglende `isError`
+  gir et vellykket svar. Feilen gir HTTP 500 `UPSTREAM_SERVICE_UNAVAILABLE`
+  både i tilgangssjekken for personalledere og i lista over organisasjoner.
+
+  `TexasHttpClient.exchangeTokenForIsAltinnTilganger` returnerer
+  `UpstreamResult<String>`. Feil gir `upstream = texas` og
+  `stage = TOKEN_EXCHANGE`, med status når Texas svarte. Ved et HTTP-feilsvar
+  følger OAuth-feltet `error` med som `UpstreamError(code = ...)`, begrenset
+  til små bokstaver av enumverdiene i `texas/client/OAuthFailureCode`.
+  Ukjente, manglende eller uleselige verdier blir `unknown`.
+  Verken `error_description` eller svartekst følger med i `errors`.
+  OAuth-koden logges i `upstream_errors`; målsystemet logges ikke (#707).
+
 - **Porten.** Hver port har sin egen sealed type med en
   `Unavailable(failure)`-variant. Adapteren i modulen gjør `UpstreamResult` om
   til portens type.
@@ -99,6 +114,13 @@ Mønsteret har seks deler:
   `getOrThrow()`. Den kaster `UpstreamRequestException` med `cause` bevart.
   `UpstreamRequestException` finnes bare som denne broen og slettes sammen med
   den siste legacy-kalleren.
+
+  I PR 1 av #686 har `getAltinnTilgangForOrgnr` resultattypen
+  `UpstreamResult<AltinnTilgang?>`. `AltinnOrganizationAccess` bruker
+  `getOrElse { throw it.toUpstreamUnavailableException() }` fram til PR 2
+  innfører `OrganizationAccessResult.Unavailable`. Lista returnerer allerede
+  `ListAccessibleOrganizationsResult.Unavailable(failure)`. Klient og tjeneste
+  logger ikke; `StatusPages` logger `api_request_failed` én gang.
 
 ## Kontekst
 

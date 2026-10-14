@@ -156,7 +156,10 @@ Owns reusable business authorization for acting on behalf of an organization:
 - evaluate access through Altinn Tilganger;
 - perform PDP decisions;
 - resolve relevant Ereg organization hierarchy;
-- return typed allow/deny results without HTTP exceptions.
+- return typed allow/deny results. Upstream failures in the personnel-manager
+  path temporarily use `toUpstreamUnavailableException()` (#686 PR 1);
+  PR 2 replaces that bridge with `OrganizationAccessResult.Unavailable`.
+  The Ereg bridge in the system-user path is tracked separately in #687.
 
 It does not load narmestelederbehov or narmestelederrelasjon records. The
 calling use case owns resource lookup, authorization order and non-disclosure

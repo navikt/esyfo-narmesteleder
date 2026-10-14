@@ -29,6 +29,7 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decis
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
+import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -36,6 +37,22 @@ import no.nav.syfo.platform.upstream.UpstreamName
 class AltinnOrganizationAccessTest :
     FunSpec({
         context("personnel manager") {
+            test("Altinn failure is bridged without granting or denying access") {
+                val fixture = AccessFixture()
+                val upstreamFailure = UpstreamFailure(
+                    UpstreamName("arbeidsgiver-altinn-tilganger"),
+                    UpstreamFailureStage.RESPONSE,
+                    200,
+                    errors = listOf(UpstreamError("is_error")),
+                )
+                fixture.altinn.setFailure(upstreamFailure)
+                val failure = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                    fixture.access.evaluate(personnelManager(), OrganizationNumber(REQUESTED_ORG))
+                }
+                failure.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                failure.upstreamFailure shouldBeSameInstanceAs upstreamFailure
+                fixture.pdp.requestedOrganizations shouldContainExactly emptyList()
+            }
             test("is granted with the narmesteleder resource for the organization") {
                 val fixture = AccessFixture()
                 fixture.altinn.addAccess(PERSON_IDENT, REQUESTED_ORG)

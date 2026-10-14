@@ -1,37 +1,34 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.RedirectResponseException
 import io.ktor.client.plugins.ResponseException
-import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.exception.OAuthFailureCode
-import no.nav.syfo.application.exception.UpstreamExceptionType
-import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
+
+internal val ALTINN_TILGANGER = UpstreamName("arbeidsgiver-altinn-tilganger")
 
 interface AltinnTilgangerClient {
     suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
-    ): AltinnTilgangerResponse?
+    ): UpstreamResult<AltinnTilgangerResponse>
 }
 
 class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = defaultFixtureLoader) : AltinnTilgangerClient {
     val accessPolicy by lazy { loadTilganger(fixtureLoader).toMutableList() }
-    private var failure: Throwable? = null
+    private var failure: UpstreamFailure? = null
 
-    fun setFailure(failure: Throwable) {
+    fun setFailure(failure: UpstreamFailure) {
         this.failure = failure
     }
 
@@ -41,17 +38,17 @@ class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = d
 
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
-    ): AltinnTilgangerResponse {
-        failure?.let { throw it }
+    ): UpstreamResult<AltinnTilgangerResponse> {
+        failure?.let { return UpstreamResult.Failure(it) }
 
         val userIdent = runCatching { bruker.ident }.getOrNull()
-            ?: return emptyResponse()
+            ?: return UpstreamResult.Success(emptyResponse())
 
         val orgsUserHasAccessTo = accessPolicy
             .firstOrNull { userIdent in it.hasAccess }
             ?.altinnTilgangerResponse
 
-        return orgsUserHasAccessTo ?: emptyResponse()
+        return UpstreamResult.Success(orgsUserHasAccessTo ?: emptyResponse())
     }
 
     fun addAccess(fnr: String, orgNrTilgang: String, altinn3tilgang: String = OPPGI_NARMESTELEDER_RESOURCE) {
@@ -142,91 +139,35 @@ class HttpAltinnTilgangerClient(
 ) : AltinnTilgangerClient {
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
-    ): AltinnTilgangerResponse? {
-        val oboToken = exchangeToken(bruker.token)
-        val response = requestAltinnTilganger(oboToken)
-        return decodeAltinnTilgangerResponse(response)
-    }
-
-    private suspend fun exchangeToken(token: String): String = try {
-        texasClient.exchangeTokenForIsAltinnTilganger(token).accessToken
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: ResponseException) {
-        throw UpstreamRequestException(
-            message = "Token exchange for AltinnTilganger failed",
-            cause = e,
-            upstreamStatus = e.response.status.value,
-            upstreamExceptionType = e.toUpstreamExceptionType(),
-            failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
-            upstream = "texas",
-            upstreamErrorCode = e.oauthFailureCode(),
-        )
-    } catch (e: Exception) {
-        throw UpstreamRequestException(
-            message = "Token exchange for AltinnTilganger failed",
-            cause = e,
-            upstreamExceptionType = UpstreamExceptionType.UNEXPECTED_EXCEPTION,
-            failureStage = UpstreamFailureStage.TOKEN_EXCHANGE,
-            upstream = "texas",
-        )
-    }
-
-    private suspend fun requestAltinnTilganger(oboToken: String): HttpResponse = try {
-        httpClient.post("$baseUrl/altinn-tilganger") {
-            bearerAuth(oboToken)
+    ): UpstreamResult<AltinnTilgangerResponse> {
+        val oboToken = when (val token = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token)) {
+            is UpstreamResult.Success -> token.value
+            is UpstreamResult.Failure -> return token
         }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: ResponseException) {
-        throw UpstreamRequestException(
-            message = "AltinnTilganger returned an unsuccessful response",
-            cause = e,
-            upstreamStatus = e.response.status.value,
-            upstreamExceptionType = e.toUpstreamExceptionType(),
-            failureStage = UpstreamFailureStage.RESPONSE,
-            upstream = "arbeidsgiver-altinn-tilganger",
-        )
-    } catch (e: Exception) {
-        throw UpstreamRequestException(
-            message = "AltinnTilganger request failed",
-            cause = e,
-            upstreamExceptionType = UpstreamExceptionType.TRANSPORT_EXCEPTION,
-            failureStage = UpstreamFailureStage.REQUEST,
-            upstream = "arbeidsgiver-altinn-tilganger",
-        )
+        val response = try {
+            httpClient.post("$baseUrl/altinn-tilganger") {
+                bearerAuth(oboToken)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ResponseException) {
+            return UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, e.response.status.value, e))
+        } catch (e: Exception) {
+            return UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.REQUEST, null, e))
+        }
+        return try {
+            val decoded = response.body<AltinnTilgangerResponse>()
+            if (decoded.isError == true) {
+                UpstreamResult.Failure(
+                    UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, response.status.value, errors = listOf(UpstreamError("is_error")))
+                )
+            } else {
+                UpstreamResult.Success(decoded)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, response.status.value, e))
+        }
     }
-
-    private suspend fun decodeAltinnTilgangerResponse(response: HttpResponse): AltinnTilgangerResponse = try {
-        response.body()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        throw UpstreamRequestException(
-            message = "AltinnTilganger response could not be decoded",
-            cause = e,
-            upstreamStatus = response.status.value,
-            upstreamExceptionType = UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION,
-            failureStage = UpstreamFailureStage.RESPONSE,
-            upstream = "arbeidsgiver-altinn-tilganger",
-        )
-    }
-}
-
-private fun ResponseException.toUpstreamExceptionType(): UpstreamExceptionType = when (this) {
-    is ClientRequestException -> UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION
-    is ServerResponseException -> UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION
-    is RedirectResponseException -> UpstreamExceptionType.REDIRECT_RESPONSE_EXCEPTION
-    else -> UpstreamExceptionType.RESPONSE_EXCEPTION
-}
-
-private val oauthMapper = jacksonObjectMapper()
-
-private suspend fun ResponseException.oauthFailureCode(): OAuthFailureCode = try {
-    val error = oauthMapper.readTree(response.bodyAsText()).path("error").asText()
-    OAuthFailureCode.entries.firstOrNull { it.name.lowercase() == error } ?: OAuthFailureCode.UNKNOWN
-} catch (cancelled: CancellationException) {
-    throw cancelled
-} catch (_: Exception) {
-    OAuthFailureCode.UNKNOWN
 }

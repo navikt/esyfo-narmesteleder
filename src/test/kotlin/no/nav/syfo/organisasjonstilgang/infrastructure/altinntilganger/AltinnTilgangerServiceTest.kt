@@ -2,60 +2,55 @@ package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.clearAllMocks
-import io.mockk.coEvery
-import io.mockk.mockk
-import io.mockk.spyk
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganization
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamResult
 
 class AltinnTilgangerServiceTest :
     FunSpec({
-        val altinnTilgangerClient = spyk(FakeAltinnTilgangerClient())
+        val altinnTilgangerClient = StubAltinnTilgangerClient()
         val altinnTilgangerService = AltinnTilgangerService(altinnTilgangerClient)
 
         beforeTest {
-            clearAllMocks(currentThreadOnly = true)
-            altinnTilgangerClient.reset()
+            altinnTilgangerClient.result = UpstreamResult.Success(altinnTilgangerResponse())
         }
 
         context("find") {
             val userPrincipal = UserPrincipal("12345678910", "token")
             val subject = OrganizationAccessSubject.PersonnelManager(PersonIdent(userPrincipal.ident), AccessToken(userPrincipal.token))
 
-            test("should preserve empty results when the client returns null") {
-                val nullableClient = mockk<AltinnTilgangerClient>()
-                coEvery { nullableClient.fetchAltinnTilganger(any()) } returns null
-                val service = AltinnTilgangerService(nullableClient)
-
-                service.getAltinnTilgangForOrgnr(userPrincipal, "999999999") shouldBe null
-                service.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
+            test("should return Success null when the organization is absent") {
+                altinnTilgangerService.getAltinnTilgangForOrgnr(userPrincipal, "999999999") shouldBe UpstreamResult.Success(null)
+                altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
             }
 
             test("should return unavailable when the upstream request fails") {
-                coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } throws UpstreamRequestException("Upstream unavailable")
+                val failure = UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.REQUEST, null, IllegalStateException("Synthetic failure"))
+                altinnTilgangerClient.result = UpstreamResult.Failure(failure)
 
-                altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Unavailable
+                altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Unavailable(failure)
+                altinnTilgangerService.getAltinnTilgangForOrgnr(userPrincipal, "999999999") shouldBe UpstreamResult.Failure(failure)
             }
 
             test("should pass the personnel manager identity and access token to the client") {
-                coEvery { altinnTilgangerClient.fetchAltinnTilganger(userPrincipal) } returns altinnTilgangerResponse()
-
                 altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
+                altinnTilgangerClient.principal shouldBe userPrincipal
             }
 
-            test("should return an empty list when the upstream response reports an error") {
-                coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(
-                    altinnTilgang("999999999", setOf(OPPGI_NARMESTELEDER_RESOURCE)),
-                ).copy(isError = true)
+            test("should propagate the client isError failure to both callers") {
+                val failure = UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("is_error")))
+                altinnTilgangerClient.result = UpstreamResult.Failure(failure)
 
-                altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
+                altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Unavailable(failure)
+                altinnTilgangerService.getAltinnTilgangForOrgnr(userPrincipal, "999999999") shouldBe UpstreamResult.Failure(failure)
             }
 
             test("should keep parent as context when only child has narmesteleder access to document OR semantics") {
@@ -68,7 +63,8 @@ class AltinnTilgangerServiceTest :
                     underenheter = listOf(childWithAccess),
                 )
 
-                coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(parentWithoutAccess)
+                altinnTilgangerClient.result = UpstreamResult.Success(altinnTilgangerResponse(parentWithoutAccess))
+                altinnTilgangerService.getAltinnTilgangForOrgnr(userPrincipal, "222222222") shouldBe UpstreamResult.Success(childWithAccess)
 
                 altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(
                     listOf(
@@ -95,7 +91,7 @@ class AltinnTilgangerServiceTest :
                     underenheter = listOf(childWithoutAccess),
                 )
 
-                coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(parentWithAccess)
+                altinnTilgangerClient.result = UpstreamResult.Success(altinnTilgangerResponse(parentWithAccess))
 
                 altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(
                     listOf(
@@ -115,7 +111,7 @@ class AltinnTilgangerServiceTest :
                     underenheter = listOf(childWithoutAccess),
                 )
 
-                coEvery { altinnTilgangerClient.fetchAltinnTilganger(any()) } returns altinnTilgangerResponse(parentWithoutAccess)
+                altinnTilgangerClient.result = UpstreamResult.Success(altinnTilgangerResponse(parentWithoutAccess))
 
                 altinnTilgangerService.find(subject) shouldBe ListAccessibleOrganizationsResult.Listed(emptyList())
             }
@@ -141,3 +137,12 @@ private fun altinnTilgangerResponse(vararg hierarki: AltinnTilgang) = AltinnTilg
     orgNrTilTilganger = emptyMap(),
     tilgangTilOrgNr = emptyMap(),
 )
+
+private class StubAltinnTilgangerClient : AltinnTilgangerClient {
+    var result: UpstreamResult<AltinnTilgangerResponse> = UpstreamResult.Success(altinnTilgangerResponse())
+    var principal: UserPrincipal? = null
+    override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): UpstreamResult<AltinnTilgangerResponse> {
+        principal = bruker
+        return result
+    }
+}

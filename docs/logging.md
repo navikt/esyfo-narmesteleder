@@ -51,6 +51,20 @@ logger.logEvent(dialogFailed, details, cause = exception)
   `api_request_invalid` with `error_type`, and 404 as INFO.
 - `ApiErrorException.upstreamFailure` is passed to `api_request_failed` by
   StatusPages, which logs the upstream failure once at the HTTP edge.
+- Altinn Tilganger-feil følger kanten som `UpstreamFailure`. Klienten og
+  `AltinnTilgangerService` logger ikke. `StatusPages` logger
+  `api_request_failed` én gang med `upstream`, `failure_stage`,
+  `upstream_status` og eventuelle `upstream_errors`.
+  `isError = true` gir `upstream = arbeidsgiver-altinn-tilganger`,
+  `failure_stage = response`, `upstream_status = 200` og
+  `upstream_errors = [{code: "is_error"}]`, uten `cause` eller stack.
+  Det gjelder også når hierarkiet inneholder data.
+  TokenX-vekslingsfeil har `upstream = texas` og
+  `failure_stage = token_exchange`. HTTP-feilsvar fra Texas gir OAuth-koden
+  i `upstream_errors`, begrenset til små bokstaver av `OAuthFailureCode`.
+  Ukjente, manglende eller uleselige koder blir `unknown`.
+  `error_description`, tokens og svartekst fra Texas eller Altinn Tilganger
+  logges aldri.
 - For enkeltoppslag i PDL følger feilene kanten som verdier. Feltet
   `upstream_errors` er en liste med `code`, `detail`, `path` og `message` fra
   `UpstreamFailure.errors`. `message` settes bare når upstream dokumenterer at

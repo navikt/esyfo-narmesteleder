@@ -1,266 +1,166 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldNotContain
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.Headers
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
+import io.ktor.client.engine.mock.MockRequestHandler
+import io.ktor.client.plugins.ResponseException
+import io.ktor.client.statement.HttpResponsePipeline
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.fullPath
-import io.ktor.http.isSuccess
-import io.mockk.clearAllMocks
-import io.mockk.coEvery
-import io.mockk.mockk
-import kotlinx.coroutines.CancellationException
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.exception.UpstreamExceptionType
-import no.nav.syfo.application.exception.UpstreamRequestException
-import no.nav.syfo.application.texas.TexasEnvironment
+import no.nav.syfo.integration.TEST_SYSTEM_TOKEN
+import no.nav.syfo.integration.respondJson
+import no.nav.syfo.integration.respondWithSystemToken
+import no.nav.syfo.integration.texasHttpClient
+import no.nav.syfo.integration.upstreamHttpClient
+import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasResponse
-import no.nav.syfo.util.httpClientDefault
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
+import java.io.IOException
+import java.net.SocketTimeoutException
+import kotlin.coroutines.cancellation.CancellationException
 
 class AltinnTilgangerClientTest :
     FunSpec({
+        val principal = UserPrincipal("00000000000", "synthetic-user-token")
+        val expected = AltinnTilgangerResponse(false, emptyList(), emptyMap(), emptyMap())
+        val json = jacksonObjectMapper().writeValueAsString(expected)
 
-        val mockTexasClient = mockk<TexasHttpClient>()
-        beforeTest {
-            clearAllMocks(currentThreadOnly = true)
+        suspend fun fetch(token: MockRequestHandler = respondWithSystemToken, upstream: MockRequestHandler): UpstreamResult<AltinnTilgangerResponse> = upstreamHttpClient(token, upstream).use {
+            HttpAltinnTilgangerClient(texasHttpClient(it), it, "http://altinn").fetchAltinnTilganger(principal)
         }
 
-        fun getMockEngine(status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->
-            when (request.url.fullPath) {
-                "/altinn-tilganger" -> {
-                    if (status.isSuccess()) {
-                        respond(
-                            status = status,
-                            headers = headers,
-                            content = content.toByteArray(Charsets.UTF_8),
-                        )
-                    } else {
-                        respond(
-                            status = status,
-                            headers = headers,
-                            content = content,
-                        )
-                    }
+        test("returns success using the exchanged access token") {
+            fetch {
+                it.method shouldBe HttpMethod.Post
+                it.url.encodedPath shouldBe "/altinn-tilganger"
+                it.headers[HttpHeaders.Authorization] shouldBe "Bearer $TEST_SYSTEM_TOKEN"
+                respondJson(json)
+            } shouldBe UpstreamResult.Success(expected)
+        }
+
+        test("a response without isError is successful") {
+            fetch { respondJson("""{"hierarki":[],"orgNrTilTilganger":{},"tilgangTilOrgNr":{}}""") } shouldBe
+                UpstreamResult.Success(expected.copy(isError = null))
+        }
+
+        listOf(
+            """{"error":"invalid_grant","error_description":"synthetic-private-description"}""" to "invalid_grant",
+            """{"error":"untrusted-code"}""" to "unknown",
+            """{"error_description":"synthetic-private-description"}""" to "unknown",
+            "not-json" to "unknown",
+        ).forEach { (body, code) ->
+            test("token error body maps to restricted OAuth code $code for $body") {
+                val result = fetch(
+                    token = { respondJson(body, HttpStatusCode.BadRequest) },
+                    upstream = { error("Altinn must not be called after token failure") },
+                ).shouldBeInstanceOf<UpstreamResult.Failure>()
+                result.failure.upstream shouldBe UpstreamName("texas")
+                result.failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                result.failure.status shouldBe 400
+                result.failure.errors shouldBe listOf(UpstreamError(code))
+                result.failure.cause.shouldBeInstanceOf<ResponseException>()
+            }
+        }
+
+        test("a non-response token failure stops before requesting Altinn") {
+            val result = fetch(
+                token = { throw IOException("synthetic-token-failure") },
+                upstream = { error("Altinn must not be called after token failure") },
+            ).shouldBeInstanceOf<UpstreamResult.Failure>()
+            result.failure.upstream shouldBe UpstreamName("texas")
+            result.failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+            result.failure.status shouldBe null
+            result.failure.errors shouldBe emptyList()
+            result.failure.cause.shouldBeInstanceOf<IOException>()
+        }
+
+        listOf(HttpStatusCode.MovedPermanently, HttpStatusCode.Forbidden, HttpStatusCode.ServiceUnavailable).forEach { status ->
+            test("HTTP ${status.value} returns a response failure with status") {
+                val result = fetch { respondJson("synthetic-private-body", status) }.shouldBeInstanceOf<UpstreamResult.Failure>()
+                result.failure.upstream shouldBe ALTINN_TILGANGER
+                result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                result.failure.status shouldBe status.value
+                result.failure.cause.shouldBeInstanceOf<ResponseException>()
+            }
+        }
+
+        listOf(
+            "timeout" to SocketTimeoutException("synthetic-private-request"),
+            "IO failure" to IOException("synthetic-private-request"),
+            "unexpected transport failure" to IllegalStateException("synthetic-private-request"),
+        ).forEach { (description, cause) ->
+            test("$description returns a request failure without status") {
+                val result = fetch { throw cause }.shouldBeInstanceOf<UpstreamResult.Failure>()
+                result.failure.upstream shouldBe ALTINN_TILGANGER
+                result.failure.stage shouldBe UpstreamFailureStage.REQUEST
+                result.failure.status shouldBe null
+                result.failure.cause?.javaClass shouldBe cause.javaClass
+            }
+        }
+
+        test("invalid response body returns a response failure with the actual status") {
+            val result = fetch { respondJson("not-json", HttpStatusCode.Created) }.shouldBeInstanceOf<UpstreamResult.Failure>()
+            result.failure.upstream shouldBe ALTINN_TILGANGER
+            result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
+            result.failure.status shouldBe 201
+            result.failure.cause?.javaClass?.simpleName shouldBe "JsonConvertException"
+        }
+
+        listOf(emptyList(), listOf(AltinnTilgang("910000001", emptySet(), emptyList(), "Synthetic Org", "BEDR"))).forEach { hierarchy ->
+            test("isError true is a response failure with ${hierarchy.size} hierarchy entries") {
+                val body = jacksonObjectMapper().writeValueAsString(expected.copy(isError = true, hierarki = hierarchy))
+                val result = fetch { respondJson(body) }.shouldBeInstanceOf<UpstreamResult.Failure>()
+                result.failure.upstream shouldBe ALTINN_TILGANGER
+                result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                result.failure.status shouldBe 200
+                result.failure.errors shouldBe listOf(UpstreamError("is_error"))
+                result.failure.cause shouldBe null
+            }
+        }
+
+        test("propagates token exchange cancellation without calling Altinn") {
+            shouldThrow<CancellationException> {
+                fetch(
+                    token = { throw CancellationException("Cancelled") },
+                    upstream = { error("Altinn must not be called") },
+                )
+            }
+        }
+
+        test("propagates request cancellation") {
+            shouldThrow<CancellationException> { fetch { throw CancellationException("Cancelled") } }
+        }
+
+        test("propagates body decoding cancellation") {
+            val cancelled = CancellationException("Cancelled")
+            upstreamHttpClient(respondWithSystemToken) { respondJson(json) }.use { http ->
+                http.responsePipeline.intercept(HttpResponsePipeline.Receive) {
+                    if (subject.expectedType.type == AltinnTilgangerResponse::class) throw cancelled
                 }
-
-                else -> error("Unhandled request ${request.url.fullPath}")
+                shouldThrow<CancellationException> {
+                    HttpAltinnTilgangerClient(texasHttpClient(http), http, "http://altinn").fetchAltinnTilganger(principal)
+                } shouldBeSameInstanceAs cancelled
             }
         }
-        context("fetchAltinnTilganger") {
-            test("should return AltinnTilgangerResponse when fetchAltinnTilganger responds with 200") {
-                val userPrincipal = UserPrincipal("12345678901", "token")
-                val getPersonResponse = """
-{
-  "hierarki": [
-    {
-      "orgnr": "987654321",
-      "erSlettet": false,
-      "altinn3Tilganger": [],
-      "underenheter": [
-        {
-          "orgnr": "123456789",
-          "erSlettet": false,
-          "altinn3Tilganger": [
-            "tilgang1",
-            "tilgang2"
-          ],
-          "underenheter": [],
-          "navn": "Organisasjon 2",
-          "organisasjonsform": "BEDR"
-        }
-      ],
-      "navn": "Organissjon 1",
-      "organisasjonsform": "ORGL"
-    }
-  ],
-  "orgNrTilTilganger": {
-    "123456789": [
-      "tilgang1",
-      "tilgang2"
-    ]
-  },
-  "tilgangTilOrgNr": {
-    "tilgang1": [
-      "123456789"
-    ],
-    "tilgang2": [
-      "123456789"
-    ]
-  },
-  "error": false
-}
 
-                """.trimIndent()
-                val mockEngine = getMockEngine(
-                    status = HttpStatusCode.Companion.OK,
-                    headers = Headers.Companion.build {
-                        append("Content-Type", "application/json")
-                    },
-                    content = getPersonResponse,
-                )
-                coEvery {
-                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-                } returns TexasResponse(
-                    "token",
-                    111,
-                    "tokenType"
-                )
-                val client = HttpAltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
-
-                val result = client.fetchAltinnTilganger(userPrincipal)
-
-                result?.hierarki?.firstOrNull()?.orgnr shouldBe "987654321"
-            }
-
-            test("should preserve actionable HTTP failure details from AltinnTilganger") {
-                val userPrincipal = UserPrincipal("12345678901", "token")
-                coEvery {
-                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-                } returns TexasResponse(
-                    "token",
-                    111,
-                    "tokenType"
-                )
-                val cases = listOf(
-                    Triple(301, HttpStatusCode.MovedPermanently, UpstreamExceptionType.REDIRECT_RESPONSE_EXCEPTION),
-                    Triple(401, HttpStatusCode.Unauthorized, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
-                    Triple(403, HttpStatusCode.Forbidden, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
-                    Triple(404, HttpStatusCode.NotFound, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
-                    Triple(429, HttpStatusCode.TooManyRequests, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
-                    Triple(422, HttpStatusCode.UnprocessableEntity, UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION),
-                    Triple(500, HttpStatusCode.InternalServerError, UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION),
-                    Triple(502, HttpStatusCode.BadGateway, UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION),
-                    Triple(503, HttpStatusCode.ServiceUnavailable, UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION),
-                    Triple(504, HttpStatusCode.GatewayTimeout, UpstreamExceptionType.SERVER_RESPONSE_EXCEPTION),
-                )
-
-                cases.forEach { (expectedStatus, status, expectedExceptionType) ->
-                    val mockEngine = getMockEngine(
-                        status = status,
-                        headers = Headers.build {
-                            append("Content-Type", "application/json")
-                        },
-                        content = "safe failure",
-                    )
-                    val client = HttpAltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
-
-                    val exception = shouldThrow<UpstreamRequestException> {
-                        client.fetchAltinnTilganger(userPrincipal)
-                    }
-
-                    exception.upstreamStatus shouldBe expectedStatus
-                    exception.failureStage shouldBe UpstreamFailureStage.RESPONSE
-                    exception.upstreamExceptionType shouldBe expectedExceptionType
+        test("any non-cancellation body failure is classified as RESPONSE") {
+            val original = IllegalStateException("Synthetic decode failure")
+            upstreamHttpClient(respondWithSystemToken) { respondJson(json) }.use { http ->
+                http.responsePipeline.intercept(HttpResponsePipeline.Receive) {
+                    if (subject.expectedType.type == AltinnTilgangerResponse::class) throw original
                 }
-            }
-
-            test("should classify token exchange separately without exposing an invalid status") {
-                val userPrincipal = UserPrincipal("12345678901", "privacy-canary-token")
-                val originalFailure = IllegalStateException("privacy-canary-cause-message")
-                coEvery {
-                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-                } throws originalFailure
-                val client = HttpAltinnTilgangerClient(
-                    texasClient = mockTexasClient,
-                    httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
-                    baseUrl = "",
-                )
-
-                val exception = shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
-
-                exception.failureStage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                exception.upstreamStatus shouldBe null
-                exception.upstreamExceptionType shouldBe UpstreamExceptionType.UNEXPECTED_EXCEPTION
-                exception.cause shouldBe originalFailure
-                exception.message shouldBe "Token exchange for AltinnTilganger failed"
-                exception.message shouldNotContain originalFailure.message!!
-            }
-
-            test("should preserve a bounded HTTP status from token exchange") {
-                val userPrincipal = UserPrincipal("12345678901", "privacy-canary-token")
-                val texasClient = TexasHttpClient(
-                    client = httpClientDefault(
-                        HttpClient(
-                            MockEngine {
-                                respond(
-                                    content = "safe failure",
-                                    status = HttpStatusCode.Unauthorized,
-                                    headers = Headers.build { append("Content-Type", "application/json") },
-                                )
-                            },
-                        ),
-                    ),
-                    environment = TexasEnvironment.createForLocal(),
-                )
-                val client = HttpAltinnTilgangerClient(
-                    texasClient = texasClient,
-                    httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
-                    baseUrl = "",
-                )
-
-                val exception = shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
-
-                exception.failureStage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                exception.upstreamStatus shouldBe 401
-                exception.upstreamExceptionType shouldBe UpstreamExceptionType.CLIENT_REQUEST_EXCEPTION
-            }
-
-            test("should classify malformed successful responses as response failures with the response status") {
-                val userPrincipal = UserPrincipal("12345678901", "token")
-                coEvery {
-                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-                } returns TexasResponse("token", 111, "tokenType")
-                val mockEngine = getMockEngine(
-                    status = HttpStatusCode.OK,
-                    headers = Headers.build { append("Content-Type", "application/json") },
-                    content = "not-json",
-                )
-                val client = HttpAltinnTilgangerClient(mockTexasClient, httpClientDefault(HttpClient(mockEngine)), "")
-
-                val exception = shouldThrow<UpstreamRequestException> { client.fetchAltinnTilganger(userPrincipal) }
-
-                exception.failureStage shouldBe UpstreamFailureStage.RESPONSE
-                exception.upstreamStatus shouldBe 200
-                exception.upstreamExceptionType shouldBe UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION
-            }
-
-            test("should propagate cancellation without wrapping it as an upstream failure") {
-                val userPrincipal = UserPrincipal("12345678901", "token")
-                coEvery {
-                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-                } returns TexasResponse(
-                    "token",
-                    111,
-                    "tokenType",
-                )
-                val client = HttpAltinnTilgangerClient(
-                    texasClient = mockTexasClient,
-                    httpClient = HttpClient(MockEngine { throw CancellationException("Request cancelled") }),
-                    baseUrl = "",
-                )
-
-                shouldThrow<CancellationException> { client.fetchAltinnTilganger(userPrincipal) }
-            }
-
-            test("should propagate cancellation from token exchange without calling AltinnTilganger") {
-                val userPrincipal = UserPrincipal("12345678901", "token")
-                coEvery {
-                    mockTexasClient.exchangeTokenForIsAltinnTilganger(eq(userPrincipal.token))
-                } throws CancellationException("Token exchange cancelled")
-                val client = HttpAltinnTilgangerClient(
-                    texasClient = mockTexasClient,
-                    httpClient = HttpClient(MockEngine { error("AltinnTilganger must not be called") }),
-                    baseUrl = "",
-                )
-
-                shouldThrow<CancellationException> { client.fetchAltinnTilganger(userPrincipal) }
+                val result = HttpAltinnTilgangerClient(texasHttpClient(http), http, "http://altinn")
+                    .fetchAltinnTilganger(principal).shouldBeInstanceOf<UpstreamResult.Failure>()
+                result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                result.failure.status shouldBe 200
+                result.failure.cause shouldBeSameInstanceAs original
             }
         }
     })

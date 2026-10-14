@@ -44,6 +44,7 @@ class SubmitNarmestelederrelasjonUseCase(
 
     private fun normalizeContact(input: ManagerContactInput): SubmitStep<NormalizedManagerContact> = when (val result = input.normalize()) {
         is ManagerContactNormalization.Valid -> Step.Continue(result.manager)
+
         is ManagerContactNormalization.Invalid -> {
             logger.logEvent(contactValidationRejected, ContactValidationRejectedDetails(result.issues))
             Step.Stop(SubmitNarmestelederrelasjonResult.InvalidManagerContactDetails(result.issues))
@@ -52,6 +53,7 @@ class SubmitNarmestelederrelasjonUseCase(
 
     private suspend fun verifyAccess(subject: OrganizationAccessSubject, organizationNumber: OrganizationNumber): SubmitStep<Unit> = when (val result = organizationAccess.evaluate(subject, organizationNumber)) {
         is OrganizationAccessResult.Granted -> Step.Proceed
+        is OrganizationAccessResult.Unavailable -> Step.Stop(SubmitNarmestelederrelasjonResult.UpstreamUnavailable(result.failure))
         is OrganizationAccessResult.Denied -> Step.Stop(SubmitNarmestelederrelasjonResult.AccessDenied(result.reason, organizationNumber))
     }
 

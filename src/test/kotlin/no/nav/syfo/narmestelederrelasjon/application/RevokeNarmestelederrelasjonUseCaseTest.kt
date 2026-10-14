@@ -2,12 +2,17 @@ package no.nav.syfo.narmestelederrelasjon.application
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import java.util.UUID
 
 class RevokeNarmestelederrelasjonUseCaseTest :
@@ -54,6 +59,28 @@ class RevokeNarmestelederrelasjonUseCaseTest :
                 },
             )
             return RevokeFixture(useCase, effects, commands)
+        }
+
+        test("unavailable access stops outsiders before publishing even for inactive relations") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            listOf(true, false).forEach { active ->
+                val (useCase, effects, commands) = fixture(lookup = relation(active), access = OrganizationAccessResult.Unavailable(failure))
+                val result = useCase.execute(id, user(outsider))
+                result shouldBe RevokeNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+                result.shouldBeInstanceOf<RevokeNarmestelederrelasjonResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+                effects shouldBe listOf("lookup", "access")
+                commands shouldBe emptyList()
+            }
+        }
+
+        test("employee and manager bypass unavailable organization access and publish once") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            listOf(employee to RevocationInitiator.EMPLOYEE, manager to RevocationInitiator.LINEMANAGER).forEach { (ident, initiator) ->
+                val (useCase, effects, commands) = fixture(access = OrganizationAccessResult.Unavailable(failure))
+                useCase.execute(id, user(ident)) shouldBe RevokeNarmestelederrelasjonResult.Revoked(initiator)
+                effects shouldBe listOf("lookup", "publish")
+                commands.single().initiator shouldBe initiator
+            }
         }
 
         test("employee and manager bypass organization access and publish once") {

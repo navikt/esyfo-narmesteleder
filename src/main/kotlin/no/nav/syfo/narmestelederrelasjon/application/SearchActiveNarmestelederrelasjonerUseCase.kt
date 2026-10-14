@@ -8,6 +8,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
+import no.nav.syfo.platform.upstream.UpstreamFailure
 
 private const val DEFAULT_PAGE_SIZE = 50
 private const val TEXT_MAX_LENGTH = 50
@@ -30,6 +31,7 @@ class SearchActiveNarmestelederrelasjonerUseCase(
         orgNumber: OrganizationNumber,
     ): SearchStep<Unit> = when (val access = organizationAccess.evaluate(subject, orgNumber)) {
         is OrganizationAccessResult.Granted -> Step.Proceed
+        is OrganizationAccessResult.Unavailable -> Step.Stop(SearchActiveNarmestelederrelasjonerResult.UpstreamUnavailable(access.failure))
         is OrganizationAccessResult.Denied -> Step.Stop(SearchActiveNarmestelederrelasjonerResult.AccessDenied(access.reason))
     }
 
@@ -79,6 +81,7 @@ data class SearchActiveNarmestelederrelasjonerCommand(
 )
 
 sealed interface SearchActiveNarmestelederrelasjonerResult {
+    data class UpstreamUnavailable(val failure: UpstreamFailure) : SearchActiveNarmestelederrelasjonerResult
     data class AccessDenied(val reason: DenialReason) : SearchActiveNarmestelederrelasjonerResult
     data object InvalidText : SearchActiveNarmestelederrelasjonerResult
     data object InvalidPageToken : SearchActiveNarmestelederrelasjonerResult

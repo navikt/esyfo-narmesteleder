@@ -2,8 +2,11 @@ package no.nav.syfo.narmestelederbehov.application
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.logging.withProductionLogs
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
@@ -22,6 +25,19 @@ import java.util.UUID
 
 class GetNarmestelederbehovUseCaseTest :
     FunSpec({
+        test("unavailable access stops without later lookups or writes") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val fixture = ReadFixture(access = OrganizationAccessResult.Unavailable(failure))
+            withProductionLogs(GetNarmestelederbehovUseCase::class.java) { capture ->
+                val result = fixture.execute()
+                result shouldBe GetNarmestelederbehovResult.UpstreamUnavailable(failure)
+                result.shouldBeInstanceOf<GetNarmestelederbehovResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+                capture.records shouldBe emptyList()
+            }
+            fixture.effects shouldBe listOf("read", "access")
+            fixture.savedNames shouldBe emptyList()
+        }
+
         test("stored names are read without person lookup or writes and carry Altinn name") {
             val fixture = ReadFixture()
             val result = fixture.execute()

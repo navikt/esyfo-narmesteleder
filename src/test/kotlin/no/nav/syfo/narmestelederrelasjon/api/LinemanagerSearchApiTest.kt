@@ -33,6 +33,7 @@ import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederrelasjon.application.LinemanagerSearchCursor
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchRepository
@@ -48,6 +49,10 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -77,6 +82,21 @@ class LinemanagerSearchApiTest :
             texasHttpClient.introspectsMaskinportenSystemUser()
             coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
                 TexasIntrospectionResponse(active = true, acr = "Level4", pid = callerPid.value)
+        }
+
+        test("unavailable organization access returns 500 and logs once without searching or counting") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))
+            access.result = OrganizationAccessResult.Unavailable(failure)
+            val before = searchCount("user")
+            assertSingleUpstreamFailureLog(upstream = failure.upstream.value) {
+                withSearchApi(useCase, texasHttpClient) {
+                    val response = client.search("""{"orgNumber":"${organizationNumber.value}"}""", userToken())
+                    response.shouldBeError(HttpStatusCode.InternalServerError, ErrorType.UPSTREAM_SERVICE_UNAVAILABLE, "An upstream service is unavailable")
+                }
+            }
+            searchCount("user") shouldBeExactly before
+            repository.queries.shouldBeEmpty()
+            access.calls.size shouldBe 1
         }
 
         test("is not available through the external API") {

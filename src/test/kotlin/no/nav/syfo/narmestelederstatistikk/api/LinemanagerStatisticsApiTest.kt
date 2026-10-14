@@ -18,6 +18,7 @@ import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import no.nav.syfo.narmestelederstatistikk.application.NarmestelederstatistikkRepository
@@ -28,12 +29,34 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testApiApplication
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 
 class LinemanagerStatisticsApiTest :
     FunSpec({
+        test("unavailable organization access returns 500 and logs once without reading statistics or counting") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))
+            val fixture = StatisticsApiFixture(user = true, unavailable = failure)
+            val before = requestCount("user")
+            assertSingleUpstreamFailureLog(upstream = failure.upstream.value) {
+                fixture.withApplication {
+                    val response = client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") { bearerAuth(fixture.token()) }
+                    response.status shouldBe HttpStatusCode.InternalServerError
+                    val error = mapper.readTree(response.bodyAsText())
+                    error.path("type").asText() shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE.name
+                    error.path("message").asText() shouldBe "An upstream service is unavailable"
+                }
+            }
+            fixture.effects shouldBe listOf("access")
+            fixture.organizations shouldBe emptyList()
+            requestCount("user") shouldBe before
+        }
+
         listOf(false, true).forEach { user ->
             test("returns exact statistics JSON and counts successful ${if (user) "user" else "system"} requests") {
                 val fixture = StatisticsApiFixture(user = user)
@@ -127,6 +150,7 @@ private class StatisticsApiFixture(
     private val user: Boolean = false,
     denialReason: DenialReason? = null,
     activeToken: Boolean = true,
+    unavailable: UpstreamFailure? = null,
 ) {
     val effects = mutableListOf<String>()
     val organizations = mutableListOf<OrganizationNumber>()
@@ -140,7 +164,9 @@ private class StatisticsApiFixture(
         organizationAccess = OrganizationAccess { subject, organization ->
             effects += "access"
             evaluations += subject to organization
-            denialReason?.let { OrganizationAccessResult.Denied(it) } ?: OrganizationAccessResult.Granted(null)
+            unavailable?.let { OrganizationAccessResult.Unavailable(it) }
+                ?: denialReason?.let { OrganizationAccessResult.Denied(it) }
+                ?: OrganizationAccessResult.Granted(null)
         },
         repository = NarmestelederstatistikkRepository { organization ->
             effects += "count"

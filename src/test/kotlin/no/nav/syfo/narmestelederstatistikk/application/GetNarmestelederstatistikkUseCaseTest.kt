@@ -2,14 +2,32 @@ package no.nav.syfo.narmestelederstatistikk.application
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 
 class GetNarmestelederstatistikkUseCaseTest :
     FunSpec({
+        test("unavailable access stops before counting") {
+            val effects = mutableListOf<String>()
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val access = StatisticsOrganizationAccess(OrganizationAccessResult.Unavailable(failure), effects)
+            val repository = StatisticsRepository(effects)
+            val result = GetNarmestelederstatistikkUseCase(access, repository).execute(organizationNumber, subject)
+            result shouldBe GetNarmestelederstatistikkResult.UpstreamUnavailable(failure)
+            result.shouldBeInstanceOf<GetNarmestelederstatistikkResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+            access.evaluations shouldBe listOf(subject to organizationNumber)
+            repository.organizations shouldBe emptyList()
+            effects shouldBe listOf("access")
+        }
+
         DenialReason.entries.forEach { reason ->
             test("returns AccessDenied without counting when access is denied with $reason") {
                 val effects = mutableListOf<String>()

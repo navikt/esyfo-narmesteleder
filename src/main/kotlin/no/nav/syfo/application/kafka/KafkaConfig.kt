@@ -14,10 +14,19 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import java.util.*
 import kotlin.reflect.KClass
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 const val JAVA_KEYSTORE = "JKS"
 const val PKCS12 = "PKCS12"
 const val SSL = "SSL"
+
+// Kafka's defaults, set explicitly so a caller holding a lease can rely on how long a send may take.
+private val PRODUCER_MAX_BLOCK: Duration = 60.seconds
+private val PRODUCER_DELIVERY_TIMEOUT: Duration = 120.seconds
+
+/** Upper bound for `send(...).get()`: blocking for metadata and buffer space, then delivery including retries. */
+val PRODUCER_MAX_SEND_DURATION: Duration = PRODUCER_MAX_BLOCK + PRODUCER_DELIVERY_TIMEOUT
 
 fun commonProperties(env: KafkaEnvironment): Properties {
     val sslConfig = env.sslConfig
@@ -50,6 +59,8 @@ fun producerProperties(
 
     return producerProperties.apply {
         put(ProducerConfig.ACKS_CONFIG, "all")
+        put(ProducerConfig.MAX_BLOCK_MS_CONFIG, PRODUCER_MAX_BLOCK.inWholeMilliseconds.toString())
+        put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, PRODUCER_DELIVERY_TIMEOUT.inWholeMilliseconds.toString())
         put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, keySerializer.java)
         put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, valueSerializer.java)
     }

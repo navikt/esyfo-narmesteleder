@@ -9,7 +9,7 @@ class RevokeNarmestelederrelasjonFromSendtSykmeldingUseCaseTest :
     FunSpec({
         test("publishes the revocation with the employee as sendt sykmelding initiator") {
             val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
-            val useCase = RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase { published += it }
+            val useCase = RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase(RecordingRevocationPublisher { published += it })
             val employee = PersonIdent("12345678901")
             val organization = OrganizationNumber("123456789")
 

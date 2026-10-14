@@ -50,7 +50,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             settings: EmploymentCheckSettings = EmploymentCheckSettings(),
             clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
             revokeEnabled: Boolean = false,
-            publisher: PublishNarmestelederrelasjonRevocation = PublishNarmestelederrelasjonRevocation {
+            publisher: PublishNarmestelederrelasjonRevocation = RecordingRevocationPublisher {
                 if (revokeEnabled) {
                     repository.validated shouldBe repository.claims.take(published.size + 1)
                     repository.completed.size shouldBe published.size
@@ -97,7 +97,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.STALE)
         }
 
-        test("live mode publishes only with strictly more than three minutes left before the safety margin") {
+        test("live mode publishes only when the publisher's max publish duration fits before the safety margin") {
             repository.claims = listOf(689L, 690L, 691L).map { claim.copy(claimedAt = now.minusSeconds(it)) }
 
             useCase(revokeEnabled = true) { EmploymentHistoryResult.Found(emptyList()) }.execute()
@@ -112,7 +112,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
                 useCase(
                     revokeEnabled = true,
-                    publisher = { throw IllegalStateException("private-publish-canary ${claim.employeeIdent.value} ${claim.organizationNumber.value}") },
+                    publisher = RecordingRevocationPublisher { throw IllegalStateException("private-publish-canary ${claim.employeeIdent.value} ${claim.organizationNumber.value}") },
                 ) { EmploymentHistoryResult.Found(emptyList()) }.execute()
 
                 repository.completed.single() shouldBe RecordedCompletion(claim, EmploymentCheckOutcome.FAILED, now.plusSeconds(86_400), now)
@@ -201,7 +201,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
 
         test("cancellation during publishing is not swallowed or completed") {
             shouldThrow<CancellationException> {
-                useCase(revokeEnabled = true, publisher = { throw CancellationException("Stopping") }) {
+                useCase(revokeEnabled = true, publisher = RecordingRevocationPublisher { throw CancellationException("Stopping") }) {
                     EmploymentHistoryResult.Found(emptyList())
                 }.execute()
             }
@@ -225,7 +225,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
                 EmploymentCheckSettings(),
                 Clock.fixed(now, ZoneOffset.UTC),
                 metrics,
-                { published += it },
+                RecordingRevocationPublisher { published += it },
                 true,
             )
 

@@ -12,7 +12,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset.UTC
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toKotlinDuration
 
 // The reference app runs with TZ=Europe/Oslo and judges the rule on LocalDate.now().
@@ -47,7 +46,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         var outcome = decide(claim, history, today = LocalDate.ofInstant(ruleInstant, NORWEGIAN_TIME))
         if (outcome == EmploymentCheckOutcome.REVOKED) {
             val publishElapsed = Duration.between(claim.claimedAt, now).toKotlinDuration()
-            if (publishElapsed + PUBLISH_BUDGET >= settings.lease - CLAIM_SAFETY_MARGIN) return ClaimedCheckOutcome.TIMEOUT
+            if (publishElapsed + publisher.maxPublishDuration >= settings.lease - CLAIM_SAFETY_MARGIN) return ClaimedCheckOutcome.TIMEOUT
             if (!repository.isClaimStillValid(claim, now)) return ClaimedCheckOutcome.STALE
             try {
                 publisher.publish(
@@ -112,8 +111,6 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
     }
 
     companion object {
-        // Kafka max.block.ms (60 s) + delivery.timeout.ms (120 s) bound send(...).get().
-        private val PUBLISH_BUDGET = 3.minutes
         private val logger = applicationLogger(CheckNarmestelederrelasjonEmploymentUseCase::class.java)
     }
 }

@@ -4,6 +4,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.test.runTest
+import no.nav.syfo.application.kafka.KafkaEnvironment
+import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
@@ -12,6 +14,10 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
+import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.serialization.StringSerializer
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 class KafkaPublishNarmestelederrelasjonRevocationTest :
     FunSpec({
@@ -43,6 +49,15 @@ class KafkaPublishNarmestelederrelasjonRevocationTest :
                 } shouldBe 1
             }
             producer.sent.size shouldBe expectedSources.size
+        }
+
+        test("bounds a publish by the producer's max.block.ms and delivery.timeout.ms") {
+            val properties = producerProperties(KafkaEnvironment.createForLocal(), StringSerializer::class)
+            val configured = properties.getProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG).toLong() +
+                properties.getProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG).toLong()
+
+            KafkaPublishNarmestelederrelasjonRevocation(RecordingProducer()).maxPublishDuration shouldBe configured.milliseconds
+            configured.milliseconds shouldBe 3.minutes
         }
 
         test("runs the blocking producer off the caller's non-IO dispatcher and waits for it to finish") {

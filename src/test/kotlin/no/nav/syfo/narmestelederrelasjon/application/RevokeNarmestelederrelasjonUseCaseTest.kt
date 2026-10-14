@@ -48,7 +48,7 @@ class RevokeNarmestelederrelasjonUseCaseTest :
                     effects.add("access")
                     access
                 },
-                publisher = { command ->
+                publisher = RecordingRevocationPublisher { command ->
                     effects.add("publish")
                     commands.add(command)
                 },

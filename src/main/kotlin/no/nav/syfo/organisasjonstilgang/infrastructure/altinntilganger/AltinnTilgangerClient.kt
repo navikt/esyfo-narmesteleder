@@ -13,6 +13,7 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.getOrElse
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.util.JsonFixtureLoader
 
@@ -140,10 +141,8 @@ class HttpAltinnTilgangerClient(
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
     ): UpstreamResult<AltinnTilgangerResponse> {
-        val oboToken = when (val token = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token)) {
-            is UpstreamResult.Success -> token.value
-            is UpstreamResult.Failure -> return token
-        }
+        val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token).getOrElse { return UpstreamResult.Failure(it) }
+
         val response = try {
             httpClient.post("$baseUrl/altinn-tilganger") {
                 bearerAuth(oboToken)
@@ -151,23 +150,26 @@ class HttpAltinnTilgangerClient(
         } catch (e: CancellationException) {
             throw e
         } catch (e: ResponseException) {
-            return UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, e.response.status.value, e))
+            return failure(UpstreamFailureStage.RESPONSE, e.response.status.value, e)
         } catch (e: Exception) {
-            return UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.REQUEST, null, e))
+            return failure(UpstreamFailureStage.REQUEST, null, e)
         }
-        return try {
-            val decoded = response.body<AltinnTilgangerResponse>()
-            if (decoded.isError == true) {
-                UpstreamResult.Failure(
-                    UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, response.status.value, errors = listOf(UpstreamError("is_error")))
-                )
-            } else {
-                UpstreamResult.Success(decoded)
-            }
+
+        val decoded = try {
+            response.body<AltinnTilgangerResponse>()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, response.status.value, e))
+            return failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
         }
+
+        return if (decoded.isError == true) isErrorFailure(response.status.value) else UpstreamResult.Success(decoded)
     }
 }
+
+private val IS_ERROR = UpstreamError("is_error")
+
+private fun failure(stage: UpstreamFailureStage, status: Int?, cause: Throwable) = UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, stage, status, cause))
+
+// Altinn Tilganger answers a failed Altinn 3 lookup with HTTP 200 and isError=true.
+private fun isErrorFailure(status: Int) = UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, status, errors = listOf(IS_ERROR)))

@@ -50,9 +50,9 @@ class TexasHttpClient(
     } catch (e: CancellationException) {
         throw e
     } catch (e: ResponseException) {
-        UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, e.response.status.value, e))
+        failure(e.response.status.value, e)
     } catch (e: Exception) {
-        UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, null, e))
+        failure(null, e)
     }
 
     private suspend fun exchangeToken(identityProvider: String, target: String, token: String): HttpResponse = client.post(environment.tokenExchangeEndpoint) {
@@ -65,46 +65,43 @@ class TexasHttpClient(
             )
         )
     }
+
     suspend fun exchangeTokenForIsAltinnTilganger(token: String): UpstreamResult<String> {
         val response = try {
             exchangeToken(IDENTITY_PROVIDER_TOKENX, environment.exchangeTargetIsAltinnTilganger, token)
         } catch (e: CancellationException) {
             throw e
         } catch (e: ResponseException) {
-            return UpstreamResult.Failure(
-                UpstreamFailure(
-                    TEXAS,
-                    UpstreamFailureStage.TOKEN_EXCHANGE,
-                    e.response.status.value,
-                    e,
-                    errors = listOf(UpstreamError(e.oauthFailureCode().name.lowercase())),
-                )
-            )
+            return failure(e.response.status.value, e, listOf(UpstreamError(e.oauthFailureCode().name.lowercase())))
         } catch (e: Exception) {
-            return UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, null, e))
+            return failure(null, e)
         }
+
         return try {
             UpstreamResult.Success(response.body<TexasResponse>().accessToken)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, response.status.value, e))
+            failure(response.status.value, e)
         }
     }
+
     companion object {
         fun getTarget(scope: String) = "api://$scope/.default"
         const val IDENTITY_PROVIDER_TOKENX = "tokenx"
         const val IDENTITY_PROVIDER_AZUREAD = "azuread"
     }
+}
 
-    private val oauthMapper = jacksonObjectMapper()
+private fun failure(status: Int?, cause: Throwable, errors: List<UpstreamError> = emptyList()) = UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, status, cause, errors))
 
-    private suspend fun ResponseException.oauthFailureCode(): OAuthFailureCode = try {
-        val error = oauthMapper.readTree(response.bodyAsText()).path("error").asText()
-        OAuthFailureCode.entries.firstOrNull { it.name.lowercase() == error } ?: OAuthFailureCode.UNKNOWN
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        OAuthFailureCode.UNKNOWN
-    }
+private val oauthMapper = jacksonObjectMapper()
+
+private suspend fun ResponseException.oauthFailureCode(): OAuthFailureCode = try {
+    val error = oauthMapper.readTree(response.bodyAsText()).path("error").asText()
+    OAuthFailureCode.entries.firstOrNull { it.name.lowercase() == error } ?: OAuthFailureCode.UNKNOWN
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    OAuthFailureCode.UNKNOWN
 }

@@ -142,7 +142,12 @@ class HttpAltinnTilgangerClient(
         bruker: UserPrincipal,
     ): UpstreamResult<AltinnTilgangerResponse> {
         val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token).getOrElse { return UpstreamResult.Failure(it) }
+        val response = postTilganger(oboToken).getOrElse { return UpstreamResult.Failure(it) }
 
+        return if (response.isError == true) isErrorFailure() else UpstreamResult.Success(response)
+    }
+
+    private suspend fun postTilganger(oboToken: String): UpstreamResult<AltinnTilgangerResponse> {
         val response = try {
             httpClient.post("$baseUrl/altinn-tilganger") {
                 bearerAuth(oboToken)
@@ -155,15 +160,13 @@ class HttpAltinnTilgangerClient(
             return failure(UpstreamFailureStage.REQUEST, null, e)
         }
 
-        val decoded = try {
-            response.body<AltinnTilgangerResponse>()
+        return try {
+            UpstreamResult.Success(response.body<AltinnTilgangerResponse>())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
+            failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
         }
-
-        return if (decoded.isError == true) isErrorFailure(response.status.value) else UpstreamResult.Success(decoded)
     }
 }
 
@@ -171,5 +174,6 @@ private val IS_ERROR = UpstreamError("is_error")
 
 private fun failure(stage: UpstreamFailureStage, status: Int?, cause: Throwable) = UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, stage, status, cause))
 
-// Altinn Tilganger answers a failed Altinn 3 lookup with HTTP 200 and isError=true.
-private fun isErrorFailure(status: Int) = UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, status, errors = listOf(IS_ERROR)))
+// Altinn Tilganger answers a failed Altinn 3 lookup with isError=true, and its route always responds 200
+// (navikt/arbeidsgiver-altinn-tilganger, Application.kt: call.respond(...toResponse()) without a status).
+private fun isErrorFailure() = UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, UpstreamFailureStage.RESPONSE, 200, errors = listOf(IS_ERROR)))

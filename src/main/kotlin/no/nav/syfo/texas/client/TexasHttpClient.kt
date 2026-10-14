@@ -6,7 +6,6 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -55,20 +54,20 @@ class TexasHttpClient(
         failure(null, e)
     }
 
-    private suspend fun exchangeToken(identityProvider: String, target: String, token: String): HttpResponse = client.post(environment.tokenExchangeEndpoint) {
-        contentType(ContentType.Application.Json)
-        setBody(
-            TexasExchangeRequest(
-                identityProvider = identityProvider,
-                target = target,
-                userToken = token
-            )
-        )
-    }
+    suspend fun exchangeTokenForIsAltinnTilganger(token: String): UpstreamResult<String> = exchangeToken(IDENTITY_PROVIDER_TOKENX, environment.exchangeTargetIsAltinnTilganger, token)
 
-    suspend fun exchangeTokenForIsAltinnTilganger(token: String): UpstreamResult<String> {
+    private suspend fun exchangeToken(identityProvider: String, target: String, token: String): UpstreamResult<String> {
         val response = try {
-            exchangeToken(IDENTITY_PROVIDER_TOKENX, environment.exchangeTargetIsAltinnTilganger, token)
+            client.post(environment.tokenExchangeEndpoint) {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    TexasExchangeRequest(
+                        identityProvider = identityProvider,
+                        target = target,
+                        userToken = token
+                    )
+                )
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: ResponseException) {

@@ -149,6 +149,13 @@ class FulfillmentLoggingContractTest :
             contract.assertValid(capture.records, expectedCount = 0)
         }
 
+        test("unavailable access leaves logging to the HTTP edge without a fulfillment rejection") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("private-exception-canary"))
+            createUseCase(access = FakeOrganizationAccess(OrganizationAccessResult.Unavailable(failure))).execute(command()) shouldBe
+                FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
+            contract.assertValid(capture.records, expectedCount = 0)
+        }
+
         test("logs a bounded status persistence failure with behov id only in its field") {
             createUseCase(
                 repository = FakeBehovRepository(

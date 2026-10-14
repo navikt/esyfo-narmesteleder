@@ -2,6 +2,8 @@ package no.nav.syfo.narmestelederrelasjon.application
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
@@ -23,6 +25,15 @@ private val personnelManager = OrganizationAccessSubject.PersonnelManager(Person
 
 class SubmitNarmestelederrelasjonUseCaseTest :
     FunSpec({
+        test("unavailable access stops before establishment") {
+            val effects = mutableListOf<String>()
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val result = recordingUseCase(effects, OrganizationAccessResult.Unavailable(failure)).execute(command(personnelManager))
+            result shouldBe SubmitNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            result.shouldBeInstanceOf<SubmitNarmestelederrelasjonResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+            effects shouldBe listOf("access")
+        }
+
         test("normalizes before access and passes the submitted employee last name and source to establish") {
             listOf(systemUser to RelationSource.LPS, personnelManager to RelationSource.PERSONNEL_MANAGER).forEach { (subject, source) ->
                 val effects = mutableListOf<String>()

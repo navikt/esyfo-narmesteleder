@@ -13,6 +13,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -141,12 +142,12 @@ class AltinnOrganizationAccessLoggingContractTest :
         test("logs nothing when the personnel manager lookup is unavailable") {
             val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.REQUEST, null, IllegalStateException("Synthetic failure"))
             val fixture = LoggingFixture(Decision.Deny, parentOrgNumber = UNRELATED_ORG, altinnFailure = failure)
-            shouldThrow<ApiErrorException.InternalServerErrorException> {
-                fixture.access.evaluate(
-                    OrganizationAccessSubject.PersonnelManager(PersonIdent(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
-                    OrganizationNumber(REQUESTED_ORG),
-                )
-            }.upstreamFailure shouldBe failure
+            val result = fixture.access.evaluate(
+                OrganizationAccessSubject.PersonnelManager(PersonIdent(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
+                OrganizationNumber(REQUESTED_ORG),
+            )
+            result shouldBe OrganizationAccessResult.Unavailable(failure)
+            result.shouldBeInstanceOf<OrganizationAccessResult.Unavailable>().failure shouldBeSameInstanceAs failure
             capture.records.shouldBeEmpty()
         }
         Decision.entries.forEach { directDecision ->

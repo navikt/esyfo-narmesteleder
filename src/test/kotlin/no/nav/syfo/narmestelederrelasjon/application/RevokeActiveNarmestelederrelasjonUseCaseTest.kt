@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.application
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
@@ -27,6 +28,16 @@ private val lps = OrganizationAccessSubject.LpsSystemUser("system-user", organiz
 
 class RevokeActiveNarmestelederrelasjonUseCaseTest :
     FunSpec({
+        test("unavailable access stops before person lookup name validation active lookup and publishing") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val fixture = RevokeActiveFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Unavailable(failure) })
+            val result = fixture.execute()
+            result shouldBe RevokeActiveNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            result.shouldBeInstanceOf<RevokeActiveNarmestelederrelasjonResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+            fixture.calls shouldBe listOf("access")
+            fixture.published shouldBe emptyList()
+        }
+
         test("access denial stops before PDL and publishing") {
             val fixture = RevokeActiveFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS) })
             fixture.execute(OrganizationAccessSubject.PersonnelManager(employee, AccessToken("test"))) shouldBe

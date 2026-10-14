@@ -7,6 +7,8 @@ import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
@@ -31,6 +33,18 @@ import java.util.UUID
 
 class FulfillNarmestelederbehovUseCaseTest :
     FunSpec({
+        test("unavailable access stops before establishment writes and dialog completion") {
+            val effects = mutableListOf<String>()
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val result = createUseCase(
+                access = FakeOrganizationAccess(OrganizationAccessResult.Unavailable(failure), effects),
+                effects = effects,
+            ).execute(command())
+            result shouldBe FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
+            result.shouldBeInstanceOf<FulfillNarmestelederbehovResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+            effects shouldBe listOf("load", "access")
+        }
+
         test("fulfills in preserved side-effect order and passes normalized contact to establish") {
             val effects = mutableListOf<String>()
             val relation = FakeRelationEstablisher(effects)

@@ -7,8 +7,11 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
+import no.nav.syfo.platform.upstream.UpstreamFailure
 
 sealed interface GetNarmestelederstatistikkResult {
+    data class UpstreamUnavailable(val failure: UpstreamFailure) : GetNarmestelederstatistikkResult
+
     data class Found(val statistikk: Narmestelederstatistikk) : GetNarmestelederstatistikkResult
 
     data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : GetNarmestelederstatistikkResult
@@ -31,6 +34,7 @@ class GetNarmestelederstatistikkUseCase(
         organizationNumber: OrganizationNumber,
     ): GetNarmestelederstatistikkStep<Unit> = when (val access = organizationAccess.evaluate(subject, organizationNumber)) {
         is OrganizationAccessResult.Granted -> Step.Proceed
+        is OrganizationAccessResult.Unavailable -> Step.Stop(GetNarmestelederstatistikkResult.UpstreamUnavailable(access.failure))
         is OrganizationAccessResult.Denied -> Step.Stop(GetNarmestelederstatistikkResult.AccessDenied(access.reason, organizationNumber))
     }
 }

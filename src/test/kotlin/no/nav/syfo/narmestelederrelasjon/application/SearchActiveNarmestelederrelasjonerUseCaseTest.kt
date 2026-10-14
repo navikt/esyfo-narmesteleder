@@ -3,12 +3,17 @@ package no.nav.syfo.narmestelederrelasjon.application
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
 import java.util.UUID
 
@@ -38,6 +43,19 @@ class SearchActiveNarmestelederrelasjonerUseCaseTest :
                 access.calls shouldBe listOf(subject to organizationNumber)
                 repository.calls.shouldBeEmpty()
             }
+        }
+
+        test("unavailable access wins over invalid text and token without querying") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            access.result = OrganizationAccessResult.Unavailable(failure)
+            val result = useCase.execute(
+                subject,
+                SearchActiveNarmestelederrelasjonerCommand(organizationNumber, text = "a".repeat(51), pageToken = "invalid"),
+            )
+            result shouldBe SearchActiveNarmestelederrelasjonerResult.UpstreamUnavailable(failure)
+            result.shouldBeInstanceOf<SearchActiveNarmestelederrelasjonerResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+            access.calls shouldBe listOf(subject to organizationNumber)
+            repository.calls.shouldBeEmpty()
         }
 
         test("text validation precedes token validation after access") {

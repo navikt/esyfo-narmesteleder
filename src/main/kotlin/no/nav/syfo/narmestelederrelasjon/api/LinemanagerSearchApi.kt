@@ -13,6 +13,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchRequest
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerCommand
@@ -46,11 +47,16 @@ fun Route.registerLinemanagerSearchApi(
                 command = command,
             )
             val collection = when (result) {
+                is SearchActiveNarmestelederrelasjonerResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
+
                 is SearchActiveNarmestelederrelasjonerResult.AccessDenied -> throw result.reason.toForbiddenException(command.orgNumber)
+
                 SearchActiveNarmestelederrelasjonerResult.InvalidText ->
                     throw ApiErrorException.BadRequestException("text must be at most 50 characters")
+
                 SearchActiveNarmestelederrelasjonerResult.InvalidPageToken ->
                     throw ApiErrorException.BadRequestException("Invalid pageToken", type = ErrorType.INVALID_FORMAT)
+
                 is SearchActiveNarmestelederrelasjonerResult.Success -> result.toResponse()
             }
             countLinemanagerSearch(principal)

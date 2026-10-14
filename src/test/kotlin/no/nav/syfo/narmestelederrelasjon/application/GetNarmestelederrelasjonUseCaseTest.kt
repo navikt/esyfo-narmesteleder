@@ -76,6 +76,15 @@ class GetNarmestelederrelasjonUseCaseTest :
             effects shouldBe listOf("lookup", "access")
         }
 
+        it("unavailable access stops before sykmelding and organization lookup") {
+            val effects = mutableListOf<String>()
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val result = query(access = OrganizationAccessResult.Unavailable(failure), effects = effects).execute(id, caller)
+            result shouldBe GetNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            result.shouldBeInstanceOf<GetNarmestelederrelasjonResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+            effects shouldBe listOf("lookup", "access")
+        }
+
         it("masks missing active sykmelding after authorization and before organization lookup") {
             val effects = mutableListOf<String>()
             query(activeSykmelding = false, effects = effects).execute(id, caller) shouldBe

@@ -42,11 +42,10 @@ class AltinnOrganizationAccess(
         subject: OrganizationAccessSubject.PersonnelManager,
         organizationNumber: OrganizationNumber,
     ): OrganizationAccessResult {
-        // Remove this bridge in PR 2 of #686 when OrganizationAccessResult has an Unavailable variant.
         val altinnTilgang = altinnTilgangerService.getAltinnTilgangForOrgnr(
             userPrincipal = UserPrincipal(subject.personIdent.value, subject.accessToken.value()),
             orgnummer = organizationNumber.value,
-        ).getOrElse { throw it.toUpstreamUnavailableException() }
+        ).getOrElse { return OrganizationAccessResult.Unavailable(it) }
             ?: return OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
 
         if (OPPGI_NARMESTELEDER_RESOURCE !in altinnTilgang.altinn3Tilganger) {
@@ -95,7 +94,7 @@ class AltinnOrganizationAccess(
         resource = OPPGI_NARMESTELEDER_RESOURCE,
     ).result()
 
-    // Remove this bridge in #687 when OrganizationAccessResult has an Unavailable variant.
+    // Remove this bridge in #687.
     private suspend fun getOrganization(orgNumber: String): Organisasjon = eregClient.getOrganisasjon(orgNumber).getOrElse { throw it.toUpstreamUnavailableException() }
         ?: throw ApiErrorException.BadRequestException(
             "Unable to look up the organization",

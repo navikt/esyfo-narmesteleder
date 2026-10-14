@@ -8,6 +8,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkResult
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
@@ -32,10 +33,13 @@ fun Route.registerLinemanagerStatisticsApi(
             val organizationNumber = call.requiredOrganizationNumberQueryParameter("orgNumber")
             val principal = call.getMyPrincipal()
             when (val result = getNarmestelederstatistikk.execute(organizationNumber, principal.toOrganizationAccessSubject())) {
+                is GetNarmestelederstatistikkResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
+
                 is GetNarmestelederstatistikkResult.Found -> {
                     countLinemanagerStatistics(principal)
                     call.respond(HttpStatusCode.OK, result.statistikk.toResponse())
                 }
+
                 is GetNarmestelederstatistikkResult.AccessDenied -> throw result.reason.toForbiddenException(result.organizationNumber)
             }
         }

@@ -185,6 +185,9 @@ class AltinnAccessLoggingContractTest :
                                 record.has("upstream_errors") shouldBe false
                             }
                             allLogs.list.filter { it.level == Level.ERROR }.size shouldBe 1
+                            allLogs.list.filter { event ->
+                                event.keyValuePairs.orEmpty().any { it.key == "event_type" && it.value == "api_request_rejected" }
+                            }.size shouldBe 0
                             allLogs.list.forEach { event ->
                                 privacyCanaries.forEach { event.formattedMessage shouldNotContain it }
                             }

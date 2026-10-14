@@ -49,6 +49,7 @@ class FulfillNarmestelederbehovUseCase(
 
     private fun validateManagerContact(input: ManagerContactInput): FulfillStep<NormalizedManagerContact> = when (val normalization = input.normalize()) {
         is ManagerContactNormalization.Valid -> Step.Continue(normalization.manager)
+
         is ManagerContactNormalization.Invalid ->
             Step.Stop(FulfillNarmestelederbehovResult.InvalidManagerContactDetails(normalization.issues))
     }
@@ -60,6 +61,9 @@ class FulfillNarmestelederbehovUseCase(
         val organizationNumber = behov.employee.organizationNumber
         return when (val access = organizationAccess.evaluate(subject, organizationNumber)) {
             is OrganizationAccessResult.Granted -> Step.Proceed
+
+            is OrganizationAccessResult.Unavailable -> Step.Stop(FulfillNarmestelederbehovResult.UpstreamUnavailable(access.failure))
+
             is OrganizationAccessResult.Denied ->
                 Step.Stop(FulfillNarmestelederbehovResult.AccessDenied(access.reason, organizationNumber))
         }
@@ -67,15 +71,21 @@ class FulfillNarmestelederbehovUseCase(
 
     private suspend fun establish(command: EstablishNarmestelederrelasjonCommand): FulfillStep<Unit> = when (val result = establishRelation.execute(command)) {
         EstablishNarmestelederrelasjonResult.Published -> Step.Proceed
+
         is EstablishNarmestelederrelasjonResult.NoActiveSykmelding ->
             Step.Stop(FulfillNarmestelederbehovResult.NoActiveSykmelding(result.organizationNumber))
+
         is EstablishNarmestelederrelasjonResult.NoEmployment ->
             Step.Stop(FulfillNarmestelederbehovResult.NoEmployment(result.reason))
+
         is EstablishNarmestelederrelasjonResult.UpstreamUnavailable ->
             Step.Stop(FulfillNarmestelederbehovResult.UpstreamUnavailable(result.failure))
+
         EstablishNarmestelederrelasjonResult.PersonNotFound -> Step.Stop(FulfillNarmestelederbehovResult.PersonNotFound)
+
         EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
             Step.Stop(FulfillNarmestelederbehovResult.ManagerNameMismatch)
+
         EstablishNarmestelederrelasjonResult.EmployeeNameMismatch ->
             error("Fulfillment does not submit an employee last name")
     }

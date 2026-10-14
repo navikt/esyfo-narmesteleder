@@ -13,15 +13,24 @@ import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.api.STATUS_PAGES_LOGGER_NAME
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
+import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import org.slf4j.LoggerFactory
 
 /** Captures both the HTTP edge and the owners that must not log a second rejection. */
-internal fun assertSingleUpstreamFailureLog(block: () -> Unit) {
+internal fun assertSingleUpstreamFailureLog(
+    upstream: String = "pdl",
+    block: () -> Unit,
+) {
     val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
     val loggers = listOf(
         STATUS_PAGES_LOGGER_NAME,
         GetNarmestelederbehovUseCase::class.java.name,
         ListNarmestelederbehovUseCase::class.java.name,
+        RevokeNarmestelederrelasjonUseCase::class.java.name,
+        SearchActiveNarmestelederrelasjonerUseCase::class.java.name,
+        GetNarmestelederstatistikkUseCase::class.java.name,
     ).map { LoggerFactory.getLogger(it) as Logger }
     val original = loggers.map { it.level to it.isAdditive }
     context.putProperty("NAIS_CLUSTER_NAME", "test")
@@ -44,7 +53,7 @@ internal fun assertSingleUpstreamFailureLog(block: () -> Unit) {
             val record = jacksonObjectMapper().readTree(serialized)
             record["event_type"].asText() shouldBe "api_request_failed"
             record["failure_kind"].asText() shouldBe "error_response"
-            record["upstream"].asText() shouldBe "pdl"
+            record["upstream"].asText() shouldBe upstream
             record["upstream_errors"][0]["code"].asText() shouldBe "server_error"
             record.has("stack_trace") shouldBe false
         }

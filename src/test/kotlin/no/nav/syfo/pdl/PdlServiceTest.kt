@@ -12,7 +12,6 @@ import no.nav.syfo.integration.pdl.Ident
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.integration.pdl.PdlPerson
-import no.nav.syfo.integration.pdl.PdlRequestException
 import no.nav.syfo.integration.pdl.PersonResponse
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -46,7 +45,7 @@ class PdlServiceTest :
 
             it("bridges a failure through getOrThrow") {
                 val fnr = "12345678901"
-                val exception = PdlRequestException("PDL error")
+                val exception = RuntimeException("PDL error")
 
                 coEvery { pdlClient.getPerson(fnr) } returns UpstreamResult.Failure(UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.REQUEST, null, exception))
 

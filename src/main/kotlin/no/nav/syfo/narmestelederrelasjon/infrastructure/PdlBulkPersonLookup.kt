@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -10,13 +9,15 @@ import no.nav.syfo.integration.pdl.HentPersonBolk
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
-import no.nav.syfo.integration.pdl.PdlRequestException
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
+import no.nav.syfo.integration.pdl.toUpstreamError
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamResult
 
 private const val PDL_CHUNK_SIZE = 100
 
@@ -29,11 +30,10 @@ class PdlBulkPersonLookup(
             return emptyMap()
         }
 
-        val token = pdlClient.getSystemToken()
         val responses = coroutineScope {
             personIdents.map(PersonIdent::value)
                 .chunked(PDL_CHUNK_SIZE)
-                .map { fnrChunk -> async { getPersonBolkChunk(fnrChunk, token) } }
+                .map { fnrChunk -> async { getPersonBolkChunk(fnrChunk) } }
                 .awaitAll()
                 .filterNotNull()
         }
@@ -41,7 +41,7 @@ class PdlBulkPersonLookup(
             .onEach { response ->
                 val errors = response.errors
                 if (!errors.isNullOrEmpty()) {
-                    logDegraded(PdlLookupDegradedDetails(PdlLookupDegradedReason.GRAPHQL_ERRORS, errors, errors.size))
+                    logDegraded(PdlLookupDegradedDetails(PdlLookupDegradedReason.GRAPHQL_ERRORS, errors.map { it.toUpstreamError() }, errors.size))
                 }
             }
             .flatMap { it.data?.hentPersonBolk.orEmpty() }
@@ -52,17 +52,17 @@ class PdlBulkPersonLookup(
             .toMap()
     }
 
-    private suspend fun getPersonBolkChunk(fnrChunk: List<String>, token: String): GetPersonBolkResponse? = try {
-        pdlClient.getPersonBolk(fnrChunk, token)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: PdlRequestException) {
-        logDegraded(PdlLookupDegradedDetails(PdlLookupDegradedReason.BATCH_FAILED, recordCount = fnrChunk.size), e)
-        null
+    private suspend fun getPersonBolkChunk(fnrChunk: List<String>): GetPersonBolkResponse? = when (val result = pdlClient.getPersonBolk(fnrChunk)) {
+        is UpstreamResult.Success -> result.value
+
+        is UpstreamResult.Failure -> {
+            logDegraded(PdlLookupDegradedDetails(PdlLookupDegradedReason.BATCH_FAILED, recordCount = fnrChunk.size), result.failure)
+            null
+        }
     }
 
-    private fun logDegraded(details: PdlLookupDegradedDetails, cause: Throwable? = null) {
-        logger.logEvent(pdlLookupDegraded, details, cause = cause)
+    private fun logDegraded(details: PdlLookupDegradedDetails, upstreamFailure: UpstreamFailure? = null) {
+        logger.logEvent(pdlLookupDegraded, details, upstreamFailure = upstreamFailure)
     }
 
     companion object {

@@ -44,7 +44,7 @@ import java.util.*
 class DialogportenServiceTest :
     DescribeSpec({
         val dialogportenClient = mockk<DialogportenClient>()
-        val publicIngressUrl = "https://test.nav.no"
+        val narmestelederbehovApiUrl = "https://test.nav.no/api/v1/linemanager/requirement"
         val frontendBaseUrl = "https://frontend.test.nav.no"
         val fakePdsClient = FakePdlClient()
         val pdlService = spyk(PdlService(fakePdsClient))
@@ -62,7 +62,7 @@ class DialogportenServiceTest :
                     dialogportenClient = dialogportenClient,
                     narmestelederDb = spyNarmestelederDb,
                     dialogFactory = NarmestelederbehovDialogFactory(
-                        publicIngressUrl = publicIngressUrl,
+                        narmestelederbehovApiUrl = narmestelederbehovApiUrl,
                         frontendBaseUrl = frontendBaseUrl,
                     ),
                     pdlService = pdlService,
@@ -104,7 +104,7 @@ class DialogportenServiceTest :
             try {
                 listOf(UpstreamResult.Failure(failure), UpstreamResult.Success(null)).forEach { result ->
                     appender.list.clear()
-                    val service = DialogportenService(dialogportenClient, spyNarmestelederDb, NarmestelederbehovDialogFactory(publicIngressUrl, frontendBaseUrl), PdlService(pdlClient))
+                    val service = DialogportenService(dialogportenClient, spyNarmestelederDb, NarmestelederbehovDialogFactory(narmestelederbehovApiUrl, frontendBaseUrl), PdlService(pdlClient))
                     val behov = spyNarmestelederDb.seed(nlBehovEntity())
                     val dialog = slot<Dialog>()
                     coEvery { pdlClient.getPerson(any()) } returns result
@@ -340,7 +340,7 @@ class DialogportenServiceTest :
                             ?.urls
                             ?.first()
                     apiAttachmentUrl?.consumerType shouldBe AttachmentUrlConsumerType.Api
-                    apiAttachmentUrl?.url shouldBe "$publicIngressUrl/api/v1/linemanager/requirement/${behovEntity1.id}"
+                    apiAttachmentUrl?.url shouldBe "$narmestelederbehovApiUrl/${behovEntity1.id}"
 
                     val guiAttachmentUrl =
                         capturedDialog.attachments

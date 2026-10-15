@@ -23,7 +23,7 @@ class DialogportenNarmestelederbehovDialogCreationTest :
         val dialogId = UUID.fromString("00000000-0000-0000-0000-000000000002")
         val employee = Employee(PersonIdent("02039012345"), OrganizationNumber("123456789"))
         val factory = NarmestelederbehovDialogFactory(
-            publicIngressUrl = "https://api.test.nav.no",
+            narmestelederbehovApiUrl = "https://api.test.nav.no/api/v1/linemanager/requirement",
             frontendBaseUrl = "https://frontend.test.nav.no",
         )
 

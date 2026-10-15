@@ -9,8 +9,6 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.Url
 import no.nav.syfo.altinn.dialogporten.domain.create
-import no.nav.syfo.application.api.API_V1_PATH
-import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -19,9 +17,13 @@ import java.util.UUID
 
 private const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
 
-/** Builds the Dialogporten dialog that asks the employer to oppgi nærmeste leder for a behov. */
+/**
+ * Builds the Dialogporten dialog that asks the employer to oppgi nærmeste leder for a behov.
+ *
+ * @param narmestelederbehovApiUrl absolute URL of the public narmestelederbehov endpoint, without the behov id.
+ */
 class NarmestelederbehovDialogFactory(
-    private val publicIngressUrl: String,
+    private val narmestelederbehovApiUrl: String,
     private val frontendBaseUrl: String,
 ) {
     fun create(
@@ -65,7 +67,7 @@ class NarmestelederbehovDialogFactory(
         )
 
         AttachmentUrlConsumerType.Api -> Url(
-            url = "$publicIngressUrl$API_V1_PATH$NARMESTELEDERBEHOV_PATH/$id",
+            url = "$narmestelederbehovApiUrl/$id",
             mediaType = ContentType.Application.Json.toString(),
             consumerType = type,
         )

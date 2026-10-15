@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov
 
+import no.nav.syfo.narmestelederbehov.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
@@ -11,7 +12,6 @@ import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCa
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.LeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
@@ -22,7 +22,7 @@ import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovReposito
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmployerMainOrganizationLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
-import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteNarmestelederbehovActiveSykmeldingLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
@@ -47,7 +47,7 @@ fun narmestelederbehovModule() = module {
             dialog = get(),
         )
     }
-    single<NarmestelederbehovActiveSykmeldingLookup> { DinesykmeldteNarmestelederbehovActiveSykmeldingLookup(get()) }
+    single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmployerMainOrganizationLookup> { AaregEmployerMainOrganizationLookup(get()) }
     single<NarmestelederbehovDialogCreation> { DialogportenNarmestelederbehovDialogCreation(client = get(), dialogFactory = get()) }
     single<EmployeePersonLookup> { PdlEmployeePersonLookup(get()) }

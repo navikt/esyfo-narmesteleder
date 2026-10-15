@@ -8,7 +8,12 @@ internal const val SYSTEM_USER_ACCESS_NOT_GRANTED = "SYSTEM_USER_ACCESS_NOT_GRAN
 internal data class SystemUserAccessRejection(
     val directDecision: Decision,
     val fallbackDecision: Decision?,
-)
+) {
+    init {
+        require(directDecision == Decision.Deny || directDecision == Decision.NotApplicable)
+        require(fallbackDecision == null || fallbackDecision == Decision.Deny || fallbackDecision == Decision.NotApplicable)
+    }
+}
 
 internal val systemUserAccessRejected = apiRequestRejected<SystemUserAccessRejection>(
     operation = "validate_system_user_access",

@@ -21,6 +21,7 @@ import no.nav.syfo.altinn.dialogporten.client.DialogportenClientException
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.logging.failureDiagnostics
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.httpClientDefault
@@ -33,7 +34,7 @@ class DialogportenClientTest :
         describe("failure ownership") {
             it("preserves the HTTP cause for the service that handles the failed operation") {
                 val provider = mockk<AltinnTokenProvider>()
-                coEvery { provider.token(any()) } returns AltinnTokenProvider.AltinnToken("secret-token", Duration.ZERO, "scope")
+                coEvery { provider.token(any()) } returns UpstreamResult.Success(AltinnTokenProvider.AltinnToken("secret-token", Duration.ZERO))
                 val client = HttpDialogportenClient(
                     "https://dialogporten.test",
                     httpClientDefault(HttpClient(MockEngine { respond("private-response-body", HttpStatusCode.ServiceUnavailable) })),
@@ -107,10 +108,11 @@ class DialogportenClientTest :
                     val dialogId = UUID.randomUUID()
                     coEvery {
                         mockAltinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)
-                    } returns AltinnTokenProvider.AltinnToken(
-                        "token",
-                        Duration.ZERO,
-                        "scope"
+                    } returns UpstreamResult.Success(
+                        AltinnTokenProvider.AltinnToken(
+                            "token",
+                            Duration.ZERO,
+                        ),
                     )
 
                     val patch = HttpDialogportenClient.DialogportenPatch(

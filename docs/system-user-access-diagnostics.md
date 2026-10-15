@@ -1,16 +1,32 @@
 # System-user access rejections
 
 System-user requests are checked against the requested organization in Altinn PDP.
-If that check does not return `Permit`, the existing fallback checks whether the
-system user's organization belongs to the requested organization's Ereg hierarchy
-and, if so, asks PDP for that organization. Only `Permit` grants access.
+Only `Permit` grants access. After a normal `Deny` or `NotApplicable`, the
+fallback checks whether the system user's organization belongs to the requested
+organization's Ereg hierarchy and, if so, asks PDP for that organization.
+
+## Stop on upstream failures
+
+Failures from Texas, the Altinn token exchange, PDP or Ereg return
+`OrganizationAccessResult.Unavailable(originalFailure)` immediately. No further
+fallback or rejection log is produced. The API returns HTTP 500
+`UPSTREAM_SERVICE_UNAVAILABLE`, logs `api_request_failed` once at the edge and
+counts `get_narmestelederrelasjon_total{outcome="upstream_unavailable"}`.
+Ereg `Success(null)` still gives HTTP 400 `ORGANIZATION_NOT_FOUND`.
+
+PDP `Indeterminate` is an upstream failure, not a denial: `altinn-pdp`,
+`RESPONSE`, status 200, error code `indeterminate`, no cause. Only the known
+XACML syntax-error and processing-error status URIs are retained as detail;
+everything else becomes `unknown`. `StatusMessage` is never retained or logged.
+Token exchange failures retain `texas` or `altinn-authentication` as their source
+and use `TOKEN_EXCHANGE`. See ADR-0004 and [logging.md](logging.md).
+Empty, malformed or multiple PDP decisions fail closed rather than granting
+based on the first decision.
 
 ## One event for the final rejection
 
-When neither check grants access, the access check emits one `WARN` through the
-shared `esyfo-logger` adapter. `AltinnOrganizationAccess` emits the event. The
-`SystemUserAccessRejection` definition in `organisasjonstilgang/infrastructure`
-owns the operation, reason, message and typed PDP context:
+When both completed checks deny access, `AltinnOrganizationAccess` emits one
+`WARN` through `esyfo-logger`. `SystemUserAccessRejection` owns the typed event:
 
 | Field | Value |
 | --- | --- |
@@ -18,50 +34,30 @@ owns the operation, reason, message and typed PDP context:
 | `error_code` | `MISSING_ALTINN_RESOURCE_ACCESS` |
 | `operation` | `validate_system_user_access` |
 | `rejection_reason` | `SYSTEM_USER_ACCESS_NOT_GRANTED` |
-| `pdp_decision` | The requested organization's PDP decision |
-| `pdp_fallback_decision` | The fallback PDP decision, or `not_checked` when the organization does not match the hierarchy |
+| `pdp_decision` | `Deny` or `NotApplicable` |
+| `pdp_fallback_decision` | `Deny`, `NotApplicable`, or `not_checked` outside the hierarchy |
 
-PDP decisions retain their exact closed enum values: `Permit`, `Deny`,
-`NotApplicable`, and `Indeterminate`. A rejected request cannot have `Permit` in
-either decision field. These are diagnostic fields, not metric labels or separate
-error groups. Any existing `trace_id` in logging context is preserved.
+Neither `Permit` nor `Indeterminate` can occur in a rejection. The diagnostic
+fields are not metric labels. Existing `trace_id` is preserved. A fallback
+`Permit` succeeds without a rejection. Completed denials retain HTTP 403 and
+the existing API error type and message; StatusPages does not log them again.
 
-An initial non-`Permit` decision followed by fallback `Permit` is successful and
-does not emit a rejection. A PDP or Ereg exception is not a completed access
-decision and follows existing exception handling instead. The public response
-remains HTTP 403 with the existing API error type and message. StatusPages does
-not log the already recorded rejection a second time.
+The event does not establish why access is missing or prove a missing delegation.
+Use an approved environment for investigation requiring caller identity.
+Never add tokens, system-user IDs, organization numbers, provider messages or
+raw payloads to diagnostics. Do not change policy merely to reduce counts.
 
-The event does not establish why access is missing or that the caller lacks a
-delegation. Investigate the decision pattern before involving the integration
-owner; use an approved environment if caller identity or delegation is needed.
-Do not add tokens, system-user IDs, organization numbers, or raw PDP payloads to
-this event. Changing access policy merely to reduce the count is not a fix.
+## Verification and pre-merge gate
 
-## Verification
+Run `./gradlew test --tests '*AltinnOrganizationAccessLoggingContractTest'`.
+The test covers direct/fallback decisions, original failures with no rejection,
+cancellation, trace context and identifier canaries using fakes. It validates
+the packaged v1 contract and local event catalog with `esyfo-logger-testkit`,
+capturing JSON from the NAIS `stdout_json` encoder in `src/main/resources/logback.xml`.
+Schema validation is part of the normal Gradle test; the testkit remains test-only.
 
-Run `./gradlew test --tests '*SystemAccessLoggingContractTest' --tests '*AltinnOrganizationAccessLoggingContractTest'`.
-`SystemAccessLoggingContractTest` exercises the legacy validator, PDP service and
-Ktor error handler. `AltinnOrganizationAccessLoggingContractTest` exercises the
-same event from `AltinnOrganizationAccess`, with and without a fallback decision.
-`esyfo-logger-testkit` captures JSON with the `stdout_json` encoder loaded from
-`src/main/resources/logback.xml` using its NAIS profile in an isolated logging
-context. Both tests validate the packaged v1 contract and a catalog derived from
-the actual local event definition.
-
-Schema validation runs inside the existing Gradle test and therefore also in
-normal CI. The testkit and its packaged schema remain test-only dependencies;
-the runtime adapter uses the application's existing SLF4J logger and does not
-install an encoder, tracing, error handling or scrubbing. Tests prove that missing
-fields and wrong JSON types are rejected without keeping a second schema copy
-in the application.
-
-The public libraries are resolved through
-[Nav's GitHub Packages mirror](https://github.com/navikt/github-package-registry-mirror).
-Local builds and CI do not need registry credentials to download them.
-
-The legacy validator test covers all direct/fallback decision combinations, skipped fallback,
-unchanged HTTP responses, exception/cancellation paths, trace context, duplicate
-prevention and identifier canaries. This diagnostic improvement does not by
-itself resolve the functional investigation in
-[issue #516](https://github.com/navikt/esyfo-narmesteleder/issues/516).
+Before merge, a human must inspect approved Loki data for existing rejections
+with `operation = validate_system_user_access` and `pdp_decision` or
+`pdp_fallback_decision` equal to `Indeterminate`. This establishes how often the
+change from 403 to 500 affects callers. Automated tests do not prove production
+frequency or resolve [#516](https://github.com/navikt/esyfo-narmesteleder/issues/516).

@@ -19,6 +19,7 @@ import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import no.nav.syfo.util.logger
@@ -43,7 +44,7 @@ class HttpDialogportenClient(
     private val logger = logger()
 
     override suspend fun createDialog(dialog: Dialog): UUID = runCatching<HttpDialogportenClient, UUID> {
-        val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+        val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).getOrThrow().accessToken
         val response =
             httpClient
                 .post(dialogportenUrl) {
@@ -62,7 +63,7 @@ class HttpDialogportenClient(
         dialogId: UUID
     ): ExtendedDialog {
         val dialog = runCatching {
-            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).getOrThrow().accessToken
             httpClient
                 .get("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
@@ -106,7 +107,7 @@ class HttpDialogportenClient(
         patch: List<DialogportenPatch>
     ) {
         runCatching {
-            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).accessToken
+            val token = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE).getOrThrow().accessToken
             httpClient
                 .patch("$dialogportenUrl/$dialogId") {
                     header(HttpHeaders.Accept, ContentType.Application.Json)

@@ -2,21 +2,31 @@ package no.nav.syfo.texas
 
 import com.auth0.jwt.JWT
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.isSuccess
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.getOrElse
 import no.nav.syfo.texas.client.TexasHttpClient
+import java.time.Clock
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+
+internal val ALTINN_AUTHENTICATION = UpstreamName("altinn-authentication")
 
 class AltinnTokenProvider(
     private val texasHttpClient: TexasHttpClient,
     private val httpClient: HttpClient,
     private val altinnBaseUrl: String,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     private val tokens: MutableMap<String, AltinnToken> = mutableMapOf()
     private val mutex = Mutex()
@@ -24,69 +34,41 @@ class AltinnTokenProvider(
     data class AltinnToken(
         val accessToken: String,
         val altinnExpiryTime: Duration,
-        val scope: String,
     )
 
-    suspend fun token(target: String): AltinnToken {
-        mutex.withLock {
-            val token = tokens[target]
-            if (token != null) {
-                val now = System.currentTimeMillis().milliseconds
-                val timeLeft = token.altinnExpiryTime - now
-
-                if (timeLeft > 300.seconds) {
-                    return token
-                }
-
-                if (timeLeft < 120.seconds && timeLeft > 1.seconds) {
-                    tokens[target] = token.refresh()
-                    return requireNotNull(tokens[target]) { "Access token is null" }
-                }
+    suspend fun token(target: String): UpstreamResult<AltinnToken> = mutex.withLock {
+        val cached = tokens[target]
+        if (cached != null && cached.altinnExpiryTime - clock.millis().milliseconds > 300.seconds) {
+            return UpstreamResult.Success(cached)
+        }
+        val maskinportenToken = texasHttpClient.maskinportenSystemToken(target).getOrElse { return UpstreamResult.Failure(it) }
+        val response = try {
+            httpClient.get("$altinnBaseUrl/authentication/api/v1/exchange/maskinporten") {
+                bearerAuth(maskinportenToken)
             }
-            val maskinportenToken = texasHttpClient.systemToken("maskinporten", target)
-            val newToken = altinnExchange(maskinportenToken.accessToken).toAltinnToken()
-
-            tokens[target] = newToken
-            return newToken
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ResponseException) {
+            return failure(e.response.status.value, e)
+        } catch (e: Exception) {
+            return failure(null, e)
+        }
+        try {
+            val accessToken = response.bodyAsText().removeSurrounding("\"")
+            val expiry = requireNotNull(JWT.decode(accessToken).expiresAt) { "Altinn token is missing expiry" }
+            val token = AltinnToken(accessToken, expiry.time.milliseconds)
+            tokens[target] = token
+            UpstreamResult.Success(token)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failure(response.status.value, e)
         }
     }
 
-    private fun String.toAltinnToken(): AltinnToken {
-        val decodedAltinnToken = JWT.decode(this)
-        val scope = decodedAltinnToken.claims["scope"]?.asString()
-            ?: throw IllegalStateException("Altinn token is missing scope claim")
-
-        return AltinnToken(
-            accessToken = this,
-            altinnExpiryTime = decodedAltinnToken.expiresAt.time.milliseconds,
-            scope = scope,
-        )
-    }
-
-    suspend fun AltinnToken.refresh(): AltinnToken {
-        val res = httpClient
-            .get("$altinnBaseUrl/authentication/api/v1/refresh") {
-                bearerAuth(accessToken)
-            }
-
-        val token = if (!res.status.isSuccess()) {
-            val maskinportenToken = texasHttpClient.systemToken("maskinporten", scope)
-            altinnExchange(maskinportenToken.accessToken).toAltinnToken()
-        } else {
-            res.bodyAsText()
-                .replace("\"", "")
-                .toAltinnToken()
-        }
-
-        tokens[scope] = token
-        return token
-    }
-
-    private suspend fun altinnExchange(token: String): String = httpClient
-        .get("$altinnBaseUrl/authentication/api/v1/exchange/maskinporten") {
-            bearerAuth(token)
-        }.bodyAsText()
-        .replace("\"", "")
+    private fun failure(status: Int?, cause: Throwable) = UpstreamResult.Failure(
+        UpstreamFailure(ALTINN_AUTHENTICATION, UpstreamFailureStage.TOKEN_EXCHANGE, status, cause),
+    )
 
     companion object {
         const val DIALOGPORTEN_TARGET_SCOPE = "digdir:dialogporten.serviceprovider"

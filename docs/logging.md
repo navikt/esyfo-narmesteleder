@@ -65,6 +65,26 @@ logger.logEvent(dialogFailed, details, cause = exception)
   Ukjente, manglende eller uleselige koder blir `unknown`.
   `error_description`, tokens og svartekst fra Texas eller Altinn Tilganger
   logges aldri.
+- Systembrukerløpet sender feil fra Texas, Altinn-vekslingen, PDP og Ereg videre
+  uendret som `Unavailable`. Første feil stopper sjekken uten fallback eller
+  `api_request_rejected`; HTTP-kanten logger én `api_request_failed` og svarer
+  500 `UPSTREAM_SERVICE_UNAVAILABLE`.
+  Maskinporten-tokenfeil har `upstream = texas`, `failure_stage = token_exchange`
+  og samme begrensede OAuth-feilkode som TokenX-vekslingen ovenfor.
+  Altinn-vekslingsfeil, også ugyldige tokens, har
+  `upstream = altinn-authentication`, `failure_stage = token_exchange` og
+  status når Altinn svarte.
+  PDP-feil har `upstream = altinn-pdp`: HTTP-feil, ugyldige/tomme/flertydige svar
+  har `failure_stage = response` og status; timeout og IO har
+  `failure_stage = request` uten status.
+  `Indeterminate` er en feil med `upstream_status = 200`,
+  `upstream_errors = [{code: "indeterminate", detail: ...}]`, uten cause eller
+  stack. `detail` tillater bare
+  `urn:oasis:names:tc:xacml:1.0:status:syntax-error` og
+  `urn:oasis:names:tc:xacml:1.0:status:processing-error`, ellers `unknown`.
+  `StatusMessage`, `StatusDetails`, rå provider-svar, tokens, systembruker-ID
+  og organisasjonsnummer logges aldri. Avvisningsloggen inneholder bare
+  normale `Deny`/`NotApplicable`-beslutninger, aldri `Indeterminate`.
 - For enkeltoppslag i PDL følger feilene kanten som verdier. Feltet
   `upstream_errors` er en liste med `code`, `detail`, `path` og `message` fra
   `UpstreamFailure.errors`. `message` settes bare når upstream dokumenterer at

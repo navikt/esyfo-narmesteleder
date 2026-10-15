@@ -81,7 +81,8 @@ Mønsteret har seks deler:
   gir et vellykket svar. Feilen gir HTTP 500 `UPSTREAM_SERVICE_UNAVAILABLE`
   både i tilgangssjekken for personalledere og i lista over organisasjoner.
 
-  `TexasHttpClient.exchangeTokenForIsAltinnTilganger` returnerer
+  `TexasHttpClient.exchangeTokenForIsAltinnTilganger` og
+  `maskinportenSystemToken(target)` returnerer
   `UpstreamResult<String>`. Feil gir `upstream = texas` og
   `stage = TOKEN_EXCHANGE`, med status når Texas svarte. Ved et HTTP-feilsvar
   følger OAuth-feltet `error` med som `UpstreamError(code = ...)`, begrenset
@@ -89,6 +90,25 @@ Mønsteret har seks deler:
   Ukjente, manglende eller uleselige verdier blir `unknown`.
   Verken `error_description` eller svartekst følger med i `errors`.
   OAuth-koden logges i `upstream_errors`; målsystemet logges ikke (#707).
+
+  `AltinnTokenProvider.token(target)` sender Texas-feil videre uendret.
+  Feil i vekslingen, inkludert ugyldig JWT eller manglende `exp`, gir
+  `upstream = altinn-authentication`, `stage = TOKEN_EXCHANGE` og status når
+  Altinn svarte. Cachen er per target og brukes bare med mer enn 300 sekunder
+  igjen. Ellers hentes et nytt Maskinporten-token og veksles på nytt.
+  Refresh og lagring av scope er fjernet.
+
+  PDP-klienten returnerer `UpstreamResult<Decision>`. HTTP-feil og ugyldige,
+  tomme eller flertydige svar gir `upstream = altinn-pdp`, `stage = RESPONSE`
+  og status. Timeout og IO-feil gir `stage = REQUEST` uten status.
+  Bare ett entydig `Permit` gir tilgang. `Indeterminate` gir
+  `Failure(RESPONSE, 200)` med `UpstreamError("indeterminate", detail = ...)`
+  uten `cause`. `detail` er `Status.StatusCode.Value`, begrenset til
+  `urn:oasis:names:tc:xacml:1.0:status:syntax-error` og
+  `urn:oasis:names:tc:xacml:1.0:status:processing-error`; andre eller manglende
+  verdier blir `unknown`. `StatusMessage` og `StatusDetails` ignoreres.
+  Altinn kan legge exception-meldinger i `StatusMessage`, se
+  [AuthorizeExternal ved låst revisjon](https://github.com/Altinn/altinn-auth/blob/150759020cdabe4bd5db8a89ff1c36fcb060774f/src/apps/Altinn.Authorization/src/Altinn.Authorization/Controllers/DecisionController.cs).
 
 - **Porten.** Hver port har sin egen sealed type med en
   `Unavailable(failure)`-variant. Adapteren i modulen gjør `UpstreamResult` om
@@ -122,7 +142,11 @@ Mønsteret har seks deler:
   og svarer 500 `UPSTREAM_SERVICE_UNAVAILABLE`. Lista returnerer
   `ListAccessibleOrganizationsResult.Unavailable(failure)`. Klient og tjeneste
   logger ikke; `StatusPages` logger `api_request_failed` én gang.
-  Bare Ereg-broen i systembrukerløpet gjenstår (#687).
+  Systembrukerløpet gjør det samme ved første feil fra Texas, Altinn-vekslingen,
+  PDP eller Ereg, uten fallback eller avvisningslogg etter feilen. Ereg-broen
+  er fjernet. `Success(null)` fra Ereg gir fortsatt 400
+  `ORGANIZATION_NOT_FOUND`. `DialogportenClient` bruker `getOrThrow()` fram
+  til #688; token-endepunktet `/dialogporten/token` er slettet.
 
 ## Kontekst
 

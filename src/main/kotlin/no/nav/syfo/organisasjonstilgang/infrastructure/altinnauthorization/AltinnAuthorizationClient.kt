@@ -7,17 +7,24 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import no.nav.syfo.application.exception.UpstreamRequestException
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.getOrElse
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
+import kotlin.coroutines.cancellation.CancellationException
+
+internal val ALTINN_PDP = UpstreamName("altinn-pdp")
 
 interface AltinnAuthorizationClient {
     suspend fun authorize(
         user: User,
         orgNumberSet: Set<String>,
         resource: String
-    ): AltinnAuthorizationResponse
+    ): UpstreamResult<Decision>
 }
 
 class HttpAltinnAuthorizationClient(
@@ -30,12 +37,10 @@ class HttpAltinnAuthorizationClient(
         user: User,
         orgNumberSet: Set<String>,
         resource: String
-    ): AltinnAuthorizationResponse {
+    ): UpstreamResult<Decision> {
         val request = createAltinnAuthorizationRequest(user, orgNumberSet, resource)
+        val token = altinnTokenProvider.token(PDP_TARGET_SCOPE).getOrElse { return UpstreamResult.Failure(it) }.accessToken
         val response = try {
-            val token = altinnTokenProvider.token(PDP_TARGET_SCOPE)
-                .accessToken
-
             httpClient
                 .post("$baseUrl/authorization/api/v1/authorize") {
                     header("Ocp-Apim-Subscription-Key", subscriptionKey)
@@ -44,15 +49,35 @@ class HttpAltinnAuthorizationClient(
                     bearerAuth(token)
                     setBody(request)
                 }
-                .body<AltinnAuthorizationResponse>()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: ResponseException) {
-            throw UpstreamRequestException(
-                "Error while calling PDP",
-                e,
-                failureStage = UpstreamFailureStage.RESPONSE,
-                upstream = "altinn-pdp",
-            )
+            return failure(UpstreamFailureStage.RESPONSE, e.response.status.value, e)
+        } catch (e: Exception) {
+            return failure(UpstreamFailureStage.REQUEST, null, e)
         }
-        return response
+        return try {
+            val result = response.body<AltinnAuthorizationResponse>().response.single()
+            if (result.decision == Decision.Indeterminate) {
+                val statusCode = result.status?.statusCode?.value
+                val detail = statusCode?.takeIf { it in allowedStatusCodes } ?: "unknown"
+                UpstreamResult.Failure(
+                    UpstreamFailure(ALTINN_PDP, UpstreamFailureStage.RESPONSE, response.status.value, errors = listOf(UpstreamError("indeterminate", detail = detail))),
+                )
+            } else {
+                UpstreamResult.Success(result.decision)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
+        }
     }
+
+    private fun failure(stage: UpstreamFailureStage, status: Int?, cause: Throwable) = UpstreamResult.Failure(UpstreamFailure(ALTINN_PDP, stage, status, cause))
+
+    private val allowedStatusCodes = setOf(
+        "urn:oasis:names:tc:xacml:1.0:status:syntax-error",
+        "urn:oasis:names:tc:xacml:1.0:status:processing-error",
+    )
 }

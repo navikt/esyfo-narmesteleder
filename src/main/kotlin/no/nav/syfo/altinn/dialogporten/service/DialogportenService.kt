@@ -11,58 +11,26 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.integration.pdl.Foedselsdato
 import no.nav.syfo.integration.pdl.Navn
-import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
+import no.nav.syfo.narmestelederbehov.application.DialogAction
+import no.nav.syfo.narmestelederbehov.application.DialogEventDetails
+import no.nav.syfo.narmestelederbehov.application.dialogCreatedForClosedBehov
+import no.nav.syfo.narmestelederbehov.application.dialogPersonEnrichmentFailed
+import no.nav.syfo.narmestelederbehov.application.dialogportenDialogFailed
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.util.logger
-import org.slf4j.event.Level
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
-
-private enum class DialogAction {
-    CREATE,
-    COMPLETE,
-    EXPIRE
-}
-private data class DialogFailureDetails(val behovId: String?, val dialogId: String?, val action: DialogAction? = null)
-
-private val dialogFailureFields: Map<String, (DialogFailureDetails) -> Any?> = mapOf(
-    "behov_id" to { it.behovId },
-    "dialog_id" to { it.dialogId },
-)
-
-private val dialogPersonEnrichmentFailed = applicationEvent<DialogFailureDetails>(
-    name = "dialog_person_enrichment_failed",
-    level = Level.WARN,
-    message = "PDL enrichment failed; creating the dialog without person details",
-    upstream = "pdl",
-    fields = dialogFailureFields,
-)
-
-private val dialogportenDialogFailed = applicationEvent<DialogFailureDetails>(
-    name = "dialogporten_dialog_failed",
-    level = Level.ERROR,
-    message = "Dialogporten dialog operation failed",
-    upstream = "dialogporten",
-    fields = dialogFailureFields + ("action" to { it: DialogFailureDetails -> it.action?.name }),
-)
-
-private val dialogCreatedForClosedBehov = applicationEvent<DialogFailureDetails>(
-    name = "dialog_created_for_closed_behov",
-    level = Level.WARN,
-    message = "Behov left BEHOV_CREATED while its dialog was created; the behov was not updated",
-    fields = dialogFailureFields,
-)
 
 class DialogportenService(
     private val dialogportenClient: DialogportenClient,
@@ -71,7 +39,7 @@ class DialogportenService(
     private val pdlService: PdlService,
 ) {
     private val logger = logger()
-    private fun NarmestelederBehovEntity.logDetails() = DialogFailureDetails(id?.toString(), dialogId?.toString())
+    private fun NarmestelederBehovEntity.logDetails() = DialogEventDetails(id, dialogId)
 
     private fun logDialogFailure(behov: NarmestelederBehovEntity, action: DialogAction, cause: Throwable) {
         logger.logEvent(dialogportenDialogFailed, behov.logDetails().copy(action = action), cause = cause)
@@ -120,7 +88,7 @@ class DialogportenService(
                 etternavn = personInfo?.name?.etternavn,
             )
             if (!marked) {
-                logger.logEvent(dialogCreatedForClosedBehov, DialogFailureDetails(behov.id.toString(), dialogId.toString()))
+                logger.logEvent(dialogCreatedForClosedBehov, DialogEventDetails(behov.id, dialogId))
             }
         } catch (ex: Exception) {
             ex.rethrowCancellation()

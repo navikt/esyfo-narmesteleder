@@ -38,7 +38,7 @@ internal fun legacyServicesModule() = module {
         DialogportenService(
             dialogportenClient = get(),
             narmestelederDb = get(),
-            otherEnvironmentProperties = env().otherProperties,
+            dialogFactory = get(),
             pdlService = get(),
         )
     }

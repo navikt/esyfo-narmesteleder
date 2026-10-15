@@ -7,6 +7,7 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.LocalEnvironment
 import no.nav.syfo.application.environment.NaisEnvironment
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
+import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
@@ -50,6 +51,12 @@ private fun coreModule(isLocalEnv: Boolean) = module {
     }
     single { Clock.systemDefaultZone() }
     single { NarmestelederbehovCreationSettings(persistenceEnabled = get<Environment>().otherProperties.persistLeesahNlBehov) }
+    single {
+        NarmestelederbehovDialogFactory(
+            publicIngressUrl = get<Environment>().otherProperties.publicIngressUrl,
+            frontendBaseUrl = get<Environment>().otherProperties.frontendBaseUrl,
+        )
+    }
 }
 
 internal fun Scope.env() = get<Environment>()

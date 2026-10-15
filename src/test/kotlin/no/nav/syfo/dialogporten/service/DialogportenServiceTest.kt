@@ -25,13 +25,12 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.application.environment.OtherEnvironmentProperties
-import no.nav.syfo.application.environment.UpdateDialogportenTaskProperties
 import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -62,25 +61,9 @@ class DialogportenServiceTest :
                 DialogportenService(
                     dialogportenClient = dialogportenClient,
                     narmestelederDb = spyNarmestelederDb,
-                    otherEnvironmentProperties =
-                    OtherEnvironmentProperties(
-                        electorPath = "elector",
-                        electorSSEUrl = "not.applicable",
+                    dialogFactory = NarmestelederbehovDialogFactory(
                         publicIngressUrl = publicIngressUrl,
                         frontendBaseUrl = frontendBaseUrl,
-                        persistLeesahNlBehov = true,
-                        updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
-                        isDialogportenBackgroundTaskEnabled = true,
-                        persistSendtSykmelding = false,
-                        daysAfterTomToExpireBehovs = 7,
-                        maintenanceTaskDelay = "1s",
-                        maintenanceTaskEnabled = true,
-                        persistNarmestelederRegister = false,
-                        pdlLeesahConsumerEnabled = false,
-                        personEnrichmentTaskDelay = "5m",
-                        personEnrichmentTaskEnabled = false,
-                        employmentCheckEnabled = false,
-                        employmentCheckObserveSourceEnabled = false,
                     ),
                     pdlService = pdlService,
                 )
@@ -121,7 +104,7 @@ class DialogportenServiceTest :
             try {
                 listOf(UpstreamResult.Failure(failure), UpstreamResult.Success(null)).forEach { result ->
                     appender.list.clear()
-                    val service = DialogportenService(dialogportenClient, spyNarmestelederDb, OtherEnvironmentProperties.createForLocal(), PdlService(pdlClient))
+                    val service = DialogportenService(dialogportenClient, spyNarmestelederDb, NarmestelederbehovDialogFactory(publicIngressUrl, frontendBaseUrl), PdlService(pdlClient))
                     val behov = spyNarmestelederDb.seed(nlBehovEntity())
                     val dialog = slot<Dialog>()
                     coEvery { pdlClient.getPerson(any()) } returns result

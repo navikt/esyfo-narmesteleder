@@ -15,4 +15,8 @@ class ListNarmestelederbehovHttpMappingTest :
             error.errorMessage shouldBe "Internal server error"
             error.isAlreadyLogged shouldBe false
         }
+
+        test("public narmestelederbehov URL points at the versioned list route") {
+            narmestelederbehovApiUrl("https://api.test.nav.no") shouldBe "https://api.test.nav.no/api/v1/linemanager/requirement"
+        }
     })

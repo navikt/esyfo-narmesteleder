@@ -6,6 +6,7 @@ import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.LocalEnvironment
 import no.nav.syfo.application.environment.NaisEnvironment
+import no.nav.syfo.narmestelederbehov.api.narmestelederbehovApiUrl
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
@@ -53,7 +54,7 @@ private fun coreModule(isLocalEnv: Boolean) = module {
     single { NarmestelederbehovCreationSettings(persistenceEnabled = get<Environment>().otherProperties.persistLeesahNlBehov) }
     single {
         NarmestelederbehovDialogFactory(
-            publicIngressUrl = get<Environment>().otherProperties.publicIngressUrl,
+            narmestelederbehovApiUrl = narmestelederbehovApiUrl(get<Environment>().otherProperties.publicIngressUrl),
             frontendBaseUrl = get<Environment>().otherProperties.frontendBaseUrl,
         )
     }

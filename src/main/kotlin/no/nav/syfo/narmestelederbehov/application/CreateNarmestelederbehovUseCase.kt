@@ -16,7 +16,7 @@ import no.nav.syfo.platform.application.orStop
 class CreateNarmestelederbehovUseCase(
     private val settings: NarmestelederbehovCreationSettings,
     private val repository: NarmestelederbehovRepository,
-    private val activeSykmelding: NarmestelederbehovActiveSykmeldingLookup,
+    private val activeSykmelding: ActiveSykmeldingLookup,
     private val mainOrganization: EmployerMainOrganizationLookup,
     private val personLookup: EmployeePersonLookup,
     private val dialog: NarmestelederbehovDialogCreation,

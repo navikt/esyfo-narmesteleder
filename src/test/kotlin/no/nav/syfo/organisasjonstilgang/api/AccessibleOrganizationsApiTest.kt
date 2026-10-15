@@ -27,6 +27,9 @@ import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganizationsLooku
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsUseCase
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 
@@ -98,8 +101,12 @@ class AccessibleOrganizationsApiTest :
             }
         }
 
-        test("returns the unchanged 500 error when the lookup is unavailable") {
-            val lookup = FakeAccessibleOrganizationsLookup(ListAccessibleOrganizationsResult.Unavailable)
+        test("returns 500 UPSTREAM_SERVICE_UNAVAILABLE when the lookup is unavailable") {
+            val lookup = FakeAccessibleOrganizationsLookup(
+                ListAccessibleOrganizationsResult.Unavailable(
+                    UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("Synthetic failure"))
+                )
+            )
             texasHttpClient.defaultMocks(pid = userIdent, acr = "Level4")
 
             withAccessibleOrganizationsApp(lookup, texasHttpClient) {
@@ -109,8 +116,8 @@ class AccessibleOrganizationsApiTest :
 
                 response.status shouldBe HttpStatusCode.InternalServerError
                 val body = mapper.readTree(response.bodyAsText())
-                body["message"].asText() shouldBe "An error occurred when fetching altinn tilganger"
-                body["type"].asText() shouldBe "INTERNAL_SERVER_ERROR"
+                body["message"].asText() shouldBe "An upstream service is unavailable"
+                body["type"].asText() shouldBe "UPSTREAM_SERVICE_UNAVAILABLE"
                 body["path"].asText() shouldBe "$API_V1_PATH$ACCESSIBLE_ORGANIZATIONS_API_PATH"
             }
         }

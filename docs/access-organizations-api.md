@@ -48,6 +48,25 @@ sequenceDiagram
 }
 ```
 
+## Feilsvar
+
+Når Altinn Tilganger eller TokenX-vekslingen hos Texas feiler, svarer
+endepunktet HTTP 500 med `type = UPSTREAM_SERVICE_UNAVAILABLE`.
+Det gjelder også HTTP 200 fra Altinn Tilganger med `isError = true`,
+selv om hierarkiet inneholder data. Feilen blir ikke en tom organisasjonsliste.
+`isError = false` eller manglende `isError` regnes som vellykket.
+`StatusPages` logger feilen én gang, uten tokens, identifikatorer eller svartekst.
+
+```json
+{
+  "status": {"value": 500, "description": "Internal Server Error"},
+  "type": "UPSTREAM_SERVICE_UNAVAILABLE",
+  "message": "An upstream service is unavailable",
+  "path": "/api/v1/access/organizations",
+  "timestamp": "2026-10-13T12:00:00Z"
+}
+```
+
 ## Autentisering
 
 - **TokenX** (idporten) — kun `UserPrincipal` med `acr: Level4`

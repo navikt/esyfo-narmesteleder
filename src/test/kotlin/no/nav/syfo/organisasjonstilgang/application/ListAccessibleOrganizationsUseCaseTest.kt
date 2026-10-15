@@ -3,6 +3,10 @@ package no.nav.syfo.organisasjonstilgang.application
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 
 class ListAccessibleOrganizationsUseCaseTest :
     FunSpec({
@@ -19,9 +23,12 @@ class ListAccessibleOrganizationsUseCaseTest :
         }
 
         test("passes through unavailable and forwards the subject") {
-            val lookup = FakeAccessibleOrganizationsLookup(ListAccessibleOrganizationsResult.Unavailable)
+            val unavailable = ListAccessibleOrganizationsResult.Unavailable(
+                UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("is_error")))
+            )
+            val lookup = FakeAccessibleOrganizationsLookup(unavailable)
 
-            ListAccessibleOrganizationsUseCase(lookup).execute(subject) shouldBe ListAccessibleOrganizationsResult.Unavailable
+            ListAccessibleOrganizationsUseCase(lookup).execute(subject) shouldBe unavailable
             lookup.subject shouldBe subject
         }
     })

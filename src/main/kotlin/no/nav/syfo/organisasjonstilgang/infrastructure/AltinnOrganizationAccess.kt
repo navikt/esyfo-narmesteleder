@@ -42,10 +42,12 @@ class AltinnOrganizationAccess(
         subject: OrganizationAccessSubject.PersonnelManager,
         organizationNumber: OrganizationNumber,
     ): OrganizationAccessResult {
+        // Remove this bridge in PR 2 of #686 when OrganizationAccessResult has an Unavailable variant.
         val altinnTilgang = altinnTilgangerService.getAltinnTilgangForOrgnr(
             userPrincipal = UserPrincipal(subject.personIdent.value, subject.accessToken.value()),
             orgnummer = organizationNumber.value,
-        ) ?: return OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
+        ).getOrElse { throw it.toUpstreamUnavailableException() }
+            ?: return OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
 
         if (OPPGI_NARMESTELEDER_RESOURCE !in altinnTilgang.altinn3Tilganger) {
             return OrganizationAccessResult.Denied(DenialReason.MISSING_RESOURCE_ACCESS)

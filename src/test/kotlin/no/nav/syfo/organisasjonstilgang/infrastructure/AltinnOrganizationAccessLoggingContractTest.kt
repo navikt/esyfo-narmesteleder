@@ -138,6 +138,17 @@ class AltinnOrganizationAccessLoggingContractTest :
 
             capture.records.shouldBeEmpty()
         }
+        test("logs nothing when the personnel manager lookup is unavailable") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.REQUEST, null, IllegalStateException("Synthetic failure"))
+            val fixture = LoggingFixture(Decision.Deny, parentOrgNumber = UNRELATED_ORG, altinnFailure = failure)
+            shouldThrow<ApiErrorException.InternalServerErrorException> {
+                fixture.access.evaluate(
+                    OrganizationAccessSubject.PersonnelManager(PersonIdent(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
+                    OrganizationNumber(REQUESTED_ORG),
+                )
+            }.upstreamFailure shouldBe failure
+            capture.records.shouldBeEmpty()
+        }
         Decision.entries.forEach { directDecision ->
             test("direct $directDecision outside the hierarchy never checks a fallback decision") {
                 val fixture = LoggingFixture(directDecision, parentOrgNumber = UNRELATED_ORG)
@@ -265,6 +276,7 @@ private class LoggingFixture(
     parentOrgNumber: String,
     pdpFailures: Map<String, Throwable> = emptyMap(),
     eregFailure: UpstreamFailure? = null,
+    altinnFailure: UpstreamFailure? = null,
 ) {
     val checkedOrganizations = mutableListOf<String>()
     private val decisions = mapOf(REQUESTED_ORG to directDecision, SYSTEM_USER_ORG to fallbackDecision)
@@ -289,7 +301,12 @@ private class LoggingFixture(
         every { putOrganisasjon(any(), any()) } just runs
     }
     val access = AltinnOrganizationAccess(
-        AltinnTilgangerService(FakeAltinnTilgangerClient().also { it.accessPolicy.clear() }),
+        AltinnTilgangerService(
+            FakeAltinnTilgangerClient().also {
+                it.accessPolicy.clear()
+                if (altinnFailure != null) it.setFailure(altinnFailure)
+            }
+        ),
         pdp,
         CachedEregClient(ereg, eregCache),
     )

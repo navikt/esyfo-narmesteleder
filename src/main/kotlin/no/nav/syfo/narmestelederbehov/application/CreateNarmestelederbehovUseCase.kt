@@ -111,12 +111,12 @@ class CreateNarmestelederbehovUseCase(
             val person = findPerson(id, employee)
             val dialogId = dialog.create(id, employee, person)
             if (repository.markDialogCreated(id, dialogId, person?.name) == MarkDialogCreatedResult.NotCreated) {
-                logger.logEvent(dialogCreatedForClosedBehov, DialogCreationDetails(id, dialogId))
+                logger.logEvent(dialogCreatedForClosedBehov, DialogEventDetails(id.value, dialogId))
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.logEvent(dialogCreationFailed, DialogCreationDetails(id), cause = e)
+            logger.logEvent(dialogportenDialogFailed, DialogEventDetails(id.value, action = DialogAction.CREATE), cause = e)
         }
     }
 
@@ -126,14 +126,14 @@ class CreateNarmestelederbehovUseCase(
             is EmployeePersonLookupResult.Found -> result.person
             EmployeePersonLookupResult.NotFound -> null
             is EmployeePersonLookupResult.Unavailable -> {
-                logger.logEvent(dialogPersonEnrichmentFailed, DialogCreationDetails(id), upstreamFailure = result.failure)
+                logger.logEvent(dialogPersonEnrichmentFailed, DialogEventDetails(id.value), upstreamFailure = result.failure)
                 null
             }
         }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        logger.logEvent(dialogPersonEnrichmentFailed, DialogCreationDetails(id), cause = e)
+        logger.logEvent(dialogPersonEnrichmentFailed, DialogEventDetails(id.value), cause = e)
         null
     }
 

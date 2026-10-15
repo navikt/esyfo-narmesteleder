@@ -7,6 +7,7 @@ import io.mockk.mockk
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
@@ -42,7 +43,11 @@ class SendtSykmeldingOverviewFlowTest :
                 // Employer metadata and the current period make these external lookups unnecessary.
                 activeSykmelding = { error("Unexpected sick leave lookup") },
                 mainOrganization = { error("Unexpected main organization lookup") },
-                dialog = { _, behov -> dialogCalls.add(behov.employee.personIdent) },
+                personLookup = { EmployeePersonLookupResult.NotFound },
+                dialog = { _, employee, _ ->
+                    dialogCalls.add(employee.personIdent)
+                    UUID.randomUUID()
+                },
                 metrics = MicrometerNarmestelederbehovCreationMetrics(),
             ),
             sykmeldingService = SykmeldingService(PostgresSykmeldingDb(TestDB.database)),

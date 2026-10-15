@@ -42,6 +42,7 @@ internal fun insertNarmestelederbehov(
     mellomnavn: String? = null,
     etternavn: String? = null,
     dialogId: UUID? = null,
+    avbruttNarmestelederId: UUID? = null,
     created: Instant = Instant.now(),
 ): StoredNarmestelederbehov = transaction(TestDB.exposedDatabase) {
     val id = UUID.randomUUID()
@@ -60,6 +61,7 @@ internal fun insertNarmestelederbehov(
         it[NarmestelederbehovTable.behovReason] = behovReason.name
         it[NarmestelederbehovTable.behovStatus] = behovStatus
         it[NarmestelederbehovTable.dialogId] = dialogId
+        it[NarmestelederbehovTable.avbruttNarmestelederId] = avbruttNarmestelederId
     }
     requireNotNull(selectStoredNarmestelederbehov(id))
 }

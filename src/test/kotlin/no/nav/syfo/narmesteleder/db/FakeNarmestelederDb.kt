@@ -8,7 +8,7 @@ class FakeNarmestelederDb : NarmestelederDb {
     private val store = ConcurrentHashMap<UUID, NarmestelederBehovEntity>()
     private val order = mutableListOf<UUID>()
 
-    override suspend fun insertNlBehov(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity {
+    fun seed(nlBehov: NarmestelederBehovEntity): NarmestelederBehovEntity {
         val persist = nlBehov.copy(id = UUID.randomUUID())
         store[persist.id!!] = persist
         order += persist.id
@@ -55,11 +55,6 @@ class FakeNarmestelederDb : NarmestelederDb {
     override suspend fun getNlBehovByStatus(status: BehovStatus, limit: Int): List<NarmestelederBehovEntity> = getNlBehovByStatus(listOf(status), limit)
 
     fun findBehovById(id: UUID): NarmestelederBehovEntity? = store[id]
-    override suspend fun findBehovByParameters(sykmeldtFnr: String, orgnummer: String, behovStatus: List<BehovStatus>): List<NarmestelederBehovEntity> = store.values.filter {
-        it.orgnummer == orgnummer &&
-            it.sykmeldtFnr == sykmeldtFnr &&
-            behovStatus.contains(it.behovStatus)
-    }
 
     override suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus in status }
 

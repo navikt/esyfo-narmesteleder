@@ -122,7 +122,7 @@ class DialogportenServiceTest :
                 listOf(UpstreamResult.Failure(failure), UpstreamResult.Success(null)).forEach { result ->
                     appender.list.clear()
                     val service = DialogportenService(dialogportenClient, spyNarmestelederDb, OtherEnvironmentProperties.createForLocal(), PdlService(pdlClient))
-                    val behov = spyNarmestelederDb.insertNlBehov(nlBehovEntity())
+                    val behov = spyNarmestelederDb.seed(nlBehovEntity())
                     val dialog = slot<Dialog>()
                     coEvery { pdlClient.getPerson(any()) } returns result
                     coEvery { dialogportenClient.createDialog(capture(dialog)) } returns UpstreamResult.Success(UUID.randomUUID())
@@ -159,7 +159,7 @@ class DialogportenServiceTest :
                     // Use a deterministic FNR where month digits (index 2-3) are >12,
                     // ensuring ninToInfoString() always falls back to the d-nummer format.
                     val deterministicFnr = "12991234567"
-                    val behovEntity = spyNarmestelederDb.insertNlBehov(nlBehovEntity().copy(sykmeldtFnr = deterministicFnr))
+                    val behovEntity = spyNarmestelederDb.seed(nlBehovEntity().copy(sykmeldtFnr = deterministicFnr))
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
@@ -291,7 +291,7 @@ class DialogportenServiceTest :
                     appender.start()
                     logger.addAppender(appender)
                     try {
-                        val behovEntity = spyNarmestelederDb.insertNlBehov(nlBehovEntity())
+                        val behovEntity = spyNarmestelederDb.seed(nlBehovEntity())
                         val dialogId = UUID.randomUUID()
                         coEvery { dialogportenClient.createDialog(any()) } coAnswers {
                             spyNarmestelederDb.updateNlBehov(behovEntity.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
@@ -394,7 +394,7 @@ class DialogportenServiceTest :
                 it("should update dialogporten status to Completed and update status in database to DIALOGPORTEN_STATUS_SET_COMPLETED") {
                     // Arrange
                     val behovEntity =
-                        spyNarmestelederDb.insertNlBehov(
+                        spyNarmestelederDb.seed(
                             nlBehovEntity().copy(
                                 behovStatus = BehovStatus.BEHOV_FULFILLED,
                                 dialogId = UUID.randomUUID(),

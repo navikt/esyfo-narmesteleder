@@ -170,6 +170,12 @@ private class LeesahBehovRepository(
         effects += "dialog-status:$id"
         return MarkDialogCompletedResult.Marked
     }
+
+    override suspend fun markDialogCreated(
+        id: NarmestelederbehovId,
+        dialogId: UUID,
+        name: BehovPersonName?,
+    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }
 
 private fun useCase(

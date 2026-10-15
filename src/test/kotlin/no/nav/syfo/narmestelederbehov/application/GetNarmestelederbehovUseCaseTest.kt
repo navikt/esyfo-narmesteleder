@@ -122,6 +122,12 @@ private class ReadFixture(
         override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("GET must not look up open behov")
         override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("GET must not write")
         override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("GET must not write")
+
+        override suspend fun markDialogCreated(
+            id: NarmestelederbehovId,
+            dialogId: UUID,
+            name: BehovPersonName?,
+        ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
     }
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,

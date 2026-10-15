@@ -22,6 +22,9 @@ interface NarmestelederbehovRepository {
 
     suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult
 
+    /** Saves the dialog and the employee name, and sets DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, only while the behov is BEHOV_CREATED. */
+    suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?): MarkDialogCreatedResult
+
     /** Returns [CreateBehovResult.AlreadyExists] when the employee already has an open behov in the organization. */
     suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult
 }
@@ -50,4 +53,11 @@ sealed interface MarkDialogCompletedResult {
 
     /** The behov is missing or another writer changed its status; nothing is overwritten. */
     data object NotFulfilled : MarkDialogCompletedResult
+}
+
+sealed interface MarkDialogCreatedResult {
+    data object Marked : MarkDialogCreatedResult
+
+    /** The behov is missing or has left BEHOV_CREATED; nothing is overwritten. */
+    data object NotCreated : MarkDialogCreatedResult
 }

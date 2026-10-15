@@ -41,6 +41,12 @@ internal class FakeBehovRepository(
         dialogStatusFailure?.let { throw it }
         return dialogStatusResult
     }
+
+    override suspend fun markDialogCreated(
+        id: NarmestelederbehovId,
+        dialogId: UUID,
+        name: BehovPersonName?,
+    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }
 
 internal class FakeOrganizationAccess(

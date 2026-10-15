@@ -8,6 +8,7 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
@@ -24,6 +25,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
+import java.util.UUID
 
 class ExposedNarmestelederbehovRepository(private val database: Database) : NarmestelederbehovRepository {
     override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = withContext(Dispatchers.IO) {
@@ -111,6 +113,25 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
                 it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
             }
             if (updated == 1) MarkDialogCompletedResult.Marked else MarkDialogCompletedResult.NotFulfilled
+        }
+    }
+
+    override suspend fun markDialogCreated(
+        id: NarmestelederbehovId,
+        dialogId: UUID,
+        name: BehovPersonName?,
+    ): MarkDialogCreatedResult = withContext(Dispatchers.IO) {
+        suspendTransaction(db = database) {
+            val updated = NarmestelederbehovTable.update({
+                (NarmestelederbehovTable.id eq id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED)
+            }) {
+                it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                it[NarmestelederbehovTable.dialogId] = dialogId
+                it[fornavn] = name?.firstName
+                it[mellomnavn] = name?.middleName
+                it[etternavn] = name?.lastName
+            }
+            if (updated == 1) MarkDialogCreatedResult.Marked else MarkDialogCreatedResult.NotCreated
         }
     }
 

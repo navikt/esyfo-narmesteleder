@@ -27,7 +27,6 @@ import no.nav.person.pdl.leesah.navn.Navn
 import no.nav.person.pdl.leesah.navn.OriginaltNavn
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.integration.pdl.PdlRequestException
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult
 import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerRelationPersonNameUpdateMetrics.Companion.RESULT_NOT_FOUND_IN_REGISTER
@@ -168,9 +167,9 @@ class PdlLeesahConsumerTest :
 
         test("processRecords neither commits offsets nor emits metrics when the name update fails") {
             val records = consumerRecords(tombstone(offset = 4L), ignoredRecord(offset = 5L), nameRecord(offset = 6L, key = fnr1))
-            coEvery { updateRelationPersonNames.execute(listOf(fnr1)) } throws PdlRequestException("PDL unavailable for $fnr1")
+            coEvery { updateRelationPersonNames.execute(listOf(fnr1)) } throws IllegalStateException("Name update failed")
 
-            shouldThrow<PdlRequestException> { consumer.processRecords(records, kafkaConsumer) }
+            shouldThrow<IllegalStateException> { consumer.processRecords(records, kafkaConsumer) }
 
             verify(exactly = 0) { kafkaConsumer.commitSync(any<Map<TopicPartition, OffsetAndMetadata>>()) }
             shouldNotEmitBatchMetrics()

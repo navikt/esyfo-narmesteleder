@@ -13,12 +13,14 @@ import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.integration.pdl.ErrorExtension
 import no.nav.syfo.integration.pdl.Foedselsdato
 import no.nav.syfo.integration.pdl.GetPersonBolkResponse
 import no.nav.syfo.integration.pdl.HentPersonBolk
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.integration.pdl.PersonBolkResponseData
+import no.nav.syfo.integration.pdl.ResponseError
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
 import no.nav.syfo.logging.withProductionLogs
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult.Found
@@ -113,6 +115,42 @@ class PdlBulkPersonLookupTest :
                 record["upstream_status"].asInt() shouldBe 503
                 record["upstream_errors"][0]["code"].asText() shouldBe "server_error"
                 failedChunk.forEach { capture.records.single() shouldNotContain it }
+            }
+        }
+
+        test("logs sanitized GRAPHQL_ERRORS while keeping successful data and per-ident outcomes") {
+            val fnrs = listOf(fnr(1), fnr(2))
+            coEvery { pdlClient.getPersonBolk(fnrs) } returns UpstreamResult.Success(
+                response(listOf(hit(fnr(1), pdlPerson("Test", etternavn = "Person")), hit(fnr(2), code = "bad_request")))
+                    .value.copy(
+                        errors = listOf(
+                            ResponseError(
+                                "Ukjent problem oppsto",
+                                null,
+                                listOf("hentPersonBolk", "navn"),
+                                ErrorExtension("server_error", null, null, "lookup_failed"),
+                            ),
+                        ),
+                    ),
+            )
+
+            withProductionLogs(PdlBulkPersonLookup::class.java) { capture ->
+                lookup.findAll(fnrs.map(::PersonIdent)) shouldBe mapOf(
+                    PersonIdent(fnr(1)) to Found(RegisteredPerson("Test", null, "Person", null)),
+                    PersonIdent(fnr(2)) to NotFound,
+                )
+
+                RuntimeLogContract.forEvents(pdlLookupDegraded).assertValid(capture.records, expectedCount = 1)
+                val record = jacksonObjectMapper().readTree(capture.records.single())
+                record["reason"].asText() shouldBe "GRAPHQL_ERRORS"
+                record["error_count"].asInt() shouldBe 1
+                val error = record["pdl_errors"][0]
+                error["code"].asText() shouldBe "server_error"
+                error["detail"].asText() shouldBe "lookup_failed"
+                error["path"].asText() shouldBe "hentPersonBolk.navn"
+                error["message"].asText() shouldBe "Ukjent problem oppsto"
+                error.fieldNames().asSequence().toSet() shouldBe setOf("code", "detail", "path", "message")
+                fnrs.forEach { capture.records.single() shouldNotContain it }
             }
         }
 

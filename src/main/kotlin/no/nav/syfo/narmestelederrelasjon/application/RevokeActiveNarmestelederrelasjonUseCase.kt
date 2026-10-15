@@ -24,6 +24,7 @@ class RevokeActiveNarmestelederrelasjonUseCase(
         }
         val initiator = when (val subject = command.accessSubject) {
             is OrganizationAccessSubject.LpsSystemUser -> RevocationInitiator.LPS
+
             is OrganizationAccessSubject.PersonnelManager ->
                 if (subject.personIdent == employee.personIdent) RevocationInitiator.EMPLOYEE else RevocationInitiator.PERSONNEL_MANAGER
         }
@@ -33,6 +34,7 @@ class RevokeActiveNarmestelederrelasjonUseCase(
 
     private suspend fun verifyAccess(command: RevokeActiveNarmestelederrelasjonCommand): RevokeActiveStep<Unit> = when (val access = organizationAccess.evaluate(command.accessSubject, command.organizationNumber)) {
         is OrganizationAccessResult.Granted -> Step.Proceed
+        is OrganizationAccessResult.Unavailable -> Step.Stop(RevokeActiveNarmestelederrelasjonResult.UpstreamUnavailable(access.failure))
         is OrganizationAccessResult.Denied -> Step.Stop(RevokeActiveNarmestelederrelasjonResult.AccessDenied(access.reason, command.organizationNumber))
     }
 

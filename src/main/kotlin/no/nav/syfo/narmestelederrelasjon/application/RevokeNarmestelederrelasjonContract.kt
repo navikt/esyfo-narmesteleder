@@ -1,6 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.platform.upstream.UpstreamFailure
 
 enum class RevocationInitiator {
     EMPLOYEE,
@@ -12,6 +13,8 @@ enum class RevocationInitiator {
 }
 
 sealed interface RevokeNarmestelederrelasjonResult {
+    data class UpstreamUnavailable(val failure: UpstreamFailure) : RevokeNarmestelederrelasjonResult
+
     data class Revoked(val initiator: RevocationInitiator) : RevokeNarmestelederrelasjonResult
 
     data object AlreadyRevoked : RevokeNarmestelederrelasjonResult

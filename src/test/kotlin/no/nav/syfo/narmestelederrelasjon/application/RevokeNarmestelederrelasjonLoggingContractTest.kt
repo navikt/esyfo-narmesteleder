@@ -19,6 +19,9 @@ import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.LoggerFactory
 import java.util.UUID
 
@@ -45,6 +48,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
             subject: OrganizationAccessSubject,
             denial: DenialReason,
             found: Boolean = true,
+            access: OrganizationAccessResult = OrganizationAccessResult.Denied(denial),
         ) = RevokeNarmestelederrelasjonUseCase(
             repository = object : NarmestelederrelasjonRepository {
                 override suspend fun findById(id: UUID): NarmestelederrelasjonLookup? = error("Not used by revoke")
@@ -54,7 +58,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
                     null
                 }
             },
-            organizationAccess = { _, _ -> OrganizationAccessResult.Denied(denial) },
+            organizationAccess = { _, _ -> access },
             publisher = RecordingRevocationPublisher { error("Publisher must not be called") },
         ).execute(id, subject)
 
@@ -111,6 +115,13 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
                 execute(system, reason)
                 capture.records.size shouldBe 0
             }
+        }
+
+        test("unavailable access does not emit a revoke rejection") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("private upstream body ${org.value}"))
+            execute(user, DenialReason.MISSING_ORGANIZATION_ACCESS, access = OrganizationAccessResult.Unavailable(failure)) shouldBe
+                RevokeNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            contract.assertValid(capture.records, expectedCount = 0)
         }
 
         test("unknown relation does not emit the revoke event") {

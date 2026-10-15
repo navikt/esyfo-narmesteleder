@@ -2,6 +2,7 @@ package no.nav.syfo.organisasjonstilgang.application
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.platform.upstream.UpstreamFailure
 
 fun interface OrganizationAccess {
     suspend fun evaluate(
@@ -39,6 +40,9 @@ sealed interface OrganizationAccessResult {
      */
     data class Granted(val organizationName: String?) : OrganizationAccessResult
     data class Denied(val reason: DenialReason) : OrganizationAccessResult
+
+    /** An upstream failure; never means access is granted. */
+    data class Unavailable(val failure: UpstreamFailure) : OrganizationAccessResult
 }
 
 enum class DenialReason {

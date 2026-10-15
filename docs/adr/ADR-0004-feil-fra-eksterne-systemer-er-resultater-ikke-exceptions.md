@@ -115,12 +115,14 @@ Mønsteret har seks deler:
   `UpstreamRequestException` finnes bare som denne broen og slettes sammen med
   den siste legacy-kalleren.
 
-  I PR 1 av #686 har `getAltinnTilgangForOrgnr` resultattypen
-  `UpstreamResult<AltinnTilgang?>`. `AltinnOrganizationAccess` bruker
-  `getOrElse { throw it.toUpstreamUnavailableException() }` fram til PR 2
-  innfører `OrganizationAccessResult.Unavailable`. Lista returnerer allerede
+  `getAltinnTilgangForOrgnr` har resultattypen `UpstreamResult<AltinnTilgang?>`.
+  Ved feil returnerer personallederløpet i `AltinnOrganizationAccess`
+  `OrganizationAccessResult.Unavailable(failure)`, og use casene returnerer
+  `UpstreamUnavailable(failure)`. Kantene bruker `toUpstreamUnavailableException()`
+  og svarer 500 `UPSTREAM_SERVICE_UNAVAILABLE`. Lista returnerer
   `ListAccessibleOrganizationsResult.Unavailable(failure)`. Klient og tjeneste
   logger ikke; `StatusPages` logger `api_request_failed` én gang.
+  Bare Ereg-broen i systembrukerløpet gjenstår (#687).
 
 ## Kontekst
 

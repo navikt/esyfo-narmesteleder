@@ -51,6 +51,7 @@ class ListNarmestelederbehovUseCase(
 
     private suspend fun verifyOrganizationAccess(query: ListNarmestelederbehovQuery): ListStep<String?> = when (val access = organizationAccess.evaluate(subject = query.subject, organizationNumber = query.organizationNumber)) {
         is OrganizationAccessResult.Granted -> Step.Continue(access.organizationName)
+        is OrganizationAccessResult.Unavailable -> Step.Stop(ListNarmestelederbehovResult.UpstreamUnavailable(access.failure))
         is OrganizationAccessResult.Denied -> Step.Stop(ListNarmestelederbehovResult.AccessDenied(access.reason, query.organizationNumber))
     }
 

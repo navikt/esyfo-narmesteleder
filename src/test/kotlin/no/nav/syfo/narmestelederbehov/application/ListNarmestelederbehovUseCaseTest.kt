@@ -2,8 +2,11 @@ package no.nav.syfo.narmestelederbehov.application
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.logging.withProductionLogs
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
@@ -22,6 +25,20 @@ import java.util.UUID
 
 class ListNarmestelederbehovUseCaseTest :
     FunSpec({
+        test("unavailable access stops before reads name lookups writes and count") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val fixture = ListFixture(access = OrganizationAccessResult.Unavailable(failure))
+            withProductionLogs(ListNarmestelederbehovUseCase::class.java) { capture ->
+                val result = fixture.execute()
+                result shouldBe ListNarmestelederbehovResult.UpstreamUnavailable(failure)
+                result.shouldBeInstanceOf<ListNarmestelederbehovResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+                capture.records shouldBe emptyList()
+            }
+            fixture.effects shouldBe listOf("access")
+            fixture.savedNames shouldBe emptyList()
+            fixture.lookedUp shouldBe emptyList()
+        }
+
         DenialReason.entries.forEach { reason ->
             test("access denial $reason stops before any read") {
                 val fixture = ListFixture(access = OrganizationAccessResult.Denied(reason))

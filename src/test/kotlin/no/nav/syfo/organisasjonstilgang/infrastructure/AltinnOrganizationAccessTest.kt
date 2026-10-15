@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.mockk.every
 import io.mockk.just
@@ -37,21 +38,19 @@ import no.nav.syfo.platform.upstream.UpstreamName
 class AltinnOrganizationAccessTest :
     FunSpec({
         context("personnel manager") {
-            test("Altinn failure is bridged without granting or denying access") {
-                val fixture = AccessFixture()
-                val upstreamFailure = UpstreamFailure(
-                    UpstreamName("arbeidsgiver-altinn-tilganger"),
-                    UpstreamFailureStage.RESPONSE,
-                    200,
-                    errors = listOf(UpstreamError("is_error")),
-                )
-                fixture.altinn.setFailure(upstreamFailure)
-                val failure = shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    fixture.access.evaluate(personnelManager(), OrganizationNumber(REQUESTED_ORG))
+            listOf(
+                UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("is_error"))),
+                UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException()),
+                UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException()),
+            ).forEach { upstreamFailure ->
+                test("returns Unavailable without granting or denying access for ${upstreamFailure.upstream} ${upstreamFailure.stage} ${upstreamFailure.status}") {
+                    val fixture = AccessFixture()
+                    fixture.altinn.setFailure(upstreamFailure)
+                    val result = fixture.access.evaluate(personnelManager(), OrganizationNumber(REQUESTED_ORG))
+                    result shouldBe OrganizationAccessResult.Unavailable(upstreamFailure)
+                    result.shouldBeInstanceOf<OrganizationAccessResult.Unavailable>().failure shouldBeSameInstanceAs upstreamFailure
+                    fixture.pdp.requestedOrganizations shouldContainExactly emptyList()
                 }
-                failure.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
-                failure.upstreamFailure shouldBeSameInstanceAs upstreamFailure
-                fixture.pdp.requestedOrganizations shouldContainExactly emptyList()
             }
             test("is granted with the narmesteleder resource for the organization") {
                 val fixture = AccessFixture()

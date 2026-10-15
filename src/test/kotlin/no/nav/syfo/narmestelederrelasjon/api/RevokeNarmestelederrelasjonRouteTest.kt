@@ -9,17 +9,42 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.mockk.coEvery
 import io.mockk.coVerify
+import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.observability.LINEMANAGER_REVOKE_BY_ID_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 
 class RevokeNarmestelederrelasjonRouteTest :
     FunSpec({
         with(NarmestelederrelasjonRouteFixture()) {
             beforeTest { reset() }
+
+            test("unavailable organization access returns 500 and logs once without publishing or counting") {
+                val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))
+                coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns OrganizationAccessResult.Unavailable(failure)
+                coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
+                    TexasIntrospectionResponse(active = true, acr = "Level4", pid = "11111111111")
+                val before = METRICS_REGISTRY.find(LINEMANAGER_REVOKE_BY_ID_TOTAL).counters().sumOf { it.count() }
+                assertSingleUpstreamFailureLog(upstream = failure.upstream.value) {
+                    withTestApplication {
+                        val response = client.delete(path(id.toString())) { bearerAuth(token()) }
+                        response.status shouldBe HttpStatusCode.InternalServerError
+                        response.bodyAsText() shouldContain """"type":"UPSTREAM_SERVICE_UNAVAILABLE""""
+                        response.bodyAsText() shouldContain """"message":"An upstream service is unavailable""""
+                    }
+                }
+                METRICS_REGISTRY.find(LINEMANAGER_REVOKE_BY_ID_TOTAL).counters().sumOf { it.count() } shouldBe before
+                published shouldBe emptyList()
+            }
 
             test("accepts a TokenX employee and publishes the revocation") {
                 withTestApplication {

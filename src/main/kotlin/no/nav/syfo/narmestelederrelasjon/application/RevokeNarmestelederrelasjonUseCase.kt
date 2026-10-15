@@ -24,6 +24,7 @@ class RevokeNarmestelederrelasjonUseCase(
         val initiator = accessSubject.partyInRelation(relation)
             ?: when (val access = organizationAccess.evaluate(accessSubject, relation.organizationNumber)) {
                 is OrganizationAccessResult.Granted -> accessSubject.employerInitiator()
+                is OrganizationAccessResult.Unavailable -> return RevokeNarmestelederrelasjonResult.UpstreamUnavailable(access.failure)
                 is OrganizationAccessResult.Denied -> return accessDenied(id, accessSubject, access.reason)
             }
 
@@ -71,6 +72,7 @@ class RevokeNarmestelederrelasjonUseCase(
 
 private fun OrganizationAccessSubject.partyInRelation(relation: RevocableNarmestelederrelasjon): RevocationInitiator? = when (this) {
     is OrganizationAccessSubject.LpsSystemUser -> null
+
     is OrganizationAccessSubject.PersonnelManager -> when (personIdent) {
         relation.employeeIdent -> RevocationInitiator.EMPLOYEE
         relation.managerIdent -> RevocationInitiator.LINEMANAGER

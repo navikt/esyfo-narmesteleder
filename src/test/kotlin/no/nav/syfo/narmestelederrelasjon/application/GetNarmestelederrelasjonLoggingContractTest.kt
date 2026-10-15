@@ -132,6 +132,13 @@ class GetNarmestelederrelasjonLoggingContractTest :
             checkNotFoundEvent("ACCESS_DENIED")["denial_reason"].asText() shouldBe "MISSING_ORGANIZATION_ACCESS"
         }
 
+        test("unavailable access does not emit a not-found or rejection event") {
+            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("private upstream body ${orgNumber.value}"))
+            useCase(access = OrganizationAccessResult.Unavailable(failure)).execute(id, caller) shouldBe
+                GetNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            contract.assertValid(capture.records, expectedCount = 0)
+        }
+
         test("logs NO_ACTIVE_SYKMELDING when the employee has no active sykmelding") {
             useCase(activeSykmelding = false).execute(id, caller)
             checkNotFoundEvent("NO_ACTIVE_SYKMELDING")

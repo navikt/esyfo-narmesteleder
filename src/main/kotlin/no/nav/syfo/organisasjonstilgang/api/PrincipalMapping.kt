@@ -10,6 +10,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 
 fun Principal.toOrganizationAccessSubject(): OrganizationAccessSubject = when (this) {
     is UserPrincipal -> toPersonnelManager()
+
     is SystemPrincipal -> OrganizationAccessSubject.LpsSystemUser(
         systemUserId = systemUserId,
         systemUserOrganizationNumber = OrganizationNumber(getSystemUserOrgNumber()),

@@ -10,6 +10,7 @@ import no.nav.syfo.platform.upstream.UpstreamResult
 class AaregEmploymentLookup(private val client: AaregClient) : EmploymentLookup {
     override suspend fun findEmployment(personIdent: PersonIdent, organizationNumber: OrganizationNumber): EmploymentResult = when (val result = client.getArbeidsforhold(personIdent.value)) {
         is UpstreamResult.Failure -> EmploymentResult.Unavailable(result.failure)
+
         is UpstreamResult.Success -> {
             val employment = result.value.arbeidsforholdoversikter.mapNotNull { it.arbeidssted.getOrgnummer() }
             when {

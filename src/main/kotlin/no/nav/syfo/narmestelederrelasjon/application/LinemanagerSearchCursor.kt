@@ -63,6 +63,7 @@ private fun String?.toCursorNameField(): String = this?.let {
 
 private fun String.toCursorName(): String? = when {
     this == CURSOR_NULL_NAME_FIELD -> null
+
     startsWith(CURSOR_STRING_NAME_FIELD_PREFIX) -> Base64.getUrlDecoder()
         .decode(removePrefix(CURSOR_STRING_NAME_FIELD_PREFIX))
         .toStrictUtf8String()

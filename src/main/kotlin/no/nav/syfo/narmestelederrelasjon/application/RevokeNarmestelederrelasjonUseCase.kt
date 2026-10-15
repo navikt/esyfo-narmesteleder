@@ -71,6 +71,7 @@ class RevokeNarmestelederrelasjonUseCase(
 
 private fun OrganizationAccessSubject.partyInRelation(relation: RevocableNarmestelederrelasjon): RevocationInitiator? = when (this) {
     is OrganizationAccessSubject.LpsSystemUser -> null
+
     is OrganizationAccessSubject.PersonnelManager -> when (personIdent) {
         relation.employeeIdent -> RevocationInitiator.EMPLOYEE
         relation.managerIdent -> RevocationInitiator.LINEMANAGER

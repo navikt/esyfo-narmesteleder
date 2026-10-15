@@ -44,6 +44,7 @@ class SubmitNarmestelederrelasjonUseCase(
 
     private fun normalizeContact(input: ManagerContactInput): SubmitStep<NormalizedManagerContact> = when (val result = input.normalize()) {
         is ManagerContactNormalization.Valid -> Step.Continue(result.manager)
+
         is ManagerContactNormalization.Invalid -> {
             logger.logEvent(contactValidationRejected, ContactValidationRejectedDetails(result.issues))
             Step.Stop(SubmitNarmestelederrelasjonResult.InvalidManagerContactDetails(result.issues))

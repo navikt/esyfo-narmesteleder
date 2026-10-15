@@ -35,6 +35,7 @@ class GetNarmestelederbehovUseCase(
         val organizationName = when (val access = organizationAccess.evaluate(subject = subject, organizationNumber = behov.organizationNumber)) {
             is OrganizationAccessResult.Denied ->
                 return GetNarmestelederbehovResult.AccessDenied(reason = access.reason, organizationNumber = behov.organizationNumber).log()
+
             is OrganizationAccessResult.Granted -> access.organizationName
         }
         return GetNarmestelederbehovResult.Found(behov = behov, name = name, organizationName = organizationName)

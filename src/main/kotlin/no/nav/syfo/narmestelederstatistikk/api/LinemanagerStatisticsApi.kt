@@ -36,6 +36,7 @@ fun Route.registerLinemanagerStatisticsApi(
                     countLinemanagerStatistics(principal)
                     call.respond(HttpStatusCode.OK, result.statistikk.toResponse())
                 }
+
                 is GetNarmestelederstatistikkResult.AccessDenied -> throw result.reason.toForbiddenException(result.organizationNumber)
             }
         }

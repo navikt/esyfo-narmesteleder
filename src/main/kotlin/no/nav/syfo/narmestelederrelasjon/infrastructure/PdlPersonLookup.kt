@@ -15,6 +15,7 @@ import no.nav.syfo.platform.upstream.UpstreamResult
 class PdlPersonLookup(private val client: PdlClient) : PersonLookup {
     override suspend fun find(personIdent: PersonIdent): PersonLookupResult = when (val result = client.getPerson(personIdent.value)) {
         is UpstreamResult.Failure -> PersonLookupResult.Unavailable(result.failure)
+
         is UpstreamResult.Success -> {
             val person = result.value?.toPersonDetails()
             if (person == null) PersonLookupResult.NotFound else PersonLookupResult.Found(person)

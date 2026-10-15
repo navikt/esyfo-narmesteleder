@@ -30,9 +30,7 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
 
         when (issuer) {
             JwtIssuer.MASKINPORTEN -> call.authenticateMaskinporten(client, bearerToken)
-
             JwtIssuer.TOKEN_X -> call.authenticateTokenX(client, bearerToken)
-
             else -> throw ApiErrorException.UnauthorizedException("Unsupported token issuer")
         }
     }

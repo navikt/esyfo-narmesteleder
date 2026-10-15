@@ -123,6 +123,7 @@ class ManagerContactInputTest :
                 val expected = LegacyPhoneNumber.parse(mobile)
                 when (val actual = managerContact(mobile = mobile).normalize()) {
                     is ManagerContactNormalization.Valid -> actual.manager.mobile.value shouldBe expected.getOrThrow().value
+
                     is ManagerContactNormalization.Invalid -> {
                         actual.issues.single().field shouldBe ManagerContactField.MOBILE
                         actual.issues.single().reason.message shouldBe expected.exceptionOrNull()?.message

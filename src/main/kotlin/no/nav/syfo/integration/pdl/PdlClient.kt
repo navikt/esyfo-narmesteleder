@@ -98,6 +98,7 @@ class HttpPdlClient(
         } catch (e: Exception) {
             when (e) {
                 is CancellationException -> throw e
+
                 is ResponseException -> {
                     throw PdlRequestException("Error on getPersonBolk query to PDL", e)
                 }

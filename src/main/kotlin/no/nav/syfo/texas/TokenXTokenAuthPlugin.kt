@@ -29,7 +29,6 @@ val TokenXTokenAuthPlugin = createRouteScopedPlugin(
 
         when (issuer) {
             JwtIssuer.TOKEN_X -> call.authenticateTokenX(client, bearerToken)
-
             else -> throw ApiErrorException.UnauthorizedException("Unsupported token issuer")
         }
     }

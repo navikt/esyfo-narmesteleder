@@ -47,10 +47,13 @@ fun Route.registerLinemanagerSearchApi(
             )
             val collection = when (result) {
                 is SearchActiveNarmestelederrelasjonerResult.AccessDenied -> throw result.reason.toForbiddenException(command.orgNumber)
+
                 SearchActiveNarmestelederrelasjonerResult.InvalidText ->
                     throw ApiErrorException.BadRequestException("text must be at most 50 characters")
+
                 SearchActiveNarmestelederrelasjonerResult.InvalidPageToken ->
                     throw ApiErrorException.BadRequestException("Invalid pageToken", type = ErrorType.INVALID_FORMAT)
+
                 is SearchActiveNarmestelederrelasjonerResult.Success -> result.toResponse()
             }
             countLinemanagerSearch(principal)

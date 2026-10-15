@@ -14,10 +14,14 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 
 fun GetNarmestelederbehovResult.toLinemanagerRequirementRead(): LinemanagerRequirementRead = when (this) {
     is GetNarmestelederbehovResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()
+
     is GetNarmestelederbehovResult.Found -> behov.toLinemanagerRequirementRead(name, organizationName)
+
     GetNarmestelederbehovResult.NotFound ->
         throw ApiErrorException.NotFoundException(errorMessage = "LinemanagerRequirement", isAlreadyLogged = true)
+
     is GetNarmestelederbehovResult.AccessDenied -> throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
+
     GetNarmestelederbehovResult.PersonNotFound ->
         throw ApiErrorException.InternalServerErrorException(errorMessage = "Something went wrong while fetching LinemanagerRequirement")
 }

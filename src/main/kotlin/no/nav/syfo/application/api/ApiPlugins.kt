@@ -90,18 +90,23 @@ private fun logException(cause: Throwable, error: ApiError) {
             cause = cause,
             upstreamFailure = (cause as? ApiErrorException)?.upstreamFailure,
         )
+
         error.status.value in 400..499 && error.status != HttpStatusCode.NotFound -> statusPagesLogger.logEvent(
             apiRequestInvalid,
             RequestInvalidDetails(error.status.value, error.type.name),
         )
+
         else -> statusPagesLogger.info("Request rejected with status {}", error.status.value)
     }
 }
 
 fun determineApiError(cause: Throwable, path: String): ApiError = when (cause) {
     is BadRequestException -> cause.toApiError(path)
+
     is NotFoundException -> cause.toApiError(path)
+
     is ApiErrorException -> cause.toApiError(path)
+
     else -> ApiError(
         HttpStatusCode.InternalServerError,
         ErrorType.INTERNAL_SERVER_ERROR,

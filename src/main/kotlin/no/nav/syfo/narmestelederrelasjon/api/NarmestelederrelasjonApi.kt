@@ -55,10 +55,12 @@ fun Route.registerNarmestelederrelasjonApi(
                 countLinemanagerRevokeById(result)
                 when (result) {
                     is RevokeNarmestelederrelasjonResult.Revoked -> call.respond(HttpStatusCode.Accepted)
+
                     RevokeNarmestelederrelasjonResult.AlreadyRevoked -> {
                         logger.info("Revoke request for an already revoked linemanager relation. {}", call.revokeContext(principal))
                         call.respond(HttpStatusCode.Accepted)
                     }
+
                     is RevokeNarmestelederrelasjonResult.NotFound -> {
                         if (result.reason == RevokeNarmestelederrelasjonResult.Reason.RELATION_NOT_FOUND) {
                             logger.info("Revoke request for unknown linemanager relation. {}", call.revokeContext(principal))

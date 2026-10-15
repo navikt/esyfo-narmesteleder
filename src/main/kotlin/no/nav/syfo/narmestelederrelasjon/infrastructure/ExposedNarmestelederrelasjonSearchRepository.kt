@@ -200,6 +200,7 @@ class ExposedNarmestelederrelasjonSearchRepository(
     ): Op<Boolean> {
         val afterLastNameAndId = when (val cursorLastName = cursor.lastName) {
             null -> lastName.isNull() and (NarmestelederTable.id greater cursor.id)
+
             else -> {
                 (lastName greater cursorLastName) or
                     lastName.isNull() or
@@ -209,6 +210,7 @@ class ExposedNarmestelederrelasjonSearchRepository(
 
         return when (val cursorFirstName = cursor.firstName) {
             null -> this.isNull() and afterLastNameAndId
+
             else -> {
                 (this greater cursorFirstName) or
                     this.isNull() or

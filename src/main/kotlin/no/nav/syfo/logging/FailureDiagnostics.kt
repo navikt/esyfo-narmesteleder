@@ -58,16 +58,24 @@ internal fun Throwable.failureDiagnostics(upstreamFailure: UpstreamFailure? = nu
     }
     val kind = when {
         chain.any { it is UnknownHostException } -> "dns"
+
         chain.any { it is SocketTimeoutException || it.javaClass.simpleName in TIMEOUT_TYPES } -> "timeout"
+
         chain.any { it is SSLException } -> "tls"
+
         chain.any { it is ConnectException || it is SocketException } -> "connection"
+
         chain.any {
             it is JsonProcessingException ||
                 it.javaClass.simpleName in DECODING_TYPES ||
-                it is UpstreamRequestException &&
-                it.upstreamExceptionType == UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION
+                (
+                    it is UpstreamRequestException &&
+                        it.upstreamExceptionType == UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION
+                    )
         } -> "invalid_response"
+
         chain.any { it is ResponseException } || upstreamStatus != null -> "http"
+
         else -> "unknown"
     }
     val diagnostics = FailureDiagnostics(

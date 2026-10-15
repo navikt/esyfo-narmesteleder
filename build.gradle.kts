@@ -141,3 +141,8 @@ tasks {
         dependsOn("ktlintCheck")
     }
 }
+
+ktlint {
+    val ktlintVersion = libs.versions.ktlint.get()
+    version.set(ktlintVersion)
+}

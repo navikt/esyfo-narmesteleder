@@ -25,11 +25,14 @@ fun RoutingCall.toListNarmestelederbehovQuery(): ListNarmestelederbehovQuery {
 
 fun ListNarmestelederbehovResult.toLinemanagerRequirementCollection(pageSize: Int): LinemanagerRequirementCollection = when (this) {
     is ListNarmestelederbehovResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()
+
     is ListNarmestelederbehovResult.Listed -> LinemanagerRequirementCollection(
         linemanagerRequirements = behov.map { it.behov.toLinemanagerRequirementRead(it.name, organizationName) },
         meta = PageInfo(size = behov.size, pageSize = pageSize, hasMore = hasMore, total = total),
     )
+
     is ListNarmestelederbehovResult.AccessDenied -> throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
+
     ListNarmestelederbehovResult.PersonNotFound ->
         throw ApiErrorException.InternalServerErrorException(errorMessage = "Internal server error")
 }

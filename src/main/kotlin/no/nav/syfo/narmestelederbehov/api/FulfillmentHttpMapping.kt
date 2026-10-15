@@ -19,7 +19,9 @@ fun Manager.toManagerContactInput(): ManagerContactInput = ManagerContactInput(
 fun FulfillNarmestelederbehovResult.throwIfRejected() {
     when (this) {
         is FulfillNarmestelederbehovResult.Fulfilled -> Unit
+
         is FulfillNarmestelederbehovResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()
+
         is FulfillNarmestelederbehovResult.InvalidManagerContactDetails -> {
             throw ApiErrorException.BadRequestException(
                 issues.joinToString(prefix = "Invalid manager contact details: ", separator = "; ") {
@@ -29,28 +31,35 @@ fun FulfillNarmestelederbehovResult.throwIfRejected() {
                 isAlreadyLogged = true,
             )
         }
+
         FulfillNarmestelederbehovResult.NotFound,
         FulfillNarmestelederbehovResult.BehovMissingAfterPublication ->
             throw ApiErrorException.NotFoundException("A LinemanagerRequirement was not found", isAlreadyLogged = true)
+
         is FulfillNarmestelederbehovResult.AccessDenied -> {
             throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
         }
+
         is FulfillNarmestelederbehovResult.NoActiveSykmelding -> throw ApiErrorException.BadRequestException(
             "No active sick leave found for the given organization number: ${organizationNumber.value}",
             type = ErrorType.NO_ACTIVE_SICK_LEAVE,
             isAlreadyLogged = true,
         )
+
         is FulfillNarmestelederbehovResult.NoEmployment -> throw ApiErrorException.BadRequestException(
             when (reason) {
                 EmploymentResult.None -> "Employee on sick leave is missing employment in any organization"
+
                 EmploymentResult.NotInOrganization ->
                     "Employee on sick leave is missing employment in the organization indicated in the request"
             },
             type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
             isAlreadyLogged = true,
         )
+
         FulfillNarmestelederbehovResult.PersonNotFound ->
             throw ApiErrorException.BadRequestException("Could not find person in PDL", isAlreadyLogged = true)
+
         FulfillNarmestelederbehovResult.ManagerNameMismatch -> throw ApiErrorException.BadRequestException(
             "Last name for linemanager does not correspond with registered value for the given national identification number",
             type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,

@@ -28,6 +28,7 @@ class FulfillNarmestelederbehovFromLeesahUseCase(
                 val completion = completeDialog(marked)
                 logger.event(fulfilledFromLeesah, FulfilledFromLeesah(id, completion))
             }
+
             MarkFulfilledResult.Missing -> Unit
         }
     }

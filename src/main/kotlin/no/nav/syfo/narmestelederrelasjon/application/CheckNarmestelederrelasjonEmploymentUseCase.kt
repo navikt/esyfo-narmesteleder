@@ -81,10 +81,12 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
     private fun compare(claim: ClaimedEmploymentCheck, checked: ClaimedCheckOutcome) {
         when (checked) {
             ClaimedCheckOutcome.WOULD_REVOKE -> metrics.recordComparison(EmploymentComparisonResult.AGREE)
+
             ClaimedCheckOutcome.VALID -> {
                 metrics.recordComparison(EmploymentComparisonResult.DISAGREE)
                 logger.event(employmentCheckComparisonMismatch, claim.narmesteLederId)
             }
+
             ClaimedCheckOutcome.FAILED, ClaimedCheckOutcome.CLAIM_LOST, ClaimedCheckOutcome.TIMEOUT,
             ClaimedCheckOutcome.REVOKED, ClaimedCheckOutcome.STALE,
             -> Unit
@@ -97,6 +99,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         today: LocalDate,
     ): EmploymentCheckOutcome = when (history) {
         is EmploymentHistoryResult.Unavailable -> EmploymentCheckOutcome.FAILED
+
         is EmploymentHistoryResult.Found -> when (EmploymentEndedRule.evaluate(claim.organizationNumber, history.employments, today)) {
             EmploymentEndedDecision.KEEP -> EmploymentCheckOutcome.VALID
             EmploymentEndedDecision.REVOKE -> if (revokeEnabled) EmploymentCheckOutcome.REVOKED else EmploymentCheckOutcome.WOULD_REVOKE

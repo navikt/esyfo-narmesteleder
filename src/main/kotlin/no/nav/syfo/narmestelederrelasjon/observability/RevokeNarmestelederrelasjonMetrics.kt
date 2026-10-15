@@ -23,7 +23,9 @@ private val countAlreadyRevoked = revokeCounter("already_revoked")
 fun countLinemanagerRevokeById(result: RevokeNarmestelederrelasjonResult) {
     when (result) {
         RevokeNarmestelederrelasjonResult.AlreadyRevoked -> countAlreadyRevoked.increment()
+
         is RevokeNarmestelederrelasjonResult.NotFound -> Unit
+
         is RevokeNarmestelederrelasjonResult.Revoked -> when (result.initiator) {
             RevocationInitiator.EMPLOYEE -> countRevokedByEmployee.increment()
             RevocationInitiator.LINEMANAGER -> countRevokedByLinemanager.increment()
@@ -55,7 +57,9 @@ fun countRevokeActiveNarmestelederrelasjon(result: RevokeActiveNarmestelederrela
             RevocationInitiator.LPS -> COUNT_REVOKE_LINEMANAGER_BY_LPS.increment()
             else -> COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER.increment()
         }
+
         RevokeActiveNarmestelederrelasjonResult.NoActiveRelation -> COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION.increment()
+
         else -> Unit
     }
 }

@@ -63,6 +63,7 @@ private fun forbiddenLogging(bytes: ByteArray): List<String> = ClassFile.of().pa
                 "no/nav/esyfo/observability/ApplicationLoggerKt",
             )
         }
+
         is MemberRefEntry -> {
             val owner = entry.owner().asInternalName()
             val name = entry.nameAndType().name().stringValue()
@@ -72,6 +73,7 @@ private fun forbiddenLogging(bytes: ByteArray): List<String> = ClassFile.of().pa
                     (owner == "java/io/PrintStream" && name in setOf("print", "println", "printf", "format"))
             }
         }
+
         else -> null
     }
 }.distinct()

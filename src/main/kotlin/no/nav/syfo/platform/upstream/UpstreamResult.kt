@@ -10,6 +10,7 @@ sealed interface UpstreamResult<out T> {
 /** Legacy bridge only; migrated callers propagate failures as values (ADR-0004). */
 fun <T> UpstreamResult<T>.getOrThrow(): T = when (this) {
     is UpstreamResult.Success -> value
+
     is UpstreamResult.Failure -> throw UpstreamRequestException(
         message = "${failure.upstream.value} failed at ${failure.stage.logValue}",
         cause = failure.cause,

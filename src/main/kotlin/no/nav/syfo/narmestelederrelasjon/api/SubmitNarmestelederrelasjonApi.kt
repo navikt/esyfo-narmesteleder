@@ -63,7 +63,9 @@ fun Route.registerSubmitNarmestelederrelasjonApi(
 
 internal fun SubmitNarmestelederrelasjonResult.throwIfRejected(): SubmitNarmestelederrelasjonResult.Established = when (this) {
     is SubmitNarmestelederrelasjonResult.Established -> this
+
     is SubmitNarmestelederrelasjonResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()
+
     is SubmitNarmestelederrelasjonResult.InvalidManagerContactDetails ->
         throw ApiErrorException.BadRequestException(
             issues.joinToString(prefix = "Invalid manager contact details: ", separator = "; ") {
@@ -72,34 +74,43 @@ internal fun SubmitNarmestelederrelasjonResult.throwIfRejected(): SubmitNarmeste
             type = ErrorType.INVALID_FORMAT,
             isAlreadyLogged = true,
         )
+
     is SubmitNarmestelederrelasjonResult.AccessDenied -> throw reason.toForbiddenException(organizationNumber)
+
     is SubmitNarmestelederrelasjonResult.EstablishRejected -> when (val rejection = reason) {
         is EstablishNarmestelederrelasjonResult.NoActiveSykmelding ->
             throw ApiErrorException.BadRequestException(
                 "No active sick leave found for the given organization number: ${rejection.organizationNumber.value}",
                 type = ErrorType.NO_ACTIVE_SICK_LEAVE,
             )
+
         is EstablishNarmestelederrelasjonResult.NoEmployment -> throw ApiErrorException.BadRequestException(
             when (rejection.reason) {
                 EmploymentResult.None -> "Employee on sick leave is missing employment in any organization"
+
                 EmploymentResult.NotInOrganization ->
                     "Employee on sick leave is missing employment in the organization indicated in the request"
             },
             type = ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG,
         )
+
         EstablishNarmestelederrelasjonResult.PersonNotFound ->
             throw ApiErrorException.BadRequestException("Could not find person in PDL")
+
         EstablishNarmestelederrelasjonResult.ManagerNameMismatch ->
             throw ApiErrorException.BadRequestException(
                 "Last name for linemanager does not correspond with registered value for the given national identification number",
                 type = ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
             )
+
         EstablishNarmestelederrelasjonResult.EmployeeNameMismatch ->
             throw ApiErrorException.BadRequestException(
                 "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
                 type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
             )
+
         EstablishNarmestelederrelasjonResult.Published -> error("A published relation cannot be a rejection")
+
         is EstablishNarmestelederrelasjonResult.UpstreamUnavailable ->
             error("UpstreamUnavailable is mapped to SubmitNarmestelederrelasjonResult.UpstreamUnavailable")
     }

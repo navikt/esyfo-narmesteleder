@@ -24,6 +24,7 @@ class RevokeActiveNarmestelederrelasjonUseCase(
         }
         val initiator = when (val subject = command.accessSubject) {
             is OrganizationAccessSubject.LpsSystemUser -> RevocationInitiator.LPS
+
             is OrganizationAccessSubject.PersonnelManager ->
                 if (subject.personIdent == employee.personIdent) RevocationInitiator.EMPLOYEE else RevocationInitiator.PERSONNEL_MANAGER
         }

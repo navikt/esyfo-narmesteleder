@@ -52,8 +52,10 @@ class EstablishNarmestelederrelasjonUseCase(
 
     private suspend fun verifyEmployment(command: EstablishNarmestelederrelasjonCommand): EstablishStep<Unit> = when (val employment = employmentLookup.findEmployment(command.employeeIdent, command.organizationNumber)) {
         EmploymentResult.InOrganization -> Step.Proceed
+
         is EmploymentResult.Missing ->
             Step.Stop(EstablishNarmestelederrelasjonResult.NoEmployment(employment))
+
         is EmploymentResult.Unavailable ->
             Step.Stop(EstablishNarmestelederrelasjonResult.UpstreamUnavailable(employment.failure))
     }

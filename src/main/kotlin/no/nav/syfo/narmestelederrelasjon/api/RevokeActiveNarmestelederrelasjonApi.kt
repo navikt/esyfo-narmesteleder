@@ -53,14 +53,19 @@ fun Route.registerRevokeActiveNarmestelederrelasjonApi(
 
 internal fun RevokeActiveNarmestelederrelasjonResult.toHttpStatusOrThrow(): HttpStatusCode = when (this) {
     is RevokeActiveNarmestelederrelasjonResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()
+
     is RevokeActiveNarmestelederrelasjonResult.Revoked -> HttpStatusCode.Accepted
+
     RevokeActiveNarmestelederrelasjonResult.NoActiveRelation -> HttpStatusCode.NoContent
+
     RevokeActiveNarmestelederrelasjonResult.EmployeeNotFound ->
         throw ApiErrorException.BadRequestException("Could not find person in PDL")
+
     RevokeActiveNarmestelederrelasjonResult.EmployeeNameMismatch ->
         throw ApiErrorException.BadRequestException(
             "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
             type = ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH,
         )
+
     is RevokeActiveNarmestelederrelasjonResult.AccessDenied -> throw reason.toForbiddenException(organizationNumber)
 }

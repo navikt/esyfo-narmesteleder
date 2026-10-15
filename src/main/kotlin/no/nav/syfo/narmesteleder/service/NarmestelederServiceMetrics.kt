@@ -14,6 +14,11 @@ val COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING: Counter = Counter.builder(CREAT
     .description("Counts the number of skipped createBehov due to pre-existing entity")
     .register(METRICS_REGISTRY)
 
+const val CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER = "${METRICS_NS}_create_behov_skipped_has_active_narmesteleder"
+val COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER: Counter = Counter.builder(CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER)
+    .description("Counts the number of skipped createBehov due to an active narmesteleder relation")
+    .register(METRICS_REGISTRY)
+
 const val NL_BEHOV_STORED_AS_ERROR_NO_MAIN_ORGUNIT = "${METRICS_NS}_nl_behov_stored_as_error_no_main_orgunit"
 val COUNT_CREATE_BEHOV_STORED_ERROR_NO_MAIN_ORGUNIT: Counter = Counter.builder(NL_BEHOV_STORED_AS_ERROR_NO_MAIN_ORGUNIT)
     .description("Counts the number of nl-behov stored as error due to no main orgunit")

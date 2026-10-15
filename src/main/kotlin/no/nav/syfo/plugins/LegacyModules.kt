@@ -61,6 +61,7 @@ internal fun legacyServicesModule() = module {
             narmesteLederService = get(),
             sykmeldingService = get(),
             narmestelederBruddService = get(),
+            hasActiveNarmestelederrelasjon = get(),
         )
     }
 

@@ -37,6 +37,9 @@ internal data class RecordedCompletion(
 internal class RecordingEmploymentReconciliationRepository : EmploymentReconciliationRepository {
     var claims = emptyList<ClaimedEmploymentCheck>()
     var completeSucceeds = true
+    var claimStillValid = true
+    var revokeEnabledWhenClaiming: Boolean? = null
+    val validated = mutableListOf<ClaimedEmploymentCheck>()
     val completed = mutableListOf<RecordedCompletion>()
     val observed = mutableMapOf<UUID, Instant>()
     var seeded = 0
@@ -44,7 +47,10 @@ internal class RecordingEmploymentReconciliationRepository : EmploymentReconcili
 
     override suspend fun seedMissing(limit: Int, now: Instant): Int = seeded
 
-    override suspend fun claimDue(limit: Int, lease: Duration, now: Instant): List<ClaimedEmploymentCheck> = claims
+    override suspend fun claimDue(limit: Int, lease: Duration, now: Instant, revokeEnabled: Boolean): List<ClaimedEmploymentCheck> {
+        revokeEnabledWhenClaiming = revokeEnabled
+        return claims
+    }
 
     override suspend fun complete(
         claim: ClaimedEmploymentCheck,
@@ -56,7 +62,10 @@ internal class RecordingEmploymentReconciliationRepository : EmploymentReconcili
         return completeSucceeds
     }
 
-    override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean = error("Not used in shadow mode")
+    override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean {
+        validated += claim
+        return claimStillValid
+    }
 
     override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean = observed.putIfAbsent(narmesteLederId, revokedAt) == null
 

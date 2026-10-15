@@ -109,7 +109,11 @@ Owns established and revoked narmesteleder relations:
   `narmesteleder-arbeidsforhold` Kafka source. A failed lookup never revokes. The
   check runs in shadow mode first (`EMPLOYMENT_CHECK_ENABLED`), is compared with
   team sykmelding's revocations on Leesah (`EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED`)
-  and publishes only after a separate switch;
+  and publishes only with `EMPLOYMENT_CHECK_REVOKE_ENABLED`. Startup fails if
+  revocation and source observation are both enabled. Live mode freezes comparison.
+  `NlAvbrutt` deactivates all active relations for orgnr+fnr, so a new relation
+  established between lookup and publish could be hit (R2). The reference app
+  has the same race; it is documented, not fixed here;
 - publish relation messages;
 - ingest and republish relation events from Leesah. The module owns the
   republished topic's message model; other modules that read Leesah keep their

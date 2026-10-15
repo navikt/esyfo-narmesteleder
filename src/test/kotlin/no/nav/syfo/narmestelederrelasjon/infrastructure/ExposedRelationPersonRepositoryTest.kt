@@ -2,6 +2,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
@@ -70,6 +71,29 @@ class ExposedRelationPersonRepositoryTest :
             with(person(second)) {
                 this[PersonTable.status] shouldBe PersonStatus.NOT_FOUND.name
                 this[PersonTable.fornavn] shouldBe "Old"
+            }
+        }
+
+        test("findExisting returns only persons in the projection") {
+            insertPerson(first, status = PersonStatus.NOT_FOUND)
+
+            repository.findExisting(listOf(PersonIdent(first), PersonIdent(second))) shouldBe listOf(PersonIdent(first))
+        }
+
+        test("updateRegisteredDetails updates details and timestamp without changing status and returns updated persons") {
+            insertPerson(first, status = PersonStatus.ENRICHED)
+            val updatedBefore = person(first)[PersonTable.updated]
+
+            val updated = repository.updateRegisteredDetails(mapOf(PersonIdent(first) to ada, PersonIdent(second) to ada))
+
+            updated shouldBe setOf(PersonIdent(first))
+            with(person(first)) {
+                this[PersonTable.status] shouldBe PersonStatus.ENRICHED.name
+                this[PersonTable.fornavn] shouldBe ada.firstName
+                this[PersonTable.mellomnavn] shouldBe ada.middleName
+                this[PersonTable.etternavn] shouldBe ada.lastName
+                this[PersonTable.foedselsdato] shouldBe ada.birthDate
+                this[PersonTable.updated] shouldNotBe updatedBefore
             }
         }
     })

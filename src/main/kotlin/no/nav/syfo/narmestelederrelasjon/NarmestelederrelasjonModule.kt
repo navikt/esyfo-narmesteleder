@@ -31,6 +31,7 @@ import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.application.RecordSourceEmploymentRevocationUseCase
+import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateMetrics
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
@@ -39,6 +40,7 @@ import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
 import no.nav.syfo.narmestelederrelasjon.application.SeedNarmestelederrelasjonEmploymentChecksUseCase
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentHistoryLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.AaregEmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.CachedPersonLookup
@@ -57,6 +59,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmail
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerEmploymentCheckMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNarmestelederRegisterMetrics
+import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerRelationPersonNameUpdateMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlBulkPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ValkeyPersonDetailsCache
@@ -122,5 +125,7 @@ fun narmestelederrelasjonModule() = module {
     single { RecordSourceEmploymentRevocationUseCase(get(), get(), get()) }
     single<RelationPersonRepository> { ExposedRelationPersonRepository(get<ExposedDatabase>()) }
     single<BulkPersonLookup> { PdlBulkPersonLookup(get()) }
+    single<RelationPersonNameUpdateMetrics> { MicrometerRelationPersonNameUpdateMetrics() }
     single { EnrichPendingRelationPersonsUseCase(get(), get()) }
+    single { UpdateRelationPersonNamesUseCase(get(), get(), get()) }
 }

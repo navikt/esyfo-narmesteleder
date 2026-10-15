@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
+import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.application.EmployerMainOrganizationLookup
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
@@ -28,6 +29,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbeh
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerLeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeeNameLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeePersonLookup
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 
@@ -47,7 +49,8 @@ fun narmestelederbehovModule() = module {
     }
     single<NarmestelederbehovActiveSykmeldingLookup> { DinesykmeldteNarmestelederbehovActiveSykmeldingLookup(get()) }
     single<EmployerMainOrganizationLookup> { AaregEmployerMainOrganizationLookup(get()) }
-    single<NarmestelederbehovDialogCreation> { DialogportenNarmestelederbehovDialogCreation(get()) }
+    single<NarmestelederbehovDialogCreation> { DialogportenNarmestelederbehovDialogCreation(client = get(), dialogFactory = get()) }
+    single<EmployeePersonLookup> { PdlEmployeePersonLookup(get()) }
     single<NarmestelederbehovCreationMetrics> { MicrometerNarmestelederbehovCreationMetrics() }
     single<CreateNarmestelederbehov> {
         CreateNarmestelederbehovUseCase(
@@ -55,6 +58,7 @@ fun narmestelederbehovModule() = module {
             repository = get(),
             activeSykmelding = get(),
             mainOrganization = get(),
+            personLookup = get(),
             dialog = get(),
             metrics = get(),
         )

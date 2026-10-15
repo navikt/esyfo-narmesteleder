@@ -1,27 +1,32 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
+import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
+import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
-import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import java.util.UUID
 
-/** Delegates to the legacy Dialogporten flow, which logs and swallows failures so the stored behov is retried by SendDialogTask. */
 class DialogportenNarmestelederbehovDialogCreation(
-    private val dialogportenService: DialogportenService,
+    private val client: DialogportenClient,
+    private val dialogFactory: NarmestelederbehovDialogFactory,
 ) : NarmestelederbehovDialogCreation {
-    override suspend fun create(id: NarmestelederbehovId, behov: NewNarmestelederbehov) {
-        dialogportenService.sendToDialogporten(
-            NarmestelederBehovEntity(
-                id = id.value,
-                orgnummer = behov.employee.organizationNumber.value,
-                hovedenhetOrgnummer = behov.mainOrganizationNumber,
-                sykmeldtFnr = behov.employee.personIdent.value,
-                narmestelederFnr = behov.manager?.value,
-                behovReason = behov.reason,
-                behovStatus = behov.status,
-                avbruttNarmesteLederId = behov.revokedRelationId,
-            ),
+    override suspend fun create(id: NarmestelederbehovId, employee: Employee, person: EmployeePerson?): UUID {
+        val dialog = dialogFactory.create(
+            id = id.value,
+            organizationNumber = employee.organizationNumber.value,
+            employeeIdent = employee.personIdent.value,
+            name = person?.name,
+            birthDate = person?.birthDate,
         )
+        dialog.attachments?.firstOrNull()?.let {
+            logger.info("Sending behov ${id.value} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
+        }
+        return client.createDialog(dialog)
+    }
+
+    private companion object {
+        val logger = applicationLogger(DialogportenNarmestelederbehovDialogCreation::class.java)
     }
 }

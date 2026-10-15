@@ -70,9 +70,11 @@ internal class FakeRelationEstablisher(
 internal class FakeDialog(
     private val effects: MutableList<String> = mutableListOf(),
     private val failure: Throwable? = null,
+    private val completion: DialogCompletion = DialogCompletion.Completed,
 ) : NarmestelederbehovDialog {
-    override suspend fun complete(dialogId: UUID) {
+    override suspend fun complete(dialogId: UUID): DialogCompletion {
         effects += "dialog"
         failure?.let { throw it }
+        return completion
     }
 }

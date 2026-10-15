@@ -14,6 +14,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
 import no.nav.syfo.TestDB
 import no.nav.syfo.aareg.AaregService
+import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
@@ -33,6 +34,7 @@ import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.domain.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
 import org.slf4j.LoggerFactory
 import java.sql.SQLException
@@ -43,13 +45,13 @@ import kotlin.time.Duration.Companion.milliseconds
 private class RecordingDialogportenClient : DialogportenClient {
     var creates = 0
 
-    override suspend fun createDialog(dialog: Dialog): UUID {
+    override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> {
         creates++
-        return UUID.randomUUID()
+        return UpstreamResult.Success(UUID.randomUUID())
     }
 
-    override suspend fun getDialogById(dialogId: UUID): ExtendedDialog = error("Unexpected lookup")
-    override suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<HttpDialogportenClient.DialogportenPatch>): Unit = error("Unexpected patch")
+    override suspend fun getDialogById(dialogId: UUID): UpstreamResult<ExtendedDialog> = error("Unexpected lookup")
+    override suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<HttpDialogportenClient.DialogportenPatch>): UpstreamResult<DialogPatchResult> = error("Unexpected patch")
 }
 
 private fun conflictTestService(db: NarmestelederDb, dialog: RecordingDialogportenClient): NarmestelederService {

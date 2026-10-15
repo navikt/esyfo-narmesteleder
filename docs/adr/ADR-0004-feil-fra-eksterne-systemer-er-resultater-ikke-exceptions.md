@@ -61,6 +61,22 @@ Mønsteret har seks deler:
   `errors[].extensions.code`, men har ingen forretningsregler. Det er i tråd
   med ADR-0002.
 
+  Dialogporten returnerer `UpstreamResult` for POST, GET og PATCH og sender
+  tokenfeil videre uendret. PATCH 2xx gir `Success(DialogPatchResult.Patched)`,
+  mens 412 er et forventet resultat: `Success(DialogPatchResult.RevisionConflict)`.
+  Andre HTTP-feil, inkludert 409 og 410, gir `Failure(RESPONSE, status)`.
+  Ugyldig UUID eller GET-svar gir også `RESPONSE` med status; timeout og IO gir
+  `REQUEST` uten status. Retry-policyen i den delte HTTP-klienten endres ikke.
+
+  `NarmestelederbehovDialog.complete` returnerer `DialogCompletion.Completed`
+  eller `Unavailable(failure)`. En allerede fullført dialog trenger ikke PATCH.
+  Ved revisjonskonflikt leser adapteren én gang til: `Completed` er vellykket,
+  annen status gir `revision_conflict` med upstream `dialogporten`, stage
+  `RESPONSE` og status 412. Feil fra GET eller PATCH sendes videre uendret.
+  Begge fulfillment-use casene logger `Unavailable` med `upstreamFailure`
+  og lar behovet forbli oppfylt for senere forsøk. Uventede exceptions og
+  kansellering sendes videre uten en forretningsfeillogg.
+
   Enkeltoppslaget `getPerson` krever både persondata og identer uten feil for
   å gi `Success(PdlPerson)`. Hvis alle feil gjelder ikke funnet eller ugyldig
   ident, blir resultatet `Success(null)`. Enhver annen feil vinner, også når
@@ -145,8 +161,13 @@ Mønsteret har seks deler:
   Systembrukerløpet gjør det samme ved første feil fra Texas, Altinn-vekslingen,
   PDP eller Ereg, uten fallback eller avvisningslogg etter feilen. Ereg-broen
   er fjernet. `Success(null)` fra Ereg gir fortsatt 400
-  `ORGANIZATION_NOT_FOUND`. `DialogportenClient` bruker `getOrThrow()` fram
-  til #688; token-endepunktet `/dialogporten/token` er slettet.
+  `ORGANIZATION_NOT_FOUND`. Token-endepunktet `/dialogporten/token` er slettet.
+  Legacy `DialogportenService` bruker `getOrThrow()` for alle klientkall.
+  Både fullføring og utløp gjør `RevisionConflict` om til samme
+  `revision_conflict`-feil via `getOrThrow()` før databasen endres, uten ny GET.
+  Eksisterende catch logger `dialogporten_dialog_failed` med
+  `upstream_status = 412`; status og `expiredInDialogporten` forblir uendret,
+  slik at jobbene kan prøve igjen senere.
 
 ## Kontekst
 

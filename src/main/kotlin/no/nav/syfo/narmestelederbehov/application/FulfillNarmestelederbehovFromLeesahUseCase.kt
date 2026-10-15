@@ -34,13 +34,12 @@ class FulfillNarmestelederbehovFromLeesahUseCase(
 
     private suspend fun completeDialog(marked: MarkFulfilledResult.Marked): DialogportenCompletionAttempt {
         val dialogId = marked.dialogId ?: return DialogportenCompletionAttempt.NotApplicable
-        try {
-            dialog.complete(dialogId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.logEvent(dialogportenCompletionFailed, marked.id.value.toString(), cause = e)
-            return DialogportenCompletionAttempt.Failed
+        when (val completion = dialog.complete(dialogId)) {
+            DialogCompletion.Completed -> Unit
+            is DialogCompletion.Unavailable -> {
+                logger.logEvent(dialogportenCompletionFailed, marked.id.value.toString(), upstreamFailure = completion.failure)
+                return DialogportenCompletionAttempt.Failed
+            }
         }
         return try {
             when (behovRepository.markDialogCompleted(marked.id)) {

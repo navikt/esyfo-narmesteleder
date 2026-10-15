@@ -109,9 +109,11 @@ class FulfillmentLoggingContractTest :
             ).forEach { (completion, code) ->
                 test("logs one successful $source fulfillment with $code dialog completion") {
                     val dialog = FakeDialog(
-                        failure = IllegalStateException("private-exception-canary").takeIf {
-                            completion == DialogportenCompletionAttempt.Failed
-                        }
+                        completion = if (completion == DialogportenCompletionAttempt.Failed) {
+                            DialogCompletion.Unavailable(UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException("private-exception-canary")))
+                        } else {
+                            DialogCompletion.Completed
+                        },
                     )
                     val repository = FakeBehovRepository(
                         behov,
@@ -133,6 +135,9 @@ class FulfillmentLoggingContractTest :
                         )
                         failureRecord["level"].asText() shouldBe "WARN"
                         failureRecord["behov_id"].asText() shouldBe behovId.value.toString()
+                        failureRecord["upstream"].asText() shouldBe "texas"
+                        failureRecord["failure_stage"].asText() shouldBe "token_exchange"
+                        failureRecord["upstream_status"].asInt() shouldBe 503
                         failureRecord.has("dialog_id") shouldBe false
                         capture.records.size shouldBe 2
                     } else {
@@ -235,11 +240,7 @@ class FulfillmentLoggingContractTest :
         }
 
         listOf("establish", "fulfilled", "dialog").forEach { failingEffect ->
-            val failures = if (failingEffect == "dialog") {
-                listOf(CancellationException("private-exception-canary"))
-            } else {
-                listOf(IllegalStateException("private-exception-canary"), CancellationException("private-exception-canary"))
-            }
+            val failures = listOf(IllegalStateException("private-exception-canary"), CancellationException("private-exception-canary"))
             failures.forEach { failure ->
                 test("does not log a business outcome for ${failure::class.simpleName} at $failingEffect") {
                     val useCase = createUseCase(

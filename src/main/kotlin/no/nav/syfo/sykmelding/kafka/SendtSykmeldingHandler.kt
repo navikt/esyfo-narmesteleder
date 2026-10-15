@@ -6,7 +6,6 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.service.COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult

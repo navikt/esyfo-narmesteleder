@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.service
+package no.nav.syfo.sykmelding.kafka
 
 import io.micrometer.core.instrument.Counter
 import no.nav.syfo.application.metric.METRICS_NS

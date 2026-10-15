@@ -138,6 +138,12 @@ private class ListFixture(
         override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("List must not look up open behov by employee")
         override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("List must not fulfill")
         override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("List must not complete dialogs")
+
+        override suspend fun markDialogCreated(
+            id: NarmestelederbehovId,
+            dialogId: UUID,
+            name: BehovPersonName?,
+        ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
     }
     private val openRepository = object : OpenNarmestelederbehovRepository {
         override suspend fun findOpen(organizationNumber: OrganizationNumber, createdAfter: Instant, limit: Int): List<NarmestelederbehovDetails> {

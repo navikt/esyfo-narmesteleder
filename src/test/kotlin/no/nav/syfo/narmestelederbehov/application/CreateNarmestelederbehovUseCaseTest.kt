@@ -65,6 +65,7 @@ class CreateNarmestelederbehovUseCaseTest :
                 override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")
                 override suspend fun markFulfilled(id: NarmestelederbehovId) = error("Unexpected markFulfilled")
                 override suspend fun markDialogCompleted(id: NarmestelederbehovId) = error("Unexpected markDialogCompleted")
+                override suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?) = error("Unexpected markDialogCreated")
 
                 override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = openBehov.also { effects += "find-open" }
 

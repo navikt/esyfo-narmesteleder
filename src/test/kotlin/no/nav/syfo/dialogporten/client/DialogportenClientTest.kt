@@ -20,6 +20,7 @@ import io.mockk.spyk
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClientException
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
+import no.nav.syfo.integration.httpClientDefaultWithoutRetryDelay
 import no.nav.syfo.logging.failureDiagnostics
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
@@ -36,7 +37,7 @@ class DialogportenClientTest :
                 coEvery { provider.token(any()) } returns AltinnTokenProvider.AltinnToken("secret-token", Duration.ZERO, "scope")
                 val client = HttpDialogportenClient(
                     "https://dialogporten.test",
-                    httpClientDefault(HttpClient(MockEngine { respond("private-response-body", HttpStatusCode.ServiceUnavailable) })),
+                    httpClientDefaultWithoutRetryDelay(MockEngine { respond("private-response-body", HttpStatusCode.ServiceUnavailable) }),
                     provider,
                 )
                 val failure = shouldThrow<DialogportenClientException> {

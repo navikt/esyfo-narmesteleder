@@ -4,18 +4,17 @@ import getMockEngine
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.client.HttpClient
 import io.ktor.http.Headers
 import io.ktor.http.HttpStatusCode
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
+import no.nav.syfo.integration.httpClientDefaultWithoutRetryDelay
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasResponse
-import no.nav.syfo.util.httpClientDefault
 
 class PdlClientTest :
     DescribeSpec({
@@ -66,7 +65,7 @@ class PdlClientTest :
                     111,
                     "tokenType"
                 )
-                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefaultWithoutRetryDelay(mockEngine), "", mockTexasClient, "scope")
 
                 val result = client.getPerson(fnr).getOrThrow()
 
@@ -100,7 +99,7 @@ class PdlClientTest :
                     111,
                     "tokenType"
                 )
-                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefaultWithoutRetryDelay(mockEngine), "", mockTexasClient, "scope")
 
                 client.getPerson(fnr).shouldBeInstanceOf<UpstreamResult.Failure>().failure.errors.single().code shouldBe "unknown"
             }
@@ -121,7 +120,7 @@ class PdlClientTest :
                     111,
                     "tokenType"
                 )
-                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefaultWithoutRetryDelay(mockEngine), "", mockTexasClient, "scope")
 
                 val failure = client.getPerson(fnr).shouldBeInstanceOf<UpstreamResult.Failure>().failure
                 failure.stage shouldBe UpstreamFailureStage.RESPONSE
@@ -145,7 +144,7 @@ class PdlClientTest :
                     111,
                     "tokenType"
                 )
-                val client = HttpPdlClient(httpClientDefault(HttpClient(mockEngine)), "", mockTexasClient, "scope")
+                val client = HttpPdlClient(httpClientDefaultWithoutRetryDelay(mockEngine), "", mockTexasClient, "scope")
 
                 val failure = client.getPerson(fnr).shouldBeInstanceOf<UpstreamResult.Failure>().failure
                 failure.stage shouldBe UpstreamFailureStage.RESPONSE

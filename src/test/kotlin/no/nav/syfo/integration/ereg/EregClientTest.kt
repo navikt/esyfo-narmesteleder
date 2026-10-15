@@ -23,12 +23,12 @@ import no.nav.esyfo.observability.causeChain
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
+import no.nav.syfo.integration.httpClientDefaultWithoutRetryDelay
 import no.nav.syfo.integration.respondJson
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamResult
-import no.nav.syfo.util.httpClientDefault
 import org.slf4j.event.Level
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -209,6 +209,6 @@ private fun Throwable.shouldRetainThrownException(original: Throwable) {
     causeChain().any { it === original } shouldBe true
 }
 
-private fun eregHttpClient(handler: MockRequestHandler): HttpClient = httpClientDefault(
-    HttpClient(MockEngine { request -> handler(request) })
+private fun eregHttpClient(handler: MockRequestHandler): HttpClient = httpClientDefaultWithoutRetryDelay(
+    MockEngine { request -> handler(request) }
 )

@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
@@ -49,6 +50,12 @@ class PdlEmployeePersonLookupTest :
             listOf(null, person.copy(person = PersonResponse(emptyList())), person.copy(identer = listOf(Ident("actor", "AKTORID")))).forEach {
                 lookup(UpstreamResult.Success(it)).find(employeeIdent) shouldBe EmployeePersonLookupResult.NotFound
             }
+        }
+
+        test("rejects a malformed folkeregisterident like the name lookup") {
+            shouldThrow<IllegalArgumentException> {
+                lookup(UpstreamResult.Success(person.copy(identer = listOf(Ident("invalid", Ident.GRUPPE_IDENT_FNR))))).find(employeeIdent)
+            }.message shouldBe "PersonIdent must be exactly 11 digits"
         }
 
         test("propagates failure as Unavailable") {

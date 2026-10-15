@@ -224,6 +224,19 @@ class CreateNarmestelederbehovUseCaseTest :
             }
         }
 
+        test("creates the dialog without person details when the person lookup fails") {
+            val fixture = Fixture(personLookup = { throw IllegalArgumentException("PersonIdent must be exactly 11 digits") })
+
+            val logs = captureLogs { fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
+
+            fixture.dialogs shouldBe listOf(Triple(createdId, employee, null))
+            fixture.markedDialogs shouldBe listOf(Triple(createdId, dialogId, null))
+            val event = logs.single { it.level == Level.WARN }.fields()
+            event["event_type"] shouldBe "dialog_person_enrichment_failed"
+            event["behov_id"] shouldBe createdId.value.toString()
+            logs.none { it.level == Level.ERROR } shouldBe true
+        }
+
         test("keeps the behov in BEHOV_CREATED and logs when the dialog cannot be created") {
             with(Fixture(createDialog = { throw IllegalStateException("dialogporten down") })) {
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }

@@ -108,14 +108,7 @@ class CreateNarmestelederbehovUseCase(
     /** Failures are logged and swallowed; SendDialogTask retries behov still in BEHOV_CREATED. */
     private suspend fun createDialog(id: NarmestelederbehovId, employee: Employee) {
         try {
-            val person = when (val result = personLookup.find(employee.personIdent)) {
-                is EmployeePersonLookupResult.Found -> result.person
-                EmployeePersonLookupResult.NotFound -> null
-                is EmployeePersonLookupResult.Unavailable -> {
-                    logger.logEvent(dialogPersonEnrichmentFailed, DialogCreationDetails(id), upstreamFailure = result.failure)
-                    null
-                }
-            }
+            val person = findPerson(id, employee)
             val dialogId = dialog.create(id, employee, person)
             if (repository.markDialogCreated(id, dialogId, person?.name) == MarkDialogCreatedResult.NotCreated) {
                 logger.logEvent(dialogCreatedForClosedBehov, DialogCreationDetails(id, dialogId))
@@ -125,6 +118,23 @@ class CreateNarmestelederbehovUseCase(
         } catch (e: Exception) {
             logger.logEvent(dialogCreationFailed, DialogCreationDetails(id), cause = e)
         }
+    }
+
+    /** Person details only enrich the dialog, so any lookup failure falls back to a dialog without them. */
+    private suspend fun findPerson(id: NarmestelederbehovId, employee: Employee): EmployeePerson? = try {
+        when (val result = personLookup.find(employee.personIdent)) {
+            is EmployeePersonLookupResult.Found -> result.person
+            EmployeePersonLookupResult.NotFound -> null
+            is EmployeePersonLookupResult.Unavailable -> {
+                logger.logEvent(dialogPersonEnrichmentFailed, DialogCreationDetails(id), upstreamFailure = result.failure)
+                null
+            }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        logger.logEvent(dialogPersonEnrichmentFailed, DialogCreationDetails(id), cause = e)
+        null
     }
 
     private fun alreadyExists(): CreateNarmestelederbehovResult {

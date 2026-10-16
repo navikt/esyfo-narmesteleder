@@ -1,12 +1,13 @@
 package no.nav.syfo.narmesteleder.kafka
 
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.api.v1.COUNT_CREATE_LINEMANAGER_REQUIREMENT
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
-import no.nav.syfo.narmesteleder.service.BehovSource
-import no.nav.syfo.narmesteleder.service.NarmestelederService
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
 
@@ -23,10 +24,10 @@ private val nlMessageStatusSkipped = applicationEvent<MissingStatusReason>(
     fields = mapOf("reason" to { it.name }),
 )
 
-class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederService) {
+class NlBehovLeesahHandler(private val createNarmestelederbehov: CreateNarmestelederbehov) {
     private val logger = logger()
 
-    suspend fun handleByLeesahStatus(nlBehov: LinemanagerRequirementWrite, status: LeesahStatus?, behovSource: BehovSource) {
+    suspend fun handleByLeesahStatus(command: CreateNarmestelederbehovCommand, status: LeesahStatus?) {
         logger.info("Processing NL message with status: $status")
 
         when (status) {
@@ -36,7 +37,10 @@ class NlBehovLeesahHandler(private val narmesteLederService: NarmestelederServic
             LeesahStatus.DEAKTIVERT_PERSONALLEDER,
             LeesahStatus.DEAKTIVERT_LPS
             -> {
-                narmesteLederService.createNewNlBehov(nlBehov, behovSource = behovSource)
+                val result = createNarmestelederbehov.execute(command)
+                if (result is CreateNarmestelederbehovResult.UpstreamUnavailable) {
+                    throw result.failure.toUpstreamUnavailableException()
+                }
                 COUNT_CREATE_LINEMANAGER_REQUIREMENT.increment()
             }
 

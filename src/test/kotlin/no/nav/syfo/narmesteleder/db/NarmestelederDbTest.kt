@@ -5,7 +5,6 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldContainAllIgnoringFields
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.TestDB.Companion.updateCreated
@@ -22,46 +21,13 @@ class NarmestelederDbTest :
             TestDB.clearAllData()
             TestDB.clearSendtSykmeldingData()
         }
-        suspend fun insertAndGetBehovWithId(entity: NarmestelederBehovEntity): NarmestelederBehovEntity? {
-            val entity = db.insertNlBehov(entity)
-            requireNotNull(entity.id)
-            return testDb.findBehovById(entity.id)
-        }
+        fun insertAndGetBehovWithId(entity: NarmestelederBehovEntity): NarmestelederBehovEntity? = insertNlBehov(entity)
 
-        describe("insertNlBehov") {
-            it("should return a generated id") {
-                // Arrange
-                val nlBehovEntity = nlBehovEntity()
-                // Act
-                val id = db.insertNlBehov(nlBehovEntity)
-                // Assert
-                id shouldNotBe null
-            }
-
-            it("should persist the document with the correct fields") {
-                // Arrange
-                val nlBehovEntity = nlBehovEntity()
-                // Act
-                val entity = db.insertNlBehov(nlBehovEntity)
-                // Assert
-                entity.id shouldNotBe null
-
-                val retrievedEntity = testDb.findBehovById(entity.id!!)
-                retrievedEntity?.shouldBeEqualUsingFields({
-                    excludedProperties = setOf(
-                        NarmestelederBehovEntity::id,
-                        NarmestelederBehovEntity::created,
-                        NarmestelederBehovEntity::updated
-                    )
-                    nlBehovEntity
-                })
-            }
-        }
         describe("updateNlBehov") {
             it("should update mutated fields") {
                 // Arrange
                 val nlBehovEntity = nlBehovEntity()
-                val id = db.insertNlBehov(nlBehovEntity).id!!
+                val id = insertNlBehov(nlBehovEntity).id!!
                 val retrievedEntity = testDb.findBehovById(id)
                 val mutatedEntity = retrievedEntity!!.copy(
                     orgnummer = faker.numerify("#########"),
@@ -90,7 +56,7 @@ class NarmestelederDbTest :
 
         describe("markDialogCreated") {
             it("should set dialog and status when the behov is BEHOV_CREATED") {
-                val id = db.insertNlBehov(nlBehovEntity()).id!!
+                val id = insertNlBehov(nlBehovEntity()).id!!
                 val dialogId = UUID.randomUUID()
 
                 db.markDialogCreated(id, dialogId, "Fornavn", null, "Etternavn") shouldBe true
@@ -103,7 +69,7 @@ class NarmestelederDbTest :
             }
 
             it("should leave the row untouched when the behov is no longer BEHOV_CREATED") {
-                val created = db.insertNlBehov(nlBehovEntity())
+                val created = insertNlBehov(nlBehovEntity())
                 db.updateNlBehov(created.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
 
                 db.markDialogCreated(created.id!!, UUID.randomUUID(), "Fornavn", null, "Etternavn") shouldBe false
@@ -193,142 +159,13 @@ class NarmestelederDbTest :
             }
         }
 
-        describe("getNlBehovByParameters") {
-            describe("sykmeltFnr, orgnummer, behovStatus") {
-                it("should retrieve only entities with the matching status") {
-                    // Arrange
-                    val defaultSykmledteFnr = faker.numerify("###########")
-                    val defaultOrgnummer = faker.numerify("#########")
-                    val nlBehovEntity1 =
-                        insertAndGetBehovWithId(
-                            nlBehovEntity().copy(
-                                sykmeldtFnr = defaultSykmledteFnr,
-                                orgnummer = defaultOrgnummer,
-                                behovStatus = BehovStatus.BEHOV_CREATED
-                            )
-                        )!!
-                    val nlBehovEntity2 =
-                        insertAndGetBehovWithId(
-                            nlBehovEntity().copy(
-                                sykmeldtFnr = defaultSykmledteFnr,
-                                orgnummer = defaultOrgnummer,
-                                behovStatus = BehovStatus.BEHOV_FULFILLED
-                            )
-                        )!!
-                    val nlBehovEntity3 =
-                        insertAndGetBehovWithId(
-                            nlBehovEntity().copy(
-                                sykmeldtFnr = defaultSykmledteFnr,
-                                orgnummer = defaultOrgnummer,
-                                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-                            )
-                        )
-                    val earlier = Instant.now().minusSeconds(3 * 60L)
-                    updateCreated(nlBehovEntity1.id!!, earlier)
-                    updateCreated(nlBehovEntity2.id!!, earlier)
-                    updateCreated(nlBehovEntity3?.id!!, earlier)
-
-                    // Act
-                    val retrievedEntities = db.findBehovByParameters(
-                        defaultSykmledteFnr,
-                        defaultOrgnummer,
-                        listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
-                    )
-
-                    // Assert
-                    retrievedEntities.size shouldBe 1
-
-                    retrievedEntities.shouldContainAllIgnoringFields(
-                        setOf(nlBehovEntity1),
-                        NarmestelederBehovEntity::created,
-                        NarmestelederBehovEntity::updated
-                    )
-                }
-
-                it("should retrieve only entities with the matching sykmeldtFnr") {
-                    // Arrange
-                    val defaultSykmledteFnr = faker.numerify("###########")
-                    val defaultSykmledteFnrNotInQuery = faker.numerify("###########")
-                    val defaultOrgnummer = faker.numerify("#########")
-                    insertAndGetBehovWithId(
-                        nlBehovEntity().copy(
-                            sykmeldtFnr = defaultSykmledteFnrNotInQuery,
-                            orgnummer = defaultOrgnummer,
-                            behovStatus = BehovStatus.BEHOV_CREATED
-                        )
-                    )!!
-                    val nlBehovEntity2 =
-                        insertAndGetBehovWithId(
-                            nlBehovEntity().copy(
-                                sykmeldtFnr = defaultSykmledteFnr,
-                                orgnummer = defaultOrgnummer,
-                                behovStatus = BehovStatus.BEHOV_CREATED
-                            )
-                        )!!
-
-                    // Act
-                    val retrievedEntities = db.findBehovByParameters(
-                        defaultSykmledteFnr,
-                        defaultOrgnummer,
-                        listOf(BehovStatus.BEHOV_CREATED)
-                    )
-
-                    // Assert
-                    retrievedEntities.size shouldBe 1
-
-                    retrievedEntities.shouldContainAllIgnoringFields(
-                        setOf(nlBehovEntity2),
-                        NarmestelederBehovEntity::created,
-                        NarmestelederBehovEntity::updated
-                    )
-                }
-
-                it("should retrieve only entities with the matching orgnummer") {
-                    // Arrange
-                    val defaultSykmledteFnr = faker.numerify("###########")
-                    val defaultOrgnummer = faker.numerify("#########")
-                    val defaultOrgnummerNotInQuery = faker.numerify("#########")
-                    val nlBehovEntity1 = insertAndGetBehovWithId(
-                        nlBehovEntity().copy(
-                            sykmeldtFnr = defaultSykmledteFnr,
-                            orgnummer = defaultOrgnummer,
-                            behovStatus = BehovStatus.BEHOV_CREATED
-                        )
-                    )!!
-                    insertAndGetBehovWithId(
-                        nlBehovEntity().copy(
-                            sykmeldtFnr = defaultSykmledteFnr,
-                            orgnummer = defaultOrgnummerNotInQuery,
-                            behovStatus = BehovStatus.BEHOV_CREATED
-                        )
-                    )!!
-
-                    // Act
-                    val retrievedEntities = db.findBehovByParameters(
-                        defaultSykmledteFnr,
-                        defaultOrgnummer,
-                        listOf(BehovStatus.BEHOV_CREATED)
-                    )
-
-                    // Assert
-                    retrievedEntities.size shouldBe 1
-
-                    retrievedEntities.shouldContainAllIgnoringFields(
-                        setOf(nlBehovEntity1),
-                        NarmestelederBehovEntity::created,
-                        NarmestelederBehovEntity::updated
-                    )
-                }
-            }
-        }
-
         describe("getNlBehovForExpireInDialogporten") {
             suspend fun insertBehovWithDialogId(
                 behovStatus: BehovStatus = BehovStatus.BEHOV_FULFILLED,
                 dialogId: UUID? = UUID.randomUUID(),
                 expiredInDialogporten: Instant? = null,
             ): NarmestelederBehovEntity {
-                val inserted = db.insertNlBehov(nlBehovEntity().copy(behovStatus = behovStatus))
+                val inserted = insertNlBehov(nlBehovEntity().copy(behovStatus = behovStatus))
                 val withDialog = inserted.copy(
                     dialogId = dialogId,
                     expiredInDialogporten = expiredInDialogporten,

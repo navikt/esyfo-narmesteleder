@@ -2,7 +2,6 @@ package no.nav.syfo.narmesteleder.db
 
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
 import java.sql.ResultSet
 import java.time.Instant
 import java.util.*
@@ -24,27 +23,7 @@ data class NarmestelederBehovEntity(
     val updated: Instant = Instant.now(),
     val dialogDeletePerformed: Instant? = null,
     val expiredInDialogporten: Instant? = null,
-) {
-    companion object {
-        fun fromLinemanagerRequirementWrite(
-            linemanagerRequirementWrite: LinemanagerRequirementWrite,
-            hovedenhetOrgnummer: String,
-            behovStatus: BehovStatus
-        ): NarmestelederBehovEntity {
-            with(linemanagerRequirementWrite) {
-                return NarmestelederBehovEntity(
-                    orgnummer = orgNumber.value,
-                    hovedenhetOrgnummer = hovedenhetOrgnummer,
-                    sykmeldtFnr = employeeIdentificationNumber.value,
-                    narmestelederFnr = managerIdentificationNumber?.value,
-                    behovReason = behovReason,
-                    avbruttNarmesteLederId = revokedLinemanagerId,
-                    behovStatus = behovStatus,
-                )
-            }
-        }
-    }
-}
+)
 
 fun ResultSet.toNarmestelederBehovEntity(): NarmestelederBehovEntity = NarmestelederBehovEntity(
     id = this.getObject("id", UUID::class.java),

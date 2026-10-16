@@ -3,17 +3,14 @@ package no.nav.syfo
 import defaultSendtSykmeldingMessage
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.coEvery
 import io.mockk.mockk
-import no.nav.syfo.aareg.AaregService
-import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.dinesykmeldte.DinesykmeldteService
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
-import no.nav.syfo.narmesteleder.db.PostgresNarmestelederDb
-import no.nav.syfo.narmesteleder.service.NarmestelederService
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedActiveNarmestelederrelasjonRepository
@@ -37,21 +34,16 @@ class SendtSykmeldingOverviewFlowTest :
     FunSpec({
         val employee = PersonIdent("12345678901")
         val organization = OrganizationNumber("123456789")
-        val dialogportenCalls = mutableListOf<NarmestelederBehovEntity>()
-        // DialogportenService is a final legacy class, so record calls at its existing seam.
-        val dialogportenService = mockk<DialogportenService>()
-        coEvery { dialogportenService.sendToDialogporten(any()) } answers {
-            dialogportenCalls.add(firstArg())
-            Unit
-        }
+        val dialogCalls = mutableListOf<PersonIdent>()
         val handler = SendtSykmeldingHandler(
-            narmesteLederService = NarmestelederService(
-                nlDb = PostgresNarmestelederDb(TestDB.database),
-                persistLeesahNlBehov = true,
+            createNarmestelederbehov = CreateNarmestelederbehovUseCase(
+                settings = NarmestelederbehovCreationSettings(persistenceEnabled = true),
+                repository = ExposedNarmestelederbehovRepository(TestDB.exposedDatabase),
                 // Employer metadata and the current period make these external lookups unnecessary.
-                aaregService = mockk<AaregService>(),
-                dinesykmeldteService = DinesykmeldteService { _, _ -> error("Unexpected sick leave lookup") },
-                dialogportenService = dialogportenService,
+                activeSykmelding = { error("Unexpected sick leave lookup") },
+                mainOrganization = { error("Unexpected main organization lookup") },
+                dialog = { _, behov -> dialogCalls.add(behov.employee.personIdent) },
+                metrics = MicrometerNarmestelederbehovCreationMetrics(),
             ),
             sykmeldingService = SykmeldingService(PostgresSykmeldingDb(TestDB.database)),
             narmestelederBruddService = mockk<NarmestelederBruddService>(),
@@ -69,7 +61,7 @@ class SendtSykmeldingOverviewFlowTest :
 
         beforeTest {
             clearOverviewFlowData()
-            dialogportenCalls.clear()
+            dialogCalls.clear()
         }
         afterTest {
             clearOverviewFlowData()
@@ -84,7 +76,7 @@ class SendtSykmeldingOverviewFlowTest :
                 .map { it.linemanager.employee.nationalIdentificationNumber } shouldBe listOf(employee)
             openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50) shouldBe emptyList()
             openBehovRepository.countOpen(organization, Instant.now().minusSeconds(3600)) shouldBe 0L
-            dialogportenCalls shouldBe emptyList()
+            dialogCalls shouldBe emptyList()
         }
 
         test("sendt sykmelding without an active relation shows the employee in Mangler nærmeste leder") {
@@ -93,7 +85,7 @@ class SendtSykmeldingOverviewFlowTest :
             openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
                 .map { it.employeeIdent } shouldBe listOf(employee)
             relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
-            dialogportenCalls.map { it.sykmeldtFnr } shouldBe listOf(employee.value)
+            dialogCalls shouldBe listOf(employee)
         }
 
         test("an active relation in another organization does not prevent creating behov") {
@@ -104,7 +96,7 @@ class SendtSykmeldingOverviewFlowTest :
             openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
                 .map { it.employeeIdent } shouldBe listOf(employee)
             relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
-            dialogportenCalls.map { it.sykmeldtFnr } shouldBe listOf(employee.value)
+            dialogCalls shouldBe listOf(employee)
         }
 
         test("a revoked relation in the same organization does not prevent creating behov") {
@@ -115,7 +107,7 @@ class SendtSykmeldingOverviewFlowTest :
             openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
                 .map { it.employeeIdent } shouldBe listOf(employee)
             relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
-            dialogportenCalls.map { it.sykmeldtFnr } shouldBe listOf(employee.value)
+            dialogCalls shouldBe listOf(employee)
         }
     })
 

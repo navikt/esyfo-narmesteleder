@@ -39,7 +39,7 @@ class DialogportenServiceFailureTest :
                 val db = FakeNarmestelederDb()
                 val client = LegacyRecordingClient()
                 val service = DialogportenService(client, db, OtherEnvironmentProperties.createForLocal(), PdlService(FakePdlClient()))
-                val behov = db.insertNlBehov(
+                val behov = db.seed(
                     nlBehovEntity().copy(
                         dialogId = LEGACY_DIALOG_ID,
                         behovStatus = if (action == "COMPLETE") BehovStatus.BEHOV_FULFILLED else BehovStatus.BEHOV_EXPIRED,
@@ -81,7 +81,7 @@ class DialogportenServiceFailureTest :
                         val db = FakeNarmestelederDb()
                         val client = LegacyRecordingClient(failure, step)
                         val service = DialogportenService(client, db, OtherEnvironmentProperties.createForLocal(), PdlService(FakePdlClient()))
-                        val behov = db.insertNlBehov(
+                        val behov = db.seed(
                             nlBehovEntity().copy(
                                 dialogId = LEGACY_DIALOG_ID,
                                 behovStatus = if (action == "COMPLETE") BehovStatus.BEHOV_FULFILLED else BehovStatus.BEHOV_EXPIRED,
@@ -111,7 +111,7 @@ class DialogportenServiceFailureTest :
                 val db = FakeNarmestelederDb()
                 val client = LegacyRecordingClient(failure, "create")
                 val service = DialogportenService(client, db, OtherEnvironmentProperties.createForLocal(), PdlService(FakePdlClient()))
-                val behov = db.insertNlBehov(nlBehovEntity())
+                val behov = db.seed(nlBehovEntity())
                 productionLogs.capture().use { capture ->
                     service.sendToDialogporten(behov)
                     val output = capture.records.single()

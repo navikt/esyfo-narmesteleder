@@ -7,6 +7,7 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -40,38 +41,47 @@ class HttpAltinnAuthorizationClient(
     ): UpstreamResult<Decision> {
         val request = createAltinnAuthorizationRequest(user, orgNumberSet, resource)
         val token = altinnTokenProvider.token(PDP_TARGET_SCOPE).getOrElse { return UpstreamResult.Failure(it) }.accessToken
-        val response = try {
-            httpClient
-                .post("$baseUrl/authorization/api/v1/authorize") {
-                    header("Ocp-Apim-Subscription-Key", subscriptionKey)
-                    header("Content-Type", "application/json")
-                    header("Accept", "application/json")
-                    bearerAuth(token)
-                    setBody(request)
-                }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ResponseException) {
-            return failure(UpstreamFailureStage.RESPONSE, e.response.status.value, e)
-        } catch (e: Exception) {
-            return failure(UpstreamFailureStage.REQUEST, null, e)
+        val response = postAuthorize(token, request).getOrElse { return UpstreamResult.Failure(it) }
+        val result = readDecisionResult(response).getOrElse { return UpstreamResult.Failure(it) }
+
+        return if (result.decision == Decision.Indeterminate) {
+            indeterminateFailure(result, response.status.value)
+        } else {
+            UpstreamResult.Success(result.decision)
         }
-        return try {
-            val result = response.body<AltinnAuthorizationResponse>().response.single()
-            if (result.decision == Decision.Indeterminate) {
-                val statusCode = result.status?.statusCode?.value
-                val detail = statusCode?.takeIf { it in allowedStatusCodes } ?: "unknown"
-                UpstreamResult.Failure(
-                    UpstreamFailure(ALTINN_PDP, UpstreamFailureStage.RESPONSE, response.status.value, errors = listOf(UpstreamError("indeterminate", detail = detail))),
-                )
-            } else {
-                UpstreamResult.Success(result.decision)
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
-        }
+    }
+
+    private suspend fun postAuthorize(token: String, request: AltinnAuthorizationRequest): UpstreamResult<HttpResponse> = try {
+        UpstreamResult.Success(
+            httpClient.post("$baseUrl/authorization/api/v1/authorize") {
+                header("Ocp-Apim-Subscription-Key", subscriptionKey)
+                header("Content-Type", "application/json")
+                header("Accept", "application/json")
+                bearerAuth(token)
+                setBody(request)
+            },
+        )
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: ResponseException) {
+        failure(UpstreamFailureStage.RESPONSE, e.response.status.value, e)
+    } catch (e: Exception) {
+        failure(UpstreamFailureStage.REQUEST, null, e)
+    }
+
+    private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> = try {
+        UpstreamResult.Success(response.body<AltinnAuthorizationResponse>().response.single())
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
+    }
+
+    private fun indeterminateFailure(result: DecisionResult, status: Int): UpstreamResult.Failure {
+        val detail = result.status?.statusCode?.value?.takeIf { it in allowedStatusCodes } ?: "unknown"
+        return UpstreamResult.Failure(
+            UpstreamFailure(ALTINN_PDP, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("indeterminate", detail = detail))),
+        )
     }
 
     private fun failure(stage: UpstreamFailureStage, status: Int?, cause: Throwable) = UpstreamResult.Failure(UpstreamFailure(ALTINN_PDP, stage, status, cause))

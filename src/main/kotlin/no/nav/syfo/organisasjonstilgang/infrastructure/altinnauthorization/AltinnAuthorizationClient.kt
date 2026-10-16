@@ -25,7 +25,7 @@ interface AltinnAuthorizationClient {
         user: User,
         orgNumberSet: Set<String>,
         resource: String
-    ): UpstreamResult<Decision>
+    ): UpstreamResult<AuthorizationDecision>
 }
 
 class HttpAltinnAuthorizationClient(
@@ -38,13 +38,13 @@ class HttpAltinnAuthorizationClient(
         user: User,
         orgNumberSet: Set<String>,
         resource: String
-    ): UpstreamResult<Decision> {
+    ): UpstreamResult<AuthorizationDecision> {
         val request = createAltinnAuthorizationRequest(user, orgNumberSet, resource)
         val token = altinnTokenProvider.token(PDP_TARGET_SCOPE).getOrElse { return UpstreamResult.Failure(it) }.accessToken
         val response = postAuthorize(token, request).getOrElse { return UpstreamResult.Failure(it) }
         val result = readDecisionResult(response).getOrElse { return UpstreamResult.Failure(it) }
 
-        return if (result.decision == Decision.Indeterminate) {
+        return if (result.decision == AuthorizationDecision.Indeterminate) {
             indeterminateFailure(result, response.status.value)
         } else {
             UpstreamResult.Success(result.decision)

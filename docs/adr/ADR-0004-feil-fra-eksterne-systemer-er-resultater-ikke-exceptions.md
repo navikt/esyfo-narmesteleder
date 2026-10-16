@@ -98,7 +98,7 @@ Mønsteret har seks deler:
   igjen. Ellers hentes et nytt Maskinporten-token og veksles på nytt.
   Refresh og lagring av scope er fjernet.
 
-  PDP-klienten returnerer `UpstreamResult<Decision>`. HTTP-feil og ugyldige,
+  PDP-klienten returnerer `UpstreamResult<AuthorizationDecision>`. HTTP-feil og ugyldige,
   tomme eller flertydige svar gir `upstream = altinn-pdp`, `stage = RESPONSE`
   og status. Timeout og IO-feil gir `stage = REQUEST` uten status.
   Bare ett entydig `Permit` gir tilgang. `Indeterminate` gir

@@ -11,7 +11,7 @@ data class AltinnAuthorizationResponse(
 
 @JsonFormat(with = [JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_PROPERTIES])
 data class DecisionResult(
-    val decision: Decision,
+    val decision: AuthorizationDecision,
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonProperty("Status")
     val status: DecisionStatus? = null,
@@ -29,7 +29,7 @@ data class DecisionStatusCode(
     val value: String? = null,
 )
 
-enum class Decision {
+enum class AuthorizationDecision {
     Permit,
     Indeterminate,
     NotApplicable,

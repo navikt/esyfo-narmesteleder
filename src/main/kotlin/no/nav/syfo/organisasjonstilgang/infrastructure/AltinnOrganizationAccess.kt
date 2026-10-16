@@ -12,7 +12,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.System
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.COUNT_HAS_ALTINN3_RESOURCE
@@ -58,7 +58,7 @@ class AltinnOrganizationAccess(
         organizationNumber: OrganizationNumber,
     ): OrganizationAccessResult {
         val directDecision = decisionFor(subject, organizationNumber).getOrElse { return OrganizationAccessResult.Unavailable(it) }
-        if (directDecision == Decision.Permit) {
+        if (directDecision == AuthorizationDecision.Permit) {
             return OrganizationAccessResult.Granted(organizationName = null)
         }
 
@@ -73,7 +73,7 @@ class AltinnOrganizationAccess(
         } else {
             null
         }
-        if (fallbackDecision == Decision.Permit) {
+        if (fallbackDecision == AuthorizationDecision.Permit) {
             return OrganizationAccessResult.Granted(organizationName = null)
         }
 
@@ -84,7 +84,7 @@ class AltinnOrganizationAccess(
     private suspend fun decisionFor(
         subject: OrganizationAccessSubject.LpsSystemUser,
         organizationNumber: OrganizationNumber,
-    ): UpstreamResult<Decision> = client.authorize(
+    ): UpstreamResult<AuthorizationDecision> = client.authorize(
         user = System(subject.systemUserId),
         orgNumberSet = setOf(organizationNumber.value),
         resource = OPPGI_NARMESTELEDER_RESOURCE,

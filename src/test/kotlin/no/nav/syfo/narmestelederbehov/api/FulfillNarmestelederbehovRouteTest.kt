@@ -1,27 +1,19 @@
 package no.nav.syfo.narmestelederbehov.api
 
 import DefaultOrganization
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import createMockToken
 import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.serialization.jackson.jackson
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -30,9 +22,6 @@ import manager
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.ereg.CachedEregClient
@@ -62,6 +51,9 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Altin
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
+import no.nav.syfo.platform.api.apiV1
+import no.nav.syfo.platform.api.createJsonClient
+import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -162,9 +154,9 @@ class FulfillNarmestelederbehovRouteTest :
                 error.message shouldBe
                     "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign; " +
                     "email: EmailAddress must not contain whitespace"
-                error.message.contains("90-00-00-00") shouldBe false
-                error.message.contains("invalid @example.com") shouldBe false
-                error.message.contains("gyldig@example.com") shouldBe false
+                error.message shouldNotContain "90-00-00-00"
+                error.message shouldNotContain "invalid @example.com"
+                error.message shouldNotContain "gyldig@example.com"
                 fixture.establish.commands shouldBe emptyList()
                 fixture.repository.fulfilled shouldBe emptyList()
             }
@@ -358,27 +350,8 @@ private class FakePutBehovRepository : NarmestelederbehovRepository {
 
 private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture) -> Unit) {
     val fixture = PutFixture()
-    testApplication {
-        this.client = createClient {
-            install(ContentNegotiation) {
-                jackson {
-                    registerKotlinModule()
-                    registerModule(JavaTimeModule())
-                    configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
-                    configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                }
-            }
-        }
-        application {
-            installContentNegotiation()
-            installStatusPages()
-            routing {
-                route(API_V1_PATH) {
-                    install(AddTokenIssuerPlugin)
-                    registerFulfillNarmestelederbehovApi(fixture.useCase, fixture.texas)
-                }
-            }
-        }
+    testRouteApplication(routes = { apiV1 { registerFulfillNarmestelederbehovApi(fixture.useCase, fixture.texas) } }) {
+        client = createJsonClient()
         block(fixture)
     }
 }

@@ -1,11 +1,5 @@
 package no.nav.syfo.platform.scheduling
 
-import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.Appender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -20,42 +14,21 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.metric.METRICS_NS
-import org.slf4j.LoggerFactory
+import no.nav.syfo.logging.ProductionLogs
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BackgroundLoopTest :
     FunSpec({
-        val logger = LoggerFactory.getLogger(BackgroundLoop::class.java) as Logger
-        val originalSettings = logger.level to logger.isAdditive
-        val productionLogging = LoggerContext()
-        lateinit var productionAppender: Appender<ILoggingEvent>
+        val productionLogs = extension(ProductionLogs(BackgroundLoop::class.java))
         lateinit var capture: LogCapture
         val contract = RuntimeLogContract.forEvents(
             backgroundLoopIterationFailed,
             exceptionTypes = setOf("IllegalStateException", "CancellationException", "TimeoutCancellationException"),
         )
 
-        beforeSpec {
-            productionLogging.putProperty("NAIS_CLUSTER_NAME", "test")
-            JoranConfigurator().apply {
-                context = productionLogging
-                doConfigure("src/main/resources/logback.xml")
-            }
-            productionAppender = requireNotNull(productionLogging.getLogger(Logger.ROOT_LOGGER_NAME).getAppender("stdout_json"))
-            logger.level = Level.TRACE
-            logger.isAdditive = false
-            logger.addAppender(productionAppender)
-        }
-        afterSpec {
-            logger.detachAppender(productionAppender)
-            logger.level = originalSettings.first
-            logger.isAdditive = originalSettings.second
-            productionLogging.stop()
-        }
-        beforeTest { capture = captureLogs(logger, "stdout_json") }
+        beforeTest { capture = productionLogs.capture() }
         afterTest {
             try {
                 capture.records.forEach {

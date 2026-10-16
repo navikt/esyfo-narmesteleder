@@ -1,7 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -66,7 +68,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
                 suspend fun assertReadCommitted(operation: suspend () -> Unit) {
                     observedIsolation.clear()
                     operation()
-                    observedIsolation.isNotEmpty() shouldBe true
+                    observedIsolation.shouldNotBeEmpty()
                     observedIsolation.toSet() shouldBe setOf("read committed")
                 }
 
@@ -174,7 +176,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
 
             val reclaimed = repository.claimDue(1, 5.minutes, now.plusSeconds(300)).single()
             reclaimed.narmesteLederId shouldBe id
-            (reclaimed.claimToken != first.claimToken) shouldBe true
+            reclaimed.claimToken shouldNotBe first.claimToken
             reclaimed.claimedAt shouldBe now.plusSeconds(300)
             controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(600)
         }
@@ -213,7 +215,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
 
             val reclaimed = repository.claimDue(1, 5.minutes, now.plusSeconds(300), revokeEnabled = true).single()
             reclaimed.narmesteLederId shouldBe id
-            (reclaimed.claimToken != first.claimToken) shouldBe true
+            reclaimed.claimToken shouldNotBe first.claimToken
         }
 
         test("shadow still waits for future WOULD_REVOKE checks and live cutover uses only the latest outcome") {

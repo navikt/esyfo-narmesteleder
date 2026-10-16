@@ -1,37 +1,24 @@
 package no.nav.syfo.narmestelederbehov.api
 
 import DefaultOrganization
-import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import createMockToken
 import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.jackson.jackson
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import io.mockk.mockk
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
@@ -43,11 +30,15 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.narmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.api.apiV1
+import no.nav.syfo.platform.api.createJsonClient
+import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -55,7 +46,6 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.time.Instant
-import java.util.UUID
 
 class ListNarmestelederbehovRouteTest :
     FunSpec({
@@ -259,27 +249,8 @@ private class ListRouteFixture(
     }
 
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {
-        testApplication {
-            client = createClient {
-                install(ContentNegotiation) {
-                    jackson {
-                        registerKotlinModule()
-                        registerModule(JavaTimeModule())
-                        configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
-                        configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                    }
-                }
-            }
-            application {
-                installContentNegotiation()
-                installStatusPages()
-                routing {
-                    route(API_V1_PATH) {
-                        install(AddTokenIssuerPlugin)
-                        registerListNarmestelederbehovApi(useCase, texas)
-                    }
-                }
-            }
+        testRouteApplication(routes = { apiV1 { registerListNarmestelederbehovApi(useCase, texas) } }) {
+            client = createJsonClient()
             block()
         }
     }
@@ -320,17 +291,8 @@ private class ListRouteRepository :
     override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("List must not complete dialogs")
 }
 
-private fun routeDetails() = NarmestelederbehovDetails(
-    id = NarmestelederbehovId(UUID.randomUUID()),
+private fun routeDetails() = narmestelederbehovDetails(
     employeeIdent = PersonIdent(EMPLOYEE_IDENT),
     organizationNumber = OrganizationNumber(ORGANIZATION_NUMBER),
-    mainOrganizationNumber = "910000002",
-    managerIdent = null,
-    firstName = "Stored",
-    middleName = "Middle",
-    lastName = "Name",
-    created = Instant.EPOCH,
-    updated = Instant.EPOCH,
-    status = BehovStatus.BEHOV_CREATED,
     reason = BehovReason.DEAKTIVERT_LEDER,
 )

@@ -2,17 +2,10 @@ package no.nav.syfo.narmestelederrelasjon.api
 
 import DefaultOrganization
 import createMockToken
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.mockk
-import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
@@ -27,6 +20,8 @@ import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.api.internalApiV1
+import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.AuthorizationDetail
 import no.nav.syfo.texas.client.TexasHttpClient
@@ -75,21 +70,10 @@ internal class NarmestelederrelasjonRouteFixture {
         isActive = isActive,
     )
 
-    fun withTestApplication(test: suspend ApplicationTestBuilder.() -> Unit) {
-        testApplication {
-            application {
-                installContentNegotiation()
-                installStatusPages()
-                routing {
-                    route(INTERNAL_API_V1_PATH) {
-                        install(AddTokenIssuerPlugin)
-                        registerNarmestelederrelasjonApi(getNarmestelederrelasjon, revokeNarmestelederrelasjon, texasHttpClient)
-                    }
-                }
-            }
-            test()
-        }
-    }
+    fun withTestApplication(test: suspend ApplicationTestBuilder.() -> Unit) = testRouteApplication(
+        routes = { internalApiV1 { registerNarmestelederrelasjonApi(getNarmestelederrelasjon, revokeNarmestelederrelasjon, texasHttpClient) } },
+        block = test,
+    )
 
     fun token(issuer: String = TOKEN_X_ISSUER) = createMockToken(employeeIdent, issuer = issuer)
     fun path(id: String) = NARMESTELEDERRELASJON_API_PATH.replace("{id}", id)

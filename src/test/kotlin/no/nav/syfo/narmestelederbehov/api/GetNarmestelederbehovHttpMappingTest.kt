@@ -8,33 +8,20 @@ import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
-import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederbehov.application.narmestelederbehovDetails
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
-import java.time.Instant
-import java.util.UUID
 
 class GetNarmestelederbehovHttpMappingTest :
     FunSpec({
         test("maps all read response fields") {
-            val behov = NarmestelederbehovDetails(
-                id = NarmestelederbehovId(UUID.randomUUID()),
-                employeeIdent = PersonIdent("12345678901"),
-                organizationNumber = OrganizationNumber("910000001"),
-                mainOrganizationNumber = "910000002",
+            val behov = narmestelederbehovDetails(
                 managerIdent = PersonIdent("12345678902"),
-                firstName = "Stored",
                 middleName = null,
-                lastName = "Name",
-                created = Instant.EPOCH,
-                updated = Instant.EPOCH,
-                status = BehovStatus.BEHOV_CREATED,
                 reason = BehovReason.DEAKTIVERT_LEDER,
             )
             val dto = GetNarmestelederbehovResult.Found(

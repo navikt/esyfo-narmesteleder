@@ -1,7 +1,11 @@
 package no.nav.syfo.narmestelederrelasjon.domain
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
+import io.kotest.matchers.doubles.shouldBeLessThan
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 
 class PersonNameMatchTest :
     FunSpec({
@@ -24,7 +28,7 @@ class PersonNameMatchTest :
             val fuzzyMatch = match as LastNameMatch.Fuzzy
 
             match shouldBe fuzzyMatch
-            (fuzzyMatch.score >= 0.93) shouldBe true
+            fuzzyMatch.score shouldBeGreaterThanOrEqual 0.93
             fuzzyMatch.hasParallelNames shouldBe false
         }
 
@@ -35,14 +39,14 @@ class PersonNameMatchTest :
 
             val rejected = personWithNames(RegisteredName("ABCDEFGHIJKLMNOPQRST"))
                 .matchLastName("ABZZZFGHIJKLMNOPQRST") as LastNameMatch.NoMatch
-            (requireNotNull(rejected.bestFuzzyScore) < 0.93) shouldBe true
+            rejected.bestFuzzyScore.shouldNotBeNull() shouldBeLessThan 0.93
         }
 
         test("retains no-match fuzzy score and rejects scores below the threshold") {
             val fuzzyNoMatch = personWithNames(RegisteredName("Hansen")).matchLastName("Olsen")
                 as LastNameMatch.NoMatch
 
-            (requireNotNull(fuzzyNoMatch.bestFuzzyScore) < 0.93) shouldBe true
+            fuzzyNoMatch.bestFuzzyScore.shouldNotBeNull() shouldBeLessThan 0.93
             fuzzyNoMatch.hasParallelNames shouldBe false
             personWithNames(RegisteredName("Li")).matchLastName("Lu") shouldBe
                 LastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
@@ -134,7 +138,7 @@ class PersonNameMatchTest :
                 "Ase" to "Åse",
             ).forEach { (submitted, registered) ->
                 val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
-                (match is LastNameMatch.NoMatch) shouldBe true
+                match.shouldBeInstanceOf<LastNameMatch.NoMatch>()
                 match.isAccepted() shouldBe false
             }
         }
@@ -149,7 +153,7 @@ class PersonNameMatchTest :
                 val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
                 match shouldBe LastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
             }
-            (personWithNames(RegisteredName("Hanson")).matchLastName("Hansen") is LastNameMatch.Fuzzy) shouldBe true
+            personWithNames(RegisteredName("Hanson")).matchLastName("Hansen").shouldBeInstanceOf<LastNameMatch.Fuzzy>()
         }
 
         test("accepts fuzzy matches and rejects clearly different names") {
@@ -158,7 +162,7 @@ class PersonNameMatchTest :
                 "Anderssen" to "Andersen",
             ).forEach { (submitted, registered) ->
                 val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
-                (match is LastNameMatch.Fuzzy) shouldBe true
+                match.shouldBeInstanceOf<LastNameMatch.Fuzzy>()
                 match.isAccepted() shouldBe true
             }
             listOf(
@@ -167,7 +171,7 @@ class PersonNameMatchTest :
                 "Andréssen" to "Andersen",
             ).forEach { (submitted, registered) ->
                 val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
-                (match is LastNameMatch.NoMatch) shouldBe true
+                match.shouldBeInstanceOf<LastNameMatch.NoMatch>()
                 match.isAccepted() shouldBe false
             }
         }

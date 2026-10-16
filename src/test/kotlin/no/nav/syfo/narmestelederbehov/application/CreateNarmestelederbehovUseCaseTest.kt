@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.aareg.AAREG
@@ -210,7 +211,7 @@ class CreateNarmestelederbehovUseCaseTest :
                     val event = logs.single { it.level == Level.WARN }.keyValuePairs.associate { it.key to it.value }
                     event["event_type"] shouldBe "narmestelederbehov_stored_degraded"
                     event["reason"] shouldBe case.reason
-                    event.toString().contains(employee.personIdent.value) shouldBe false
+                    event.toString() shouldNotContain employee.personIdent.value
                 }
             }
         }

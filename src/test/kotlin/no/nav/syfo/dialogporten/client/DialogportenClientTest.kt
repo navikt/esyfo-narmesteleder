@@ -1,12 +1,10 @@
 package no.nav.syfo.dialogporten.client
 
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.classic.util.LogbackMDCAdapter
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.inspectors.forAtLeastOne
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -21,7 +19,6 @@ import io.ktor.http.HttpStatusCode
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.esyfo.observability.causeChain
-import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Content
@@ -34,7 +31,9 @@ import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.captureProductionLogs
 import no.nav.syfo.logging.logEvent
+import no.nav.syfo.logging.withProductionLogger
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -161,7 +160,7 @@ class DialogportenClientTest :
                         failure.upstream shouldBe UpstreamName("dialogporten")
                         failure.stage shouldBe UpstreamFailureStage.REQUEST
                         failure.status shouldBe null
-                        requireNotNull(failure.cause).causeChain().any { it === original } shouldBe true
+                        requireNotNull(failure.cause).causeChain().forAtLeastOne { it shouldBeSameInstanceAs original }
                     }
                     attempts shouldBe 3
                 }
@@ -183,7 +182,7 @@ class DialogportenClientTest :
                     val thrown = shouldThrow<CancellationException> {
                         invoke(HttpDialogportenClient("https://dialogporten.test", http, provider))
                     }
-                    thrown.causeChain().any { it === cancelled } shouldBe true
+                    thrown.causeChain().forAtLeastOne { it shouldBeSameInstanceAs cancelled }
                 }
             }
         }
@@ -217,20 +216,13 @@ class DialogportenClientTest :
             }
         }
         test("diagnostics log status and upstream metadata without token response body or exception messages") {
-            val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
-            try {
-                context.putProperty("NAIS_CLUSTER_NAME", "test")
-                JoranConfigurator().apply {
-                    this.context = context
-                    doConfigure("src/main/resources/logback.xml")
-                }
-                val logger = context.getLogger("dialogporten-client-diagnostics-test")
+            withProductionLogger("dialogporten-client-diagnostics-test") { logger ->
                 val event = applicationEvent<Unit>("dialogporten_diagnostic_test_failed", Level.ERROR, "Dialogporten test failure")
                 listOf(400, 503, 200).forEach { status ->
                     upstreamHttpClient(respondWithSystemToken) { respondJson("\"private-body-canary\"", HttpStatusCode.fromValue(status)) }.use { http ->
                         val failure = HttpDialogportenClient("https://dialogporten.test", http, provider).getDialogById(id)
                             .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                        captureLogs(logger, "stdout_json").use { capture ->
+                        logger.captureProductionLogs().use { capture ->
                             logger.logEvent(event, Unit, upstreamFailure = failure)
                             val output = capture.records.single()
                             val record = mapper.readTree(output)
@@ -243,8 +235,6 @@ class DialogportenClientTest :
                         }
                     }
                 }
-            } finally {
-                context.stop()
             }
         }
     })

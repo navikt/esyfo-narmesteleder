@@ -2,10 +2,7 @@ package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.classic.util.LogbackMDCAdapter
 import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import createMockToken
@@ -18,23 +15,17 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
-import io.ktor.server.testing.testApplication
 import io.mockk.mockk
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.STATUS_PAGES_LOGGER_NAME
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
+import no.nav.syfo.logging.ProductionLogs
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
@@ -45,6 +36,8 @@ import no.nav.syfo.organisasjonstilgang.api.registerAccessibleOrganizationsApi
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsUseCase
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.FakeAltinnAuthorizationClient
+import no.nav.syfo.platform.api.apiV1
+import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.texas.client.TexasHttpClient
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -100,57 +93,43 @@ class AltinnAccessLoggingContractTest :
         listOf("access check", "organizations").forEach { endpoint ->
             scenarios.forEach { scenario ->
                 test("$endpoint returns 500 and logs ${scenario.name} once at StatusPages without sensitive data") {
-                    val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
-                    context.putProperty("NAIS_CLUSTER_NAME", "test")
-                    JoranConfigurator().apply {
-                        this.context = context
-                        doConfigure("src/main/resources/logback.xml")
-                    }
-                    val jsonAppender = requireNotNull(context.getLogger(Logger.ROOT_LOGGER_NAME).getAppender("stdout_json"))
-                    val loggers = listOf(
-                        STATUS_PAGES_LOGGER_NAME,
-                        AltinnTilgangerService::class.java.name,
-                        HttpAltinnTilgangerClient::class.java.name,
-                        TexasHttpClient::class.java.name,
-                        AltinnOrganizationAccess::class.java.name,
-                        ListNarmestelederbehovUseCase::class.java.name,
-                        ListAccessibleOrganizationsUseCase::class.java.name,
-                    ).map { LoggerFactory.getLogger(it) as Logger }
-                    val settings = loggers.map { it.level to it.isAdditive }
+                    val productionLogs = ProductionLogs(
+                        listOf(
+                            STATUS_PAGES_LOGGER_NAME,
+                            AltinnTilgangerService::class.java.name,
+                            HttpAltinnTilgangerClient::class.java.name,
+                            TexasHttpClient::class.java.name,
+                            AltinnOrganizationAccess::class.java.name,
+                            ListNarmestelederbehovUseCase::class.java.name,
+                            ListAccessibleOrganizationsUseCase::class.java.name,
+                        ),
+                    )
                     val rootLogger = LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME) as Logger
                     val allLogs = ListAppender<ILoggingEvent>().apply { start() }
+                    productionLogs.install()
                     try {
                         rootLogger.addAppender(allLogs)
-                        loggers.forEach {
-                            it.level = Level.TRACE
-                            it.isAdditive = false
-                            it.addAppender(jsonAppender)
-                            it.addAppender(allLogs)
-                        }
-                        captureLogs(loggers.first(), "stdout_json").use { capture ->
+                        productionLogs.loggers.forEach { it.addAppender(allLogs) }
+                        productionLogs.capture().use { capture ->
                             upstreamHttpClient(scenario.token, scenario.upstream).use { http ->
                                 val service = AltinnTilgangerService(HttpAltinnTilgangerClient(texasHttpClient(http), http, "http://altinn"))
                                 val access = AltinnOrganizationAccess(service, FakeAltinnAuthorizationClient(), FakeEregClient())
                                 val authClient = mockk<TexasHttpClient>().also { it.defaultMocks(pid = ident, acr = "Level4") }
-                                testApplication {
-                                    application {
-                                        installContentNegotiation()
-                                        installStatusPages()
-                                        routing {
-                                            route(API_V1_PATH) {
-                                                install(AddTokenIssuerPlugin)
-                                                registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(service), authClient)
-                                                registerListNarmestelederbehovApi(
-                                                    ListNarmestelederbehovUseCase(
-                                                        UnreachableOpenRepository(),
-                                                        access,
-                                                        NarmestelederbehovEmployeeName(mockk(), EmployeeNameLookup { error("Name lookup must not be called") }),
-                                                    ),
-                                                    authClient,
-                                                )
-                                            }
+                                testRouteApplication(
+                                    routes = {
+                                        apiV1 {
+                                            registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(service), authClient)
+                                            registerListNarmestelederbehovApi(
+                                                ListNarmestelederbehovUseCase(
+                                                    UnreachableOpenRepository(),
+                                                    access,
+                                                    NarmestelederbehovEmployeeName(mockk(), EmployeeNameLookup { error("Name lookup must not be called") }),
+                                                ),
+                                                authClient,
+                                            )
                                         }
-                                    }
+                                    },
+                                ) {
                                     val path = if (endpoint == "organizations") {
                                         "$API_V1_PATH/access/organizations"
                                     } else {
@@ -194,14 +173,9 @@ class AltinnAccessLoggingContractTest :
                         }
                     } finally {
                         rootLogger.detachAppender(allLogs)
-                        loggers.forEachIndexed { index, logger ->
-                            logger.detachAppender(jsonAppender)
-                            logger.detachAppender(allLogs)
-                            logger.level = settings[index].first
-                            logger.isAdditive = settings[index].second
-                        }
+                        productionLogs.loggers.forEach { it.detachAppender(allLogs) }
                         allLogs.stop()
-                        context.stop()
+                        productionLogs.restore()
                     }
                 }
             }

@@ -1,15 +1,12 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
 import DefaultOrganization
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import createMockToken
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -19,22 +16,13 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.serialization.jackson.jackson
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import linemanager
-import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
@@ -54,6 +42,10 @@ import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.api.apiV1
+import no.nav.syfo.platform.api.createJsonClient
+import no.nav.syfo.platform.api.internalApiV1
+import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -291,41 +283,27 @@ private class SubmitFixture(
     }
 
     fun withApplication(test: suspend ApplicationTestBuilder.() -> Unit) {
-        testApplication {
-            client = createClient {
-                install(ContentNegotiation) {
-                    jackson {
-                        registerKotlinModule()
-                        registerModule(JavaTimeModule())
-                    }
+        testRouteApplication(
+            routes = {
+                apiV1 {
+                    registerFulfillNarmestelederbehovApi(mockk<FulfillNarmestelederbehovUseCase>(), texas)
+                    registerSubmitNarmestelederrelasjonApi(
+                        SubmitNarmestelederrelasjonUseCase(
+                            access,
+                            EstablishNarmestelederrelasjon {
+                                failure?.let { throw it }
+                                relationResult
+                            },
+                        ),
+                        texas,
+                    )
+                    registerRevokeActiveNarmestelederrelasjonApi(mockk(), texas)
+                    registerGetNarmestelederbehovApi(getNarmestelederbehov = mockk(), texasHttpClient = texas)
                 }
-            }
-            application {
-                installContentNegotiation()
-                installStatusPages()
-                routing {
-                    route(API_V1_PATH) {
-                        install(AddTokenIssuerPlugin)
-                        registerFulfillNarmestelederbehovApi(mockk<FulfillNarmestelederbehovUseCase>(), texas)
-                        registerSubmitNarmestelederrelasjonApi(
-                            SubmitNarmestelederrelasjonUseCase(
-                                access,
-                                EstablishNarmestelederrelasjon {
-                                    failure?.let { throw it }
-                                    relationResult
-                                },
-                            ),
-                            texas,
-                        )
-                        registerRevokeActiveNarmestelederrelasjonApi(mockk(), texas)
-                        registerGetNarmestelederbehovApi(getNarmestelederbehov = mockk(), texasHttpClient = texas)
-                    }
-                    route(INTERNAL_API_V1_PATH) {
-                        install(AddTokenIssuerPlugin)
-                        registerNarmestelederrelasjonApi(mockk(), mockk(), texas)
-                    }
-                }
-            }
+                internalApiV1 { registerNarmestelederrelasjonApi(mockk(), mockk(), texas) }
+            },
+        ) {
+            client = createJsonClient()
             test()
         }
     }

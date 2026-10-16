@@ -13,10 +13,7 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -24,9 +21,6 @@ import io.mockk.mockk
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
@@ -36,6 +30,8 @@ import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereFor
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.observability.EMPLOYEE_LINEMANAGER_TOTAL
+import no.nav.syfo.platform.api.internalApiV1
+import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.io.IOException
@@ -308,21 +304,7 @@ private fun withEmployeeApi(
     useCase: ListActiveNarmesteledereForEmployeeUseCase,
     texasHttpClient: TexasHttpClient,
     test: suspend ApplicationTestBuilder.() -> Unit,
-) {
-    testApplication {
-        application {
-            installContentNegotiation()
-            installStatusPages()
-            routing {
-                route(INTERNAL_API_V1_PATH) {
-                    install(AddTokenIssuerPlugin)
-                    registerEmployeeLinemanagerApi(useCase, texasHttpClient)
-                }
-            }
-        }
-        test()
-    }
-}
+) = testRouteApplication(routes = { internalApiV1 { registerEmployeeLinemanagerApi(useCase, texasHttpClient) } }, block = test)
 
 private fun requestCount(filtered: String): Double = METRICS_REGISTRY
     .find(EMPLOYEE_LINEMANAGER_TOTAL)

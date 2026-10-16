@@ -36,13 +36,13 @@ class NarmestelederbehovDialogFactoryTest :
         fun Dialog.summary() = content.summary?.value?.single()?.value
 
         test("addresses the dialog to the organization and refers to the behov") {
-            val dialog = create()
-
-            dialog.serviceResource shouldBe "urn:altinn:resource:nav_syfo_oppgi-narmesteleder"
-            dialog.status shouldBe DialogStatus.RequiresAttention
-            dialog.party shouldBe "urn:altinn:organization:identifier-no:123456789"
-            dialog.externalReference shouldBe id.toString()
-            dialog.isApiOnly shouldBe false
+            with(create()) {
+                serviceResource shouldBe "urn:altinn:resource:nav_syfo_oppgi-narmesteleder"
+                status shouldBe DialogStatus.RequiresAttention
+                party shouldBe "urn:altinn:organization:identifier-no:123456789"
+                externalReference shouldBe id.toString()
+                isApiOnly shouldBe false
+            }
         }
 
         test("links to the behov in the API and the frontend") {
@@ -71,10 +71,10 @@ class NarmestelederbehovDialogFactoryTest :
         }
 
         test("names the employee with the birth date from PDL") {
-            val dialog = create(name = BehovPersonName("Kari", "Mellom", "Nordmann"), birthDate = LocalDate.of(1985, 6, 7))
-
-            dialog.title() shouldBe "Oppgi nærmeste leder for Kari Mellom Nordmann (f. 07.06.1985)"
-            dialog.summary() shouldBe "Kari Mellom Nordmann ${NarmestelederbehovDialogFactory.DIALOG_SUMMARY}"
+            with(create(name = BehovPersonName("Kari", "Mellom", "Nordmann"), birthDate = LocalDate.of(1985, 6, 7))) {
+                title() shouldBe "Oppgi nærmeste leder for Kari Mellom Nordmann (f. 07.06.1985)"
+                summary() shouldBe "Kari Mellom Nordmann ${NarmestelederbehovDialogFactory.DIALOG_SUMMARY}"
+            }
         }
 
         test("reads the birth date from the ident when PDL has none") {
@@ -86,9 +86,9 @@ class NarmestelederbehovDialogFactoryTest :
         }
 
         test("uses generic texts without a name") {
-            val dialog = create(name = null)
-
-            dialog.title() shouldBe NarmestelederbehovDialogFactory.DIALOG_TITLE_NO_NAME
-            dialog.summary() shouldBe "En ansatt ${NarmestelederbehovDialogFactory.DIALOG_SUMMARY}"
+            with(create(name = null)) {
+                title() shouldBe NarmestelederbehovDialogFactory.DIALOG_TITLE_NO_NAME
+                summary() shouldBe "En ansatt ${NarmestelederbehovDialogFactory.DIALOG_SUMMARY}"
+            }
         }
     })

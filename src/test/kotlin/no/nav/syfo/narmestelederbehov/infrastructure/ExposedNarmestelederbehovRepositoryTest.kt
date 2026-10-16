@@ -139,25 +139,26 @@ class ExposedNarmestelederbehovRepositoryTest :
         test("marks a created dialog with dialog id and employee name without changing other fields") {
             val before = insertNarmestelederbehov()
             val id = NarmestelederbehovId(before.id)
-            val dialogId = UUID.randomUUID()
+            val createdDialogId = UUID.randomUUID()
 
-            repository.markDialogCreated(id, dialogId, BehovPersonName("First", "Middle", "Last")) shouldBe
+            repository.markDialogCreated(id, createdDialogId, BehovPersonName("First", "Middle", "Last")) shouldBe
                 MarkDialogCreatedResult.Marked
 
-            val after = requireNotNull(findStoredNarmestelederbehov(before.id))
-            after.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-            after.dialogId shouldBe dialogId
-            after.fornavn shouldBe "First"
-            after.mellomnavn shouldBe "Middle"
-            after.etternavn shouldBe "Last"
-            after.copy(
-                behovStatus = before.behovStatus,
-                dialogId = null,
-                fornavn = null,
-                mellomnavn = null,
-                etternavn = null,
-                updated = before.updated,
-            ) shouldBe before
+            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                dialogId shouldBe createdDialogId
+                fornavn shouldBe "First"
+                mellomnavn shouldBe "Middle"
+                etternavn shouldBe "Last"
+                copy(
+                    behovStatus = before.behovStatus,
+                    dialogId = null,
+                    fornavn = null,
+                    mellomnavn = null,
+                    etternavn = null,
+                    updated = before.updated,
+                ) shouldBe before
+            }
         }
 
         test("marks a created dialog without employee name") {
@@ -166,10 +167,11 @@ class ExposedNarmestelederbehovRepositoryTest :
 
             repository.markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.Marked
 
-            val after = requireNotNull(findStoredNarmestelederbehov(row.id))
-            after.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-            after.fornavn.shouldBeNull()
-            after.etternavn.shouldBeNull()
+            with(requireNotNull(findStoredNarmestelederbehov(row.id))) {
+                behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                fornavn.shouldBeNull()
+                etternavn.shouldBeNull()
+            }
         }
 
         test("does not mark a created dialog when the behov has left BEHOV_CREATED or is missing") {

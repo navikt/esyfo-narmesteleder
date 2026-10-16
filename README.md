@@ -12,11 +12,7 @@
 
 [🚀 Productions internal](https://narmesteleder-api.intern.nav.no)   
 
-[🚀 Productions external](https://narmesteleder-api.nav.no)
-
 [🛠️ Development internal](https://narmesteleder-api.intern.dev.nav.no)
-
-[🛠️ Development external](https://narmesteleder-api.ekstern.dev.nav.no)
 
 
 ## OpenAPI

@@ -4,12 +4,15 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.aareg.AAREG
+import no.nav.syfo.integration.pdl.PDL
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
@@ -19,6 +22,7 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import org.slf4j.LoggerFactory
+import java.time.LocalDate
 import java.util.UUID
 
 class CreateNarmestelederbehovUseCaseTest :
@@ -28,6 +32,8 @@ class CreateNarmestelederbehovUseCaseTest :
         val relationId = UUID.fromString("00000000-0000-0000-0000-000000000011")
         val sykmeldingId = UUID.fromString("00000000-0000-0000-0000-000000000022")
         val createdId = NarmestelederbehovId(UUID.fromString("00000000-0000-0000-0000-000000000033"))
+        val dialogId = UUID.fromString("00000000-0000-0000-0000-000000000044")
+        val person = EmployeePerson(BehovPersonName("Kari", null, "Nordmann"), LocalDate.of(1990, 1, 2))
 
         fun leesahCommand(sykmeldingKnownActive: Boolean = false) = CreateNarmestelederbehovCommand(
             employee = employee,
@@ -55,10 +61,14 @@ class CreateNarmestelederbehovUseCaseTest :
             val hasActiveSykmelding: Boolean = true,
             val mainOrganizationResult: MainOrganizationResult = MainOrganizationResult.Found("987654321"),
             val createResult: CreateBehovResult = CreateBehovResult.Created(createdId),
+            val personLookup: suspend () -> EmployeePersonLookupResult = { EmployeePersonLookupResult.Found(person) },
+            val createDialog: suspend () -> UUID = { dialogId },
+            val markResult: MarkDialogCreatedResult = MarkDialogCreatedResult.Marked,
         ) {
             val effects = mutableListOf<String>()
             val created = mutableListOf<NewNarmestelederbehov>()
-            val dialogs = mutableListOf<Pair<NarmestelederbehovId, NewNarmestelederbehov>>()
+            val dialogs = mutableListOf<Triple<NarmestelederbehovId, Employee, EmployeePerson?>>()
+            val markedDialogs = mutableListOf<Triple<NarmestelederbehovId, UUID, BehovPersonName?>>()
             val repository = object : NarmestelederbehovRepository {
                 override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
                 override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
@@ -73,6 +83,16 @@ class CreateNarmestelederbehovUseCaseTest :
                     created += behov
                     return createResult
                 }
+
+                override suspend fun markDialogCreated(
+                    id: NarmestelederbehovId,
+                    dialogId: UUID,
+                    name: BehovPersonName?,
+                ): MarkDialogCreatedResult {
+                    effects += "mark-dialog-created"
+                    markedDialogs += Triple(id, dialogId, name)
+                    return markResult
+                }
             }
             val metrics = RecordingMetrics(effects)
             val useCase = CreateNarmestelederbehovUseCase(
@@ -80,9 +100,14 @@ class CreateNarmestelederbehovUseCaseTest :
                 repository = repository,
                 activeSykmelding = { hasActiveSykmelding.also { effects += "active-sykmelding" } },
                 mainOrganization = { mainOrganizationResult.also { effects += "main-organization" } },
-                dialog = { id, behov ->
+                personLookup = {
+                    effects += "person"
+                    personLookup()
+                },
+                dialog = { id, employee, person ->
                     effects += "dialog"
-                    dialogs += id to behov
+                    dialogs += Triple(id, employee, person)
+                    createDialog()
                 },
                 metrics = metrics,
             )
@@ -101,8 +126,17 @@ class CreateNarmestelederbehovUseCaseTest :
                     revokedRelationId = relationId,
                 )
                 created shouldBe listOf(expected)
-                dialogs shouldBe listOf(createdId to expected)
-                effects shouldBe listOf("find-open", "active-sykmelding", "main-organization", "create", "dialog")
+                dialogs shouldBe listOf(Triple(createdId, employee, person))
+                markedDialogs shouldBe listOf(Triple(createdId, dialogId, person.name))
+                effects shouldBe listOf(
+                    "find-open",
+                    "active-sykmelding",
+                    "main-organization",
+                    "create",
+                    "person",
+                    "dialog",
+                    "mark-dialog-created",
+                )
             }
         }
 
@@ -112,7 +146,7 @@ class CreateNarmestelederbehovUseCaseTest :
 
                 created.single().mainOrganizationNumber shouldBe "111222333"
                 created.single().status shouldBe BehovStatus.BEHOV_CREATED
-                effects shouldBe listOf("find-open", "create", "dialog")
+                effects shouldBe listOf("find-open", "create", "person", "dialog", "mark-dialog-created")
             }
         }
 
@@ -145,7 +179,7 @@ class CreateNarmestelederbehovUseCaseTest :
             with(Fixture(hasActiveSykmelding = false)) {
                 useCase.execute(leesahCommand(sykmeldingKnownActive = true)) shouldBe CreateNarmestelederbehovResult.Created(createdId)
 
-                effects shouldBe listOf("find-open", "main-organization", "create", "dialog")
+                effects shouldBe listOf("find-open", "main-organization", "create", "person", "dialog", "mark-dialog-created")
             }
         }
 
@@ -163,6 +197,75 @@ class CreateNarmestelederbehovUseCaseTest :
                 useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists
 
                 effects shouldBe listOf("find-open", "active-sykmelding", "main-organization", "create", "metric:already-exists")
+            }
+        }
+
+        test("creates the dialog without person details when PDL is unavailable") {
+            val failure = UpstreamFailure(PDL, UpstreamFailureStage.RESPONSE, 503, IllegalStateException("pdl down"))
+            with(Fixture(personLookup = { EmployeePersonLookupResult.Unavailable(failure) })) {
+                val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
+
+                dialogs shouldBe listOf(Triple(createdId, employee, null))
+                markedDialogs shouldBe listOf(Triple(createdId, dialogId, null))
+                val event = logs.single { it.level == Level.WARN }.fields()
+                event["event_type"] shouldBe "dialog_person_enrichment_failed"
+                event["behov_id"] shouldBe createdId.value.toString()
+                event["upstream_status"] shouldBe 503
+            }
+        }
+
+        test("creates the dialog without person details when PDL has no person") {
+            with(Fixture(personLookup = { EmployeePersonLookupResult.NotFound })) {
+                val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
+
+                dialogs shouldBe listOf(Triple(createdId, employee, null))
+                markedDialogs shouldBe listOf(Triple(createdId, dialogId, null))
+                logs.none { it.level == Level.WARN || it.level == Level.ERROR } shouldBe true
+            }
+        }
+
+        test("creates the dialog without person details when the person lookup fails") {
+            with(Fixture(personLookup = { throw IllegalArgumentException("PersonIdent must be exactly 11 digits") })) {
+                val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
+
+                dialogs shouldBe listOf(Triple(createdId, employee, null))
+                markedDialogs shouldBe listOf(Triple(createdId, dialogId, null))
+                val event = logs.single { it.level == Level.WARN }.fields()
+                event["event_type"] shouldBe "dialog_person_enrichment_failed"
+                event["behov_id"] shouldBe createdId.value.toString()
+                logs.none { it.level == Level.ERROR } shouldBe true
+            }
+        }
+
+        test("keeps the behov in BEHOV_CREATED and logs when the dialog cannot be created") {
+            with(Fixture(createDialog = { throw IllegalStateException("dialogporten down") })) {
+                val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
+
+                markedDialogs shouldBe emptyList()
+                val event = logs.single { it.level == Level.ERROR }.fields()
+                event["event_type"] shouldBe "dialogporten_dialog_failed"
+                event["behov_id"] shouldBe createdId.value.toString()
+                event["action"] shouldBe "CREATE"
+            }
+        }
+
+        test("logs when the behov left BEHOV_CREATED before the dialog was saved") {
+            val fixture = Fixture(markResult = MarkDialogCreatedResult.NotCreated)
+
+            val logs = captureLogs { fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
+
+            val event = logs.single { it.level == Level.WARN }.fields()
+            event["event_type"] shouldBe "dialog_created_for_closed_behov"
+            event["behov_id"] shouldBe createdId.value.toString()
+            event["dialog_id"] shouldBe dialogId.toString()
+        }
+
+        test("propagates cancellation from the person lookup and the dialog creation") {
+            shouldThrow<CancellationException> {
+                Fixture(personLookup = { throw CancellationException("cancelled") }).useCase.execute(leesahCommand())
+            }
+            shouldThrow<CancellationException> {
+                Fixture(createDialog = { throw CancellationException("cancelled") }).useCase.execute(leesahCommand())
             }
         }
 
@@ -207,6 +310,7 @@ class CreateNarmestelederbehovUseCaseTest :
                     created.single().status shouldBe case.status
                     created.single().mainOrganizationNumber shouldBe "UNKNOWN"
                     dialogs shouldBe emptyList()
+                    markedDialogs shouldBe emptyList()
                     metrics.recorded shouldBe listOfNotNull(case.metric)
                     val event = logs.single { it.level == Level.WARN }.keyValuePairs.associate { it.key to it.value }
                     event["event_type"] shouldBe "narmestelederbehov_stored_degraded"
@@ -245,6 +349,8 @@ private class RecordingMetrics(private val effects: MutableList<String>) : Narme
     override fun recordStoredWithoutMainOrganization() = record("metric:stored-without-main-organization")
     override fun recordStoredWithoutEmployment() = record("metric:stored-without-employment")
 }
+
+private fun ILoggingEvent.fields(): Map<String, Any?> = keyValuePairs.associate { it.key to it.value }
 
 private suspend fun captureLogs(block: suspend () -> Unit): List<ILoggingEvent> {
     val logger = LoggerFactory.getLogger(CreateNarmestelederbehovUseCase::class.java) as Logger

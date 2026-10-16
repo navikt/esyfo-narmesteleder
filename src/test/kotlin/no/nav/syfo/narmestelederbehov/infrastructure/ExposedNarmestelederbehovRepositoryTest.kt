@@ -15,6 +15,7 @@ import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.Employee
@@ -133,6 +134,55 @@ class ExposedNarmestelederbehovRepositoryTest :
 
         test("reports NotFulfilled for a missing row when persisting completed dialog status") {
             repository.markDialogCompleted(NarmestelederbehovId(UUID.randomUUID())) shouldBe MarkDialogCompletedResult.NotFulfilled
+        }
+
+        test("marks a created dialog with dialog id and employee name without changing other fields") {
+            val before = insertNarmestelederbehov()
+            val id = NarmestelederbehovId(before.id)
+            val createdDialogId = UUID.randomUUID()
+
+            repository.markDialogCreated(id, createdDialogId, BehovPersonName("First", "Middle", "Last")) shouldBe
+                MarkDialogCreatedResult.Marked
+
+            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                dialogId shouldBe createdDialogId
+                fornavn shouldBe "First"
+                mellomnavn shouldBe "Middle"
+                etternavn shouldBe "Last"
+                copy(
+                    behovStatus = before.behovStatus,
+                    dialogId = null,
+                    fornavn = null,
+                    mellomnavn = null,
+                    etternavn = null,
+                    updated = before.updated,
+                ) shouldBe before
+            }
+        }
+
+        test("marks a created dialog without employee name") {
+            val row = insertNarmestelederbehov()
+            val id = NarmestelederbehovId(row.id)
+
+            repository.markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.Marked
+
+            with(requireNotNull(findStoredNarmestelederbehov(row.id))) {
+                behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+                fornavn.shouldBeNull()
+                etternavn.shouldBeNull()
+            }
+        }
+
+        test("does not mark a created dialog when the behov has left BEHOV_CREATED or is missing") {
+            val before = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED)
+            val id = NarmestelederbehovId(before.id)
+
+            repository.markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.NotCreated
+            repository.markDialogCreated(NarmestelederbehovId(UUID.randomUUID()), UUID.randomUUID(), null) shouldBe
+                MarkDialogCreatedResult.NotCreated
+
+            findStoredNarmestelederbehov(before.id) shouldBe before
         }
 
         // An employee can have at most one open behov per organization (uq_nl_behov_active_employee_org).

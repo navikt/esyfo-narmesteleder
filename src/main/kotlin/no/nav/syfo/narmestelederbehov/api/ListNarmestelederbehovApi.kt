@@ -6,11 +6,15 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
+import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.texas.client.TexasHttpClient
 
 const val NARMESTELEDERBEHOV_PATH = "/linemanager/requirement"
+
+/** Absolute URL of the public narmestelederbehov endpoint, without the behov id. */
+fun narmestelederbehovApiUrl(publicIngressUrl: String): String = "$publicIngressUrl$API_V1_PATH$NARMESTELEDERBEHOV_PATH"
 
 fun Route.registerListNarmestelederbehovApi(
     listNarmestelederbehov: ListNarmestelederbehovUseCase,

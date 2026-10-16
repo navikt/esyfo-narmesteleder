@@ -1,8 +1,10 @@
 package no.nav.syfo.narmestelederbehov
 
+import no.nav.syfo.narmestelederbehov.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
+import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.application.EmployerMainOrganizationLookup
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
@@ -10,7 +12,6 @@ import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCa
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.LeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
@@ -21,13 +22,14 @@ import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovReposito
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmployerMainOrganizationLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
-import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteNarmestelederbehovActiveSykmeldingLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerLeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeeNameLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeePersonLookup
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 
@@ -45,9 +47,10 @@ fun narmestelederbehovModule() = module {
             dialog = get(),
         )
     }
-    single<NarmestelederbehovActiveSykmeldingLookup> { DinesykmeldteNarmestelederbehovActiveSykmeldingLookup(get()) }
+    single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmployerMainOrganizationLookup> { AaregEmployerMainOrganizationLookup(get()) }
-    single<NarmestelederbehovDialogCreation> { DialogportenNarmestelederbehovDialogCreation(get()) }
+    single<NarmestelederbehovDialogCreation> { DialogportenNarmestelederbehovDialogCreation(client = get(), dialogFactory = get()) }
+    single<EmployeePersonLookup> { PdlEmployeePersonLookup(get()) }
     single<NarmestelederbehovCreationMetrics> { MicrometerNarmestelederbehovCreationMetrics() }
     single<CreateNarmestelederbehov> {
         CreateNarmestelederbehovUseCase(
@@ -55,6 +58,7 @@ fun narmestelederbehovModule() = module {
             repository = get(),
             activeSykmelding = get(),
             mainOrganization = get(),
+            personLookup = get(),
             dialog = get(),
             metrics = get(),
         )

@@ -9,15 +9,15 @@ Define the event next to the code that owns the outcome, or in a small
 `*Events.kt` file when several classes share it:
 
 ```kotlin
-private val dialogFailed = applicationEvent<DialogFailureDetails>(
+internal val dialogportenDialogFailed = applicationEvent<DialogEventDetails>(
     name = "dialogporten_dialog_failed",
     level = Level.ERROR,
     message = "Dialogporten dialog operation failed",
     upstream = "dialogporten",
-    fields = mapOf("behov_id" to { it.behovId }, "action" to { it.action.name }),
+    fields = mapOf("behov_id" to { it.behovId?.toString() }, "action" to { it.action?.name }),
 )
 
-logger.logEvent(dialogFailed, details, cause = exception)
+logger.logEvent(dialogportenDialogFailed, details, cause = exception)
 ```
 
 - One event per operational outcome. Variants become a bounded `reason` or

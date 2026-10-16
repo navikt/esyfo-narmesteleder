@@ -1,14 +1,19 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure
 
 import no.nav.esyfo.observability.apiRequestRejected
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 
 internal const val SYSTEM_USER_ACCESS_NOT_GRANTED = "SYSTEM_USER_ACCESS_NOT_GRANTED"
 
 internal data class SystemUserAccessRejection(
-    val directDecision: Decision,
-    val fallbackDecision: Decision?,
-)
+    val directDecision: AuthorizationDecision,
+    val fallbackDecision: AuthorizationDecision?,
+) {
+    init {
+        require(directDecision == AuthorizationDecision.Deny || directDecision == AuthorizationDecision.NotApplicable)
+        require(fallbackDecision == null || fallbackDecision == AuthorizationDecision.Deny || fallbackDecision == AuthorizationDecision.NotApplicable)
+    }
+}
 
 internal val systemUserAccessRejected = apiRequestRejected<SystemUserAccessRejection>(
     operation = "validate_system_user_access",

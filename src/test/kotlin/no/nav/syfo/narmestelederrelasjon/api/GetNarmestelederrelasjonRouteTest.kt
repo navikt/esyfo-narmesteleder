@@ -22,6 +22,7 @@ import no.nav.syfo.narmestelederrelasjon.application.OrganizationNameResult
 import no.nav.syfo.narmestelederrelasjon.observability.GET_NARMESTELEDERRELASJON_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -147,6 +148,39 @@ class GetNarmestelederrelasjonRouteTest :
                 failureLogs.list.size shouldBe 0
                 METRICS_REGISTRY.find(GET_NARMESTELEDERRELASJON_TOTAL).counters()
                     .map { it.id.getTag("outcome") }.toSet() shouldBe setOf("found", "not_found", "upstream_unavailable")
+            }
+
+            listOf(
+                UpstreamFailure(UpstreamName("altinn-pdp"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("private-provider-message")),
+                UpstreamFailure(UpstreamName("altinn-pdp"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("indeterminate", detail = "unknown"))),
+                UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 400, errors = listOf(UpstreamError("invalid_grant"))),
+                UpstreamFailure(UpstreamName("altinn-authentication"), UpstreamFailureStage.TOKEN_EXCHANGE, 200, IllegalArgumentException("private-provider-message")),
+                UpstreamFailure(UpstreamName("ereg"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("private-provider-message")),
+            ).forEach { failure ->
+                test("system user ${failure.upstream} ${failure.status} failure returns 500 and increments upstream unavailable") {
+                    val before = getOutcomeCount("upstream_unavailable")
+                    introspectMaskinporten()
+                    coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns OrganizationAccessResult.Unavailable(failure)
+                    withTestApplication {
+                        val accessToken = token(MASKINPORTEN_ISSUER)
+                        val response = client.get(path(id.toString())) { bearerAuth(accessToken) }
+                        response.status shouldBe HttpStatusCode.InternalServerError
+                        response.headers[HttpHeaders.CacheControl] shouldBe "no-store"
+                        val body = response.bodyAsText()
+                        body shouldContain """"type":"UPSTREAM_SERVICE_UNAVAILABLE""""
+                        listOf("private-provider-message", "123456789", accessToken).forEach { body shouldNotContain it }
+                        coVerify(exactly = 0) { organization.findName(OrganizationNumber("123456789")) }
+                    }
+                    getOutcomeCount("upstream_unavailable") shouldBe before + 1
+                    val record = failureLogs.list.single()
+                    val fields = record.keyValuePairs.associate { it.key to it.value }
+                    fields["event_type"] shouldBe "api_request_failed"
+                    fields["upstream"] shouldBe failure.upstream.value
+                    fields["failure_stage"] shouldBe failure.stage.logValue
+                    fields["upstream_status"] shouldBe failure.status
+                    fields.toString() shouldNotContain "private-provider-message"
+                    record.formattedMessage shouldNotContain "private-provider-message"
+                }
             }
 
             test("returns a no-store upstream unavailable 500 and logs the Ereg failure exactly once at the edge") {

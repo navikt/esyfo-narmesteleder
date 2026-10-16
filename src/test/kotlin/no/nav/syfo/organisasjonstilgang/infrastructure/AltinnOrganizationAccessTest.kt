@@ -4,7 +4,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.mockk.every
@@ -17,6 +16,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregCache
+import no.nav.syfo.integration.ereg.EregClient
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
@@ -24,9 +24,7 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationResponse
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
@@ -34,6 +32,7 @@ import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 
 class AltinnOrganizationAccessTest :
     FunSpec({
@@ -83,6 +82,29 @@ class AltinnOrganizationAccessTest :
         }
 
         context("LPS system user") {
+            listOf(
+                UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 400, errors = listOf(UpstreamError("invalid_grant"))),
+                UpstreamFailure(UpstreamName("altinn-authentication"), UpstreamFailureStage.TOKEN_EXCHANGE, 200, IllegalArgumentException()),
+                UpstreamFailure(UpstreamName("altinn-pdp"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException()),
+                UpstreamFailure(UpstreamName("altinn-pdp"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("indeterminate", detail = "unknown"))),
+            ).forEach { failure ->
+                listOf(REQUESTED_ORG, SYSTEM_USER_ORG).forEach { failingOrganization ->
+                    test("${failure.upstream} ${failure.status} on $failingOrganization stops at the original failure") {
+                        val fixture = AccessFixture()
+                        fixture.pdp.failures[failingOrganization] = failure
+                        fixture.ereg.organisasjoner[REQUESTED_ORG] = organisationWithParent(SYSTEM_USER_ORG)
+                        fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+                            .shouldBeInstanceOf<OrganizationAccessResult.Unavailable>().failure shouldBeSameInstanceAs failure
+                        fixture.eregRequests shouldBe if (failingOrganization == REQUESTED_ORG) 0 else 1
+                        fixture.pdp.requestedOrganizations shouldBe if (failingOrganization == REQUESTED_ORG) {
+                            listOf(setOf(REQUESTED_ORG))
+                        } else {
+                            listOf(setOf(REQUESTED_ORG), setOf(SYSTEM_USER_ORG))
+                        }
+                    }
+                }
+            }
+
             test("missing organization preserves the bad request contract") {
                 val fixture = AccessFixture()
                 val failure = shouldThrow<ApiErrorException.BadRequestException> {
@@ -103,14 +125,8 @@ class AltinnOrganizationAccessTest :
                     IllegalStateException("private upstream body $REQUESTED_ORG"),
                 )
                 fixture.ereg.setFailure(upstreamFailure)
-                val failure = shouldThrow<ApiErrorException.InternalServerErrorException> {
-                    fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
-                }
-                failure.message shouldBe "An upstream service is unavailable"
-                failure.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
-                failure.upstreamFailure shouldBeSameInstanceAs upstreamFailure
-                failure.cause shouldBeSameInstanceAs upstreamFailure.cause
-                failure.message.orEmpty() shouldNotContain REQUESTED_ORG
+                val result = fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
+                result.shouldBeInstanceOf<OrganizationAccessResult.Unavailable>().failure shouldBeSameInstanceAs upstreamFailure
                 fixture.pdp.requestedOrganizations shouldContainExactly listOf(setOf(REQUESTED_ORG))
             }
 
@@ -163,6 +179,13 @@ private class AccessFixture {
     val altinn = FakeAltinnTilgangerClient().also { it.accessPolicy.clear() }
     val pdp = RecordingAltinnAuthorizationClient()
     val ereg = FakeEregClient().also { it.organisasjoner.clear() }
+    var eregRequests = 0
+    private val recordingEreg = object : EregClient {
+        override suspend fun getOrganisasjon(orgnummer: String): UpstreamResult<Organisasjon?> {
+            eregRequests++
+            return ereg.getOrganisasjon(orgnummer)
+        }
+    }
     private val eregCache = mockk<EregCache> {
         every { getOrganisasjon(any()) } returns null
         every { putOrganisasjon(any(), any()) } just runs
@@ -170,22 +193,24 @@ private class AccessFixture {
     val access = AltinnOrganizationAccess(
         AltinnTilgangerService(altinn),
         pdp,
-        CachedEregClient(ereg, eregCache),
+        CachedEregClient(recordingEreg, eregCache),
     )
 }
 
 private class RecordingAltinnAuthorizationClient : AltinnAuthorizationClient {
     private val permitted = mutableSetOf<String>()
     val requestedOrganizations = mutableListOf<Set<String>>()
+    val failures = mutableMapOf<String, UpstreamFailure>()
 
     fun permit(orgNumber: String) {
         permitted += orgNumber
     }
 
-    override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): AltinnAuthorizationResponse {
+    override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): UpstreamResult<AuthorizationDecision> {
         requestedOrganizations += orgNumberSet
-        val decision = if (orgNumberSet.all { it in permitted }) Decision.Permit else Decision.Deny
-        return AltinnAuthorizationResponse(listOf(DecisionResult(decision)))
+        failures[orgNumberSet.single()]?.let { return UpstreamResult.Failure(it) }
+        val decision = if (orgNumberSet.all { it in permitted }) AuthorizationDecision.Permit else AuthorizationDecision.Deny
+        return UpstreamResult.Success(decision)
     }
 }
 

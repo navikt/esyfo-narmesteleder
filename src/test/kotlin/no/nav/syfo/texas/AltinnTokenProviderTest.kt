@@ -1,464 +1,152 @@
 package no.nav.syfo.texas
 
 import com.auth0.jwt.JWT
-import createMockToken
-import io.kotest.core.spec.style.DescribeSpec
+import com.auth0.jwt.algorithms.Algorithm
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
+import io.ktor.client.engine.mock.MockRequestHandler
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.statement.HttpResponsePipeline
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.fullPath
-import io.ktor.http.headersOf
-import io.ktor.serialization.jackson.jackson
-import io.mockk.clearAllMocks
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.mockk
+import no.nav.syfo.integration.respondJson
+import no.nav.syfo.integration.respondWithSystemToken
+import no.nav.syfo.integration.texasHttpClient
+import no.nav.syfo.integration.upstreamHttpClient
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasResponse
+import java.io.IOException
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneOffset
+import kotlin.coroutines.cancellation.CancellationException
 
 class AltinnTokenProviderTest :
-    DescribeSpec({
-
-        val mockTexasClient = mockk<TexasHttpClient>()
-        val altinnBaseUrl = "https://altinn.test"
-
-        beforeTest {
-            clearAllMocks(currentThreadOnly = true)
+    FunSpec({
+        test("Texas failure is propagated unchanged and skips Altinn") {
+            val failure = UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 400, errors = listOf(UpstreamError("invalid_grant")))
+            val texas = mockk<TexasHttpClient>()
+            coEvery { texas.maskinportenSystemToken("target") } returns UpstreamResult.Failure(failure)
+            upstreamHttpClient(respondWithSystemToken, { error("Altinn must not be called") }).use {
+                AltinnTokenProvider(texas, it, "https://altinn.test").token("target")
+                    .shouldBeInstanceOf<UpstreamResult.Failure>().failure shouldBeSameInstanceAs failure
+            }
         }
 
-        describe("AltinnTokenProvider") {
-            describe("token") {
-                it("should fetch new token when cache is empty") {
-                    val targetScope = "digdir:dialogporten.serviceprovider"
-                    val maskinportenToken = createMockToken("12345678901", scope = targetScope)
-                    val altinnToken = createMockToken("12345678901", scope = targetScope)
-
-                    val mockEngine = MockEngine { request ->
-                        when (request.url.fullPath) {
-                            "/authentication/api/v1/exchange/maskinporten" -> {
-                                respond(
-                                    content = "\"$altinnToken\"",
-                                    status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            else -> error("Unhandled ${request.url.fullPath}")
-                        }
-                    }
-
-                    val httpClient = HttpClient(mockEngine) {
-                        install(ContentNegotiation) {
-                            jackson()
-                        }
-                    }
-
-                    coEvery { mockTexasClient.systemToken("maskinporten", targetScope) } returns TexasResponse(
-                        accessToken = maskinportenToken,
-                        expiresIn = 3600,
-                        tokenType = "Bearer"
-                    )
-
-                    val tokenProvider = AltinnTokenProvider(
-                        texasHttpClient = mockTexasClient,
-                        httpClient = httpClient,
-                        altinnBaseUrl = altinnBaseUrl
-                    )
-
-                    val result = tokenProvider.token(targetScope)
-
-                    result shouldNotBe null
-                    result.accessToken shouldBe altinnToken
-                    result.scope shouldBe targetScope
-
-                    coVerify(exactly = 1) { mockTexasClient.systemToken("maskinporten", targetScope) }
-                }
-
-                it("should return cached token when valid and not expiring soon") {
-                    val targetScope = "digdir:dialogporten.serviceprovider"
-                    val maskinportenToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(7200)
-                    )
-                    val altinnToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(7200)
-                    )
-
-                    val mockEngine = MockEngine { request ->
-                        when (request.url.fullPath) {
-                            "/authentication/api/v1/exchange/maskinporten" -> {
-                                respond(
-                                    content = "\"$altinnToken\"",
-                                    status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            else -> error("Unhandled ${request.url.fullPath}")
-                        }
-                    }
-
-                    val httpClient = HttpClient(mockEngine) {
-                        install(ContentNegotiation) {
-                            jackson()
-                        }
-                    }
-
-                    coEvery { mockTexasClient.systemToken("maskinporten", targetScope) } returns TexasResponse(
-                        accessToken = maskinportenToken,
-                        expiresIn = 3600,
-                        tokenType = "Bearer"
-                    )
-
-                    val tokenProvider = AltinnTokenProvider(
-                        texasHttpClient = mockTexasClient,
-                        httpClient = httpClient,
-                        altinnBaseUrl = altinnBaseUrl
-                    )
-
-                    // First call - should fetch new token
-                    val firstResult = tokenProvider.token(targetScope)
-
-                    // Second call - should return cached token
-                    val secondResult = tokenProvider.token(targetScope)
-
-                    firstResult.accessToken shouldBe altinnToken
-                    secondResult.accessToken shouldBe altinnToken
-
-                    // Should only call Texas once
-                    coVerify(exactly = 1) { mockTexasClient.systemToken("maskinporten", targetScope) }
-                }
-
-                it("should refresh token when it expires soon (between 120 and 300 seconds)") {
-                    val targetScope = "digdir:dialogporten.serviceprovider"
-                    val maskinportenToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(7200)
-                    )
-                    val oldAltinnToken =
-                        createMockToken(
-                            ident = "123456789",
-                            scope = targetScope,
-                            expiresAt = Instant.now().plusSeconds(200)
-                        ) // 200 seconds - should refresh
-                    val newAltinnToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(3600)
-                    )
-
-                    var callCount = 0
-                    val mockEngine = MockEngine { request ->
-                        when (request.url.fullPath) {
-                            "/authentication/api/v1/exchange/maskinporten" -> {
-                                callCount++
-                                val tokenToReturn = if (callCount == 1) oldAltinnToken else newAltinnToken
-                                respond(
-                                    content = "\"$tokenToReturn\"",
-                                    status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            "/authentication/api/v1/refresh" -> {
-                                respond(
-                                    content = "\"$newAltinnToken\"",
-                                    status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            else -> error("Unhandled ${request.url.fullPath}")
-                        }
-                    }
-
-                    val httpClient = HttpClient(mockEngine) {
-                        install(ContentNegotiation) {
-                            jackson()
-                        }
-                    }
-
-                    coEvery { mockTexasClient.systemToken("maskinporten", targetScope) } returns TexasResponse(
-                        accessToken = maskinportenToken,
-                        expiresIn = 3600,
-                        tokenType = "Bearer"
-                    )
-
-                    val tokenProvider = AltinnTokenProvider(
-                        texasHttpClient = mockTexasClient,
-                        httpClient = httpClient,
-                        altinnBaseUrl = altinnBaseUrl
-                    )
-
-                    // First call - get initial token
-                    val firstResult = tokenProvider.token(targetScope)
-                    firstResult.accessToken shouldBe oldAltinnToken
-
-                    // Second call - should refresh token because it expires soon
-                    val secondResult = tokenProvider.token(targetScope)
-                    secondResult.accessToken shouldBe newAltinnToken
-                }
-
-                it("should handle refresh token failure and fetch new token from maskinporten") {
-                    val targetScope = "digdir:dialogporten.serviceprovider"
-                    val maskinportenToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(7200)
-                    )
-                    val oldAltinnToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(200)
-                    )
-                    val newAltinnToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(3600)
-                    )
-
-                    var callCount = 0
-                    val mockEngine = MockEngine { request ->
-                        when (request.url.fullPath) {
-                            "/authentication/api/v1/exchange/maskinporten" -> {
-                                callCount++
-                                val tokenToReturn = if (callCount == 1) oldAltinnToken else newAltinnToken
-                                respond(
-                                    content = "\"$tokenToReturn\"",
-                                    status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            "/authentication/api/v1/refresh" -> {
-                                respond(
-                                    content = "",
-                                    status = HttpStatusCode.Unauthorized,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            else -> error("Unhandled ${request.url.fullPath}")
-                        }
-                    }
-
-                    val httpClient = HttpClient(mockEngine) {
-                        install(ContentNegotiation) {
-                            jackson()
-                        }
-                    }
-
-                    coEvery { mockTexasClient.systemToken("maskinporten", targetScope) } returns TexasResponse(
-                        accessToken = maskinportenToken,
-                        expiresIn = 3600,
-                        tokenType = "Bearer"
-                    )
-
-                    val tokenProvider = AltinnTokenProvider(
-                        texasHttpClient = mockTexasClient,
-                        httpClient = httpClient,
-                        altinnBaseUrl = altinnBaseUrl
-                    )
-
-                    // First call - get initial token
-                    val firstResult = tokenProvider.token(targetScope)
-                    firstResult.accessToken shouldBe oldAltinnToken
-
-                    // Second call - refresh fails, should get new token from maskinporten
-                    val secondResult = tokenProvider.token(targetScope)
-                    secondResult.accessToken shouldBe newAltinnToken
-
-                    // Should have called systemToken twice (initial + after refresh failure)
-                    coVerify(exactly = 2) { mockTexasClient.systemToken("maskinporten", targetScope) }
-                }
-
-                it("should fetch new token when existing token has expired") {
-                    val targetScope = "digdir:dialogporten.serviceprovider"
-                    val maskinportenToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(7200)
-                    )
-                    val expiredAltinnToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().minusSeconds(100)
-                    )
-                    val newAltinnToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(3600)
-                    )
-
-                    var callCount = 0
-                    val mockEngine = MockEngine { request ->
-                        when (request.url.fullPath) {
-                            "/authentication/api/v1/exchange/maskinporten" -> {
-                                callCount++
-                                val tokenToReturn = if (callCount == 1) expiredAltinnToken else newAltinnToken
-                                respond(
-                                    content = "\"$tokenToReturn\"",
-                                    status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            else -> error("Unhandled ${request.url.fullPath}")
-                        }
-                    }
-
-                    val httpClient = HttpClient(mockEngine) {
-                        install(ContentNegotiation) {
-                            jackson()
-                        }
-                    }
-
-                    coEvery { mockTexasClient.systemToken("maskinporten", targetScope) } returns TexasResponse(
-                        accessToken = maskinportenToken,
-                        expiresIn = 3600,
-                        tokenType = "Bearer"
-                    )
-
-                    val tokenProvider = AltinnTokenProvider(
-                        texasHttpClient = mockTexasClient,
-                        httpClient = httpClient,
-                        altinnBaseUrl = altinnBaseUrl
-                    )
-
-                    // First call - get expired token
-                    val firstResult = tokenProvider.token(targetScope)
-                    firstResult.accessToken shouldBe expiredAltinnToken
-
-                    // Second call - should fetch new token because first one is expired
-                    val secondResult = tokenProvider.token(targetScope)
-                    secondResult.accessToken shouldBe newAltinnToken
-
-                    // Should have called systemToken twice
-                    coVerify(exactly = 2) { mockTexasClient.systemToken("maskinporten", targetScope) }
-                }
-
-                it("should handle multiple different target scopes independently") {
-                    val targetScope1 = "digdir:dialogporten.serviceprovider"
-                    val targetScope2 = "nav:another.scope"
-                    val maskinportenToken = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope1,
-                        expiresAt = Instant.now().plusSeconds(7200)
-                    )
-                    val altinnToken1 = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope1,
-                        expiresAt = Instant.now().plusSeconds(7200)
-                    )
-
-                    val mockEngine = MockEngine { request ->
-                        when (request.url.fullPath) {
-                            "/authentication/api/v1/exchange/maskinporten" -> {
-                                respond(
-                                    content = "\"${altinnToken1}\"",
-                                    status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            else -> error("Unhandled ${request.url.fullPath}")
-                        }
-                    }
-
-                    val httpClient = HttpClient(mockEngine) {
-                        install(ContentNegotiation) {
-                            jackson()
-                        }
-                    }
-
-                    coEvery { mockTexasClient.systemToken("maskinporten", targetScope1) } returns TexasResponse(
-                        accessToken = maskinportenToken,
-                        expiresIn = 3600,
-                        tokenType = "Bearer"
-                    )
-
-                    coEvery { mockTexasClient.systemToken("maskinporten", targetScope2) } returns TexasResponse(
-                        accessToken = maskinportenToken,
-                        expiresIn = 3600,
-                        tokenType = "Bearer"
-                    )
-
-                    val tokenProvider = AltinnTokenProvider(
-                        texasHttpClient = mockTexasClient,
-                        httpClient = httpClient,
-                        altinnBaseUrl = altinnBaseUrl
-                    )
-
-                    tokenProvider.token(targetScope1)
-                    tokenProvider.token(targetScope2)
-
-                    coVerify(exactly = 1) { mockTexasClient.systemToken("maskinporten", targetScope1) }
-                    coVerify(exactly = 1) { mockTexasClient.systemToken("maskinporten", targetScope2) }
+        listOf(400, 503).forEach { status ->
+            test("exchange HTTP $status retains status and token exchange stage") {
+                upstreamHttpClient(respondWithSystemToken, { respondJson("private-response", HttpStatusCode.fromValue(status)) }).use {
+                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
+                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                    failure.upstream shouldBe ALTINN_AUTHENTICATION
+                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    failure.status shouldBe status
                 }
             }
+        }
 
-            describe("toAltinnToken") {
-                it("should correctly parse Altinn token with scope claim") {
-                    val targetScope = "digdir:dialogporten.serviceprovider"
-                    val altinnTokenString = createMockToken(
-                        ident = "123456789",
-                        scope = targetScope,
-                        expiresAt = Instant.now().plusSeconds(7200)
-                    )
-
-                    coEvery { mockTexasClient.systemToken("maskinporten", targetScope) } returns TexasResponse(
-                        accessToken = createMockToken(
-                            ident = "123456789",
-                            scope = targetScope,
-                            expiresAt = Instant.now().plusSeconds(7200)
-                        ),
-                        expiresIn = 3600,
-                        tokenType = "Bearer"
-                    )
-
-                    val mockEngineWithResponse = MockEngine { request ->
-                        when (request.url.fullPath) {
-                            "/authentication/api/v1/exchange/maskinporten" -> {
-                                respond(
-                                    content = "\"$altinnTokenString\"",
-                                    status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                )
-                            }
-
-                            else -> error("Unhandled ${request.url.fullPath}")
-                        }
-                    }
-
-                    val httpClientWithResponse = HttpClient(mockEngineWithResponse) {
-                        install(ContentNegotiation) {
-                            jackson()
-                        }
-                    }
-
-                    val tokenProviderWithResponse = AltinnTokenProvider(
-                        texasHttpClient = mockTexasClient,
-                        httpClient = httpClientWithResponse,
-                        altinnBaseUrl = altinnBaseUrl
-                    )
-
-                    val result = tokenProviderWithResponse.token(targetScope)
-
-                    result.scope shouldBe targetScope
-                    result.accessToken shouldBe altinnTokenString
-                    result.altinnExpiryTime.inWholeSeconds shouldBe JWT.decode(altinnTokenString).expiresAt.time / 1000
+        listOf("not-a-jwt", JWT.create().sign(Algorithm.none())).forEachIndexed { index, body ->
+            test("invalid token $index including missing expiry is a response failure with status") {
+                upstreamHttpClient(respondWithSystemToken, { respondJson("\"$body\"") }).use {
+                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
+                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                    failure.upstream shouldBe ALTINN_AUTHENTICATION
+                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    failure.status shouldBe 200
                 }
+            }
+        }
+
+        listOf<Throwable>(IOException("Unavailable"), HttpRequestTimeoutException("https://altinn.test", 10)).forEach { cause ->
+            test("exchange ${cause.javaClass.simpleName} becomes token exchange failure without status") {
+                upstreamHttpClient(respondWithSystemToken, { throw cause }).use {
+                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
+                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                    failure.upstream shouldBe ALTINN_AUTHENTICATION
+                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    failure.status shouldBe null
+                    failure.cause?.javaClass shouldBe cause.javaClass
+                }
+            }
+        }
+
+        test("exchange cancellation is rethrown") {
+            val cancelled = CancellationException("Cancelled")
+            upstreamHttpClient(respondWithSystemToken, { throw cancelled }).use {
+                shouldThrow<CancellationException> {
+                    AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
+                }.message shouldBe cancelled.message
+            }
+        }
+
+        test("body cancellation is rethrown") {
+            val cancelled = CancellationException("Cancelled")
+            upstreamHttpClient(respondWithSystemToken, { respondJson("\"${altinnTestToken(3600)}\"") }).use {
+                it.responsePipeline.intercept(HttpResponsePipeline.Receive) {
+                    if (context.response.call.request.url.host == "altinn.test") throw cancelled
+                }
+                shouldThrow<CancellationException> {
+                    AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
+                } shouldBeSameInstanceAs cancelled
+            }
+        }
+
+        listOf(7200L, 301L, 300L, 200L, 60L, 0L).forEach { secondsLeft ->
+            test("cache at $secondsLeft seconds uses only tokens above 300 seconds then caches the renewed token") {
+                var texasCalls = 0
+                var exchanges = 0
+                val now = Instant.parse("2026-10-15T06:00:00Z")
+                val clock = Clock.fixed(now, ZoneOffset.UTC)
+                val initial = altinnTestToken(secondsLeft, now)
+                val renewed = altinnTestToken(10800, now)
+                val tokenHandler: MockRequestHandler = { request ->
+                    texasCalls++
+                    respondWithSystemToken(request)
+                }
+                upstreamHttpClient(tokenHandler, { request ->
+                    request.url.encodedPath shouldBe "/authentication/api/v1/exchange/maskinporten"
+                    exchanges++
+                    respondJson("\"${if (exchanges == 1) initial else renewed}\"")
+                }).use {
+                    val provider = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test", clock)
+                    provider.token("target").getOrThrow().accessToken shouldBe initial
+                    val expected = if (secondsLeft > 300) initial else renewed
+                    provider.token("target").getOrThrow().accessToken shouldBe expected
+                    provider.token("target").getOrThrow().accessToken shouldBe expected
+                    texasCalls shouldBe if (secondsLeft > 300) 1 else 2
+                    exchanges shouldBe texasCalls
+                    provider.token("other-target").getOrThrow().accessToken shouldBe renewed
+                    exchanges shouldBe texasCalls
+                    exchanges shouldBe if (secondsLeft > 300) 2 else 3
+                }
+            }
+        }
+
+        test("failed exchange is not cached") {
+            var exchanges = 0
+            val token = altinnTestToken(3600)
+            upstreamHttpClient(respondWithSystemToken, {
+                exchanges++
+                if (exchanges == 1) respondJson("invalid") else respondJson("\"$token\"")
+            }).use {
+                val provider = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test")
+                provider.token("target").shouldBeInstanceOf<UpstreamResult.Failure>()
+                provider.token("target").getOrThrow().accessToken shouldBe token
+                provider.token("target").getOrThrow().accessToken shouldBe token
+                exchanges shouldBe 2
             }
         }
     })
+
+internal fun altinnTestToken(secondsLeft: Long, now: Instant = Instant.now()): String = JWT.create()
+    .withExpiresAt(now.plusSeconds(secondsLeft))
+    .sign(Algorithm.none())

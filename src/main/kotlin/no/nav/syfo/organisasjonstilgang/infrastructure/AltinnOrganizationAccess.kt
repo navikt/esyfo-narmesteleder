@@ -3,10 +3,8 @@ package no.nav.syfo.organisasjonstilgang.infrastructure
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.integration.ereg.EregClient
-import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
@@ -14,11 +12,11 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.System
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.result
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.COUNT_HAS_ALTINN3_RESOURCE
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
 
 class AltinnOrganizationAccess(
@@ -59,13 +57,23 @@ class AltinnOrganizationAccess(
         subject: OrganizationAccessSubject.LpsSystemUser,
         organizationNumber: OrganizationNumber,
     ): OrganizationAccessResult {
-        val directDecision = decisionFor(subject, organizationNumber)
-        if (directDecision == Decision.Permit) {
+        val directDecision = decisionFor(subject, organizationNumber).getOrElse { return OrganizationAccessResult.Unavailable(it) }
+        if (directDecision == AuthorizationDecision.Permit) {
             return OrganizationAccessResult.Granted(organizationName = null)
         }
 
-        val fallbackDecision = decisionThroughSystemUserOrganization(subject, organizationNumber)
-        if (fallbackDecision == Decision.Permit) {
+        val organization = eregClient.getOrganisasjon(organizationNumber.value).getOrElse { return OrganizationAccessResult.Unavailable(it) }
+            ?: throw ApiErrorException.BadRequestException(
+                "Unable to look up the organization",
+                type = ErrorType.ORGANIZATION_NOT_FOUND,
+            )
+        val hierarchy = organization.aggregerOrgnummereFraHierarki()
+        val fallbackDecision = if (subject.systemUserOrganizationNumber.value in hierarchy) {
+            decisionFor(subject, subject.systemUserOrganizationNumber).getOrElse { return OrganizationAccessResult.Unavailable(it) }
+        } else {
+            null
+        }
+        if (fallbackDecision == AuthorizationDecision.Permit) {
             return OrganizationAccessResult.Granted(organizationName = null)
         }
 
@@ -73,31 +81,12 @@ class AltinnOrganizationAccess(
         return OrganizationAccessResult.Denied(DenialReason.SYSTEM_USER_REJECTED)
     }
 
-    private suspend fun decisionThroughSystemUserOrganization(
-        subject: OrganizationAccessSubject.LpsSystemUser,
-        organizationNumber: OrganizationNumber,
-    ): Decision? {
-        val hierarchy = getOrganization(organizationNumber.value).aggregerOrgnummereFraHierarki()
-        return if (subject.systemUserOrganizationNumber.value in hierarchy) {
-            decisionFor(subject, subject.systemUserOrganizationNumber)
-        } else {
-            null
-        }
-    }
-
     private suspend fun decisionFor(
         subject: OrganizationAccessSubject.LpsSystemUser,
         organizationNumber: OrganizationNumber,
-    ): Decision = client.authorize(
+    ): UpstreamResult<AuthorizationDecision> = client.authorize(
         user = System(subject.systemUserId),
         orgNumberSet = setOf(organizationNumber.value),
         resource = OPPGI_NARMESTELEDER_RESOURCE,
-    ).result()
-
-    // Remove this bridge in #687.
-    private suspend fun getOrganization(orgNumber: String): Organisasjon = eregClient.getOrganisasjon(orgNumber).getOrElse { throw it.toUpstreamUnavailableException() }
-        ?: throw ApiErrorException.BadRequestException(
-            "Unable to look up the organization",
-            type = ErrorType.ORGANIZATION_NOT_FOUND,
-        )
+    )
 }

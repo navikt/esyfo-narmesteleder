@@ -3,9 +3,7 @@ package no.nav.syfo.application.api
 import io.ktor.server.application.Application
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.routing
-import no.nav.syfo.altinn.dialogporten.registerDialogportenTokenApi
 import no.nav.syfo.application.environment.Environment
-import no.nav.syfo.application.environment.isProdEnv
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
@@ -27,10 +25,6 @@ fun Application.configureRouting() {
         }
         internalApiV1 {
             registerInternalApiV1Routes()
-        }
-        if (!isProdEnv()) {
-            // TODO: Remove this endpoint later
-            registerDialogportenTokenApi(texasHttpClient = get(), altinnTokenProvider = get())
         }
     }
 }

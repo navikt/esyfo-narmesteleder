@@ -23,6 +23,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import linemanager
 import manager
@@ -56,14 +57,13 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationResponse
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.DecisionResult
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.util.UUID
@@ -196,6 +196,22 @@ class FulfillNarmestelederbehovRouteTest :
             }
         }
 
+        test("PUT /requirement/{id} preserves 400 ORGANIZATION_NOT_FOUND when Ereg returns no organization") {
+            withPutApplication { fixture ->
+                val id = fixture.seed()
+                coEvery { fixture.pdp.authorize(any(), any(), any()) } returns UpstreamResult.Success(AuthorizationDecision.Deny)
+                fixture.ereg.organisasjoner.clear()
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
+                    contentType(ContentType.Application.Json)
+                    setBody(manager())
+                    bearerAuth(createMockToken(fixture.orgNumber))
+                }
+                response.status shouldBe HttpStatusCode.BadRequest
+                response.body<ApiError>().type shouldBe ErrorType.ORGANIZATION_NOT_FOUND
+                fixture.establish.commands shouldBe emptyList()
+            }
+        }
+
         test("PUT /requirement/{id} 403 when principal lacks Altinn resource access to orgnumber") {
             withPutApplication { fixture ->
                 val id = fixture.seed()
@@ -204,7 +220,7 @@ class FulfillNarmestelederbehovRouteTest :
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 coEvery { fixture.pdp.authorize(any(), any(), any()) } returns
-                    AltinnAuthorizationResponse(listOf(DecisionResult(Decision.Deny)))
+                    UpstreamResult.Success(AuthorizationDecision.Deny)
                 fixture.ereg.organisasjoner[fixture.orgNumber] = Organisasjon(
                     organisasjonsnummer = fixture.orgNumber,
                     inngaarIJuridiskEnheter = emptyList(),
@@ -279,7 +295,12 @@ private class PutFixture {
     private val organizationAccess = AltinnOrganizationAccess(
         altinn,
         pdp,
-        CachedEregClient(ereg, mockk<EregCache>(relaxed = true)),
+        CachedEregClient(
+            ereg,
+            mockk<EregCache>(relaxed = true) {
+                every { getOrganisasjon(any()) } returns null
+            },
+        ),
     )
     val useCase = FulfillNarmestelederbehovUseCase(
         repository,
@@ -294,7 +315,7 @@ private class PutFixture {
             scope = MASKINPORTEN_NL_SCOPE,
         )
         coEvery { pdp.authorize(any(), any(), any()) } returns
-            AltinnAuthorizationResponse(listOf(DecisionResult(Decision.Permit)))
+            UpstreamResult.Success(AuthorizationDecision.Permit)
     }
 
     fun seed(): UUID = repository.seed(employeeIdent, orgNumber)

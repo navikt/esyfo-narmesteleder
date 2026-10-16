@@ -56,6 +56,28 @@ class TexasHttpClient(
 
     suspend fun exchangeTokenForIsAltinnTilganger(token: String): UpstreamResult<String> = exchangeToken(IDENTITY_PROVIDER_TOKENX, environment.exchangeTargetIsAltinnTilganger, token)
 
+    suspend fun maskinportenSystemToken(target: String): UpstreamResult<String> {
+        val response = try {
+            client.post(environment.tokenEndpoint) {
+                contentType(ContentType.Application.Json)
+                setBody(TexasTokenRequest(identityProvider = "maskinporten", target = target))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ResponseException) {
+            return failure(e.response.status.value, e, listOf(UpstreamError(e.oauthFailureCode().name.lowercase())))
+        } catch (e: Exception) {
+            return failure(null, e)
+        }
+        return try {
+            UpstreamResult.Success(response.body<TexasResponse>().accessToken.also { require(it.isNotBlank()) })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failure(response.status.value, e)
+        }
+    }
+
     private suspend fun exchangeToken(identityProvider: String, target: String, token: String): UpstreamResult<String> {
         val response = try {
             client.post(environment.tokenExchangeEndpoint) {

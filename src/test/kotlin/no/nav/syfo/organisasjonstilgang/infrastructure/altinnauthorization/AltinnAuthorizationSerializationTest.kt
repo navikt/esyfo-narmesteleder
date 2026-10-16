@@ -55,21 +55,21 @@ class AltinnAuthorizationSerializationTest :
             }
         }
 
-        Decision.entries.forEach { decision ->
+        AuthorizationDecision.entries.forEach { decision ->
             test("keeps the authorization response JSON shape for $decision") {
                 val json = """{"response":[{"decision":"$decision"}]}"""
                 val response = mapper.readValue(json, AltinnAuthorizationResponse::class.java)
 
-                response.result() shouldBe decision
+                response.response.single().decision shouldBe decision
                 mapper.readTree(mapper.writeValueAsString(response)) shouldBe mapper.readTree(json)
             }
         }
 
-        test("returns the first decision when the response has several decisions") {
+        test("preserves all decisions for boundary validation") {
             val response = AltinnAuthorizationResponse(
-                listOf(DecisionResult(Decision.Deny), DecisionResult(Decision.Permit)),
+                listOf(DecisionResult(AuthorizationDecision.Deny), DecisionResult(AuthorizationDecision.Permit)),
             )
 
-            response.result() shouldBe Decision.Deny
+            response.response.map { it.decision } shouldBe listOf(AuthorizationDecision.Deny, AuthorizationDecision.Permit)
         }
     })

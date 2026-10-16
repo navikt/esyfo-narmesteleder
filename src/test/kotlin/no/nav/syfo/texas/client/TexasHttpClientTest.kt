@@ -22,6 +22,71 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class TexasHttpClientTest :
     FunSpec({
+        test("Maskinporten uses the token endpoint and configured target without transforming it") {
+            upstreamHttpClient(
+                token = { request ->
+                    request.url.toString() shouldBe TexasEnvironment.createForLocal().tokenEndpoint
+                    val body = jacksonObjectMapper().readTree(request.body.toByteArray())
+                    body["identity_provider"].asText() shouldBe "maskinporten"
+                    body["target"].asText() shouldBe "altinn:authorization/authorize"
+                    respondWithSystemToken(request)
+                },
+                upstream = { error("Unexpected upstream request") },
+            ).use {
+                texasHttpClient(it).maskinportenSystemToken("altinn:authorization/authorize") shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
+            }
+        }
+
+        listOf("invalid_grant" to "invalid_grant", "private-provider-message" to "unknown").forEach { (code, expected) ->
+            test("Maskinporten retains only allowlisted OAuth code $expected") {
+                upstreamHttpClient(
+                    token = { respondJson("""{"error":"$code","error_description":"private-description"}""", HttpStatusCode.BadRequest) },
+                    upstream = { error("Unexpected upstream request") },
+                ).use {
+                    val failure = texasHttpClient(it).maskinportenSystemToken("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                    failure.upstream shouldBe TEXAS
+                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    failure.status shouldBe 400
+                    failure.errors shouldBe listOf(UpstreamError(expected))
+                }
+            }
+        }
+
+        test("Maskinporten malformed success retains response status") {
+            upstreamHttpClient({ respondJson("""{"invalid":"response"}""") }, { error("Unexpected upstream request") }).use {
+                val failure = texasHttpClient(it).maskinportenSystemToken("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                failure.upstream shouldBe TEXAS
+                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                failure.status shouldBe 200
+            }
+        }
+
+        test("Maskinporten IO failure has no response status") {
+            upstreamHttpClient({ throw IOException("Unavailable") }, { error("Unexpected upstream request") }).use {
+                val failure = texasHttpClient(it).maskinportenSystemToken("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                failure.upstream shouldBe TEXAS
+                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                failure.status shouldBe null
+            }
+        }
+
+        test("Maskinporten request cancellation is rethrown") {
+            val cancelled = CancellationException("Cancelled")
+            upstreamHttpClient({ throw cancelled }, { error("Unexpected upstream request") }).use {
+                shouldThrow<CancellationException> { texasHttpClient(it).maskinportenSystemToken("target") } shouldBe cancelled
+            }
+        }
+
+        test("Maskinporten body cancellation is rethrown") {
+            val cancelled = CancellationException("Cancelled")
+            upstreamHttpClient(respondWithSystemToken, { error("Unexpected upstream request") }).use {
+                it.responsePipeline.intercept(HttpResponsePipeline.Receive) {
+                    if (subject.expectedType.type == TexasResponse::class) throw cancelled
+                }
+                shouldThrow<CancellationException> { texasHttpClient(it).maskinportenSystemToken("target") } shouldBe cancelled
+            }
+        }
+
         test("TokenX exchange posts the configured target and user token and returns the access token") {
             val environment = TexasEnvironment.createForLocal()
             upstreamHttpClient(

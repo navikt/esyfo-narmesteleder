@@ -27,6 +27,7 @@ object NarmestelederbehovTable : Table("nl_behov") {
     val behovReason = varchar("behov_reason", 255)
     val behovStatus = registerColumn("behov_status", BehovStatusColumnType())
     val dialogId = javaUUID("dialog_id").nullable()
+    val avbruttNarmestelederId = javaUUID("avbrutt_narmesteleder_id").nullable()
 }
 
 internal val openNarmestelederbehovStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)

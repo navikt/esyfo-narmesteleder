@@ -3,14 +3,20 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
+import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
+import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -59,11 +65,12 @@ class ExposedNarmestelederbehovRepositoryTest :
                 name = BehovPersonName(firstName = "First", middleName = "Middle", lastName = "Last"),
             )
 
-            val after = requireNotNull(findStoredNarmestelederbehov(before.id))
-            after.fornavn shouldBe "First"
-            after.mellomnavn shouldBe "Middle"
-            after.etternavn shouldBe "Last"
-            after.copy(fornavn = null, mellomnavn = null, etternavn = null, updated = before.updated) shouldBe before
+            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                fornavn shouldBe "First"
+                mellomnavn shouldBe "Middle"
+                etternavn shouldBe "Last"
+                copy(fornavn = null, mellomnavn = null, etternavn = null, updated = before.updated) shouldBe before
+            }
         }
 
         test("finds a behov for fulfillment and returns null for missing id") {
@@ -91,9 +98,10 @@ class ExposedNarmestelederbehovRepositoryTest :
 
             repository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, dialogId)
 
-            val after = requireNotNull(findStoredNarmestelederbehov(before.id))
-            after.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
-            after.copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
+            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
+            }
         }
 
         test("marks a behov with no dialog and returns Missing for an absent row") {
@@ -109,9 +117,10 @@ class ExposedNarmestelederbehovRepositoryTest :
 
             repository.markDialogCompleted(id) shouldBe MarkDialogCompletedResult.Marked
 
-            val after = requireNotNull(findStoredNarmestelederbehov(before.id))
-            after.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-            after.copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
+            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
+            }
         }
 
         test("does not overwrite a status changed by another writer") {
@@ -145,5 +154,65 @@ class ExposedNarmestelederbehovRepositoryTest :
 
                 repository.findOpenFor(employee).map { it.value } shouldBe listOf(open)
             }
+        }
+        val newBehov = NewNarmestelederbehov(
+            employee = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001")),
+            mainOrganizationNumber = "910000009",
+            manager = PersonIdent("10987654321"),
+            reason = BehovReason.DEAKTIVERT_LEDER,
+            status = BehovStatus.BEHOV_CREATED,
+            revokedRelationId = UUID.fromString("00000000-0000-0000-0000-000000000044"),
+        )
+
+        test("creates a behov with every column") {
+            val result = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+
+            with(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
+                sykmeldtFnr shouldBe "12345678901"
+                orgnummer shouldBe "910000001"
+                hovedenhetOrgnummer shouldBe "910000009"
+                narmestelederFnr shouldBe "10987654321"
+                behovReason shouldBe BehovReason.DEAKTIVERT_LEDER
+                behovStatus shouldBe BehovStatus.BEHOV_CREATED
+                avbruttNarmestelederId shouldBe newBehov.revokedRelationId
+                dialogId.shouldBeNull()
+                fornavn.shouldBeNull()
+            }
+        }
+
+        test("creates a behov without manager or revoked relation") {
+            val result = repository.create(newBehov.copy(manager = null, revokedRelationId = null))
+                .shouldBeInstanceOf<CreateBehovResult.Created>()
+
+            with(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
+                narmestelederFnr.shouldBeNull()
+                avbruttNarmestelederId.shouldBeNull()
+            }
+        }
+
+        test("reports AlreadyExists without storing when the employee has an open behov in the organization") {
+            val existing = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+
+            repository.create(newBehov.copy(status = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)) shouldBe CreateBehovResult.AlreadyExists
+
+            repository.findOpenFor(newBehov.employee) shouldBe listOf(existing.id)
+        }
+
+        test("stores exactly one open behov when concurrent creates race") {
+            val results = coroutineScope {
+                (1..2).map { async { repository.create(newBehov) } }.awaitAll()
+            }
+
+            results.count { it is CreateBehovResult.Created } shouldBe 1
+            results.count { it == CreateBehovResult.AlreadyExists } shouldBe 1
+            repository.findOpenFor(newBehov.employee).size shouldBe 1
+        }
+
+        test("creates a behov alongside closed and error behov for the same employee and organization") {
+            repository.create(newBehov.copy(status = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND)).shouldBeInstanceOf<CreateBehovResult.Created>()
+            val closed = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+            repository.markFulfilled(closed.id)
+
+            repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
         }
     })

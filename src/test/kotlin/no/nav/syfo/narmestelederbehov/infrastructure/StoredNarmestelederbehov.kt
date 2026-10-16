@@ -28,6 +28,7 @@ internal data class StoredNarmestelederbehov(
     val behovReason: BehovReason,
     val behovStatus: BehovStatus,
     val dialogId: UUID?,
+    val avbruttNarmestelederId: UUID?,
 )
 
 internal fun insertNarmestelederbehov(
@@ -87,4 +88,5 @@ private fun ResultRow.toStoredNarmestelederbehov() = StoredNarmestelederbehov(
     behovReason = BehovReason.valueOf(this[NarmestelederbehovTable.behovReason]),
     behovStatus = this[NarmestelederbehovTable.behovStatus],
     dialogId = this[NarmestelederbehovTable.dialogId],
+    avbruttNarmestelederId = this[NarmestelederbehovTable.avbruttNarmestelederId],
 )

@@ -1,6 +1,6 @@
 package no.nav.syfo.sykmelding.retention.infrastructure
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
@@ -11,7 +11,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 class ExposedSykmeldingRetentionRepositoryTest :
-    DescribeSpec({
+    FunSpec({
         val repository = ExposedSykmeldingRetentionRepository(TestDB.exposedDatabase)
         val cutoff = LocalDate.parse("2025-03-01")
 
@@ -31,7 +31,7 @@ class ExposedSykmeldingRetentionRepositoryTest :
             }
         }
 
-        it("deletes only rows strictly before the cutoff") {
+        test("deletes only rows strictly before the cutoff") {
             insert(cutoff.minusDays(1), 1)
             insert(cutoff, 2)
             insert(cutoff.plusDays(1), 3)
@@ -43,7 +43,7 @@ class ExposedSykmeldingRetentionRepositoryTest :
             }
         }
 
-        it("deletes bounded batches until all qualifying rows have been removed") {
+        test("deletes bounded batches until all qualifying rows have been removed") {
             insert(cutoff.minusDays(3), 1)
             insert(cutoff.minusDays(2), 2)
             insert(cutoff.minusDays(1), 3)

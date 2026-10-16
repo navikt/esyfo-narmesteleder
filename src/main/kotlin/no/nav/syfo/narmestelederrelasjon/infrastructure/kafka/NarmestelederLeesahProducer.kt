@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import no.nav.syfo.util.logger
-import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 
 data class NarmestelederLeesahProducerRecord(
@@ -10,7 +10,7 @@ data class NarmestelederLeesahProducerRecord(
 )
 
 class NarmestelederLeesahProducer(
-    private val producer: KafkaProducer<String, String?>,
+    private val producer: Producer<String, String?>,
 ) {
     fun sendLeesahBatch(records: List<NarmestelederLeesahProducerRecord>) {
         if (records.isEmpty()) {

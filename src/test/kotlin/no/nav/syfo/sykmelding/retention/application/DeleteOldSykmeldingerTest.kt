@@ -5,12 +5,12 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.OutputStreamAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.mockk.coEvery
-import io.mockk.mockk
-import io.mockk.verify
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import net.logstash.logback.encoder.LogstashEncoder
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
@@ -20,7 +20,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 class DeleteOldSykmeldingerTest :
-    DescribeSpec({
+    FunSpec({
         val clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC)
         val logOutput = ByteArrayOutputStream()
         val logger = LoggerFactory.getLogger(DeleteOldSykmeldinger::class.java) as Logger
@@ -55,36 +55,30 @@ class DeleteOldSykmeldingerTest :
             logOutput.reset()
         }
 
-        it("deletes batches until the repository has no old sykmeldinger") {
-            val calls = mutableListOf<Pair<LocalDate, Int>>()
-            val metrics = mockk<SykmeldingRetentionMetrics>(relaxed = true)
-            val repository = object : SykmeldingRetentionRepository {
-                private val results = ArrayDeque(listOf(2, 2, 0))
+        test("deletes batches until the repository has no old sykmeldinger") {
+            val meterRegistry = SimpleMeterRegistry()
+            val repository = RecordingSykmeldingRetentionRepository(2, 2, 0)
 
-                override suspend fun deleteBefore(cutoff: LocalDate, batchSize: Int): Int {
-                    calls += cutoff to batchSize
-                    return results.removeFirst()
-                }
-            }
+            DeleteOldSykmeldinger(repository, clock, SykmeldingRetentionMetrics(meterRegistry), batchSize = 2).execute()
 
-            DeleteOldSykmeldinger(repository, clock, metrics, batchSize = 2).execute()
-
-            calls shouldBe List(3) { LocalDate.parse("2025-03-01") to 2 }
-            verify(exactly = 1) { metrics.countDeleted(4) }
+            repository.requests shouldBe List(3) { LocalDate.parse("2025-03-01") to 2 }
+            meterRegistry.deletedSykmeldinger() shouldBe 4.0
             assertCompletedCleanupLog(logOutput, deletedCount = 4)
         }
 
-        it("counts and logs zero when no old sykmeldinger are deleted") {
-            val metrics = mockk<SykmeldingRetentionMetrics>(relaxed = true)
-            val repository = mockk<SykmeldingRetentionRepository>()
-            coEvery { repository.deleteBefore(any(), any()) } returns 0
+        test("counts and logs zero when no old sykmeldinger are deleted") {
+            val meterRegistry = SimpleMeterRegistry()
+            val repository = RecordingSykmeldingRetentionRepository(0)
 
-            DeleteOldSykmeldinger(repository, clock, metrics).execute()
+            DeleteOldSykmeldinger(repository, clock, SykmeldingRetentionMetrics(meterRegistry)).execute()
 
-            verify(exactly = 1) { metrics.countDeleted(0) }
+            repository.requests.shouldBeSingleton()
+            meterRegistry.deletedSykmeldinger() shouldBe 0.0
             assertCompletedCleanupLog(logOutput, deletedCount = 0)
         }
     })
+
+private fun MeterRegistry.deletedSykmeldinger(): Double = counter(SykmeldingRetentionMetrics.DELETED_OLD_SYKMELDINGER).count()
 
 private fun assertCompletedCleanupLog(logOutput: ByteArrayOutputStream, deletedCount: Int) {
     val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()

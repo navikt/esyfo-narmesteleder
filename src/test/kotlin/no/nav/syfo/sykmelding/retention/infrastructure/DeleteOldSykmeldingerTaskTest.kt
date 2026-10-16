@@ -4,8 +4,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.nav.syfo.sykmelding.retention.application.DeleteOldSykmeldinger
+import no.nav.syfo.sykmelding.retention.application.RecordingSykmeldingRetentionRepository
 import no.nav.syfo.sykmelding.retention.application.SykmeldingRetentionMetrics
-import no.nav.syfo.sykmelding.retention.application.SykmeldingRetentionRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -15,7 +15,7 @@ import kotlin.time.Duration.Companion.hours
 class DeleteOldSykmeldingerTaskTest :
     FunSpec({
         test("deletes old sykmeldinger when the task executes") {
-            val repository = RecordingRetentionRepository()
+            val repository = RecordingSykmeldingRetentionRepository()
             val task = DeleteOldSykmeldingerTask(
                 deleteOldSykmeldinger = DeleteOldSykmeldinger(
                     repository = repository,
@@ -27,15 +27,6 @@ class DeleteOldSykmeldingerTaskTest :
 
             task.execute()
 
-            repository.cutoffs shouldBe listOf(LocalDate.parse("2025-03-17"))
+            repository.requests.map { (cutoff, _) -> cutoff } shouldBe listOf(LocalDate.parse("2025-03-17"))
         }
     })
-
-private class RecordingRetentionRepository : SykmeldingRetentionRepository {
-    val cutoffs = mutableListOf<LocalDate>()
-
-    override suspend fun deleteBefore(cutoff: LocalDate, batchSize: Int): Int {
-        cutoffs += cutoff
-        return 0
-    }
-}

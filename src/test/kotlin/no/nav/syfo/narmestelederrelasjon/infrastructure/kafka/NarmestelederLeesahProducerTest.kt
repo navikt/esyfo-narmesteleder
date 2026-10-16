@@ -1,103 +1,64 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.clearAllMocks
-import io.mockk.coEvery
-import io.mockk.mockk
-import io.mockk.verify
-import org.apache.kafka.clients.producer.KafkaProducer
+import io.kotest.matchers.types.shouldBeInstanceOf
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederLeesahProducer.Companion.NARMESTELEDER_LEESAH_TOPIC
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.clients.producer.RecordMetadata
-import org.apache.kafka.common.TopicPartition
-import org.testcontainers.shaded.com.google.common.util.concurrent.SettableFuture
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import org.apache.kafka.common.serialization.StringSerializer
+import java.util.concurrent.ExecutionException
 
 class NarmestelederLeesahProducerTest :
-    DescribeSpec({
-        val kafkaProducerMock = mockk<KafkaProducer<String, String?>>()
-        val producer = NarmestelederLeesahProducer(kafkaProducerMock)
+    FunSpec({
+        fun fakeLeesahProducer(autoComplete: Boolean = true) = fakeKafkaProducer<String?>(StringSerializer(), autoComplete)
 
-        beforeTest {
-            clearAllMocks(currentThreadOnly = true)
-        }
+        context("sendLeesahBatch") {
+            test("publishes records with original key and value") {
+                val kafkaProducer = fakeLeesahProducer()
 
-        describe("sendLeesahBatch") {
-            it("publishes records with original key and value") {
-                val futureMock = mockk<SettableFuture<RecordMetadata>>()
-                coEvery { futureMock.get() } returns createRecordMetadata()
-                coEvery { kafkaProducerMock.send(any<ProducerRecord<String, String?>>()) } returns futureMock
-
-                producer.sendLeesahBatch(
-                    listOf(
-                        NarmestelederLeesahProducerRecord(
-                            key = "original-key",
-                            value = """{"field":"value"}""",
-                        )
-                    )
+                NarmestelederLeesahProducer(kafkaProducer).sendLeesahBatch(
+                    listOf(NarmestelederLeesahProducerRecord(key = "original-key", value = """{"field":"value"}"""))
                 )
 
-                verify(exactly = 1) {
-                    kafkaProducerMock.send(
-                        withArg {
-                            it.topic() shouldBe NarmestelederLeesahProducer.NARMESTELEDER_LEESAH_TOPIC
-                            it.key() shouldBe "original-key"
-                            it.value() shouldBe """{"field":"value"}"""
-                        }
-                    )
-                }
-                verify(exactly = 1) { futureMock.get() }
+                kafkaProducer.history() shouldBe listOf(
+                    ProducerRecord(NARMESTELEDER_LEESAH_TOPIC, "original-key", """{"field":"value"}""")
+                )
             }
 
-            it("publishes tombstones as null values") {
-                val futureMock = mockk<SettableFuture<RecordMetadata>>()
-                coEvery { futureMock.get() } returns createRecordMetadata()
-                coEvery { kafkaProducerMock.send(any<ProducerRecord<String, String?>>()) } returns futureMock
+            test("publishes tombstones as null values") {
+                val kafkaProducer = fakeLeesahProducer()
 
-                producer.sendLeesahBatch(
-                    listOf(
-                        NarmestelederLeesahProducerRecord(
-                            key = "tombstone-key",
-                            value = null,
-                        )
-                    )
+                NarmestelederLeesahProducer(kafkaProducer).sendLeesahBatch(
+                    listOf(NarmestelederLeesahProducerRecord(key = "tombstone-key", value = null))
                 )
 
-                verify(exactly = 1) {
-                    kafkaProducerMock.send(
-                        withArg {
-                            it.key() shouldBe "tombstone-key"
-                            it.value() shouldBe null
-                        }
-                    )
-                }
-                verify(exactly = 1) { futureMock.get() }
+                kafkaProducer.history() shouldBe listOf(
+                    ProducerRecord<String, String?>(NARMESTELEDER_LEESAH_TOPIC, "tombstone-key", null)
+                )
             }
 
-            it("propagates publish failures") {
-                coEvery { kafkaProducerMock.send(any<ProducerRecord<String, String?>>()) } throws IllegalStateException("boom")
+            test("propagates publish failures") {
+                val kafkaProducer = fakeLeesahProducer().apply { sendException = IllegalStateException("boom") }
 
                 shouldThrow<IllegalStateException> {
-                    producer.sendLeesahBatch(
-                        listOf(
-                            NarmestelederLeesahProducerRecord(
-                                key = "key",
-                                value = "value",
-                            )
-                        )
+                    NarmestelederLeesahProducer(kafkaProducer).sendLeesahBatch(
+                        listOf(NarmestelederLeesahProducerRecord(key = "key", value = "value"))
                     )
                 }
+            }
+
+            test("waits for the broker to acknowledge each record") {
+                val kafkaProducer = fakeLeesahProducer(autoComplete = false)
+                val rejection = IllegalStateException("rejected by broker")
+
+                val failure = kafkaProducer.rejectAcknowledgement(rejection) {
+                    NarmestelederLeesahProducer(kafkaProducer).sendLeesahBatch(
+                        listOf(NarmestelederLeesahProducerRecord(key = "key", value = "value"))
+                    )
+                }
+
+                failure.shouldBeInstanceOf<ExecutionException>().cause shouldBe rejection
             }
         }
     })
-
-private fun createRecordMetadata(): RecordMetadata = RecordMetadata(
-    TopicPartition("topic", 0),
-    0L,
-    1,
-    LocalDateTime.now().toEpochSecond(ZoneOffset.UTC),
-    5,
-    10,
-)

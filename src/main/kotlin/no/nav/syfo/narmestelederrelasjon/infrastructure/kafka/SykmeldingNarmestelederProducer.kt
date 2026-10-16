@@ -5,7 +5,7 @@ import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMP
 import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
 import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
 import no.nav.syfo.util.logger
-import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -15,7 +15,7 @@ interface SykmeldingNarmestelederProducer {
     fun sendSykmldingNLBrudd(nlAvbrutt: NlAvbrutt, source: NlResponseSource)
 }
 
-class KafkaSykmeldingNarmestelederProducer(private val producer: KafkaProducer<String, NarmestelederResponseKafkaMessage>) : SykmeldingNarmestelederProducer {
+class KafkaSykmeldingNarmestelederProducer(private val producer: Producer<String, NarmestelederResponseKafkaMessage>) : SykmeldingNarmestelederProducer {
     override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) {
         val kafkaMessage =
             NarmestelederRelationResponseKafkaMessage(

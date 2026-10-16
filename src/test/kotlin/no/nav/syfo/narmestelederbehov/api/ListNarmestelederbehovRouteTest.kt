@@ -47,6 +47,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.time.Instant
+import java.util.UUID
 
 class ListNarmestelederbehovRouteTest :
     FunSpec({

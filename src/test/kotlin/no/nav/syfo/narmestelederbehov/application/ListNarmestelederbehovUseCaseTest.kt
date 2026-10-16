@@ -19,6 +19,7 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
+import java.util.UUID
 
 class ListNarmestelederbehovUseCaseTest :
     FunSpec({

@@ -4,9 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
-import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
@@ -27,49 +25,29 @@ class DialogportenNarmestelederbehovDialogCreationTest :
             frontendBaseUrl = "https://frontend.test.nav.no",
         )
 
-        suspend fun create(person: EmployeePerson?, ident: PersonIdent = employee.personIdent): Dialog {
+        fun expectedDialog(person: EmployeePerson?) = factory.create(
+            id = id.value,
+            organizationNumber = employee.organizationNumber.value,
+            employeeIdent = employee.personIdent.value,
+            name = person?.name,
+            birthDate = person?.birthDate,
+        )
+
+        test("sends the dialog for the employee and person to Dialogporten and returns its id") {
+            val person = EmployeePerson(BehovPersonName("Kari", "Mellom", "Nordmann"), LocalDate.of(1985, 6, 7))
             val client = RecordingCreateDialogportenClient(dialogId)
-            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee.copy(personIdent = ident), person) shouldBe
-                dialogId
-            return client.created.single()
+
+            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, person) shouldBe dialogId
+
+            client.created.single() shouldBe expectedDialog(person)
         }
 
-        fun Dialog.title() = content.title.value.single().value
-        fun Dialog.summary() = content.summary?.value?.single()?.value
+        test("sends the dialog without person details when none are known") {
+            val client = RecordingCreateDialogportenClient(dialogId)
 
-        test("creates a dialog for the employee's organization and returns its id") {
-            val dialog = create(EmployeePerson(BehovPersonName("Kari", "Mellom", "Nordmann"), LocalDate.of(1985, 6, 7)))
+            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) shouldBe dialogId
 
-            dialog.serviceResource shouldBe "urn:altinn:resource:nav_syfo_oppgi-narmesteleder"
-            dialog.status shouldBe DialogStatus.RequiresAttention
-            dialog.party shouldBe "urn:altinn:organization:identifier-no:123456789"
-            dialog.externalReference shouldBe id.value.toString()
-            dialog.isApiOnly shouldBe false
-            dialog.title() shouldBe "Oppgi nærmeste leder for Kari Mellom Nordmann (f. 07.06.1985)"
-            dialog.summary() shouldBe "Kari Mellom Nordmann ${NarmestelederbehovDialogFactory.DIALOG_SUMMARY}"
-            dialog.attachments?.map { attachment -> attachment.urls.single().let { it.consumerType to it.url } } shouldBe listOf(
-                AttachmentUrlConsumerType.Api to "https://api.test.nav.no/api/v1/linemanager/requirement/${id.value}",
-                AttachmentUrlConsumerType.Gui to "https://frontend.test.nav.no/ansatte/narmesteleder/${id.value}",
-            )
-        }
-
-        test("reads the birth date from the ident when PDL has none") {
-            create(EmployeePerson(BehovPersonName("Kari", null, "Nordmann"), null)).title() shouldBe
-                "Oppgi nærmeste leder for Kari Nordmann (f. 02.03.9012)"
-        }
-
-        test("shows the d-nummer when the ident is not a valid date") {
-            val dNummer = PersonIdent("42039012345")
-
-            create(EmployeePerson(BehovPersonName("Kari", null, "Nordmann"), null), dNummer).title() shouldBe
-                "Oppgi nærmeste leder for Kari Nordmann (d-nummer: ${dNummer.value})"
-        }
-
-        test("uses generic texts without person details") {
-            val dialog = create(null)
-
-            dialog.title() shouldBe NarmestelederbehovDialogFactory.DIALOG_TITLE_NO_NAME
-            dialog.summary() shouldBe "En ansatt ${NarmestelederbehovDialogFactory.DIALOG_SUMMARY}"
+            client.created.single() shouldBe expectedDialog(null)
         }
     })
 

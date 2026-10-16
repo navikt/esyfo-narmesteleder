@@ -27,7 +27,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class AltinnAuthorizationClientTest :
     FunSpec({
-        listOf(Decision.Permit, Decision.Deny, Decision.NotApplicable).forEach { decision ->
+        listOf(AuthorizationDecision.Permit, AuthorizationDecision.Deny, AuthorizationDecision.NotApplicable).forEach { decision ->
             test("returns $decision from the external PDP response") {
                 upstreamHttpClient(respondWithSystemToken, { request ->
                     if (request.url.encodedPath.contains("exchange")) {

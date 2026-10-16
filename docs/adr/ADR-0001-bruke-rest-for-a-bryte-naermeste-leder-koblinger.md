@@ -2,7 +2,8 @@
 
 **Dato:** 2026-08-21  
 **Status:** Godkjent  
-**Beslutningstakere:** Utviklerne i team-esyfo
+**Beslutningstakere:** Utviklerne i team-esyfo  
+**Revidert:** 2026-10-13 med autentisering via TokenX og Maskinporten i stedet for Entra ID (navikt/dinesykmeldte-backend#756)
 
 ## Beslutning
 
@@ -79,15 +80,15 @@ Utviklerne drøftet alternativene 2026-08-21 og valgte REST.
 ### Sikkerhet og personvern
 
 - **Dataklassifisering:** Forespørselen inneholder personopplysninger og skal behandles som fortrolig.
-- **Autentisering:** Interne konsumenter bruker Entra ID (Azure AD) maskin-til-maskin-autentisering. `esyfo-narmesteleder` validerer tokenet via Texas.
-- **Autorisasjon:** Bare navngitte applikasjoner får tilgang. Hver konsument må legges til som forhåndsautorisert klient og i inngående `accessPolicy`. API-et må i tillegg kontrollere at konsumenten har lov til å utføre bruddhandlingen for den aktuelle koblingen.
+- **Autentisering:** Konsumenter som handler på vegne av en innlogget bruker, veksler brukerens token med TokenX (on-behalf-of). LPS-er bruker Maskinporten. `esyfo-narmesteleder` validerer tokenet via Texas og godtar ikke Entra ID for brudd. En konsument som skal bryte koblinger uten en innlogget bruker, krever en ny beslutning om autentisering.
+- **Autorisasjon:** Bare applikasjoner i inngående `accessPolicy` kan veksle til et TokenX-token for `esyfo-narmesteleder`. API-et kontrollerer i tillegg at brukeren er part i koblingen som leder eller arbeidstaker, eller at brukeren har organisasjonstilgang for virksomheten i koblingen. For LPS-er kontrolleres organisasjonstilgangen til systembrukeren.
 - **Dataminimering:** API-et skal bare motta identifikatorene og begrunnelsen som er nødvendig for å finne og bryte riktig kobling.
 - **Logging:** Fødselsnummer, token og andre personopplysninger skal ikke logges. Logger skal bruke tekniske korrelasjons-ID-er.
-- **Auditlogging:** Behovet for å dokumentere hvem som brøt koblingen, og hvordan dette skal gjøres uten personopplysninger i ordinære logger, må avklares før implementering.
+- **Auditlogging:** Behovet for å dokumentere hvem som brøt koblingen, og hvordan dette skal gjøres uten personopplysninger i ordinære logger, må avklares. Det stopper ikke migreringen av konsumentene. Statusen på koblingen viser fortsatt hvilken part som brøt den, og med TokenX får `esyfo-narmesteleder` den verifiserte identiteten til brukeren.
 
 ### Plattform
 
-- **Nais-konfigurasjon:** Løsningen krever inngående `accessPolicy` og forhåndsautorisasjon for `dinesykmeldte-backend` og `ditt-sykefravaer`. Konsumentene trenger tilsvarende utgående tilgang.
+- **Nais-konfigurasjon:** Løsningen krever TokenX og inngående `accessPolicy` for `dinesykmeldte-backend` og `ditt-sykefravaer`. Konsumentene trenger tilsvarende utgående tilgang.
 - **Infrastruktur:** Beslutningen oppretter ikke et nytt Kafka-topic eller andre nye plattformressurser.
 - **Ressursbehov:** Den forventede trafikken håndteres av eksisterende applikasjon og skaleringsoppsett. Ressursbruken må følges under utrulling.
 - **Observerbarhet:** Tjenesten skal måle antall mottatte, godkjente og avviste forespørsler samt feil og svartid per konsument, uten personopplysninger.
@@ -136,7 +137,7 @@ Utviklerne drøftet alternativene 2026-08-21 og valgte REST.
 
 - [ ] Definer og publiser REST-kontrakten, inkludert idempotens og feilkoder. Eier: team-esyfo.
 - [ ] Implementer eller tilpass endepunktet og nødvendige valideringsregler. Eier: team-esyfo.
-- [ ] Legg til Entra ID-forhåndsautorisasjon og inngående `accessPolicy` for hver konsument. Eier: team-esyfo.
+- [ ] Legg til inngående `accessPolicy` for hver konsument. Eier: team-esyfo.
 - [ ] Legg til utgående `accessPolicy` og sikker gjentakelseshåndtering i hver konsument. Eier: konsumentteamene.
 - [ ] Legg til kontraktstester og tester for autorisasjon, idempotens og feilhåndtering. Eier: team-esyfo og konsumentteamene.
 - [ ] Avklar krav til auditlogging og implementer nødvendig sporbarhet. Eier: team-esyfo.

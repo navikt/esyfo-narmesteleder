@@ -32,7 +32,7 @@ import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
@@ -92,7 +92,7 @@ class AltinnOrganizationAccessLoggingContractTest :
         }
 
         test("logs one rejection without a fallback decision when the system user is outside the hierarchy") {
-            val fixture = LoggingFixture(Decision.Deny, parentOrgNumber = UNRELATED_ORG)
+            val fixture = LoggingFixture(AuthorizationDecision.Deny, parentOrgNumber = UNRELATED_ORG)
 
             fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
 
@@ -109,7 +109,7 @@ class AltinnOrganizationAccessLoggingContractTest :
         }
 
         test("logs one rejection with the fallback decision when the system user is in the hierarchy") {
-            val fixture = LoggingFixture(Decision.NotApplicable, Decision.Deny, parentOrgNumber = SYSTEM_USER_ORG)
+            val fixture = LoggingFixture(AuthorizationDecision.NotApplicable, AuthorizationDecision.Deny, parentOrgNumber = SYSTEM_USER_ORG)
 
             fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
 
@@ -119,7 +119,7 @@ class AltinnOrganizationAccessLoggingContractTest :
         }
 
         test("logs nothing when the fallback grants access") {
-            val fixture = LoggingFixture(Decision.Deny, Decision.Permit, parentOrgNumber = SYSTEM_USER_ORG)
+            val fixture = LoggingFixture(AuthorizationDecision.Deny, AuthorizationDecision.Permit, parentOrgNumber = SYSTEM_USER_ORG)
 
             fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
 
@@ -127,7 +127,7 @@ class AltinnOrganizationAccessLoggingContractTest :
         }
 
         test("logs nothing when a personnel manager is denied") {
-            val fixture = LoggingFixture(Decision.Deny, parentOrgNumber = UNRELATED_ORG)
+            val fixture = LoggingFixture(AuthorizationDecision.Deny, parentOrgNumber = UNRELATED_ORG)
 
             fixture.access.evaluate(
                 OrganizationAccessSubject.PersonnelManager(PersonIdent(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
@@ -138,7 +138,7 @@ class AltinnOrganizationAccessLoggingContractTest :
         }
         test("logs nothing when the personnel manager lookup is unavailable") {
             val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.REQUEST, null, IllegalStateException("Synthetic failure"))
-            val fixture = LoggingFixture(Decision.Deny, parentOrgNumber = UNRELATED_ORG, altinnFailure = failure)
+            val fixture = LoggingFixture(AuthorizationDecision.Deny, parentOrgNumber = UNRELATED_ORG, altinnFailure = failure)
             val result = fixture.access.evaluate(
                 OrganizationAccessSubject.PersonnelManager(PersonIdent(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
                 OrganizationNumber(REQUESTED_ORG),
@@ -147,14 +147,14 @@ class AltinnOrganizationAccessLoggingContractTest :
             result.shouldBeInstanceOf<OrganizationAccessResult.Unavailable>().failure shouldBeSameInstanceAs failure
             capture.records.shouldBeEmpty()
         }
-        Decision.entries.filter { it != Decision.Indeterminate }.forEach { directDecision ->
+        AuthorizationDecision.entries.filter { it != AuthorizationDecision.Indeterminate }.forEach { directDecision ->
             test("direct $directDecision outside the hierarchy never checks a fallback decision") {
                 val fixture = LoggingFixture(directDecision, parentOrgNumber = UNRELATED_ORG)
 
                 val result = fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
 
                 fixture.checkedOrganizations shouldBe listOf(REQUESTED_ORG)
-                if (directDecision == Decision.Permit) {
+                if (directDecision == AuthorizationDecision.Permit) {
                     result.shouldBeInstanceOf<OrganizationAccessResult.Granted>()
                     capture.records.shouldBeEmpty()
                 } else {
@@ -165,18 +165,18 @@ class AltinnOrganizationAccessLoggingContractTest :
                 }
             }
 
-            Decision.entries.filter { it != Decision.Indeterminate }.forEach { fallbackDecision ->
+            AuthorizationDecision.entries.filter { it != AuthorizationDecision.Indeterminate }.forEach { fallbackDecision ->
                 test("direct $directDecision and hierarchy $fallbackDecision keep the authorization outcome") {
                     val fixture = LoggingFixture(directDecision, fallbackDecision, parentOrgNumber = SYSTEM_USER_ORG)
 
                     val result = fixture.access.evaluate(systemUser(), OrganizationNumber(REQUESTED_ORG))
 
-                    fixture.checkedOrganizations shouldBe if (directDecision == Decision.Permit) {
+                    fixture.checkedOrganizations shouldBe if (directDecision == AuthorizationDecision.Permit) {
                         listOf(REQUESTED_ORG)
                     } else {
                         listOf(REQUESTED_ORG, SYSTEM_USER_ORG)
                     }
-                    if (directDecision == Decision.Permit || fallbackDecision == Decision.Permit) {
+                    if (directDecision == AuthorizationDecision.Permit || fallbackDecision == AuthorizationDecision.Permit) {
                         result.shouldBeInstanceOf<OrganizationAccessResult.Granted>()
                         capture.records.shouldBeEmpty()
                     } else {
@@ -198,7 +198,7 @@ class AltinnOrganizationAccessLoggingContractTest :
             listOf(REQUESTED_ORG, SYSTEM_USER_ORG).forEach { failingOrganization ->
                 test("returns original ${failure.upstream} ${failure.status} failure for $failingOrganization without logging a rejection") {
                     val fixture = LoggingFixture(
-                        Decision.Deny,
+                        AuthorizationDecision.Deny,
                         parentOrgNumber = SYSTEM_USER_ORG,
                         pdpFailures = mapOf(failingOrganization to failure),
                     )
@@ -212,7 +212,7 @@ class AltinnOrganizationAccessLoggingContractTest :
             }
         }
 
-        Decision.entries.filter { it != Decision.Permit && it != Decision.Indeterminate }.forEach { directDecision ->
+        AuthorizationDecision.entries.filter { it != AuthorizationDecision.Permit && it != AuthorizationDecision.Indeterminate }.forEach { directDecision ->
             test("Ereg failure after direct $directDecision stops before fallback without logging a rejection") {
                 val failure = UpstreamFailure(
                     UpstreamName("ereg"),
@@ -222,7 +222,7 @@ class AltinnOrganizationAccessLoggingContractTest :
                 )
                 val fixture = LoggingFixture(
                     directDecision,
-                    fallbackDecision = Decision.Permit,
+                    fallbackDecision = AuthorizationDecision.Permit,
                     parentOrgNumber = SYSTEM_USER_ORG,
                     eregFailure = failure,
                 )
@@ -237,7 +237,7 @@ class AltinnOrganizationAccessLoggingContractTest :
 
         test("propagates cancellation without logging a rejection") {
             val fixture = LoggingFixture(
-                Decision.Deny,
+                AuthorizationDecision.Deny,
                 parentOrgNumber = SYSTEM_USER_ORG,
                 cancelled = CancellationException("Request cancelled"),
             )
@@ -251,7 +251,7 @@ class AltinnOrganizationAccessLoggingContractTest :
 
         test("keeps an existing trace id without synthesizing a new one") {
             val traceId = "0123456789abcdef0123456789abcdef"
-            val fixture = LoggingFixture(Decision.Deny, parentOrgNumber = UNRELATED_ORG)
+            val fixture = LoggingFixture(AuthorizationDecision.Deny, parentOrgNumber = UNRELATED_ORG)
 
             MDC.put("trace_id", traceId)
             try {
@@ -272,8 +272,8 @@ private const val PERSON_IDENT = "12345678902"
 private const val ACCESS_TOKEN = "privacy-canary-token"
 
 private class LoggingFixture(
-    directDecision: Decision,
-    fallbackDecision: Decision = Decision.Deny,
+    directDecision: AuthorizationDecision,
+    fallbackDecision: AuthorizationDecision = AuthorizationDecision.Deny,
     parentOrgNumber: String,
     pdpFailures: Map<String, UpstreamFailure> = emptyMap(),
     cancelled: CancellationException? = null,
@@ -283,7 +283,7 @@ private class LoggingFixture(
     val checkedOrganizations = mutableListOf<String>()
     private val decisions = mapOf(REQUESTED_ORG to directDecision, SYSTEM_USER_ORG to fallbackDecision)
     private val pdp = object : AltinnAuthorizationClient {
-        override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): UpstreamResult<Decision> {
+        override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): UpstreamResult<AuthorizationDecision> {
             val organization = orgNumberSet.single()
             checkedOrganizations += organization
             cancelled?.let { throw it }

@@ -45,9 +45,8 @@ private val getPersonQuery =
         .trimIndent()
 
 interface PdlClient {
-    suspend fun getSystemToken(): String
     suspend fun getPerson(ident: String): UpstreamResult<PdlPerson?>
-    suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse
+    suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse>
 }
 
 class HttpPdlClient(
@@ -63,11 +62,6 @@ class HttpPdlClient(
                 ?: throw IllegalStateException("Could not load hentPersonBolk.graphql")
     }
 
-    override suspend fun getSystemToken(): String = texasHttpClient.systemToken(
-        "azuread",
-        TexasHttpClient.getTarget(scope)
-    ).accessToken
-
     override suspend fun getPerson(ident: String): UpstreamResult<PdlPerson?> {
         val request = GetPersonRequest(query = getPersonQuery, variables = GetPersonVariables(ident = ident))
         val response = postQuery<GetPersonResponse>(request).getOrElse { return UpstreamResult.Failure(it) }
@@ -80,30 +74,14 @@ class HttpPdlClient(
         }
     }
 
-    override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse {
-        val request = GetPersonBolkRequest(
-            query = getPersonBolkQuery,
-            variables = GetPersonBolkVariables(identer = fnrs),
-        )
-        try {
-            val response = httpClient
-                .post(pdlBaseUrl) {
-                    setBody(request)
-                    bearerAuth(token)
-                    header(PDL_BEHANDLINGSNUMMER_HEADER, BEHANDLINGSNUMMER_NARMESTELEDER)
-                    header(HttpHeaders.ContentType, "application/json")
-                }
-                .body<GetPersonBolkResponse>()
-            return response
-        } catch (e: Exception) {
-            when (e) {
-                is CancellationException -> throw e
-                is ResponseException -> {
-                    throw PdlRequestException("Error on getPersonBolk query to PDL", e)
-                }
+    override suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse> {
+        val request = GetPersonBolkRequest(query = getPersonBolkQuery, variables = GetPersonBolkVariables(identer = idents))
+        val response = postQuery<GetPersonBolkResponse>(request).getOrElse { return UpstreamResult.Failure(it) }
 
-                else -> throw PdlRequestException("Error when calling PDL", e)
-            }
+        return if (response.data?.hentPersonBolk != null) {
+            UpstreamResult.Success(response)
+        } else {
+            graphQlFailure(response.errors.orEmpty().map { it.toUpstreamError() }.ifEmpty { listOf(INCOMPLETE_RESPONSE) })
         }
     }
 
@@ -153,13 +131,3 @@ private fun GetPersonResponse.toPdlPerson(): UpstreamResult<PdlPerson?> {
         graphQlFailure(listOf(INCOMPLETE_RESPONSE))
     }
 }
-
-private const val MAX_ERROR_MESSAGE_LENGTH = 200
-
-// PDL documents that messages on its own errors (those with extensions.code) contain no personal data.
-private fun ResponseError.toUpstreamError() = UpstreamError(
-    code = extensions?.code ?: "unknown",
-    detail = extensions?.id,
-    path = path?.joinToString("."),
-    message = message?.takeIf { extensions?.code != null }?.take(MAX_ERROR_MESSAGE_LENGTH),
-)

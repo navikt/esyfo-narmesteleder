@@ -24,7 +24,7 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
@@ -206,10 +206,10 @@ private class RecordingAltinnAuthorizationClient : AltinnAuthorizationClient {
         permitted += orgNumber
     }
 
-    override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): UpstreamResult<Decision> {
+    override suspend fun authorize(user: User, orgNumberSet: Set<String>, resource: String): UpstreamResult<AuthorizationDecision> {
         requestedOrganizations += orgNumberSet
         failures[orgNumberSet.single()]?.let { return UpstreamResult.Failure(it) }
-        val decision = if (orgNumberSet.all { it in permitted }) Decision.Permit else Decision.Deny
+        val decision = if (orgNumberSet.all { it in permitted }) AuthorizationDecision.Permit else AuthorizationDecision.Deny
         return UpstreamResult.Success(decision)
     }
 }

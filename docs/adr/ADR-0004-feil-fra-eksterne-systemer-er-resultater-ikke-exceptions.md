@@ -114,7 +114,7 @@ Mønsteret har seks deler:
   igjen. Ellers hentes et nytt Maskinporten-token og veksles på nytt.
   Refresh og lagring av scope er fjernet.
 
-  PDP-klienten returnerer `UpstreamResult<Decision>`. HTTP-feil og ugyldige,
+  PDP-klienten returnerer `UpstreamResult<AuthorizationDecision>`. HTTP-feil og ugyldige,
   tomme eller flertydige svar gir `upstream = altinn-pdp`, `stage = RESPONSE`
   og status. Timeout og IO-feil gir `stage = REQUEST` uten status.
   Bare ett entydig `Permit` gir tilgang. `Indeterminate` gir
@@ -172,16 +172,20 @@ Mønsteret har seks deler:
 ## Kontekst
 
 #642 viste at de delte klientene håndterer feil ulikt. Noen pakker bare inn
-4xx, andre bare `ResponseException`, og PDL pakker ikke inn tokenfeil. Fordi
-feilen er en exception, er det `catch`-blokker langt unna som avgjør hva API-et
+4xx, andre bare `ResponseException`, og PDL pakket ikke inn tokenfeil. PDL
+returnerer nå `UpstreamResult` for både enkelt- og bolkoppslag og henter token
+med `azureAdSystemToken(scope)` i hvert kall. Når feilen er en exception,
+er det `catch`-blokker langt unna som avgjør hva API-et
 svarer. Ved 5xx, timeout eller IO-feil svarer API-et derfor 500
 `INTERNAL_SERVER_ERROR` i stedet for `UPSTREAM_SERVICE_UNAVAILABLE`. Adapteren
 for Dinesykmeldte fanger ingen feil. Ingenting i typesystemet viser at et kall
 kan feile, så det er lett å glemme.
 
-PDL svarer HTTP 200 også når oppslaget feiler, og `PdlClient` tolker i dag alle
-tomme svar som at personen ikke finnes. Hvis PDL avviser kallet eller feiler
-internt, tror kalleren at personen mangler.
+PDL svarer HTTP 200 også når oppslaget feiler. Tidligere tolket `PdlClient` alle
+tomme svar som at personen ikke finnes. Nå gir bolkoppslaget `Failure` når
+`hentPersonBolk` mangler, med feilene i `errors`. Når `hentPersonBolk` finnes,
+gir det `Success` selv med toppnivåfeil; `PdlBulkPersonLookup` logger disse og
+tolker fortsatt `code` per ident. En feilet bolk logges og hoppes over.
 
 Jobben i #473 kaller Aareg for hver relasjon og kan bryte relasjoner i
 produksjon (ADR-0003). Der er forskjellen mellom «ingen arbeidsforhold» og
@@ -244,8 +248,11 @@ exceptions en varig del av mønsteret bare for å bære loggfelter.
 - Hver klient har tester for 4xx, 5xx, timeout og tokenfeil.
 - `UpstreamFailure` og exception-meldinger inneholder ikke fødselsnummer eller
   andre personopplysninger.
-- `AaregClientException`, `DinesykmeldteClientException`, `PdlRequestException`
-  og `PdlResourceNotFoundException` slettes.
+- `AaregClientException` og `DinesykmeldteClientException` slettes.
+  `PdlRequestException`, `PdlException` og `PdlResourceNotFoundException` er
+  slettet. `IncompleteBulkPersonLookupException` tilhører Leesah-kanten i
+  `narmestelederrelasjon/infrastructure/kafka` og signaliserer at bolkoppslaget
+  mangler resultater, slik at konsumenten prøver igjen.
 - Mønsteret innføres klient for klient. De fire delte klientene i `integration`
   og token-steget kommer først, deretter Altinn-klientene i
   `organisasjonstilgang`, Dialogporten og token-vekslingen hos Altinn (#681).

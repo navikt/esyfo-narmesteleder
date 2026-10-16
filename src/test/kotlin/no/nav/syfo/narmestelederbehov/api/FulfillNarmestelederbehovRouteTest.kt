@@ -58,7 +58,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Decision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -200,7 +200,7 @@ class FulfillNarmestelederbehovRouteTest :
         test("PUT /requirement/{id} preserves 400 ORGANIZATION_NOT_FOUND when Ereg returns no organization") {
             withPutApplication { fixture ->
                 val id = fixture.seed()
-                coEvery { fixture.pdp.authorize(any(), any(), any()) } returns UpstreamResult.Success(Decision.Deny)
+                coEvery { fixture.pdp.authorize(any(), any(), any()) } returns UpstreamResult.Success(AuthorizationDecision.Deny)
                 fixture.ereg.organisasjoner.clear()
                 val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
@@ -221,7 +221,7 @@ class FulfillNarmestelederbehovRouteTest :
                     scope = MASKINPORTEN_NL_SCOPE,
                 )
                 coEvery { fixture.pdp.authorize(any(), any(), any()) } returns
-                    UpstreamResult.Success(Decision.Deny)
+                    UpstreamResult.Success(AuthorizationDecision.Deny)
                 fixture.ereg.organisasjoner[fixture.orgNumber] = Organisasjon(
                     organisasjonsnummer = fixture.orgNumber,
                     inngaarIJuridiskEnheter = emptyList(),
@@ -316,7 +316,7 @@ private class PutFixture {
             scope = MASKINPORTEN_NL_SCOPE,
         )
         coEvery { pdp.authorize(any(), any(), any()) } returns
-            UpstreamResult.Success(Decision.Permit)
+            UpstreamResult.Success(AuthorizationDecision.Permit)
     }
 
     fun seed(): UUID = repository.seed(employeeIdent, orgNumber)

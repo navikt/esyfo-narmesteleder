@@ -18,6 +18,8 @@ class MicrometerEmploymentCheckMetricsTest :
             metrics.recordCheck(ClaimedCheckOutcome.WOULD_REVOKE)
             metrics.recordCheck(ClaimedCheckOutcome.WOULD_REVOKE)
             metrics.recordCheck(ClaimedCheckOutcome.TIMEOUT)
+            metrics.recordCheck(ClaimedCheckOutcome.REVOKED)
+            metrics.recordCheck(ClaimedCheckOutcome.STALE)
             metrics.refresh(EmploymentCheckStats(onlyShadowUnder31Days = 1, onlyShadow31DaysOrMore = 2, due = 3))
 
             ClaimedCheckOutcome.entries.associateWith {
@@ -25,6 +27,8 @@ class MicrometerEmploymentCheckMetricsTest :
             } shouldBe mapOf(
                 ClaimedCheckOutcome.VALID to 0.0,
                 ClaimedCheckOutcome.WOULD_REVOKE to 2.0,
+                ClaimedCheckOutcome.REVOKED to 1.0,
+                ClaimedCheckOutcome.STALE to 1.0,
                 ClaimedCheckOutcome.FAILED to 0.0,
                 ClaimedCheckOutcome.CLAIM_LOST to 0.0,
                 ClaimedCheckOutcome.TIMEOUT to 1.0,

@@ -59,7 +59,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
                 }
             },
             organizationAccess = { _, _ -> access },
-            publisher = { error("Publisher must not be called") },
+            publisher = RecordingRevocationPublisher { error("Publisher must not be called") },
         ).execute(id, subject)
 
         beforeSpec {

@@ -8,4 +8,5 @@ enum class NlResponseSource(val source: String) {
     ARBEIDSTAGER_REVOKE("esyo-narmesteleder.arbeidstager.deaktivert"),
     NARMESTELEDER_REVOKE("esyo-narmesteleder.leder.deaktivert"),
     ARBEIDSTAGER_SYKMELDING_REVOKE("esyo-narmesteleder.arbeidstager.sykmelding.deaktivert"),
+    ARBEIDSFORHOLD_REVOKE("narmesteleder-arbeidsforhold"),
 }

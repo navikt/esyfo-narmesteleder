@@ -110,8 +110,10 @@ logger.logEvent(dialogFailed, details, cause = exception)
 Events never contain person identifiers, names, contact details, organization
 numbers, tokens, request or response bodies, or exception messages. Correlation IDs,
 bounded enum values, HTTP statuses and allowlisted SQL states are fine. PDL
-`errors[]` may be logged as `pdl_errors` (PDL documentation D.2–D.3), but never
-response `data` or request variables.
+`errors[]` may be logged as `pdl_errors` with `code`, `detail`, dot-joined `path` and
+`message`, the same shape as `upstream_errors`. `message` is included (max 200
+characters) only for PDL-specific errors with `extensions.code`; PDL documents that
+these contain no personal data. It never contains response `data` or request variables.
 
 ## Testing
 

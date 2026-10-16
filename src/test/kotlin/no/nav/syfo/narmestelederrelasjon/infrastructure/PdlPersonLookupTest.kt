@@ -47,6 +47,5 @@ class PdlPersonLookupTest :
 
 private class StubPdlClient(private val result: UpstreamResult<PdlPerson?>) : PdlClient {
     override suspend fun getPerson(ident: String) = result
-    override suspend fun getSystemToken(): String = error("Not used")
-    override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse = error("Not used")
+    override suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse> = error("Not used")
 }

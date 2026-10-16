@@ -7,5 +7,5 @@ class FakeAltinnAuthorizationClient : AltinnAuthorizationClient {
         user: User,
         orgNumberSet: Set<String>,
         resource: String
-    ): UpstreamResult<Decision> = UpstreamResult.Success(Decision.Permit)
+    ): UpstreamResult<AuthorizationDecision> = UpstreamResult.Success(AuthorizationDecision.Permit)
 }

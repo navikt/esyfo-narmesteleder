@@ -162,7 +162,7 @@ team-sykmelding until the takeover is complete.
 
 ### Comparison with team sykmelding's employment revocations
 
-When `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` is set (dev and prod), every valid
+When `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` is set (prod), every valid
 `DEAKTIVERT_ARBEIDSFORHOLD` record is noted after the register transaction commits,
 and our shadow check of that relation runs ahead of other checks (#473).
 `syfo_narmesteleder_employment_check_comparison_total` counts agreement and
@@ -178,8 +178,14 @@ day left for the comparison and any retries.
 A comparison is lost, never wrong, when our own check of the relation runs or
 completes between the source's revocation and our ingestion of it.
 
-Disable the flag before we publish revocations ourselves. Otherwise our own
-revocations return here as `DEAKTIVERT_ARBEIDSFORHOLD` and are counted as theirs.
+Startup fails if `EMPLOYMENT_CHECK_REVOKE_ENABLED` and
+`EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` are both enabled: our own revocations
+return here as `DEAKTIVERT_ARBEIDSFORHOLD` and would be counted as theirs.
+Live mode freezes comparison (enabled in dev, with observation disabled).
+
+`NlAvbrutt` deactivates all active relations for orgnr+fnr. A new relation
+established between lookup and publish could therefore be hit (R2). The
+reference app has the same race; it is documented, not fixed here.
 
 ### What is validated
 

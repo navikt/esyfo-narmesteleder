@@ -80,7 +80,7 @@ class ExposedEmploymentReconciliationRepository(
         }
     }
 
-    override suspend fun claimDue(limit: Int, lease: Duration, now: Instant): List<ClaimedEmploymentCheck> {
+    override suspend fun claimDue(limit: Int, lease: Duration, now: Instant, revokeEnabled: Boolean): List<ClaimedEmploymentCheck> {
         require(limit > 0) { "limit must be greater than zero" }
         require(lease.isPositive() && lease.isFinite()) { "lease must be positive and finite" }
         val leaseUntil = now.plus(lease.toJavaDuration()).atOffset(ZoneOffset.UTC)
@@ -88,6 +88,16 @@ class ExposedEmploymentReconciliationRepository(
             suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
                 val token = UUID.randomUUID()
                 val pending = comparisonPending(now)
+                val active = NarmestelederTable.aktivTom.isNull()
+                val eligibleRelation = if (revokeEnabled) active else active or pending
+                val due = EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC)
+                val readyDue = (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY) and
+                    if (revokeEnabled) {
+                        due or (EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE)
+                    } else {
+                        due
+                    }
+                val expiredClaim = (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and due
                 val claimed = EmploymentReconciliationTable.join(
                     otherTable = NarmestelederTable,
                     joinType = JoinType.INNER,
@@ -100,13 +110,7 @@ class ExposedEmploymentReconciliationRepository(
                     EmploymentReconciliationTable.sourceRevocationObservedAt,
                     pending,
                 ).where {
-                    // The source's revocation has ended the relation, but the comparison still needs a check.
-                    (NarmestelederTable.aktivTom.isNull() or pending) and
-                        (
-                            (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY) or
-                                (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED)
-                            ) and
-                        (EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC))
+                    eligibleRelation and (readyDue or expiredClaim)
                 }.orderBy(
                     EmploymentReconciliationTable.nextCheckAt to SortOrder.ASC,
                     EmploymentReconciliationTable.narmestelederId to SortOrder.ASC,
@@ -125,7 +129,7 @@ class ExposedEmploymentReconciliationRepository(
                             claimToken = token,
                             claimedAt = now,
                             sourceRevokedAt = row[EmploymentReconciliationTable.sourceRevocationObservedAt]
-                                .takeIf { row[pending] }
+                                .takeIf { !revokeEnabled && row[pending] }
                                 ?.toInstant(),
                         )
                     }

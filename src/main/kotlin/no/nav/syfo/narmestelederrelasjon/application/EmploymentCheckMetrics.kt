@@ -10,7 +10,7 @@ interface EmploymentCheckMetrics {
 }
 
 /** What happened to one claimed check. Unlike [EmploymentCheckOutcome], it also covers checks that were not recorded. */
-enum class ClaimedCheckOutcome { VALID, WOULD_REVOKE, FAILED, CLAIM_LOST, TIMEOUT }
+enum class ClaimedCheckOutcome { VALID, WOULD_REVOKE, REVOKED, STALE, FAILED, CLAIM_LOST, TIMEOUT }
 
 /** Whether the shadow check agrees with team sykmelding's employment-ended revocation («samsvar» or «bare dem» in #473). */
 enum class EmploymentComparisonResult { AGREE, DISAGREE }

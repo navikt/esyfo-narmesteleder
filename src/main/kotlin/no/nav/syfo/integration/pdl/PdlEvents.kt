@@ -1,6 +1,7 @@
 package no.nav.syfo.integration.pdl
 
 import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.platform.upstream.UpstreamError
 import org.slf4j.event.Level
 
 internal enum class PdlLookupDegradedReason {
@@ -10,7 +11,7 @@ internal enum class PdlLookupDegradedReason {
 
 internal data class PdlLookupDegradedDetails(
     val reason: PdlLookupDegradedReason,
-    val pdlErrors: List<ResponseError>? = null,
+    val pdlErrors: List<UpstreamError>? = null,
     val errorCount: Int? = null,
     val recordCount: Int? = null,
 )
@@ -22,7 +23,9 @@ internal val pdlLookupDegraded = applicationEvent<PdlLookupDegradedDetails>(
     upstream = "pdl",
     fields = mapOf(
         "reason" to { it.reason.name },
-        "pdl_errors" to { it.pdlErrors },
+        "pdl_errors" to { details ->
+            details.pdlErrors?.map { mapOf("code" to it.code, "detail" to it.detail, "path" to it.path, "message" to it.message) }
+        },
         "error_count" to { it.errorCount },
         "record_count" to { it.recordCount },
     ),

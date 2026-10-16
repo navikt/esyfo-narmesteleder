@@ -14,6 +14,23 @@ internal val employmentCheckFailed = applicationEvent<UUID>(
     fields = mapOf("narmesteleder_id" to { it.toString() }),
 )
 
+internal val employmentCheckRevocationFailed = applicationEvent<UUID>(
+    name = "employment_check_revocation_failed",
+    level = Level.WARN,
+    message = "Employment-ended revocation publishing failed; the relation will be checked again",
+    operation = "check_narmestelederrelasjon_employment",
+    upstream = "kafka",
+    fields = mapOf("narmesteleder_id" to { it.toString() }),
+)
+
+internal val employmentCheckRevocationClaimLost = Event<UUID>(
+    name = "employment_check_revocation_claim_lost",
+    level = Level.WARN,
+    message = "Employment-ended revocation was published but the claim was lost before completion",
+    operation = "check_narmestelederrelasjon_employment",
+    fields = mapOf("narmesteleder_id" to { it.toString() }),
+)
+
 internal val employmentCheckComparisonMismatch = Event<UUID>(
     name = "employment_check_comparison_mismatch",
     level = Level.WARN,

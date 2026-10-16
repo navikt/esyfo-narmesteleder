@@ -22,6 +22,7 @@ import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrgani
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.OrganizationNameResult
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
+import no.nav.syfo.narmestelederrelasjon.application.RecordingRevocationPublisher
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -45,7 +46,8 @@ internal class NarmestelederrelasjonRouteFixture {
     val revokeNarmestelederrelasjon = RevokeNarmestelederrelasjonUseCase(
         repository,
         organizationAccess,
-    ) { command -> published.add(command) }
+        RecordingRevocationPublisher { command -> published.add(command) },
+    )
     val getNarmestelederrelasjon = GetNarmestelederrelasjonUseCase(
         repository,
         organizationAccess,

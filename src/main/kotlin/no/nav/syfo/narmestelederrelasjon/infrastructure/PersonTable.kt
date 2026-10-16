@@ -2,7 +2,9 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
 import org.jetbrains.exposed.v1.core.java.javaUUID
+import org.jetbrains.exposed.v1.javatime.CurrentTimestampWithTimeZone
 import org.jetbrains.exposed.v1.javatime.date
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 import java.util.UUID
 
 internal object PersonTable : IdTable<UUID>("person") {
@@ -13,6 +15,8 @@ internal object PersonTable : IdTable<UUID>("person") {
     val etternavn = varchar("etternavn", 255).nullable()
     val foedselsdato = date("foedselsdato").nullable()
     val status = varchar("status", 255)
+    val created = timestampWithTimeZone("created").defaultExpression(CurrentTimestampWithTimeZone)
+    val updated = timestampWithTimeZone("updated").defaultExpression(CurrentTimestampWithTimeZone)
 
     override val primaryKey = PrimaryKey(id)
 }

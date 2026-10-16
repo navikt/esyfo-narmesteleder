@@ -57,6 +57,5 @@ private class StubEmployeePdlClient(private val result: UpstreamResult<PdlPerson
         requests += ident
         return result
     }
-    override suspend fun getSystemToken(): String = error("Not used")
-    override suspend fun getPersonBolk(fnrs: List<String>, token: String): GetPersonBolkResponse = error("Not used")
+    override suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse> = error("Not used")
 }

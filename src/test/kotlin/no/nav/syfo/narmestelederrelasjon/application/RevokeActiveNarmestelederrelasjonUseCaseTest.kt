@@ -126,7 +126,7 @@ private class RevokeActiveFixture(
                 return if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), employee, "invalid", Instant.EPOCH)) else emptyList()
             }
         },
-        PublishNarmestelederrelasjonRevocation {
+        RecordingRevocationPublisher {
             calls += "publish"
             published += it
         },

@@ -29,8 +29,6 @@ fun getEnvVar(varName: String, defaultValue: String? = null) = System.getenv(var
 
 fun isLocalEnv(): Boolean = getEnvVar("NAIS_CLUSTER_NAME", "local") == "local"
 
-fun isProdEnv(): Boolean = getEnvVar("NAIS_CLUSTER_NAME", "local") == "prod-gcp"
-
 data class LocalEnvironment(
     override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
     override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),

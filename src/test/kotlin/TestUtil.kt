@@ -9,7 +9,6 @@ import io.ktor.http.isSuccess
 import io.mockk.coEvery
 import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
-import no.nav.syfo.application.auth.SystemPrincipal
 import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
@@ -111,28 +110,6 @@ val DefaultOrganization = OrganizationId(
     ID = "0192:123456789",
     authority = "some-authority",
 )
-
-val DefaultSystemPrincipal = SystemPrincipal(
-    "0192:123456789",
-    "token",
-    "0192:systemowner",
-    "systemId"
-)
-
-/**
- * @param prefix prefix the org.num with this. Default `0192:`
- * @param count how many org numbers should be generated. Default `20`
- * @param orgNumLength the length of the org.number itself. Default `9`
- * */
-fun createRandomValidOrgNumbers(
-    prefix: String = "0192:",
-    count: Int = 20,
-    orgNumLength: Int = 9
-): List<String> = buildList {
-    repeat(count) { add(faker.regexify("$prefix[0-9]{$orgNumLength}")) }
-}
-
-fun addMaskinportenOrgPrefix(orgNumber: String): String = "0192:$orgNumber"
 
 fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->
     when (request.url.fullPath) {

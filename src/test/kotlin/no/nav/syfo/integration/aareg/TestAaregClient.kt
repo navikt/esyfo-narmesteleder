@@ -22,14 +22,6 @@ class TestAaregClient : AaregClient {
 
     override suspend fun getArbeidsforholdHistorikk(personIdent: String): UpstreamResult<AaregArbeidsforholdOversikt> = getArbeidsforhold(personIdent)
 
-    fun seedEmployment(
-        personIdent: String,
-        orgNumber: String,
-        mainOrgNumber: String,
-    ) {
-        employmentsByPersonIdent[personIdent] = listOf(orgNumber to mainOrgNumber)
-    }
-
     override suspend fun getArbeidsforhold(
         personIdent: String,
     ): UpstreamResult<AaregArbeidsforholdOversikt> {

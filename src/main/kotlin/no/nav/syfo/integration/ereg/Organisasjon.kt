@@ -25,21 +25,6 @@ data class Organisasjon(
         return orgnummerSet
     }
 
-    /**
-     * Finner den overordnede juridiske enheten i organisasjonshierarkiet ved å traversere
-     * bestaarAvOrganisasjonsledd og organisasjonsleddOver oppover til toppen, og returnerer
-     * den juridiske enheten (inngaarIJuridiskEnheter) som finnes på det høyeste nivået.
-     */
-    fun finnOverordnetJuridiskEnhet(): Organisasjon? {
-        bestaarAvOrganisasjonsledd
-            ?.firstNotNullOfOrNull { wrapper ->
-                wrapper.organisasjonsledd.finnOverordnetJuridiskEnhetFraToppniva()
-            }
-            ?.let { return it }
-
-        return inngaarIJuridiskEnheter?.firstOrNull()
-    }
-
     fun getForetrukketNavn(): String? = navn?.sammensattnavn ?: navn?.navnelinje1
 }
 data class Navn(
@@ -80,26 +65,5 @@ data class OrganisasjonsLedd(
                 orgnummerSet.addAll(organisasjonsLeddWrapper.organisasjonsledd.collectOrgnummer(visitedOrgnummere))
             }
         return orgnummerSet
-    }
-
-    /**
-     * Finner den overordnede juridiske enheten i organisasjonshierarkiet ved å traversere
-     * organisasjonsleddOver oppover til toppen, og returnerer
-     * den juridiske enheten (inngaarIJuridiskEnheter) som finnes på det høyeste nivået.
-     */
-    fun finnOverordnetJuridiskEnhetFraToppniva(
-        visitedOrgnummere: MutableSet<String> = mutableSetOf(),
-    ): Organisasjon? {
-        if (!visitedOrgnummere.add(organisasjonsnummer)) {
-            return null
-        }
-
-        if (organisasjonsleddOver.isNullOrEmpty()) {
-            return inngaarIJuridiskEnheter?.firstOrNull()
-        }
-
-        return organisasjonsleddOver.firstNotNullOfOrNull { wrapper ->
-            wrapper.organisasjonsledd.finnOverordnetJuridiskEnhetFraToppniva(visitedOrgnummere)
-        }
     }
 }

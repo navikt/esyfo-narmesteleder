@@ -98,15 +98,6 @@ class FakeAltinnTilgangerClient(private val fixtureLoader: JsonFixtureLoader = d
         }
     }
 
-    fun removeAccess(fnr: String, orgNrTilgang: String? = null) {
-        if (orgNrTilgang != null) {
-            accessPolicy.find { orgNrTilgang in it.altinnTilgangerResponse.orgNrTilTilganger.keys }
-                ?.hasAccess?.remove(fnr)
-        } else {
-            accessPolicy.forEach { it.hasAccess.remove(fnr) }
-        }
-    }
-
     fun reset() {
         accessPolicy.clear()
         accessPolicy.addAll(loadTilganger(fixtureLoader))

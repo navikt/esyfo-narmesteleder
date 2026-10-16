@@ -31,11 +31,6 @@ class FakeAaregClient(
             .toMutableMap()
 
     private val failureRef = AtomicReference<UpstreamFailure?>(null)
-    private val historyByPersonIdent = mutableMapOf<String, AaregArbeidsforholdOversikt>()
-
-    fun setEmploymentHistory(personIdent: String, history: AaregArbeidsforholdOversikt) {
-        historyByPersonIdent[personIdent] = history
-    }
 
     /**
      * Both lookups return the configured failure until it is cleared.
@@ -60,10 +55,7 @@ class FakeAaregClient(
         return UpstreamResult.Success(createArbeidsforholdOversikt(*pairs.toTypedArray()))
     }
 
-    override suspend fun getArbeidsforholdHistorikk(personIdent: String): UpstreamResult<AaregArbeidsforholdOversikt> {
-        failureRef.get()?.let { return UpstreamResult.Failure(it) }
-        return historyByPersonIdent[personIdent]?.let { UpstreamResult.Success(it) } ?: getArbeidsforhold(personIdent)
-    }
+    override suspend fun getArbeidsforholdHistorikk(personIdent: String): UpstreamResult<AaregArbeidsforholdOversikt> = getArbeidsforhold(personIdent)
 
     private fun loadArbeidsforhold(fixtureLoader: JsonFixtureLoader): Map<String, AaregArbeidsforholdOversikt> = fixtureLoader.loadOrNull<Map<String, AaregArbeidsforholdOversikt>>(FIXTURE_FILE) ?: emptyMap()
 

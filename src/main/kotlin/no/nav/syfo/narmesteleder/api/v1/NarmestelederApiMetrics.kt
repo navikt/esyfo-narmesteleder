@@ -35,7 +35,6 @@ val COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS: Counter =
         .description("Counts the number of failed revoke line managers from empty form by LPS")
         .register(METRICS_REGISTRY)
 
-const val FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER = "${METRICS_NS}_revoke_linemanager_from_empty_form_by_lps"
 val COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER: Counter =
     Counter.builder(FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS)
         .description("Counts the number of failed revoke line managers from empty form by LPS")

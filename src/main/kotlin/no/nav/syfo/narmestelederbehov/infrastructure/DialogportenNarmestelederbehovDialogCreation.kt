@@ -6,6 +6,7 @@ import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.platform.upstream.getOrThrow
 import java.util.UUID
 
 class DialogportenNarmestelederbehovDialogCreation(
@@ -23,7 +24,7 @@ class DialogportenNarmestelederbehovDialogCreation(
         dialog.attachments?.firstOrNull()?.let {
             logger.info("Sending behov ${id.value} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
         }
-        return client.createDialog(dialog)
+        return client.createDialog(dialog).getOrThrow()
     }
 
     private companion object {

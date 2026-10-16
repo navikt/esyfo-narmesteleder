@@ -1,17 +1,25 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 import java.time.LocalDate
 import java.util.UUID
 
@@ -49,21 +57,35 @@ class DialogportenNarmestelederbehovDialogCreationTest :
 
             client.created.single() shouldBe expectedDialog(null)
         }
+
+        test("throws the Dialogporten failure with its upstream metadata so the caller can log it and leave the behov for retry") {
+            val failure = UpstreamFailure(UpstreamName("dialogporten"), UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))
+            val client = RecordingCreateDialogportenClient(dialogId, UpstreamResult.Failure(failure))
+
+            with(shouldThrow<UpstreamRequestException> { DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) }) {
+                upstream shouldBe "dialogporten"
+                failureStage shouldBe UpstreamFailureStage.RESPONSE
+                upstreamStatus shouldBe 503
+            }
+        }
     })
 
-private class RecordingCreateDialogportenClient(private val dialogId: UUID) : DialogportenClient {
+private class RecordingCreateDialogportenClient(
+    dialogId: UUID,
+    private val result: UpstreamResult<UUID> = UpstreamResult.Success(dialogId),
+) : DialogportenClient {
     val created = mutableListOf<Dialog>()
 
-    override suspend fun createDialog(dialog: Dialog): UUID {
+    override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> {
         created += dialog
-        return dialogId
+        return result
     }
 
-    override suspend fun getDialogById(dialogId: UUID): ExtendedDialog = error("Unexpected getDialogById")
+    override suspend fun getDialogById(dialogId: UUID): UpstreamResult<ExtendedDialog> = error("Unexpected getDialogById")
 
     override suspend fun patchDialog(
         dialogId: UUID,
         revisionNumber: UUID,
         patch: List<HttpDialogportenClient.DialogportenPatch>,
-    ) = error("Unexpected patchDialog")
+    ): UpstreamResult<DialogPatchResult> = error("Unexpected patchDialog")
 }

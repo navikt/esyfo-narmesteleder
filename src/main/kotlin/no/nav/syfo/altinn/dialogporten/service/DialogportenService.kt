@@ -2,10 +2,12 @@ package no.nav.syfo.altinn.dialogporten.service
 
 import io.ktor.http.ContentType
 import kotlinx.coroutines.delay
+import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient.DialogportenPatch.OPERATION
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient.DialogportenPatch.PATH
+import no.nav.syfo.altinn.dialogporten.client.dialogportenRevisionConflictFailure
 import no.nav.syfo.altinn.dialogporten.domain.Attachment
 import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.altinn.dialogporten.domain.Content
@@ -26,6 +28,8 @@ import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
 import no.nav.syfo.pdl.PdlService
+import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
 import java.time.Instant
@@ -120,7 +124,7 @@ class DialogportenService(
                 logger.info("Sending behov ${behov.id} to dialogporten, with link ${it.urls.firstOrNull()?.url}")
             }
 
-            val dialogId = dialogportenClient.createDialog(dialog)
+            val dialogId = dialogportenClient.createDialog(dialog).getOrThrow()
             val marked = narmestelederDb.markDialogCreated(
                 id = behov.id,
                 dialogId = dialogId,
@@ -168,7 +172,7 @@ class DialogportenService(
     suspend fun completeFulfilledDialog(behov: NarmestelederBehovEntity) {
         require(behov.behovStatus == BehovStatus.BEHOV_FULFILLED)
         val dialogId = requireNotNull(behov.dialogId)
-        dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+        dialogportenClient.getDialogById(dialogId).getOrThrow().let { existingDialog ->
             dialogportenClient.patchDialog(
                 dialogId = dialogId,
                 revisionNumber = existingDialog.revision,
@@ -177,7 +181,7 @@ class DialogportenService(
                     path = PATH.STATUS,
                     value = DialogStatus.Completed.name
                 )
-            )
+            ).getOrThrow().requirePatched()
         }
         narmestelederDb.updateNlBehov(behov.copy(behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED))
         logger.info("Successfully updated Dialogporten for dialog $dialogId")
@@ -217,7 +221,7 @@ class DialogportenService(
     }
 
     suspend fun setToExpiredAndCompletedInDialogporten(dialogId: UUID, expirationTime: OffsetDateTime) {
-        dialogportenClient.getDialogById(dialogId).let { existingDialog ->
+        dialogportenClient.getDialogById(dialogId).getOrThrow().let { existingDialog ->
             dialogportenClient.patchDialog(
                 dialogId = dialogId,
                 revisionNumber = existingDialog.revision,
@@ -233,7 +237,14 @@ class DialogportenService(
                         expirationTime.toString()
                     )
                 )
-            )
+            ).getOrThrow().requirePatched()
+        }
+    }
+
+    private fun DialogPatchResult.requirePatched() {
+        when (this) {
+            DialogPatchResult.Patched -> Unit
+            DialogPatchResult.RevisionConflict -> UpstreamResult.Failure(dialogportenRevisionConflictFailure()).getOrThrow()
         }
     }
 

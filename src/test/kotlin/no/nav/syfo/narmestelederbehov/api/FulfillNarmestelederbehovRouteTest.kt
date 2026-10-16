@@ -42,6 +42,7 @@ import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
+import no.nav.syfo.narmestelederbehov.application.DialogCompletion
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
@@ -306,7 +307,7 @@ private class PutFixture {
         repository,
         organizationAccess,
         establish,
-        NarmestelederbehovDialog { },
+        NarmestelederbehovDialog { DialogCompletion.Completed },
     )
 
     init {

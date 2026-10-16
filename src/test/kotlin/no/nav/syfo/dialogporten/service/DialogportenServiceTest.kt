@@ -7,15 +7,14 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldStartWith
-import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.spyk
 import nlBehovEntity
+import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
@@ -126,7 +125,7 @@ class DialogportenServiceTest :
                     val behov = spyNarmestelederDb.insertNlBehov(nlBehovEntity())
                     val dialog = slot<Dialog>()
                     coEvery { pdlClient.getPerson(any()) } returns result
-                    coEvery { dialogportenClient.createDialog(capture(dialog)) } returns UUID.randomUUID()
+                    coEvery { dialogportenClient.createDialog(capture(dialog)) } returns UpstreamResult.Success(UUID.randomUUID())
                     service.sendToDialogporten(behov)
                     dialog.isCaptured shouldBe true
                     requireNotNull(spyNarmestelederDb.findBehovById(requireNotNull(behov.id))).fornavn shouldBe null
@@ -164,7 +163,7 @@ class DialogportenServiceTest :
                     val dialogId = UUID.randomUUID()
                     val dialogSlot = slot<Dialog>()
 
-                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
+                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns UpstreamResult.Success(dialogId)
 
                     // Act
                     dialogportenService.sendDocumentsToDialogporten()
@@ -214,7 +213,7 @@ class DialogportenServiceTest :
                             behovEntity1,
                             behovEntity2,
                         )
-                    coEvery { dialogportenClient.createDialog(any()) } returnsMany listOf(dialogId1, dialogId2)
+                    coEvery { dialogportenClient.createDialog(any()) } returnsMany listOf(UpstreamResult.Success(dialogId1), UpstreamResult.Success(dialogId2))
                     coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
 
                     // Act
@@ -266,9 +265,9 @@ class DialogportenServiceTest :
                     coEvery { dialogportenClient.createDialog(any()) } answers {
                         callCount++
                         when (callCount) {
-                            1 -> dialogId2
+                            1 -> UpstreamResult.Success(dialogId2)
                             2 -> throw RuntimeException("Error")
-                            3 -> dialogId3
+                            3 -> UpstreamResult.Success(dialogId3)
                             else -> throw RuntimeException("Unexpected call")
                         }
                     }
@@ -296,7 +295,7 @@ class DialogportenServiceTest :
                         val dialogId = UUID.randomUUID()
                         coEvery { dialogportenClient.createDialog(any()) } coAnswers {
                             spyNarmestelederDb.updateNlBehov(behovEntity.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
-                            dialogId
+                            UpstreamResult.Success(dialogId)
                         }
 
                         dialogportenService.sendToDialogporten(behovEntity)
@@ -324,7 +323,7 @@ class DialogportenServiceTest :
                     val dialogSlot = slot<Dialog>()
 
                     coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
-                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
+                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns UpstreamResult.Success(dialogId)
                     coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
 
                     // Act
@@ -344,7 +343,7 @@ class DialogportenServiceTest :
                     val dialogSlot = slot<Dialog>()
 
                     coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
-                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns dialogId
+                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns UpstreamResult.Success(dialogId)
                     coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
 
                     // Act
@@ -401,23 +400,25 @@ class DialogportenServiceTest :
                                 dialogId = UUID.randomUUID(),
                             ),
                         )
-                    coEvery { dialogportenClient.patchDialog(any(), any(), any<HttpDialogportenClient.DialogportenPatch>()) } just Runs
+                    coEvery { dialogportenClient.patchDialog(any(), any(), any<HttpDialogportenClient.DialogportenPatch>()) } returns UpstreamResult.Success(DialogPatchResult.Patched)
                     coEvery { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) } returns
-                        ExtendedDialog(
-                            id = UUID.randomUUID(),
-                            externalReference = behovEntity.dialogId.toString(),
-                            party = "urn:altinn:organization:identifier-no:123456789",
-                            status = DialogStatus.RequiresAttention,
-                            isApiOnly = false,
-                            attachments = emptyList(),
-                            revision = UUID.randomUUID(),
-                            content =
-                            Content(
-                                title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
-                                summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
-                            ),
-                            serviceResource = "service:resource",
-                            transmissions = listOf(),
+                        UpstreamResult.Success(
+                            ExtendedDialog(
+                                id = UUID.randomUUID(),
+                                externalReference = behovEntity.dialogId.toString(),
+                                party = "urn:altinn:organization:identifier-no:123456789",
+                                status = DialogStatus.RequiresAttention,
+                                isApiOnly = false,
+                                attachments = emptyList(),
+                                revision = UUID.randomUUID(),
+                                content =
+                                Content(
+                                    title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+                                    summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
+                                ),
+                                serviceResource = "service:resource",
+                                transmissions = listOf(),
+                            )
                         )
 
                     // Act
@@ -476,7 +477,7 @@ class DialogportenServiceTest :
                     } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
                         val idArg = firstArg<UUID>()
-                        behovs.first { it.dialogId == idArg }.toExtendedDialog()
+                        UpstreamResult.Success(behovs.first { it.dialogId == idArg }.toExtendedDialog())
                     }
                     coEvery {
                         dialogportenClient.patchDialog(
@@ -484,7 +485,7 @@ class DialogportenServiceTest :
                             any(),
                             any<HttpDialogportenClient.DialogportenPatch>(),
                         )
-                    } just Runs
+                    } returns UpstreamResult.Success(DialogPatchResult.Patched)
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
                     // Act
@@ -534,7 +535,7 @@ class DialogportenServiceTest :
                             DialogportenService.BEHOV_BY_STATUS_LIMIT
                         )
                     } returns listOf(behovEntity1)
-                    coEvery { dialogportenClient.getDialogById(any()) } returns behovEntity1.toExtendedDialog()
+                    coEvery { dialogportenClient.getDialogById(any()) } returns UpstreamResult.Success(behovEntity1.toExtendedDialog())
                     coEvery {
                         dialogportenClient.patchDialog(
                             any(),
@@ -592,10 +593,9 @@ class DialogportenServiceTest :
                     } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
                         val idArg = firstArg<UUID>()
-                        behovs
-                            .first {
-                                it.dialogId == idArg
-                            }.toExtendedDialog()
+                        UpstreamResult.Success(
+                            behovs.first { it.dialogId == idArg }.toExtendedDialog()
+                        )
                     }
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -608,6 +608,7 @@ class DialogportenServiceTest :
                         }
                         val idArg = firstArg<UUID>()
                         successfulUpdateIds.add(idArg)
+                        UpstreamResult.Success(DialogPatchResult.Patched)
                     }
 
                     // Act
@@ -692,23 +693,25 @@ class DialogportenServiceTest :
                             match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns listOf(behovEntity)
-                    coEvery { dialogportenClient.patchDialog(any(), any(), any<List<HttpDialogportenClient.DialogportenPatch>>()) } just Runs
+                    coEvery { dialogportenClient.patchDialog(any(), any(), any<List<HttpDialogportenClient.DialogportenPatch>>()) } returns UpstreamResult.Success(DialogPatchResult.Patched)
                     coEvery { dialogportenClient.getDialogById(eq(behovEntity.dialogId!!)) } returns
-                        ExtendedDialog(
-                            id = UUID.randomUUID(),
-                            externalReference = behovEntity.dialogId.toString(),
-                            party = "urn:altinn:organization:identifier-no:123456789",
-                            status = DialogStatus.RequiresAttention,
-                            isApiOnly = false,
-                            attachments = emptyList(),
-                            revision = UUID.randomUUID(),
-                            content =
-                            Content(
-                                title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
-                                summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
-                            ),
-                            serviceResource = "service:resource",
-                            transmissions = listOf(),
+                        UpstreamResult.Success(
+                            ExtendedDialog(
+                                id = UUID.randomUUID(),
+                                externalReference = behovEntity.dialogId.toString(),
+                                party = "urn:altinn:organization:identifier-no:123456789",
+                                status = DialogStatus.RequiresAttention,
+                                isApiOnly = false,
+                                attachments = emptyList(),
+                                revision = UUID.randomUUID(),
+                                content =
+                                Content(
+                                    title = ContentValue(value = listOf(ContentValueItem(value = "Test content title"))),
+                                    summary = ContentValue(value = listOf(ContentValueItem(value = "Test content summary"))),
+                                ),
+                                serviceResource = "service:resource",
+                                transmissions = listOf(),
+                            )
                         )
 
                     // Act
@@ -765,7 +768,7 @@ class DialogportenServiceTest :
                     } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
                         val idArg = firstArg<UUID>()
-                        behovs.first { it.dialogId == idArg }.toExtendedDialog()
+                        UpstreamResult.Success(behovs.first { it.dialogId == idArg }.toExtendedDialog())
                     }
                     coEvery {
                         dialogportenClient.patchDialog(
@@ -773,7 +776,7 @@ class DialogportenServiceTest :
                             any(),
                             any<List<HttpDialogportenClient.DialogportenPatch>>(),
                         )
-                    } just Runs
+                    } returns UpstreamResult.Success(DialogPatchResult.Patched)
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
                     // Act
@@ -823,7 +826,7 @@ class DialogportenServiceTest :
                             match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns listOf(behovEntity1)
-                    coEvery { dialogportenClient.getDialogById(any()) } returns behovEntity1.toExtendedDialog()
+                    coEvery { dialogportenClient.getDialogById(any()) } returns UpstreamResult.Success(behovEntity1.toExtendedDialog())
                     coEvery {
                         dialogportenClient.patchDialog(
                             any(),
@@ -878,10 +881,9 @@ class DialogportenServiceTest :
                     } returns behovs
                     coEvery { dialogportenClient.getDialogById(any()) } answers {
                         val idArg = firstArg<UUID>()
-                        behovs
-                            .first {
-                                it.dialogId == idArg
-                            }.toExtendedDialog()
+                        UpstreamResult.Success(
+                            behovs.first { it.dialogId == idArg }.toExtendedDialog()
+                        )
                     }
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
@@ -894,6 +896,7 @@ class DialogportenServiceTest :
                         }
                         val idArg = firstArg<UUID>()
                         successfulUpdateIds.add(idArg)
+                        UpstreamResult.Success(DialogPatchResult.Patched)
                     }
 
                     // Act
@@ -950,8 +953,8 @@ class DialogportenServiceTest :
                             match<List<BehovStatus>> { expireableBehovs.containsAll(it) },
                         )
                     } returns listOf(behovWithoutDialogId, behovWithDialogId)
-                    coEvery { dialogportenClient.getDialogById(any()) } returns behovWithDialogId.toExtendedDialog()
-                    coEvery { dialogportenClient.patchDialog(any(), any(), any<List<HttpDialogportenClient.DialogportenPatch>>()) } just Runs
+                    coEvery { dialogportenClient.getDialogById(any()) } returns UpstreamResult.Success(behovWithDialogId.toExtendedDialog())
+                    coEvery { dialogportenClient.patchDialog(any(), any(), any<List<HttpDialogportenClient.DialogportenPatch>>()) } returns UpstreamResult.Success(DialogPatchResult.Patched)
                     coEvery { spyNarmestelederDb.updateNlBehov(any()) } returns Unit
 
                     // Act
@@ -1007,8 +1010,8 @@ class DialogportenServiceTest :
                     serviceResource = "service:resource",
                     transmissions = listOf(),
                 )
-                coEvery { dialogportenClient.getDialogById(dialogId) } returns extendedDialog
-                coEvery { dialogportenClient.patchDialog(any(), any(), any<List<HttpDialogportenClient.DialogportenPatch>>()) } just Runs
+                coEvery { dialogportenClient.getDialogById(dialogId) } returns UpstreamResult.Success(extendedDialog)
+                coEvery { dialogportenClient.patchDialog(any(), any(), any<List<HttpDialogportenClient.DialogportenPatch>>()) } returns UpstreamResult.Success(DialogPatchResult.Patched)
 
                 // Act
                 dialogportenService.setToExpiredAndCompletedInDialogporten(dialogId, expirationDate)
@@ -1047,7 +1050,7 @@ class DialogportenServiceTest :
                         dialogId = UUID.randomUUID(),
                     )
                 val extendedDialg = behovEntity.toExtendedDialog()
-                coEvery { dialogportenClient.getDialogById(any()) } returns extendedDialg
+                coEvery { dialogportenClient.getDialogById(any()) } returns UpstreamResult.Success(extendedDialg)
 
                 // Act
                 dialogportenService.setToCompletedInDialogporten(behovEntity)

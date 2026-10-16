@@ -3,32 +3,34 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.CancellationException
+import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
+import no.nav.syfo.altinn.dialogporten.client.dialogportenRevisionConflictFailure
 import no.nav.syfo.altinn.dialogporten.domain.Content
 import no.nav.syfo.altinn.dialogporten.domain.ContentValue
 import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.narmestelederbehov.application.DialogCompletion
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 import java.util.UUID
 
 class DialogportenNarmestelederbehovDialogTest :
     FunSpec({
-        val dialogId = UUID.fromString("00000000-0000-0000-0000-000000000002")
-        val revision = UUID.fromString("00000000-0000-0000-0000-000000000003")
-
         test("fetches the revision and patches completed status") {
-            val client = RecordingDialogportenClient(dialogId, revision)
-
-            DialogportenNarmestelederbehovDialog(client).complete(dialogId)
-
-            client.calls shouldBe listOf(
-                "get" to dialogId,
-                "patch" to dialogId,
-            )
-            client.patchRevision shouldBe revision
+            val client = RecordingDialogportenClient()
+            DialogportenNarmestelederbehovDialog(client).complete(DIALOG_ID) shouldBe DialogCompletion.Completed
+            client.calls shouldBe listOf("get", "patch")
+            client.patchRevision shouldBe REVISION
             client.patches shouldBe listOf(
                 HttpDialogportenClient.DialogportenPatch(
                     HttpDialogportenClient.DialogportenPatch.OPERATION.REPLACE,
@@ -38,74 +40,118 @@ class DialogportenNarmestelederbehovDialogTest :
             )
         }
 
-        test("lookup failure propagates without patching") {
-            val failure = IllegalStateException("lookup failed")
-            val client = RecordingDialogportenClient(dialogId, revision, lookupFailure = failure)
-
-            shouldThrow<IllegalStateException> { DialogportenNarmestelederbehovDialog(client).complete(dialogId) } shouldBe failure
-            client.calls shouldBe listOf("get" to dialogId)
+        test("already completed returns Completed without PATCH") {
+            val client = RecordingDialogportenClient(reads = mutableListOf(dialogResult(DialogStatus.Completed)))
+            DialogportenNarmestelederbehovDialog(client).complete(DIALOG_ID) shouldBe DialogCompletion.Completed
+            client.calls shouldBe listOf("get")
         }
 
-        test("patch failure propagates") {
-            val failure = IllegalStateException("patch failed")
-            val client = RecordingDialogportenClient(dialogId, revision, patchFailure = failure)
-
-            shouldThrow<IllegalStateException> { DialogportenNarmestelederbehovDialog(client).complete(dialogId) } shouldBe failure
-            client.calls shouldBe listOf("get" to dialogId, "patch" to dialogId)
-        }
-
-        listOf("lookup", "patch").forEach { failingStep ->
-            test("$failingStep cancellation propagates") {
-                val failure = CancellationException("cancelled")
+        listOf<DialogStatus?>(DialogStatus.Completed, DialogStatus.RequiresAttention, null).forEach { status ->
+            test("revision conflict rereads once and resolves status $status") {
                 val client = RecordingDialogportenClient(
-                    dialogId,
-                    revision,
-                    lookupFailure = failure.takeIf { failingStep == "lookup" },
-                    patchFailure = failure.takeIf { failingStep == "patch" },
+                    reads = mutableListOf(dialogResult(), dialogResult(status)),
+                    patchResult = UpstreamResult.Success(DialogPatchResult.RevisionConflict),
                 )
+                val result = DialogportenNarmestelederbehovDialog(client).complete(DIALOG_ID)
+                result shouldBe if (status == DialogStatus.Completed) {
+                    DialogCompletion.Completed
+                } else {
+                    DialogCompletion.Unavailable(dialogportenRevisionConflictFailure())
+                }
+                if (result is DialogCompletion.Unavailable) {
+                    result.failure.errors shouldBe listOf(UpstreamError("revision_conflict"))
+                    result.failure.status shouldBe 412
+                    result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                    result.failure.upstream shouldBe UpstreamName("dialogporten")
+                    result.failure.cause shouldBe null
+                }
+                client.calls shouldBe listOf("get", "patch", "get")
+            }
+        }
 
-                shouldThrow<CancellationException> { DialogportenNarmestelederbehovDialog(client).complete(dialogId) } shouldBe failure
+        listOf("get", "patch", "reread").forEach { step ->
+            test("$step failure is preserved without later calls") {
+                val failure = UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, errors = listOf(UpstreamError("server_error")))
+                val client = RecordingDialogportenClient(
+                    reads = when (step) {
+                        "get" -> mutableListOf(UpstreamResult.Failure(failure))
+                        "reread" -> mutableListOf(dialogResult(), UpstreamResult.Failure(failure))
+                        else -> mutableListOf(dialogResult())
+                    },
+                    patchResult = if (step == "patch") UpstreamResult.Failure(failure) else UpstreamResult.Success(DialogPatchResult.RevisionConflict),
+                )
+                val result = DialogportenNarmestelederbehovDialog(client).complete(DIALOG_ID).shouldBeInstanceOf<DialogCompletion.Unavailable>()
+                result.failure shouldBeSameInstanceAs failure
+                client.calls shouldBe when (step) {
+                    "get" -> listOf("get")
+                    "patch" -> listOf("get", "patch")
+                    else -> listOf("get", "patch", "get")
+                }
+            }
+
+            listOf(IllegalStateException("unexpected"), CancellationException("cancelled")).forEach { failure ->
+                test("$step propagates ${failure.javaClass.simpleName} without catching it") {
+                    val client = RecordingDialogportenClient(
+                        reads = mutableListOf(dialogResult(), dialogResult()),
+                        patchResult = UpstreamResult.Success(DialogPatchResult.RevisionConflict),
+                        throwAt = step,
+                        thrown = failure,
+                    )
+                    shouldThrow<Exception> { DialogportenNarmestelederbehovDialog(client).complete(DIALOG_ID) } shouldBeSameInstanceAs failure
+                    client.calls shouldBe when (step) {
+                        "get" -> listOf("get")
+                        "patch" -> listOf("get", "patch")
+                        else -> listOf("get", "patch", "get")
+                    }
+                }
             }
         }
     })
 
+private val DIALOG_ID = UUID.fromString("00000000-0000-0000-0000-000000000002")
+private val REVISION = UUID.fromString("00000000-0000-0000-0000-000000000003")
+
+private fun dialogResult(status: DialogStatus? = DialogStatus.RequiresAttention) = UpstreamResult.Success(
+    ExtendedDialog(
+        revision = REVISION,
+        id = DIALOG_ID,
+        party = "urn:altinn:organization:identifier-no:910000001",
+        serviceResource = "service:resource",
+        externalReference = DIALOG_ID.toString(),
+        status = status,
+        content = Content(
+            title = ContentValue(value = listOf(ContentValueItem("Title"))),
+            summary = ContentValue(value = listOf(ContentValueItem("Summary"))),
+        ),
+    ),
+)
+
 private class RecordingDialogportenClient(
-    private val dialogId: UUID,
-    private val revision: UUID,
-    private val lookupFailure: Throwable? = null,
-    private val patchFailure: Throwable? = null,
+    private val reads: MutableList<UpstreamResult<ExtendedDialog>> = mutableListOf(dialogResult()),
+    private val patchResult: UpstreamResult<DialogPatchResult> = UpstreamResult.Success(DialogPatchResult.Patched),
+    private val throwAt: String? = null,
+    private val thrown: Throwable? = null,
 ) : DialogportenClient {
-    val calls = mutableListOf<Pair<String, UUID>>()
+    val calls = mutableListOf<String>()
     var patchRevision: UUID? = null
     var patches: List<HttpDialogportenClient.DialogportenPatch>? = null
 
-    override suspend fun createDialog(dialog: Dialog): UUID = error("Unexpected createDialog")
+    override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> = error("Unexpected createDialog")
 
-    override suspend fun getDialogById(dialogId: UUID): ExtendedDialog {
-        calls += "get" to dialogId
-        lookupFailure?.let { throw it }
-        return ExtendedDialog(
-            revision = revision,
-            id = this.dialogId,
-            party = "urn:altinn:organization:identifier-no:123456789",
-            serviceResource = "service:resource",
-            externalReference = this.dialogId.toString(),
-            status = DialogStatus.RequiresAttention,
-            content = Content(
-                title = ContentValue(value = listOf(ContentValueItem(value = "Title"))),
-                summary = ContentValue(value = listOf(ContentValueItem(value = "Summary"))),
-            ),
-        )
+    override suspend fun getDialogById(dialogId: UUID): UpstreamResult<ExtendedDialog> {
+        dialogId shouldBe DIALOG_ID
+        val step = if ("get" in calls) "reread" else "get"
+        calls += "get"
+        if (throwAt == step) throw requireNotNull(thrown)
+        return reads.removeAt(0)
     }
 
-    override suspend fun patchDialog(
-        dialogId: UUID,
-        revisionNumber: UUID,
-        patch: List<HttpDialogportenClient.DialogportenPatch>,
-    ) {
-        calls += "patch" to dialogId
+    override suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<HttpDialogportenClient.DialogportenPatch>): UpstreamResult<DialogPatchResult> {
+        dialogId shouldBe DIALOG_ID
+        calls += "patch"
         patchRevision = revisionNumber
         patches = patch
-        patchFailure?.let { throw it }
+        if (throwAt == "patch") throw requireNotNull(thrown)
+        return patchResult
     }
 }

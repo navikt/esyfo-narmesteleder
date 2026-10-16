@@ -1,5 +1,9 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -8,6 +12,11 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import org.slf4j.LoggerFactory
 import java.util.UUID
 
 class FulfillNarmestelederbehovFromLeesahUseCaseTest :
@@ -66,9 +75,29 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
                 dialogIds = mapOf(WITH_DIALOG to DIALOG_ID, WITHOUT_DIALOG to null),
             )
 
-            useCase(effects, repository, dialogFailure = IllegalStateException("down")).execute(EMPLOYEE)
+            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovFromLeesahUseCase::class.java) as Logger
+            val previous = logger.level
+            val appender = ListAppender<ILoggingEvent>().apply { start() }
+            logger.level = Level.INFO
+            logger.addAppender(appender)
+            try {
+                val failure = UpstreamFailure(UpstreamName("altinn-authentication"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, errors = listOf(UpstreamError("server_error")))
+                useCase(effects, repository, completion = DialogCompletion.Unavailable(failure)).execute(EMPLOYEE)
 
-            effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "dialog", "fulfilled:$WITHOUT_DIALOG", "metric")
+                effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "dialog", "fulfilled:$WITHOUT_DIALOG", "metric")
+                val events = appender.list.map { it.keyValuePairs.associate { pair -> pair.key to pair.value } }
+                val failed = events.single { it["event_type"] == "narmestelederbehov_dialogporten_completion_failed" }
+                failed["upstream"] shouldBe "altinn-authentication"
+                failed["failure_stage"] shouldBe "token_exchange"
+                failed["upstream_status"] shouldBe 503
+                failed["behov_id"] shouldBe WITH_DIALOG.value.toString()
+                events.filter { it["event_type"] == "narmestelederbehov_fulfilled_from_leesah" }
+                    .map { it["dialogporten_completion"] } shouldBe listOf("FAILED", "NOT_APPLICABLE")
+            } finally {
+                logger.detachAppender(appender)
+                logger.level = previous
+                appender.stop()
+            }
         }
 
         test("propagates a status save failure so the record is retried") {
@@ -82,12 +111,23 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
             effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG")
         }
 
-        test("propagates cancellation from Dialogporten") {
-            val effects = mutableListOf<String>()
-            val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), dialogIds = mapOf(WITH_DIALOG to DIALOG_ID))
-
-            shouldThrow<CancellationException> {
-                useCase(effects, repository, dialogFailure = CancellationException("stopping")).execute(EMPLOYEE)
+        listOf(IllegalStateException("unexpected"), CancellationException("stopping")).forEach { failure ->
+            test("propagates ${failure.javaClass.simpleName} from Dialogporten without business logging") {
+                val effects = mutableListOf<String>()
+                val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), dialogIds = mapOf(WITH_DIALOG to DIALOG_ID))
+                val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovFromLeesahUseCase::class.java) as Logger
+                val appender = ListAppender<ILoggingEvent>().apply { start() }
+                logger.addAppender(appender)
+                try {
+                    shouldThrow<Exception> {
+                        useCase(effects, repository, dialogFailure = failure).execute(EMPLOYEE)
+                    } shouldBe failure
+                    effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "dialog")
+                    appender.list shouldBe emptyList()
+                } finally {
+                    logger.detachAppender(appender)
+                    appender.stop()
+                }
             }
         }
     })
@@ -134,8 +174,9 @@ private fun useCase(
     effects: MutableList<String>,
     repository: NarmestelederbehovRepository,
     dialogFailure: Throwable? = null,
+    completion: DialogCompletion = DialogCompletion.Completed,
 ) = FulfillNarmestelederbehovFromLeesahUseCase(
     behovRepository = repository,
     metrics = { effects += "metric" },
-    dialog = FakeDialog(effects, dialogFailure),
+    dialog = FakeDialog(effects, dialogFailure, completion),
 )

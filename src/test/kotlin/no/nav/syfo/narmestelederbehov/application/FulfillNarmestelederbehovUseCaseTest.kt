@@ -174,7 +174,7 @@ class FulfillNarmestelederbehovUseCaseTest :
 
         test("keeps fulfillment successful when Dialogporten completion fails") {
             val effects = mutableListOf<String>()
-            val failure = IllegalStateException("private-exception-canary")
+            val failure = UpstreamFailure(UpstreamName("dialogporten"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("private-exception-canary"))
             val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
             val appender = ListAppender<ILoggingEvent>().apply { start() }
             val previousLevel = logger.level
@@ -182,7 +182,7 @@ class FulfillNarmestelederbehovUseCaseTest :
             logger.addAppender(appender)
             try {
                 createUseCase(
-                    dialog = FakeDialog(effects = effects, failure = failure),
+                    dialog = FakeDialog(effects = effects, completion = DialogCompletion.Unavailable(failure)),
                     effects = effects,
                 ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.Failed)
 
@@ -204,6 +204,8 @@ class FulfillNarmestelederbehovUseCaseTest :
                 fields.containsKey("dialog_id") shouldBe false
                 fields["operation"] shouldBe "fulfill_narmestelederbehov"
                 fields["upstream"] shouldBe "dialogporten"
+                fields["failure_stage"] shouldBe "response"
+                fields["upstream_status"] shouldBe 503
                 event.throwableProxy.message shouldBe "java.lang.IllegalStateException"
                 (event.formattedMessage + fields.toString() + event.throwableProxy.message)
                     .contains("private-exception-canary") shouldBe false
@@ -291,11 +293,7 @@ class FulfillNarmestelederbehovUseCaseTest :
         }
 
         listOf("establish", "fulfilled", "dialog").forEach { failingEffect ->
-            val failures = if (failingEffect == "dialog") {
-                listOf(CancellationException("cancelled"))
-            } else {
-                listOf(IllegalStateException("upstream failed"), CancellationException("cancelled"))
-            }
+            val failures = listOf(IllegalStateException("upstream failed"), CancellationException("cancelled"))
             failures.forEach { failure ->
                 test("propagates ${failure::class.simpleName} at $failingEffect without later effects") {
                     val effects = mutableListOf<String>()

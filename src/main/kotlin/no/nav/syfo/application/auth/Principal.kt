@@ -16,5 +16,4 @@ data class SystemPrincipal(
     val systemUserId: String,
 ) : Principal() {
     fun getSystemUserOrgNumber(): String = maskinportenIdToOrgnumber(ident)
-    fun getSystemOwnerOrgNumber(): String = maskinportenIdToOrgnumber(systemOwner)
 }

@@ -32,8 +32,6 @@ value class EmailAddress(val value: String) {
     }
 
     companion object {
-        fun fromSeparatedList(value: String): List<EmailAddress> = splitEmailAddresses(value).map(::EmailAddress)
-
         fun parseSeparatedList(value: String): ParsedEmailAddresses {
             val (valid, discarded) = splitEmailAddresses(value).partition { validationReason(it) == null }
             return ParsedEmailAddresses(valid.map(::EmailAddress), discarded.size)

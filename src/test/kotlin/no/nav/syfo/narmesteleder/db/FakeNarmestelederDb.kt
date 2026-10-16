@@ -63,7 +63,6 @@ class FakeNarmestelederDb : NarmestelederDb {
 
     override suspend fun getNlBehovByStatus(status: List<BehovStatus>, limit: Int): List<NarmestelederBehovEntity> = store.values.filter { it.behovStatus in status }
 
-    fun lastId(): UUID? = order.lastOrNull()
     fun findAll(): List<NarmestelederBehovEntity> = order.mapNotNull { store[it] }
     fun clear() {
         store.clear()

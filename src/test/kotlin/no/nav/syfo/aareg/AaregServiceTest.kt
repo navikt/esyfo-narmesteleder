@@ -58,31 +58,4 @@ class AaregServiceTest :
                 error.cause.shouldBeInstanceOf<UpstreamRequestException>().cause shouldBe cause
             }
         }
-
-        describe("toOrgNumberList") {
-            it("should convert List<Arbeidsforholdoversikt> to list of the orgnumers") {
-                // Arrange
-                val arbeidsfoldholdList = listOf(
-                    Arbeidsforhold(
-                        orgnummer = "111111111",
-                        arbeidsstedType = ArbeidsstedType.Underenhet,
-                        opplysningspliktigOrgnummer = "222222222",
-                        opplysningspliktigType = OpplysningspliktigType.Hovedenhet
-                    ),
-                    Arbeidsforhold(
-                        orgnummer = "333333333",
-                        arbeidsstedType = ArbeidsstedType.Underenhet,
-                        opplysningspliktigOrgnummer = null,
-                        opplysningspliktigType = OpplysningspliktigType.Hovedenhet
-                    )
-                )
-
-                // Act
-                val result = arbeidsfoldholdList.toOrgNumberList().sorted()
-
-                // Assert
-                result.size shouldBe 3
-                result shouldBe listOf("111111111", "222222222", "333333333")
-            }
-        }
     })

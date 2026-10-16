@@ -41,7 +41,3 @@ class AaregService(private val arbeidsforholdOversiktClient: AaregClient) {
         private val logger = logger()
     }
 }
-
-fun List<Arbeidsforhold>.toOrgNumberList(): List<String> = this.map {
-    listOfNotNull(it.orgnummer, it.opplysningspliktigOrgnummer)
-}.flatten().distinct()

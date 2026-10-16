@@ -76,7 +76,7 @@ class LinemanagerStatisticsApiTest :
                     if (user) {
                         val subject = fixture.evaluations.single().first as OrganizationAccessSubject.PersonnelManager
                         subject.personIdent shouldBe PersonIdent(EMPLOYEE_IDENT)
-                        (subject.accessToken.value() == fixture.token()) shouldBe true
+                        subject.accessToken.value() shouldBe fixture.token()
                     } else {
                         fixture.evaluations.single().first shouldBe OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(ORGANIZATION_NUMBER))
                     }

@@ -7,6 +7,7 @@ import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -167,7 +168,7 @@ class NarmestelederServiceConflictTest :
                 conflictTestService(db, dialog).createNewNlBehov(write, true, source, arbeidsgiver)
             }
 
-            (propagated === failure) shouldBe true
+            propagated shouldBeSameInstanceAs failure
             COUNT_CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING.count() shouldBe before
             dialog.creates shouldBe 0
         }

@@ -6,7 +6,9 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.CancellationException
@@ -201,14 +203,13 @@ class FulfillNarmestelederbehovUseCaseTest :
                 val fields = event.keyValuePairs.associate { it.key to it.value }
                 event.level shouldBe Level.WARN
                 fields["behov_id"] shouldBe behovId.value.toString()
-                fields.containsKey("dialog_id") shouldBe false
+                fields shouldNotContainKey "dialog_id"
                 fields["operation"] shouldBe "fulfill_narmestelederbehov"
                 fields["upstream"] shouldBe "dialogporten"
                 fields["failure_stage"] shouldBe "response"
                 fields["upstream_status"] shouldBe 503
                 event.throwableProxy.message shouldBe "java.lang.IllegalStateException"
-                (event.formattedMessage + fields.toString() + event.throwableProxy.message)
-                    .contains("private-exception-canary") shouldBe false
+                (event.formattedMessage + fields.toString() + event.throwableProxy.message) shouldNotContain "private-exception-canary"
             } finally {
                 logger.detachAppender(appender)
                 logger.level = previousLevel
@@ -255,8 +256,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                 val fields = event.keyValuePairs.associate { it.key to it.value }
                 fields["behov_id"] shouldBe behovId.value.toString()
                 event.throwableProxy.message shouldBe "java.lang.IllegalStateException"
-                (event.formattedMessage + fields.toString() + event.throwableProxy.message)
-                    .contains("private-exception-canary") shouldBe false
+                (event.formattedMessage + fields.toString() + event.throwableProxy.message) shouldNotContain "private-exception-canary"
             } finally {
                 logger.detachAppender(appender)
                 logger.level = previousLevel

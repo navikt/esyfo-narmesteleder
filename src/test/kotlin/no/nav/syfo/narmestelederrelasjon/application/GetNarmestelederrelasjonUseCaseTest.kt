@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
@@ -19,7 +19,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import java.util.UUID
 
 class GetNarmestelederrelasjonUseCaseTest :
-    DescribeSpec({
+    FunSpec({
         val id = UUID.randomUUID()
         val employeeIdent = PersonIdent("12345678901")
         val orgNumber = OrganizationNumber("123456789")
@@ -51,7 +51,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             FakeGetOrganization(organizationName, effects),
         )
 
-        it("returns the relation only to an organization-authorized caller") {
+        test("returns the relation only to an organization-authorized caller") {
             val effects = mutableListOf<String>()
             query(effects = effects).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.Found(
                 Narmestelederrelasjon(
@@ -64,7 +64,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
         }
 
-        it("masks missing organization access") {
+        test("masks missing organization access") {
             val effects = mutableListOf<String>()
             query(
                 access = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS),
@@ -76,7 +76,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             effects shouldBe listOf("lookup", "access")
         }
 
-        it("unavailable access stops before sykmelding and organization lookup") {
+        test("unavailable access stops before sykmelding and organization lookup") {
             val effects = mutableListOf<String>()
             val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
             val result = query(access = OrganizationAccessResult.Unavailable(failure), effects = effects).execute(id, caller)
@@ -85,14 +85,14 @@ class GetNarmestelederrelasjonUseCaseTest :
             effects shouldBe listOf("lookup", "access")
         }
 
-        it("masks missing active sykmelding after authorization and before organization lookup") {
+        test("masks missing active sykmelding after authorization and before organization lookup") {
             val effects = mutableListOf<String>()
             query(activeSykmelding = false, effects = effects).execute(id, caller) shouldBe
                 GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.NO_ACTIVE_SYKMELDING)
             effects shouldBe listOf("lookup", "access", "sykmelding")
         }
 
-        it("masks an inactive relation before authorization lookup") {
+        test("masks an inactive relation before authorization lookup") {
             val effects = mutableListOf<String>()
             query(lookup = lookup().copy(isActive = false), effects = effects).execute(id, caller) shouldBe
                 GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.RELATION_INACTIVE)
@@ -105,7 +105,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             "missing last name" to lookup().copy(employeeLastName = null),
             "blank last name" to lookup().copy(employeeLastName = ""),
         ).forEach { (description, incompleteLookup) ->
-            it("returns the relation with a nullable name for $description") {
+            test("returns the relation with a nullable name for $description") {
                 val effects = mutableListOf<String>()
                 query(lookup = incompleteLookup, effects = effects).execute(id, caller) shouldBe
                     GetNarmestelederrelasjonResult.Found(
@@ -125,7 +125,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             }
         }
 
-        it("returns the relation with a null organization name when the name is missing") {
+        test("returns the relation with a null organization name when the name is missing") {
             val effects = mutableListOf<String>()
             query(organizationName = OrganizationNameResult.Missing, effects = effects).execute(id, caller) shouldBe
                 GetNarmestelederrelasjonResult.Found(
@@ -139,7 +139,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
         }
 
-        it("returns UpstreamUnavailable with the unchanged failure after organization lookup") {
+        test("returns UpstreamUnavailable with the unchanged failure after organization lookup") {
             val effects = mutableListOf<String>()
             val failure = UpstreamFailure(UpstreamName("ereg"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
 
@@ -149,7 +149,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
         }
 
-        it("does not perform authorization lookup when no relation exists") {
+        test("does not perform authorization lookup when no relation exists") {
             val effects = mutableListOf<String>()
             query(lookup = null, effects = effects).execute(id, caller) shouldBe
                 GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.RELATION_NOT_FOUND)

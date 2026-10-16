@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
@@ -87,8 +88,8 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
             insertManagerPerson()
             insertEmployeeRelation()
             val result = repository.findActive(employee, null).single().toString()
-            result.contains(employee.value) shouldBe false
-            result.contains("10987654321") shouldBe false
+            result shouldNotContain employee.value
+            result shouldNotContain "10987654321"
         }
 
         test("maps manager mobile and raw names") {

@@ -1,12 +1,11 @@
 package no.nav.syfo.integration.aareg
 
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.classic.util.LogbackMDCAdapter
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotBeBlank
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
@@ -22,7 +21,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.api.NAV_CALL_ID_HEADER
 import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.integration.TEST_SYSTEM_TOKEN
@@ -31,7 +29,9 @@ import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.captureProductionLogs
 import no.nav.syfo.logging.logEvent
+import no.nav.syfo.logging.withProductionLogger
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrThrow
@@ -130,7 +130,7 @@ class AaregClientTest :
 
                     callIds.size shouldBe 2
                     callIds.forEach { callId ->
-                        requireNotNull(callId).isNotBlank() shouldBe true
+                        callId.shouldNotBeNull().shouldNotBeBlank()
                         UUID.fromString(callId).toString() shouldBe callId
                     }
                 }
@@ -222,7 +222,7 @@ class AaregClientTest :
             test("$operation propagates a Texas token exchange failure without sending the employee ident") {
                 val client = aaregClient(
                     token = { request ->
-                        String(request.body.toByteArray()).contains(personIdent) shouldBe false
+                        String(request.body.toByteArray()) shouldNotContain personIdent
                         respondJson("token endpoint unavailable", HttpStatusCode.ServiceUnavailable)
                     },
                     aareg = { error("No Aareg request should be made without a token") },
@@ -249,14 +249,7 @@ class AaregClientTest :
         }
 
         test("logs the Aareg failure with upstream status and Ktor cause without the ident canary") {
-            val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
-            try {
-                context.putProperty("NAIS_CLUSTER_NAME", "test")
-                JoranConfigurator().apply {
-                    this.context = context
-                    doConfigure("src/main/resources/logback.xml")
-                }
-                val logger = context.getLogger("aareg-client-diagnostics-test")
+            withProductionLogger("aareg-client-diagnostics-test") { logger ->
                 val contract = RuntimeLogContract.forEvents(
                     aaregDiagnosticTestEvent,
                     exceptionTypes = setOf("ClientRequestException", "ServerResponseException"),
@@ -273,7 +266,7 @@ class AaregClientTest :
                         val result = client.getArbeidsforholdHistorikk(personIdent).shouldBeInstanceOf<UpstreamResult.Failure>()
                         result.failure.cause shouldBeSameInstanceAs original
 
-                        captureLogs(logger, "stdout_json").use { capture ->
+                        logger.captureProductionLogs().use { capture ->
                             logger.logEvent(aaregDiagnosticTestEvent, Unit, upstreamFailure = result.failure)
                             contract.assertValid(capture.records, expectedCount = 1)
                             val output = capture.records.single()
@@ -287,8 +280,6 @@ class AaregClientTest :
                         }
                     }
                 }
-            } finally {
-                context.stop()
             }
         }
     })

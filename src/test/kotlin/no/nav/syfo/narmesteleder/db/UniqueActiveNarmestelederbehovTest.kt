@@ -2,7 +2,9 @@ package no.nav.syfo.narmesteleder.db
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.application.database.DatabaseInterface
@@ -163,7 +165,7 @@ class UniqueActiveNarmestelederbehovTest :
                 val rollbacks = observedDatabase.rollbacks
                 val commits = observedDatabase.commits
                 val failure = shouldThrow<PSQLException> { db.insertNlBehov(entity) }
-                (failure === observedDatabase.insertFailure) shouldBe true
+                failure shouldBeSameInstanceAs observedDatabase.insertFailure
                 observedDatabase.rollbacks shouldBe rollbacks + 1
                 observedDatabase.commits shouldBe commits
                 failure.sqlState shouldBe "23505"
@@ -184,11 +186,12 @@ class UniqueActiveNarmestelederbehovTest :
                 db.insertNlBehov(nlBehovEntity().copy(orgnummer = "too-long-for-column"))
             }
             failure.sqlState shouldBe "22001"
-            (failure === observedDatabase.insertFailure) shouldBe true
+            failure shouldBeSameInstanceAs observedDatabase.insertFailure
             observedDatabase.rollbacks shouldBe rollbacks + 1
             observedDatabase.commits shouldBe commits
             // The one-connection pool must remain usable after the failed transaction.
-            db.insertNlBehov(nlBehovEntity()).id?.let { observedDatabase.findBehovById(it) != null } shouldBe true
+            val insertedId = db.insertNlBehov(nlBehovEntity()).id.shouldNotBeNull()
+            observedDatabase.findBehovById(insertedId).shouldNotBeNull()
         }
 
         test("has a unique valid index with exactly the two active statuses as its predicate") {

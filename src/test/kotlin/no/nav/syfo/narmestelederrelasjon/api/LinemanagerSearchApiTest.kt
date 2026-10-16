@@ -17,19 +17,13 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
@@ -49,6 +43,8 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.api.internalApiV1
+import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -389,18 +385,4 @@ private fun withSearchApi(
     useCase: SearchActiveNarmestelederrelasjonerUseCase,
     texasHttpClient: TexasHttpClient,
     test: suspend ApplicationTestBuilder.() -> Unit,
-) {
-    testApplication {
-        application {
-            installContentNegotiation()
-            installStatusPages()
-            routing {
-                route(INTERNAL_API_V1_PATH) {
-                    install(AddTokenIssuerPlugin)
-                    registerLinemanagerSearchApi(useCase, texasHttpClient)
-                }
-            }
-        }
-        test()
-    }
-}
+) = testRouteApplication(routes = { internalApiV1 { registerLinemanagerSearchApi(useCase, texasHttpClient) } }, block = test)

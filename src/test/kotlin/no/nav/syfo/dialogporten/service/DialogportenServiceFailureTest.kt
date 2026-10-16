@@ -1,16 +1,11 @@
 package no.nav.syfo.dialogporten.service
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.classic.util.LogbackMDCAdapter
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import nlBehovEntity
-import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
@@ -23,6 +18,7 @@ import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.integration.pdl.FakePdlClient
+import no.nav.syfo.logging.ProductionLogs
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.pdl.PdlService
@@ -31,31 +27,12 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
-import org.slf4j.LoggerFactory
 import java.util.UUID
 
 class DialogportenServiceFailureTest :
     FunSpec({
         val mapper = jacksonObjectMapper()
-        val logger = LoggerFactory.getLogger(DialogportenService::class.java) as Logger
-        val original = logger.level to logger.isAdditive
-        val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
-        beforeSpec {
-            context.putProperty("NAIS_CLUSTER_NAME", "test")
-            JoranConfigurator().apply {
-                this.context = context
-                doConfigure("src/main/resources/logback.xml")
-            }
-            logger.level = Level.ERROR
-            logger.isAdditive = false
-            logger.addAppender(requireNotNull(context.getLogger(Logger.ROOT_LOGGER_NAME).getAppender("stdout_json")))
-        }
-        afterSpec {
-            logger.detachAppender("stdout_json")
-            logger.level = original.first
-            logger.isAdditive = original.second
-            context.stop()
-        }
+        val productionLogs = extension(ProductionLogs(DialogportenService::class.java, Level.ERROR))
 
         listOf("COMPLETE", "EXPIRE").forEach { action ->
             test("$action revision conflict logs 412 and leaves all persisted state unchanged for retry") {
@@ -68,7 +45,7 @@ class DialogportenServiceFailureTest :
                         behovStatus = if (action == "COMPLETE") BehovStatus.BEHOV_FULFILLED else BehovStatus.BEHOV_EXPIRED,
                     )
                 )
-                captureLogs(logger, "stdout_json").use { capture ->
+                productionLogs.capture().use { capture ->
                     if (action == "COMPLETE") service.setAllFulfilledBehovsAsCompletedInDialogporten() else service.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
                     val record = mapper.readTree(capture.records.single())
                     record["event_type"].asText() shouldBe "dialogporten_dialog_failed"
@@ -110,7 +87,7 @@ class DialogportenServiceFailureTest :
                                 behovStatus = if (action == "COMPLETE") BehovStatus.BEHOV_FULFILLED else BehovStatus.BEHOV_EXPIRED,
                             )
                         )
-                        captureLogs(logger, "stdout_json").use { capture ->
+                        productionLogs.capture().use { capture ->
                             if (action == "COMPLETE") service.setAllFulfilledBehovsAsCompletedInDialogporten() else service.setAllExpiredBehovsAsExpiredAndCompletedInDialogporten()
                             val output = capture.records.single()
                             val record = mapper.readTree(output)
@@ -135,7 +112,7 @@ class DialogportenServiceFailureTest :
                 val client = LegacyRecordingClient(failure, "create")
                 val service = DialogportenService(client, db, OtherEnvironmentProperties.createForLocal(), PdlService(FakePdlClient()))
                 val behov = db.insertNlBehov(nlBehovEntity())
-                captureLogs(logger, "stdout_json").use { capture ->
+                productionLogs.capture().use { capture ->
                     service.sendToDialogporten(behov)
                     val output = capture.records.single()
                     val record = mapper.readTree(output)

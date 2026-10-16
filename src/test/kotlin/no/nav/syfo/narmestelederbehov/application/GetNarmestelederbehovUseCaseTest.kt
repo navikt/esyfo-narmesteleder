@@ -7,8 +7,6 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.withProductionLogs
-import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
@@ -20,7 +18,6 @@ import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import java.time.Instant
 import java.util.UUID
 
 class GetNarmestelederbehovUseCaseTest :
@@ -50,7 +47,7 @@ class GetNarmestelederbehovUseCaseTest :
         }
 
         test("missing name is looked up and persisted before access is checked") {
-            val fixture = ReadFixture(row = behovDetails().copy(firstName = null, lastName = null))
+            val fixture = ReadFixture(row = narmestelederbehovDetails(firstName = null, lastName = null))
             fixture.person = BehovPersonName(firstName = "Looked", lastName = "Up", middleName = "Middle")
             fixture.execute() shouldBe GetNarmestelederbehovResult.Found(
                 behov = requireNotNull(fixture.row),
@@ -69,7 +66,7 @@ class GetNarmestelederbehovUseCaseTest :
 
         DenialReason.entries.forEach { reason ->
             test("denial $reason is evaluated after the name is resolved") {
-                val fixture = ReadFixture(row = behovDetails().copy(firstName = null), access = OrganizationAccessResult.Denied(reason))
+                val fixture = ReadFixture(row = narmestelederbehovDetails(firstName = null), access = OrganizationAccessResult.Denied(reason))
                 fixture.person = BehovPersonName(firstName = "Looked", lastName = "Up", middleName = null)
                 fixture.execute() shouldBe GetNarmestelederbehovResult.AccessDenied(
                     reason = reason,
@@ -92,21 +89,21 @@ class GetNarmestelederbehovUseCaseTest :
 
         test("Unavailable propagates before access without persisting a name") {
             val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
-            val fixture = ReadFixture(row = behovDetails().copy(firstName = null), unavailable = failure)
+            val fixture = ReadFixture(row = narmestelederbehovDetails(firstName = null), unavailable = failure)
             fixture.execute() shouldBe GetNarmestelederbehovResult.UpstreamUnavailable(failure)
             fixture.effects shouldBe listOf("read", "person")
             fixture.savedNames shouldBe emptyList()
         }
 
         test("unresolved missing name is unavailable") {
-            val fixture = ReadFixture(row = behovDetails().copy(firstName = null))
+            val fixture = ReadFixture(row = narmestelederbehovDetails(firstName = null))
             fixture.execute() shouldBe GetNarmestelederbehovResult.PersonNotFound
             fixture.effects shouldBe listOf("read", "person")
         }
     })
 
 private class ReadFixture(
-    val row: NarmestelederbehovDetails? = behovDetails(),
+    val row: NarmestelederbehovDetails? = narmestelederbehovDetails(),
     val access: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = "Org"),
     unavailable: UpstreamFailure? = null,
 ) {
@@ -145,18 +142,3 @@ private class ReadFixture(
         ),
     ) = useCase.execute(id = NarmestelederbehovId(UUID.randomUUID()), subject = subject)
 }
-
-private fun behovDetails() = NarmestelederbehovDetails(
-    id = NarmestelederbehovId(UUID.randomUUID()),
-    employeeIdent = PersonIdent("12345678901"),
-    organizationNumber = OrganizationNumber("910000001"),
-    mainOrganizationNumber = "910000002",
-    managerIdent = null,
-    firstName = "Stored",
-    middleName = "Middle",
-    lastName = "Name",
-    created = Instant.EPOCH,
-    updated = Instant.EPOCH,
-    status = BehovStatus.BEHOV_CREATED,
-    reason = BehovReason.NY_LEDER,
-)

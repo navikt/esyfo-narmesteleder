@@ -1,21 +1,17 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.Appender
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldNotContain
 import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.esyfo.observability.testkit.captureLogs
+import no.nav.syfo.logging.ProductionLogs
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -23,17 +19,13 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 
 class FulfillmentLoggingContractTest :
     FunSpec({
         val mapper = jacksonObjectMapper()
         val contract = RuntimeLogContract.forEvents(fulfillmentCompleted, fulfillmentRejected)
-        val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovUseCase::class.java) as Logger
-        val originalSettings = logger.level to logger.isAdditive
-        val productionLogging = LoggerContext()
-        lateinit var productionAppender: Appender<ILoggingEvent>
+        val productionLogs = extension(ProductionLogs(FulfillNarmestelederbehovUseCase::class.java))
         lateinit var capture: LogCapture
         val privacyCanaries = listOf(
             employeeIdent.value, managerIdent.value, organizationNumber.value,
@@ -62,25 +54,8 @@ class FulfillmentLoggingContractTest :
             it["logger_name"].asText() shouldBe FulfillNarmestelederbehovUseCase::class.java.name
         }
 
-        beforeSpec {
-            productionLogging.putProperty("NAIS_CLUSTER_NAME", "test")
-            JoranConfigurator().apply {
-                context = productionLogging
-                doConfigure("src/main/resources/logback.xml")
-            }
-            productionAppender = requireNotNull(productionLogging.getLogger(Logger.ROOT_LOGGER_NAME).getAppender("stdout_json"))
-            logger.level = Level.TRACE
-            logger.isAdditive = false
-            logger.addAppender(productionAppender)
-        }
-        afterSpec {
-            logger.detachAppender(productionAppender)
-            logger.level = originalSettings.first
-            logger.isAdditive = originalSettings.second
-            productionLogging.stop()
-        }
         beforeTest {
-            capture = captureLogs(logger, "stdout_json")
+            capture = productionLogs.capture()
         }
         afterTest {
             try {
@@ -230,8 +205,8 @@ class FulfillmentLoggingContractTest :
                     issues.size() shouldBe record["issue_count"].asInt()
                     issues.forEach { issue ->
                         issue.size() shouldBe 2
-                        (issue["field"].asText() in setOf("MOBILE", "EMAIL")) shouldBe true
-                        issue["reason"].asText().matches(Regex("[A-Z_]+")) shouldBe true
+                        issue["field"].asText() shouldBeIn setOf("MOBILE", "EMAIL")
+                        issue["reason"].asText() shouldMatch Regex("[A-Z_]+")
                     }
                 } else {
                     record.has("validation_issues") shouldBe false

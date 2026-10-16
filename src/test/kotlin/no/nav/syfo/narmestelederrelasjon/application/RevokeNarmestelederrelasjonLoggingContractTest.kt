@@ -1,20 +1,14 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.Appender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.logging.ProductionLogs
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -22,7 +16,6 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import org.slf4j.LoggerFactory
 import java.util.UUID
 
 class RevokeNarmestelederrelasjonLoggingContractTest :
@@ -32,10 +25,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
             revokeAccessRejected,
             rejectionReasons = setOf("MISSING_ORG_ACCESS", "MISSING_ALITINN_RESOURCE_ACCESS"),
         )
-        val logger = LoggerFactory.getLogger(RevokeNarmestelederrelasjonUseCase::class.java) as Logger
-        val originalSettings = logger.level to logger.isAdditive
-        val productionLogging = LoggerContext()
-        lateinit var productionAppender: Appender<ILoggingEvent>
+        val productionLogs = extension(ProductionLogs(RevokeNarmestelederrelasjonUseCase::class.java))
         lateinit var capture: LogCapture
         val id = UUID.fromString("00000000-0000-0000-0000-00000000abcd")
         val employee = PersonIdent("12345678901")
@@ -62,24 +52,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
             publisher = RecordingRevocationPublisher { error("Publisher must not be called") },
         ).execute(id, subject)
 
-        beforeSpec {
-            productionLogging.putProperty("NAIS_CLUSTER_NAME", "test")
-            JoranConfigurator().apply {
-                context = productionLogging
-                doConfigure("src/main/resources/logback.xml")
-            }
-            productionAppender = requireNotNull(productionLogging.getLogger(Logger.ROOT_LOGGER_NAME).getAppender("stdout_json"))
-            logger.level = Level.TRACE
-            logger.isAdditive = false
-            logger.addAppender(productionAppender)
-        }
-        afterSpec {
-            logger.detachAppender(productionAppender)
-            logger.level = originalSettings.first
-            logger.isAdditive = originalSettings.second
-            productionLogging.stop()
-        }
-        beforeTest { capture = captureLogs(logger, "stdout_json") }
+        beforeTest { capture = productionLogs.capture() }
         afterTest {
             try {
                 capture.records.forEach { line ->
@@ -106,7 +79,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
                 event["narmesteleder_id"].asText() shouldBe id.toString()
                 event["principal_type"].asText() shouldBe "UserPrincipal"
                 capture.close()
-                capture = captureLogs(logger, "stdout_json")
+                capture = productionLogs.capture()
             }
         }
 

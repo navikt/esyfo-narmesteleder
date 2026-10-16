@@ -73,7 +73,7 @@ class SubmitNarmestelederrelasjonUseCaseTest :
             val effects = mutableListOf<String>()
             val useCase = recordingUseCase(effects)
             val result = useCase.execute(command(systemUser).copy(manager = manager.copy(mobile = "invalid")))
-            (result is SubmitNarmestelederrelasjonResult.InvalidManagerContactDetails) shouldBe true
+            result.shouldBeInstanceOf<SubmitNarmestelederrelasjonResult.InvalidManagerContactDetails>()
             effects shouldBe emptyList()
         }
 

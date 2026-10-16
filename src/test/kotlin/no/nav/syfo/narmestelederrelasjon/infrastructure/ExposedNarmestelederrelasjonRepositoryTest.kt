@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
@@ -17,7 +17,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 class ExposedNarmestelederrelasjonRepositoryTest :
-    DescribeSpec({
+    FunSpec({
         val now = Instant.parse("2026-02-01T12:00:00Z")
         val repository = ExposedNarmestelederrelasjonRepository(
             TestDB.exposedDatabase,
@@ -67,7 +67,7 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             }
         }
 
-        it("returns a current relation with employee name") {
+        test("returns a current relation with employee name") {
             val id = UUID.randomUUID()
             insertPerson(employeeIdent, "Employee", "Middle", "Person")
             insertRelation(id)
@@ -81,7 +81,7 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             relation?.isActive shouldBe true
         }
 
-        it("returns names as null when person projections are absent") {
+        test("returns names as null when person projections are absent") {
             val id = UUID.randomUUID()
             insertRelation(id)
 
@@ -90,25 +90,25 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             relation?.employeeFirstName.shouldBeNull()
         }
 
-        it("marks a revoked relation as inactive") {
+        test("marks a revoked relation as inactive") {
             val id = UUID.randomUUID()
             insertRelation(id, to = activeFrom.plusSeconds(1))
 
             repository.findById(id)?.isActive shouldBe false
         }
 
-        it("marks a future relation as inactive") {
+        test("marks a future relation as inactive") {
             val id = UUID.randomUUID()
             insertRelation(id, from = activeFrom.plusDays(2))
 
             repository.findById(id)?.isActive shouldBe false
         }
 
-        it("returns null for an unknown relation") {
+        test("returns null for an unknown relation") {
             repository.findById(UUID.randomUUID()).shouldBeNull()
         }
 
-        it("finds a revocable relation with both parties and organization without a person projection") {
+        test("finds a revocable relation with both parties and organization without a person projection") {
             val id = UUID.randomUUID()
             insertRelation(id)
 
@@ -121,27 +121,27 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             )
         }
 
-        it("finds a revoked relation as inactive") {
+        test("finds a revoked relation as inactive") {
             val id = UUID.randomUUID()
             insertRelation(id, to = activeFrom.plusSeconds(1))
 
             repository.findRevocableById(id)?.isActive shouldBe false
         }
 
-        it("finds a future-dated relation as revocable") {
+        test("finds a future-dated relation as revocable") {
             val id = UUID.randomUUID()
             insertRelation(id, from = activeFrom.plusDays(2))
 
             repository.findRevocableById(id)?.isActive shouldBe true
         }
 
-        it("returns null for an unknown revoke id") {
+        test("returns null for an unknown revoke id") {
             insertRelation()
 
             repository.findRevocableById(UUID.randomUUID()).shouldBeNull()
         }
 
-        it("does not return a revoke relation belonging to another id") {
+        test("does not return a revoke relation belonging to another id") {
             val other = UUID.randomUUID()
             val wanted = UUID.randomUUID()
             insertRelation(other, employee = "12345678902", manager = "10987654322")

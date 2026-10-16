@@ -1,11 +1,9 @@
 package no.nav.syfo.integration.ereg
 
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.classic.util.LogbackMDCAdapter
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.inspectors.forAtLeastOne
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -21,12 +19,13 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import no.nav.esyfo.observability.causeChain
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.integration.httpClientDefaultWithoutRetryDelay
 import no.nav.syfo.integration.respondJson
 import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.captureProductionLogs
 import no.nav.syfo.logging.logEvent
+import no.nav.syfo.logging.withProductionLogger
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamResult
 import org.slf4j.event.Level
@@ -159,14 +158,7 @@ class EregClientTest :
         }
 
         test("logs Ereg failure metadata without the organization number or upstream body") {
-            val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
-            try {
-                context.putProperty("NAIS_CLUSTER_NAME", "test")
-                JoranConfigurator().apply {
-                    this.context = context
-                    doConfigure("src/main/resources/logback.xml")
-                }
-                val logger = context.getLogger("ereg-client-diagnostics-test")
+            withProductionLogger("ereg-client-diagnostics-test") { logger ->
                 val contract = RuntimeLogContract.forEvents(
                     eregDiagnosticTestEvent,
                     exceptionTypes = setOf("ClientRequestException", "ServerResponseException"),
@@ -176,7 +168,7 @@ class EregClientTest :
                         val result = HttpEregClient("http://ereg", httpClient).getOrganisasjon(orgNumber)
                             .shouldBeInstanceOf<UpstreamResult.Failure>()
 
-                        captureLogs(logger, "stdout_json").use { capture ->
+                        logger.captureProductionLogs().use { capture ->
                             logger.logEvent(eregDiagnosticTestEvent, Unit, upstreamFailure = result.failure)
                             contract.assertValid(capture.records, expectedCount = 1)
                             val output = capture.records.single()
@@ -191,8 +183,6 @@ class EregClientTest :
                         }
                     }
                 }
-            } finally {
-                context.stop()
             }
         }
     })
@@ -206,7 +196,7 @@ private fun UpstreamResult.Failure.shouldNotExposeOrganizationNumber(orgNumber: 
 // Coroutine stack-trace recovery may copy exceptions across MockEngine coroutine boundaries.
 private fun Throwable.shouldRetainThrownException(original: Throwable) {
     javaClass shouldBe original.javaClass
-    causeChain().any { it === original } shouldBe true
+    causeChain().forAtLeastOne { it shouldBeSameInstanceAs original }
 }
 
 private fun eregHttpClient(handler: MockRequestHandler): HttpClient = httpClientDefaultWithoutRetryDelay(

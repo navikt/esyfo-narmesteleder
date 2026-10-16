@@ -1,11 +1,5 @@
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.Headers
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.fullPath
-import io.ktor.http.isSuccess
 import io.mockk.coEvery
 import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
@@ -110,28 +104,6 @@ val DefaultOrganization = OrganizationId(
     ID = "0192:123456789",
     authority = "some-authority",
 )
-
-fun getMockEngine(path: String = "", status: HttpStatusCode, headers: Headers, content: String) = MockEngine.Companion { request ->
-    when (request.url.fullPath) {
-        path -> {
-            if (status.isSuccess()) {
-                respond(
-                    status = status,
-                    headers = headers,
-                    content = content.toByteArray(Charsets.UTF_8),
-                )
-            } else {
-                respond(
-                    status = status,
-                    headers = headers,
-                    content = content,
-                )
-            }
-        }
-
-        else -> error("Unhandled request ${request.url.fullPath}")
-    }
-}
 
 fun TexasHttpClient.defaultMocks(
     pid: String? = null,

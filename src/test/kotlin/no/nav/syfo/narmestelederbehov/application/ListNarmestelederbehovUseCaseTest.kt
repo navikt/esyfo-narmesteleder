@@ -7,8 +7,6 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.withProductionLogs
-import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
@@ -21,7 +19,6 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
-import java.util.UUID
 
 class ListNarmestelederbehovUseCaseTest :
     FunSpec({
@@ -48,7 +45,7 @@ class ListNarmestelederbehovUseCaseTest :
         }
 
         test("stored names need no lookup or writes and no count when the page fits") {
-            val rows = listOf(listDetails(), listDetails())
+            val rows = listOf(narmestelederbehovDetails(), narmestelederbehovDetails())
             val fixture = ListFixture(rows)
             fixture.execute(pageSize = 2) shouldBe ListNarmestelederbehovResult.Listed(
                 rows.map { ListedNarmestelederbehov(it, BehovPersonName("Stored", "Middle", "Name")) },
@@ -64,8 +61,8 @@ class ListNarmestelederbehovUseCaseTest :
 
         test("missing names are resolved and saved sequentially after access including the overflow row") {
             val rows = listOf(
-                listDetails().copy(firstName = null),
-                listDetails().copy(lastName = null, employeeIdent = PersonIdent("12345678902")),
+                narmestelederbehovDetails(firstName = null),
+                narmestelederbehovDetails(lastName = null, employeeIdent = PersonIdent("12345678902")),
             )
             val fixture = ListFixture(rows)
             val result = fixture.execute(pageSize = 1) as ListNarmestelederbehovResult.Listed
@@ -79,21 +76,21 @@ class ListNarmestelederbehovUseCaseTest :
         }
 
         test("an unresolved overflow person stops before count") {
-            val fixture = ListFixture(listOf(listDetails(), listDetails().copy(firstName = null)), personFound = false)
+            val fixture = ListFixture(listOf(narmestelederbehovDetails(), narmestelederbehovDetails(firstName = null)), personFound = false)
             fixture.execute(pageSize = 1) shouldBe ListNarmestelederbehovResult.PersonNotFound
             fixture.effects shouldBe listOf("access", "find", "person")
             fixture.savedNames shouldBe emptyList()
         }
 
         test("a missing first person stops before subsequent lookup or writes") {
-            val fixture = ListFixture(List(2) { listDetails().copy(firstName = null) }, personFound = false)
+            val fixture = ListFixture(List(2) { narmestelederbehovDetails(firstName = null) }, personFound = false)
             fixture.execute(pageSize = 1) shouldBe ListNarmestelederbehovResult.PersonNotFound
             fixture.effects shouldBe listOf("access", "find", "person")
         }
 
         test("Unavailable stops before subsequent lookups writes and count") {
             val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
-            val fixture = ListFixture(List(2) { listDetails().copy(firstName = null) }, unavailable = failure)
+            val fixture = ListFixture(List(2) { narmestelederbehovDetails(firstName = null) }, unavailable = failure)
             fixture.execute(pageSize = 1) shouldBe ListNarmestelederbehovResult.UpstreamUnavailable(failure)
             fixture.effects shouldBe listOf("access", "find", "person")
             fixture.savedNames shouldBe emptyList()
@@ -117,7 +114,7 @@ class ListNarmestelederbehovUseCaseTest :
 private val ORGANIZATION_NUMBER = OrganizationNumber("910000001")
 
 private class ListFixture(
-    private val rows: List<NarmestelederbehovDetails> = listOf(listDetails()),
+    private val rows: List<NarmestelederbehovDetails> = listOf(narmestelederbehovDetails()),
     private val access: OrganizationAccessResult = OrganizationAccessResult.Granted("Org"),
     private val personFound: Boolean = true,
     private val unavailable: UpstreamFailure? = null,
@@ -181,18 +178,3 @@ private class ListFixture(
         subject: OrganizationAccessSubject = OrganizationAccessSubject.PersonnelManager(PersonIdent("12345678901"), AccessToken("token")),
     ) = useCase.execute(ListNarmestelederbehovQuery(ORGANIZATION_NUMBER, Instant.EPOCH, pageSize, subject))
 }
-
-private fun listDetails() = NarmestelederbehovDetails(
-    id = NarmestelederbehovId(UUID.randomUUID()),
-    employeeIdent = PersonIdent("12345678901"),
-    organizationNumber = ORGANIZATION_NUMBER,
-    mainOrganizationNumber = "910000002",
-    managerIdent = null,
-    firstName = "Stored",
-    middleName = "Middle",
-    lastName = "Name",
-    created = Instant.EPOCH,
-    updated = Instant.EPOCH,
-    status = BehovStatus.BEHOV_CREATED,
-    reason = BehovReason.NY_LEDER,
-)

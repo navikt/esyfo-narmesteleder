@@ -6,7 +6,7 @@ import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.texas.TexasEnvironment
 import no.nav.syfo.application.valkey.ValkeyEnvironment
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
-import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.Producer
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import org.koin.test.verify.verify
@@ -45,5 +45,5 @@ private val valuesNotRegisteredInKoin = listOf(
     TexasEnvironment::class,
     ValkeyEnvironment::class,
     HttpClientEngine::class,
-    KafkaProducer::class,
+    Producer::class,
 )

@@ -43,9 +43,13 @@ internal class RecordingEmploymentReconciliationRepository : EmploymentReconcili
     val completed = mutableListOf<RecordedCompletion>()
     val observed = mutableMapOf<UUID, Instant>()
     var seeded = 0
+    val seedRequests = mutableListOf<Pair<Int, Instant>>()
     var stats = EmploymentCheckStats(onlyShadowUnder31Days = 0, onlyShadow31DaysOrMore = 0, due = 0)
 
-    override suspend fun seedMissing(limit: Int, now: Instant): Int = seeded
+    override suspend fun seedMissing(limit: Int, now: Instant): Int {
+        seedRequests += limit to now
+        return seeded
+    }
 
     override suspend fun claimDue(limit: Int, lease: Duration, now: Instant, revokeEnabled: Boolean): List<ClaimedEmploymentCheck> {
         revokeEnabledWhenClaiming = revokeEnabled

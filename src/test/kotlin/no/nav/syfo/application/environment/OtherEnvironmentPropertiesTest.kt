@@ -1,5 +1,6 @@
 package no.nav.syfo.application.environment
 
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -23,13 +24,12 @@ class OtherEnvironmentPropertiesTest :
 
         listOf(false to false, true to false, false to true).forEach { (revoke, observe) ->
             test("startup accepts revoke=$revoke and observe=$observe") {
-                val properties = OtherEnvironmentProperties.createForLocal().copy(
-                    employmentCheckRevokeEnabled = revoke,
-                    employmentCheckObserveSourceEnabled = observe,
-                )
-
-                properties.employmentCheckRevokeEnabled shouldBe revoke
-                properties.employmentCheckObserveSourceEnabled shouldBe observe
+                shouldNotThrowAny {
+                    OtherEnvironmentProperties.createForLocal().copy(
+                        employmentCheckRevokeEnabled = revoke,
+                        employmentCheckObserveSourceEnabled = observe,
+                    )
+                }
             }
         }
     })

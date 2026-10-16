@@ -65,11 +65,12 @@ class ExposedNarmestelederbehovRepositoryTest :
                 name = BehovPersonName(firstName = "First", middleName = "Middle", lastName = "Last"),
             )
 
-            val after = requireNotNull(findStoredNarmestelederbehov(before.id))
-            after.fornavn shouldBe "First"
-            after.mellomnavn shouldBe "Middle"
-            after.etternavn shouldBe "Last"
-            after.copy(fornavn = null, mellomnavn = null, etternavn = null, updated = before.updated) shouldBe before
+            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                fornavn shouldBe "First"
+                mellomnavn shouldBe "Middle"
+                etternavn shouldBe "Last"
+                copy(fornavn = null, mellomnavn = null, etternavn = null, updated = before.updated) shouldBe before
+            }
         }
 
         test("finds a behov for fulfillment and returns null for missing id") {
@@ -97,9 +98,10 @@ class ExposedNarmestelederbehovRepositoryTest :
 
             repository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, dialogId)
 
-            val after = requireNotNull(findStoredNarmestelederbehov(before.id))
-            after.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
-            after.copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
+            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
+            }
         }
 
         test("marks a behov with no dialog and returns Missing for an absent row") {
@@ -115,9 +117,10 @@ class ExposedNarmestelederbehovRepositoryTest :
 
             repository.markDialogCompleted(id) shouldBe MarkDialogCompletedResult.Marked
 
-            val after = requireNotNull(findStoredNarmestelederbehov(before.id))
-            after.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-            after.copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
+            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
+            }
         }
 
         test("does not overwrite a status changed by another writer") {
@@ -164,25 +167,27 @@ class ExposedNarmestelederbehovRepositoryTest :
         test("creates a behov with every column") {
             val result = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
 
-            val row = requireNotNull(findStoredNarmestelederbehov(result.id.value))
-            row.sykmeldtFnr shouldBe "12345678901"
-            row.orgnummer shouldBe "910000001"
-            row.hovedenhetOrgnummer shouldBe "910000009"
-            row.narmestelederFnr shouldBe "10987654321"
-            row.behovReason shouldBe BehovReason.DEAKTIVERT_LEDER
-            row.behovStatus shouldBe BehovStatus.BEHOV_CREATED
-            row.avbruttNarmestelederId shouldBe newBehov.revokedRelationId
-            row.dialogId.shouldBeNull()
-            row.fornavn.shouldBeNull()
+            with(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
+                sykmeldtFnr shouldBe "12345678901"
+                orgnummer shouldBe "910000001"
+                hovedenhetOrgnummer shouldBe "910000009"
+                narmestelederFnr shouldBe "10987654321"
+                behovReason shouldBe BehovReason.DEAKTIVERT_LEDER
+                behovStatus shouldBe BehovStatus.BEHOV_CREATED
+                avbruttNarmestelederId shouldBe newBehov.revokedRelationId
+                dialogId.shouldBeNull()
+                fornavn.shouldBeNull()
+            }
         }
 
         test("creates a behov without manager or revoked relation") {
             val result = repository.create(newBehov.copy(manager = null, revokedRelationId = null))
                 .shouldBeInstanceOf<CreateBehovResult.Created>()
 
-            val row = requireNotNull(findStoredNarmestelederbehov(result.id.value))
-            row.narmestelederFnr.shouldBeNull()
-            row.avbruttNarmestelederId.shouldBeNull()
+            with(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
+                narmestelederFnr.shouldBeNull()
+                avbruttNarmestelederId.shouldBeNull()
+            }
         }
 
         test("reports AlreadyExists without storing when the employee has an open behov in the organization") {

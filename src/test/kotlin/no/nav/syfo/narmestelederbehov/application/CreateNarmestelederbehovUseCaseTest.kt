@@ -88,81 +88,81 @@ class CreateNarmestelederbehovUseCaseTest :
         }
 
         test("stores a behov with the main organization from employment and creates the dialog last") {
-            val fixture = Fixture()
+            with(Fixture()) {
+                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId)
 
-            fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId)
-
-            val expected = NewNarmestelederbehov(
-                employee = employee,
-                mainOrganizationNumber = "987654321",
-                manager = manager,
-                reason = BehovReason.DEAKTIVERT_LEDER,
-                status = BehovStatus.BEHOV_CREATED,
-                revokedRelationId = relationId,
-            )
-            fixture.created shouldBe listOf(expected)
-            fixture.dialogs shouldBe listOf(createdId to expected)
-            fixture.effects shouldBe listOf("find-open", "active-sykmelding", "main-organization", "create", "dialog")
+                val expected = NewNarmestelederbehov(
+                    employee = employee,
+                    mainOrganizationNumber = "987654321",
+                    manager = manager,
+                    reason = BehovReason.DEAKTIVERT_LEDER,
+                    status = BehovStatus.BEHOV_CREATED,
+                    revokedRelationId = relationId,
+                )
+                created shouldBe listOf(expected)
+                dialogs shouldBe listOf(createdId to expected)
+                effects shouldBe listOf("find-open", "active-sykmelding", "main-organization", "create", "dialog")
+            }
         }
 
         test("uses the main organization reported on the sykmelding without asking Aareg or Dinesykmeldte") {
-            val fixture = Fixture()
+            with(Fixture()) {
+                useCase.execute(sykmeldingCommand("111222333")) shouldBe CreateNarmestelederbehovResult.Created(createdId)
 
-            fixture.useCase.execute(sykmeldingCommand("111222333")) shouldBe CreateNarmestelederbehovResult.Created(createdId)
-
-            fixture.created.single().mainOrganizationNumber shouldBe "111222333"
-            fixture.created.single().status shouldBe BehovStatus.BEHOV_CREATED
-            fixture.effects shouldBe listOf("find-open", "create", "dialog")
+                created.single().mainOrganizationNumber shouldBe "111222333"
+                created.single().status shouldBe BehovStatus.BEHOV_CREATED
+                effects shouldBe listOf("find-open", "create", "dialog")
+            }
         }
 
         test("does nothing when persistence is disabled") {
-            val fixture = Fixture(persistenceEnabled = false)
+            with(Fixture(persistenceEnabled = false)) {
+                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Disabled
 
-            fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Disabled
-
-            fixture.effects shouldBe emptyList()
+                effects shouldBe emptyList()
+            }
         }
 
         test("skips with a metric when an open behov already exists") {
-            val fixture = Fixture(openBehov = listOf(createdId))
+            with(Fixture(openBehov = listOf(createdId))) {
+                val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists }
 
-            val logs = captureLogs { fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists }
-
-            fixture.effects shouldBe listOf("find-open", "metric:already-exists")
-            logs.map { it.formattedMessage } shouldBe listOf("Not inserting NarmestelederBehovEntity since one already for employee and org")
+                effects shouldBe listOf("find-open", "metric:already-exists")
+                logs.map { it.formattedMessage } shouldBe listOf("Not inserting NarmestelederBehovEntity since one already for employee and org")
+            }
         }
 
         test("skips with a metric when the employee has no active sykmelding") {
-            val fixture = Fixture(hasActiveSykmelding = false)
+            with(Fixture(hasActiveSykmelding = false)) {
+                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.NoActiveSykmelding
 
-            fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.NoActiveSykmelding
-
-            fixture.effects shouldBe listOf("find-open", "active-sykmelding", "metric:no-active-sykmelding")
+                effects shouldBe listOf("find-open", "active-sykmelding", "metric:no-active-sykmelding")
+            }
         }
 
         test("does not ask Dinesykmeldte when the sykmelding is known to be active") {
-            val fixture = Fixture(hasActiveSykmelding = false)
+            with(Fixture(hasActiveSykmelding = false)) {
+                useCase.execute(leesahCommand(sykmeldingKnownActive = true)) shouldBe CreateNarmestelederbehovResult.Created(createdId)
 
-            fixture.useCase.execute(leesahCommand(sykmeldingKnownActive = true)) shouldBe CreateNarmestelederbehovResult.Created(createdId)
-
-            fixture.effects shouldBe listOf("find-open", "main-organization", "create", "dialog")
+                effects shouldBe listOf("find-open", "main-organization", "create", "dialog")
+            }
         }
 
         test("stores nothing when Aareg is unavailable") {
             val failure = UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
-            val fixture = Fixture(mainOrganizationResult = MainOrganizationResult.Unavailable(failure))
+            with(Fixture(mainOrganizationResult = MainOrganizationResult.Unavailable(failure))) {
+                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.UpstreamUnavailable(failure)
 
-            fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.UpstreamUnavailable(failure)
-
-            fixture.effects shouldBe listOf("find-open", "active-sykmelding", "main-organization")
+                effects shouldBe listOf("find-open", "active-sykmelding", "main-organization")
+            }
         }
 
         test("skips with a metric and no dialog when storing conflicts with an open behov") {
-            val fixture = Fixture(createResult = CreateBehovResult.AlreadyExists)
+            with(Fixture(createResult = CreateBehovResult.AlreadyExists)) {
+                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists
 
-            fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists
-
-            fixture.effects shouldBe listOf("find-open", "active-sykmelding", "main-organization", "create", "metric:already-exists")
+                effects shouldBe listOf("find-open", "active-sykmelding", "main-organization", "create", "metric:already-exists")
+            }
         }
 
         data class DegradedCase(
@@ -200,18 +200,18 @@ class CreateNarmestelederbehovUseCaseTest :
             ),
         ).forEach { case ->
             test("stores an error behov without a dialog when ${case.name}") {
-                val fixture = Fixture(mainOrganizationResult = case.mainOrganizationResult)
+                with(Fixture(mainOrganizationResult = case.mainOrganizationResult)) {
+                    val logs = captureLogs { useCase.execute(case.command) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
 
-                val logs = captureLogs { fixture.useCase.execute(case.command) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
-
-                fixture.created.single().status shouldBe case.status
-                fixture.created.single().mainOrganizationNumber shouldBe "UNKNOWN"
-                fixture.dialogs shouldBe emptyList()
-                fixture.metrics.recorded shouldBe listOfNotNull(case.metric)
-                val event = logs.single { it.level == Level.WARN }.keyValuePairs.associate { it.key to it.value }
-                event["event_type"] shouldBe "narmestelederbehov_stored_degraded"
-                event["reason"] shouldBe case.reason
-                event.toString().contains(employee.personIdent.value) shouldBe false
+                    created.single().status shouldBe case.status
+                    created.single().mainOrganizationNumber shouldBe "UNKNOWN"
+                    dialogs shouldBe emptyList()
+                    metrics.recorded shouldBe listOfNotNull(case.metric)
+                    val event = logs.single { it.level == Level.WARN }.keyValuePairs.associate { it.key to it.value }
+                    event["event_type"] shouldBe "narmestelederbehov_stored_degraded"
+                    event["reason"] shouldBe case.reason
+                    event.toString().contains(employee.personIdent.value) shouldBe false
+                }
             }
         }
 

@@ -69,4 +69,55 @@ class SykmeldingBatchPlanTest :
             plan.sykmeldingerToSave.shouldBeEmpty()
             plan.sykmeldingIdsToRevoke.shouldBeEmpty()
         }
+
+        test("keeps a sykmelding whose latest period ended exactly one year ago") {
+            val record = sendtRecord(offset = 1, tom = today.minusYears(1))
+
+            val plan = SykmeldingBatchPlan.from(listOf(record), today)
+
+            plan.sykmeldingerToSave.map { it.sykmeldingId } shouldContainExactly listOf(record.sykmeldingId)
+        }
+
+        test("saves when a sendt sykmelding follows a tombstone for the same sykmeldingId") {
+            val sykmeldingId = UUID.randomUUID()
+
+            val plan = SykmeldingBatchPlan.from(
+                listOf(
+                    SykmeldingRecord(offset = 1, sykmeldingId = sykmeldingId, message = null),
+                    sendtRecord(offset = 2, sykmeldingId = sykmeldingId),
+                ),
+                today,
+            )
+
+            plan.sykmeldingerToSave.map { it.sykmeldingId } shouldContainExactly listOf(sykmeldingId)
+            plan.sykmeldingIdsToRevoke.shouldBeEmpty()
+        }
+
+        test("maps the latest period and the message fields to the sykmelding") {
+            val sykmeldingId = UUID.randomUUID()
+            val earlierPeriod = SykmeldingsperiodeAGDTO(fom = today.minusDays(30), tom = today.minusDays(20))
+            val latestPeriod = SykmeldingsperiodeAGDTO(fom = today.minusDays(5), tom = today.plusDays(5))
+            val message = defaultSendtSykmeldingMessage(
+                sykmeldingId = sykmeldingId.toString(),
+                fnr = "10987654321",
+                orgnummer = "555555555",
+                sykmeldingsperioder = listOf(latestPeriod, earlierPeriod),
+            )
+
+            val plan = SykmeldingBatchPlan.from(
+                listOf(SykmeldingRecord(offset = 1, sykmeldingId = sykmeldingId, message = message)),
+                today,
+            )
+
+            plan.sykmeldingerToSave shouldContainExactly listOf(
+                SendtSykmelding(
+                    sykmeldingId = sykmeldingId,
+                    fnr = "10987654321",
+                    orgnummer = "555555555",
+                    fom = latestPeriod.fom,
+                    tom = latestPeriod.tom,
+                    syketilfelleStartDato = message.sykmelding.syketilfelleStartDato,
+                )
+            )
+        }
     })

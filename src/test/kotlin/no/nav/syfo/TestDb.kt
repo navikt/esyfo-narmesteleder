@@ -3,10 +3,10 @@ package no.nav.syfo
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import no.nav.syfo.application.database.DatabaseInterface
-import no.nav.syfo.sykmelding.application.SendtSykmeldingEntity
+import no.nav.syfo.sykmelding.application.PersistedSendtSykmelding
 import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
 import no.nav.syfo.sykmelding.infrastructure.SendtSykmeldingTable
-import no.nav.syfo.sykmelding.infrastructure.toSendtSykmeldingEntity
+import no.nav.syfo.sykmelding.infrastructure.toPersistedSendtSykmelding
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -142,6 +142,6 @@ class TestDB private constructor() {
     }
 }
 
-fun ExposedSykmeldingDb.findAll(): List<SendtSykmeldingEntity> = transaction(TestDB.exposedDatabase) {
-    SendtSykmeldingTable.selectAll().map { it.toSendtSykmeldingEntity() }
+fun ExposedSykmeldingDb.findAll(): List<PersistedSendtSykmelding> = transaction(TestDB.exposedDatabase) {
+    SendtSykmeldingTable.selectAll().map { it.toPersistedSendtSykmelding() }
 }

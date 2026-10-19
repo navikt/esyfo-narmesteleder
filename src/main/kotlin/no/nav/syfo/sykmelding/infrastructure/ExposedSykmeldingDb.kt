@@ -3,7 +3,10 @@ package no.nav.syfo.sykmelding.infrastructure
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.syfo.sykmelding.application.SendtSykmeldingEntity
+import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.logging.logEvent
+import no.nav.syfo.sykmelding.application.PersistedSendtSykmelding
+import no.nav.syfo.sykmelding.application.SendtSykmelding
 import no.nav.syfo.sykmelding.application.SykmeldingDb
 import no.nav.syfo.sykmelding.application.SykmeldingTransaction
 import no.nav.syfo.util.logger
@@ -19,11 +22,19 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.slf4j.event.Level
 import java.time.LocalDate
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 
 class SykmeldingDbException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+private val sykmeldingTransactionRolledBack = applicationEvent<Unit>(
+    name = "sykmelding_transaction_rolled_back",
+    level = Level.INFO,
+    message = "Sykmelding transaction failed and was rolled back",
+    operation = "persist_sendt_sykmelding",
+)
 
 class ExposedSykmeldingDb(
     private val database: Database,
@@ -31,11 +42,11 @@ class ExposedSykmeldingDb(
 ) : SykmeldingDb {
 
     private object TransactionImpl : SykmeldingTransaction {
-        override fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>) {
-            if (entities.isEmpty()) return
+        override fun batchUpsertSykmeldingerIfMoreRecentTom(sykmeldinger: List<SendtSykmelding>) {
+            if (sykmeldinger.isEmpty()) return
 
             SendtSykmeldingTable.batchUpsert(
-                entities,
+                sykmeldinger,
                 SendtSykmeldingTable.fnr,
                 SendtSykmeldingTable.orgnummer,
                 onUpdate = {
@@ -48,13 +59,13 @@ class ExposedSykmeldingDb(
                 },
                 where = { insertValue(SendtSykmeldingTable.tom) greaterEq SendtSykmeldingTable.tom },
                 shouldReturnGeneratedValues = false,
-            ) { entity ->
-                this[SendtSykmeldingTable.orgnummer] = entity.orgnummer
-                this[SendtSykmeldingTable.sykmeldingId] = entity.sykmeldingId
-                this[SendtSykmeldingTable.fnr] = entity.fnr
-                this[SendtSykmeldingTable.syketilfelleStartDato] = entity.syketilfelleStartDato
-                this[SendtSykmeldingTable.fom] = entity.fom
-                this[SendtSykmeldingTable.tom] = entity.tom
+            ) { sykmelding ->
+                this[SendtSykmeldingTable.orgnummer] = sykmelding.orgnummer
+                this[SendtSykmeldingTable.sykmeldingId] = sykmelding.sykmeldingId
+                this[SendtSykmeldingTable.fnr] = sykmelding.fnr
+                this[SendtSykmeldingTable.syketilfelleStartDato] = sykmelding.syketilfelleStartDato
+                this[SendtSykmeldingTable.fom] = sykmelding.fom
+                this[SendtSykmeldingTable.tom] = sykmelding.tom
             }
         }
 
@@ -83,19 +94,19 @@ class ExposedSykmeldingDb(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.info("Transaction failed. Rolling back", e)
+            logger.logEvent(sykmeldingTransactionRolledBack, Unit, cause = e)
             throw SykmeldingDbException("Transaction failed", e)
         }
     }
 
-    override suspend fun findBySykmeldingId(sykmeldingId: UUID): SendtSykmeldingEntity? = withContext(dispatcher) {
+    override suspend fun findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmelding? = withContext(dispatcher) {
         suspendTransaction(db = database) {
             SendtSykmeldingTable
                 .selectAll()
                 .where { SendtSykmeldingTable.sykmeldingId eq sykmeldingId }
                 .limit(1)
                 .firstOrNull()
-                ?.toSendtSykmeldingEntity()
+                ?.toPersistedSendtSykmelding()
         }
     }
 
@@ -104,7 +115,7 @@ class ExposedSykmeldingDb(
     }
 }
 
-internal fun ResultRow.toSendtSykmeldingEntity(): SendtSykmeldingEntity = SendtSykmeldingEntity(
+internal fun ResultRow.toPersistedSendtSykmelding(): PersistedSendtSykmelding = PersistedSendtSykmelding(
     id = this[SendtSykmeldingTable.id].value.toLong(),
     sykmeldingId = this[SendtSykmeldingTable.sykmeldingId],
     fnr = this[SendtSykmeldingTable.fnr],

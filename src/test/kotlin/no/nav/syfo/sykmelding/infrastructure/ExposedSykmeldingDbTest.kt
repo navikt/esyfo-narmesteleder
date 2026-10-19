@@ -7,9 +7,8 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import net.datafaker.Faker
 import no.nav.syfo.TestDB
-import no.nav.syfo.sykmelding.application.SendtSykmeldingEntity
+import no.nav.syfo.sykmelding.application.SendtSykmelding
 import java.sql.SQLException
-import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
@@ -22,30 +21,26 @@ class ExposedSykmeldingDbTest :
             TestDB.clearSendtSykmeldingData()
         }
 
-        fun entity(
+        fun sendtSykmelding(
             sykmeldingId: UUID = UUID.randomUUID(),
             fnr: String = Faker().numerify("###########"),
             orgnummer: String = Faker().numerify("#########"),
             fom: LocalDate = LocalDate.of(2025, 1, 1),
             tom: LocalDate = LocalDate.of(2025, 1, 10),
             syketilfelleStartDato: LocalDate? = LocalDate.of(2025, 1, 1),
-            revokedDate: LocalDate? = null,
-        ) = SendtSykmeldingEntity(
+        ) = SendtSykmelding(
             sykmeldingId = sykmeldingId,
             fnr = fnr,
             orgnummer = orgnummer,
             fom = fom,
             tom = tom,
-            revokedDate = revokedDate,
             syketilfelleStartDato = syketilfelleStartDato,
-            created = Instant.now(),
-            updated = Instant.now(),
         )
 
         describe("transaction - upsertSykmeldingBatch") {
-            it("should persist a single sykmelding entity and allow retrieval") {
+            it("should persist a single sykmelding and allow retrieval") {
                 val sykmeldingId = UUID.randomUUID()
-                val toInsert = entity(sykmeldingId = sykmeldingId)
+                val toInsert = sendtSykmelding(sykmeldingId = sykmeldingId)
 
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(listOf(toInsert))
@@ -65,10 +60,10 @@ class ExposedSykmeldingDbTest :
                 row.revokedDate shouldBe null
             }
 
-            it("should persist multiple sykmelding entities in one batch") {
+            it("should persist multiple sykmelding sykmeldinger in one batch") {
                 val ids = (1..5).map { UUID.randomUUID() }
-                val entities = ids.mapIndexed { index, id ->
-                    entity(
+                val sykmeldinger = ids.mapIndexed { index, id ->
+                    sendtSykmelding(
                         sykmeldingId = id,
                         fnr = "1234567891$index",
                         orgnummer = "99999999$index"
@@ -76,7 +71,7 @@ class ExposedSykmeldingDbTest :
                 }
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(entities)
+                    batchUpsertSykmeldingerIfMoreRecentTom(sykmeldinger)
                 }
 
                 ids.forEachIndexed { index, id ->
@@ -96,7 +91,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(sykmeldingId = oldId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 1, 10))
+                            sendtSykmelding(sykmeldingId = oldId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 1, 10))
                         )
                     )
                 }
@@ -104,7 +99,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(sykmeldingId = newId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 2, 10))
+                            sendtSykmelding(sykmeldingId = newId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 2, 10))
                         )
                     )
                 }
@@ -125,7 +120,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(sykmeldingId = existingId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 3, 10))
+                            sendtSykmelding(sykmeldingId = existingId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 3, 10))
                         )
                     )
                 }
@@ -133,7 +128,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(sykmeldingId = incomingId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 1, 10))
+                            sendtSykmelding(sykmeldingId = incomingId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 1, 10))
                         )
                     )
                 }
@@ -157,7 +152,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(sykmeldingId = existingId, fnr = fnr, orgnummer = orgnummer, tom = sameTom, fom = LocalDate.of(2025, 1, 1))
+                            sendtSykmelding(sykmeldingId = existingId, fnr = fnr, orgnummer = orgnummer, tom = sameTom, fom = LocalDate.of(2025, 1, 1))
                         )
                     )
                 }
@@ -165,12 +160,12 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(sykmeldingId = incomingId, fnr = fnr, orgnummer = orgnummer, tom = sameTom, fom = LocalDate.of(2025, 2, 1))
+                            sendtSykmelding(sykmeldingId = incomingId, fnr = fnr, orgnummer = orgnummer, tom = sameTom, fom = LocalDate.of(2025, 2, 1))
                         )
                     )
                 }
 
-                // Should have updated to the incoming entity
+                // Should have updated to the incoming sykmelding
                 val row = db.findBySykmeldingId(incomingId)
                 row shouldNotBe null
                 row!!.fom shouldBe LocalDate.of(2025, 2, 1)
@@ -201,7 +196,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(
+                            sendtSykmelding(
                                 sykmeldingId = sykmeldingId,
                                 orgnummer = "111111111",
                                 tom = LocalDate.of(2025, 1, 10),
@@ -224,27 +219,27 @@ class ExposedSykmeldingDbTest :
             }
 
             it("should revoke multiple sykmeldinger in one batch") {
-                val entity1 = entity(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 5))
-                val entity2 = entity(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 10), orgnummer = "111111111")
-                val entity3 = entity(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 15), orgnummer = "222222222")
+                val sykmelding1 = sendtSykmelding(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 5))
+                val sykmelding2 = sendtSykmelding(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 10), orgnummer = "111111111")
+                val sykmelding3 = sendtSykmelding(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 15), orgnummer = "222222222")
 
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
-                        listOf(entity1, entity2, entity3)
+                        listOf(sykmelding1, sykmelding2, sykmelding3)
                     )
                 }
 
                 val revokedDate = LocalDate.of(2025, 1, 12)
                 var affectedRows = 0
                 db.transaction {
-                    affectedRows = batchRevokeSykmelding(listOf(entity1.sykmeldingId, entity2.sykmeldingId, entity3.sykmeldingId), revokedDate)
+                    affectedRows = batchRevokeSykmelding(listOf(sykmelding1.sykmeldingId, sykmelding2.sykmeldingId, sykmelding3.sykmeldingId), revokedDate)
                 }
 
                 affectedRows shouldBe 3
 
-                db.findBySykmeldingId(entity1.sykmeldingId)!!.revokedDate shouldBe revokedDate
-                db.findBySykmeldingId(entity2.sykmeldingId)!!.revokedDate shouldBe revokedDate
-                db.findBySykmeldingId(entity3.sykmeldingId)!!.revokedDate shouldBe revokedDate
+                db.findBySykmeldingId(sykmelding1.sykmeldingId)!!.revokedDate shouldBe revokedDate
+                db.findBySykmeldingId(sykmelding2.sykmeldingId)!!.revokedDate shouldBe revokedDate
+                db.findBySykmeldingId(sykmelding3.sykmeldingId)!!.revokedDate shouldBe revokedDate
             }
 
             it("should return 0 when batch is empty") {
@@ -273,7 +268,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(
+                            sendtSykmelding(
                                 sykmeldingId = sykmeldingId,
                                 fnr = "09876543210",
                                 orgnummer = "123456789",
@@ -312,7 +307,7 @@ class ExposedSykmeldingDbTest :
 
                 val exception = shouldThrow<SykmeldingDbException> {
                     db.transaction {
-                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(entity(sykmeldingId = sykmeldingId)))
+                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(sendtSykmelding(sykmeldingId = sykmeldingId)))
                         throw RuntimeException("Simulated failure")
                     }
                 }
@@ -330,7 +325,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(
+                            sendtSykmelding(
                                 sykmeldingId = existingId,
                                 tom = LocalDate.of(2025, 1, 10),
                             )
@@ -340,7 +335,7 @@ class ExposedSykmeldingDbTest :
 
                 val exception = shouldThrow<SykmeldingDbException> {
                     db.transaction {
-                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(entity(sykmeldingId = newId)))
+                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(sendtSykmelding(sykmeldingId = newId)))
                         batchRevokeSykmelding(listOf(existingId), LocalDate.of(2025, 1, 15))
                         throw RuntimeException("Simulated failure")
                     }
@@ -373,7 +368,7 @@ class ExposedSykmeldingDbTest :
 
                 shouldThrow<CancellationException> {
                     db.transaction {
-                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(entity(sykmeldingId = sykmeldingId)))
+                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(sendtSykmelding(sykmeldingId = sykmeldingId)))
                         throw CancellationException("Simulated cancellation")
                     }
                 }
@@ -388,7 +383,7 @@ class ExposedSykmeldingDbTest :
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
-                            entity(
+                            sendtSykmelding(
                                 sykmeldingId = revokeId,
                                 orgnummer = "222222222",
                                 tom = LocalDate.of(2025, 1, 10),
@@ -398,7 +393,7 @@ class ExposedSykmeldingDbTest :
                 }
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(entity(orgnummer = "111111111", sykmeldingId = newId)))
+                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sendtSykmelding(orgnummer = "111111111", sykmeldingId = newId)))
                     batchRevokeSykmelding(listOf(revokeId), LocalDate.of(2025, 1, 15))
                 }
 

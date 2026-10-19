@@ -162,7 +162,7 @@ team-sykmelding until the takeover is complete.
 
 ### Comparison with team sykmelding's employment revocations
 
-When `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` is set (prod), every valid
+When `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` is set, every valid
 `DEAKTIVERT_ARBEIDSFORHOLD` record is noted after the register transaction commits,
 and our shadow check of that relation runs ahead of other checks (#473).
 `syfo_narmesteleder_employment_check_comparison_total` counts agreement and
@@ -181,7 +181,7 @@ completes between the source's revocation and our ingestion of it.
 Startup fails if `EMPLOYMENT_CHECK_REVOKE_ENABLED` and
 `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` are both enabled: our own revocations
 return here as `DEAKTIVERT_ARBEIDSFORHOLD` and would be counted as theirs.
-Live mode freezes comparison (enabled in dev, with observation disabled).
+Live mode freezes comparison (enabled in dev and prod, with observation disabled).
 
 `NlAvbrutt` deactivates all active relations for orgnr+fnr. A new relation
 established between lookup and publish could therefore be hit (R2). The

@@ -21,9 +21,9 @@ import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUs
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PersistNarmestelederRegisterFromLeesahConsumer
-import no.nav.syfo.sykmelding.kafka.PersistSendtSykmeldingConsumer
-import no.nav.syfo.sykmelding.kafka.SendtSykmeldingHandler
-import no.nav.syfo.sykmelding.kafka.SendtSykmeldingKafkaConsumer
+import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
+import no.nav.syfo.sykmelding.infrastructure.kafka.PersistSendtSykmeldingConsumer
+import no.nav.syfo.sykmelding.infrastructure.kafka.SendtSykmeldingKafkaConsumer
 import no.nav.syfo.util.logger
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer

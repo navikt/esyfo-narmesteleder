@@ -5,7 +5,7 @@ import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.sykmelding.exposed.ActiveSykmeldingRepository
+import no.nav.syfo.sykmelding.application.ActiveSykmeldingRepository
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
 import kotlin.coroutines.cancellation.CancellationException

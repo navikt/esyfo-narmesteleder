@@ -3,7 +3,7 @@ package no.nav.syfo.sykmelding.retention.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
+import no.nav.syfo.sykmelding.infrastructure.SendtSykmeldingTable
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction

@@ -11,8 +11,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
-import no.nav.syfo.sykmelding.exposed.ActiveSykmeldingRepository
-import no.nav.syfo.sykmelding.exposed.LocalActiveSykmeldingResult
+import no.nav.syfo.sykmelding.application.ActiveSykmeldingRepository
+import no.nav.syfo.sykmelding.application.LocalActiveSykmeldingResult
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException

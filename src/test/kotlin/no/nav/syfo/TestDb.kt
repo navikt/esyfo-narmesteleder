@@ -3,9 +3,9 @@ package no.nav.syfo
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import no.nav.syfo.application.database.DatabaseInterface
-import no.nav.syfo.sykmelding.db.PostgresSykmeldingDb
-import no.nav.syfo.sykmelding.db.SendtSykmeldingEntity
-import no.nav.syfo.sykmelding.db.toSendtSykmeldingEntity
+import no.nav.syfo.sykmelding.application.SendtSykmeldingEntity
+import no.nav.syfo.sykmelding.infrastructure.PostgresSykmeldingDb
+import no.nav.syfo.sykmelding.infrastructure.toSendtSykmeldingEntity
 import org.flywaydb.core.Flyway
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.PostgreSQLContainer

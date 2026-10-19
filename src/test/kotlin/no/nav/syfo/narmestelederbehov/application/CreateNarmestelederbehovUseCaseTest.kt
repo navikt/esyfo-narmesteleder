@@ -21,7 +21,6 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import no.nav.syfo.sykmelding.kafka.SENDT_SYKMELDING_TOPIC
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.util.UUID
@@ -347,7 +346,7 @@ class CreateNarmestelederbehovUseCaseTest :
             }
 
             val events = logs.filter { it.level == Level.WARN }.map { event -> event.keyValuePairs.associate { it.key to it.value } }
-            events.map { it["behov_source"] } shouldBe listOf(TEAMSYKMELDING_NL_LEESAH_TOPIC, SENDT_SYKMELDING_TOPIC, SENDT_SYKMELDING_TOPIC)
+            events.map { it["behov_source"] } shouldBe listOf(TEAMSYKMELDING_NL_LEESAH_TOPIC, SENDT_SYKMELDING_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME)
             events.map { it["narmesteleder_id"] } shouldBe listOf(relationId.toString(), null, null)
             events.map { it["sykmelding_id"] } shouldBe listOf(null, sykmeldingId.toString(), null)
         }

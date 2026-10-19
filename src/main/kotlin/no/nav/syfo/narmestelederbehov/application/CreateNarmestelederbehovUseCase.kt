@@ -8,6 +8,7 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
+import java.util.UUID
 
 /**
  * Stores a new behov when the employee has an active sykmelding and no open behov in the organization.
@@ -107,16 +108,24 @@ class CreateNarmestelederbehovUseCase(
 
     /** Failures are logged and swallowed; SendDialogTask retries behov still in BEHOV_CREATED. */
     private suspend fun createDialog(id: NarmestelederbehovId, employee: Employee) {
+        val failedDetails = DialogEventDetails(id.value, action = DialogAction.CREATE)
         try {
             val person = findPerson(id, employee)
-            val dialogId = dialog.create(id, employee, person)
-            if (repository.markDialogCreated(id, dialogId, person?.name) == MarkDialogCreatedResult.NotCreated) {
-                logger.logEvent(dialogCreatedForClosedBehov, DialogEventDetails(id.value, dialogId))
+            when (val created = dialog.create(id, employee, person)) {
+                is NarmestelederbehovDialogCreationResult.Created -> markDialogCreated(id, created.dialogId, person)
+                is NarmestelederbehovDialogCreationResult.Unavailable ->
+                    logger.logEvent(dialogportenDialogFailed, failedDetails, upstreamFailure = created.failure)
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.logEvent(dialogportenDialogFailed, DialogEventDetails(id.value, action = DialogAction.CREATE), cause = e)
+            logger.logEvent(dialogportenDialogFailed, failedDetails, cause = e)
+        }
+    }
+
+    private suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, person: EmployeePerson?) {
+        if (repository.markDialogCreated(id, dialogId, person?.name) == MarkDialogCreatedResult.NotCreated) {
+            logger.logEvent(dialogCreatedForClosedBehov, DialogEventDetails(id.value, dialogId))
         }
     }
 

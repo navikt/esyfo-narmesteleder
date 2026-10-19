@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
@@ -8,11 +7,11 @@ import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
-import no.nav.syfo.application.exception.UpstreamRequestException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeePerson
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -45,7 +44,8 @@ class DialogportenNarmestelederbehovDialogCreationTest :
             val person = EmployeePerson(BehovPersonName("Kari", "Mellom", "Nordmann"), LocalDate.of(1985, 6, 7))
             val client = RecordingCreateDialogportenClient(dialogId)
 
-            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, person) shouldBe dialogId
+            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, person) shouldBe
+                NarmestelederbehovDialogCreationResult.Created(dialogId)
 
             client.created.single() shouldBe expectedDialog(person)
         }
@@ -53,20 +53,18 @@ class DialogportenNarmestelederbehovDialogCreationTest :
         test("sends the dialog without person details when none are known") {
             val client = RecordingCreateDialogportenClient(dialogId)
 
-            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) shouldBe dialogId
+            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) shouldBe
+                NarmestelederbehovDialogCreationResult.Created(dialogId)
 
             client.created.single() shouldBe expectedDialog(null)
         }
 
-        test("throws the Dialogporten failure with its upstream metadata so the caller can log it and leave the behov for retry") {
+        test("returns the Dialogporten failure so the caller can log it and leave the behov for retry") {
             val failure = UpstreamFailure(UpstreamName("dialogporten"), UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))
             val client = RecordingCreateDialogportenClient(dialogId, UpstreamResult.Failure(failure))
 
-            with(shouldThrow<UpstreamRequestException> { DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) }) {
-                upstream shouldBe "dialogporten"
-                failureStage shouldBe UpstreamFailureStage.RESPONSE
-                upstreamStatus shouldBe 503
-            }
+            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) shouldBe
+                NarmestelederbehovDialogCreationResult.Unavailable(failure)
         }
     })
 

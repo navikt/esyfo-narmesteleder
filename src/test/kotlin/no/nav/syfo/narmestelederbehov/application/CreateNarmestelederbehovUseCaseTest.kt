@@ -9,6 +9,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import kotlinx.coroutines.CancellationException
+import no.nav.syfo.altinn.dialogporten.client.DIALOGPORTEN
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.aareg.AAREG
@@ -62,7 +63,7 @@ class CreateNarmestelederbehovUseCaseTest :
             val mainOrganizationResult: MainOrganizationResult = MainOrganizationResult.Found("987654321"),
             val createResult: CreateBehovResult = CreateBehovResult.Created(createdId),
             val personLookup: suspend () -> EmployeePersonLookupResult = { EmployeePersonLookupResult.Found(person) },
-            val createDialog: suspend () -> UUID = { dialogId },
+            val createDialog: suspend () -> NarmestelederbehovDialogCreationResult = { NarmestelederbehovDialogCreationResult.Created(dialogId) },
             val markResult: MarkDialogCreatedResult = MarkDialogCreatedResult.Marked,
         ) {
             val effects = mutableListOf<String>()
@@ -237,7 +238,23 @@ class CreateNarmestelederbehovUseCaseTest :
             }
         }
 
-        test("keeps the behov in BEHOV_CREATED and logs when the dialog cannot be created") {
+        test("keeps the behov in BEHOV_CREATED and logs the upstream failure when Dialogporten is unavailable") {
+            val failure = UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, 503, IllegalStateException("dialogporten down"))
+            with(Fixture(createDialog = { NarmestelederbehovDialogCreationResult.Unavailable(failure) })) {
+                val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
+
+                markedDialogs shouldBe emptyList()
+                val event = logs.single { it.level == Level.ERROR }.fields()
+                event["event_type"] shouldBe "dialogporten_dialog_failed"
+                event["behov_id"] shouldBe createdId.value.toString()
+                event["action"] shouldBe "CREATE"
+                event["upstream"] shouldBe "dialogporten"
+                event["failure_stage"] shouldBe "response"
+                event["upstream_status"] shouldBe 503
+            }
+        }
+
+        test("keeps the behov in BEHOV_CREATED and logs when the dialog creation throws") {
             with(Fixture(createDialog = { throw IllegalStateException("dialogporten down") })) {
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
 

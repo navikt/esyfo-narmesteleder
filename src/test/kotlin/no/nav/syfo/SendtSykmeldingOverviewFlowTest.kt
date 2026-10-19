@@ -9,6 +9,7 @@ import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
@@ -46,7 +47,7 @@ class SendtSykmeldingOverviewFlowTest :
                 personLookup = { EmployeePersonLookupResult.NotFound },
                 dialog = { _, employee, _ ->
                     dialogCalls.add(employee.personIdent)
-                    UUID.randomUUID()
+                    NarmestelederbehovDialogCreationResult.Created(UUID.randomUUID())
                 },
                 metrics = MicrometerNarmestelederbehovCreationMetrics(),
             ),

@@ -190,7 +190,7 @@ class FulfillNarmestelederbehovRouteTest :
             }
         }
 
-        test("PUT /requirement/{id} 400 keeps the legacy message for an invalid manager identification number") {
+        test("PUT /requirement/{id} 400 with the validation message for an invalid manager identification number") {
             withPutApplication { fixture ->
                 val id = fixture.seed()
                 val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {

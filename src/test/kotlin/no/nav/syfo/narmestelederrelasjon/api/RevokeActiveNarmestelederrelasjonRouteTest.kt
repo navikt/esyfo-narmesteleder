@@ -118,7 +118,7 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             fixture.messages shouldBe emptyList()
         }
 
-        test("invalid identifiers in the body keep the legacy 400 message") {
+        test("invalid identifiers in the body return 400 with the validation message") {
             val fixture = RevokeRouteFixture()
             fixture.authorize("maskinporten")
             fixture.withApplication {

@@ -196,7 +196,7 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("invalid identifiers in the body keep the legacy 400 message") {
+        test("invalid identifiers in the body return 400 with the validation message") {
             val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> error("Access must not be checked") })
             fixture.authorize("tokenx")
             fun submission(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321"): String {

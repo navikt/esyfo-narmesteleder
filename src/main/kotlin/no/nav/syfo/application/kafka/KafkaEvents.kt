@@ -1,6 +1,8 @@
 package no.nav.syfo.application.kafka
 
 import no.nav.esyfo.observability.Event
+import no.nav.esyfo.observability.causeChain
+import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.logging.EventContext
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
@@ -54,6 +56,8 @@ internal class KafkaEventLogger(private val logger: Logger, private val consumer
             errorCode = errorCode,
         ),
         cause = cause,
+        // Use cases report upstream failures as a field rather than in the cause chain.
+        upstreamFailure = cause?.causeChain()?.firstNotNullOfOrNull { (it as? ApiErrorException)?.upstreamFailure },
     )
 }
 

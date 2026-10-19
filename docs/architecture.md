@@ -155,6 +155,13 @@ sykmelding projection belongs to #508 and follow-up work.
 
 `ShadowActiveSykmeldingService` remains dormant until that migration resumes.
 It is not dead code and must not shape the initial production dependency graph.
+Until then it reads the local projection through the `ActiveSykmeldingRepository`
+port in `sykmelding.application`.
+
+The incoming sendt sykmelding model (`SendtSykmeldingKafkaMessage` and
+`SykmeldingRecord`) lives in `sykmelding.application` as the module's input
+model, so the application classes do not depend on `infrastructure`. The Kafka
+consumers in `sykmelding.infrastructure.kafka` deserialize directly into it.
 
 ### `organisasjonstilgang`
 
@@ -550,6 +557,11 @@ the final repository-wide rules can replace the migration-specific checks.
 `GET /internal/api/v1/employee/linemanager` now lives in `narmestelederrelasjon` as `ListActiveNarmesteledereForEmployeeUseCase`.
 
 `POST /internal/api/v1/linemanager/search` now lives in `narmestelederrelasjon` as `SearchActiveNarmestelederrelasjonerUseCase`.
+
+`sykmelding` follows the module structure (`application`, `infrastructure` and
+`retention`) and registers its dependencies in `sykmeldingModule()`. Its JDBC
+adapter `PostgresSykmeldingDb` still has to move to Exposed DSL (#620), and its
+consumers still have to move to a shared consumer runner (#623).
 
 The fulfillment foundation and its remaining activation work are described in
 [Fulfillment migration status](narmestelederbehov-fulfillment-migration.md).

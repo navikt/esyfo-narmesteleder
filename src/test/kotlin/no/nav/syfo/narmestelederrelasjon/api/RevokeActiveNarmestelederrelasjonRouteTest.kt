@@ -99,7 +99,7 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION.count() shouldBe before + 1.0
         }
 
-        test("invalid payload and missing person return legacy 400 responses") {
+        test("invalid payload and missing person return 400") {
             val fixture = RevokeRouteFixture(person = null)
             fixture.authorize("maskinporten")
             fixture.withApplication {
@@ -141,7 +141,7 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             fixture.messages shouldBe emptyList()
         }
 
-        test("mismatched last name returns the legacy error and never looks up active relations") {
+        test("mismatched last name returns the name mismatch error and never looks up active relations") {
             val fixture = RevokeRouteFixture(name = "Other")
             fixture.authorize("maskinporten")
             fixture.withApplication {

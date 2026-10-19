@@ -26,6 +26,7 @@ import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
@@ -263,4 +264,10 @@ private class FakeReadBehovRepository : NarmestelederbehovRepository {
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("GET must not write")
 
     override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("GET must not write")
+
+    override suspend fun markDialogCreated(
+        id: NarmestelederbehovId,
+        dialogId: UUID,
+        name: BehovPersonName?,
+    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }

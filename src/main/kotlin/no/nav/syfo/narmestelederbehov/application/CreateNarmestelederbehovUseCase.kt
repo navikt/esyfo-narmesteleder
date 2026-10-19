@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import kotlinx.coroutines.CancellationException
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.domain.BehovStatus
@@ -7,6 +8,7 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
+import java.util.UUID
 
 /**
  * Stores a new behov when the employee has an active sykmelding and no open behov in the organization.
@@ -15,8 +17,9 @@ import no.nav.syfo.platform.application.orStop
 class CreateNarmestelederbehovUseCase(
     private val settings: NarmestelederbehovCreationSettings,
     private val repository: NarmestelederbehovRepository,
-    private val activeSykmelding: NarmestelederbehovActiveSykmeldingLookup,
+    private val activeSykmelding: ActiveSykmeldingLookup,
     private val mainOrganization: EmployerMainOrganizationLookup,
+    private val personLookup: EmployeePersonLookup,
     private val dialog: NarmestelederbehovDialogCreation,
     private val metrics: NarmestelederbehovCreationMetrics,
 ) : CreateNarmestelederbehov {
@@ -100,7 +103,47 @@ class CreateNarmestelederbehovUseCase(
     /** A behov stored with an error status has no main organization to address a dialog to. */
     private suspend fun createDialogUnlessDegraded(id: NarmestelederbehovId, behov: NewNarmestelederbehov) {
         if (behov.status in BehovStatus.errorStatusList()) return
-        dialog.create(id, behov)
+        createDialog(id, behov.employee)
+    }
+
+    /** Failures are logged and swallowed; SendDialogTask retries behov still in BEHOV_CREATED. */
+    private suspend fun createDialog(id: NarmestelederbehovId, employee: Employee) {
+        val failedDetails = DialogEventDetails(id.value, action = DialogAction.CREATE)
+        try {
+            val person = findPerson(id, employee)
+            when (val created = dialog.create(id, employee, person)) {
+                is NarmestelederbehovDialogCreationResult.Created -> markDialogCreated(id, created.dialogId, person)
+                is NarmestelederbehovDialogCreationResult.Unavailable ->
+                    logger.logEvent(dialogportenDialogFailed, failedDetails, upstreamFailure = created.failure)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.logEvent(dialogportenDialogFailed, failedDetails, cause = e)
+        }
+    }
+
+    private suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, person: EmployeePerson?) {
+        if (repository.markDialogCreated(id, dialogId, person?.name) == MarkDialogCreatedResult.NotCreated) {
+            logger.logEvent(dialogCreatedForClosedBehov, DialogEventDetails(id.value, dialogId))
+        }
+    }
+
+    /** Person details only enrich the dialog, so any lookup failure falls back to a dialog without them. */
+    private suspend fun findPerson(id: NarmestelederbehovId, employee: Employee): EmployeePerson? = try {
+        when (val result = personLookup.find(employee.personIdent)) {
+            is EmployeePersonLookupResult.Found -> result.person
+            EmployeePersonLookupResult.NotFound -> null
+            is EmployeePersonLookupResult.Unavailable -> {
+                logger.logEvent(dialogPersonEnrichmentFailed, DialogEventDetails(id.value), upstreamFailure = result.failure)
+                null
+            }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        logger.logEvent(dialogPersonEnrichmentFailed, DialogEventDetails(id.value), cause = e)
+        null
     }
 
     private fun alreadyExists(): CreateNarmestelederbehovResult {

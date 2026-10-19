@@ -1,6 +1,5 @@
 package no.nav.syfo.altinn.dialogporten.service
 
-import io.ktor.http.ContentType
 import kotlinx.coroutines.delay
 import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
 import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
@@ -8,83 +7,39 @@ import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient.DialogportenPatch.OPERATION
 import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient.DialogportenPatch.PATH
 import no.nav.syfo.altinn.dialogporten.client.dialogportenRevisionConflictFailure
-import no.nav.syfo.altinn.dialogporten.domain.Attachment
-import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
-import no.nav.syfo.altinn.dialogporten.domain.Content
-import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
-import no.nav.syfo.altinn.dialogporten.domain.Url
-import no.nav.syfo.altinn.dialogporten.domain.create
-import no.nav.syfo.application.api.API_V1_PATH
-import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.integration.pdl.Foedselsdato
 import no.nav.syfo.integration.pdl.Navn
-import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
-import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
+import no.nav.syfo.narmestelederbehov.application.BehovPersonName
+import no.nav.syfo.narmestelederbehov.application.DialogAction
+import no.nav.syfo.narmestelederbehov.application.DialogEventDetails
+import no.nav.syfo.narmestelederbehov.application.dialogCreatedForClosedBehov
+import no.nav.syfo.narmestelederbehov.application.dialogPersonEnrichmentFailed
+import no.nav.syfo.narmestelederbehov.application.dialogportenDialogFailed
+import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrThrow
 import no.nav.syfo.util.logger
-import org.slf4j.event.Level
 import java.time.Instant
-import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
-
-private enum class DialogAction {
-    CREATE,
-    COMPLETE,
-    EXPIRE
-}
-private data class DialogFailureDetails(val behovId: String?, val dialogId: String?, val action: DialogAction? = null)
-
-private val dialogFailureFields: Map<String, (DialogFailureDetails) -> Any?> = mapOf(
-    "behov_id" to { it.behovId },
-    "dialog_id" to { it.dialogId },
-)
-
-private val dialogPersonEnrichmentFailed = applicationEvent<DialogFailureDetails>(
-    name = "dialog_person_enrichment_failed",
-    level = Level.WARN,
-    message = "PDL enrichment failed; creating the dialog without person details",
-    upstream = "pdl",
-    fields = dialogFailureFields,
-)
-
-private val dialogportenDialogFailed = applicationEvent<DialogFailureDetails>(
-    name = "dialogporten_dialog_failed",
-    level = Level.ERROR,
-    message = "Dialogporten dialog operation failed",
-    upstream = "dialogporten",
-    fields = dialogFailureFields + ("action" to { it: DialogFailureDetails -> it.action?.name }),
-)
-
-private val dialogCreatedForClosedBehov = applicationEvent<DialogFailureDetails>(
-    name = "dialog_created_for_closed_behov",
-    level = Level.WARN,
-    message = "Behov left BEHOV_CREATED while its dialog was created; the behov was not updated",
-    fields = dialogFailureFields,
-)
-
-const val NARMESTE_LEDER_RESOURCE = "nav_syfo_oppgi-narmesteleder"
 
 class DialogportenService(
     private val dialogportenClient: DialogportenClient,
     private val narmestelederDb: NarmestelederDb,
-    private val otherEnvironmentProperties: OtherEnvironmentProperties,
+    private val dialogFactory: NarmestelederbehovDialogFactory,
     private val pdlService: PdlService,
 ) {
     private val logger = logger()
-    private fun NarmestelederBehovEntity.logDetails() = DialogFailureDetails(id?.toString(), dialogId?.toString())
+    private fun NarmestelederBehovEntity.logDetails() = DialogEventDetails(id, dialogId)
 
     private fun logDialogFailure(behov: NarmestelederBehovEntity, action: DialogAction, cause: Throwable) {
         logger.logEvent(dialogportenDialogFailed, behov.logDetails().copy(action = action), cause = cause)
@@ -133,7 +88,7 @@ class DialogportenService(
                 etternavn = personInfo?.name?.etternavn,
             )
             if (!marked) {
-                logger.logEvent(dialogCreatedForClosedBehov, DialogFailureDetails(behov.id.toString(), dialogId.toString()))
+                logger.logEvent(dialogCreatedForClosedBehov, DialogEventDetails(behov.id, dialogId))
             }
         } catch (ex: Exception) {
             ex.rethrowCancellation()
@@ -248,100 +203,20 @@ class DialogportenService(
         }
     }
 
-    private fun getDialogTitle(
-        name: Navn?,
-        nationalIdentityNumber: String,
-        foedselsdato: Foedselsdato?,
-    ): String = name?.let {
-        "$DIALOG_TITLE_WITH_NAME ${it.navnFullt()} ${
-            ninToInfoString(
-                nationalIdentityNumber,
-                foedselsdato?.foedselsdato,
-            )
-        }"
-    } ?: DIALOG_TITLE_NO_NAME
-
-    private fun getSummary(name: Navn?): String = name?.let {
-        "${it.navnFullt()} $DIALOG_SUMMARY"
-    } ?: "En ansatt $DIALOG_SUMMARY"
-
     private suspend fun getRequirementsToSend() = narmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED, BEHOV_BY_STATUS_LIMIT)
-
-    private fun createApiLink(id: UUID): String = "${otherEnvironmentProperties.publicIngressUrl}$API_V1_PATH$NARMESTELEDERBEHOV_PATH/$id"
-
-    private fun createGuiLink(id: UUID): String = "${otherEnvironmentProperties.frontendBaseUrl}/ansatte/narmesteleder/$id"
-    // https://www.ekstern.dev.nav.no/arbeidsgiver/ansatte/narmesteleder/ce48ec37-7cba-432d-8d2e-645389d7d6b5
 
     private fun NarmestelederBehovEntity.toDialog(name: Navn?, foedselsdato: Foedselsdato?): Dialog {
         require(id != null) { "Cannot create Dialogporten Dialog without id" }
-        return Dialog(
-            serviceResource = "urn:altinn:resource:$NARMESTE_LEDER_RESOURCE",
-            status = DialogStatus.RequiresAttention,
-            party = "urn:altinn:organization:identifier-no:$orgnummer",
-            externalReference = id.toString(),
-            content = Content.create(
-                title = getDialogTitle(name, sykmeldtFnr, foedselsdato),
-                summary = getSummary(name),
-            ),
-            isApiOnly = false,
-            attachments = listOf(
-                createAttachement(AttachmentUrlConsumerType.Api, URL_TITLE_API, id),
-                createAttachement(AttachmentUrlConsumerType.Gui, URL_TITLE_GUI, id),
-            ),
+        return dialogFactory.create(
+            id = id,
+            organizationNumber = orgnummer,
+            employeeIdent = sykmeldtFnr,
+            name = name?.let { BehovPersonName(firstName = it.fornavn, middleName = it.mellomnavn, lastName = it.etternavn) },
+            birthDate = foedselsdato?.foedselsdato,
         )
-    }
-
-    private fun createAttachement(type: AttachmentUrlConsumerType, name: String, id: UUID): Attachment = Attachment(
-        displayName = listOf(
-            ContentValueItem(
-                name,
-                if (type == AttachmentUrlConsumerType.Api) "en" else "nb"
-            ),
-        ),
-        urls = listOf(createUrl(type, id)),
-    )
-
-    private fun createUrl(type: AttachmentUrlConsumerType, id: UUID): Url = when (type) {
-        AttachmentUrlConsumerType.Gui -> Url(
-            url = createGuiLink(id),
-            mediaType = ContentType.Text.Html.toString(),
-            consumerType = type,
-        )
-
-        AttachmentUrlConsumerType.Api -> Url(
-            url = createApiLink(id),
-            mediaType = ContentType.Application.Json.toString(),
-            consumerType = type,
-        )
-    }
-
-    private fun ninToInfoString(nationalIdentityNumber: String, foedselsdato: LocalDate? = null): String {
-        val birthDate = foedselsdato ?: ninToBirthDate(nationalIdentityNumber)
-        return if (birthDate != null) {
-            "(f. ${birthDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))})"
-        } else {
-            "(d-nummer: $nationalIdentityNumber)"
-        }
-    }
-
-    private fun ninToBirthDate(nationalIdentityNumber: String): LocalDate? {
-        try {
-            val day = nationalIdentityNumber.take(2)
-            val month = nationalIdentityNumber.substring(2, 4)
-            val year = nationalIdentityNumber.substring(4, 8)
-            return LocalDate.parse("$year-$month-$day")
-        } catch (e: DateTimeParseException) {
-            return null
-        }
     }
 
     companion object {
-        const val DIALOG_TITLE_NO_NAME = "Dere har en sykmeldt med behov for å bli tildelt nærmeste leder"
-        const val DIALOG_TITLE_WITH_NAME = "Oppgi nærmeste leder for"
-        const val DIALOG_SUMMARY =
-            "er sykmeldt. Nav trenger informasjon om hvem som er nærmeste leder for å kunne gi tilgang til oppfølginstjenestene på \"Dine sykmeldte\" hos Nav"
-        const val URL_TITLE_GUI = "Naviger til nærmeste leder skjema"
-        const val URL_TITLE_API = "Endpoint for LinemanagerRequirement request"
         const val EXPIRE_BEHOV_LOOP_DELAY_MS = 100
         const val BEHOV_BY_STATUS_LIMIT = 100
         const val MAX_EXPIRE_BEHOV_BATCHES = 1000

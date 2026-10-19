@@ -16,11 +16,11 @@ import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.logging.ProductionLogs
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -38,7 +38,7 @@ class DialogportenServiceFailureTest :
             test("$action revision conflict logs 412 and leaves all persisted state unchanged for retry") {
                 val db = FakeNarmestelederDb()
                 val client = LegacyRecordingClient()
-                val service = DialogportenService(client, db, OtherEnvironmentProperties.createForLocal(), PdlService(FakePdlClient()))
+                val service = DialogportenService(client, db, DIALOG_FACTORY, PdlService(FakePdlClient()))
                 val behov = db.seed(
                     nlBehovEntity().copy(
                         dialogId = LEGACY_DIALOG_ID,
@@ -80,7 +80,7 @@ class DialogportenServiceFailureTest :
                         )
                         val db = FakeNarmestelederDb()
                         val client = LegacyRecordingClient(failure, step)
-                        val service = DialogportenService(client, db, OtherEnvironmentProperties.createForLocal(), PdlService(FakePdlClient()))
+                        val service = DialogportenService(client, db, DIALOG_FACTORY, PdlService(FakePdlClient()))
                         val behov = db.seed(
                             nlBehovEntity().copy(
                                 dialogId = LEGACY_DIALOG_ID,
@@ -110,7 +110,7 @@ class DialogportenServiceFailureTest :
                 val failure = UpstreamResult.Failure(UpstreamFailure(UpstreamName(upstream), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException("private-diagnostic-canary")))
                 val db = FakeNarmestelederDb()
                 val client = LegacyRecordingClient(failure, "create")
-                val service = DialogportenService(client, db, OtherEnvironmentProperties.createForLocal(), PdlService(FakePdlClient()))
+                val service = DialogportenService(client, db, DIALOG_FACTORY, PdlService(FakePdlClient()))
                 val behov = db.seed(nlBehovEntity())
                 productionLogs.capture().use { capture ->
                     service.sendToDialogporten(behov)
@@ -129,6 +129,10 @@ class DialogportenServiceFailureTest :
         }
     })
 
+private val DIALOG_FACTORY = NarmestelederbehovDialogFactory(
+    narmestelederbehovApiUrl = "https://api.test.nav.no/api/v1/linemanager/requirement",
+    frontendBaseUrl = "https://frontend.test.nav.no",
+)
 private val LEGACY_DIALOG_ID = UUID.fromString("00000000-0000-0000-0000-000000000002")
 private val LEGACY_REVISION = UUID.fromString("00000000-0000-0000-0000-000000000003")
 

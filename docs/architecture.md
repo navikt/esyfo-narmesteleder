@@ -149,9 +149,9 @@ sykmelding -> narmestelederbehov
 sykmelding -> narmestelederrelasjon
 ```
 
-`narmestelederrelasjon` uses Dinesykmeldte through its `ActiveSykmeldingLookup`
-port, the single owner. Replacing that adapter with the local sykmelding
-projection belongs to #508 and follow-up work.
+`narmestelederbehov` and `narmestelederrelasjon` each use Dinesykmeldte through
+their own `ActiveSykmeldingLookup` port. Replacing those adapters with the local
+sykmelding projection belongs to #508 and follow-up work.
 
 `ShadowActiveSykmeldingService` remains dormant until that migration resumes.
 It is not dead code and must not shape the initial production dependency graph.

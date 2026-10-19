@@ -24,6 +24,7 @@ import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
@@ -46,6 +47,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
 import java.time.Instant
+import java.util.UUID
 
 class ListNarmestelederbehovRouteTest :
     FunSpec({
@@ -289,6 +291,12 @@ private class ListRouteRepository :
 
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("List must not fulfill")
     override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("List must not complete dialogs")
+
+    override suspend fun markDialogCreated(
+        id: NarmestelederbehovId,
+        dialogId: UUID,
+        name: BehovPersonName?,
+    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }
 
 private fun routeDetails() = narmestelederbehovDetails(

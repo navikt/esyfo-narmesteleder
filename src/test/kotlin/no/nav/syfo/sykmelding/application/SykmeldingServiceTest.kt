@@ -1,7 +1,7 @@
 package no.nav.syfo.sykmelding.application
 
 import defaultSendtSykmeldingMessage
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.syfo.TestDB
@@ -15,7 +15,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 class SykmeldingServiceTest :
-    DescribeSpec({
+    FunSpec({
         val sykmeldingDb = ExposedSykmeldingDb(TestDB.exposedDatabase)
         val service = SykmeldingService(sykmeldingDb)
 
@@ -23,9 +23,9 @@ class SykmeldingServiceTest :
             TestDB.clearSendtSykmeldingData()
         }
 
-        describe("processBatch - basic insert behavior") {
+        context("processBatch - basic insert behavior") {
 
-            it("should insert sykmelding when it has employer and valid period") {
+            test("should insert sykmelding when it has employer and valid period") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
                 val message = defaultSendtSykmeldingMessage(
@@ -47,7 +47,7 @@ class SykmeldingServiceTest :
                 stored.first().orgnummer shouldBe message.event.arbeidsgiver?.orgnummer
             }
 
-            it("should NOT insert sykmelding when it has no employer") {
+            test("should NOT insert sykmelding when it has no employer") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
                 val message = defaultSendtSykmeldingMessage(
@@ -68,7 +68,7 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 0
             }
 
-            it("should NOT insert sykmelding when period is too old (1 year)") {
+            test("should NOT insert sykmelding when period is too old (1 year)") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
                 val message = defaultSendtSykmeldingMessage(
@@ -90,7 +90,7 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 0
             }
 
-            it("should insert sykmelding when period ended within one year") {
+            test("should insert sykmelding when period ended within one year") {
                 val fixedToday = LocalDate.parse("2026-03-01")
                 val serviceWithFixedClock = SykmeldingService(
                     sykmeldingDb,
@@ -116,7 +116,7 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 1
             }
 
-            it("should use the latest period (max tom) for fom and tom") {
+            test("should use the latest period (max tom) for fom and tom") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
                 val earlierPeriod = SykmeldingsperiodeAGDTO(
@@ -144,7 +144,7 @@ class SykmeldingServiceTest :
                 stored.first().tom shouldBe latestPeriod.tom
             }
 
-            it("should insert sykmelding with syketilfelleStartDato from message") {
+            test("should insert sykmelding with syketilfelleStartDato from message") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
                 val message = defaultSendtSykmeldingMessage(
@@ -165,12 +165,12 @@ class SykmeldingServiceTest :
                 stored.first().syketilfelleStartDato shouldNotBe null
             }
 
-            it("should do nothing when batch is empty") {
+            test("should do nothing when batch is empty") {
                 service.processBatch(emptyList())
                 sykmeldingDb.findAll().size shouldBe 0
             }
 
-            it("Should respect unique constraint on fnr+orgnummer") {
+            test("Should respect unique constraint on fnr+orgnummer") {
                 val today = LocalDate.now()
                 val id1 = UUID.randomUUID()
                 val id2 = UUID.randomUUID()
@@ -209,9 +209,9 @@ class SykmeldingServiceTest :
             }
         }
 
-        describe("processBatch - multiple records") {
+        context("processBatch - multiple records") {
 
-            it("should insert multiple sykmeldinger in one batch") {
+            test("should insert multiple sykmeldinger in one batch") {
                 val today = LocalDate.now()
                 val id1 = UUID.randomUUID()
                 val id2 = UUID.randomUUID()
@@ -263,9 +263,9 @@ class SykmeldingServiceTest :
             }
         }
 
-        describe("processBatch - final state deduplication") {
+        context("processBatch - final state deduplication") {
 
-            it("should use highest offset when same sykmeldingId appears multiple times") {
+            test("should use highest offset when same sykmeldingId appears multiple times") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
 
@@ -298,7 +298,7 @@ class SykmeldingServiceTest :
                 stored.first().tom shouldBe today.plusDays(10)
             }
 
-            it("should use highest offset regardless of order in list") {
+            test("should use highest offset regardless of order in list") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
 
@@ -332,9 +332,9 @@ class SykmeldingServiceTest :
             }
         }
 
-        describe("processBatch - tombstones (revokes)") {
+        context("processBatch - tombstones (revokes)") {
 
-            it("should revoke sykmelding when tombstone is received") {
+            test("should revoke sykmelding when tombstone is received") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
 
@@ -366,7 +366,36 @@ class SykmeldingServiceTest :
                 stored!!.revokedDate shouldBe LocalDate.now()
             }
 
-            it("should skip insert when tombstone is final state in same batch") {
+            test("should use the clock date as revokedDate") {
+                val fixedToday = LocalDate.parse("2026-03-01")
+                val serviceWithFixedClock = SykmeldingService(
+                    sykmeldingDb,
+                    Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC),
+                )
+                val sykmeldingId = UUID.randomUUID()
+                serviceWithFixedClock.processBatch(
+                    listOf(
+                        SykmeldingRecord(
+                            offset = 0,
+                            sykmeldingId = sykmeldingId,
+                            message = defaultSendtSykmeldingMessage(
+                                sykmeldingId = sykmeldingId.toString(),
+                                sykmeldingsperioder = listOf(
+                                    SykmeldingsperiodeAGDTO(fom = fixedToday.minusDays(10), tom = fixedToday.minusDays(5))
+                                )
+                            )
+                        )
+                    )
+                )
+
+                serviceWithFixedClock.processBatch(
+                    listOf(SykmeldingRecord(offset = 1, sykmeldingId = sykmeldingId, message = null))
+                )
+
+                sykmeldingDb.findBySykmeldingId(sykmeldingId)?.revokedDate shouldBe fixedToday
+            }
+
+            test("should skip insert when tombstone is final state in same batch") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
 
@@ -390,7 +419,7 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 0
             }
 
-            it("should insert when insert is final state after tombstone") {
+            test("should insert when insert is final state after tombstone") {
                 val today = LocalDate.now()
                 val sykmeldingId = UUID.randomUUID()
 
@@ -416,7 +445,7 @@ class SykmeldingServiceTest :
                 stored.first().revokedDate shouldBe null
             }
 
-            it("should handle mixed inserts and revokes for different sykmeldingIds") {
+            test("should handle mixed inserts and revokes for different sykmeldingIds") {
                 val today = LocalDate.now()
                 val revokeId = UUID.randomUUID()
                 val id2 = UUID.randomUUID()
@@ -494,9 +523,9 @@ class SykmeldingServiceTest :
             }
         }
 
-        describe("processBatch - delete existing sykmeldinger") {
+        context("processBatch - delete existing sykmeldinger") {
 
-            it("should delete existing sykmeldinger for same fnr and orgnummer before insert") {
+            test("should delete existing sykmeldinger for same fnr and orgnummer before insert") {
                 val today = LocalDate.now()
                 val existingId = UUID.randomUUID()
                 val newId = UUID.randomUUID()
@@ -548,7 +577,7 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findBySykmeldingId(newId)!!.fnr shouldBe fnr
             }
 
-            it("should not delete sykmeldinger for different orgnummer") {
+            test("should not delete sykmeldinger for different orgnummer") {
                 val today = LocalDate.now()
                 val existingId = UUID.randomUUID()
                 val newId = UUID.randomUUID()
@@ -597,7 +626,7 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 2
             }
 
-            it("should not delete sykmeldinger for different fnr") {
+            test("should not delete sykmeldinger for different fnr") {
                 val today = LocalDate.now()
                 val existingId = UUID.randomUUID()
                 val newId = UUID.randomUUID()
@@ -646,7 +675,7 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 2
             }
 
-            it("should handle mixed delete and insert for multiple fnr/orgnummer combinations") {
+            test("should handle mixed delete and insert for multiple fnr/orgnummer combinations") {
                 val today = LocalDate.now()
                 val existingId1 = UUID.randomUUID()
                 val existingId2 = UUID.randomUUID()
@@ -722,7 +751,7 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findAll().size shouldBe 2
             }
 
-            it("should not delete when batch contains only tombstones") {
+            test("should not delete when batch contains only tombstones") {
                 val today = LocalDate.now()
                 val existingId = UUID.randomUUID()
                 val fnr = "12345678901"

@@ -1,7 +1,7 @@
 package no.nav.syfo.sykmelding.infrastructure
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
@@ -15,7 +15,7 @@ import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 
 class ExposedSykmeldingDbTest :
-    DescribeSpec({
+    FunSpec({
         val db = ExposedSykmeldingDb(TestDB.exposedDatabase)
 
         beforeTest {
@@ -38,13 +38,13 @@ class ExposedSykmeldingDbTest :
             syketilfelleStartDato = syketilfelleStartDato,
         )
 
-        describe("transaction - upsertSykmeldingBatch") {
-            it("should persist a single sykmelding and allow retrieval") {
+        context("saveLatestPerArbeidsforhold") {
+            test("should persist a single sykmelding and allow retrieval") {
                 val sykmeldingId = UUID.randomUUID()
                 val toInsert = sendtSykmelding(sykmeldingId = sykmeldingId)
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(toInsert))
+                    saveLatestPerArbeidsforhold(listOf(toInsert))
                 }
 
                 val retrieved = db.findBySykmeldingId(sykmeldingId)
@@ -61,7 +61,7 @@ class ExposedSykmeldingDbTest :
                 row.revokedDate shouldBe null
             }
 
-            it("should persist multiple sykmeldinger in one batch") {
+            test("should persist multiple sykmeldinger in one batch") {
                 val ids = (1..5).map { UUID.randomUUID() }
                 val sykmeldinger = ids.mapIndexed { index, id ->
                     sendtSykmelding(
@@ -72,7 +72,7 @@ class ExposedSykmeldingDbTest :
                 }
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(sykmeldinger)
+                    saveLatestPerArbeidsforhold(sykmeldinger)
                 }
 
                 ids.forEachIndexed { index, id ->
@@ -83,14 +83,14 @@ class ExposedSykmeldingDbTest :
                 }
             }
 
-            it("should update existing row when incoming tom is newer") {
+            test("should update existing row when incoming tom is newer") {
                 val fnr = "12345678901"
                 val orgnummer = "999999999"
                 val oldId = UUID.randomUUID()
                 val newId = UUID.randomUUID()
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(sykmeldingId = oldId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 1, 10))
                         )
@@ -98,7 +98,7 @@ class ExposedSykmeldingDbTest :
                 }
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(sykmeldingId = newId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 2, 10))
                         )
@@ -112,14 +112,14 @@ class ExposedSykmeldingDbTest :
                 db.findBySykmeldingId(oldId) shouldBe null
             }
 
-            it("should not update existing row when incoming tom is older") {
+            test("should not update existing row when incoming tom is older") {
                 val fnr = "12345678901"
                 val orgnummer = "999999999"
                 val existingId = UUID.randomUUID()
                 val incomingId = UUID.randomUUID()
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(sykmeldingId = existingId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 3, 10))
                         )
@@ -127,7 +127,7 @@ class ExposedSykmeldingDbTest :
                 }
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(sykmeldingId = incomingId, fnr = fnr, orgnummer = orgnummer, tom = LocalDate.of(2025, 1, 10))
                         )
@@ -143,7 +143,7 @@ class ExposedSykmeldingDbTest :
                 db.findBySykmeldingId(incomingId) shouldBe null
             }
 
-            it("should update existing row when incoming tom is equal") {
+            test("should update existing row when incoming tom is equal") {
                 val fnr = "12345678901"
                 val orgnummer = "999999999"
                 val existingId = UUID.randomUUID()
@@ -151,7 +151,7 @@ class ExposedSykmeldingDbTest :
                 val sameTom = LocalDate.of(2025, 2, 15)
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(sykmeldingId = existingId, fnr = fnr, orgnummer = orgnummer, tom = sameTom, fom = LocalDate.of(2025, 1, 1))
                         )
@@ -159,7 +159,7 @@ class ExposedSykmeldingDbTest :
                 }
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(sykmeldingId = incomingId, fnr = fnr, orgnummer = orgnummer, tom = sameTom, fom = LocalDate.of(2025, 2, 1))
                         )
@@ -174,28 +174,49 @@ class ExposedSykmeldingDbTest :
                 db.findBySykmeldingId(existingId) shouldBe null
             }
 
-            it("should do nothing when batch is empty") {
+            test("should replace the stored row when a sykmelding is resent with another orgnummer") {
+                val sykmeldingId = UUID.randomUUID()
+                val fnr = "12345678901"
+
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(emptyList())
+                    saveLatestPerArbeidsforhold(listOf(sendtSykmelding(sykmeldingId = sykmeldingId, fnr = fnr, orgnummer = "111111111")))
                 }
+
+                var replacedCount = 0
+                db.transaction {
+                    replacedCount = saveLatestPerArbeidsforhold(
+                        listOf(sendtSykmelding(sykmeldingId = sykmeldingId, fnr = fnr, orgnummer = "222222222"))
+                    )
+                }
+
+                replacedCount shouldBe 1
+                db.findBySykmeldingId(sykmeldingId)?.orgnummer shouldBe "222222222"
+            }
+
+            test("should do nothing when batch is empty") {
+                var replacedCount = -1
+                db.transaction {
+                    replacedCount = saveLatestPerArbeidsforhold(emptyList())
+                }
+                replacedCount shouldBe 0
             }
         }
 
-        describe("transaction - revokeSykmeldingBatch") {
-            it("should return 0 when no matching sykmeldingIds exist") {
+        context("revoke") {
+            test("should return 0 when no matching sykmeldingIds exist") {
                 val unknownIds = listOf(UUID.randomUUID(), UUID.randomUUID())
                 var result = 0
                 db.transaction {
-                    result = batchRevokeSykmelding(unknownIds, LocalDate.of(2025, 1, 15))
+                    result = revoke(unknownIds, LocalDate.of(2025, 1, 15))
                 }
                 result shouldBe 0
             }
 
-            it("should update single row with revokedDate and return 1") {
+            test("should update single row with revokedDate and return 1") {
                 val sykmeldingId = UUID.randomUUID()
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(
                                 sykmeldingId = sykmeldingId,
@@ -209,7 +230,7 @@ class ExposedSykmeldingDbTest :
                 val revokedDate = LocalDate.of(2025, 1, 15)
                 var affectedRows = 0
                 db.transaction {
-                    affectedRows = batchRevokeSykmelding(listOf(sykmeldingId), revokedDate)
+                    affectedRows = revoke(listOf(sykmeldingId), revokedDate)
                 }
 
                 affectedRows shouldBe 1
@@ -219,13 +240,13 @@ class ExposedSykmeldingDbTest :
                 row!!.revokedDate shouldBe revokedDate
             }
 
-            it("should revoke multiple sykmeldinger in one batch") {
+            test("should revoke multiple sykmeldinger in one batch") {
                 val sykmelding1 = sendtSykmelding(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 5))
                 val sykmelding2 = sendtSykmelding(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 10), orgnummer = "111111111")
                 val sykmelding3 = sendtSykmelding(sykmeldingId = UUID.randomUUID(), tom = LocalDate.of(2025, 1, 15), orgnummer = "222222222")
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(sykmelding1, sykmelding2, sykmelding3)
                     )
                 }
@@ -233,7 +254,7 @@ class ExposedSykmeldingDbTest :
                 val revokedDate = LocalDate.of(2025, 1, 12)
                 var affectedRows = 0
                 db.transaction {
-                    affectedRows = batchRevokeSykmelding(listOf(sykmelding1.sykmeldingId, sykmelding2.sykmeldingId, sykmelding3.sykmeldingId), revokedDate)
+                    affectedRows = revoke(listOf(sykmelding1.sykmeldingId, sykmelding2.sykmeldingId, sykmelding3.sykmeldingId), revokedDate)
                 }
 
                 affectedRows shouldBe 3
@@ -243,24 +264,24 @@ class ExposedSykmeldingDbTest :
                 db.findBySykmeldingId(sykmelding3.sykmeldingId)!!.revokedDate shouldBe revokedDate
             }
 
-            it("should return 0 when batch is empty") {
+            test("should return 0 when batch is empty") {
                 var result = 0
                 db.transaction {
-                    result = batchRevokeSykmelding(emptyList(), LocalDate.now())
+                    result = revoke(emptyList(), LocalDate.now())
                 }
                 result shouldBe 0
             }
         }
 
-        describe("mapping correctness") {
-            it("should persist all fields") {
+        context("mapping correctness") {
+            test("should persist all fields") {
                 val sykmeldingId = UUID.randomUUID()
                 val fom = LocalDate.of(2025, 3, 1)
                 val tom = LocalDate.of(2025, 3, 15)
                 val syketilfelleStart = LocalDate.of(2025, 2, 28)
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(
                                 sykmeldingId = sykmeldingId,
@@ -276,7 +297,7 @@ class ExposedSykmeldingDbTest :
 
                 // Revoke to test that field is also mapped
                 db.transaction {
-                    batchRevokeSykmelding(listOf(sykmeldingId), LocalDate.of(2025, 3, 20))
+                    revoke(listOf(sykmeldingId), LocalDate.of(2025, 3, 20))
                 }
 
                 val row = db.findBySykmeldingId(sykmeldingId)
@@ -295,13 +316,13 @@ class ExposedSykmeldingDbTest :
             }
         }
 
-        describe("transaction rollback behavior") {
-            it("should rollback entire transaction when an error occurs") {
+        context("transaction rollback behavior") {
+            test("should rollback entire transaction when an error occurs") {
                 val sykmeldingId = UUID.randomUUID()
 
                 val exception = shouldThrow<SykmeldingDbException> {
                     db.transaction {
-                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(sendtSykmelding(sykmeldingId = sykmeldingId)))
+                        saveLatestPerArbeidsforhold(listOf(sendtSykmelding(sykmeldingId = sykmeldingId)))
                         throw RuntimeException("Simulated failure")
                     }
                 }
@@ -312,12 +333,12 @@ class ExposedSykmeldingDbTest :
                 db.findBySykmeldingId(sykmeldingId) shouldBe null
             }
 
-            it("should rollback both insert and revoke when transaction fails") {
+            test("should rollback both insert and revoke when transaction fails") {
                 val existingId = UUID.randomUUID()
                 val newId = UUID.randomUUID()
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(
                                 sykmeldingId = existingId,
@@ -329,8 +350,8 @@ class ExposedSykmeldingDbTest :
 
                 val exception = shouldThrow<SykmeldingDbException> {
                     db.transaction {
-                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(sendtSykmelding(sykmeldingId = newId)))
-                        batchRevokeSykmelding(listOf(existingId), LocalDate.of(2025, 1, 15))
+                        saveLatestPerArbeidsforhold(listOf(sendtSykmelding(sykmeldingId = newId)))
+                        revoke(listOf(existingId), LocalDate.of(2025, 1, 15))
                         throw RuntimeException("Simulated failure")
                     }
                 }
@@ -344,7 +365,7 @@ class ExposedSykmeldingDbTest :
                 existingRow!!.revokedDate shouldBe null
             }
 
-            it("should not retry the transaction when a database error occurs") {
+            test("should not retry the transaction when a database error occurs") {
                 var attempts = 0
 
                 shouldThrow<SykmeldingDbException> {
@@ -357,12 +378,12 @@ class ExposedSykmeldingDbTest :
                 attempts shouldBe 1
             }
 
-            it("should rethrow cancellation unwrapped and roll back") {
+            test("should rethrow cancellation unwrapped and roll back") {
                 val sykmeldingId = UUID.randomUUID()
 
                 shouldThrow<CancellationException> {
                     db.transaction {
-                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(sendtSykmelding(sykmeldingId = sykmeldingId)))
+                        saveLatestPerArbeidsforhold(listOf(sendtSykmelding(sykmeldingId = sykmeldingId)))
                         throw CancellationException("Simulated cancellation")
                     }
                 }
@@ -370,12 +391,12 @@ class ExposedSykmeldingDbTest :
                 db.findBySykmeldingId(sykmeldingId) shouldBe null
             }
 
-            it("should commit both upsert and revoke when transaction succeeds") {
+            test("should commit both upsert and revoke when transaction succeeds") {
                 val revokeId = UUID.randomUUID()
                 val newId = UUID.randomUUID()
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(
+                    saveLatestPerArbeidsforhold(
                         listOf(
                             sendtSykmelding(
                                 sykmeldingId = revokeId,
@@ -387,8 +408,8 @@ class ExposedSykmeldingDbTest :
                 }
 
                 db.transaction {
-                    batchUpsertSykmeldingerIfMoreRecentTom(listOf(sendtSykmelding(orgnummer = "111111111", sykmeldingId = newId)))
-                    batchRevokeSykmelding(listOf(revokeId), LocalDate.of(2025, 1, 15))
+                    saveLatestPerArbeidsforhold(listOf(sendtSykmelding(orgnummer = "111111111", sykmeldingId = newId)))
+                    revoke(listOf(revokeId), LocalDate.of(2025, 1, 15))
                 }
 
                 val newSykmelding = db.findBySykmeldingId(newId)

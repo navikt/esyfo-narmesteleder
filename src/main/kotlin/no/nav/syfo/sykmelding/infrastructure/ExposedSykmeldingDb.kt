@@ -38,8 +38,13 @@ class ExposedSykmeldingDb(
 ) : SykmeldingDb {
 
     private object TransactionImpl : SykmeldingTransaction {
-        override fun batchUpsertSykmeldingerIfMoreRecentTom(sykmeldinger: List<SendtSykmelding>) {
-            if (sykmeldinger.isEmpty()) return
+        override fun saveLatestPerArbeidsforhold(sykmeldinger: List<SendtSykmelding>): Int {
+            if (sykmeldinger.isEmpty()) return 0
+
+            // sykmelding_id is also unique, but the upsert only resolves conflicts on (fnr, orgnummer).
+            // A sykmelding that is resent with another fnr or orgnummer (e.g. a corrected paper sykmelding)
+            // would violate the sykmelding_id constraint, so the stored row is removed first.
+            val replacedCount = deleteBySykmeldingIds(sykmeldinger.map { it.sykmeldingId })
 
             SendtSykmeldingTable.batchUpsert(
                 sykmeldinger,
@@ -63,9 +68,11 @@ class ExposedSykmeldingDb(
                 this[SendtSykmeldingTable.fom] = sykmelding.fom
                 this[SendtSykmeldingTable.tom] = sykmelding.tom
             }
+
+            return replacedCount
         }
 
-        override fun batchRevokeSykmelding(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int {
+        override fun revoke(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int {
             if (sykmeldingIds.isEmpty()) return 0
 
             return SendtSykmeldingTable.update({ SendtSykmeldingTable.sykmeldingId inList sykmeldingIds }) {
@@ -73,11 +80,7 @@ class ExposedSykmeldingDb(
             }
         }
 
-        override fun batchDeleteAllBySykmeldingIds(sykmeldingIds: List<UUID>): Int {
-            if (sykmeldingIds.isEmpty()) return 0
-
-            return SendtSykmeldingTable.deleteWhere { SendtSykmeldingTable.sykmeldingId inList sykmeldingIds }
-        }
+        private fun deleteBySykmeldingIds(sykmeldingIds: List<UUID>): Int = SendtSykmeldingTable.deleteWhere { SendtSykmeldingTable.sykmeldingId inList sykmeldingIds }
     }
 
     override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) = withContext(dispatcher) {

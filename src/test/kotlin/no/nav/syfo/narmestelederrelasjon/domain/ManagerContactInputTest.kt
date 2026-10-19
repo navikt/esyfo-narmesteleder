@@ -4,7 +4,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonIdent
-import no.nav.syfo.narmesteleder.domain.PhoneNumber as LegacyPhoneNumber
 
 class ManagerContactInputTest :
     FunSpec({
@@ -101,38 +100,37 @@ class ManagerContactInputTest :
         }
 
         listOf(
-            "+47 99 99 99 99",
-            " 99 99 99 99 ",
-            "99999999",
-            "+1",
-            "",
-            "   ",
-            "\t",
-            "+",
-            "++4799999999",
-            "+47-99999999",
-            "+47\t99999999",
-            "\n99999999",
-            "99999999\n",
-            "+47\u00a099999999",
-            "(+47)99999999",
-            "٩٩٩٩٩٩٩٩",
-            "999A9999",
-        ).forEachIndexed { index, mobile ->
-            test("preserves legacy phone normalization and validation for case ${index + 1}") {
-                val expected = LegacyPhoneNumber.parse(mobile)
-                when (val actual = managerContact(mobile = mobile).normalize()) {
-                    is ManagerContactNormalization.Valid -> actual.manager.mobile.value shouldBe expected.getOrThrow().value
-                    is ManagerContactNormalization.Invalid -> {
-                        actual.issues.single().field shouldBe ManagerContactField.MOBILE
-                        actual.issues.single().reason.message shouldBe expected.exceptionOrNull()?.message
-                    }
-                }
+            "+47 99 99 99 99" to "+4799999999",
+            " 99 99 99 99 " to "99999999",
+            "99999999" to "99999999",
+            "+1" to "+1",
+        ).forEachIndexed { index, (mobile, expected) ->
+            test("normalizes valid phone input for case ${index + 1}") {
+                val actual = managerContact(mobile = mobile).normalize() as ManagerContactNormalization.Valid
+                actual.manager.mobile shouldBe PhoneNumber(expected)
+            }
+        }
 
-                val expectedValue = runCatching { LegacyPhoneNumber(mobile) }
-                val actualValue = runCatching { PhoneNumber(mobile) }
-                actualValue.isSuccess shouldBe expectedValue.isSuccess
-                actualValue.exceptionOrNull()?.message shouldBe expectedValue.exceptionOrNull()?.message
+        listOf(
+            "" to ManagerContactValidationReason.PHONE_NUMBER_MUST_NOT_BE_BLANK,
+            "   " to ManagerContactValidationReason.PHONE_NUMBER_MUST_NOT_BE_BLANK,
+            "\t" to ManagerContactValidationReason.PHONE_NUMBER_MUST_NOT_BE_BLANK,
+            "+" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "++4799999999" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "+47-99999999" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "+47\t99999999" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "\n99999999" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "99999999\n" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "+47\u00a099999999" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "(+47)99999999" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "٩٩٩٩٩٩٩٩" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            "999A9999" to ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+        ).forEachIndexed { index, (mobile, reason) ->
+            test("rejects invalid phone input for case ${index + 1}") {
+                managerContact(mobile = mobile).normalize() shouldBe ManagerContactNormalization.Invalid(
+                    listOf(ManagerContactValidationIssue(ManagerContactField.MOBILE, reason)),
+                )
+                shouldThrow<IllegalArgumentException> { PhoneNumber(mobile) }.message shouldBe reason.message
             }
         }
     })

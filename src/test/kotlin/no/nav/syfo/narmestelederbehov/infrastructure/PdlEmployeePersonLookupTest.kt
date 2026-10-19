@@ -55,7 +55,7 @@ class PdlEmployeePersonLookupTest :
         test("rejects a malformed folkeregisterident like the name lookup") {
             shouldThrow<IllegalArgumentException> {
                 lookup(UpstreamResult.Success(person.copy(identer = listOf(Ident("invalid", Ident.GRUPPE_IDENT_FNR))))).find(employeeIdent)
-            }.message shouldBe "PersonIdent must be exactly 11 digits"
+            }.message shouldBe "PersonalIdentificationNumber must be exactly 11 digits"
         }
 
         test("propagates failure as Unavailable") {

@@ -3,7 +3,6 @@ package no.nav.syfo.narmestelederbehov.api
 import io.ktor.server.routing.RoutingCall
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
-import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmesteleder.api.v1.getRequiredOrganizationNumberQueryParameter
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovQuery
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovResult
@@ -16,7 +15,7 @@ fun RoutingCall.toListNarmestelederbehovQuery(): ListNarmestelederbehovQuery {
     val createdAfter = getCreatedAfter()
     val organizationNumber = getRequiredOrganizationNumberQueryParameter("orgNumber")
     return ListNarmestelederbehovQuery(
-        organizationNumber = OrganizationNumber(organizationNumber.value),
+        organizationNumber = organizationNumber,
         createdAfter = createdAfter,
         pageSize = pageSize,
         subject = getMyPrincipal().toOrganizationAccessSubject(),

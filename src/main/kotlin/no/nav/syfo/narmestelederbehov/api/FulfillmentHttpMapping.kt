@@ -3,14 +3,13 @@ package no.nav.syfo.narmestelederbehov.api
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
-import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 
 fun Manager.toManagerContactInput(): ManagerContactInput = ManagerContactInput(
-    PersonIdent(nationalIdentificationNumber.value),
+    nationalIdentificationNumber,
     lastName,
     email,
     mobile,

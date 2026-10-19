@@ -9,8 +9,6 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
-import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
@@ -42,11 +40,11 @@ fun Route.registerSubmitNarmestelederrelasjonApi(
                 val request = call.tryReceive<Linemanager>()
                 val result = submit.execute(
                     SubmitNarmestelederrelasjonCommand(
-                        employeeIdent = PersonIdent(request.employeeIdentificationNumber.value),
+                        employeeIdent = request.employeeIdentificationNumber,
                         employeeLastName = request.lastName,
-                        organizationNumber = OrganizationNumber(request.orgNumber.value),
+                        organizationNumber = request.orgNumber,
                         manager = ManagerContactInput(
-                            personIdent = PersonIdent(request.manager.nationalIdentificationNumber.value),
+                            personIdent = request.manager.nationalIdentificationNumber,
                             lastName = request.manager.lastName,
                             email = request.manager.email,
                             mobile = request.manager.mobile,

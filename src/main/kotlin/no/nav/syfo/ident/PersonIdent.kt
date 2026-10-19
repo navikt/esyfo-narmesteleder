@@ -3,8 +3,9 @@ package no.nav.syfo.ident
 @JvmInline
 value class PersonIdent(val value: String) {
     init {
+        // Part of the HTTP 400 contract: Jackson returns this message for invalid identifiers in request bodies.
         require(isValid(value)) {
-            "PersonIdent must be exactly $PERSON_IDENT_LENGTH digits"
+            "PersonalIdentificationNumber must be exactly $PERSON_IDENT_LENGTH digits"
         }
     }
 

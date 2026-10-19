@@ -2,11 +2,10 @@ package no.nav.syfo.narmestelederbehov.api
 
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
+import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
@@ -24,11 +23,11 @@ fun GetNarmestelederbehovResult.toLinemanagerRequirementRead(): LinemanagerRequi
 
 fun NarmestelederbehovDetails.toLinemanagerRequirementRead(name: BehovPersonName, organizationName: String?): LinemanagerRequirementRead = LinemanagerRequirementRead(
     id = id.value,
-    employeeIdentificationNumber = PersonalIdentificationNumber(employeeIdent.value),
-    orgNumber = OrganizationNumber(organizationNumber.value),
+    employeeIdentificationNumber = employeeIdent,
+    orgNumber = organizationNumber,
     orgName = organizationName,
     mainOrgNumber = OrganizationNumber(mainOrganizationNumber),
-    managerIdentificationNumber = managerIdent?.let { PersonalIdentificationNumber(it.value) },
+    managerIdentificationNumber = managerIdent,
     name = Name(firstName = name.firstName, lastName = name.lastName, middleName = name.middleName),
     created = created,
     updated = updated,

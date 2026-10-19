@@ -23,7 +23,6 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -60,9 +59,8 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
 import java.util.UUID
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber as RequestOrganizationNumber
 
-private val request = LinemanagerRevoke(PersonalIdentificationNumber("12345678901"), RequestOrganizationNumber("123456789"), "Hansen")
+private val request = LinemanagerRevoke(PersonIdent("12345678901"), OrganizationNumber("123456789"), "Hansen")
 private val resolvedIdent = PersonIdent("12345678902")
 
 class RevokeActiveNarmestelederrelasjonRouteTest :
@@ -101,7 +99,7 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             COUNT_REVOKE_LINEMANAGER_WITHOUT_ACTIVE_RELATION.count() shouldBe before + 1.0
         }
 
-        test("invalid payload and missing person return legacy 400 responses") {
+        test("invalid payload and missing person return 400") {
             val fixture = RevokeRouteFixture(person = null)
             fixture.authorize("maskinporten")
             fixture.withApplication {
@@ -120,7 +118,30 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             fixture.messages shouldBe emptyList()
         }
 
-        test("mismatched last name returns the legacy error and never looks up active relations") {
+        test("invalid identifiers in the body return 400 with the validation message") {
+            val fixture = RevokeRouteFixture()
+            fixture.authorize("maskinporten")
+            fixture.withApplication {
+                listOf(
+                    """{"employeeIdentificationNumber":"1234567890","orgNumber":"123456789","lastName":"Hansen"}""" to
+                        "PersonalIdentificationNumber must be exactly 11 digits",
+                    """{"employeeIdentificationNumber":"12345678901","orgNumber":"12345678a","lastName":"Hansen"}""" to
+                        "OrganizationNumber must be exactly 9 digits",
+                ).forEach { (body, message) ->
+                    client.revoke(body = body).let {
+                        it.status shouldBe HttpStatusCode.BadRequest
+                        it.body<ApiError>().let { error ->
+                            error.type shouldBe ErrorType.INVALID_FORMAT
+                            error.message shouldBe message
+                        }
+                    }
+                }
+            }
+            fixture.lookups shouldBe emptyList()
+            fixture.messages shouldBe emptyList()
+        }
+
+        test("mismatched last name returns the name mismatch error and never looks up active relations") {
             val fixture = RevokeRouteFixture(name = "Other")
             fixture.authorize("maskinporten")
             fixture.withApplication {

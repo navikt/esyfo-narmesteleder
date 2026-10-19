@@ -11,6 +11,10 @@ class PersonIdentTest :
             PersonIdent("12345678901").value shouldBe "12345678901"
         }
 
+        test("accepts a D-number") {
+            PersonIdent("52345678901").value shouldBe "52345678901"
+        }
+
         mapOf(
             "empty" to "",
             "too short" to "1234567890",
@@ -22,7 +26,7 @@ class PersonIdentTest :
             test("rejects $case") {
                 PersonIdent.isValid(value) shouldBe false
                 shouldThrow<IllegalArgumentException> { PersonIdent(value) }.message shouldBe
-                    "PersonIdent must be exactly 11 digits"
+                    "PersonalIdentificationNumber must be exactly 11 digits"
             }
         }
     })

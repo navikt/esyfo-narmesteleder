@@ -19,12 +19,11 @@ fun RoutingCall.getPathVariable(name: String): String = this.parameters[name] ?:
 
 fun RoutingCall.getRequiredQueryParameter(name: String): String = this.queryParameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 
-fun RoutingCall.getRequiredOrganizationNumberQueryParameter(name: String): OrganizationNumber {
-    val value = getRequiredQueryParameter(name)
-    return runCatching { OrganizationNumber(value) }.getOrElse {
+fun RoutingCall.getRequiredOrganizationNumberQueryParameter(name: String): OrganizationNumber = getRequiredQueryParameter(name)
+    .runCatching { OrganizationNumber(this) }
+    .getOrElse {
         throw ApiErrorException.BadRequestException(
             it.message ?: "Invalid organization number format for $name parameter",
             type = ErrorType.INVALID_FORMAT
         )
     }
-}

@@ -61,6 +61,20 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.bundles.testcontainers)
     testImplementation(libs.esyfo.logger.testkit)
+
+    constraints {
+        // Jackson 3 comes transitively from logstash-logback-encoder and esyfo-logger-testkit
+        implementation(libs.jackson3.core) {
+            because("CVE-2026-29062 (GHSA-6v53-7c9g-w56r)")
+        }
+        implementation(libs.jackson3.databind) {
+            because("CVE-2026-54512 (GHSA-j3rv-43j4-c7qm)")
+        }
+        // Handlebars comes transitively from ktor-server-openapi via swagger-codegen
+        implementation(libs.handlebars) {
+            because("CVE-2026-55760")
+        }
+    }
 }
 kotlin {
     jvmToolchain(25)

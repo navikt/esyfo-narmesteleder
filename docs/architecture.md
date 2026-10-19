@@ -559,9 +559,9 @@ the final repository-wide rules can replace the migration-specific checks.
 `POST /internal/api/v1/linemanager/search` now lives in `narmestelederrelasjon` as `SearchActiveNarmestelederrelasjonerUseCase`.
 
 `sykmelding` follows the module structure (`application`, `infrastructure` and
-`retention`) and registers its dependencies in `sykmeldingModule()`. Its JDBC
-adapter `PostgresSykmeldingDb` still has to move to Exposed DSL (#620), and its
-consumers still have to move to a shared consumer runner (#623).
+`retention`) and registers its dependencies in `sykmeldingModule()`. Its
+persistence adapters use Exposed DSL, and its consumers still have to move to a
+shared consumer runner (#623).
 
 The fulfillment foundation and its remaining activation work are described in
 [Fulfillment migration status](narmestelederbehov-fulfillment-migration.md).

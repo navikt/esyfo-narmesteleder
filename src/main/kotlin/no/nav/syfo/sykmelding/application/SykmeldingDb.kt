@@ -9,7 +9,7 @@ interface SykmeldingDb {
 }
 
 interface SykmeldingTransaction {
-    fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>): Int
+    fun batchUpsertSykmeldingerIfMoreRecentTom(entities: List<SendtSykmeldingEntity>)
     fun batchRevokeSykmelding(sykmeldingIds: List<UUID>, revokedDate: LocalDate): Int
     fun batchDeleteAllBySykmeldingIds(sykmeldingIds: List<UUID>): Int
 }

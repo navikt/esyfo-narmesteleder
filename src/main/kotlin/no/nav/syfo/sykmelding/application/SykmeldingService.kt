@@ -40,12 +40,12 @@ class SykmeldingService(
 
             // Upsert: inserts new rows, or updates existing rows only when the incoming tom >= existing tom.
             // This is handled by the DB via ON CONFLICT (fnr, orgnummer) with a WHERE clause.
-            val upsertedRows = batchUpsertSykmeldingerIfMoreRecentTom(entitiesToInsert)
+            batchUpsertSykmeldingerIfMoreRecentTom(entitiesToInsert)
 
             val revokedRows = batchRevokeSykmelding(revokes.map { it.sykmeldingId }, LocalDate.now())
 
             logger.info(
-                "Batch processed: $upsertedRows inserts/updates, $revokedRows revokes, $deletedDuplicateSykmeldingIds deleted duplicate sykmeldingId  " +
+                "Batch processed: $revokedRows revokes, $deletedDuplicateSykmeldingIds deleted duplicate sykmeldingId  " +
                     "(from ${records.size} total records, ${finalStateByKey.size} unique keys)"
             )
         }

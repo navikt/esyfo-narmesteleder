@@ -1,14 +1,13 @@
 package no.nav.syfo.sykmelding
 
-import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.sykmelding.application.ActiveSykmeldingRepository
 import no.nav.syfo.sykmelding.application.NarmestelederBruddService
 import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.application.SendtSykmeldingNarmestelederBruddRepository
 import no.nav.syfo.sykmelding.application.SykmeldingDb
 import no.nav.syfo.sykmelding.application.SykmeldingService
+import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
 import no.nav.syfo.sykmelding.infrastructure.PostgresSendtSykmeldingNarmestelederBruddRepository
-import no.nav.syfo.sykmelding.infrastructure.PostgresSykmeldingDb
 import no.nav.syfo.sykmelding.infrastructure.SendtSykmeldingRepository
 import no.nav.syfo.sykmelding.retention.application.DeleteOldSykmeldinger
 import no.nav.syfo.sykmelding.retention.application.SykmeldingRetentionMetrics
@@ -17,7 +16,7 @@ import no.nav.syfo.sykmelding.retention.infrastructure.ExposedSykmeldingRetentio
 import org.koin.dsl.module
 
 fun sykmeldingModule() = module {
-    single<SykmeldingDb> { PostgresSykmeldingDb(database = get(), dispatcher = Dispatchers.IO) }
+    single<SykmeldingDb> { ExposedSykmeldingDb(database = get()) }
     single<ActiveSykmeldingRepository> { SendtSykmeldingRepository(database = get()) }
     single<SendtSykmeldingNarmestelederBruddRepository> {
         PostgresSendtSykmeldingNarmestelederBruddRepository(database = get())

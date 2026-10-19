@@ -5,19 +5,18 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
-import io.mockk.every
-import io.mockk.spyk
 import net.datafaker.Faker
 import no.nav.syfo.TestDB
 import no.nav.syfo.sykmelding.application.SendtSykmeldingEntity
+import java.sql.SQLException
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import kotlin.coroutines.cancellation.CancellationException
 
-class SykmeldingDbTest :
+class ExposedSykmeldingDbTest :
     DescribeSpec({
-        val testDb = TestDB.database
-        val db = PostgresSykmeldingDb(testDb)
+        val db = ExposedSykmeldingDb(TestDB.exposedDatabase)
 
         beforeTest {
             TestDB.clearSendtSykmeldingData()
@@ -309,49 +308,25 @@ class SykmeldingDbTest :
 
         describe("transaction rollback behavior") {
             it("should rollback entire transaction when an error occurs") {
-                val spyDb = spyk(testDb)
-                val dbWithSpy = PostgresSykmeldingDb(spyDb)
-
                 val sykmeldingId = UUID.randomUUID()
 
-                var shouldThrow = false
-                every { spyDb.connection } answers {
-                    val realConnection = testDb.connection
-                    spyk(realConnection) {
-                        every { commit() } answers {
-                            if (shouldThrow) {
-                                shouldThrow = false
-                                throw RuntimeException("Simulated commit failure")
-                            } else {
-                                realConnection.commit()
-                            }
-                        }
-                    }
-                }
-
-                shouldThrow = true
                 val exception = shouldThrow<SykmeldingDbException> {
-                    dbWithSpy.transaction {
+                    db.transaction {
                         batchUpsertSykmeldingerIfMoreRecentTom(listOf(entity(sykmeldingId = sykmeldingId)))
+                        throw RuntimeException("Simulated failure")
                     }
                 }
 
                 exception.message shouldContain "Transaction failed"
                 exception.cause shouldNotBe null
 
-                // Verify the data was NOT inserted (rollback worked)
-                val afterRow = db.findBySykmeldingId(sykmeldingId)
-                afterRow shouldBe null
+                db.findBySykmeldingId(sykmeldingId) shouldBe null
             }
 
             it("should rollback both insert and revoke when transaction fails") {
-                val spyDb = spyk(testDb)
-                val dbWithSpy = PostgresSykmeldingDb(spyDb)
-
                 val existingId = UUID.randomUUID()
                 val newId = UUID.randomUUID()
 
-                // First insert a row that we'll try to revoke
                 db.transaction {
                     batchUpsertSykmeldingerIfMoreRecentTom(
                         listOf(
@@ -363,26 +338,11 @@ class SykmeldingDbTest :
                     )
                 }
 
-                var shouldThrow = false
-                every { spyDb.connection } answers {
-                    val realConnection = testDb.connection
-                    spyk(realConnection) {
-                        every { commit() } answers {
-                            if (shouldThrow) {
-                                shouldThrow = false
-                                throw RuntimeException("Simulated commit failure")
-                            } else {
-                                realConnection.commit()
-                            }
-                        }
-                    }
-                }
-
-                shouldThrow = true
                 val exception = shouldThrow<SykmeldingDbException> {
-                    dbWithSpy.transaction {
+                    db.transaction {
                         batchUpsertSykmeldingerIfMoreRecentTom(listOf(entity(sykmeldingId = newId)))
                         batchRevokeSykmelding(listOf(existingId), LocalDate.of(2025, 1, 15))
+                        throw RuntimeException("Simulated failure")
                     }
                 }
 
@@ -393,6 +353,32 @@ class SykmeldingDbTest :
                 val existingRow = db.findBySykmeldingId(existingId)
                 existingRow shouldNotBe null
                 existingRow!!.revokedDate shouldBe null
+            }
+
+            it("should not retry the transaction when a database error occurs") {
+                var attempts = 0
+
+                shouldThrow<SykmeldingDbException> {
+                    db.transaction {
+                        attempts++
+                        throw SQLException("Simulated database failure")
+                    }
+                }
+
+                attempts shouldBe 1
+            }
+
+            it("should rethrow cancellation unwrapped and roll back") {
+                val sykmeldingId = UUID.randomUUID()
+
+                shouldThrow<CancellationException> {
+                    db.transaction {
+                        batchUpsertSykmeldingerIfMoreRecentTom(listOf(entity(sykmeldingId = sykmeldingId)))
+                        throw CancellationException("Simulated cancellation")
+                    }
+                }
+
+                db.findBySykmeldingId(sykmeldingId) shouldBe null
             }
 
             it("should commit both upsert and revoke when transaction succeeds") {

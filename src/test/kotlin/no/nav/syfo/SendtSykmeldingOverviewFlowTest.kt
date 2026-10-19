@@ -23,7 +23,7 @@ import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.application.SykmeldingRecord
 import no.nav.syfo.sykmelding.application.SykmeldingService
 import no.nav.syfo.sykmelding.application.SykmeldingsperiodeAGDTO
-import no.nav.syfo.sykmelding.infrastructure.PostgresSykmeldingDb
+import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Instant
@@ -51,7 +51,7 @@ class SendtSykmeldingOverviewFlowTest :
                 },
                 metrics = MicrometerNarmestelederbehovCreationMetrics(),
             ),
-            sykmeldingService = SykmeldingService(PostgresSykmeldingDb(TestDB.database)),
+            sykmeldingService = SykmeldingService(ExposedSykmeldingDb(TestDB.exposedDatabase)),
             narmestelederBruddService = mockk<NarmestelederBruddService>(),
             hasActiveNarmestelederrelasjon = HasActiveNarmestelederrelasjonUseCase(
                 ExposedActiveNarmestelederrelasjonRepository(TestDB.exposedDatabase),

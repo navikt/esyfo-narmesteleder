@@ -4,9 +4,12 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.sykmelding.application.SendtSykmeldingEntity
-import no.nav.syfo.sykmelding.infrastructure.PostgresSykmeldingDb
+import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
+import no.nav.syfo.sykmelding.infrastructure.SendtSykmeldingTable
 import no.nav.syfo.sykmelding.infrastructure.toSendtSykmeldingEntity
 import org.flywaydb.core.Flyway
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
@@ -139,19 +142,6 @@ class TestDB private constructor() {
     }
 }
 
-fun PostgresSykmeldingDb.findAll(): List<SendtSykmeldingEntity> = TestDB.database.connection.use { connection ->
-    connection
-        .prepareStatement(
-            """
-            SELECT * 
-            FROM sendt_sykmelding
-            """.trimIndent()
-        ).use { preparedStatement ->
-            val resultSet = preparedStatement.executeQuery()
-            buildList {
-                while (resultSet.next()) {
-                    add(resultSet.toSendtSykmeldingEntity())
-                }
-            }
-        }
+fun ExposedSykmeldingDb.findAll(): List<SendtSykmeldingEntity> = transaction(TestDB.exposedDatabase) {
+    SendtSykmeldingTable.selectAll().map { it.toSendtSykmeldingEntity() }
 }

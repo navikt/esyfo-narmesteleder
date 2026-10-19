@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import net.datafaker.Faker
 import no.nav.syfo.TestDB
+import no.nav.syfo.findBySykmeldingId
 import no.nav.syfo.sykmelding.application.SendtSykmelding
 import java.sql.SQLException
 import java.time.LocalDate
@@ -60,7 +61,7 @@ class ExposedSykmeldingDbTest :
                 row.revokedDate shouldBe null
             }
 
-            it("should persist multiple sykmelding sykmeldinger in one batch") {
+            it("should persist multiple sykmeldinger in one batch") {
                 val ids = (1..5).map { UUID.randomUUID() }
                 val sykmeldinger = ids.mapIndexed { index, id ->
                     sendtSykmelding(
@@ -251,15 +252,8 @@ class ExposedSykmeldingDbTest :
             }
         }
 
-        describe("findBySykmeldingId") {
-            it("should return null when no row exists") {
-                val result = db.findBySykmeldingId(UUID.randomUUID())
-                result shouldBe null
-            }
-        }
-
         describe("mapping correctness") {
-            it("should correctly map all fields from ResultSet") {
+            it("should persist all fields") {
                 val sykmeldingId = UUID.randomUUID()
                 val fom = LocalDate.of(2025, 3, 1)
                 val tom = LocalDate.of(2025, 3, 15)

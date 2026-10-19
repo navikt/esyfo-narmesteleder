@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.findAll
+import no.nav.syfo.findBySykmeldingId
 import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
 import java.time.Clock
 import java.time.Instant

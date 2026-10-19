@@ -5,13 +5,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.sykmelding.application.PersistedSendtSykmelding
 import no.nav.syfo.sykmelding.application.SendtSykmelding
 import no.nav.syfo.sykmelding.application.SykmeldingDb
 import no.nav.syfo.sykmelding.application.SykmeldingTransaction
 import no.nav.syfo.util.logger
-import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.statements.insertValue
@@ -19,7 +16,6 @@ import org.jetbrains.exposed.v1.javatime.CurrentTimestampWithTimeZone
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
-import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.slf4j.event.Level
@@ -99,31 +95,7 @@ class ExposedSykmeldingDb(
         }
     }
 
-    override suspend fun findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmelding? = withContext(dispatcher) {
-        suspendTransaction(db = database) {
-            SendtSykmeldingTable
-                .selectAll()
-                .where { SendtSykmeldingTable.sykmeldingId eq sykmeldingId }
-                .limit(1)
-                .firstOrNull()
-                ?.toPersistedSendtSykmelding()
-        }
-    }
-
     companion object {
         private val logger = logger()
     }
 }
-
-internal fun ResultRow.toPersistedSendtSykmelding(): PersistedSendtSykmelding = PersistedSendtSykmelding(
-    id = this[SendtSykmeldingTable.id].value.toLong(),
-    sykmeldingId = this[SendtSykmeldingTable.sykmeldingId],
-    fnr = this[SendtSykmeldingTable.fnr],
-    orgnummer = this[SendtSykmeldingTable.orgnummer],
-    fom = this[SendtSykmeldingTable.fom],
-    tom = this[SendtSykmeldingTable.tom],
-    revokedDate = this[SendtSykmeldingTable.revokedDate],
-    syketilfelleStartDato = this[SendtSykmeldingTable.syketilfelleStartDato],
-    created = this[SendtSykmeldingTable.created].toInstant(),
-    updated = this[SendtSykmeldingTable.updated].toInstant(),
-)

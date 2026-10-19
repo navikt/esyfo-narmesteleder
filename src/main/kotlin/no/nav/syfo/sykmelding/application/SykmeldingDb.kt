@@ -4,7 +4,6 @@ import java.time.LocalDate
 import java.util.UUID
 
 interface SykmeldingDb {
-    suspend fun findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmelding?
     suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit)
 }
 

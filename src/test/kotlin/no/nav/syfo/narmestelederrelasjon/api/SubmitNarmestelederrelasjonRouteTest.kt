@@ -199,8 +199,11 @@ class SubmitNarmestelederrelasjonRouteTest :
         test("invalid identifiers in the body keep the legacy 400 message") {
             val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> error("Access must not be checked") })
             fixture.authorize("tokenx")
-            fun submission(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321") =
-                """{"orgNumber":"$org","employeeIdentificationNumber":"$employee","lastName":"Employee","manager":{"nationalIdentificationNumber":"$manager","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}}"""
+            fun submission(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321"): String {
+                val managerJson =
+                    """{"nationalIdentificationNumber":"$manager","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}"""
+                return """{"orgNumber":"$org","employeeIdentificationNumber":"$employee","lastName":"Employee","manager":$managerJson}"""
+            }
             fixture.withApplication {
                 listOf(
                     submission(employee = "1234567890") to "PersonalIdentificationNumber must be exactly 11 digits",

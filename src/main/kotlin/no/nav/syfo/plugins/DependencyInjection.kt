@@ -12,6 +12,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFac
 import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
+import no.nav.syfo.sykmelding.sykmeldingModule
 import org.koin.core.module.Module
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
@@ -39,6 +40,7 @@ fun applicationModules(isLocalEnv: Boolean): List<Module> = listOf(
     narmestelederbehovModule(),
     narmestelederrelasjonModule(),
     organisasjonstilgangModule(),
+    sykmeldingModule(),
 )
 
 private fun coreModule(isLocalEnv: Boolean) = module {

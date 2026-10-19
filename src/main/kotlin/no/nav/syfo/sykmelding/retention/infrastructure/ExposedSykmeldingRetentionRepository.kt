@@ -2,7 +2,7 @@ package no.nav.syfo.sykmelding.retention.infrastructure
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.syfo.sykmelding.exposed.SendtSykmeldingTable
+import no.nav.syfo.sykmelding.infrastructure.SendtSykmeldingTable
 import no.nav.syfo.sykmelding.retention.application.SykmeldingRetentionRepository
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and

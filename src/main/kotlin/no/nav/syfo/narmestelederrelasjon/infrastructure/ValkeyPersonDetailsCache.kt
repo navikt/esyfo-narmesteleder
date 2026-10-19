@@ -4,30 +4,30 @@ import io.micrometer.core.instrument.Counter
 import no.nav.syfo.application.metric.METRICS_NS
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.application.valkey.ValkeyCache
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 
 class ValkeyPersonDetailsCache(private val valkeyCache: ValkeyCache) : PersonDetailsCache {
-    override fun get(personIdent: PersonIdent): PersonDetails? {
+    override fun get(personIdent: PersonalIdentificationNumber): PersonDetails? {
         val entry = valkeyCache.get(key(personIdent), PersonDetailsCacheEntry::class.java)
         if (entry != null) COUNT_CACHE_HIT_PERSON_DETAILS.increment() else COUNT_CACHE_MISS_PERSON_DETAILS.increment()
         return entry?.toPersonDetails()
     }
 
-    override fun put(personIdent: PersonIdent, personDetails: PersonDetails) {
+    override fun put(personIdent: PersonalIdentificationNumber, personDetails: PersonDetails) {
         valkeyCache.put(key(personIdent), personDetails.toCacheEntry())
     }
 
-    private fun key(personIdent: PersonIdent) = "$KEY_PREFIX-${personIdent.value}"
+    private fun key(personIdent: PersonalIdentificationNumber) = "$KEY_PREFIX-${personIdent.value}"
 
     companion object {
         const val KEY_PREFIX = "narmestelederbehov-person-v1"
     }
 }
 
-// Plain-string cache format keeps the stored JSON independent of the PersonIdent value class.
+// Plain-string cache format keeps the stored JSON independent of the PersonalIdentificationNumber value class.
 internal data class PersonDetailsCacheEntry(
     val personIdent: String,
     val firstName: String,
@@ -50,7 +50,7 @@ internal fun PersonDetails.toCacheEntry() = PersonDetailsCacheEntry(
 )
 
 internal fun PersonDetailsCacheEntry.toPersonDetails() = PersonDetails(
-    personIdent = PersonIdent(personIdent),
+    personIdent = PersonalIdentificationNumber(personIdent),
     name = PersonNameDetails(
         firstName = firstName,
         middleName = middleName,

@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.GetPersonBolkResponse
 import no.nav.syfo.integration.pdl.HentPersonBolk
 import no.nav.syfo.integration.pdl.PdlClient
@@ -25,13 +25,13 @@ private const val PDL_CHUNK_SIZE = 100
 class PdlBulkPersonLookup(
     private val pdlClient: PdlClient,
 ) : BulkPersonLookup {
-    override suspend fun findAll(personIdents: List<PersonIdent>): Map<PersonIdent, BulkPersonLookupResult> {
+    override suspend fun findAll(personIdents: List<PersonalIdentificationNumber>): Map<PersonalIdentificationNumber, BulkPersonLookupResult> {
         if (personIdents.isEmpty()) {
             return emptyMap()
         }
 
         val responses = coroutineScope {
-            personIdents.map(PersonIdent::value)
+            personIdents.map(PersonalIdentificationNumber::value)
                 .chunked(PDL_CHUNK_SIZE)
                 .map { fnrChunk -> async { getPersonBolkChunk(fnrChunk) } }
                 .awaitAll()

@@ -6,7 +6,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
 import no.nav.syfo.narmestelederrelasjon.application.SearchName
 import org.jetbrains.exposed.v1.core.Table
@@ -63,13 +63,13 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
                 relation.id shouldBe narmestelederId
                 relation.orgNumber shouldBe orgNumber
                 relation.activeFrom shouldBe now.minusDays(1).toInstant()
-                relation.employee.nationalIdentificationNumber shouldBe PersonIdent(employeeFnr)
+                relation.employee.nationalIdentificationNumber shouldBe PersonalIdentificationNumber(employeeFnr)
                 relation.employee.name shouldBe SearchName(
                     firstName = "Ola",
                     middleName = "Mellom",
                     lastName = "Nordmann",
                 )
-                relation.manager.nationalIdentificationNumber shouldBe PersonIdent(managerFnr)
+                relation.manager.nationalIdentificationNumber shouldBe PersonalIdentificationNumber(managerFnr)
                 relation.manager.name shouldBe SearchName(
                     firstName = "Kari",
                     middleName = null,
@@ -128,7 +128,7 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
                 val results = repository.search(
                     NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
-                        managerNationalIdentificationNumber = PersonIdent(expectedManagerFnr),
+                        managerNationalIdentificationNumber = PersonalIdentificationNumber(expectedManagerFnr),
                         pageSize = 50,
                     ),
                 )
@@ -150,7 +150,7 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
                 val results = repository.search(
                     NarmestelederrelasjonSearchQuery(
                         orgNumber = orgNumber,
-                        employeeNationalIdentificationNumber = PersonIdent(expectedEmployeeFnr),
+                        employeeNationalIdentificationNumber = PersonalIdentificationNumber(expectedEmployeeFnr),
                         pageSize = 50,
                     ),
                 )
@@ -199,7 +199,7 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
             }
 
             test("searches national identification numbers for either employee or manager") {
-                val nationalIdentificationNumber = PersonIdent("12345678910")
+                val nationalIdentificationNumber = PersonalIdentificationNumber("12345678910")
                 val employeeFnr = "12345678911"
                 val managerFnr = "10987654321"
                 insertRelation(employeeFnr = nationalIdentificationNumber.value, managerFnr = managerFnr)

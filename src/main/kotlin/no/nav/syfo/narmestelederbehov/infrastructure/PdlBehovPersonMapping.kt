@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.integration.pdl.PdlPerson
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -16,6 +16,6 @@ internal fun PdlPerson.toBehovPersonName(): BehovPersonName? {
     return BehovPersonName(firstName = name.fornavn, middleName = name.mellomnavn, lastName = name.etternavn)
 }
 
-private fun PdlPerson.folkeregisterident(): PersonIdent? = identer
+private fun PdlPerson.folkeregisterident(): PersonalIdentificationNumber? = identer
     .firstOrNull { it.gruppe == GRUPPE_IDENT_FNR }
-    ?.let { PersonIdent(it.ident) }
+    ?.let { PersonalIdentificationNumber(it.ident) }

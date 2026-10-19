@@ -4,15 +4,15 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
-class PersonIdentTest :
+class PersonalIdentificationNumberTest :
     FunSpec({
         test("accepts exactly 11 digits") {
-            PersonIdent.isValid("12345678901") shouldBe true
-            PersonIdent("12345678901").value shouldBe "12345678901"
+            PersonalIdentificationNumber.isValid("12345678901") shouldBe true
+            PersonalIdentificationNumber("12345678901").value shouldBe "12345678901"
         }
 
         test("accepts a D-number") {
-            PersonIdent("52345678901").value shouldBe "52345678901"
+            PersonalIdentificationNumber("52345678901").value shouldBe "52345678901"
         }
 
         mapOf(
@@ -24,8 +24,8 @@ class PersonIdentTest :
             "surrounding whitespace" to " 12345678901",
         ).forEach { (case, value) ->
             test("rejects $case") {
-                PersonIdent.isValid(value) shouldBe false
-                shouldThrow<IllegalArgumentException> { PersonIdent(value) }.message shouldBe
+                PersonalIdentificationNumber.isValid(value) shouldBe false
+                shouldThrow<IllegalArgumentException> { PersonalIdentificationNumber(value) }.message shouldBe
                     "PersonalIdentificationNumber must be exactly 11 digits"
             }
         }

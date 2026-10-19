@@ -7,7 +7,7 @@ import kotlinx.coroutines.test.runTest
 import no.nav.syfo.application.kafka.KafkaEnvironment
 import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
 import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
@@ -37,7 +37,7 @@ class KafkaPublishNarmestelederrelasjonRevocationTest :
             expectedSources.forEach { (initiator, source) ->
                 adapter.publish(
                     PublishNarmestelederrelasjonRevocationCommand(
-                        PersonIdent("12345678901"),
+                        PersonalIdentificationNumber("12345678901"),
                         OrganizationNumber("123456789"),
                         initiator,
                     ),
@@ -68,7 +68,7 @@ class KafkaPublishNarmestelederrelasjonRevocationTest :
 
                 adapter.publish(
                     PublishNarmestelederrelasjonRevocationCommand(
-                        PersonIdent("12345678901"),
+                        PersonalIdentificationNumber("12345678901"),
                         OrganizationNumber("123456789"),
                         RevocationInitiator.EMPLOYMENT_ENDED,
                     ),

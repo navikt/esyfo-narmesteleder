@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonUpsert
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
@@ -78,9 +78,9 @@ private fun relasjon(
     arbeidsgiverForskutterer: Boolean? = true,
 ) = NarmestelederrelasjonUpsert(
     narmestelederId = narmestelederId,
-    sykmeldtFnr = PersonIdent(faker.numerify("###########")),
+    sykmeldtFnr = PersonalIdentificationNumber(faker.numerify("###########")),
     orgnummer = OrganizationNumber(faker.numerify("#########")),
-    narmestelederFnr = PersonIdent(faker.numerify("###########")),
+    narmestelederFnr = PersonalIdentificationNumber(faker.numerify("###########")),
     narmestelederTelefonnummer = faker.numerify("########"),
     narmestelederEpost = faker.internet().emailAddress(),
     aktivFom = LocalDate.of(2024, 1, 1),
@@ -98,9 +98,9 @@ private fun rows(narmestelederId: UUID): List<ResultRow> = transaction(TestDB.ex
 
 private fun ResultRow.toRelasjon() = NarmestelederrelasjonUpsert(
     narmestelederId = this[NarmestelederTable.narmestelederId],
-    sykmeldtFnr = PersonIdent(this[NarmestelederTable.sykmeldtFnr]),
+    sykmeldtFnr = PersonalIdentificationNumber(this[NarmestelederTable.sykmeldtFnr]),
     orgnummer = OrganizationNumber(this[NarmestelederTable.orgnummer]),
-    narmestelederFnr = PersonIdent(this[NarmestelederTable.narmestelederFnr]),
+    narmestelederFnr = PersonalIdentificationNumber(this[NarmestelederTable.narmestelederFnr]),
     narmestelederTelefonnummer = this[NarmestelederTable.narmestelederTelefonnummer],
     narmestelederEpost = this[NarmestelederTable.narmestelederEpost],
     aktivFom = this[NarmestelederTable.aktivFom].withOffsetSameInstant(ZoneOffset.UTC).toLocalDate(),

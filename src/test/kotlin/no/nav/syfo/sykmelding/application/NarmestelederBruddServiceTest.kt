@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
@@ -21,7 +21,7 @@ class NarmestelederBruddServiceTest :
 
             fixture.revoked shouldBe listOf(
                 RevokeNarmestelederrelasjonFromSendtSykmeldingCommand(
-                    PersonIdent(EMPLOYEE_IDENT),
+                    PersonalIdentificationNumber(EMPLOYEE_IDENT),
                     OrganizationNumber(ORGANIZATION_NUMBER),
                 ),
             )

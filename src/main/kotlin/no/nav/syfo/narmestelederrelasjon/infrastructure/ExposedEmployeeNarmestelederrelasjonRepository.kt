@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
 import org.jetbrains.exposed.v1.core.JoinType
@@ -25,7 +25,7 @@ class ExposedEmployeeNarmestelederrelasjonRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : EmployeeNarmestelederrelasjonRepository {
     override suspend fun findActive(
-        employeeIdent: PersonIdent,
+        employeeIdent: PersonalIdentificationNumber,
         organizationNumber: OrganizationNumber?,
     ): List<EmployeeNarmestelederrelasjon> = withContext(dispatcher) {
         suspendTransaction(db = database) {

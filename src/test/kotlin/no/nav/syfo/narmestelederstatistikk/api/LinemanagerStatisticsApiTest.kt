@@ -17,7 +17,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
@@ -75,7 +75,7 @@ class LinemanagerStatisticsApiTest :
                     fixture.evaluations.single().second shouldBe OrganizationNumber(ORGANIZATION_NUMBER)
                     if (user) {
                         val subject = fixture.evaluations.single().first as OrganizationAccessSubject.PersonnelManager
-                        subject.personIdent shouldBe PersonIdent(EMPLOYEE_IDENT)
+                        subject.personIdent shouldBe PersonalIdentificationNumber(EMPLOYEE_IDENT)
                         subject.accessToken.value() shouldBe fixture.token()
                     } else {
                         fixture.evaluations.single().first shouldBe OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(ORGANIZATION_NUMBER))

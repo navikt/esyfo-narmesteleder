@@ -13,7 +13,7 @@ import io.mockk.runs
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregCache
 import no.nav.syfo.integration.ereg.EregClient
@@ -215,7 +215,7 @@ private class RecordingAltinnAuthorizationClient : AltinnAuthorizationClient {
 }
 
 private fun personnelManager() = OrganizationAccessSubject.PersonnelManager(
-    personIdent = PersonIdent(PERSON_IDENT),
+    personIdent = PersonalIdentificationNumber(PERSON_IDENT),
     accessToken = AccessToken("token"),
 )
 

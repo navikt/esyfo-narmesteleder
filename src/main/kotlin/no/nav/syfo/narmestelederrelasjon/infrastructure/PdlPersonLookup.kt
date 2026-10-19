@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.integration.pdl.PdlClient
@@ -13,7 +13,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.platform.upstream.UpstreamResult
 
 class PdlPersonLookup(private val client: PdlClient) : PersonLookup {
-    override suspend fun find(personIdent: PersonIdent): PersonLookupResult = when (val result = client.getPerson(personIdent.value)) {
+    override suspend fun find(personIdent: PersonalIdentificationNumber): PersonLookupResult = when (val result = client.getPerson(personIdent.value)) {
         is UpstreamResult.Failure -> PersonLookupResult.Unavailable(result.failure)
         is UpstreamResult.Success -> {
             val person = result.value?.toPersonDetails()
@@ -29,9 +29,9 @@ private fun PdlPerson.toPersonDetails(): PersonDetails? {
     return PersonDetails(resolvedIdent, currentName.toPersonNameDetails(names))
 }
 
-private fun PdlPerson.folkeregisterident(): PersonIdent? = identer
+private fun PdlPerson.folkeregisterident(): PersonalIdentificationNumber? = identer
     .firstOrNull { it.gruppe == GRUPPE_IDENT_FNR }
-    ?.let { PersonIdent(it.ident) }
+    ?.let { PersonalIdentificationNumber(it.ident) }
 
 private fun Navn.toPersonNameDetails(registeredNames: List<Navn>) = PersonNameDetails(
     firstName = fornavn,

@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
@@ -17,11 +17,11 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 
-private val employeeIdent = PersonIdent("12345678901")
+private val employeeIdent = PersonalIdentificationNumber("12345678901")
 private val organizationNumber = OrganizationNumber("123456789")
-private val manager = ManagerContactInput(PersonIdent("10987654321"), "Manager", " manager@example.test ", "+47 90 00 00 00")
+private val manager = ManagerContactInput(PersonalIdentificationNumber("10987654321"), "Manager", " manager@example.test ", "+47 90 00 00 00")
 private val systemUser = OrganizationAccessSubject.LpsSystemUser("system-id", organizationNumber)
-private val personnelManager = OrganizationAccessSubject.PersonnelManager(PersonIdent("11223344556"), AccessToken("test-token"))
+private val personnelManager = OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber("11223344556"), AccessToken("test-token"))
 
 class SubmitNarmestelederrelasjonUseCaseTest :
     FunSpec({

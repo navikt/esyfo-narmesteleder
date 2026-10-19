@@ -9,7 +9,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -42,7 +42,7 @@ class ExposedNarmestelederbehovRepositoryTest :
             val id = NarmestelederbehovId(row.id)
             val result = requireNotNull(repository.findDetails(id))
             result.id shouldBe id
-            result.employeeIdent shouldBe PersonIdent(row.sykmeldtFnr)
+            result.employeeIdent shouldBe PersonalIdentificationNumber(row.sykmeldtFnr)
             result.organizationNumber shouldBe OrganizationNumber(row.orgnummer)
             result.mainOrganizationNumber shouldBe row.hovedenhetOrgnummer
             result.managerIdent.shouldBeNull()
@@ -80,7 +80,7 @@ class ExposedNarmestelederbehovRepositoryTest :
 
             repository.findForFulfillment(id) shouldBe Narmestelederbehov(
                 id,
-                Employee(PersonIdent(row.sykmeldtFnr), OrganizationNumber(row.orgnummer)),
+                Employee(PersonalIdentificationNumber(row.sykmeldtFnr), OrganizationNumber(row.orgnummer)),
             )
             repository.findForFulfillment(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
         }
@@ -189,7 +189,7 @@ class ExposedNarmestelederbehovRepositoryTest :
         val openStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
         openStatuses.forEach { openStatus ->
             test("open behov for an employee match person, organization and status $openStatus") {
-                val employee = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001"))
+                val employee = Employee(PersonalIdentificationNumber("12345678901"), OrganizationNumber("910000001"))
                 fun insert(
                     status: BehovStatus,
                     personIdent: String = employee.personIdent.value,
@@ -206,9 +206,9 @@ class ExposedNarmestelederbehovRepositoryTest :
             }
         }
         val newBehov = NewNarmestelederbehov(
-            employee = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001")),
+            employee = Employee(PersonalIdentificationNumber("12345678901"), OrganizationNumber("910000001")),
             mainOrganizationNumber = "910000009",
-            manager = PersonIdent("10987654321"),
+            manager = PersonalIdentificationNumber("10987654321"),
             reason = BehovReason.DEAKTIVERT_LEDER,
             status = BehovStatus.BEHOV_CREATED,
             revokedRelationId = UUID.fromString("00000000-0000-0000-0000-000000000044"),

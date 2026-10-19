@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -77,7 +77,7 @@ class SearchActiveNarmestelederrelasjonerUseCaseTest :
 
         test("normalizes eleven-digit text to an employee-or-manager ident filter") {
             useCase.execute(subject, SearchActiveNarmestelederrelasjonerCommand(organizationNumber, text = " 12345678910 "))
-            repository.calls.single().nationalIdentificationNumber shouldBe PersonIdent("12345678910")
+            repository.calls.single().nationalIdentificationNumber shouldBe PersonalIdentificationNumber("12345678910")
             repository.calls.single().text shouldBe null
         }
 
@@ -99,8 +99,8 @@ class SearchActiveNarmestelederrelasjonerUseCaseTest :
         }
 
         test("passes all explicit filters to the port after evaluating access") {
-            val employee = PersonIdent("12345678910")
-            val manager = PersonIdent("10987654321")
+            val employee = PersonalIdentificationNumber("12345678910")
+            val manager = PersonalIdentificationNumber("10987654321")
             useCase.execute(
                 subject,
                 SearchActiveNarmestelederrelasjonerCommand(organizationNumber, manager, employee, hasActiveSickLeave = false),
@@ -175,7 +175,7 @@ private fun searchRow(id: Int) = NarmestelederrelasjonSearchRow(
         id = UUID(0, id.toLong()),
         orgNumber = organizationNumber,
         activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
-        employee = SearchPerson(PersonIdent("12345678910"), null),
-        manager = SearchManager(PersonIdent("10987654321"), null, "manager@example.com", "99999999"),
+        employee = SearchPerson(PersonalIdentificationNumber("12345678910"), null),
+        manager = SearchManager(PersonalIdentificationNumber("10987654321"), null, "manager@example.com", "99999999"),
     ),
 )

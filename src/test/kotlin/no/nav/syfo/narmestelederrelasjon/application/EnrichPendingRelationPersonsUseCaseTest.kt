@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.application
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.EnrichPendingRelationPersonsUseCase.Companion.BATCH_SIZE
 import no.nav.syfo.narmestelederrelasjon.application.InMemoryRelationPersonRepository.Row
 import no.nav.syfo.narmestelederrelasjon.application.InMemoryRelationPersonRepository.Status
@@ -40,7 +40,7 @@ class EnrichPendingRelationPersonsUseCaseTest :
 
             enrich(
                 FakeBulkPersonLookup {
-                    mapOf(PersonIdent(kari) to found(person), PersonIdent(ola) to BulkPersonLookupResult.NotFound)
+                    mapOf(PersonalIdentificationNumber(kari) to found(person), PersonalIdentificationNumber(ola) to BulkPersonLookupResult.NotFound)
                 },
             )
 
@@ -53,9 +53,9 @@ class EnrichPendingRelationPersonsUseCaseTest :
             repository.add(kari)
             repository.add(ola)
 
-            val lookup = enrich(FakeBulkPersonLookup { mapOf(PersonIdent(kari) to found()) })
+            val lookup = enrich(FakeBulkPersonLookup { mapOf(PersonalIdentificationNumber(kari) to found()) })
 
-            lookup.requests shouldBe listOf(listOf(PersonIdent(kari), PersonIdent(ola)))
+            lookup.requests shouldBe listOf(listOf(PersonalIdentificationNumber(kari), PersonalIdentificationNumber(ola)))
             repository.row(kari).status shouldBe Status.ENRICHED
             repository.row(ola).status shouldBe Status.PENDING
         }

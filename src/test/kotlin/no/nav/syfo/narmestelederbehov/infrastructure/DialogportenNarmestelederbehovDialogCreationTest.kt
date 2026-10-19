@@ -8,7 +8,7 @@ import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.altinn.dialogporten.domain.Dialog
 import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
@@ -26,7 +26,7 @@ class DialogportenNarmestelederbehovDialogCreationTest :
     FunSpec({
         val id = NarmestelederbehovId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
         val dialogId = UUID.fromString("00000000-0000-0000-0000-000000000002")
-        val employee = Employee(PersonIdent("02039012345"), OrganizationNumber("123456789"))
+        val employee = Employee(PersonalIdentificationNumber("02039012345"), OrganizationNumber("123456789"))
         val factory = NarmestelederbehovDialogFactory(
             narmestelederbehovApiUrl = "https://api.test.nav.no/api/v1/linemanager/requirement",
             frontendBaseUrl = "https://frontend.test.nav.no",

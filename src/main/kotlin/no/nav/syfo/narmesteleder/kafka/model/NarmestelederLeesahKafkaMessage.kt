@@ -2,7 +2,7 @@ package no.nav.syfo.narmesteleder.kafka.model
 
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.MainOrganizationSource
@@ -42,8 +42,8 @@ data class NarmestelederLeesahKafkaMessage(
 ) {
 
     fun toCreateNarmestelederbehovCommand() = CreateNarmestelederbehovCommand(
-        employee = Employee(PersonIdent(fnr), OrganizationNumber(orgnummer)),
-        manager = PersonIdent(narmesteLederFnr),
+        employee = Employee(PersonalIdentificationNumber(fnr), OrganizationNumber(orgnummer)),
+        manager = PersonalIdentificationNumber(narmesteLederFnr),
         reason = status?.name?.let { BehovReason.valueOf(it) }
             ?: BehovReason.UKJENT,
         revokedRelationId = narmesteLederId,

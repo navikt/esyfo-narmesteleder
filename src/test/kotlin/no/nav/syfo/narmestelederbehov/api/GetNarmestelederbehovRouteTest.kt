@@ -15,7 +15,7 @@ import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
@@ -237,7 +237,7 @@ private class FakeReadBehovRepository : NarmestelederbehovRepository {
 
     fun seed(firstName: String? = "Stored", lastName: String? = "Name"): NarmestelederbehovDetails {
         val details = narmestelederbehovDetails(
-            employeeIdent = PersonIdent(EMPLOYEE_IDENT),
+            employeeIdent = PersonalIdentificationNumber(EMPLOYEE_IDENT),
             organizationNumber = OrganizationNumber(ORGANIZATION_NUMBER),
             mainOrganizationNumber = MAIN_ORGANIZATION_NUMBER,
             firstName = firstName,

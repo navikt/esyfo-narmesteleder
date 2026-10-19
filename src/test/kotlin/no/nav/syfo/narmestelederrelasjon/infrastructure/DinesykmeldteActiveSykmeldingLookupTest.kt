@@ -4,12 +4,12 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
 
 class DinesykmeldteActiveSykmeldingLookupTest :
     FunSpec({
-        val personIdent = PersonIdent("12345678901")
+        val personIdent = PersonalIdentificationNumber("12345678901")
         val organizationNumber = OrganizationNumber("910000001")
 
         listOf(true, false).forEach { active ->

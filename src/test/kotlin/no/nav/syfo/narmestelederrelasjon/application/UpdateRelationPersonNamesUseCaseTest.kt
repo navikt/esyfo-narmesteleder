@@ -8,7 +8,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.InMemoryRelationPersonRepository.Row
 import no.nav.syfo.narmestelederrelasjon.application.InMemoryRelationPersonRepository.Status
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult.Completed
@@ -46,7 +46,7 @@ class UpdateRelationPersonNamesUseCaseTest :
             logAppender.list.clear()
         }
 
-        fun lookupAnswers(answer: (List<PersonIdent>) -> Map<PersonIdent, BulkPersonLookupResult>) {
+        fun lookupAnswers(answer: (List<PersonalIdentificationNumber>) -> Map<PersonalIdentificationNumber, BulkPersonLookupResult>) {
             lookup = FakeBulkPersonLookup(answer)
         }
 
@@ -55,12 +55,12 @@ class UpdateRelationPersonNamesUseCaseTest :
         test("updates existing persons with one lookup of distinct, valid personidenter") {
             repository.add(kari, Status.ENRICHED)
             repository.add(ola)
-            lookupAnswers { mapOf(PersonIdent(kari) to found(ada), PersonIdent(ola) to found(grace)) }
+            lookupAnswers { mapOf(PersonalIdentificationNumber(kari) to found(ada), PersonalIdentificationNumber(ola) to found(grace)) }
 
             val result = execute(kari, per, ola, kari, "not-an-ident")
 
             result shouldBe Completed(updatedCount = 2, notFoundInRegisterCount = 1)
-            lookup.requests shouldBe listOf(listOf(PersonIdent(kari), PersonIdent(ola)))
+            lookup.requests shouldBe listOf(listOf(PersonalIdentificationNumber(kari), PersonalIdentificationNumber(ola)))
             repository.row(kari) shouldBe Row(Status.ENRICHED, ada)
             repository.row(ola) shouldBe Row(Status.PENDING, grace)
             repository.updateRegisteredDetailsCalls shouldBe 1
@@ -87,12 +87,12 @@ class UpdateRelationPersonNamesUseCaseTest :
 
         test("counts persons not found in PDL without updating them") {
             repository.add(kari)
-            lookupAnswers { mapOf(PersonIdent(kari) to BulkPersonLookupResult.NotFound) }
+            lookupAnswers { mapOf(PersonalIdentificationNumber(kari) to BulkPersonLookupResult.NotFound) }
 
             val result = execute(kari)
 
             result shouldBe Completed(pdlNotFoundCount = 1)
-            lookup.requests shouldBe listOf(listOf(PersonIdent(kari)))
+            lookup.requests shouldBe listOf(listOf(PersonalIdentificationNumber(kari)))
             repository.row(kari) shouldBe Row(Status.PENDING)
             repository.updateRegisteredDetailsCalls shouldBe 0
             metrics.lookupFailed.shouldBeEmpty()
@@ -101,20 +101,20 @@ class UpdateRelationPersonNamesUseCaseTest :
         test("counts persons removed from the projection before the update as not found in register") {
             repository.add(kari)
             repository.add(ola)
-            repository.disappearBeforeUpdate += PersonIdent(ola)
+            repository.disappearBeforeUpdate += PersonalIdentificationNumber(ola)
             lookupAnswers { idents -> idents.associateWith { found(ada) } }
 
             val result = execute(kari, ola)
 
             result shouldBe Completed(updatedCount = 1, notFoundInRegisterCount = 1)
             repository.row(kari) shouldBe Row(Status.PENDING, ada)
-            repository.rows shouldNotContainKey PersonIdent(ola)
+            repository.rows shouldNotContainKey PersonalIdentificationNumber(ola)
             metrics.lookupFailed.shouldBeEmpty()
         }
 
         test("returns an incomplete lookup without updating or logging when some persons could not be looked up") {
             listOf(kari, ola, per).forEach(repository::add)
-            lookupAnswers { mapOf(PersonIdent(kari) to found(ada), PersonIdent(ola) to BulkPersonLookupResult.NotFound) }
+            lookupAnswers { mapOf(PersonalIdentificationNumber(kari) to found(ada), PersonalIdentificationNumber(ola) to BulkPersonLookupResult.NotFound) }
 
             val result = execute(kari, ola, per)
 

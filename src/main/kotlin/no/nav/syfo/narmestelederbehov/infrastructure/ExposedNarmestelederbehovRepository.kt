@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
@@ -73,7 +73,7 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
                     Narmestelederbehov(
                         id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
                         employee = Employee(
-                            PersonIdent(row[NarmestelederbehovTable.sykmeldtFnr]),
+                            PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]),
                             OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
                         ),
                     )

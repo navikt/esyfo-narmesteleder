@@ -9,7 +9,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -132,7 +132,7 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
         }
     })
 
-private val EMPLOYEE = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001"))
+private val EMPLOYEE = Employee(PersonalIdentificationNumber("12345678901"), OrganizationNumber("910000001"))
 private val WITH_DIALOG = NarmestelederbehovId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
 private val WITHOUT_DIALOG = NarmestelederbehovId(UUID.fromString("00000000-0000-0000-0000-000000000002"))
 private val DIALOG_ID = UUID.fromString("00000000-0000-0000-0000-0000000000d1")

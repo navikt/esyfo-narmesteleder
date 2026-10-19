@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import org.slf4j.LoggerFactory
@@ -74,13 +74,13 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
         return false
     }
 
-    private fun List<NarmestelederrelasjonUpsert>.involvedPersons(): List<PersonIdent> = flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }.distinct()
+    private fun List<NarmestelederrelasjonUpsert>.involvedPersons(): List<PersonalIdentificationNumber> = flatMap { listOf(it.sykmeldtFnr, it.narmestelederFnr) }.distinct()
 
     private fun LeesahNarmestelederrelasjon.toValid() = NarmestelederrelasjonUpsert(
         narmestelederId = narmestelederId,
-        sykmeldtFnr = PersonIdent(sykmeldtFnr),
+        sykmeldtFnr = PersonalIdentificationNumber(sykmeldtFnr),
         orgnummer = OrganizationNumber(orgnummer),
-        narmestelederFnr = PersonIdent(narmestelederFnr),
+        narmestelederFnr = PersonalIdentificationNumber(narmestelederFnr),
         narmestelederTelefonnummer = narmestelederTelefonnummer,
         narmestelederEpost = narmestelederEpost,
         aktivFom = aktivFom,
@@ -89,9 +89,9 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
     )
 
     private fun LeesahNarmestelederrelasjon.validationError(): String? = when {
-        !PersonIdent.isValid(sykmeldtFnr) -> "fnr must be exactly 11 digits"
+        !PersonalIdentificationNumber.isValid(sykmeldtFnr) -> "fnr must be exactly 11 digits"
         !OrganizationNumber.isValid(orgnummer) -> "orgnummer must be exactly 9 digits"
-        !PersonIdent.isValid(narmestelederFnr) -> "narmesteLederFnr must be exactly 11 digits"
+        !PersonalIdentificationNumber.isValid(narmestelederFnr) -> "narmesteLederFnr must be exactly 11 digits"
         narmestelederTelefonnummer.length > TEXT_FIELD_MAX_LENGTH -> "narmesteLederTelefonnummer exceeds max length"
         narmestelederEpost.length > TEXT_FIELD_MAX_LENGTH -> "narmesteLederEpost exceeds max length"
         else -> null

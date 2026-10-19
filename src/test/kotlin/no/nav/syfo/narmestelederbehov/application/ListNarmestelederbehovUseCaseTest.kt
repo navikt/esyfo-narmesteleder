@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.withProductionLogs
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -63,7 +63,7 @@ class ListNarmestelederbehovUseCaseTest :
         test("missing names are resolved and saved sequentially after access including the overflow row") {
             val rows = listOf(
                 narmestelederbehovDetails(firstName = null),
-                narmestelederbehovDetails(lastName = null, employeeIdent = PersonIdent("12345678902")),
+                narmestelederbehovDetails(lastName = null, employeeIdent = PersonalIdentificationNumber("12345678902")),
             )
             val fixture = ListFixture(rows)
             val result = fixture.execute(pageSize = 1) as ListNarmestelederbehovResult.Listed
@@ -121,7 +121,7 @@ private class ListFixture(
     private val unavailable: UpstreamFailure? = null,
 ) {
     val effects = mutableListOf<String>()
-    val lookedUp = mutableListOf<PersonIdent>()
+    val lookedUp = mutableListOf<PersonalIdentificationNumber>()
     val savedNames = mutableListOf<Pair<NarmestelederbehovId, BehovPersonName>>()
     var requestedLimit: Int? = null
     var requestedOrganization: OrganizationNumber? = null
@@ -182,6 +182,6 @@ private class ListFixture(
 
     suspend fun execute(
         pageSize: Int = 50,
-        subject: OrganizationAccessSubject = OrganizationAccessSubject.PersonnelManager(PersonIdent("12345678901"), AccessToken("token")),
+        subject: OrganizationAccessSubject = OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber("12345678901"), AccessToken("token")),
     ) = useCase.execute(ListNarmestelederbehovQuery(ORGANIZATION_NUMBER, Instant.EPOCH, pageSize, subject))
 }

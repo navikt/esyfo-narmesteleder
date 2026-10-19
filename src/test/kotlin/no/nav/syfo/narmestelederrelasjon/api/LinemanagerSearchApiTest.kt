@@ -26,7 +26,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederrelasjon.application.LinemanagerSearchCursor
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
@@ -59,7 +59,7 @@ import java.util.UUID
 private const val SEARCH_PATH = "$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH"
 private const val SYSTEM_USER_ID = "system-user-id"
 private val organizationNumber = OrganizationNumber("123456789")
-private val callerPid = PersonIdent("11223344556")
+private val callerPid = PersonalIdentificationNumber("11223344556")
 private val responseMapper = jacksonObjectMapper()
 
 class LinemanagerSearchApiTest :
@@ -170,8 +170,8 @@ class LinemanagerSearchApiTest :
                 repository.queries shouldBe listOf(
                     NarmestelederrelasjonSearchQuery(
                         orgNumber = organizationNumber,
-                        managerNationalIdentificationNumber = PersonIdent("10987654321"),
-                        employeeNationalIdentificationNumber = PersonIdent("12345678910"),
+                        managerNationalIdentificationNumber = PersonalIdentificationNumber("10987654321"),
+                        employeeNationalIdentificationNumber = PersonalIdentificationNumber("12345678910"),
                         text = "Kari Nordmann",
                         hasActiveSickLeave = true,
                         pageSize = 50,
@@ -328,11 +328,11 @@ private fun searchRow(id: Int, employeeFnr: String = "12345678910") = Narmestele
         orgNumber = organizationNumber,
         activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
         employee = SearchPerson(
-            nationalIdentificationNumber = PersonIdent(employeeFnr),
+            nationalIdentificationNumber = PersonalIdentificationNumber(employeeFnr),
             name = SearchName(firstName = "Ola", middleName = null, lastName = "Nordmann"),
         ),
         manager = SearchManager(
-            nationalIdentificationNumber = PersonIdent("10987654321"),
+            nationalIdentificationNumber = PersonalIdentificationNumber("10987654321"),
             name = SearchName(firstName = "Kari", middleName = null, lastName = "Nordmann"),
             email = "kari@example.com",
             mobile = "99999999",

@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -59,7 +59,7 @@ class PersonTableInsertPendingTest :
 private data class Person(val status: String, val fornavn: String?)
 
 private fun insertPending(fnrs: List<String>) = transaction(TestDB.exposedDatabase) {
-    PersonTable.insertPendingIgnoringExisting(fnrs.map(::PersonIdent))
+    PersonTable.insertPendingIgnoringExisting(fnrs.map(::PersonalIdentificationNumber))
 }
 
 private fun persons(): Map<String, Person> = transaction(TestDB.exposedDatabase) {

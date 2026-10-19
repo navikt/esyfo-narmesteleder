@@ -1,9 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.domain
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 
 data class ManagerContactInput(
-    val personIdent: PersonIdent,
+    val personIdent: PersonalIdentificationNumber,
     val lastName: String,
     val email: String,
     val mobile: String,

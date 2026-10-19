@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
@@ -34,9 +34,9 @@ import java.util.UUID
 
 class SendtSykmeldingOverviewFlowTest :
     FunSpec({
-        val employee = PersonIdent("12345678901")
+        val employee = PersonalIdentificationNumber("12345678901")
         val organization = OrganizationNumber("123456789")
-        val dialogCalls = mutableListOf<PersonIdent>()
+        val dialogCalls = mutableListOf<PersonalIdentificationNumber>()
         val handler = SendtSykmeldingHandler(
             createNarmestelederbehov = CreateNarmestelederbehovUseCase(
                 settings = NarmestelederbehovCreationSettings(persistenceEnabled = true),
@@ -117,7 +117,7 @@ class SendtSykmeldingOverviewFlowTest :
         }
     })
 
-private suspend fun SendtSykmeldingHandler.handleOverviewSykmelding(employee: PersonIdent, organization: OrganizationNumber) {
+private suspend fun SendtSykmeldingHandler.handleOverviewSykmelding(employee: PersonalIdentificationNumber, organization: OrganizationNumber) {
     // Producers omit riktigNarmesteLeder when employment has ended, while the relation can remain active.
     val message = defaultSendtSykmeldingMessage(
         sykmeldingId = UUID.randomUUID().toString(),
@@ -140,7 +140,7 @@ private fun clearOverviewFlowData() {
 }
 
 private fun insertOverviewRelation(
-    employee: PersonIdent,
+    employee: PersonalIdentificationNumber,
     organization: OrganizationNumber,
     activeTo: OffsetDateTime? = null,
 ) {

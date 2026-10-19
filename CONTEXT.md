@@ -27,11 +27,12 @@ The business decision that a caller may act for a specific organization. It is
 separate from authentication, which only establishes the caller's identity.
 _Avoid_: Authentication, generic permission.
 
-**PersonIdent**:
-The official person identifier used across module boundaries. It is distinct
-from an internal database row identifier.
-_Avoid_: PersonId when it is unclear whether the value is an ident or a
-database ID.
+**PersonalIdentificationNumber**:
+The official eleven-digit identifier for a person, either a fødselsnummer or a
+D-nummer, used across module boundaries. It is distinct from an internal
+database row identifier.
+_Avoid_: PersonIdent; PersonId when it is unclear whether the value is an
+official identifier or a database ID.
 
 **OrganizationNumber**:
 The official nine-digit identifier for an organization.

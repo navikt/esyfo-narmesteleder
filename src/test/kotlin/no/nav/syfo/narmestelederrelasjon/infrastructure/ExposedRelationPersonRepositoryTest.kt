@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
@@ -49,7 +49,7 @@ class ExposedRelationPersonRepositoryTest :
             insertPerson("11111111111", PersonStatus.ENRICHED, created = longAgo.minusDays(1))
             insertPerson("22222222222", created = longAgo.plusDays(1))
 
-            repository.findPending(2) shouldBe listOf(PersonIdent(second), PersonIdent("22222222222"))
+            repository.findPending(2) shouldBe listOf(PersonalIdentificationNumber(second), PersonalIdentificationNumber("22222222222"))
         }
 
         test("saveEnrichment stores details for enriched persons and only the status for persons not found") {
@@ -57,8 +57,8 @@ class ExposedRelationPersonRepositoryTest :
             insertPerson(second)
 
             repository.saveEnrichment(
-                enriched = mapOf(PersonIdent(first) to ada),
-                notFound = listOf(PersonIdent(second)),
+                enriched = mapOf(PersonalIdentificationNumber(first) to ada),
+                notFound = listOf(PersonalIdentificationNumber(second)),
             )
 
             with(person(first)) {
@@ -77,16 +77,16 @@ class ExposedRelationPersonRepositoryTest :
         test("findExisting returns only persons in the projection") {
             insertPerson(first, status = PersonStatus.NOT_FOUND)
 
-            repository.findExisting(listOf(PersonIdent(first), PersonIdent(second))) shouldBe listOf(PersonIdent(first))
+            repository.findExisting(listOf(PersonalIdentificationNumber(first), PersonalIdentificationNumber(second))) shouldBe listOf(PersonalIdentificationNumber(first))
         }
 
         test("updateRegisteredDetails updates details and timestamp without changing status and returns updated persons") {
             insertPerson(first, status = PersonStatus.ENRICHED)
             val updatedBefore = person(first)[PersonTable.updated]
 
-            val updated = repository.updateRegisteredDetails(mapOf(PersonIdent(first) to ada, PersonIdent(second) to ada))
+            val updated = repository.updateRegisteredDetails(mapOf(PersonalIdentificationNumber(first) to ada, PersonalIdentificationNumber(second) to ada))
 
-            updated shouldBe setOf(PersonIdent(first))
+            updated shouldBe setOf(PersonalIdentificationNumber(first))
             with(person(first)) {
                 this[PersonTable.status] shouldBe PersonStatus.ENRICHED.name
                 this[PersonTable.fornavn] shouldBe ada.firstName

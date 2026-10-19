@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.esyfo.observability.Event
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
@@ -56,7 +56,7 @@ class EnrichPendingRelationPersonsUseCase(
     }
 
     /** Enriches one batch and returns whether any person in it was updated. */
-    private suspend fun enrich(pending: List<PersonIdent>): Boolean {
+    private suspend fun enrich(pending: List<PersonalIdentificationNumber>): Boolean {
         val results = personLookup.findAll(pending)
         val enriched = pending.mapNotNull { ident -> (results[ident] as? Found)?.let { ident to it.person } }.toMap()
         val notFound = pending.filter { results[it] is NotFound }

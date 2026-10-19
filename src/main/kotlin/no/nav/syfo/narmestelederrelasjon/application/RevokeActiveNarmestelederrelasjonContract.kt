@@ -1,14 +1,14 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.upstream.UpstreamFailure
 
 data class RevokeActiveNarmestelederrelasjonCommand(
     val accessSubject: OrganizationAccessSubject,
-    val employeeIdent: PersonIdent,
+    val employeeIdent: PersonalIdentificationNumber,
     val organizationNumber: OrganizationNumber,
     val employeeLastName: String,
 )

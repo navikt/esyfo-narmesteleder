@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
@@ -14,7 +14,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
-private val employee = PersonIdent("12345678910")
+private val employee = PersonalIdentificationNumber("12345678910")
 private val now = OffsetDateTime.parse("2026-02-01T12:00:00Z")
 
 class ExposedEmployeeNarmestelederrelasjonRepositoryTest :

@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.LinemanagerSearchCursor
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchRepository
@@ -120,7 +120,7 @@ class ExposedNarmestelederrelasjonSearchRepository(
                                 orgNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
                                 activeFrom = row[NarmestelederTable.aktivFom].toInstant(),
                                 employee = SearchPerson(
-                                    nationalIdentificationNumber = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
+                                    nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
                                     name = row.toName(
                                         firstName = employeePerson[PersonTable.fornavn],
                                         middleName = employeePerson[PersonTable.mellomnavn],
@@ -128,7 +128,7 @@ class ExposedNarmestelederrelasjonSearchRepository(
                                     ),
                                 ),
                                 manager = SearchManager(
-                                    nationalIdentificationNumber = PersonIdent(row[NarmestelederTable.narmestelederFnr]),
+                                    nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.narmestelederFnr]),
                                     name = row.toName(
                                         firstName = managerPerson[PersonTable.fornavn],
                                         middleName = managerPerson[PersonTable.mellomnavn],

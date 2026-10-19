@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.util.UUID
 
 interface NarmestelederrelasjonRepository {
@@ -12,7 +12,7 @@ interface NarmestelederrelasjonRepository {
 data class NarmestelederrelasjonLookup(
     val id: UUID,
     val organizationNumber: OrganizationNumber,
-    val employeeIdent: PersonIdent,
+    val employeeIdent: PersonalIdentificationNumber,
     val employeeFirstName: String?,
     val employeeMiddleName: String?,
     val employeeLastName: String?,
@@ -21,8 +21,8 @@ data class NarmestelederrelasjonLookup(
 
 data class RevocableNarmestelederrelasjon(
     val id: UUID,
-    val employeeIdent: PersonIdent,
-    val managerIdent: PersonIdent,
+    val employeeIdent: PersonalIdentificationNumber,
+    val managerIdent: PersonalIdentificationNumber,
     val organizationNumber: OrganizationNumber,
     val isActive: Boolean,
 )

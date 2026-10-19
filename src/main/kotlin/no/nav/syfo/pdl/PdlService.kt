@@ -1,6 +1,6 @@
 package no.nav.syfo.pdl
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.Ident.Companion.GRUPPE_IDENT_FNR
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.platform.upstream.getOrThrow
@@ -18,7 +18,7 @@ class PdlService(
 
             return Person(
                 name = navn,
-                nationalIdentificationNumber = PersonIdent(fnr),
+                nationalIdentificationNumber = PersonalIdentificationNumber(fnr),
                 dateOfBirth = foedselsdato,
             )
         }

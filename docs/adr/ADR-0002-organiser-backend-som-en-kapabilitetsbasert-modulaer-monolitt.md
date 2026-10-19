@@ -29,8 +29,8 @@ Følgende støttestrukturer skal ha avgrensede roller:
 
 `ident` er ikke en modul. Det er en liten delt pakke med offisielle
 identifikatorer som har lik betydning og validering i alle modulene, som
-`PersonIdent` og `OrganizationNumber`. Pakken skal ikke inneholde tjenester,
-repositories, konfigurasjon eller forretningsregler.
+`PersonalIdentificationNumber` og `OrganizationNumber`. Pakken skal ikke
+inneholde tjenester, repositories, konfigurasjon eller forretningsregler.
 
 Hver forretningsmodul organiseres i `api`, `application`, `domain` og
 `infrastructure`. Modulene eksponerer små application-kontrakter for konkrete

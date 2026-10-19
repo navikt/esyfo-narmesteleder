@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult.Found
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult.Completed
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult.LookupIncomplete
@@ -19,7 +19,7 @@ class UpdateRelationPersonNamesUseCase(
     private val metrics: RelationPersonNameUpdateMetrics,
 ) {
     suspend fun execute(personidenter: List<String>): RelationPersonNameUpdateResult {
-        val relevantIdents = personidenter.filter(PersonIdent::isValid).distinct().map(::PersonIdent)
+        val relevantIdents = personidenter.filter(PersonalIdentificationNumber::isValid).distinct().map(::PersonalIdentificationNumber)
         if (relevantIdents.isEmpty()) {
             logger.info("Skipping NAVN_V1 batch without relevant personidenter")
             return Completed()

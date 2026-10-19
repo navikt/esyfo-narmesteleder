@@ -17,7 +17,7 @@ import io.mockk.just
 import io.mockk.mockk
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
@@ -41,7 +41,7 @@ class SendtSykmeldingHandlerTest :
         val narmestelederBruddService = mockk<NarmestelederBruddService>()
         var hasActiveRelation = false
         var relationLookupFailure: IllegalStateException? = null
-        val relationLookups = mutableListOf<Pair<PersonIdent, OrganizationNumber>>()
+        val relationLookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber>>()
         val hasActiveNarmestelederrelasjon = HasActiveNarmestelederrelasjon { employeeIdent, organizationNumber ->
             relationLookups.add(employeeIdent to organizationNumber)
             relationLookupFailure?.let { throw it }
@@ -194,7 +194,7 @@ class SendtSykmeldingHandlerTest :
 
                 createNarmestelederbehov.commands.shouldBeEmpty()
                 relationLookups shouldBe listOf(
-                    PersonIdent(message.kafkaMetadata.fnr) to OrganizationNumber(requireNotNull(message.event.arbeidsgiver).orgnummer),
+                    PersonalIdentificationNumber(message.kafkaMetadata.fnr) to OrganizationNumber(requireNotNull(message.event.arbeidsgiver).orgnummer),
                 )
                 COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count() shouldBe countBefore + 1
             }
@@ -263,7 +263,7 @@ class SendtSykmeldingHandlerTest :
                 handler.handleNarmestelederbehov(message)
 
                 createNarmestelederbehov.commands.single() shouldBe CreateNarmestelederbehovCommand(
-                    employee = Employee(PersonIdent("12345678901"), OrganizationNumber("999888777")),
+                    employee = Employee(PersonalIdentificationNumber("12345678901"), OrganizationNumber("999888777")),
                     manager = null,
                     reason = BehovReason.INGEN_LEDER_REGISTRERT,
                     revokedRelationId = null,
@@ -271,7 +271,7 @@ class SendtSykmeldingHandlerTest :
                     mainOrganization = MainOrganizationSource.FromSykmelding("111222333"),
                     source = NarmestelederbehovSource.SendtSykmelding(message.kafkaMetadata.sykmeldingId),
                 )
-                relationLookups shouldBe listOf(PersonIdent("12345678901") to OrganizationNumber("999888777"))
+                relationLookups shouldBe listOf(PersonalIdentificationNumber("12345678901") to OrganizationNumber("999888777"))
             }
 
             it("passes a missing juridiskOrgnummer on to the use case") {

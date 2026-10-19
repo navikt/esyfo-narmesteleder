@@ -3,7 +3,7 @@ package no.nav.syfo.organisasjonstilgang.application
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 
 class OrganizationAccessSubjectTest :
     FunSpec({
@@ -13,7 +13,7 @@ class OrganizationAccessSubjectTest :
             token.toString() shouldStartWith "AccessToken("
             token.toString() shouldNotContain "sensitive-access-token"
             OrganizationAccessSubject.PersonnelManager(
-                personIdent = PersonIdent("12345678901"),
+                personIdent = PersonalIdentificationNumber("12345678901"),
                 accessToken = token,
             ).toString() shouldNotContain "sensitive-access-token"
         }

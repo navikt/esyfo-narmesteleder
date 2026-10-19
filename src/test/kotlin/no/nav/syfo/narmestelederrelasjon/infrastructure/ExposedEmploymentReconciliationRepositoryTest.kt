@@ -13,7 +13,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
@@ -152,7 +152,7 @@ class ExposedEmploymentReconciliationRepositoryTest :
             val first = repository.claimDue(1, 5.minutes, now).single()
             first.narmesteLederId shouldBe older
             first.organizationNumber shouldBe OrganizationNumber("123456789")
-            first.employeeIdent shouldBe PersonIdent("12345678901")
+            first.employeeIdent shouldBe PersonalIdentificationNumber("12345678901")
             first.claimedAt shouldBe now
             val row = controlRow(older)
             row[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.CLAIMED

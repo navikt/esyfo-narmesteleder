@@ -5,7 +5,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.application.kafka.jacksonMapper
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
@@ -18,7 +18,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 
 class CachedPersonLookupTest :
     FunSpec({
-        val personIdent = PersonIdent("12345678901")
+        val personIdent = PersonalIdentificationNumber("12345678901")
         val person = PersonDetails(
             personIdent,
             PersonNameDetails(
@@ -75,17 +75,17 @@ class CachedPersonLookupTest :
         }
     })
 
-private class FakePersonDetailsCache(initial: Map<PersonIdent, PersonDetails> = emptyMap()) : PersonDetailsCache {
+private class FakePersonDetailsCache(initial: Map<PersonalIdentificationNumber, PersonDetails> = emptyMap()) : PersonDetailsCache {
     val entries = initial.toMutableMap()
-    override fun get(personIdent: PersonIdent): PersonDetails? = entries[personIdent]
-    override fun put(personIdent: PersonIdent, personDetails: PersonDetails) {
+    override fun get(personIdent: PersonalIdentificationNumber): PersonDetails? = entries[personIdent]
+    override fun put(personIdent: PersonalIdentificationNumber, personDetails: PersonDetails) {
         entries[personIdent] = personDetails
     }
 }
 
 private class RecordingPersonLookup(private val result: PersonLookupResult) : PersonLookup {
-    val lookups = mutableListOf<PersonIdent>()
-    override suspend fun find(personIdent: PersonIdent): PersonLookupResult {
+    val lookups = mutableListOf<PersonalIdentificationNumber>()
+    override suspend fun find(personIdent: PersonalIdentificationNumber): PersonLookupResult {
         lookups += personIdent
         return result
     }

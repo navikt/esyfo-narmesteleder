@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.EmailAddress
 import no.nav.syfo.narmestelederrelasjon.domain.ParsedEmailAddresses
 import java.time.Instant
@@ -11,7 +11,7 @@ class ListActiveNarmesteledereForEmployeeUseCase(
     private val repository: EmployeeNarmestelederrelasjonRepository,
     private val discardedEmailAddressMetrics: DiscardedEmailAddressMetrics,
 ) {
-    suspend fun execute(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber?): List<EmployeeNarmesteleder> {
+    suspend fun execute(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber?): List<EmployeeNarmesteleder> {
         val relations = repository.findActive(employeeIdent, organizationNumber)
         val parsedEmailAddresses = relations.map { EmailAddress.parseSeparatedList(it.managerEmail) }
         discardedEmailAddressMetrics.record(parsedEmailAddresses.sumOf { it.discardedEmailAddressCount })

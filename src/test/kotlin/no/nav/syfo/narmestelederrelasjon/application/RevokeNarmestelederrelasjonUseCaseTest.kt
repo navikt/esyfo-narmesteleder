@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -18,13 +18,13 @@ import java.util.UUID
 class RevokeNarmestelederrelasjonUseCaseTest :
     FunSpec({
         val id = UUID.fromString("00000000-0000-0000-0000-000000000001")
-        val employee = PersonIdent("12345678901")
-        val manager = PersonIdent("10987654321")
-        val outsider = PersonIdent("11111111111")
+        val employee = PersonalIdentificationNumber("12345678901")
+        val manager = PersonalIdentificationNumber("10987654321")
+        val outsider = PersonalIdentificationNumber("11111111111")
         val organization = OrganizationNumber("123456789")
         val system = OrganizationAccessSubject.LpsSystemUser("test-system", organization)
 
-        fun user(ident: PersonIdent) = OrganizationAccessSubject.PersonnelManager(ident, AccessToken("test-token"))
+        fun user(ident: PersonalIdentificationNumber) = OrganizationAccessSubject.PersonnelManager(ident, AccessToken("test-token"))
         fun relation(revocable: Boolean = true) = RevocableNarmestelederrelasjon(
             id = id,
             organizationNumber = organization,

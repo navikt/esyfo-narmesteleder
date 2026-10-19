@@ -12,7 +12,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.ErrorExtension
 import no.nav.syfo.integration.pdl.Foedselsdato
 import no.nav.syfo.integration.pdl.GetPersonBolkResponse
@@ -72,8 +72,8 @@ class PdlBulkPersonLookupTest :
             val birthDate = LocalDate.of(1985, 12, 10)
             respond(listOf(fnr(1)), hit(fnr(1), pdlPerson("Ada", "Augusta", "Lovelace", birthDate)))
 
-            lookup.findAll(listOf(PersonIdent(fnr(1)))) shouldBe mapOf(
-                PersonIdent(fnr(1)) to Found(RegisteredPerson("Ada", "Augusta", "Lovelace", birthDate)),
+            lookup.findAll(listOf(PersonalIdentificationNumber(fnr(1)))) shouldBe mapOf(
+                PersonalIdentificationNumber(fnr(1)) to Found(RegisteredPerson("Ada", "Augusta", "Lovelace", birthDate)),
             )
         }
 
@@ -86,7 +86,7 @@ class PdlBulkPersonLookupTest :
                 hit(fnr(3), PdlClientPerson(navn = emptyList())),
             )
 
-            lookup.findAll(fnrs.map(::PersonIdent)) shouldBe fnrs.associate { PersonIdent(it) to NotFound }
+            lookup.findAll(fnrs.map(::PersonalIdentificationNumber)) shouldBe fnrs.associate { PersonalIdentificationNumber(it) to NotFound }
         }
 
         test("leaves persons out of the result and logs the upstream failure when their chunk fails") {
@@ -102,9 +102,9 @@ class PdlBulkPersonLookupTest :
             )
 
             withProductionLogs(PdlBulkPersonLookup::class.java) { capture ->
-                lookup.findAll((failedChunk + succeededChunk).map(::PersonIdent)) shouldBe mapOf(
-                    PersonIdent(fnr(101)) to Found(RegisteredPerson("Test", null, "Person", null)),
-                    PersonIdent(fnr(102)) to NotFound,
+                lookup.findAll((failedChunk + succeededChunk).map(::PersonalIdentificationNumber)) shouldBe mapOf(
+                    PersonalIdentificationNumber(fnr(101)) to Found(RegisteredPerson("Test", null, "Person", null)),
+                    PersonalIdentificationNumber(fnr(102)) to NotFound,
                 )
 
                 RuntimeLogContract.forEvents(pdlLookupDegraded).assertValid(capture.records, expectedCount = 1)
@@ -135,9 +135,9 @@ class PdlBulkPersonLookupTest :
             )
 
             withProductionLogs(PdlBulkPersonLookup::class.java) { capture ->
-                lookup.findAll(fnrs.map(::PersonIdent)) shouldBe mapOf(
-                    PersonIdent(fnr(1)) to Found(RegisteredPerson("Test", null, "Person", null)),
-                    PersonIdent(fnr(2)) to NotFound,
+                lookup.findAll(fnrs.map(::PersonalIdentificationNumber)) shouldBe mapOf(
+                    PersonalIdentificationNumber(fnr(1)) to Found(RegisteredPerson("Test", null, "Person", null)),
+                    PersonalIdentificationNumber(fnr(2)) to NotFound,
                 )
 
                 RuntimeLogContract.forEvents(pdlLookupDegraded).assertValid(capture.records, expectedCount = 1)
@@ -157,7 +157,7 @@ class PdlBulkPersonLookupTest :
         test("rethrows cancellation") {
             coEvery { pdlClient.getPersonBolk(listOf(fnr(1))) } throws CancellationException("cancelled")
 
-            shouldThrow<CancellationException> { lookup.findAll(listOf(PersonIdent(fnr(1)))) }
+            shouldThrow<CancellationException> { lookup.findAll(listOf(PersonalIdentificationNumber(fnr(1)))) }
         }
 
         test("looks up persons in chunks of 100") {
@@ -165,7 +165,7 @@ class PdlBulkPersonLookupTest :
                 response(firstArg<List<String>>().map { hit(it, code = "not_found") })
             }
 
-            lookup.findAll((1..201).map { PersonIdent(fnr(it)) }).size shouldBe 201
+            lookup.findAll((1..201).map { PersonalIdentificationNumber(fnr(it)) }).size shouldBe 201
 
             coVerify(exactly = 2) { pdlClient.getPersonBolk(match { it.size == 100 }) }
             coVerify(exactly = 1) { pdlClient.getPersonBolk(match { it.size == 1 }) }

@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -13,7 +13,7 @@ fun interface CreateNarmestelederbehov {
 
 data class CreateNarmestelederbehovCommand(
     val employee: Employee,
-    val manager: PersonIdent?,
+    val manager: PersonalIdentificationNumber?,
     val reason: BehovReason,
     val revokedRelationId: UUID?,
     /** True when the caller already knows that the employee has an active sykmelding, so Dinesykmeldte is not asked. */

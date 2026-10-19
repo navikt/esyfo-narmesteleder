@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.time.Instant
 import java.util.UUID
 import kotlin.time.Duration
@@ -56,7 +56,7 @@ data class EmploymentCheckStats(
 data class ClaimedEmploymentCheck(
     val narmesteLederId: UUID,
     val organizationNumber: OrganizationNumber,
-    val employeeIdent: PersonIdent,
+    val employeeIdent: PersonalIdentificationNumber,
     val claimToken: UUID,
     val claimedAt: Instant,
     /** When team sykmelding revoked the relation this check is compared with; null for a regular check. */

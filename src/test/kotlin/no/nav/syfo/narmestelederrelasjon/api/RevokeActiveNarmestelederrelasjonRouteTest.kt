@@ -21,7 +21,7 @@ import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
@@ -60,8 +60,8 @@ import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
 import java.util.UUID
 
-private val request = LinemanagerRevoke(PersonIdent("12345678901"), OrganizationNumber("123456789"), "Hansen")
-private val resolvedIdent = PersonIdent("12345678902")
+private val request = LinemanagerRevoke(PersonalIdentificationNumber("12345678901"), OrganizationNumber("123456789"), "Hansen")
+private val resolvedIdent = PersonalIdentificationNumber("12345678902")
 
 class RevokeActiveNarmestelederrelasjonRouteTest :
     FunSpec({
@@ -221,7 +221,7 @@ private class RevokeRouteFixture(
     private val unavailable: UpstreamFailure? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
-    val lookups = mutableListOf<PersonIdent>()
+    val lookups = mutableListOf<PersonalIdentificationNumber>()
     val messages = mutableListOf<Pair<NlAvbrutt, NlResponseSource>>()
     private val producer = object : SykmeldingNarmestelederProducer {
         override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) = error("Unexpected relation")
@@ -236,9 +236,9 @@ private class RevokeRouteFixture(
         },
         MicrometerNameValidationMetrics(),
         object : ActiveNarmestelederrelasjonRepository {
-            override suspend fun findActive(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
+            override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
                 lookups += employeeIdent
-                return if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), PersonIdent("10987654321"), managerEmail, Instant.EPOCH)) else emptyList()
+                return if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), PersonalIdentificationNumber("10987654321"), managerEmail, Instant.EPOCH)) else emptyList()
             }
         },
         KafkaPublishNarmestelederrelasjonRevocation(producer),

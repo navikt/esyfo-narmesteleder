@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.Foedselsdato
 import no.nav.syfo.integration.pdl.GetPersonBolkResponse
 import no.nav.syfo.integration.pdl.Ident
@@ -23,7 +23,7 @@ import java.time.LocalDate
 
 class PdlEmployeePersonLookupTest :
     FunSpec({
-        val employeeIdent = PersonIdent("12345678901")
+        val employeeIdent = PersonalIdentificationNumber("12345678901")
         val names = listOf(Navn("Test", "Middle", "Employee"), Navn("Previous", null, "Name"))
         val person = PdlPerson(PersonResponse(names), listOf(Ident(employeeIdent.value, Ident.GRUPPE_IDENT_FNR)))
 

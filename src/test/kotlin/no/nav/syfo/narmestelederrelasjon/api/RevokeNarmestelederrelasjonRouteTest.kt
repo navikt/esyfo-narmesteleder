@@ -11,7 +11,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
 import no.nav.syfo.narmestelederrelasjon.observability.LINEMANAGER_REVOKE_BY_ID_TOTAL
@@ -50,7 +50,7 @@ class RevokeNarmestelederrelasjonRouteTest :
                 withTestApplication {
                     val response = client.delete(path(id.toString())) { bearerAuth(token()) }
                     response.status shouldBe HttpStatusCode.Accepted
-                    published.single().employeeIdent shouldBe PersonIdent(employeeIdent)
+                    published.single().employeeIdent shouldBe PersonalIdentificationNumber(employeeIdent)
                     published.single().initiator shouldBe RevocationInitiator.EMPLOYEE
                 }
                 coVerify(exactly = 0) { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) }

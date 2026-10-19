@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
@@ -34,10 +34,10 @@ internal val openNarmestelederbehovStatuses = listOf(BehovStatus.BEHOV_CREATED, 
 
 internal fun ResultRow.toNarmestelederbehovDetails() = NarmestelederbehovDetails(
     id = NarmestelederbehovId(this[NarmestelederbehovTable.id]),
-    employeeIdent = PersonIdent(this[NarmestelederbehovTable.sykmeldtFnr]),
+    employeeIdent = PersonalIdentificationNumber(this[NarmestelederbehovTable.sykmeldtFnr]),
     organizationNumber = OrganizationNumber(this[NarmestelederbehovTable.orgnummer]),
     mainOrganizationNumber = requireNotNull(this[NarmestelederbehovTable.hovedenhetOrgnummer]),
-    managerIdent = this[NarmestelederbehovTable.narmestelederFnr]?.let(::PersonIdent),
+    managerIdent = this[NarmestelederbehovTable.narmestelederFnr]?.let(::PersonalIdentificationNumber),
     firstName = this[NarmestelederbehovTable.fornavn],
     middleName = this[NarmestelederbehovTable.mellomnavn],
     lastName = this[NarmestelederbehovTable.etternavn],

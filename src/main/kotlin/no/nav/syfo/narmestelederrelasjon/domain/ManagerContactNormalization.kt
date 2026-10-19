@@ -1,10 +1,10 @@
 package no.nav.syfo.narmestelederrelasjon.domain
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 
 @ConsistentCopyVisibility
 data class NormalizedManagerContact private constructor(
-    val personIdent: PersonIdent,
+    val personIdent: PersonalIdentificationNumber,
     val lastName: String,
     val email: EmailAddress,
     val mobile: PhoneNumber,

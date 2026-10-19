@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AaregArbeidsforholdOversikt
 import no.nav.syfo.integration.aareg.AaregClient
 import no.nav.syfo.integration.aareg.ArbeidsstedType
@@ -11,7 +11,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.Employment
 import no.nav.syfo.platform.upstream.UpstreamResult
 
 class AaregEmploymentHistoryLookup(private val client: AaregClient) : EmploymentHistoryLookup {
-    override suspend fun findEmploymentHistory(personIdent: PersonIdent): EmploymentHistoryResult = when (val result = client.getArbeidsforholdHistorikk(personIdent.value)) {
+    override suspend fun findEmploymentHistory(personIdent: PersonalIdentificationNumber): EmploymentHistoryResult = when (val result = client.getArbeidsforholdHistorikk(personIdent.value)) {
         is UpstreamResult.Failure -> EmploymentHistoryResult.Unavailable(result.failure)
         is UpstreamResult.Success -> EmploymentHistoryResult.Found(result.value.toEmployments())
     }

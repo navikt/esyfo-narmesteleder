@@ -4,15 +4,15 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.time.Instant
 import java.util.UUID
 
 class LookupActiveNarmestelederUseCaseTest :
     FunSpec({
-        val employee = PersonIdent("12345678901")
+        val employee = PersonalIdentificationNumber("12345678901")
         val organization = OrganizationNumber("123456789")
-        val manager = PersonIdent("10987654321")
+        val manager = PersonalIdentificationNumber("10987654321")
         val first = ActiveNarmestelederrelasjon(
             UUID.fromString("00000000-0000-0000-0000-000000000001"),
             manager,
@@ -22,7 +22,7 @@ class LookupActiveNarmestelederUseCaseTest :
         class FakeRepository(
             var rows: List<ActiveNarmestelederrelasjon> = emptyList(),
         ) : ActiveNarmestelederrelasjonRepository {
-            override suspend fun findActive(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber) = rows.also {
+            override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber) = rows.also {
                 employeeIdent shouldBe employee
                 organizationNumber shouldBe organization
             }

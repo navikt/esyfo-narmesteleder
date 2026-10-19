@@ -8,11 +8,11 @@ import no.nav.syfo.platform.upstream.UpstreamResult
  * Local and development environments use [FakeAaregClient] with fixtures instead.
  */
 class TestAaregClient : AaregClient {
-    private val employmentsByPersonIdent = mutableMapOf<String, List<Pair<String, String>>>()
+    private val employmentsByPersonalIdentificationNumber = mutableMapOf<String, List<Pair<String, String>>>()
     private var failure: UpstreamFailure? = null
 
     fun clear() {
-        employmentsByPersonIdent.clear()
+        employmentsByPersonalIdentificationNumber.clear()
         failure = null
     }
 
@@ -27,7 +27,7 @@ class TestAaregClient : AaregClient {
     ): UpstreamResult<AaregArbeidsforholdOversikt> {
         failure?.let { return UpstreamResult.Failure(it) }
         val overview = AaregArbeidsforholdOversikt(
-            arbeidsforholdoversikter = employmentsByPersonIdent[personIdent].orEmpty().map { (orgNumber, mainOrgNumber) ->
+            arbeidsforholdoversikter = employmentsByPersonalIdentificationNumber[personIdent].orEmpty().map { (orgNumber, mainOrgNumber) ->
                 Arbeidsforholdoversikt(
                     arbeidssted = Arbeidssted(
                         type = ArbeidsstedType.Underenhet,

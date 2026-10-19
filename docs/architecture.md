@@ -228,7 +228,7 @@ own the mapping from client results and failures to their ports.
 only official identifiers whose representation and validation are the same
 across modules:
 
-- `PersonIdent`;
+- `PersonalIdentificationNumber`;
 - `OrganizationNumber`.
 
 Module-specific IDs, statuses, actors, commands, DTOs and errors do not belong

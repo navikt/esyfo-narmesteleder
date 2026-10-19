@@ -191,6 +191,23 @@ class FulfillNarmestelederbehovRouteTest :
             }
         }
 
+        test("PUT /requirement/{id} 400 keeps the legacy message for an invalid manager identification number") {
+            withPutApplication { fixture ->
+                val id = fixture.seed()
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"nationalIdentificationNumber":"1234567890","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}""")
+                    bearerAuth(createMockToken(fixture.orgNumber))
+                }
+                response.status shouldBe HttpStatusCode.BadRequest
+                response.body<ApiError>().let {
+                    it.type shouldBe ErrorType.INVALID_FORMAT
+                    it.message shouldBe "PersonalIdentificationNumber must be exactly 11 digits"
+                }
+                fixture.establish.commands shouldBe emptyList()
+            }
+        }
+
         test("PUT /requirement/{id} preserves 400 ORGANIZATION_NOT_FOUND when Ereg returns no organization") {
             withPutApplication { fixture ->
                 val id = fixture.seed()

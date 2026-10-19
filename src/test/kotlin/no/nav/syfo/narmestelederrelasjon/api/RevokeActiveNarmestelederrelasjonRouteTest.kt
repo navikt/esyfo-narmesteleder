@@ -120,6 +120,29 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             fixture.messages shouldBe emptyList()
         }
 
+        test("invalid identifiers in the body keep the legacy 400 message") {
+            val fixture = RevokeRouteFixture()
+            fixture.authorize("maskinporten")
+            fixture.withApplication {
+                listOf(
+                    """{"employeeIdentificationNumber":"1234567890","orgNumber":"123456789","lastName":"Hansen"}""" to
+                        "PersonalIdentificationNumber must be exactly 11 digits",
+                    """{"employeeIdentificationNumber":"12345678901","orgNumber":"12345678a","lastName":"Hansen"}""" to
+                        "OrganizationNumber must be exactly 9 digits",
+                ).forEach { (body, message) ->
+                    client.revoke(body = body).let {
+                        it.status shouldBe HttpStatusCode.BadRequest
+                        it.body<ApiError>().let { error ->
+                            error.type shouldBe ErrorType.INVALID_FORMAT
+                            error.message shouldBe message
+                        }
+                    }
+                }
+            }
+            fixture.lookups shouldBe emptyList()
+            fixture.messages shouldBe emptyList()
+        }
+
         test("mismatched last name returns the legacy error and never looks up active relations") {
             val fixture = RevokeRouteFixture(name = "Other")
             fixture.authorize("maskinporten")

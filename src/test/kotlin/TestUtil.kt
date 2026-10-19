@@ -3,13 +3,13 @@ import com.auth0.jwt.algorithms.Algorithm
 import io.mockk.coEvery
 import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.sykmelding.model.Arbeidsgiver
@@ -35,7 +35,7 @@ val faker = Faker(Random(Instant.now().epochSecond))
 
 fun faker() = faker
 fun manager(): Manager = Manager(
-    nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
+    nationalIdentificationNumber = PersonIdent(faker.numerify("###########")),
     mobile = "+47${faker.numerify("########")}",
     email = "test+${faker.numerify("#####")}@example.com",
     lastName = faker.name().lastName(),
@@ -43,7 +43,7 @@ fun manager(): Manager = Manager(
 
 fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
-    employeeIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
+    employeeIdentificationNumber = PersonIdent(faker.numerify("###########")),
     orgNumber = OrganizationNumber(faker.numerify("#########")),
     lastName = faker.name().lastName(),
 )

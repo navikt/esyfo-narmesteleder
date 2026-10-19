@@ -8,8 +8,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import linemanager
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
+import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.integration.pdl.Navn
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.KafkaSykmeldingNarmestelederProducer.Companion.SYKEMELDING_NL_TOPIC
 import no.nav.syfo.pdl.Person
 import org.apache.kafka.common.serialization.Serializer
@@ -29,7 +29,7 @@ class KafkaSykmeldingNarmestelederProducerTest :
         fun nlResponse(): NlResponse {
             val relasjon = linemanager()
             val linemanagerPerson = Person(
-                nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
+                nationalIdentificationNumber = PersonIdent(faker.numerify("###########")),
                 name =
                 Navn(faker.name().firstName(), null, faker.name().lastName())
             )

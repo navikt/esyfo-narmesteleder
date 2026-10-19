@@ -199,15 +199,15 @@ class SubmitNarmestelederrelasjonRouteTest :
         test("invalid identifiers in the body keep the legacy 400 message") {
             val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> error("Access must not be checked") })
             fixture.authorize("tokenx")
-            fun body(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321") =
+            fun submission(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321") =
                 """{"orgNumber":"$org","employeeIdentificationNumber":"$employee","lastName":"Employee","manager":{"nationalIdentificationNumber":"$manager","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}}"""
             fixture.withApplication {
                 listOf(
-                    body(employee = "1234567890") to "PersonalIdentificationNumber must be exactly 11 digits",
-                    body(org = "12345678") to "OrganizationNumber must be exactly 9 digits",
-                    body(manager = "1098765432a") to "PersonalIdentificationNumber must be exactly 11 digits",
+                    submission(employee = "1234567890") to "PersonalIdentificationNumber must be exactly 11 digits",
+                    submission(org = "12345678") to "OrganizationNumber must be exactly 9 digits",
+                    submission(manager = "1098765432a") to "PersonalIdentificationNumber must be exactly 11 digits",
                     // The first invalid identifier in the JSON document decides the message.
-                    body(employee = "1234567890", org = "12345678") to "OrganizationNumber must be exactly 9 digits",
+                    submission(employee = "1234567890", org = "12345678") to "OrganizationNumber must be exactly 9 digits",
                 ).forEach { (body, message) ->
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)

@@ -3,7 +3,7 @@ package no.nav.syfo.narmesteleder.api.v1
 import io.ktor.server.routing.RoutingCall
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
+import no.nav.syfo.ident.OrganizationNumber
 import java.util.UUID
 
 fun RoutingCall.getUUIDFromPathVariable(name: String): UUID {
@@ -19,10 +19,12 @@ fun RoutingCall.getPathVariable(name: String): String = this.parameters[name] ?:
 
 fun RoutingCall.getRequiredQueryParameter(name: String): String = this.queryParameters[name] ?: throw ApiErrorException.BadRequestException("Missing $name parameter")
 
-fun RoutingCall.getRequiredOrganizationNumberQueryParameter(name: String): OrganizationNumber = OrganizationNumber.parse(getRequiredQueryParameter(name))
-    .getOrElse {
+fun RoutingCall.getRequiredOrganizationNumberQueryParameter(name: String): OrganizationNumber {
+    val value = getRequiredQueryParameter(name)
+    return runCatching { OrganizationNumber(value) }.getOrElse {
         throw ApiErrorException.BadRequestException(
             it.message ?: "Invalid organization number format for $name parameter",
             type = ErrorType.INVALID_FORMAT
         )
     }
+}

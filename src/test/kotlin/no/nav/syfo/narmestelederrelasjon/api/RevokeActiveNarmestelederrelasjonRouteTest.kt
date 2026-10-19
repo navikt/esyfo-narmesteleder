@@ -23,7 +23,6 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -60,9 +59,8 @@ import no.nav.syfo.texas.client.TexasHttpClient
 import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
 import java.util.UUID
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber as RequestOrganizationNumber
 
-private val request = LinemanagerRevoke(PersonalIdentificationNumber("12345678901"), RequestOrganizationNumber("123456789"), "Hansen")
+private val request = LinemanagerRevoke(PersonIdent("12345678901"), OrganizationNumber("123456789"), "Hansen")
 private val resolvedIdent = PersonIdent("12345678902")
 
 class RevokeActiveNarmestelederrelasjonRouteTest :

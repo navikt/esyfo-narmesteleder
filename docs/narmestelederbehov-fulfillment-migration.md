@@ -68,16 +68,19 @@ PUT fulfillment or complete #525.
 
 ## Removing transitional duplication
 
-After activation, migrate every remaining caller and delete the legacy
-`PhoneNumber`, `EmailAddress`, `OrganizationNumber` and
-`PersonalIdentificationNumber` definitions. The legacy `NameValidator` is
-already removed; `MicrometerNameValidationMetrics` in `narmestelederrelasjon`
-owns the name validation metrics. Do not keep a second rule set for
-other flows. Identifiers converge on `ident`; shared validation must have one
-owner exposed through the appropriate application boundary, without one
-capability importing another capability's domain internals. Parity tests guard
-the temporary copies until that removal; replace them with tests of the single
-owner as the copies disappear.
+The legacy `PhoneNumber`, `EmailAddress`, `OrganizationNumber` and
+`PersonalIdentificationNumber` definitions in `narmesteleder.domain` are
+removed. Identifiers use `PersonIdent` and `OrganizationNumber` from `ident`,
+also in the HTTP request and response models. Contact validation has one owner,
+`ManagerContactInput` in `narmestelederrelasjon`. `PersonIdent` keeps the
+message `PersonalIdentificationNumber must be exactly 11 digits`, because
+Jackson returns it in the 400 response for an invalid identifier in a request
+body. The legacy `NameValidator` is also removed;
+`MicrometerNameValidationMetrics` in `narmestelederrelasjon` owns the name
+validation metrics. Do not add a second rule set for other flows. Shared
+validation must have one owner exposed through the appropriate application
+boundary, without one capability importing another capability's domain
+internals. The parity tests are replaced with tests of the single owner.
 
 `FakeAaregClient` remains seeded local-development infrastructure and supports
 existing tests. `TestAaregClient` is an empty, explicitly seeded test-only fake

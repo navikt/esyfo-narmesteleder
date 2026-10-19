@@ -9,8 +9,6 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
-import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonResult
@@ -39,8 +37,8 @@ fun Route.registerRevokeActiveNarmestelederrelasjonApi(
                 val result = revoke.execute(
                     RevokeActiveNarmestelederrelasjonCommand(
                         accessSubject = principal.toOrganizationAccessSubject(),
-                        employeeIdent = PersonIdent(request.employeeIdentificationNumber.value),
-                        organizationNumber = OrganizationNumber(request.orgNumber.value),
+                        employeeIdent = request.employeeIdentificationNumber,
+                        organizationNumber = request.orgNumber,
                         employeeLastName = request.lastName,
                     ),
                 )

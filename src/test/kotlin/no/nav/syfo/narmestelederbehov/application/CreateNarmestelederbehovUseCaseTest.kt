@@ -226,7 +226,7 @@ class CreateNarmestelederbehovUseCaseTest :
         }
 
         test("creates the dialog without person details when the person lookup fails") {
-            with(Fixture(personLookup = { throw IllegalArgumentException("PersonIdent must be exactly 11 digits") })) {
+            with(Fixture(personLookup = { throw IllegalArgumentException("PersonalIdentificationNumber must be exactly 11 digits") })) {
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
 
                 dialogs shouldBe listOf(Triple(createdId, employee, null))

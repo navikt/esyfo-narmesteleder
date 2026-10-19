@@ -29,7 +29,6 @@ import no.nav.syfo.integration.ereg.EregCache
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmesteleder.domain.Manager
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -333,7 +332,7 @@ private class PutFixture {
     fun seed(): UUID = repository.seed(employeeIdent, orgNumber)
 
     fun newManager(): Manager = manager().copy(
-        nationalIdentificationNumber = PersonalIdentificationNumber(relation.manager.nationalIdentificationNumber.value.reversed()),
+        nationalIdentificationNumber = PersonIdent(relation.manager.nationalIdentificationNumber.value.reversed()),
     )
 }
 

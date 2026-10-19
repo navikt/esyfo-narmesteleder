@@ -42,7 +42,7 @@ class PdlEmployeeNameLookupTest :
         test("preserves validation of a malformed folkeregisterident") {
             shouldThrow<IllegalArgumentException> {
                 PdlEmployeeNameLookup(StubEmployeePdlClient(UpstreamResult.Success(person.copy(identer = listOf(Ident("invalid", Ident.GRUPPE_IDENT_FNR)))))).find(ident)
-            }.message shouldBe "PersonIdent must be exactly 11 digits"
+            }.message shouldBe "PersonalIdentificationNumber must be exactly 11 digits"
         }
 
         test("propagates failure as Unavailable without interpreting the protocol") {

@@ -5,20 +5,14 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
-import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
-import no.nav.syfo.narmestelederbehov.application.MainOrganizationSource
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovSource
-import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjon
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.service.NarmestelederBruddService
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
-import java.time.LocalDate
 import java.util.UUID
 
 private enum class SickLeaveAction {
@@ -131,18 +125,7 @@ class SendtSykmeldingHandler(
             return
         }
 
-        val result = createNarmestelederbehov.execute(
-            CreateNarmestelederbehovCommand(
-                employee = Employee(PersonIdent(message.kafkaMetadata.fnr), OrganizationNumber(arbeidsgiver.orgnummer)),
-                manager = null,
-                reason = BehovReason.INGEN_LEDER_REGISTRERT,
-                revokedRelationId = null,
-                sykmeldingKnownActive = message.sykmelding.sykmeldingsperioder
-                    .any { LocalDate.now() in it.fom..it.tom },
-                mainOrganization = MainOrganizationSource.FromSykmelding(arbeidsgiver.juridiskOrgnummer),
-                source = NarmestelederbehovSource.SendtSykmelding(message.kafkaMetadata.sykmeldingId),
-            )
-        )
+        val result = createNarmestelederbehov.execute(message.toCreateNarmestelederbehovCommand(arbeidsgiver))
         if (result is CreateNarmestelederbehovResult.UpstreamUnavailable) {
             throw result.failure.toUpstreamUnavailableException()
         }

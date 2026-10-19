@@ -1,24 +1,19 @@
 package no.nav.syfo.sykmelding.kafka
 
+import no.nav.syfo.application.exception.toUpstreamUnavailableException
+import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonIdent
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementWrite
-import no.nav.syfo.narmesteleder.domain.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.service.BehovSource
-import no.nav.syfo.narmesteleder.service.COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER
-import no.nav.syfo.narmesteleder.service.NarmestelederService
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
 import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjon
 import no.nav.syfo.sykmelding.model.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.service.NarmestelederBruddService
 import no.nav.syfo.sykmelding.service.SykmeldingService
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
-import java.time.LocalDate
 import java.util.UUID
-import no.nav.syfo.ident.OrganizationNumber as RelationOrganizationNumber
 
 private enum class SickLeaveAction {
     CREATE_BEHOV,
@@ -61,7 +56,7 @@ private val sickLeaveBehovSkippedActiveRelation = applicationEvent<SickLeaveLogD
 )
 
 class SendtSykmeldingHandler(
-    private val narmesteLederService: NarmestelederService,
+    private val createNarmestelederbehov: CreateNarmestelederbehov,
     private val sykmeldingService: SykmeldingService,
     private val narmestelederBruddService: NarmestelederBruddService,
     private val hasActiveNarmestelederrelasjon: HasActiveNarmestelederrelasjon,
@@ -118,11 +113,11 @@ class SendtSykmeldingHandler(
             return
         }
 
-        // Keep this check here, not in createNewNlBehov: the Leesah deactivation flow also
+        // Keep this check here, not in CreateNarmestelederbehov: the Leesah deactivation flow also
         // creates behov, and the local relation register may not yet reflect the deactivation.
         if (hasActiveNarmestelederrelasjon.execute(
                 PersonIdent(message.kafkaMetadata.fnr),
-                RelationOrganizationNumber(arbeidsgiver.orgnummer),
+                OrganizationNumber(arbeidsgiver.orgnummer),
             )
         ) {
             COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.increment()
@@ -130,17 +125,10 @@ class SendtSykmeldingHandler(
             return
         }
 
-        narmesteLederService.createNewNlBehov(
-            nlBehov = LinemanagerRequirementWrite(
-                employeeIdentificationNumber = PersonalIdentificationNumber(message.kafkaMetadata.fnr),
-                orgNumber = OrganizationNumber(arbeidsgiver.orgnummer),
-                behovReason = BehovReason.INGEN_LEDER_REGISTRERT,
-            ),
-            skipSykmeldingCheck = message.sykmelding.sykmeldingsperioder
-                .any { LocalDate.now() in it.fom..it.tom },
-            behovSource = BehovSource(message.kafkaMetadata.sykmeldingId, source = SENDT_SYKMELDING_TOPIC),
-            arbeidsgiver = arbeidsgiver,
-        )
+        val result = createNarmestelederbehov.execute(message.toCreateNarmestelederbehovCommand(arbeidsgiver))
+        if (result is CreateNarmestelederbehovResult.UpstreamUnavailable) {
+            throw result.failure.toUpstreamUnavailableException()
+        }
     }
 
     private suspend fun revokeNarmestelederRelation(

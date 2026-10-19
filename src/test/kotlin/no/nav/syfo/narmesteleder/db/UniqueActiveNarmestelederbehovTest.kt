@@ -2,58 +2,29 @@ package no.nav.syfo.narmesteleder.db
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeSameInstanceAs
 import nlBehovEntity
 import no.nav.syfo.TestDB
-import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import org.postgresql.util.PSQLException
-import java.lang.reflect.InvocationTargetException
-import java.lang.reflect.Proxy
-import java.sql.Connection
-import java.sql.PreparedStatement
-import java.sql.SQLException
 
-private class TransactionObserver(private val database: DatabaseInterface) : DatabaseInterface {
-    var rollbacks = 0
-    var commits = 0
-    var insertFailure: Throwable? = null
-
-    override val connection: Connection
-        get() {
-            val realConnection = database.connection
-            return Proxy.newProxyInstance(Connection::class.java.classLoader, arrayOf(Connection::class.java)) { _, method, args ->
-                try {
-                    when (method.name) {
-                        "rollback" -> rollbacks++
-                        "commit" -> commits++
-                    }
-                    val result = method.invoke(realConnection, *args.orEmpty())
-                    if (method.name == "prepareStatement") {
-                        Proxy.newProxyInstance(PreparedStatement::class.java.classLoader, arrayOf(PreparedStatement::class.java)) { _, statementMethod, statementArgs ->
-                            try {
-                                statementMethod.invoke(result, *statementArgs.orEmpty())
-                            } catch (failure: InvocationTargetException) {
-                                insertFailure = failure.targetException
-                                throw failure.targetException
-                            }
-                        }
-                    } else {
-                        result
-                    }
-                } catch (failure: InvocationTargetException) {
-                    throw failure.targetException
-                }
-            } as Connection
+private fun countBehov(sykmeldtFnr: String, orgnummer: String, statuses: List<BehovStatus>): Int = TestDB.database.connection.use { connection ->
+    connection.prepareStatement(
+        "SELECT count(*) FROM nl_behov WHERE sykemeldt_fnr = ? AND orgnummer = ? AND behov_status::text = ANY (?)",
+    ).use { statement ->
+        statement.setString(1, sykmeldtFnr)
+        statement.setString(2, orgnummer)
+        statement.setArray(3, connection.createArrayOf("text", statuses.map { it.name }.toTypedArray()))
+        statement.executeQuery().use { result ->
+            result.next()
+            result.getInt(1)
         }
+    }
 }
 
 class UniqueActiveNarmestelederbehovTest :
     FunSpec({
-        val observedDatabase = TransactionObserver(TestDB.database)
-        val db = PostgresNarmestelederDb(observedDatabase)
+        val db = PostgresNarmestelederDb(TestDB.database)
         val activeStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
         val inactiveStatuses = listOf(
             BehovStatus.BEHOV_FULFILLED,
@@ -68,69 +39,50 @@ class UniqueActiveNarmestelederbehovTest :
             TestDB.clearAllData()
         }
 
-        activeStatuses.forEach { first ->
-            activeStatuses.forEach { second ->
-                test("rejects $second when $first occupies the employee and organization slot") {
-                    val entity = nlBehovEntity().copy(behovStatus = first)
-                    db.insertNlBehov(entity)
-                    val rollbacks = observedDatabase.rollbacks
-                    val commits = observedDatabase.commits
-
-                    shouldThrow<ActiveNarmestelederbehovAlreadyExistsException> {
-                        db.insertNlBehov(entity.copy(behovStatus = second))
-                    }
-                    observedDatabase.rollbacks shouldBe rollbacks + 1
-                    observedDatabase.commits shouldBe commits
-
-                    db.findBehovByParameters(entity.sykmeldtFnr, entity.orgnummer, activeStatuses).size shouldBe 1
-                }
-            }
-        }
-
         inactiveStatuses.forEach { status ->
             test("allows repeated $status rows alongside one active row") {
                 val entity = nlBehovEntity().copy(behovStatus = status)
-                db.insertNlBehov(entity)
-                db.insertNlBehov(entity)
-                db.insertNlBehov(entity.copy(behovStatus = BehovStatus.BEHOV_CREATED))
-                db.insertNlBehov(entity)
+                insertNlBehov(entity)
+                insertNlBehov(entity)
+                insertNlBehov(entity.copy(behovStatus = BehovStatus.BEHOV_CREATED))
+                insertNlBehov(entity)
 
-                db.findBehovByParameters(entity.sykmeldtFnr, entity.orgnummer, listOf(status)).size shouldBe 3
-                db.findBehovByParameters(entity.sykmeldtFnr, entity.orgnummer, activeStatuses).size shouldBe 1
+                countBehov(entity.sykmeldtFnr, entity.orgnummer, listOf(status)) shouldBe 3
+                countBehov(entity.sykmeldtFnr, entity.orgnummer, activeStatuses) shouldBe 1
             }
         }
 
         test("allows active rows for different employees and different organizations") {
             val entity = nlBehovEntity()
-            db.insertNlBehov(entity)
+            insertNlBehov(entity)
             val otherEmployee = nlBehovEntity().sykmeldtFnr
             val otherOrg = nlBehovEntity().orgnummer
-            db.insertNlBehov(entity.copy(sykmeldtFnr = otherEmployee))
-            db.insertNlBehov(entity.copy(orgnummer = otherOrg))
+            insertNlBehov(entity.copy(sykmeldtFnr = otherEmployee))
+            insertNlBehov(entity.copy(orgnummer = otherOrg))
 
-            db.findBehovByParameters(entity.sykmeldtFnr, entity.orgnummer, activeStatuses).size shouldBe 1
-            db.findBehovByParameters(otherEmployee, entity.orgnummer, activeStatuses).size shouldBe 1
-            db.findBehovByParameters(entity.sykmeldtFnr, otherOrg, activeStatuses).size shouldBe 1
+            countBehov(entity.sykmeldtFnr, entity.orgnummer, activeStatuses) shouldBe 1
+            countBehov(otherEmployee, entity.orgnummer, activeStatuses) shouldBe 1
+            countBehov(entity.sykmeldtFnr, otherOrg, activeStatuses) shouldBe 1
         }
 
         test("allows the only active row to switch between both active statuses") {
-            var entity = db.insertNlBehov(nlBehovEntity())
+            var entity = insertNlBehov(nlBehovEntity())
             listOf(BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, BehovStatus.BEHOV_CREATED).forEach { status ->
                 entity = entity.copy(behovStatus = status)
                 db.updateNlBehov(entity)
-                observedDatabase.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
+                TestDB.database.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
             }
         }
 
         listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED).forEach { status ->
             activeStatuses.forEach { active ->
                 test("frees the $active slot when the row becomes $status") {
-                    val entity = db.insertNlBehov(nlBehovEntity().copy(behovStatus = active))
+                    val entity = insertNlBehov(nlBehovEntity().copy(behovStatus = active))
                     db.updateNlBehov(entity.copy(behovStatus = status))
-                    db.insertNlBehov(entity.copy(behovStatus = active))
+                    insertNlBehov(entity.copy(behovStatus = active))
 
-                    db.findBehovByParameters(entity.sykmeldtFnr, entity.orgnummer, activeStatuses).size shouldBe 1
-                    observedDatabase.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
+                    countBehov(entity.sykmeldtFnr, entity.orgnummer, activeStatuses) shouldBe 1
+                    TestDB.database.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
                 }
             }
         }
@@ -138,60 +90,18 @@ class UniqueActiveNarmestelederbehovTest :
         activeStatuses.forEach { occupied ->
             activeStatuses.forEach { requested ->
                 test("propagates an update violation to $requested when $occupied occupies the slot") {
-                    val active = db.insertNlBehov(nlBehovEntity().copy(behovStatus = occupied))
-                    val historical = db.insertNlBehov(active.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
+                    val active = insertNlBehov(nlBehovEntity().copy(behovStatus = occupied))
+                    val historical = insertNlBehov(active.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
 
                     val failure = shouldThrow<PSQLException> {
                         db.updateNlBehov(historical.copy(behovStatus = requested))
                     }
                     failure.sqlState shouldBe "23505"
                     failure.serverErrorMessage?.constraint shouldBe "uq_nl_behov_active_employee_org"
-                    observedDatabase.findBehovById(requireNotNull(historical.id))?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
-                    db.findBehovByParameters(active.sykmeldtFnr, active.orgnummer, activeStatuses).size shouldBe 1
+                    TestDB.database.findBehovById(requireNotNull(historical.id))?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                    countBehov(active.sykmeldtFnr, active.orgnummer, activeStatuses) shouldBe 1
                 }
             }
-        }
-
-        test("propagates a different unique violation rather than treating it as an active conflict") {
-            TestDB.database.connection.use { connection ->
-                connection.createStatement().use {
-                    it.execute("CREATE UNIQUE INDEX test_other_unique_constraint ON nl_behov (avbrutt_narmesteleder_id)")
-                }
-                connection.commit()
-            }
-            try {
-                val entity = nlBehovEntity().copy(behovStatus = BehovStatus.BEHOV_FULFILLED)
-                db.insertNlBehov(entity)
-                val rollbacks = observedDatabase.rollbacks
-                val commits = observedDatabase.commits
-                val failure = shouldThrow<PSQLException> { db.insertNlBehov(entity) }
-                failure shouldBeSameInstanceAs observedDatabase.insertFailure
-                observedDatabase.rollbacks shouldBe rollbacks + 1
-                observedDatabase.commits shouldBe commits
-                failure.sqlState shouldBe "23505"
-                failure.serverErrorMessage?.constraint shouldBe "test_other_unique_constraint"
-                db.findBehovByParameters(entity.sykmeldtFnr, entity.orgnummer, listOf(BehovStatus.BEHOV_FULFILLED)).size shouldBe 1
-            } finally {
-                TestDB.database.connection.use { connection ->
-                    connection.createStatement().use { it.execute("DROP INDEX test_other_unique_constraint") }
-                    connection.commit()
-                }
-            }
-        }
-
-        test("rolls back and propagates other SQLExceptions unchanged when execute itself throws") {
-            val rollbacks = observedDatabase.rollbacks
-            val commits = observedDatabase.commits
-            val failure = shouldThrow<SQLException> {
-                db.insertNlBehov(nlBehovEntity().copy(orgnummer = "too-long-for-column"))
-            }
-            failure.sqlState shouldBe "22001"
-            failure shouldBeSameInstanceAs observedDatabase.insertFailure
-            observedDatabase.rollbacks shouldBe rollbacks + 1
-            observedDatabase.commits shouldBe commits
-            // The one-connection pool must remain usable after the failed transaction.
-            val insertedId = db.insertNlBehov(nlBehovEntity()).id.shouldNotBeNull()
-            observedDatabase.findBehovById(insertedId).shouldNotBeNull()
         }
 
         test("has a unique valid index with exactly the two active statuses as its predicate") {

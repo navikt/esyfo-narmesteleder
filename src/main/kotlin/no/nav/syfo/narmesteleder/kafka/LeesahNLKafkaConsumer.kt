@@ -17,7 +17,7 @@ import no.nav.syfo.application.kafka.KafkaReason
 import no.nav.syfo.application.kafka.kafkaConsumerCrashed
 import no.nav.syfo.application.kafka.kafkaConsumerFailed
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
@@ -173,7 +173,7 @@ class LeesahNLKafkaConsumer(
 
 // Malformed identifiers cannot match a stored behov, so they must not fail the record.
 private fun NarmestelederLeesahKafkaMessage.employeeOrNull(): Employee? = try {
-    Employee(PersonIdent(fnr), OrganizationNumber(orgnummer))
+    Employee(PersonalIdentificationNumber(fnr), OrganizationNumber(orgnummer))
 } catch (_: IllegalArgumentException) {
     null
 }

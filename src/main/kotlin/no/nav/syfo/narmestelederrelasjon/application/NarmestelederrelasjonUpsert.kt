@@ -1,16 +1,16 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.time.LocalDate
 import java.util.UUID
 
 /** A validated relation, ready to be inserted or updated in the relation register. */
 data class NarmestelederrelasjonUpsert(
     val narmestelederId: UUID,
-    val sykmeldtFnr: PersonIdent,
+    val sykmeldtFnr: PersonalIdentificationNumber,
     val orgnummer: OrganizationNumber,
-    val narmestelederFnr: PersonIdent,
+    val narmestelederFnr: PersonalIdentificationNumber,
     val narmestelederTelefonnummer: String,
     val narmestelederEpost: String,
     val aktivFom: LocalDate,

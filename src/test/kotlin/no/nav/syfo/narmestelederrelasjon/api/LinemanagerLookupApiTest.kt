@@ -20,7 +20,7 @@ import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupRequest
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupResponse
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerResponse
@@ -39,7 +39,7 @@ import java.util.UUID
 
 private const val CALLING_APP = "calling-app-id"
 private const val LOOKUP_PATH = "/internal/api/v1/lookup"
-private val employeeIdent = PersonIdent("12345678901")
+private val employeeIdent = PersonalIdentificationNumber("12345678901")
 private val organizationNumber = OrganizationNumber("123456789")
 private val narmestelederId = UUID.fromString("c8d10801-a0cc-4d94-a9ab-0088e850d4f4")
 
@@ -58,7 +58,7 @@ class LinemanagerLookupApiTest :
             repository.rows = listOf(
                 ActiveNarmestelederrelasjon(
                     id = narmestelederId,
-                    managerIdent = PersonIdent("10987654321"),
+                    managerIdent = PersonalIdentificationNumber("10987654321"),
                     managerEmail = " leder@example.com, , annen@example.com ",
                     activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
                 )
@@ -151,7 +151,7 @@ class LinemanagerLookupApiTest :
 
 private fun activeRelation(managerEmail: String) = ActiveNarmestelederrelasjon(
     id = narmestelederId,
-    managerIdent = PersonIdent("10987654321"),
+    managerIdent = PersonalIdentificationNumber("10987654321"),
     managerEmail = managerEmail,
     activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
 )

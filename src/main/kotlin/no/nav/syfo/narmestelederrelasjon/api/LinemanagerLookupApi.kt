@@ -8,7 +8,7 @@ import io.ktor.server.routing.route
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupRequest
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupResponse
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
@@ -43,7 +43,7 @@ fun Route.registerLineManagerLookupApi(
             }
             val employeeValue = request.employeeNationalIdentificationNumber
                 ?: throw ApiErrorException.BadRequestException("Missing employeeNationalIdentificationNumber in request body")
-            val employeeNationalIdentificationNumber = runCatching { PersonIdent(employeeValue) }.getOrElse {
+            val employeeNationalIdentificationNumber = runCatching { PersonalIdentificationNumber(employeeValue) }.getOrElse {
                 throw ApiErrorException.BadRequestException(
                     "Invalid employeeNationalIdentificationNumber in request body",
                     type = ErrorType.INVALID_FORMAT,

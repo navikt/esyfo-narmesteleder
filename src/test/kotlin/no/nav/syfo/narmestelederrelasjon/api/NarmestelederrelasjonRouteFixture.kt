@@ -7,7 +7,7 @@ import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
@@ -55,7 +55,7 @@ internal class NarmestelederrelasjonRouteFixture {
     fun lookup() = NarmestelederrelasjonLookup(
         id = id,
         organizationNumber = OrganizationNumber("123456789"),
-        employeeIdent = PersonIdent(employeeIdent),
+        employeeIdent = PersonalIdentificationNumber(employeeIdent),
         employeeFirstName = "Employee",
         employeeMiddleName = null,
         employeeLastName = "Person",
@@ -64,8 +64,8 @@ internal class NarmestelederrelasjonRouteFixture {
 
     fun revocableLookup(isActive: Boolean = true) = RevocableNarmestelederrelasjon(
         id = id,
-        employeeIdent = PersonIdent(employeeIdent),
-        managerIdent = PersonIdent("10987654321"),
+        employeeIdent = PersonalIdentificationNumber(employeeIdent),
+        managerIdent = PersonalIdentificationNumber("10987654321"),
         organizationNumber = OrganizationNumber("123456789"),
         isActive = isActive,
     )

@@ -1,12 +1,12 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.time.Instant
 import java.util.UUID
 
 interface EmployeeNarmestelederrelasjonRepository {
-    suspend fun findActive(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon>
+    suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon>
 }
 
 data class EmployeeNarmestelederrelasjon(

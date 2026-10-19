@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
@@ -64,7 +64,7 @@ class EstablishNarmestelederrelasjonUseCase(
         return Step.Continue(EmployeeAndManager(employee, manager))
     }
 
-    private suspend fun findPerson(ident: PersonIdent): EstablishStep<PersonDetails> = when (val result = personLookup.find(ident)) {
+    private suspend fun findPerson(ident: PersonalIdentificationNumber): EstablishStep<PersonDetails> = when (val result = personLookup.find(ident)) {
         is PersonLookupResult.Found -> Step.Continue(result.person)
         PersonLookupResult.NotFound -> Step.Stop(EstablishNarmestelederrelasjonResult.PersonNotFound)
         is PersonLookupResult.Unavailable -> Step.Stop(EstablishNarmestelederrelasjonResult.UpstreamUnavailable(result.failure))

@@ -70,9 +70,10 @@ PUT fulfillment or complete #525.
 
 The legacy `PhoneNumber`, `EmailAddress`, `OrganizationNumber` and
 `PersonalIdentificationNumber` definitions in `narmesteleder.domain` are
-removed. Identifiers use `PersonIdent` and `OrganizationNumber` from `ident`,
-also in the HTTP request and response models. Contact validation has one owner,
-`ManagerContactInput` in `narmestelederrelasjon`. `PersonIdent` keeps the
+removed. Identifiers use `PersonalIdentificationNumber` and
+`OrganizationNumber` from `ident`, also in the HTTP request and response models.
+Contact validation has one owner, `ManagerContactInput` in
+`narmestelederrelasjon`. `ident.PersonalIdentificationNumber` keeps the
 message `PersonalIdentificationNumber must be exactly 11 digits`, because
 Jackson returns it in the 400 response for an invalid identifier in a request
 body. The legacy `NameValidator` is also removed;

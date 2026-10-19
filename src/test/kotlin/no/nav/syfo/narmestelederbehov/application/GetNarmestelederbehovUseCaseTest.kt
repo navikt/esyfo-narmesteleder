@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.withProductionLogs
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -143,7 +143,7 @@ private class ReadFixture(
 
     suspend fun execute(
         subject: OrganizationAccessSubject = OrganizationAccessSubject.PersonnelManager(
-            personIdent = PersonIdent("12345678901"),
+            personIdent = PersonalIdentificationNumber("12345678901"),
             accessToken = AccessToken("token"),
         ),
     ) = useCase.execute(id = NarmestelederbehovId(UUID.randomUUID()), subject = subject)

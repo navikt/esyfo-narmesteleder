@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import kotlin.time.Duration
 
 interface PublishNarmestelederrelasjonRevocation {
@@ -12,7 +12,7 @@ interface PublishNarmestelederrelasjonRevocation {
 }
 
 data class PublishNarmestelederrelasjonRevocationCommand(
-    val employeeIdent: PersonIdent,
+    val employeeIdent: PersonalIdentificationNumber,
     val organizationNumber: OrganizationNumber,
     val initiator: RevocationInitiator,
 )

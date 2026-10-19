@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.integration.aareg.AaregArbeidsforholdOversikt
 import no.nav.syfo.integration.aareg.AaregClient
@@ -22,7 +22,7 @@ import no.nav.syfo.platform.upstream.UpstreamResult
 
 class AaregEmployerMainOrganizationLookupTest :
     FunSpec({
-        val employee = Employee(PersonIdent("12345678901"), OrganizationNumber("910000001"))
+        val employee = Employee(PersonalIdentificationNumber("12345678901"), OrganizationNumber("910000001"))
 
         test("returns the reporting organization of the employment in the employee's organization") {
             val client = StubClient {

@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
@@ -21,8 +21,8 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
 import java.util.UUID
 
-private val employee = PersonIdent("12345678901")
-private val resolved = PersonIdent("12345678902")
+private val employee = PersonalIdentificationNumber("12345678901")
+private val resolved = PersonalIdentificationNumber("12345678902")
 private val organization = OrganizationNumber("123456789")
 private val lps = OrganizationAccessSubject.LpsSystemUser("system-user", organization)
 
@@ -104,7 +104,7 @@ private class RevokeActiveFixture(
 ) {
     val calls = mutableListOf<String>()
     val matches = mutableListOf<LastNameMatch>()
-    val lookups = mutableListOf<Pair<PersonIdent, OrganizationNumber>>()
+    val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber>>()
     val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
     private val useCase = RevokeActiveNarmestelederrelasjonUseCase(
         OrganizationAccess { subject, org ->
@@ -120,7 +120,7 @@ private class RevokeActiveFixture(
             matches += it
         },
         object : ActiveNarmestelederrelasjonRepository {
-            override suspend fun findActive(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
+            override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
                 calls += "active"
                 lookups += employeeIdent to organizationNumber
                 return if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), employee, "invalid", Instant.EPOCH)) else emptyList()

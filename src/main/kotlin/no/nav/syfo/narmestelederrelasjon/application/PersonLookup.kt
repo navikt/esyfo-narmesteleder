@@ -1,11 +1,11 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.platform.upstream.UpstreamFailure
 
 fun interface PersonLookup {
-    suspend fun find(personIdent: PersonIdent): PersonLookupResult
+    suspend fun find(personIdent: PersonalIdentificationNumber): PersonLookupResult
 }
 
 sealed interface PersonLookupResult {
@@ -15,6 +15,6 @@ sealed interface PersonLookupResult {
 }
 
 data class PersonDetails(
-    val personIdent: PersonIdent,
+    val personIdent: PersonalIdentificationNumber,
     val name: PersonNameDetails,
 )

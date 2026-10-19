@@ -23,7 +23,7 @@ import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregCache
 import no.nav.syfo.integration.ereg.FakeEregClient
@@ -77,9 +77,9 @@ class FulfillNarmestelederbehovRouteTest :
                 response.status shouldBe HttpStatusCode.Accepted
                 fixture.establish.commands.size shouldBe 1
                 fixture.establish.commands.single().let {
-                    it.employeeIdent shouldBe PersonIdent(fixture.employeeIdent)
+                    it.employeeIdent shouldBe PersonalIdentificationNumber(fixture.employeeIdent)
                     it.organizationNumber shouldBe OrganizationNumber(fixture.orgNumber)
-                    it.manager.personIdent shouldBe PersonIdent(submittedManager.nationalIdentificationNumber.value)
+                    it.manager.personIdent shouldBe PersonalIdentificationNumber(submittedManager.nationalIdentificationNumber.value)
                 }
                 fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
             }
@@ -332,7 +332,7 @@ private class PutFixture {
     fun seed(): UUID = repository.seed(employeeIdent, orgNumber)
 
     fun newManager(): Manager = manager().copy(
-        nationalIdentificationNumber = PersonIdent(relation.manager.nationalIdentificationNumber.value.reversed()),
+        nationalIdentificationNumber = PersonalIdentificationNumber(relation.manager.nationalIdentificationNumber.value.reversed()),
     )
 }
 
@@ -344,7 +344,7 @@ private class FakePutBehovRepository : NarmestelederbehovRepository {
 
     fun seed(employeeIdent: String, orgNumber: String): UUID {
         val id = NarmestelederbehovId(UUID.randomUUID())
-        behov[id] = Narmestelederbehov(id, Employee(PersonIdent(employeeIdent), OrganizationNumber(orgNumber)))
+        behov[id] = Narmestelederbehov(id, Employee(PersonalIdentificationNumber(employeeIdent), OrganizationNumber(orgNumber)))
         return id.value
     }
 

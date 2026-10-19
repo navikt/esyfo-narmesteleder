@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.time.Instant
 import java.util.UUID
 
@@ -11,9 +11,9 @@ fun interface NarmestelederrelasjonSearchRepository {
 
 data class NarmestelederrelasjonSearchQuery(
     val orgNumber: OrganizationNumber,
-    val managerNationalIdentificationNumber: PersonIdent? = null,
-    val employeeNationalIdentificationNumber: PersonIdent? = null,
-    val nationalIdentificationNumber: PersonIdent? = null,
+    val managerNationalIdentificationNumber: PersonalIdentificationNumber? = null,
+    val employeeNationalIdentificationNumber: PersonalIdentificationNumber? = null,
+    val nationalIdentificationNumber: PersonalIdentificationNumber? = null,
     val text: String? = null,
     val hasActiveSickLeave: Boolean? = null,
     val pageSize: Int,
@@ -33,10 +33,10 @@ data class SearchNarmestelederrelasjon(
     val manager: SearchManager,
 )
 
-data class SearchPerson(val nationalIdentificationNumber: PersonIdent, val name: SearchName?)
+data class SearchPerson(val nationalIdentificationNumber: PersonalIdentificationNumber, val name: SearchName?)
 
 data class SearchManager(
-    val nationalIdentificationNumber: PersonIdent,
+    val nationalIdentificationNumber: PersonalIdentificationNumber,
     val name: SearchName?,
     val email: String,
     val mobile: String,

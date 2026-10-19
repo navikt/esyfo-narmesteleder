@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -10,10 +10,10 @@ import java.util.UUID
 
 internal fun narmestelederbehovDetails(
     id: NarmestelederbehovId = NarmestelederbehovId(UUID.randomUUID()),
-    employeeIdent: PersonIdent = PersonIdent("12345678901"),
+    employeeIdent: PersonalIdentificationNumber = PersonalIdentificationNumber("12345678901"),
     organizationNumber: OrganizationNumber = OrganizationNumber("910000001"),
     mainOrganizationNumber: String = "910000002",
-    managerIdent: PersonIdent? = null,
+    managerIdent: PersonalIdentificationNumber? = null,
     firstName: String? = "Stored",
     middleName: String? = "Middle",
     lastName: String? = "Name",

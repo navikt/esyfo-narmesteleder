@@ -1,14 +1,14 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.narmestelederrelasjon.domain.EmailAddress
 import java.util.UUID
 
 data class ActiveNarmesteleder(
     val id: UUID,
-    val managerIdent: PersonIdent,
+    val managerIdent: PersonalIdentificationNumber,
     val emailAddresses: List<EmailAddress>,
 )
 
@@ -16,7 +16,7 @@ class LookupActiveNarmestelederUseCase(
     private val repository: ActiveNarmestelederrelasjonRepository,
     private val discardedEmailAddressMetrics: DiscardedEmailAddressMetrics,
 ) {
-    suspend fun execute(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber): ActiveNarmesteleder? {
+    suspend fun execute(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber): ActiveNarmesteleder? {
         val activeRelations = repository.findActive(employeeIdent, organizationNumber)
         if (activeRelations.size > 1) {
             logger.event(multipleActiveRelations, activeRelations.size)

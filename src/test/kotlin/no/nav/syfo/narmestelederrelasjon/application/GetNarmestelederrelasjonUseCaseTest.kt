@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.Narmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
@@ -21,10 +21,10 @@ import java.util.UUID
 class GetNarmestelederrelasjonUseCaseTest :
     FunSpec({
         val id = UUID.randomUUID()
-        val employeeIdent = PersonIdent("12345678901")
+        val employeeIdent = PersonalIdentificationNumber("12345678901")
         val orgNumber = OrganizationNumber("123456789")
         val caller = OrganizationAccessSubject.PersonnelManager(
-            personIdent = PersonIdent("11111111111"),
+            personIdent = PersonalIdentificationNumber("11111111111"),
             accessToken = AccessToken("token"),
         )
 
@@ -176,7 +176,7 @@ private class FakeGetActiveSykmeldingLookup(
     private val active: Boolean,
     private val effects: MutableList<String>,
 ) : ActiveSykmeldingLookup {
-    override suspend fun hasActiveSykmelding(personIdent: PersonIdent, organizationNumber: OrganizationNumber) = active.also { effects += "sykmelding" }
+    override suspend fun hasActiveSykmelding(personIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber) = active.also { effects += "sykmelding" }
 }
 
 private class FakeGetOrganization(

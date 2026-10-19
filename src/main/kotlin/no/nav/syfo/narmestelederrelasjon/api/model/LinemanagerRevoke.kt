@@ -1,10 +1,10 @@
 package no.nav.syfo.narmestelederrelasjon.api.model
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 
 data class LinemanagerRevoke(
-    val employeeIdentificationNumber: PersonIdent,
+    val employeeIdentificationNumber: PersonalIdentificationNumber,
     val orgNumber: OrganizationNumber,
     val lastName: String,
 )

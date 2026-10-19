@@ -8,7 +8,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.ProductionLogs
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -30,8 +30,8 @@ class GetNarmestelederrelasjonLoggingContractTest :
         lateinit var capture: LogCapture
 
         val id = UUID.fromString("00000000-0000-0000-0000-00000000abcd")
-        val employeeIdent = PersonIdent("12345678901")
-        val callerIdent = PersonIdent("11111111111")
+        val employeeIdent = PersonalIdentificationNumber("12345678901")
+        val callerIdent = PersonalIdentificationNumber("11111111111")
         val orgNumber = OrganizationNumber("123456789")
         val caller = OrganizationAccessSubject.PersonnelManager(callerIdent, AccessToken("test-token"))
         val privacyCanaries = listOf(

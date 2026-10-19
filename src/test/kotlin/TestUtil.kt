@@ -4,7 +4,7 @@ import io.mockk.coEvery
 import net.datafaker.Faker
 import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.BehovReason
@@ -35,7 +35,7 @@ val faker = Faker(Random(Instant.now().epochSecond))
 
 fun faker() = faker
 fun manager(): Manager = Manager(
-    nationalIdentificationNumber = PersonIdent(faker.numerify("###########")),
+    nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
     mobile = "+47${faker.numerify("########")}",
     email = "test+${faker.numerify("#####")}@example.com",
     lastName = faker.name().lastName(),
@@ -43,7 +43,7 @@ fun manager(): Manager = Manager(
 
 fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
-    employeeIdentificationNumber = PersonIdent(faker.numerify("###########")),
+    employeeIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
     orgNumber = OrganizationNumber(faker.numerify("#########")),
     lastName = faker.name().lastName(),
 )

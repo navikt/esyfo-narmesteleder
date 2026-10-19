@@ -11,7 +11,7 @@ import io.kotest.matchers.string.shouldNotContain
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.altinn.dialogporten.client.DIALOGPORTEN
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.integration.pdl.PDL
 import no.nav.syfo.narmesteleder.domain.BehovReason
@@ -27,8 +27,8 @@ import java.util.UUID
 
 class CreateNarmestelederbehovUseCaseTest :
     FunSpec({
-        val employee = Employee(PersonIdent("12345678910"), OrganizationNumber("123456789"))
-        val manager = PersonIdent("01987654321")
+        val employee = Employee(PersonalIdentificationNumber("12345678910"), OrganizationNumber("123456789"))
+        val manager = PersonalIdentificationNumber("01987654321")
         val relationId = UUID.fromString("00000000-0000-0000-0000-000000000011")
         val sykmeldingId = UUID.fromString("00000000-0000-0000-0000-000000000022")
         val createdId = NarmestelederbehovId(UUID.fromString("00000000-0000-0000-0000-000000000033"))

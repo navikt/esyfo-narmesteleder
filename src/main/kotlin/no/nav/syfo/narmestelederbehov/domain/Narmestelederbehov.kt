@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederbehov.domain
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.util.UUID
 
 @JvmInline
@@ -13,6 +13,6 @@ data class Narmestelederbehov(
 )
 
 data class Employee(
-    val personIdent: PersonIdent,
+    val personIdent: PersonalIdentificationNumber,
     val organizationNumber: OrganizationNumber,
 )

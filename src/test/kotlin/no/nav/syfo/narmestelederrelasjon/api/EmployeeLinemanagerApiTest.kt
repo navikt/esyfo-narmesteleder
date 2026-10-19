@@ -23,7 +23,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
@@ -39,7 +39,7 @@ import java.time.Instant
 import java.util.UUID
 
 private const val EMPLOYEE_PATH = "$INTERNAL_API_V1_PATH$EMPLOYEE_LINEMANAGER_API_PATH"
-private val caller = PersonIdent("11223344556")
+private val caller = PersonalIdentificationNumber("11223344556")
 private val responseMapper = jacksonObjectMapper()
 
 class EmployeeLinemanagerApiTest :
@@ -277,9 +277,9 @@ class EmployeeLinemanagerApiTest :
 
 private class EmployeeApiRepository : EmployeeNarmestelederrelasjonRepository {
     var rows = emptyList<EmployeeNarmestelederrelasjon>()
-    val lookups = mutableListOf<Pair<PersonIdent, OrganizationNumber?>>()
+    val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber?>>()
 
-    override suspend fun findActive(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon> {
+    override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon> {
         lookups.add(employeeIdent to organizationNumber)
         return rows
     }

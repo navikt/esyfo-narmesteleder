@@ -2,7 +2,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonRepository
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -19,16 +19,16 @@ import java.time.ZoneOffset
 class ExposedRelationPersonRepository(
     private val database: Database,
 ) : RelationPersonRepository {
-    override suspend fun findPending(limit: Int): List<PersonIdent> = inTransaction {
+    override suspend fun findPending(limit: Int): List<PersonalIdentificationNumber> = inTransaction {
         PersonTable
             .select(PersonTable.fnr)
             .where { PersonTable.status eq PersonStatus.PENDING.name }
             .orderBy(PersonTable.created to SortOrder.ASC)
             .limit(limit)
-            .map { PersonIdent(it[PersonTable.fnr]) }
+            .map { PersonalIdentificationNumber(it[PersonTable.fnr]) }
     }
 
-    override suspend fun saveEnrichment(enriched: Map<PersonIdent, RegisteredPerson>, notFound: Collection<PersonIdent>) {
+    override suspend fun saveEnrichment(enriched: Map<PersonalIdentificationNumber, RegisteredPerson>, notFound: Collection<PersonalIdentificationNumber>) {
         if (enriched.isEmpty() && notFound.isEmpty()) {
             return
         }
@@ -47,14 +47,14 @@ class ExposedRelationPersonRepository(
         }
     }
 
-    override suspend fun findExisting(personIdents: Collection<PersonIdent>): List<PersonIdent> = inTransaction {
+    override suspend fun findExisting(personIdents: Collection<PersonalIdentificationNumber>): List<PersonalIdentificationNumber> = inTransaction {
         PersonTable
             .select(PersonTable.fnr)
-            .where { PersonTable.fnr inList personIdents.map(PersonIdent::value) }
-            .map { PersonIdent(it[PersonTable.fnr]) }
+            .where { PersonTable.fnr inList personIdents.map(PersonalIdentificationNumber::value) }
+            .map { PersonalIdentificationNumber(it[PersonTable.fnr]) }
     }
 
-    override suspend fun updateRegisteredDetails(persons: Map<PersonIdent, RegisteredPerson>): Set<PersonIdent> = inTransaction {
+    override suspend fun updateRegisteredDetails(persons: Map<PersonalIdentificationNumber, RegisteredPerson>): Set<PersonalIdentificationNumber> = inTransaction {
         val updatedAt = OffsetDateTime.now(ZoneOffset.UTC)
         persons
             .filter { (personIdent, person) ->

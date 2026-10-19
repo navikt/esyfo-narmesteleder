@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.domain
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 
 class ManagerContactInputTest :
     FunSpec({
@@ -135,7 +135,7 @@ class ManagerContactInputTest :
         }
     })
 
-private val managerIdent = PersonIdent("10987654321")
+private val managerIdent = PersonalIdentificationNumber("10987654321")
 
 private fun managerContact(
     email: String = "manager@example.test",

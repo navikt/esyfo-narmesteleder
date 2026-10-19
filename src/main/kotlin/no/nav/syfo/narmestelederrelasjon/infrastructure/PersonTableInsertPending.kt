@@ -1,10 +1,10 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 
 /** Inserts a [PersonStatus.PENDING] person for each ident, leaving persons that already exist untouched. */
-internal fun PersonTable.insertPendingIgnoringExisting(persons: Collection<PersonIdent>) {
+internal fun PersonTable.insertPendingIgnoringExisting(persons: Collection<PersonalIdentificationNumber>) {
     if (persons.isEmpty()) {
         return
     }

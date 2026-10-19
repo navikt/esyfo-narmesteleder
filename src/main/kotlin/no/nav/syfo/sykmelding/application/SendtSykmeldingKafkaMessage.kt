@@ -1,7 +1,7 @@
 package no.nav.syfo.sykmelding.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.MainOrganizationSource
@@ -18,7 +18,7 @@ data class SendtSykmeldingKafkaMessage(
 ) {
 
     fun toCreateNarmestelederbehovCommand(arbeidsgiver: Arbeidsgiver) = CreateNarmestelederbehovCommand(
-        employee = Employee(PersonIdent(kafkaMetadata.fnr), OrganizationNumber(arbeidsgiver.orgnummer)),
+        employee = Employee(PersonalIdentificationNumber(kafkaMetadata.fnr), OrganizationNumber(arbeidsgiver.orgnummer)),
         manager = null,
         reason = BehovReason.INGEN_LEDER_REGISTRERT,
         revokedRelationId = null,

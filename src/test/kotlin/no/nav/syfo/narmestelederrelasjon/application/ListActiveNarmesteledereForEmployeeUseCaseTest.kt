@@ -3,13 +3,13 @@ package no.nav.syfo.narmestelederrelasjon.application
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.time.Instant
 import java.util.UUID
 
 class ListActiveNarmesteledereForEmployeeUseCaseTest :
     FunSpec({
-        val employee = PersonIdent("12345678901")
+        val employee = PersonalIdentificationNumber("12345678901")
         val organization = OrganizationNumber("123456789")
         val repository = RecordingEmployeeRepository()
         val discardedEmailAddressMetrics = RecordingDiscardedEmailAddressMetrics()
@@ -80,9 +80,9 @@ class ListActiveNarmesteledereForEmployeeUseCaseTest :
 
 private class RecordingEmployeeRepository : EmployeeNarmestelederrelasjonRepository {
     var rows = emptyList<EmployeeNarmestelederrelasjon>()
-    val lookups = mutableListOf<Pair<PersonIdent, OrganizationNumber?>>()
+    val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber?>>()
 
-    override suspend fun findActive(employeeIdent: PersonIdent, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon> {
+    override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon> {
         lookups.add(employeeIdent to organizationNumber)
         return rows
     }

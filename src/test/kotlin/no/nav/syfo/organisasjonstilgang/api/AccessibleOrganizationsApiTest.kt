@@ -14,7 +14,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.clearAllMocks
 import io.mockk.mockk
 import no.nav.syfo.application.api.API_V1_PATH
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganization
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganizationsLookup
@@ -79,7 +79,7 @@ class AccessibleOrganizationsApiTest :
                         }]
                     }""",
                 )
-                lookup.subject shouldBe OrganizationAccessSubject.PersonnelManager(PersonIdent(userIdent), AccessToken(token))
+                lookup.subject shouldBe OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber(userIdent), AccessToken(token))
             }
         }
 

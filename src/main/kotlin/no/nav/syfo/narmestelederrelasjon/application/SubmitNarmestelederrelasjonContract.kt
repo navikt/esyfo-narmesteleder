@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
@@ -10,7 +10,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.upstream.UpstreamFailure
 
 data class SubmitNarmestelederrelasjonCommand(
-    val employeeIdent: PersonIdent,
+    val employeeIdent: PersonalIdentificationNumber,
     val employeeLastName: String,
     val organizationNumber: OrganizationNumber,
     val manager: ManagerContactInput,

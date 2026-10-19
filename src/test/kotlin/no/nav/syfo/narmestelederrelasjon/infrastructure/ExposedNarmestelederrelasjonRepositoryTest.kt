@@ -5,7 +5,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -76,7 +76,7 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
             relation?.id shouldBe id
             relation?.organizationNumber shouldBe OrganizationNumber("123456789")
-            relation?.employeeIdent shouldBe PersonIdent(employeeIdent)
+            relation?.employeeIdent shouldBe PersonalIdentificationNumber(employeeIdent)
             relation?.employeeFirstName shouldBe "Employee"
             relation?.isActive shouldBe true
         }
@@ -114,8 +114,8 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
             repository.findRevocableById(id) shouldBe RevocableNarmestelederrelasjon(
                 id = id,
-                employeeIdent = PersonIdent(employeeIdent),
-                managerIdent = PersonIdent(managerIdent),
+                employeeIdent = PersonalIdentificationNumber(employeeIdent),
+                managerIdent = PersonalIdentificationNumber(managerIdent),
                 organizationNumber = OrganizationNumber("123456789"),
                 isActive = true,
             )
@@ -147,8 +147,8 @@ class ExposedNarmestelederrelasjonRepositoryTest :
             insertRelation(other, employee = "12345678902", manager = "10987654322")
             insertRelation(wanted)
 
-            repository.findRevocableById(other)?.employeeIdent shouldBe PersonIdent("12345678902")
-            repository.findRevocableById(other)?.managerIdent shouldBe PersonIdent("10987654322")
-            repository.findRevocableById(wanted)?.employeeIdent shouldBe PersonIdent(employeeIdent)
+            repository.findRevocableById(other)?.employeeIdent shouldBe PersonalIdentificationNumber("12345678902")
+            repository.findRevocableById(other)?.managerIdent shouldBe PersonalIdentificationNumber("10987654322")
+            repository.findRevocableById(wanted)?.employeeIdent shouldBe PersonalIdentificationNumber(employeeIdent)
         }
     })

@@ -8,7 +8,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Instant
@@ -39,7 +39,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
 
             val call = repository.calls.single()
             call.relasjoner shouldBe records.map { it.relasjon.validated() }
-            call.persons shouldBe listOf("12345678901", "10987654321", "11111111111").map(::PersonIdent)
+            call.persons shouldBe listOf("12345678901", "10987654321", "11111111111").map(::PersonalIdentificationNumber)
             metrics.upserted shouldBe listOf(3)
             metrics.invalid shouldBe 0
         }

@@ -190,7 +190,7 @@ class AaregClientTest :
                     result.failure.upstream shouldBe AAREG
                     result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
                     result.failure.status shouldBe status.value
-                    result.shouldNotExposePersonIdent(personIdent)
+                    result.shouldNotExposePersonalIdentificationNumber(personIdent)
                 }
             }
 
@@ -205,7 +205,7 @@ class AaregClientTest :
                 result.failure.stage shouldBe UpstreamFailureStage.REQUEST
                 result.failure.status shouldBe null
                 result.failure.cause shouldBeSameInstanceAs timeout
-                result.shouldNotExposePersonIdent(personIdent)
+                result.shouldNotExposePersonalIdentificationNumber(personIdent)
             }
 
             test("$operation returns an Aareg response failure with the successful status for a malformed body") {
@@ -216,7 +216,7 @@ class AaregClientTest :
                 result.failure.stage shouldBe UpstreamFailureStage.RESPONSE
                 result.failure.status shouldBe 200
                 result.failure.cause?.javaClass?.simpleName shouldBe "JsonConvertException"
-                result.shouldNotExposePersonIdent(personIdent)
+                result.shouldNotExposePersonalIdentificationNumber(personIdent)
             }
 
             test("$operation propagates a Texas token exchange failure without sending the employee ident") {
@@ -232,7 +232,7 @@ class AaregClientTest :
                 result.failure.upstream shouldBe TEXAS
                 result.failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
                 result.failure.status shouldBe 503
-                result.shouldNotExposePersonIdent(personIdent)
+                result.shouldNotExposePersonalIdentificationNumber(personIdent)
             }
 
             test("$operation rethrows cancellation while acquiring a token or sending the request") {
@@ -284,7 +284,7 @@ class AaregClientTest :
         }
     })
 
-private fun UpstreamResult.Failure.shouldNotExposePersonIdent(personIdent: String) {
+private fun UpstreamResult.Failure.shouldNotExposePersonalIdentificationNumber(personIdent: String) {
     toString() shouldNotContain personIdent
     failure.toString() shouldNotContain personIdent
     shouldThrow<UpstreamRequestException> { getOrThrow() }.message.orEmpty() shouldNotContain personIdent

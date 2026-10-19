@@ -2,7 +2,7 @@ package no.nav.syfo.sykmelding.application
 
 import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
@@ -113,7 +113,7 @@ class SendtSykmeldingHandler(
         // Keep this check here, not in CreateNarmestelederbehov: the Leesah deactivation flow also
         // creates behov, and the local relation register may not yet reflect the deactivation.
         if (hasActiveNarmestelederrelasjon.execute(
-                PersonIdent(message.kafkaMetadata.fnr),
+                PersonalIdentificationNumber(message.kafkaMetadata.fnr),
                 OrganizationNumber(arbeidsgiver.orgnummer),
             )
         ) {

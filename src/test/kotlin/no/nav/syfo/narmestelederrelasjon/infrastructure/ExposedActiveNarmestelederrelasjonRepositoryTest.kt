@@ -4,14 +4,14 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
-private val employeeIdent = PersonIdent("12345678901")
+private val employeeIdent = PersonalIdentificationNumber("12345678901")
 private val organizationNumber = OrganizationNumber("123456789")
 private val activeFrom = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
 
@@ -34,7 +34,7 @@ class ExposedActiveNarmestelederrelasjonRepositoryTest :
 
             result.size shouldBe 1
             result.first().id shouldBe narmestelederId
-            result.first().managerIdent shouldBe PersonIdent("10987654321")
+            result.first().managerIdent shouldBe PersonalIdentificationNumber("10987654321")
             result.first().managerEmail shouldBe "leder@example.com"
             result.first().activeFrom shouldBe activeFrom.toInstant()
         }

@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -20,7 +20,7 @@ class ExposedActiveNarmestelederrelasjonRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ActiveNarmestelederrelasjonRepository {
     override suspend fun findActive(
-        employeeIdent: PersonIdent,
+        employeeIdent: PersonalIdentificationNumber,
         organizationNumber: OrganizationNumber,
     ): List<ActiveNarmestelederrelasjon> = withContext(dispatcher) {
         suspendTransaction(db = database) {
@@ -43,7 +43,7 @@ class ExposedActiveNarmestelederrelasjonRepository(
                 .map { row ->
                     ActiveNarmestelederrelasjon(
                         id = row[NarmestelederTable.narmestelederId],
-                        managerIdent = PersonIdent(row[NarmestelederTable.narmestelederFnr]),
+                        managerIdent = PersonalIdentificationNumber(row[NarmestelederTable.narmestelederFnr]),
                         managerEmail = row[NarmestelederTable.narmestelederEpost],
                         activeFrom = row[NarmestelederTable.aktivFom].toInstant(),
                     )

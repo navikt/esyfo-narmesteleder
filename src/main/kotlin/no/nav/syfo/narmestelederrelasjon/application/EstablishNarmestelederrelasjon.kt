@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.NormalizedManagerContact
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -11,7 +11,7 @@ fun interface EstablishNarmestelederrelasjon {
 }
 
 data class EstablishNarmestelederrelasjonCommand(
-    val employeeIdent: PersonIdent,
+    val employeeIdent: PersonalIdentificationNumber,
     val organizationNumber: OrganizationNumber,
     val manager: NormalizedManagerContact,
     val source: RelationSource,

@@ -10,7 +10,7 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countEmployeeLinemanager
@@ -39,7 +39,7 @@ fun Route.registerEmployeeLinemanagerApi(
             }
             // The employee identity is derived solely from the authenticated TokenX user's `pid`.
             // Altinn validation is not required because callers can retrieve only their own relationships.
-            val employee = runCatching { PersonIdent(principal.ident) }
+            val employee = runCatching { PersonalIdentificationNumber(principal.ident) }
                 .getOrElse {
                     throw ApiErrorException.UnauthorizedException("Invalid token subject")
                 }

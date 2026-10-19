@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.application
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
@@ -20,12 +20,12 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 class SubmitNarmestelederrelasjonPublicationTest :
     FunSpec({
         test("both caller types publish the unchanged Kafka payload and source") {
-            val employee = PersonIdent("12345678901")
-            val manager = PersonIdent("10987654321")
+            val employee = PersonalIdentificationNumber("12345678901")
+            val manager = PersonalIdentificationNumber("10987654321")
             val organization = OrganizationNumber("123456789")
             listOf(
                 OrganizationAccessSubject.LpsSystemUser("system-id", organization) to NlResponseSource.LPS,
-                OrganizationAccessSubject.PersonnelManager(PersonIdent("11223344556"), AccessToken("test-token")) to NlResponseSource.PERSONALLEDER,
+                OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber("11223344556"), AccessToken("test-token")) to NlResponseSource.PERSONALLEDER,
             ).forEach { (subject, expectedSource) ->
                 val producer = RecordingProducer()
                 val establish = EstablishNarmestelederrelasjonUseCase(

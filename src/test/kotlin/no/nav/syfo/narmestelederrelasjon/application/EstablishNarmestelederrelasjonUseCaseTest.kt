@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactNormalization
@@ -26,8 +26,8 @@ class EstablishNarmestelederrelasjonUseCaseTest :
         test("publishes resolved employee and submitted manager with normalized contact after ordered validations and metric") {
             val effects = mutableListOf<String>()
             val publisher = RecordingPublisher(effects)
-            val resolvedEmployee = employee.copy(personIdent = PersonIdent("12121212121"))
-            val resolvedManager = manager.copy(personIdent = PersonIdent("34343434343"))
+            val resolvedEmployee = employee.copy(personIdent = PersonalIdentificationNumber("12121212121"))
+            val resolvedManager = manager.copy(personIdent = PersonalIdentificationNumber("34343434343"))
             val useCase = createEstablisher(
                 effects = effects,
                 people = mapOf(employeeIdent to resolvedEmployee, managerIdent to resolvedManager),
@@ -195,8 +195,8 @@ class EstablishNarmestelederrelasjonUseCaseTest :
         }
     })
 
-private val employeeIdent = PersonIdent("12345678901")
-private val managerIdent = PersonIdent("10987654321")
+private val employeeIdent = PersonalIdentificationNumber("12345678901")
+private val managerIdent = PersonalIdentificationNumber("10987654321")
 private val organizationNumber = OrganizationNumber("123456789")
 private val employee = PersonDetails(employeeIdent, PersonNameDetails("Employee", "Employee", "EmployeeMiddle", listOf(RegisteredName("Employee"))))
 private val manager = PersonDetails(managerIdent, PersonNameDetails("Manager", "Manager", "ManagerMiddle", listOf(RegisteredName("Manager"))))
@@ -218,8 +218,8 @@ private fun createEstablisher(
     active: Boolean = true,
     activeFailure: Throwable? = null,
     employment: EmploymentResult = EmploymentResult.InOrganization,
-    people: Map<PersonIdent, PersonDetails> = defaultPeople,
-    unavailable: Pair<PersonIdent, UpstreamFailure>? = null,
+    people: Map<PersonalIdentificationNumber, PersonDetails> = defaultPeople,
+    unavailable: Pair<PersonalIdentificationNumber, UpstreamFailure>? = null,
     metrics: NameValidationMetrics = NameValidationMetrics { effects += "metric" },
     publisher: RecordingPublisher = RecordingPublisher(effects),
 ): EstablishNarmestelederrelasjonUseCase = EstablishNarmestelederrelasjonUseCase(
@@ -256,7 +256,7 @@ private class RecordingPublisher(
 private data class RejectionCase(
     val active: Boolean,
     val employment: EmploymentResult,
-    val people: Map<PersonIdent, PersonDetails>,
+    val people: Map<PersonalIdentificationNumber, PersonDetails>,
     val expected: EstablishNarmestelederrelasjonResult,
     val effects: List<String>,
 )

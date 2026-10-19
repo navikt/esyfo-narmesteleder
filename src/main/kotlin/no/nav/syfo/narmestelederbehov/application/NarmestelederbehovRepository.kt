@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
@@ -32,7 +32,7 @@ interface NarmestelederbehovRepository {
 data class NewNarmestelederbehov(
     val employee: Employee,
     val mainOrganizationNumber: String,
-    val manager: PersonIdent?,
+    val manager: PersonalIdentificationNumber?,
     val reason: BehovReason,
     val status: BehovStatus,
     val revokedRelationId: UUID?,

@@ -2,7 +2,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.GetPersonBolkResponse
 import no.nav.syfo.integration.pdl.Ident
 import no.nav.syfo.integration.pdl.Navn
@@ -21,7 +21,7 @@ import no.nav.syfo.platform.upstream.UpstreamResult
 
 class PdlPersonLookupTest :
     FunSpec({
-        val ident = PersonIdent("12345678901")
+        val ident = PersonalIdentificationNumber("12345678901")
         val person = PdlPerson(
             PersonResponse(listOf(Navn("Test", "Middle", "Name"), Navn("Test", null, "Previous"))),
             listOf(Ident(ident.value, Ident.GRUPPE_IDENT_FNR)),

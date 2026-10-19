@@ -13,7 +13,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -331,13 +331,13 @@ class FulfillNarmestelederbehovUseCaseTest :
         }
     })
 
-internal val employeeIdent = PersonIdent("12345678901")
-internal val managerIdent = PersonIdent("10987654321")
+internal val employeeIdent = PersonalIdentificationNumber("12345678901")
+internal val managerIdent = PersonalIdentificationNumber("10987654321")
 internal val organizationNumber = OrganizationNumber("123456789")
 internal val behovId = NarmestelederbehovId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
 internal val behov = Narmestelederbehov(behovId, Employee(employeeIdent, organizationNumber))
 internal val personnelManager = OrganizationAccessSubject.PersonnelManager(
-    personIdent = PersonIdent("11223344556"),
+    personIdent = PersonalIdentificationNumber("11223344556"),
     accessToken = no.nav.syfo.organisasjonstilgang.application.AccessToken("test-token"),
 )
 internal val lpsSystemUser = OrganizationAccessSubject.LpsSystemUser(

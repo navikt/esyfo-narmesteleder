@@ -1,12 +1,12 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.platform.upstream.UpstreamFailure
 
 fun interface EmploymentLookup {
     suspend fun findEmployment(
-        personIdent: PersonIdent,
+        personIdent: PersonalIdentificationNumber,
         organizationNumber: OrganizationNumber,
     ): EmploymentResult
 }

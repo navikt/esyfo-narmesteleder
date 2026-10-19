@@ -16,7 +16,7 @@ import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregCache
 import no.nav.syfo.integration.ereg.FakeEregClient
@@ -103,7 +103,7 @@ class AltinnOrganizationAccessLoggingContractTest :
             val fixture = LoggingFixture(AuthorizationDecision.Deny, parentOrgNumber = UNRELATED_ORG)
 
             fixture.access.evaluate(
-                OrganizationAccessSubject.PersonnelManager(PersonIdent(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
+                OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
                 OrganizationNumber(REQUESTED_ORG),
             )
 
@@ -113,7 +113,7 @@ class AltinnOrganizationAccessLoggingContractTest :
             val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.REQUEST, null, IllegalStateException("Synthetic failure"))
             val fixture = LoggingFixture(AuthorizationDecision.Deny, parentOrgNumber = UNRELATED_ORG, altinnFailure = failure)
             val result = fixture.access.evaluate(
-                OrganizationAccessSubject.PersonnelManager(PersonIdent(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
+                OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber(PERSON_IDENT), AccessToken(ACCESS_TOKEN)),
                 OrganizationNumber(REQUESTED_ORG),
             )
             result shouldBe OrganizationAccessResult.Unavailable(failure)

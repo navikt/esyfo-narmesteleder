@@ -1,14 +1,14 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 
 internal class RecordingLeesahNarmestelederrelasjonRepository : LeesahNarmestelederrelasjonRepository {
-    data class Call(val relasjoner: List<NarmestelederrelasjonUpsert>, val persons: List<PersonIdent>)
+    data class Call(val relasjoner: List<NarmestelederrelasjonUpsert>, val persons: List<PersonalIdentificationNumber>)
 
     val calls = mutableListOf<Call>()
 
-    override fun upsertAll(relasjoner: List<NarmestelederrelasjonUpsert>, persons: List<PersonIdent>) {
+    override fun upsertAll(relasjoner: List<NarmestelederrelasjonUpsert>, persons: List<PersonalIdentificationNumber>) {
         calls.add(Call(relasjoner, persons))
     }
 }
@@ -28,9 +28,9 @@ internal class RecordingNarmestelederRegisterMetrics : NarmestelederRegisterMetr
 
 internal fun LeesahNarmestelederrelasjon.validated() = NarmestelederrelasjonUpsert(
     narmestelederId = narmestelederId,
-    sykmeldtFnr = PersonIdent(sykmeldtFnr),
+    sykmeldtFnr = PersonalIdentificationNumber(sykmeldtFnr),
     orgnummer = OrganizationNumber(orgnummer),
-    narmestelederFnr = PersonIdent(narmestelederFnr),
+    narmestelederFnr = PersonalIdentificationNumber(narmestelederFnr),
     narmestelederTelefonnummer = narmestelederTelefonnummer,
     narmestelederEpost = narmestelederEpost,
     aktivFom = aktivFom,

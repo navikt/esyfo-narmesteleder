@@ -1,7 +1,7 @@
 package no.nav.syfo.sykmelding.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
 import java.time.OffsetDateTime
@@ -25,7 +25,7 @@ class NarmestelederBruddService(
 
         revokeNarmestelederrelasjon.execute(
             RevokeNarmestelederrelasjonFromSendtSykmeldingCommand(
-                employeeIdent = PersonIdent(fnr),
+                employeeIdent = PersonalIdentificationNumber(fnr),
                 organizationNumber = OrganizationNumber(orgnummer),
             ),
         )

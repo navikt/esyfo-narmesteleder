@@ -1,10 +1,10 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.platform.upstream.UpstreamFailure
 
 fun interface EmployeeNameLookup {
-    suspend fun find(employeeIdent: PersonIdent): EmployeeNameLookupResult
+    suspend fun find(employeeIdent: PersonalIdentificationNumber): EmployeeNameLookupResult
 }
 
 sealed interface EmployeeNameLookupResult {

@@ -10,7 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.withProductionLogs
 import no.nav.syfo.narmestelederrelasjon.domain.Employment
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -29,7 +29,7 @@ private val now = Instant.parse("2026-01-31T12:00:00Z")
 private val claim = ClaimedEmploymentCheck(
     narmesteLederId = UUID.randomUUID(),
     organizationNumber = OrganizationNumber("123456789"),
-    employeeIdent = PersonIdent("12345678901"),
+    employeeIdent = PersonalIdentificationNumber("12345678901"),
     claimToken = UUID.randomUUID(),
     claimedAt = now,
 )

@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
@@ -125,7 +125,7 @@ class ExposedEmploymentReconciliationRepository(
                         ClaimedEmploymentCheck(
                             narmesteLederId = row[EmploymentReconciliationTable.narmestelederId],
                             organizationNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
-                            employeeIdent = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
+                            employeeIdent = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
                             claimToken = token,
                             claimedAt = now,
                             sourceRevokedAt = row[EmploymentReconciliationTable.sourceRevocationObservedAt]

@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -43,13 +43,13 @@ class SearchActiveNarmestelederrelasjonerUseCase(
         val pageSize = pageSize?.takeIf { it in 1..DEFAULT_PAGE_SIZE } ?: DEFAULT_PAGE_SIZE
         val cursor = LinemanagerSearchCursor.fromPageToken(pageToken)
             .getOrElse { return Step.Stop(SearchActiveNarmestelederrelasjonerResult.InvalidPageToken) }
-        val identText = text?.takeIf { PersonIdent.isValid(it) }
+        val identText = text?.takeIf { PersonalIdentificationNumber.isValid(it) }
         return Step.Continue(
             NarmestelederrelasjonSearchQuery(
                 orgNumber = orgNumber,
                 managerNationalIdentificationNumber = managerNationalIdentificationNumber,
                 employeeNationalIdentificationNumber = employeeNationalIdentificationNumber,
-                nationalIdentificationNumber = identText?.let(::PersonIdent),
+                nationalIdentificationNumber = identText?.let(::PersonalIdentificationNumber),
                 text = text?.takeUnless { identText != null },
                 hasActiveSickLeave = hasActiveSickLeave,
                 pageSize = pageSize,
@@ -72,8 +72,8 @@ class SearchActiveNarmestelederrelasjonerUseCase(
 
 data class SearchActiveNarmestelederrelasjonerCommand(
     val orgNumber: OrganizationNumber,
-    val managerNationalIdentificationNumber: PersonIdent? = null,
-    val employeeNationalIdentificationNumber: PersonIdent? = null,
+    val managerNationalIdentificationNumber: PersonalIdentificationNumber? = null,
+    val employeeNationalIdentificationNumber: PersonalIdentificationNumber? = null,
     val hasActiveSickLeave: Boolean? = null,
     val text: String? = null,
     val pageSize: Int? = null,

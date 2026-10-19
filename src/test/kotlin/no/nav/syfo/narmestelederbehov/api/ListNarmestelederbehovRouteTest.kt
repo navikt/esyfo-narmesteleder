@@ -16,7 +16,7 @@ import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.ApiError
 import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -300,7 +300,7 @@ private class ListRouteRepository :
 }
 
 private fun routeDetails() = narmestelederbehovDetails(
-    employeeIdent = PersonIdent(EMPLOYEE_IDENT),
+    employeeIdent = PersonalIdentificationNumber(EMPLOYEE_IDENT),
     organizationNumber = OrganizationNumber(ORGANIZATION_NUMBER),
     reason = BehovReason.DEAKTIVERT_LEDER,
 )

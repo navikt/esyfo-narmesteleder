@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
@@ -53,7 +53,7 @@ class ExposedNarmestelederrelasjonRepository(
                         NarmestelederrelasjonLookup(
                             id = row[NarmestelederTable.narmestelederId],
                             organizationNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
-                            employeeIdent = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
+                            employeeIdent = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
                             employeeFirstName = row[employeePerson[PersonTable.fornavn]],
                             employeeMiddleName = row[employeePerson[PersonTable.mellomnavn]],
                             employeeLastName = row[employeePerson[PersonTable.etternavn]],
@@ -81,8 +81,8 @@ class ExposedNarmestelederrelasjonRepository(
                 .map { row ->
                     RevocableNarmestelederrelasjon(
                         id = row[NarmestelederTable.narmestelederId],
-                        employeeIdent = PersonIdent(row[NarmestelederTable.sykmeldtFnr]),
-                        managerIdent = PersonIdent(row[NarmestelederTable.narmestelederFnr]),
+                        employeeIdent = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
+                        managerIdent = PersonalIdentificationNumber(row[NarmestelederTable.narmestelederFnr]),
                         organizationNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
                         isActive = row[NarmestelederTable.aktivTom] == null,
                     )

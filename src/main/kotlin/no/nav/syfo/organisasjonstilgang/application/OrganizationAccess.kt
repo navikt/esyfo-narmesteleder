@@ -1,7 +1,7 @@
 package no.nav.syfo.organisasjonstilgang.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.platform.upstream.UpstreamFailure
 
 fun interface OrganizationAccess {
@@ -13,7 +13,7 @@ fun interface OrganizationAccess {
 
 sealed interface OrganizationAccessSubject {
     data class PersonnelManager(
-        val personIdent: PersonIdent,
+        val personIdent: PersonalIdentificationNumber,
         val accessToken: AccessToken,
     ) : OrganizationAccessSubject
 

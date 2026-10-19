@@ -3,7 +3,7 @@ package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganization
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
@@ -25,7 +25,7 @@ class AltinnTilgangerServiceTest :
 
         context("find") {
             val userPrincipal = UserPrincipal("12345678910", "token")
-            val subject = OrganizationAccessSubject.PersonnelManager(PersonIdent(userPrincipal.ident), AccessToken(userPrincipal.token))
+            val subject = OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber(userPrincipal.ident), AccessToken(userPrincipal.token))
 
             test("should return Success null when the organization is absent") {
                 altinnTilgangerService.getAltinnTilgangForOrgnr(userPrincipal, "999999999") shouldBe UpstreamResult.Success(null)

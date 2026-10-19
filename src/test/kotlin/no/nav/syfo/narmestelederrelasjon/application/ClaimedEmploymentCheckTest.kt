@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import java.time.Instant
 import java.util.UUID
 
@@ -14,7 +14,7 @@ class ClaimedEmploymentCheckTest :
             val claim = ClaimedEmploymentCheck(
                 narmesteLederId = UUID.fromString("00000000-0000-0000-0000-000000000001"),
                 organizationNumber = OrganizationNumber("123456789"),
-                employeeIdent = PersonIdent("12345678901"),
+                employeeIdent = PersonalIdentificationNumber("12345678901"),
                 claimToken = UUID.fromString("00000000-0000-0000-0000-000000000002"),
                 claimedAt = Instant.parse("2026-06-15T12:00:00Z"),
             )

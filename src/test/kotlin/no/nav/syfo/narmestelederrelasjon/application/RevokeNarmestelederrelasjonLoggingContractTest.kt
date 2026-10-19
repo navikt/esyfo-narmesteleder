@@ -7,7 +7,7 @@ import io.kotest.matchers.string.shouldNotContain
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonIdent
+import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.ProductionLogs
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -28,8 +28,8 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
         val productionLogs = extension(ProductionLogs(RevokeNarmestelederrelasjonUseCase::class.java))
         lateinit var capture: LogCapture
         val id = UUID.fromString("00000000-0000-0000-0000-00000000abcd")
-        val employee = PersonIdent("12345678901")
-        val outsider = PersonIdent("11111111111")
+        val employee = PersonalIdentificationNumber("12345678901")
+        val outsider = PersonalIdentificationNumber("11111111111")
         val org = OrganizationNumber("123456789")
         val user = OrganizationAccessSubject.PersonnelManager(outsider, AccessToken("test-token"))
         val system = OrganizationAccessSubject.LpsSystemUser("test-system-user", org)
@@ -43,7 +43,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
             repository = object : NarmestelederrelasjonRepository {
                 override suspend fun findById(id: UUID): NarmestelederrelasjonLookup? = error("Not used by revoke")
                 override suspend fun findRevocableById(id: UUID) = if (found) {
-                    RevocableNarmestelederrelasjon(id, employee, PersonIdent("10987654321"), org, isActive = false)
+                    RevocableNarmestelederrelasjon(id, employee, PersonalIdentificationNumber("10987654321"), org, isActive = false)
                 } else {
                     null
                 }

@@ -153,11 +153,6 @@ sykmelding -> narmestelederrelasjon
 their own `ActiveSykmeldingLookup` port. Replacing those adapters with the local
 sykmelding projection belongs to #508 and follow-up work.
 
-`ShadowActiveSykmeldingService` remains dormant until that migration resumes.
-It is not dead code and must not shape the initial production dependency graph.
-Until then it reads the local projection through the `ActiveSykmeldingRepository`
-port in `sykmelding.application`.
-
 The incoming sendt sykmelding model (`SendtSykmeldingKafkaMessage` and
 `SykmeldingRecord`) lives in `sykmelding.application` as the module's input
 model, so the application classes do not depend on `infrastructure`. The Kafka

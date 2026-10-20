@@ -278,8 +278,17 @@ module per capability:
 ```kotlin
 fun Application.module() {
     platformModule(applicationModules(isLocalEnv()))
+    bindJvmAndProcessMetrics()
+    configureLifecycleHooks(get())
+    configureLeaderMonitoring(get(), get())
+    organisasjonstilgangModule()
+    narmestelederrelasjonModule()
+    narmestelederbehovModule()
     narmestelederstatistikkModule()
-    // ... other capability modules
+    sykmeldingModule()
+    configureKafkaConsumers()
+    configureBackgroundTasks()
+    configureEmploymentChecks()
 }
 ```
 
@@ -295,6 +304,17 @@ fun Application.module() {
   `DependencyInjectionTest` verifies each `<capability>Dependencies()` together
   with `applicationModules`, and fails if a type is defined twice (Koin would
   otherwise let the last definition win silently).
+- All five capabilities (`organisasjonstilgang`, `narmestelederrelasjon`,
+  `narmestelederbehov`, `narmestelederstatistikk` and `sykmelding`) follow this
+  pattern for dependencies and routes where applicable. Consumer/task startup
+  remains in `plugins` until moved into their capability modules.
+- Koin definitions are not order-sensitive, but capability modules load their
+  definitions with `koinModules` and eagerly resolve route dependencies at
+  startup to fail fast. A module using another capability's contract must
+  therefore run after that capability's module: organisasjonstilgang first
+  because the other capabilities use `OrganizationAccess`, relasjon before
+  behov, and sykmelding after behov and relasjon. Consumers, tasks and anything
+  else resolving capability definitions run after all capability modules.
 - Capability modules add routes under `apiV1 { }` or `internalApiV1 { }` from
   `platform.api`. These helpers install `AddTokenIssuerPlugin` once per prefix,
   so several modules can share the same prefix.
@@ -559,9 +579,9 @@ the final repository-wide rules can replace the migration-specific checks.
 `POST /internal/api/v1/linemanager/search` now lives in `narmestelederrelasjon` as `SearchActiveNarmestelederrelasjonerUseCase`.
 
 `sykmelding` follows the module structure (`application`, `infrastructure` and
-`retention`) and registers its dependencies in `sykmeldingModule()`. Its
-persistence adapters use Exposed DSL, and its consumers still have to move to a
-shared consumer runner (#623).
+`retention`) and registers its dependencies through `sykmeldingDependencies()`
+in its Ktor module. Its persistence adapters use Exposed DSL, and its
+consumers still have to move to a shared consumer runner (#623).
 
 The fulfillment foundation and its remaining activation work are described in
 [Fulfillment migration status](narmestelederbehov-fulfillment-migration.md).

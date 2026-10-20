@@ -6,13 +6,6 @@ import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.LocalEnvironment
 import no.nav.syfo.application.environment.NaisEnvironment
-import no.nav.syfo.narmestelederbehov.api.narmestelederbehovApiUrl
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
-import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
-import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
-import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
-import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
-import no.nav.syfo.sykmelding.sykmeldingModule
 import org.koin.core.module.Module
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
@@ -37,10 +30,6 @@ fun applicationModules(isLocalEnv: Boolean): List<Module> = listOf(
     legacyRepositoriesModule(),
     legacyServicesModule(),
     tasksModule(),
-    narmestelederbehovModule(),
-    narmestelederrelasjonModule(),
-    organisasjonstilgangModule(),
-    sykmeldingModule(),
 )
 
 private fun coreModule(isLocalEnv: Boolean) = module {
@@ -53,13 +42,6 @@ private fun coreModule(isLocalEnv: Boolean) = module {
         }
     }
     single { Clock.systemDefaultZone() }
-    single { NarmestelederbehovCreationSettings(persistenceEnabled = get<Environment>().otherProperties.persistLeesahNlBehov) }
-    single {
-        NarmestelederbehovDialogFactory(
-            narmestelederbehovApiUrl = narmestelederbehovApiUrl(get<Environment>().otherProperties.publicIngressUrl),
-            frontendBaseUrl = get<Environment>().otherProperties.frontendBaseUrl,
-        )
-    }
 }
 
 internal fun Scope.env() = get<Environment>()

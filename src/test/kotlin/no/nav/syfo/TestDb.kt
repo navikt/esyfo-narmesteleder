@@ -3,16 +3,20 @@ package no.nav.syfo
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import no.nav.syfo.application.database.DatabaseInterface
-import no.nav.syfo.sykmelding.application.SendtSykmeldingEntity
-import no.nav.syfo.sykmelding.infrastructure.PostgresSykmeldingDb
-import no.nav.syfo.sykmelding.infrastructure.toSendtSykmeldingEntity
+import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
+import no.nav.syfo.sykmelding.infrastructure.SendtSykmeldingTable
 import org.flywaydb.core.Flyway
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import java.sql.Connection
 import java.sql.Timestamp
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlin.time.ExperimentalTime
 import kotlin.use
@@ -139,19 +143,40 @@ class TestDB private constructor() {
     }
 }
 
-fun PostgresSykmeldingDb.findAll(): List<SendtSykmeldingEntity> = TestDB.database.connection.use { connection ->
-    connection
-        .prepareStatement(
-            """
-            SELECT * 
-            FROM sendt_sykmelding
-            """.trimIndent()
-        ).use { preparedStatement ->
-            val resultSet = preparedStatement.executeQuery()
-            buildList {
-                while (resultSet.next()) {
-                    add(resultSet.toSendtSykmeldingEntity())
-                }
-            }
-        }
+data class PersistedSendtSykmelding(
+    val id: Long,
+    val sykmeldingId: UUID,
+    val fnr: String,
+    val orgnummer: String,
+    val fom: LocalDate,
+    val tom: LocalDate,
+    val syketilfelleStartDato: LocalDate?,
+    val revokedDate: LocalDate?,
+    val created: Instant,
+    val updated: Instant,
+)
+
+fun ExposedSykmeldingDb.findAll(): List<PersistedSendtSykmelding> = transaction(TestDB.exposedDatabase) {
+    SendtSykmeldingTable.selectAll().map { it.toPersistedSendtSykmelding() }
 }
+
+fun ExposedSykmeldingDb.findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmelding? = transaction(TestDB.exposedDatabase) {
+    SendtSykmeldingTable
+        .selectAll()
+        .where { SendtSykmeldingTable.sykmeldingId eq sykmeldingId }
+        .singleOrNull()
+        ?.toPersistedSendtSykmelding()
+}
+
+private fun ResultRow.toPersistedSendtSykmelding() = PersistedSendtSykmelding(
+    id = this[SendtSykmeldingTable.id].value.toLong(),
+    sykmeldingId = this[SendtSykmeldingTable.sykmeldingId],
+    fnr = this[SendtSykmeldingTable.fnr],
+    orgnummer = this[SendtSykmeldingTable.orgnummer],
+    fom = this[SendtSykmeldingTable.fom],
+    tom = this[SendtSykmeldingTable.tom],
+    syketilfelleStartDato = this[SendtSykmeldingTable.syketilfelleStartDato],
+    revokedDate = this[SendtSykmeldingTable.revokedDate],
+    created = this[SendtSykmeldingTable.created].toInstant(),
+    updated = this[SendtSykmeldingTable.updated].toInstant(),
+)

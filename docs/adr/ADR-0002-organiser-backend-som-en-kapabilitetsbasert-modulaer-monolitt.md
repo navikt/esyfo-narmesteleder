@@ -152,7 +152,5 @@ teameierskap som forsvarer nye nettverksgrenser, kontrakter og driftsansvar.
 - Domenebegreper er norske. Tekniske roller og handlinger er engelske.
 - Kafka-topologi, leader gating, leveringssemantikk, databaseskjema og
   persistensmekanisme endres ikke som en del av struktureringen.
-- `ShadowActiveSykmeldingService` beholdes som en sovende migreringsmekanisme
-  til #508 og oppfølgingen av lokal aktiv-sykmelding-validering er avklart.
 - Migreringen skjer i komplette vertikale flyter. Første flyt er fullføring av
   narmestelederbehov.

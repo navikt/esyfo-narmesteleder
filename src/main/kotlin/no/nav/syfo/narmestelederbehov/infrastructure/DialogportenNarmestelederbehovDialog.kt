@@ -1,12 +1,12 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.dialogportenRevisionConflictFailure
-import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogPatchResult
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.dialogportenRevisionConflictFailure
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
 import no.nav.syfo.platform.upstream.getOrElse
 import java.util.UUID
 

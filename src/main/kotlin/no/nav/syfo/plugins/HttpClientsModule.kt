@@ -1,8 +1,5 @@
 package no.nav.syfo.plugins
 
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.FakeDialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.integration.aareg.AaregClient
 import no.nav.syfo.integration.aareg.FakeAaregClient
 import no.nav.syfo.integration.aareg.HttpAaregClient
@@ -16,6 +13,9 @@ import no.nav.syfo.integration.ereg.HttpEregClient
 import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.integration.pdl.HttpPdlClient
 import no.nav.syfo.integration.pdl.PdlClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.FakeDialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.FakeAltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpAltinnAuthorizationClient

@@ -1,4 +1,4 @@
-package no.nav.syfo.dialogporten.client
+package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -19,14 +19,6 @@ import io.ktor.http.HttpStatusCode
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.esyfo.observability.causeChain
-import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
-import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.altinn.dialogporten.domain.Content
-import no.nav.syfo.altinn.dialogporten.domain.ContentValue
-import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
-import no.nav.syfo.altinn.dialogporten.domain.Dialog
-import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
-import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.upstreamHttpClient
@@ -34,6 +26,12 @@ import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.captureProductionLogs
 import no.nav.syfo.logging.logEvent
 import no.nav.syfo.logging.withProductionLogger
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Content
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValue
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValueItem
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage

@@ -1,4 +1,4 @@
-package no.nav.syfo.altinn.dialogporten.domain
+package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain
 
 data class Attachment(
     val displayName: List<ContentValueItem>,

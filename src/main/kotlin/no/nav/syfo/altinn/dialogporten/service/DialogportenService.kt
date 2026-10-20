@@ -1,14 +1,6 @@
 package no.nav.syfo.altinn.dialogporten.service
 
 import kotlinx.coroutines.delay
-import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient.DialogportenPatch.OPERATION
-import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient.DialogportenPatch.PATH
-import no.nav.syfo.altinn.dialogporten.client.dialogportenRevisionConflictFailure
-import no.nav.syfo.altinn.dialogporten.domain.Dialog
-import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
 import no.nav.syfo.integration.pdl.Foedselsdato
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.logging.logEvent
@@ -23,6 +15,14 @@ import no.nav.syfo.narmestelederbehov.application.dialogPersonEnrichmentFailed
 import no.nav.syfo.narmestelederbehov.application.dialogportenDialogFailed
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogPatchResult
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient.DialogportenPatch.OPERATION
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient.DialogportenPatch.PATH
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.dialogportenRevisionConflictFailure
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrThrow

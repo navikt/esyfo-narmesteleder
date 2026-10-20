@@ -1,7 +1,6 @@
-package no.nav.syfo.altinn.dialogporten.client
+package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client
 
 import com.fasterxml.jackson.annotation.JsonValue
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
@@ -15,12 +14,13 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import no.nav.syfo.altinn.dialogporten.domain.Content
-import no.nav.syfo.altinn.dialogporten.domain.ContentValue
-import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
-import no.nav.syfo.altinn.dialogporten.domain.Dialog
-import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
-import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Content
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValue
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValueItem
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -29,7 +29,6 @@ import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
 import no.nav.syfo.texas.AltinnTokenProvider
 import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
-import no.nav.syfo.util.logger
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -175,11 +174,11 @@ class HttpDialogportenClient(
 
 class FakeDialogportenClient : DialogportenClient {
     companion object {
-        val logger = logger()
+        val logger = applicationLogger(FakeDialogportenClient::class.java)
     }
 
     override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> {
-        logger.info(ObjectMapper().writeValueAsString(dialog))
+        logger.info("Fake call creating dialog")
         return UpstreamResult.Success(UUID.randomUUID())
     }
 
@@ -206,7 +205,7 @@ class FakeDialogportenClient : DialogportenClient {
         revisionNumber: UUID,
         patch: List<HttpDialogportenClient.DialogportenPatch>
     ): UpstreamResult<DialogPatchResult> {
-        logger.info("Fake call patching dialog with id: $dialogId, with patch: ${ObjectMapper().writeValueAsString(patch)}")
+        logger.info("Fake call patching dialog with id: $dialogId")
         return UpstreamResult.Success(DialogPatchResult.Patched)
     }
 }

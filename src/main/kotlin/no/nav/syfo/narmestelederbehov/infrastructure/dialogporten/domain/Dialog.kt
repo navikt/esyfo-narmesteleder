@@ -1,4 +1,4 @@
-package no.nav.syfo.altinn.dialogporten.domain
+package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain
 
 import java.util.UUID
 

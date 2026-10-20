@@ -1,6 +1,6 @@
 package no.nav.syfo.narmesteleder.db
 
-import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 

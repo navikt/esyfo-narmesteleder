@@ -2,10 +2,10 @@ package no.nav.syfo.sykmelding.application
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.MainOrganizationSource
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovSource
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import java.time.LocalDate
 

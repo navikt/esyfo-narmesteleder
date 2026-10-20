@@ -2,11 +2,6 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.altinn.dialogporten.client.DialogPatchResult
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
-import no.nav.syfo.altinn.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.altinn.dialogporten.domain.Dialog
-import no.nav.syfo.altinn.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -14,6 +9,11 @@ import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogPatchResult
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage

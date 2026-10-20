@@ -2,8 +2,8 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.Table

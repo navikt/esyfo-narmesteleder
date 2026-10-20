@@ -2,13 +2,13 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.altinn.dialogporten.domain.Attachment
-import no.nav.syfo.altinn.dialogporten.domain.AttachmentUrlConsumerType
-import no.nav.syfo.altinn.dialogporten.domain.ContentValueItem
-import no.nav.syfo.altinn.dialogporten.domain.Dialog
-import no.nav.syfo.altinn.dialogporten.domain.DialogStatus
-import no.nav.syfo.altinn.dialogporten.domain.Url
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Attachment
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.AttachmentUrlConsumerType
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValueItem
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Url
 import java.time.LocalDate
 import java.util.UUID
 

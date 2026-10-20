@@ -17,7 +17,6 @@ import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.logging.assertSingleUpstreamFailureLog
-import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
 import no.nav.syfo.narmesteleder.domain.RevokedBy
@@ -33,6 +32,7 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.narmestelederbehovDetails
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId

@@ -3,10 +3,10 @@ package no.nav.syfo.narmesteleder.kafka.model
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.MainOrganizationSource
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovSource
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import java.time.LocalDate
 import java.time.OffsetDateTime

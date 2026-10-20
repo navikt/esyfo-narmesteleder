@@ -9,7 +9,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import io.mockk.every
 import io.mockk.mockk
-import no.nav.syfo.altinn.dialogporten.client.DialogportenClient
 import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
@@ -19,6 +18,7 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.texas.TexasEnvironment
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.plugins.platformModule

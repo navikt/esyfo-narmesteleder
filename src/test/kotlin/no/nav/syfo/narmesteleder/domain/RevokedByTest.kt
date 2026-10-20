@@ -1,4 +1,5 @@
 package no.nav.syfo.narmesteleder.domain
+
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe

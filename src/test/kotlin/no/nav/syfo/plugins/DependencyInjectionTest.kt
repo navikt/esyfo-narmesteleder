@@ -5,6 +5,8 @@ import io.ktor.client.engine.HttpClientEngine
 import no.nav.syfo.application.environment.OtherEnvironmentProperties
 import no.nav.syfo.application.texas.TexasEnvironment
 import no.nav.syfo.application.valkey.ValkeyEnvironment
+import no.nav.syfo.narmestelederbehov.narmestelederbehovDependencies
+import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonDependencies
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
 import org.apache.kafka.clients.producer.Producer
 import org.koin.dsl.koinApplication
@@ -34,6 +36,8 @@ class DependencyInjectionTest :
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
 private val capabilityDependencies = listOf(
+    narmestelederrelasjonDependencies(),
+    narmestelederbehovDependencies(),
     narmestelederstatistikkDependencies(),
 )
 

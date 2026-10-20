@@ -278,8 +278,16 @@ module per capability:
 ```kotlin
 fun Application.module() {
     platformModule(applicationModules(isLocalEnv()))
+    bindJvmAndProcessMetrics()
+    configureLifecycleHooks(get())
+    configureLeaderMonitoring(get(), get())
+    narmestelederrelasjonModule()
+    narmestelederbehovModule()
+    configureRouting() // Legacy organisasjonstilgang routes.
     narmestelederstatistikkModule()
-    // ... other capability modules
+    configureKafkaConsumers()
+    configureBackgroundTasks()
+    configureEmploymentChecks()
 }
 ```
 
@@ -295,6 +303,16 @@ fun Application.module() {
   `DependencyInjectionTest` verifies each `<capability>Dependencies()` together
   with `applicationModules`, and fails if a type is defined twice (Koin would
   otherwise let the last definition win silently).
+- `narmestelederrelasjon`, `narmestelederbehov` and `narmestelederstatistikk`
+  follow this pattern for dependencies and routes. Legacy routes
+  (`configureRouting()`) and consumer/task startup remain in `plugins` until
+  migrated (#623).
+- Koin definitions are not order-sensitive, but capability modules load their
+  definitions with `koinModules` and eagerly resolve route dependencies at
+  startup to fail fast. A module using another capability's contract must
+  therefore run after that capability's module: relasjon before behov.
+  Consumers, tasks and anything else resolving capability definitions run
+  after all capability modules.
 - Capability modules add routes under `apiV1 { }` or `internalApiV1 { }` from
   `platform.api`. These helpers install `AddTokenIssuerPlugin` once per prefix,
   so several modules can share the same prefix.

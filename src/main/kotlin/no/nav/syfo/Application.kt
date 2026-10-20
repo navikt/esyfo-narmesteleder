@@ -7,6 +7,8 @@ import io.ktor.server.netty.Netty
 import no.nav.syfo.application.api.configureRouting
 import no.nav.syfo.application.environment.isLocalEnv
 import no.nav.syfo.application.metric.bindJvmAndProcessMetrics
+import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
+import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkModule
 import no.nav.syfo.plugins.applicationModules
 import no.nav.syfo.plugins.configureBackgroundTasks
@@ -39,6 +41,8 @@ fun Application.module() {
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
+    narmestelederrelasjonModule()
+    narmestelederbehovModule()
     configureRouting()
     narmestelederstatistikkModule()
     configureKafkaConsumers()

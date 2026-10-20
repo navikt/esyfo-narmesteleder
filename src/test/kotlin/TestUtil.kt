@@ -7,10 +7,10 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
-import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.sykmelding.application.Arbeidsgiver
 import no.nav.syfo.sykmelding.application.ArbeidsgiverSykmelding

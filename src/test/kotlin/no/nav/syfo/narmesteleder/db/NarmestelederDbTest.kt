@@ -8,7 +8,7 @@ import io.kotest.matchers.shouldBe
 import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.TestDB.Companion.updateCreated
-import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import java.time.Instant
 import java.util.UUID
 

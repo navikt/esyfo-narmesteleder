@@ -1,5 +1,7 @@
 package no.nav.syfo.narmesteleder.domain
 
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
+
 enum class LineManagerRequirementStatus {
     CREATED,
     REQUIRES_ATTENTION,

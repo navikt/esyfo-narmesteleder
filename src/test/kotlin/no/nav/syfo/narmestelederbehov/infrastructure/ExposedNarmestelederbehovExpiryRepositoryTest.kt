@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.javatime.date

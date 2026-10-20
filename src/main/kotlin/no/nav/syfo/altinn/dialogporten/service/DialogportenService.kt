@@ -15,13 +15,13 @@ import no.nav.syfo.logging.logEvent
 import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.db.NarmestelederDb
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.DialogAction
 import no.nav.syfo.narmestelederbehov.application.DialogEventDetails
 import no.nav.syfo.narmestelederbehov.application.dialogCreatedForClosedBehov
 import no.nav.syfo.narmestelederbehov.application.dialogPersonEnrichmentFailed
 import no.nav.syfo.narmestelederbehov.application.dialogportenDialogFailed
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.platform.upstream.UpstreamResult

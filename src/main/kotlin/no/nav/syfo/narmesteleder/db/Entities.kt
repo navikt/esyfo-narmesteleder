@@ -1,7 +1,7 @@
 package no.nav.syfo.narmesteleder.db
 
-import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import java.sql.ResultSet
 import java.time.Instant
 import java.util.*

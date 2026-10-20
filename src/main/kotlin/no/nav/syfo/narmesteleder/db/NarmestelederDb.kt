@@ -6,7 +6,7 @@ import kotlinx.coroutines.withContext
 import no.nav.syfo.application.database.DatabaseInterface
 import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.logging.logEvent
-import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.util.logger
 import org.slf4j.event.Level
 import java.sql.Timestamp

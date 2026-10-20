@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import org.jetbrains.exposed.v1.core.ColumnType
 import org.jetbrains.exposed.v1.core.Table

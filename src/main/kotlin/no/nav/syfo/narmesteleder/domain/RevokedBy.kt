@@ -1,5 +1,7 @@
 package no.nav.syfo.narmesteleder.domain
 
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
+
 enum class RevokedBy {
     LINEMANAGER,
     EMPLOYEE,

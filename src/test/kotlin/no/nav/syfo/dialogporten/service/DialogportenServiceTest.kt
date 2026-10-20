@@ -29,7 +29,7 @@ import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
-import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.pdl.PdlService
 import no.nav.syfo.platform.upstream.UpstreamError

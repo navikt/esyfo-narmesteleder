@@ -10,14 +10,14 @@ import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId

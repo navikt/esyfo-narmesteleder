@@ -14,9 +14,9 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.integration.pdl.PDL
-import no.nav.syfo.narmesteleder.domain.BehovReason
-import no.nav.syfo.narmesteleder.domain.BehovStatus
 import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.upstream.UpstreamFailure

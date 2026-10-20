@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import nlBehovEntity
 import no.nav.syfo.TestDB
-import no.nav.syfo.narmesteleder.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import org.postgresql.util.PSQLException
 
 private fun countBehov(sykmeldtFnr: String, orgnummer: String, statuses: List<BehovStatus>): Int = TestDB.database.connection.use { connection ->

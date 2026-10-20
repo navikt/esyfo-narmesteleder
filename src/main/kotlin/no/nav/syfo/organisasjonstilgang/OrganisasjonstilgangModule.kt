@@ -1,15 +1,21 @@
 package no.nav.syfo.organisasjonstilgang
 
-import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganizationsLookup
+import io.ktor.server.application.Application
+import io.ktor.server.routing.routing
+import no.nav.syfo.organisasjonstilgang.api.registerAccessibleOrganizationsApi
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsUseCase
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
-import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
-import org.koin.dsl.binds
-import org.koin.dsl.module
+import no.nav.syfo.platform.api.apiV1
+import no.nav.syfo.texas.client.TexasHttpClient
+import org.koin.ktor.ext.get
+import org.koin.ktor.plugin.koinModules
 
-fun organisasjonstilgangModule() = module {
-    single { AltinnTilgangerService(altinnTilgangerClient = get()) } binds arrayOf(AccessibleOrganizationsLookup::class)
-    single { ListAccessibleOrganizationsUseCase(get()) }
-    single<OrganizationAccess> { AltinnOrganizationAccess(get(), get(), get()) }
+fun Application.organisasjonstilgangModule() {
+    koinModules(organisasjonstilgangDependencies())
+    val listAccessibleOrganizations = get<ListAccessibleOrganizationsUseCase>()
+    val texasHttpClient = get<TexasHttpClient>()
+    routing {
+        apiV1 {
+            registerAccessibleOrganizationsApi(listAccessibleOrganizations = listAccessibleOrganizations, texasHttpClient = texasHttpClient)
+        }
+    }
 }

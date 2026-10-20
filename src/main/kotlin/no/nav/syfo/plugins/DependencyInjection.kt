@@ -6,8 +6,6 @@ import no.nav.syfo.application.ApplicationState
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.environment.LocalEnvironment
 import no.nav.syfo.application.environment.NaisEnvironment
-import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
-import no.nav.syfo.sykmelding.sykmeldingModule
 import org.koin.core.module.Module
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
@@ -32,8 +30,6 @@ fun applicationModules(isLocalEnv: Boolean): List<Module> = listOf(
     legacyRepositoriesModule(),
     legacyServicesModule(),
     tasksModule(),
-    organisasjonstilgangModule(),
-    sykmeldingModule(),
 )
 
 private fun coreModule(isLocalEnv: Boolean) = module {

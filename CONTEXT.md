@@ -15,7 +15,8 @@ _Avoid_: Requirement when the specific domain concept is meant.
 **Narmestelederrelasjon**:
 The connection between an employee, a narmesteleder and an organization. It has
 an identity and an active period and can be established or revoked.
-_Avoid_: Narmestelederbehov, generic Relation.
+_Avoid_: Narmestelederbehov, generic Relation. Legal documents call it a
+"NL-kobling".
 
 **Sykmelding**:
 The sickness certificate whose state and periods may trigger a

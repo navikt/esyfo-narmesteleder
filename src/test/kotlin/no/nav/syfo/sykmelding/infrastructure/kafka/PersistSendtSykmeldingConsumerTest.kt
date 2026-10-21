@@ -48,37 +48,35 @@ class PersistSendtSykmeldingConsumerTest :
             clearMocks(kafkaConsumer, handler)
         }
 
-        context("stop") {
-            test("should wake up, unsubscribe and close the consumer before returning") {
-                val subscribeStarted = CompletableDeferred<Unit>()
-                val pollReleased = CompletableDeferred<Unit>()
+        test("should wake up, unsubscribe and close the consumer before returning") {
+            val subscribeStarted = CompletableDeferred<Unit>()
+            val pollReleased = CompletableDeferred<Unit>()
 
-                every { kafkaConsumer.subscribe(any<List<String>>()) } answers {
-                    subscribeStarted.complete(Unit)
-                }
-
-                every { kafkaConsumer.poll(any()) } answers {
-                    runBlocking {
-                        pollReleased.await()
-                    }
-                    throw WakeupException()
-                }
-                every { kafkaConsumer.wakeup() } answers {
-                    pollReleased.complete(Unit)
-                }
-                every { kafkaConsumer.unsubscribe() } just Runs
-                every { kafkaConsumer.close(any<CloseOptions>()) } returns Unit
-
-                runTest {
-                    consumer.listen()
-                    subscribeStarted.await()
-                    consumer.stop()
-                }
-
-                verify(exactly = 1) { kafkaConsumer.wakeup() }
-                verify(exactly = 1) { kafkaConsumer.unsubscribe() }
-                verify(exactly = 1) { kafkaConsumer.close(any<CloseOptions>()) }
+            every { kafkaConsumer.subscribe(any<List<String>>()) } answers {
+                subscribeStarted.complete(Unit)
             }
+
+            every { kafkaConsumer.poll(any()) } answers {
+                runBlocking {
+                    pollReleased.await()
+                }
+                throw WakeupException()
+            }
+            every { kafkaConsumer.wakeup() } answers {
+                pollReleased.complete(Unit)
+            }
+            every { kafkaConsumer.unsubscribe() } just Runs
+            every { kafkaConsumer.close(any<CloseOptions>()) } returns Unit
+
+            runTest {
+                consumer.listen()
+                subscribeStarted.await()
+                consumer.stop()
+            }
+
+            verify(exactly = 1) { kafkaConsumer.wakeup() }
+            verify(exactly = 1) { kafkaConsumer.unsubscribe() }
+            verify(exactly = 1) { kafkaConsumer.close(any<CloseOptions>()) }
         }
 
         test("logs a fatal batch Error once, then rethrows it without committing") {

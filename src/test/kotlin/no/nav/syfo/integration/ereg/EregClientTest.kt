@@ -179,7 +179,6 @@ class EregClientTest :
                             record["exception_type"].asText() shouldBe result.failure.cause?.javaClass?.simpleName
                             output shouldNotContain orgNumber
                             output shouldNotContain "private response body"
-                            output shouldNotContain "UpstreamRequestException"
                         }
                     }
                 }

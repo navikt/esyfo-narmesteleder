@@ -40,9 +40,9 @@ no.nav.syfo
 │   └── pdl
 ├── ident                         # shared value types, not a module
 ├── organisasjonstilgang
+│   ├── api
 │   ├── application
-│   ├── domain
-│   └── infrastructure
+│   └── infrastructure            # altinnauthorization, altinntilganger
 ├── narmestelederbehov
 │   ├── api
 │   ├── application
@@ -54,15 +54,17 @@ no.nav.syfo
 │   │                             # establish, get, leesah, lookup,
 │   │                             # relationperson, revoke, search, submit
 │   ├── domain
-│   └── infrastructure
+│   ├── infrastructure
+│   └── observability
 ├── narmestelederstatistikk
 │   ├── api
 │   ├── application
-│   └── infrastructure
+│   ├── infrastructure
+│   └── observability
 └── sykmelding
     ├── application
-    ├── domain
-    └── infrastructure
+    ├── infrastructure
+    └── retention                 # application, domain, infrastructure
 ```
 
 Start with shallow packages. Add subpackages by business feature when a
@@ -105,6 +107,16 @@ first, so invalid input is still rejected before the need lookup and access
 check. It does not validate the relation itself and does not use relation
 repositories, ports, domain rules, Kafka models or Kafka producers directly.
 
+Fulfillment orders its effects: contact validation, then need lookup, then
+access check, then relation establishment, and finally publication before
+persistence before Dialogporten completion. An unexpected failure stops the
+later effects. After publication, `markFulfilled` uses one status-only
+`UPDATE ... RETURNING` to obtain the dialog ID; a missing row is the existing
+404 response, and a null dialog ID skips completion. Dialog completion follows
+ADR-0004: an already completed dialog counts as success, a revision conflict
+is re-read once, and a failed completion or status update leaves the behov
+fulfilled so the scheduled job can retry.
+
 ### `narmestelederrelasjon`
 
 Owns established and revoked narmesteleder relations:
@@ -112,9 +124,11 @@ Owns established and revoked narmesteleder relations:
 - establish and revoke relations;
 - validate a relation before establishing it: the manager's contact details,
   active sykmelding, employment, persons in PDL and submitted last names.
-  Establishing and revoking only publish a message; the relation is stored when
-  the resulting Leesah event is consumed, so validation must happen before
-  publishing;
+  Name-validation metrics are recorded immediately after matching, before
+  publishing or other side effects can fail, so failure paths still record
+  observations. Establishing and revoking only publish a message; the relation
+  is stored when the resulting Leesah event is consumed, so validation must
+  happen before publishing;
 - accept direct POST relation submissions, normalizing contact details before
   checking organization access and establishing through the relation contract;
 - handle `POST /api/v1/linemanager/revoke` by checking organization access,
@@ -191,7 +205,9 @@ Owns reusable business authorization for acting on behalf of an organization:
   personnel-manager path return `OrganizationAccessResult.Unavailable`;
   use cases return `UpstreamUnavailable`, and edges map it through
   `toUpstreamUnavailableException()` to 500 `UPSTREAM_SERVICE_UNAVAILABLE`.
-  Only the Ereg bridge in the system-user path remains (#687).
+  The system-user path follows the same rule: it stops at the first failure
+  from Texas, the Altinn token exchange, the PDP or Ereg, without fallback
+  (#687 removed the last Ereg exception bridge).
 
 It does not load narmestelederbehov or narmestelederrelasjon records. The
 calling use case owns resource lookup, authorization order and non-disclosure
@@ -200,7 +216,7 @@ rules.
 ### `narmestelederstatistikk`
 
 Owns the read model for narmesteleder statistics per organization
-(`GET /api/v1/linemanager/statistics`):
+(`GET /internal/api/v1/linemanager/statistics`):
 
 - check organization access through `organisasjonstilgang`;
 - count employees on sick leave with and without a narmesteleder, and
@@ -224,7 +240,10 @@ external systems used by more than one module, one package per system:
 A client is transport only: HTTP, token exchange, caching, error handling and
 response DTOs. It contains no business rules and no module's ports or domain
 types. Clients return `UpstreamResult<T>` instead of throwing when the external
-system fails; see [Errors and HTTP mapping](#errors-and-http-mapping).
+system fails; see [Errors and HTTP mapping](#errors-and-http-mapping). The
+Dinesykmeldte client is the remaining exception: it returns `Boolean` and
+throws on failure
+([#683](https://github.com/navikt/esyfo-narmesteleder/issues/683)).
 
 Each module keeps its own port in `application` and its own adapter in
 `infrastructure`. The adapter calls the client directly and maps the response
@@ -496,8 +515,9 @@ being introduced through #681):
   `ApiErrorException` with `UPSTREAM_SERVICE_UNAVAILABLE` and the failure
   attached; Kafka consumers and scheduled jobs apply their own retry or
   postponement rule.
-- No production code calls `getOrThrow()` any more. It and
-  `UpstreamRequestException` are left for a separate cleanup.
+- The ADR-0004 transition bridge has been removed: `getOrThrow()` and
+  `UpstreamRequestException` no longer exist, and all callers propagate
+  failures as values.
 
 Database failures, Kafka publishing failures and programming errors remain
 exceptions.
@@ -620,8 +640,11 @@ changes remain separate.
 in its Ktor module. Its persistence adapters use Exposed DSL, and its
 consumers still have to move to a shared consumer runner (#623).
 
-The fulfillment foundation and its remaining activation work are described in
-[Fulfillment migration status](narmestelederbehov-fulfillment-migration.md).
+The fulfillment migration is complete (#525, #541): the PUT route delegates to
+`FulfillNarmestelederbehovUseCase` through capability-owned adapters and Koin
+modules, and the legacy handler and transitional duplication are removed. The
+durable fulfillment rules are part of [`narmestelederbehov`](#narmestelederbehov)
+above.
 
 Each slice migrated one business action or query at a time and preserved
 external HTTP and Kafka contracts, database behavior, authentication and

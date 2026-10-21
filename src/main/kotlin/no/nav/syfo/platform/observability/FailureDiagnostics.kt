@@ -8,9 +8,7 @@ import no.nav.esyfo.observability.exceptionType
 import no.nav.esyfo.observability.sqlState
 import no.nav.esyfo.observability.validUpstreamStatus
 import no.nav.syfo.platform.upstream.UpstreamError
-import no.nav.syfo.platform.upstream.UpstreamExceptionType
 import no.nav.syfo.platform.upstream.UpstreamFailure
-import no.nav.syfo.platform.upstream.UpstreamRequestException
 import java.net.ConnectException
 import java.net.SocketException
 import java.net.SocketTimeoutException
@@ -51,7 +49,6 @@ internal fun Throwable.failureDiagnostics(upstreamFailure: UpstreamFailure? = nu
     val chain = causeChain()
     val upstreamStatus = chain.firstNotNullOfOrNull {
         when (it) {
-            is UpstreamRequestException -> it.upstreamStatus
             is ResponseException -> it.response.status.value
             else -> null
         }
@@ -63,9 +60,7 @@ internal fun Throwable.failureDiagnostics(upstreamFailure: UpstreamFailure? = nu
         chain.any { it is ConnectException || it is SocketException } -> "connection"
         chain.any {
             it is JsonProcessingException ||
-                it.javaClass.simpleName in DECODING_TYPES ||
-                it is UpstreamRequestException &&
-                it.upstreamExceptionType == UpstreamExceptionType.RESPONSE_DECODING_EXCEPTION
+                it.javaClass.simpleName in DECODING_TYPES
         } -> "invalid_response"
         chain.any { it is ResponseException } || upstreamStatus != null -> "http"
         else -> "unknown"
@@ -78,13 +73,11 @@ internal fun Throwable.failureDiagnostics(upstreamFailure: UpstreamFailure? = nu
         upstreamStatus = validUpstreamStatus(upstreamStatus),
         upstream = chain.firstNotNullOfOrNull {
             when (it) {
-                is UpstreamRequestException -> it.upstream
                 is SQLException -> "database"
                 else -> null
             }
         },
-        failureStage = chain.filterIsInstance<UpstreamRequestException>().firstOrNull()?.failureStage?.logValue
-            ?: if (kind in RESPONSE_FAILURE_KINDS) "response" else null,
+        failureStage = if (kind in RESPONSE_FAILURE_KINDS) "response" else null,
         stack = chain.toTechnicalFailure(),
         sqlState = sqlState(),
     )

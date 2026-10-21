@@ -23,7 +23,7 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
-import no.nav.syfo.platform.upstream.getOrThrow
+import no.nav.syfo.platform.upstream.getOrElse
 import java.io.IOException
 import java.time.Clock
 import java.time.Instant
@@ -118,13 +118,13 @@ class AltinnTokenProviderTest :
                     respondJson("\"${if (exchanges == 1) initial else renewed}\"")
                 }.use {
                     val provider = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test", clock)
-                    provider.token("target").getOrThrow().accessToken shouldBe initial
+                    provider.token("target").getOrElse { error("expected success") }.accessToken shouldBe initial
                     val expected = if (secondsLeft > 300) initial else renewed
-                    provider.token("target").getOrThrow().accessToken shouldBe expected
-                    provider.token("target").getOrThrow().accessToken shouldBe expected
+                    provider.token("target").getOrElse { error("expected success") }.accessToken shouldBe expected
+                    provider.token("target").getOrElse { error("expected success") }.accessToken shouldBe expected
                     texasCalls shouldBe if (secondsLeft > 300) 1 else 2
                     exchanges shouldBe texasCalls
-                    provider.token("other-target").getOrThrow().accessToken shouldBe renewed
+                    provider.token("other-target").getOrElse { error("expected success") }.accessToken shouldBe renewed
                     exchanges shouldBe texasCalls
                     exchanges shouldBe if (secondsLeft > 300) 2 else 3
                 }
@@ -140,8 +140,8 @@ class AltinnTokenProviderTest :
             }.use {
                 val provider = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test")
                 provider.token("target").shouldBeInstanceOf<UpstreamResult.Failure>()
-                provider.token("target").getOrThrow().accessToken shouldBe token
-                provider.token("target").getOrThrow().accessToken shouldBe token
+                provider.token("target").getOrElse { error("expected success") }.accessToken shouldBe token
+                provider.token("target").getOrElse { error("expected success") }.accessToken shouldBe token
                 exchanges shouldBe 2
             }
         }

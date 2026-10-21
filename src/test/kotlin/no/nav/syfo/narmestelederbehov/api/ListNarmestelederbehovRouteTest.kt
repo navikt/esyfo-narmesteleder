@@ -236,14 +236,19 @@ private class ListRouteFixture(
     private val texas = mockk<TexasHttpClient>()
     private val useCase = ListNarmestelederbehovUseCase(
         repository = repository,
-        organizationAccess = OrganizationAccess { _, _ -> access },
+        organizationAccess = { _, _ -> access },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
-            EmployeeNameLookup {
-                unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
-                    ?: if (personFound) EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up")) else EmployeeNameLookupResult.NotFound
-            },
-        ),
+        ) {
+            unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
+                ?: if (personFound) EmployeeNameLookupResult.Found(
+                    BehovPersonName(
+                        "Looked",
+                        null,
+                        "Up"
+                    )
+                ) else EmployeeNameLookupResult.NotFound
+        },
     )
 
     init {

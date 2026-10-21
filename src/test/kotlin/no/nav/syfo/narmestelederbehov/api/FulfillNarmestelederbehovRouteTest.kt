@@ -317,8 +317,7 @@ private class PutFixture {
         repository,
         organizationAccess,
         establish,
-        NarmestelederbehovDialog { DialogCompletion.Completed },
-    )
+    ) { DialogCompletion.Completed }
 
     init {
         texas.defaultMocks(

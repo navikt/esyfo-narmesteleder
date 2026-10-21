@@ -4,11 +4,11 @@ import io.ktor.server.routing.RoutingCall
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovQuery
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovResult
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.getRequiredQueryParameter
-import no.nav.syfo.platform.api.toForbiddenException
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
 

@@ -19,6 +19,7 @@ import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistik
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import no.nav.syfo.narmestelederstatistikk.application.NarmestelederstatistikkRepository
 import no.nav.syfo.narmestelederstatistikk.observability.LINEMANAGER_STATISTICS_TOTAL
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -27,7 +28,6 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testApiApplication
-import no.nav.syfo.platform.api.toForbiddenException
 import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse

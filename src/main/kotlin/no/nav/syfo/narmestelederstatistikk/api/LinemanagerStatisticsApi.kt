@@ -10,10 +10,10 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkResult
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.narmestelederstatistikk.observability.countLinemanagerStatistics
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
-import no.nav.syfo.platform.api.toForbiddenException
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin

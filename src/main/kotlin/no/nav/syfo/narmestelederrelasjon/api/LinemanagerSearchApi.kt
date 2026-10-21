@@ -17,10 +17,10 @@ import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederre
 import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerResult
 import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countLinemanagerSearch
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
-import no.nav.syfo.platform.api.toForbiddenException
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin

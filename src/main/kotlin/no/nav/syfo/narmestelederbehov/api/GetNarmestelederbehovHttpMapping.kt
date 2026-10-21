@@ -4,8 +4,8 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.platform.api.ApiErrorException
-import no.nav.syfo.platform.api.toForbiddenException
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 
 fun GetNarmestelederbehovResult.toLinemanagerRequirementRead(): LinemanagerRequirementRead = when (this) {

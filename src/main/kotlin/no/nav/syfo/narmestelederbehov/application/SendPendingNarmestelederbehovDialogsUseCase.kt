@@ -4,6 +4,7 @@ import kotlinx.coroutines.CancellationException
 import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.logging.logEvent
 import java.time.Clock
+import java.util.UUID
 
 class SendPendingNarmestelederbehovDialogsUseCase(
     private val repository: NarmestelederbehovRepository,
@@ -28,11 +29,7 @@ class SendPendingNarmestelederbehovDialogsUseCase(
         try {
             val person = findPerson(behov, details)
             when (val created = dialog.create(behov.id, behov.employee, person)) {
-                is NarmestelederbehovDialogCreationResult.Created -> {
-                    if (repository.markDialogCreated(behov.id, created.dialogId, person?.name) == MarkDialogCreatedResult.NotCreated) {
-                        logger.logEvent(dialogCreatedForClosedBehov, DialogEventDetails(behov.id.value, created.dialogId))
-                    }
-                }
+                is NarmestelederbehovDialogCreationResult.Created -> markDialogCreated(behov, created.dialogId, person)
                 is NarmestelederbehovDialogCreationResult.Unavailable ->
                     logger.logEvent(dialogportenDialogFailed, details.copy(action = DialogAction.CREATE), upstreamFailure = created.failure)
             }
@@ -43,12 +40,19 @@ class SendPendingNarmestelederbehovDialogsUseCase(
         }
     }
 
+    private suspend fun markDialogCreated(behov: PendingNarmestelederbehovDialog, dialogId: UUID, person: EmployeePerson?) {
+        val marked = repository.markDialogCreated(behov.id, dialogId, person?.name)
+        if (marked == MarkDialogCreatedResult.NotCreated) {
+            logger.logEvent(dialogCreatedForClosedBehov, DialogEventDetails(behov.id.value, dialogId))
+        }
+    }
+
     private suspend fun findPerson(behov: PendingNarmestelederbehovDialog, details: DialogEventDetails): EmployeePerson? = try {
-        when (val result = personLookup.find(behov.employee.personIdent)) {
-            is EmployeePersonLookupResult.Found -> result.person
+        when (val lookup = personLookup.find(behov.employee.personIdent)) {
+            is EmployeePersonLookupResult.Found -> lookup.person
             EmployeePersonLookupResult.NotFound -> null
             is EmployeePersonLookupResult.Unavailable -> {
-                logger.logEvent(dialogPersonEnrichmentFailed, details, upstreamFailure = result.failure)
+                logger.logEvent(dialogPersonEnrichmentFailed, details, upstreamFailure = lookup.failure)
                 null
             }
         }

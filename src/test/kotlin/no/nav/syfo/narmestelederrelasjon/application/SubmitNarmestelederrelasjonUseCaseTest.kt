@@ -39,13 +39,13 @@ class SubmitNarmestelederrelasjonUseCaseTest :
                 val effects = mutableListOf<String>()
                 var established: EstablishNarmestelederrelasjonCommand? = null
                 val useCase = SubmitNarmestelederrelasjonUseCase(
-                    OrganizationAccess { accessSubject, organization ->
+                    { accessSubject, organization ->
                         effects += "access"
                         accessSubject shouldBe subject
                         organization shouldBe organizationNumber
                         OrganizationAccessResult.Granted(organizationName = null)
                     },
-                    EstablishNarmestelederrelasjon {
+                    {
                         effects += "establish"
                         established = it
                         EstablishNarmestelederrelasjonResult.Published
@@ -63,8 +63,8 @@ class SubmitNarmestelederrelasjonUseCaseTest :
         test("maps upstream unavailable to its own result without wrapping it as an establish rejection") {
             val failure = UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException())
             val useCase = SubmitNarmestelederrelasjonUseCase(
-                OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
-                EstablishNarmestelederrelasjon { EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure) },
+                { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
+                { EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure) },
             )
             useCase.execute(command(systemUser)) shouldBe SubmitNarmestelederrelasjonResult.UpstreamUnavailable(failure)
         }
@@ -92,11 +92,11 @@ private fun recordingUseCase(
     effects: MutableList<String>,
     accessResult: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
 ) = SubmitNarmestelederrelasjonUseCase(
-    OrganizationAccess { _, _ ->
+    { _, _ ->
         effects += "access"
         accessResult
     },
-    EstablishNarmestelederrelasjon {
+    {
         effects += "establish"
         EstablishNarmestelederrelasjonResult.Published
     },

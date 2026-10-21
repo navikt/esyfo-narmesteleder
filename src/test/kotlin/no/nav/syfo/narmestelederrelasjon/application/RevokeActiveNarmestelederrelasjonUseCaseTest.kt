@@ -30,7 +30,7 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
     FunSpec({
         test("unavailable access stops before person lookup name validation active lookup and publishing") {
             val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
-            val fixture = RevokeActiveFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Unavailable(failure) })
+            val fixture = RevokeActiveFixture(access = { _, _ -> OrganizationAccessResult.Unavailable(failure) })
             val result = fixture.execute()
             result shouldBe RevokeActiveNarmestelederrelasjonResult.UpstreamUnavailable(failure)
             result.shouldBeInstanceOf<RevokeActiveNarmestelederrelasjonResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
@@ -39,7 +39,7 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
         }
 
         test("access denial stops before PDL and publishing") {
-            val fixture = RevokeActiveFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS) })
+            val fixture = RevokeActiveFixture(access = { _, _ -> OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS) })
             fixture.execute(OrganizationAccessSubject.PersonnelManager(employee, AccessToken("test"))) shouldBe
                 RevokeActiveNarmestelederrelasjonResult.AccessDenied(DenialReason.MISSING_ORGANIZATION_ACCESS, organization)
             fixture.calls shouldBe listOf("access")
@@ -107,15 +107,15 @@ private class RevokeActiveFixture(
     val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber>>()
     val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
     private val useCase = RevokeActiveNarmestelederrelasjonUseCase(
-        OrganizationAccess { subject, org ->
+        { subject, org ->
             calls += "access"
             access.evaluate(subject, org)
         },
-        PersonLookup {
+        {
             calls += "person"
             unavailable?.let { PersonLookupResult.Unavailable(it) } ?: person?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
         },
-        NameValidationMetrics {
+        {
             calls += "name"
             matches += it
         },

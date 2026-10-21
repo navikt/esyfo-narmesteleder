@@ -320,11 +320,10 @@ private class SubmitFixture(
                     registerSubmitNarmestelederrelasjonApi(
                         SubmitNarmestelederrelasjonUseCase(
                             access,
-                            EstablishNarmestelederrelasjon {
-                                failure?.let { throw it }
-                                relationResult
-                            },
-                        ),
+                        ) {
+                            failure?.let { throw it }
+                            relationResult
+                        },
                         texas,
                     )
                     registerRevokeActiveNarmestelederrelasjonApi(mockk(), texas)

@@ -231,7 +231,7 @@ private class RevokeRouteFixture(
     }
     private val useCase = RevokeActiveNarmestelederrelasjonUseCase(
         access,
-        PersonLookup {
+        {
             unavailable?.let { PersonLookupResult.Unavailable(it) } ?: person?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
         },
         MicrometerNameValidationMetrics(),

@@ -136,14 +136,14 @@ private class ReadFixture(
     }
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,
-        organizationAccess = OrganizationAccess { _, _ -> access.also { effects += "access" } },
+        organizationAccess = { _, _ -> access.also { effects += "access" } },
         employeeName = NarmestelederbehovEmployeeName(
-            repository,
-            EmployeeNameLookup {
-                effects += "person"
-                unavailable?.let { EmployeeNameLookupResult.Unavailable(it) } ?: person?.let { EmployeeNameLookupResult.Found(it) } ?: EmployeeNameLookupResult.NotFound
-            }
-        ),
+            repository
+        ) {
+            effects += "person"
+            unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
+                ?: person?.let { EmployeeNameLookupResult.Found(it) } ?: EmployeeNameLookupResult.NotFound
+        },
     )
 
     suspend fun execute(

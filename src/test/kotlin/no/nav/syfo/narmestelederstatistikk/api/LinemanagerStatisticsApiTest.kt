@@ -162,14 +162,14 @@ private class StatisticsApiFixture(
         issuer = if (user) TOKENX_ISSUER else "https://test.maskinporten.no",
     )
     private val useCase = GetNarmestelederstatistikkUseCase(
-        organizationAccess = OrganizationAccess { subject, organization ->
+        organizationAccess = { subject, organization ->
             effects += "access"
             evaluations += subject to organization
             unavailable?.let { OrganizationAccessResult.Unavailable(it) }
                 ?: denialReason?.let { OrganizationAccessResult.Denied(it) }
                 ?: OrganizationAccessResult.Granted(null)
         },
-        repository = NarmestelederstatistikkRepository { organization ->
+        repository = { organization ->
             effects += "count"
             organizations += organization
             Narmestelederstatistikk(1, 2, 3)

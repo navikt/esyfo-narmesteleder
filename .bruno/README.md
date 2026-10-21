@@ -41,7 +41,7 @@ Run the following steps in order:
    `local-dev-resources/kafka/narmesteleder-leesah/create-nl_behov.json` to
    `teamsykmelding.syfo-narmesteleder-leesah` with Kafka key
    `0199b8f1-0cfe-7787-bab8-2fb1cf1b4767`.
-3. In the application logs, find `Inserted NarmestelederBehovEntity with id:`
+3. In the application logs, find `Inserted narmestelederbehov with id:`
    and copy the UUID after the colon to `BEHOV_ID` in `.bruno/.env`. Reload
    Bruno or the environment if necessary.
 4. Run `get behov`.

@@ -27,7 +27,6 @@ fun applicationModules(isLocalEnv: Boolean): List<Module> = listOf(
     cacheModule(),
     kafkaProducersModule(),
     leaderElectionModule(isLocalEnv),
-    legacyRepositoriesModule(),
     legacyServicesModule(),
     tasksModule(),
 )

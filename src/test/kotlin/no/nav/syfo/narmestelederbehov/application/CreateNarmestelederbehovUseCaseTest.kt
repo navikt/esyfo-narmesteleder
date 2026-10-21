@@ -165,7 +165,7 @@ class CreateNarmestelederbehovUseCaseTest :
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists }
 
                 effects shouldBe listOf("find-open", "metric:already-exists")
-                logs.map { it.formattedMessage } shouldBe listOf("Not inserting NarmestelederBehovEntity since one already for employee and org")
+                logs.map { it.formattedMessage } shouldBe listOf("Not inserting narmestelederbehov since one already for employee and org")
             }
         }
 

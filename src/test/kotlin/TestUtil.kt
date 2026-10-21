@@ -6,11 +6,7 @@ import no.nav.syfo.application.auth.JwtIssuer
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.Organisasjon
-import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmesteleder.domain.Manager
-import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
-import no.nav.syfo.narmestelederbehov.domain.BehovReason
-import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.sykmelding.application.Arbeidsgiver
 import no.nav.syfo.sykmelding.application.ArbeidsgiverSykmelding
@@ -57,17 +53,6 @@ fun organisasjon() = Organisasjon(
             navn = EregNavn(sammensattnavn = faker.name().fullName()),
         )
     ),
-)
-
-fun nlBehovEntity() = NarmestelederBehovEntity(
-    id = UUID.randomUUID(),
-    orgnummer = faker.numerify("#########"),
-    hovedenhetOrgnummer = faker.numerify("#########"),
-    sykmeldtFnr = faker.numerify("###########"),
-    narmestelederFnr = faker.numerify("###########"),
-    behovReason = BehovReason.valueOf(LeesahStatus.DEAKTIVERT_NY_LEDER.name),
-    behovStatus = BehovStatus.BEHOV_CREATED,
-    avbruttNarmesteLederId = UUID.randomUUID(),
 )
 
 fun createMockToken(

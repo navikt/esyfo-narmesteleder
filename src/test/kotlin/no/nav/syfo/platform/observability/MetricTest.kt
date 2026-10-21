@@ -5,6 +5,7 @@ import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.micrometer.core.instrument.Timer
 
 class MetricTest :
     FunSpec({
@@ -26,7 +27,9 @@ class MetricTest :
 
         test("is idempotent across repeated invocations") {
             bindJvmAndProcessMetrics()
+            // GC timers such as jvm.gc.pause are created lazily on GC events, so they may appear between snapshots.
             val jvmGcMeterNamesAfterFirst = METRICS_REGISTRY.meters
+                .filterNot { it is Timer }
                 .map { it.id.name }
                 .filter { it.startsWith("jvm.gc.") }
                 .toSet()
@@ -34,6 +37,7 @@ class MetricTest :
 
             bindJvmAndProcessMetrics()
             val jvmGcMeterNamesAfterSecond = METRICS_REGISTRY.meters
+                .filterNot { it is Timer }
                 .map { it.id.name }
                 .filter { it.startsWith("jvm.gc.") }
                 .toSet()

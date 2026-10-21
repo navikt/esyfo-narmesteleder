@@ -22,153 +22,151 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ScheduledLeaderTaskTest :
-    FunSpec(
-        {
-            val logger = LoggerFactory.getLogger("TestScheduledLeaderTask") as Logger
-            val appender = ListAppender<ILoggingEvent>()
-            beforeSpec {
-                appender.start()
-                logger.addAppender(appender)
-            }
-            afterSpec {
-                logger.detachAppender(appender)
-                appender.stop()
-            }
-            beforeTest { appender.list.clear() }
+    FunSpec({
+        val logger = LoggerFactory.getLogger("TestScheduledLeaderTask") as Logger
+        val appender = ListAppender<ILoggingEvent>()
+        beforeSpec {
+            appender.start()
+            logger.addAppender(appender)
+        }
+        afterSpec {
+            logger.detachAppender(appender)
+            appender.stop()
+        }
+        beforeTest { appender.list.clear() }
 
-            test("should call execute on each iteration") {
-                runTest {
-                    var executeCount = 0
-                    val task = TestScheduledLeaderTask(
-                        interval = 100.milliseconds,
-                    ) {
-                        executeCount++
-                    }
-
-                    val job = launch {
-                        task.runTask()
-                    }
-
-                    runCurrent()
-                    executeCount.shouldBeExactly(1)
-
-                    advanceTimeBy(100)
-                    runCurrent()
-                    executeCount.shouldBeExactly(2)
-
-                    advanceTimeBy(100)
-                    runCurrent()
-                    executeCount.shouldBeExactly(3)
-
-                    job.cancelAndJoin()
+        test("should call execute on each iteration") {
+            runTest {
+                var executeCount = 0
+                val task = TestScheduledLeaderTask(
+                    interval = 100.milliseconds,
+                ) {
+                    executeCount++
                 }
-            }
 
-            test("should continue running after exception in execute") {
-                runTest {
-                    var executeCount = 0
-                    val task = TestScheduledLeaderTask(
-                        interval = 100.milliseconds,
-                    ) {
-                        executeCount++
-                        if (executeCount == 1) {
-                            throw RuntimeException("Test exception")
-                        }
-                    }
-
-                    val job = launch {
-                        task.runTask()
-                    }
-
-                    runCurrent()
-                    executeCount.shouldBeExactly(1)
-
-                    advanceTimeBy(100)
-                    runCurrent()
-                    executeCount.shouldBeExactly(2)
-                    val event = appender.list.single { it.level == Level.ERROR }
-                    val fields = event.keyValuePairs.associate { it.key to it.value }
-                    fields["event_type"] shouldBe "scheduled_task_failed"
-                    fields["task_name"] shouldBe "TestScheduledLeaderTask"
-                    fields.containsKey("operation") shouldBe false
-                    fields.containsKey("error_code") shouldBe false
-                    fields.containsKey("outcome") shouldBe false
-                    fields["cause_type"] shouldBe "RuntimeException"
-                    event.throwableProxy.message shouldBe "java.lang.RuntimeException"
-
-                    job.cancelAndJoin()
+                val job = launch {
+                    task.runTask()
                 }
+
+                runCurrent()
+                executeCount.shouldBeExactly(1)
+
+                advanceTimeBy(100)
+                runCurrent()
+                executeCount.shouldBeExactly(2)
+
+                advanceTimeBy(100)
+                runCurrent()
+                executeCount.shouldBeExactly(3)
+
+                job.cancelAndJoin()
             }
+        }
 
-            test("should handle cancellation gracefully") {
-                runTest {
-                    val task = TestScheduledLeaderTask(
-                        interval = 100.milliseconds,
-                    ) {}
-
-                    val job = launch {
-                        task.runTask()
+        test("should continue running after exception in execute") {
+            runTest {
+                var executeCount = 0
+                val task = TestScheduledLeaderTask(
+                    interval = 100.milliseconds,
+                ) {
+                    executeCount++
+                    if (executeCount == 1) {
+                        throw RuntimeException("Test exception")
                     }
-
-                    runCurrent()
-                    job.cancelAndJoin()
-
-                    job.isActive.shouldBeFalse()
-                    job.isCompleted.shouldBeTrue()
-                    appender.list.none { it.level == Level.ERROR } shouldBe true
                 }
-            }
 
-            test("does not log cancellation thrown by the task") {
-                runTest {
-                    val task = TestScheduledLeaderTask(interval = 100.milliseconds) {
-                        throw CancellationException("cancelled")
-                    }
-                    val job = launch { task.runTask() }
-                    runCurrent()
-                    job.isCompleted.shouldBeTrue()
-                    appender.list.none { it.level == Level.ERROR } shouldBe true
+                val job = launch {
+                    task.runTask()
                 }
-            }
 
-            test("logs wrapped cancellation as an ordinary task failure") {
-                runTest {
-                    val task = TestScheduledLeaderTask(interval = 100.milliseconds) {
-                        throw IllegalStateException("private-canary", CancellationException("cancelled"))
-                    }
-                    val job = launch { task.runTask() }
-                    runCurrent()
-                    job.isActive.shouldBeTrue()
-                    appender.list.any { it.level == Level.ERROR } shouldBe true
-                    job.cancelAndJoin()
+                runCurrent()
+                executeCount.shouldBeExactly(1)
+
+                advanceTimeBy(100)
+                runCurrent()
+                executeCount.shouldBeExactly(2)
+                val event = appender.list.single { it.level == Level.ERROR }
+                val fields = event.keyValuePairs.associate { it.key to it.value }
+                fields["event_type"] shouldBe "scheduled_task_failed"
+                fields["task_name"] shouldBe "TestScheduledLeaderTask"
+                fields.containsKey("operation") shouldBe false
+                fields.containsKey("error_code") shouldBe false
+                fields.containsKey("outcome") shouldBe false
+                fields["cause_type"] shouldBe "RuntimeException"
+                event.throwableProxy.message shouldBe "java.lang.RuntimeException"
+
+                job.cancelAndJoin()
+            }
+        }
+
+        test("should handle cancellation gracefully") {
+            runTest {
+                val task = TestScheduledLeaderTask(
+                    interval = 100.milliseconds,
+                ) {}
+
+                val job = launch {
+                    task.runTask()
                 }
+
+                runCurrent()
+                job.cancelAndJoin()
+
+                job.isActive.shouldBeFalse()
+                job.isCompleted.shouldBeTrue()
+                appender.list.none { it.level == Level.ERROR } shouldBe true
             }
+        }
 
-            test("should stop when cancelled") {
-                runTest {
-                    var executeCount = 0
-                    val task = TestScheduledLeaderTask(
-                        interval = 100.milliseconds,
-                    ) {
-                        executeCount++
-                    }
-
-                    val job = launch {
-                        task.runTask()
-                    }
-
-                    runCurrent()
-                    executeCount.shouldBeExactly(1)
-
-                    job.cancelAndJoin()
-                    advanceTimeBy(1_000)
-                    runCurrent()
-
-                    executeCount.shouldBeExactly(1)
+        test("does not log cancellation thrown by the task") {
+            runTest {
+                val task = TestScheduledLeaderTask(interval = 100.milliseconds) {
+                    throw CancellationException("cancelled")
                 }
+                val job = launch { task.runTask() }
+                runCurrent()
+                job.isCompleted.shouldBeTrue()
+                appender.list.none { it.level == Level.ERROR } shouldBe true
             }
-        },
-    )
+        }
+
+        test("logs wrapped cancellation as an ordinary task failure") {
+            runTest {
+                val task = TestScheduledLeaderTask(interval = 100.milliseconds) {
+                    throw IllegalStateException("private-canary", CancellationException("cancelled"))
+                }
+                val job = launch { task.runTask() }
+                runCurrent()
+                job.isActive.shouldBeTrue()
+                appender.list.any { it.level == Level.ERROR } shouldBe true
+                job.cancelAndJoin()
+            }
+        }
+
+        test("should stop when cancelled") {
+            runTest {
+                var executeCount = 0
+                val task = TestScheduledLeaderTask(
+                    interval = 100.milliseconds,
+                ) {
+                    executeCount++
+                }
+
+                val job = launch {
+                    task.runTask()
+                }
+
+                runCurrent()
+                executeCount.shouldBeExactly(1)
+
+                job.cancelAndJoin()
+                advanceTimeBy(1_000)
+                runCurrent()
+
+                executeCount.shouldBeExactly(1)
+            }
+        }
+    })
 
 private class TestScheduledLeaderTask(
     interval: Duration,

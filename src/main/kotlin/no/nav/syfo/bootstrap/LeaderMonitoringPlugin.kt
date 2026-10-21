@@ -1,4 +1,4 @@
-package no.nav.syfo.plugins
+package no.nav.syfo.bootstrap
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing

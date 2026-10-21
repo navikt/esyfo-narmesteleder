@@ -10,7 +10,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import no.nav.syfo.bootstrap.OtherEnvironmentProperties
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.KafkaEventConsumer
 import no.nav.syfo.platform.kafka.KafkaEventLogger
@@ -43,7 +42,7 @@ class PersistSendtSykmeldingConsumer(
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
-    private val env: OtherEnvironmentProperties,
+    private val enabled: Boolean,
 ) : KafkaListener,
     AutoCloseable {
     private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.SENT_SYKMELDING_PERSIST)
@@ -53,13 +52,13 @@ class PersistSendtSykmeldingConsumer(
         jacksonMapper: ObjectMapper,
         kafkaConsumer: KafkaConsumer<String, String?>,
         scope: CoroutineScope,
-        env: OtherEnvironmentProperties,
+        enabled: Boolean,
     ) : this(
         handler = handler,
         jacksonMapper = jacksonMapper,
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
-        env = env,
+        enabled = enabled,
     )
 
     private var job: Job? = null
@@ -69,7 +68,7 @@ class PersistSendtSykmeldingConsumer(
     var commitOnAllErrors = false
 
     override fun listen() {
-        if (!env.persistSendtSykmelding) {
+        if (!enabled) {
             logger.info("Persisting of sendt sykmelding is disabled, not starting consumer for $SENDT_SYKMELDING_TOPIC")
             return
         }

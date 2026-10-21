@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederbehov
 
-import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederbehov.api.narmestelederbehovApiUrl
 import no.nav.syfo.narmestelederbehov.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.application.CompleteFulfilledNarmestelederbehovDialogsUseCase
@@ -43,14 +42,13 @@ import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
-import kotlin.time.Duration
 
 fun narmestelederbehovDependencies() = module {
-    single { NarmestelederbehovCreationSettings(persistenceEnabled = get<Environment>().otherProperties.persistLeesahNlBehov) }
+    single { NarmestelederbehovCreationSettings(persistenceEnabled = get<NarmestelederbehovSettings>().persistLeesahNlBehov) }
     single {
         NarmestelederbehovDialogFactory(
-            narmestelederbehovApiUrl = narmestelederbehovApiUrl(get<Environment>().otherProperties.publicIngressUrl),
-            frontendBaseUrl = get<Environment>().otherProperties.frontendBaseUrl,
+            narmestelederbehovApiUrl = narmestelederbehovApiUrl(get<NarmestelederbehovSettings>().publicIngressUrl),
+            frontendBaseUrl = get<NarmestelederbehovSettings>().frontendBaseUrl,
         )
     }
     single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
@@ -67,7 +65,7 @@ fun narmestelederbehovDependencies() = module {
         UpdateDialogTask(
             completeFulfilledDialogs = get(),
             expireDialogs = get(),
-            pollingInterval = Duration.parse(get<Environment>().otherProperties.updateDialogportenTaskProperties.pollingDelay),
+            pollingInterval = get<NarmestelederbehovSettings>().dialogUpdatePollingInterval,
         )
     }
     single {

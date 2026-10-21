@@ -2,7 +2,6 @@ package no.nav.syfo.narmestelederrelasjon
 
 import io.ktor.server.application.Application
 import io.ktor.server.routing.routing
-import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederrelasjon.api.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLinemanagerSearchApi
@@ -32,7 +31,7 @@ fun Application.narmestelederrelasjonModule() {
     val getNarmestelederrelasjon = get<GetNarmestelederrelasjonUseCase>()
     val revokeNarmestelederrelasjon = get<RevokeNarmestelederrelasjonUseCase>()
     val texasHttpClient = get<TexasHttpClient>()
-    val preAuthorizedApps = get<Environment>().texas.azurePreAuthorizedApps
+    val preAuthorizedApps = get<NarmestelederrelasjonSettings>().lineManagerLookupPreAuthorizedApps
     routing {
         apiV1 {
             registerSubmitNarmestelederrelasjonApi(submit = submit, texasHttpClient = texasHttpClient)

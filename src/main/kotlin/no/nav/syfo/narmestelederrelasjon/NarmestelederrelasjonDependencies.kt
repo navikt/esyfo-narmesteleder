@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon
 
-import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookup
@@ -99,7 +98,7 @@ fun narmestelederrelasjonDependencies() = module {
     single<LeesahNarmestelederrelasjonRepository> { ExposedLeesahNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
     single<NarmestelederRegisterMetrics> { MicrometerNarmestelederRegisterMetrics() }
     single {
-        val observeSource = get<Environment>().otherProperties.employmentCheckObserveSourceEnabled
+        val observeSource = get<NarmestelederrelasjonSettings>().employmentCheckObserveSourceEnabled
         PersistNarmestelederrelasjonerFromLeesahUseCase(
             repository = get(),
             metrics = get(),
@@ -118,7 +117,7 @@ fun narmestelederrelasjonDependencies() = module {
             clock = get(),
             metrics = get(),
             publisher = get(),
-            revokeEnabled = get<Environment>().otherProperties.employmentCheckRevokeEnabled,
+            revokeEnabled = get<NarmestelederrelasjonSettings>().employmentCheckRevokeEnabled,
         )
     }
     single { SeedNarmestelederrelasjonEmploymentChecksUseCase(get(), get(), get(), get()) }

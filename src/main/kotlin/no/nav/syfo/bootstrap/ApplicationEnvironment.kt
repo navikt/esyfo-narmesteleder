@@ -26,6 +26,8 @@ data class NaisEnvironment(
 
 fun isLocalEnv(): Boolean = getEnvVar("NAIS_CLUSTER_NAME", "local") == "local"
 
+fun loadEnvironment(isLocal: Boolean): Environment = if (isLocal) LocalEnvironment() else NaisEnvironment()
+
 data class LocalEnvironment(
     override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
     override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),

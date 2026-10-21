@@ -279,14 +279,20 @@ Owns application assembly:
 - start Ktor, Kafka consumers and scheduled work;
 - aggregate routes and operational endpoints.
 
-Business classes do not depend on Koin or bootstrap.
+Business classes do not depend on Koin or bootstrap. Capabilities never see
+the bootstrap `Environment`; bootstrap registers capability-owned settings such
+as `NarmestelederbehovSettings` and `NarmestelederrelasjonSettings`, and passes
+single feature flags directly to consumers. `BootstrapBoundaryTest` fails if a
+business module references `bootstrap`.
 
-`Application.module()` starts the platform module first and then one Ktor
-module per capability:
+`Application.module()` delegates to `Application.bootstrap()`, which reads the
+environment once, starts the platform module and then one Ktor module per
+capability:
 
 ```kotlin
-fun Application.module() {
-    platformModule(applicationModules(isLocalEnv()))
+fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
+    val environment = loadEnvironment(isLocal)
+    platformModule(applicationModules(environment, isLocal))
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
@@ -295,9 +301,9 @@ fun Application.module() {
     narmestelederbehovModule()
     narmestelederstatistikkModule()
     sykmeldingModule()
-    configureKafkaConsumers()
-    configureBackgroundTasks()
-    configureEmploymentChecks()
+    configureKafkaConsumers(environment)
+    configureBackgroundTasks(environment.otherProperties)
+    configureEmploymentChecks(environment.otherProperties)
 }
 ```
 
@@ -316,7 +322,7 @@ fun Application.module() {
 - All five capabilities (`organisasjonstilgang`, `narmestelederrelasjon`,
   `narmestelederbehov`, `narmestelederstatistikk` and `sykmelding`) follow this
   pattern for dependencies and routes where applicable. Consumer/task startup
-  remains in `plugins` until moved into their capability modules.
+  remains in `bootstrap` until moved into their capability modules.
 - Koin definitions are not order-sensitive, but capability modules load their
   definitions with `koinModules` and eagerly resolve route dependencies at
   startup to fail fast. A module using another capability's contract must

@@ -1,4 +1,4 @@
-package no.nav.syfo.plugins
+package no.nav.syfo.bootstrap
 
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
@@ -7,24 +7,24 @@ import no.nav.syfo.sykmelding.retention.infrastructure.DeleteOldSykmeldingerTask
 import org.koin.dsl.module
 import kotlin.time.Duration
 
-internal fun tasksModule() = module {
-    single { NarmestelederbehovExpirySettings(daysAfterTom = env().otherProperties.daysAfterTomToExpireBehovs) }
+internal fun tasksModule(other: OtherEnvironmentProperties) = module {
+    single { NarmestelederbehovExpirySettings(daysAfterTom = other.daysAfterTomToExpireBehovs) }
     single {
         ExpireNarmestelederbehovTask(
             expireNarmestelederbehov = get(),
-            interval = Duration.parse(env().otherProperties.maintenanceTaskDelay),
+            interval = Duration.parse(other.maintenanceTaskDelay),
         )
     }
     single {
         DeleteOldSykmeldingerTask(
             deleteOldSykmeldinger = get(),
-            interval = Duration.parse(env().otherProperties.maintenanceTaskDelay),
+            interval = Duration.parse(other.maintenanceTaskDelay),
         )
     }
     single {
         PersonEnrichmentTask(
             enrichPendingPersons = get(),
-            pollingInterval = Duration.parse(env().otherProperties.personEnrichmentTaskDelay),
+            pollingInterval = Duration.parse(other.personEnrichmentTaskDelay),
         )
     }
 }

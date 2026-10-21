@@ -10,7 +10,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import no.nav.syfo.bootstrap.OtherEnvironmentProperties
 import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRecord
 import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
 import no.nav.syfo.platform.kafka.KafkaEnvironment
@@ -68,7 +67,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
-    private val env: OtherEnvironmentProperties,
+    private val enabled: Boolean,
 ) : KafkaListener,
     AutoCloseable {
     private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.NL_REPLAY)
@@ -79,14 +78,14 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         jacksonMapper: ObjectMapper,
         kafkaConsumer: KafkaConsumer<String, String?>,
         scope: CoroutineScope,
-        env: OtherEnvironmentProperties,
+        enabled: Boolean,
     ) : this(
         persistFromLeesah = persistFromLeesah,
         narmestelederLeesahProducer = narmestelederLeesahProducer,
         jacksonMapper = jacksonMapper,
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
-        env = env,
+        enabled = enabled,
     )
 
     private var job: Job? = null
@@ -96,7 +95,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     var commitOnAllErrors = false
 
     override fun listen() {
-        if (!env.persistNarmestelederRegister) {
+        if (!enabled) {
             logger.info(
                 "Persisting of narmesteleder from leesah topic is disabled, not starting {} consumer for {}",
                 this::class.simpleName,

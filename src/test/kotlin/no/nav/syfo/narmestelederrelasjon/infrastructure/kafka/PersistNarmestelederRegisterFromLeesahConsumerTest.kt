@@ -12,7 +12,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import no.nav.syfo.bootstrap.OtherEnvironmentProperties
 import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
 import no.nav.syfo.narmestelederrelasjon.application.RecordingLeesahNarmestelederrelasjonRepository
@@ -43,7 +42,7 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,
             scope = CoroutineScope(EmptyCoroutineContext),
-            env = OtherEnvironmentProperties.createForLocal(),
+            enabled = true,
         ).also { it.commitOnAllErrors = commitOnAllErrors }
 
         fun json(message: NarmestelederLeesahKafkaMessage) = objectMapper.writeValueAsString(message)

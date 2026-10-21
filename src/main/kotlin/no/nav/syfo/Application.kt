@@ -4,21 +4,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import no.nav.syfo.bootstrap.isLocalEnv
-import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
-import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
-import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkModule
-import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
-import no.nav.syfo.platform.observability.bindJvmAndProcessMetrics
-import no.nav.syfo.plugins.applicationModules
-import no.nav.syfo.plugins.configureBackgroundTasks
-import no.nav.syfo.plugins.configureEmploymentChecks
-import no.nav.syfo.plugins.configureKafkaConsumers
-import no.nav.syfo.plugins.configureLeaderMonitoring
-import no.nav.syfo.plugins.configureLifecycleHooks
-import no.nav.syfo.plugins.platformModule
-import no.nav.syfo.sykmelding.sykmeldingModule
-import org.koin.ktor.ext.get
+import no.nav.syfo.bootstrap.bootstrap
 
 fun main() {
     val server = embeddedServer(
@@ -37,17 +23,4 @@ fun main() {
     server.start(true)
 }
 
-fun Application.module() {
-    platformModule(applicationModules(isLocalEnv()))
-    bindJvmAndProcessMetrics()
-    configureLifecycleHooks(get())
-    configureLeaderMonitoring(get(), get())
-    organisasjonstilgangModule()
-    narmestelederrelasjonModule()
-    narmestelederbehovModule()
-    narmestelederstatistikkModule()
-    sykmeldingModule()
-    configureKafkaConsumers()
-    configureBackgroundTasks()
-    configureEmploymentChecks()
-}
+fun Application.module() = bootstrap()

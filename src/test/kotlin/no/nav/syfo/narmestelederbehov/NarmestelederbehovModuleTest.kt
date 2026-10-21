@@ -7,9 +7,8 @@ import io.ktor.client.request.request
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
-import io.mockk.every
 import io.mockk.mockk
-import no.nav.syfo.bootstrap.Environment
+import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
@@ -19,11 +18,9 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.NAV_CALL_ID_HEADER
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.database.DatabaseInterface
 import no.nav.syfo.platform.observability.ApplicationState
-import no.nav.syfo.plugins.platformModule
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 import org.koin.ktor.ext.get
@@ -31,22 +28,22 @@ import java.sql.Connection
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlin.time.Duration.Companion.minutes
 
 class NarmestelederbehovModuleTest :
     FunSpec({
         test("registers its dependencies and mounts behov routes only under the public API prefix") {
-            val environment = mockk<Environment> {
-                every { texas } returns TexasEnvironment.createForLocal()
-                every { otherProperties.persistLeesahNlBehov } returns false
-                every { otherProperties.publicIngressUrl } returns "https://api.example.invalid"
-                every { otherProperties.frontendBaseUrl } returns "https://frontend.example.invalid"
-                every { otherProperties.updateDialogportenTaskProperties.pollingDelay } returns "7m"
-            }
+            val settings = NarmestelederbehovSettings(
+                persistLeesahNlBehov = false,
+                publicIngressUrl = "https://api.example.invalid",
+                frontendBaseUrl = "https://frontend.example.invalid",
+                dialogUpdatePollingInterval = 7.minutes,
+            )
             val externalDependencies = module {
                 single { ApplicationState() }
                 single<DatabaseInterface> { UnusedDatabase }
                 single<Database> { mockk() }
-                single { environment }
+                single { settings }
                 single { Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC) }
                 single<TexasHttpClient> { mockk() }
                 single<OrganizationAccess> { mockk() }

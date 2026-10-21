@@ -3,9 +3,9 @@ package no.nav.syfo.narmestelederbehov.application
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactNormalization
 import no.nav.syfo.narmestelederrelasjon.domain.NormalizedManagerContact

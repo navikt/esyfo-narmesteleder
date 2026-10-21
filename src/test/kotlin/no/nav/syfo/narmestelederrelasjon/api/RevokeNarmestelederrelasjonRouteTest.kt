@@ -11,7 +11,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevocationInitiator
 import no.nav.syfo.narmestelederrelasjon.observability.LINEMANAGER_REVOKE_BY_ID_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult

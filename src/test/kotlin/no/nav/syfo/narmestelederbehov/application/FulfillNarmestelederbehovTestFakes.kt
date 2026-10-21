@@ -4,9 +4,9 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonCommand
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject

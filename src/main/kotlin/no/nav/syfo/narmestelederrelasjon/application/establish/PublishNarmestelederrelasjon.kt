@@ -1,0 +1,17 @@
+package no.nav.syfo.narmestelederrelasjon.application.establish
+
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
+import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
+import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
+
+fun interface PublishNarmestelederrelasjon {
+    suspend fun publish(command: PublishNarmestelederrelasjonCommand)
+}
+
+data class PublishNarmestelederrelasjonCommand(
+    val employee: RelationPerson,
+    val manager: RelationManager,
+    val organizationNumber: OrganizationNumber,
+    val source: RelationSource,
+)

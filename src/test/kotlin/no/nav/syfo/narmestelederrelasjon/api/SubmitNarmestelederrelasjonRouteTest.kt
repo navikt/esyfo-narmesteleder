@@ -26,10 +26,10 @@ import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason

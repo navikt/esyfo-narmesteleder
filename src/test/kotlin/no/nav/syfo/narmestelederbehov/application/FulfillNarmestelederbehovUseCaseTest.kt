@@ -17,8 +17,8 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue

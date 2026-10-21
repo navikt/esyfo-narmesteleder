@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.api.model
 
-import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerResult
-import no.nav.syfo.narmestelederrelasjon.application.SearchName
+import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmestelederrelasjonerResult
+import no.nav.syfo.narmestelederrelasjon.application.search.SearchName
 import java.time.Instant
 import java.util.UUID
 

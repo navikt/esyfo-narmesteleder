@@ -7,8 +7,8 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchQuery
-import no.nav.syfo.narmestelederrelasjon.application.SearchName
+import no.nav.syfo.narmestelederrelasjon.application.search.NarmestelederrelasjonSearchQuery
+import no.nav.syfo.narmestelederrelasjon.application.search.SearchName
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.javatime.date

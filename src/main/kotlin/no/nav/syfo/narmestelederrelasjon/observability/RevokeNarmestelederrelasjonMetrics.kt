@@ -1,9 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.observability
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
-import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeActiveNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonResult
 import no.nav.syfo.platform.observability.METRICS_NS
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 

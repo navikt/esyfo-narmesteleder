@@ -3,10 +3,10 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import no.nav.syfo.narmestelederrelasjon.application.ClaimedCheckOutcome
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentComparisonResult
-import no.nav.syfo.narmestelederrelasjon.application.SourceObservationOutcome
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.ClaimedCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckStats
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentComparisonResult
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.SourceObservationOutcome
 
 class MicrometerEmploymentCheckMetricsTest :
     FunSpec({

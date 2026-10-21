@@ -50,7 +50,9 @@ no.nav.syfo
 │   └── infrastructure
 ├── narmestelederrelasjon
 │   ├── api
-│   ├── application
+│   ├── application               # shared ports; employee, employmentcheck,
+│   │                             # establish, get, leesah, lookup,
+│   │                             # relationperson, revoke, search, submit
 │   ├── domain
 │   └── infrastructure
 ├── narmestelederstatistikk
@@ -66,6 +68,17 @@ no.nav.syfo
 Start with shallow packages. Add subpackages by business feature when a
 package becomes difficult to navigate. Do not create fixed
 `command/query/port/handler/impl` trees with one file in each directory.
+
+When a layer is split, use function packages inside that layer, such as
+`application/revoke`, not vertical slices across layers. Split only where a
+function has several files; a package with a single file adds navigation
+without clarity, so `api` stays flat.
+Ports, repositories and metrics used by several functions stay in the root of
+the layer. Keep full class names, for example
+`revoke.RevokeNarmestelederrelasjonUseCase`, so searches, stack traces and
+imports stay unambiguous. Loggers named after their class follow the new
+package. `domain`, `infrastructure` and `observability` stay flat until they
+become difficult to navigate. Tests mirror the package of the code they test.
 
 ## Module responsibilities
 

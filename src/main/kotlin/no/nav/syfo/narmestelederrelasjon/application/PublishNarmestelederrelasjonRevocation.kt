@@ -2,6 +2,7 @@ package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevocationInitiator
 import kotlin.time.Duration
 
 interface PublishNarmestelederrelasjonRevocation {

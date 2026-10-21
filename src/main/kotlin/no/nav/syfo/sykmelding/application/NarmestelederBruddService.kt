@@ -2,8 +2,8 @@ package no.nav.syfo.sykmelding.application
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonFromSendtSykmelding
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

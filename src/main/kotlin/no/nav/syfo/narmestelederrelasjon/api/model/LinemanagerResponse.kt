@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.api.model
 
-import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmesteleder
+import no.nav.syfo.narmestelederrelasjon.application.lookup.ActiveNarmesteleder
 import java.util.UUID
 
 data class LinemanagerLookupResponse(

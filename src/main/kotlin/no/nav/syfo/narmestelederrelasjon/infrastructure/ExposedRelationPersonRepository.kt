@@ -3,8 +3,8 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
-import no.nav.syfo.narmestelederrelasjon.application.RelationPersonRepository
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RegisteredPerson
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonRepository
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList

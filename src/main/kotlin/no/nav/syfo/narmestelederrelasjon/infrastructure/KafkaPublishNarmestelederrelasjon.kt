@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.establish.PublishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.establish.PublishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.Leder
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse

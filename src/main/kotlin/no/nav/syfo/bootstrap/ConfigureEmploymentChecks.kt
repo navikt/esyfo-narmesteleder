@@ -4,9 +4,9 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
 import io.ktor.server.application.ServerReady
 import kotlinx.coroutines.runBlocking
-import no.nav.syfo.narmestelederrelasjon.application.CheckNarmestelederrelasjonEmploymentUseCase
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckSettings
-import no.nav.syfo.narmestelederrelasjon.application.SeedNarmestelederrelasjonEmploymentChecksUseCase
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.CheckNarmestelederrelasjonEmploymentUseCase
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckSettings
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.SeedNarmestelederrelasjonEmploymentChecksUseCase
 import no.nav.syfo.platform.scheduling.BackgroundLoop
 import org.koin.ktor.ext.inject
 

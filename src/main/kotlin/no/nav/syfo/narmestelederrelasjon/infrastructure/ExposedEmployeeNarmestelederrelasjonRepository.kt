@@ -5,8 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjonRepository
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.compoundAnd

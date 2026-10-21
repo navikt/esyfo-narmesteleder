@@ -13,9 +13,9 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchRequest
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
-import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerCommand
-import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerResult
-import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
+import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmestelederrelasjonerCommand
+import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmestelederrelasjonerResult
+import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmestelederrelasjonerUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countLinemanagerSearch
 import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject

@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckOutcome
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq

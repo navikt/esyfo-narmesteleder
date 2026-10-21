@@ -13,10 +13,10 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
-import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.get.GetNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.get.GetNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countGetNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.observability.countLinemanagerRevokeById
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject

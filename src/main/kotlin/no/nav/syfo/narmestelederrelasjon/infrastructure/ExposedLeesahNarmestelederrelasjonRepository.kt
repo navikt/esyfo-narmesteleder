@@ -1,8 +1,8 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonUpsert
+import no.nav.syfo.narmestelederrelasjon.application.leesah.LeesahNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.leesah.NarmestelederrelasjonUpsert
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 

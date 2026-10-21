@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonUpsert
+import no.nav.syfo.narmestelederrelasjon.application.leesah.NarmestelederrelasjonUpsert
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence

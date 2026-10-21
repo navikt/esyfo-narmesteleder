@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.observability
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.get.GetNarmestelederrelasjonResult
 import no.nav.syfo.platform.observability.METRICS_NS
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 

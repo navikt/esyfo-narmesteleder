@@ -7,9 +7,9 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
-import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonCommand
-import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeActiveNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeActiveNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countRevokeActiveNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject

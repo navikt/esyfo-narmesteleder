@@ -2,7 +2,7 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederRegisterMetrics
+import no.nav.syfo.narmestelederrelasjon.application.leesah.NarmestelederRegisterMetrics
 import no.nav.syfo.platform.observability.METRICS_NS
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 

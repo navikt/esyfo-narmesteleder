@@ -14,9 +14,9 @@ import kotlinx.coroutines.withTimeout
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.ClaimedEmploymentCheck
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckStats
 import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption

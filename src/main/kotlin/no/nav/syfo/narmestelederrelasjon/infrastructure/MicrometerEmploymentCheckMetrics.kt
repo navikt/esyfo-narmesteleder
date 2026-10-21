@@ -3,11 +3,11 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
-import no.nav.syfo.narmestelederrelasjon.application.ClaimedCheckOutcome
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckMetrics
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentComparisonResult
-import no.nav.syfo.narmestelederrelasjon.application.SourceObservationOutcome
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.ClaimedCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckMetrics
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckStats
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentComparisonResult
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.SourceObservationOutcome
 import no.nav.syfo.platform.observability.METRICS_NS
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import java.util.concurrent.atomic.AtomicReference

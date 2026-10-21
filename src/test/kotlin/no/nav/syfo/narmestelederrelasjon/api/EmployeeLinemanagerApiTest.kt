@@ -20,9 +20,9 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
+import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.employee.ListActiveNarmesteledereForEmployeeUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.observability.EMPLOYEE_LINEMANAGER_TOTAL

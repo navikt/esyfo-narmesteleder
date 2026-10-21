@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonUpsert
+import no.nav.syfo.narmestelederrelasjon.application.leesah.NarmestelederrelasjonUpsert
 import org.jetbrains.exposed.v1.jdbc.upsert
 import java.time.ZoneOffset
 

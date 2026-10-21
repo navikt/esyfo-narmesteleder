@@ -5,7 +5,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import java.time.OffsetDateTime
 import java.util.UUID

@@ -9,7 +9,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.integration.ereg.EregClient
 import no.nav.syfo.integration.ereg.Navn
 import no.nav.syfo.integration.ereg.Organisasjon
-import no.nav.syfo.narmestelederrelasjon.application.OrganizationNameResult
+import no.nav.syfo.narmestelederrelasjon.application.get.OrganizationNameResult
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName

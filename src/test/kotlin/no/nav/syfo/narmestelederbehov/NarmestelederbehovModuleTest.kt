@@ -32,38 +32,38 @@ import kotlin.time.Duration.Companion.minutes
 
 class NarmestelederbehovModuleTest :
     FunSpec({
-        test("registers its dependencies and mounts behov routes only under the public API prefix") {
-            val settings = NarmestelederbehovSettings(
-                persistLeesahNlBehov = false,
-                publicIngressUrl = "https://api.example.invalid",
-                frontendBaseUrl = "https://frontend.example.invalid",
-                dialogUpdatePollingInterval = 7.minutes,
-            )
-            val externalDependencies = module {
-                single { ApplicationState() }
-                single<DatabaseInterface> { UnusedDatabase }
-                single<Database> { mockk() }
-                single { Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC) }
-                single<TexasHttpClient> { mockk() }
-                single<OrganizationAccess> { mockk() }
-                single<PdlClient> { mockk() }
-                single<DialogportenClient> { mockk() }
-                single<EstablishNarmestelederrelasjon> { mockk() }
-            }
-
-            testApplication {
-                application {
-                    platformModule(listOf(externalDependencies))
-                    narmestelederbehovModule(settings)
-                    get<UpdateDialogTask>() shouldNotBe null
+        val itemPath = "$NARMESTELEDERBEHOV_PATH/00000000-0000-0000-0000-000000000001"
+        listOf(
+            Triple("GET item", HttpMethod.Get, itemPath),
+            Triple("PUT item", HttpMethod.Put, itemPath),
+            Triple("GET list", HttpMethod.Get, NARMESTELEDERBEHOV_PATH),
+        ).forEach { (route, httpMethod, path) ->
+            test("registers its dependencies and mounts the behov $route route only under the public API prefix") {
+                val settings = NarmestelederbehovSettings(
+                    persistLeesahNlBehov = false,
+                    publicIngressUrl = "https://api.example.invalid",
+                    frontendBaseUrl = "https://frontend.example.invalid",
+                    dialogUpdatePollingInterval = 7.minutes,
+                )
+                val externalDependencies = module {
+                    single { ApplicationState() }
+                    single<DatabaseInterface> { UnusedDatabase }
+                    single<Database> { mockk() }
+                    single { Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC) }
+                    single<TexasHttpClient> { mockk() }
+                    single<OrganizationAccess> { mockk() }
+                    single<PdlClient> { mockk() }
+                    single<DialogportenClient> { mockk() }
+                    single<EstablishNarmestelederrelasjon> { mockk() }
                 }
 
-                val itemPath = "$NARMESTELEDERBEHOV_PATH/00000000-0000-0000-0000-000000000001"
-                listOf(
-                    HttpMethod.Get to itemPath,
-                    HttpMethod.Put to itemPath,
-                    HttpMethod.Get to NARMESTELEDERBEHOV_PATH,
-                ).forEach { (httpMethod, path) ->
+                testApplication {
+                    application {
+                        platformModule(listOf(externalDependencies))
+                        narmestelederbehovModule(settings)
+                        get<UpdateDialogTask>() shouldNotBe null
+                    }
+
                     // Missing tokens are rejected before clients or repositories are used.
                     val publicResponse = client.request("$API_V1_PATH$path") {
                         method = httpMethod

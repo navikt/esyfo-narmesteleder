@@ -78,12 +78,12 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
             fixture.calls shouldBe listOf("access", "person", "name", "active")
         }
 
-        test("LPS, employee and personnel manager use resolved ident and expected Kafka initiator") {
-            listOf(
-                lps to RevocationInitiator.LPS,
-                OrganizationAccessSubject.PersonnelManager(resolved, AccessToken("test")) to RevocationInitiator.EMPLOYEE,
-                OrganizationAccessSubject.PersonnelManager(employee, AccessToken("test")) to RevocationInitiator.PERSONNEL_MANAGER,
-            ).forEach { (subject, initiator) ->
+        listOf(
+            lps to RevocationInitiator.LPS,
+            OrganizationAccessSubject.PersonnelManager(resolved, AccessToken("test")) to RevocationInitiator.EMPLOYEE,
+            OrganizationAccessSubject.PersonnelManager(employee, AccessToken("test")) to RevocationInitiator.PERSONNEL_MANAGER,
+        ).forEach { (subject, initiator) ->
+            test("a revocation by $initiator uses the resolved ident and the expected Kafka initiator") {
                 val fixture = RevokeActiveFixture()
                 fixture.execute(subject) shouldBe RevokeActiveNarmestelederrelasjonResult.Revoked(initiator)
                 fixture.calls shouldBe listOf("access", "person", "name", "active", "publish")

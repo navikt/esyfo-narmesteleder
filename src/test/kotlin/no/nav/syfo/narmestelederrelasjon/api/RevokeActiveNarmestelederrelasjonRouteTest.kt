@@ -55,11 +55,11 @@ private val resolvedIdent = PersonalIdentificationNumber("12345678902")
 
 class RevokeActiveNarmestelederrelasjonRouteTest :
     FunSpec({
-        test("Maskinporten and TokenX revocations return 202, count by principal and keep the Kafka source") {
-            listOf(
-                Triple("maskinporten", COUNT_REVOKE_LINEMANAGER_BY_LPS, NlResponseSource.LPS_REVOKE),
-                Triple("tokenx", COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER, NlResponseSource.PERSONALLEDER_REVOKE),
-            ).forEach { (provider, counter, source) ->
+        listOf(
+            Triple("maskinporten", COUNT_REVOKE_LINEMANAGER_BY_LPS, NlResponseSource.LPS_REVOKE),
+            Triple("tokenx", COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER, NlResponseSource.PERSONALLEDER_REVOKE),
+        ).forEach { (provider, counter, source) ->
+            test("a $provider revocation returns 202, counts by principal and keeps the Kafka source $source") {
                 val fixture = RevokeRouteFixture()
                 fixture.authorize(provider, caller = "11223344556")
                 val before = counter.count()
@@ -100,16 +100,16 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             fixture.messages shouldBe emptyList()
         }
 
-        test("invalid identifiers in the body return 400 with the validation message") {
-            val fixture = RevokeRouteFixture()
-            fixture.authorize("maskinporten")
-            fixture.withApplication {
-                listOf(
-                    """{"employeeIdentificationNumber":"1234567890","orgNumber":"123456789","lastName":"Hansen"}""" to
-                        "PersonalIdentificationNumber must be exactly 11 digits",
-                    """{"employeeIdentificationNumber":"12345678901","orgNumber":"12345678a","lastName":"Hansen"}""" to
-                        "OrganizationNumber must be exactly 9 digits",
-                ).forEach { (body, message) ->
+        listOf(
+            """{"employeeIdentificationNumber":"1234567890","orgNumber":"123456789","lastName":"Hansen"}""" to
+                "PersonalIdentificationNumber must be exactly 11 digits",
+            """{"employeeIdentificationNumber":"12345678901","orgNumber":"12345678a","lastName":"Hansen"}""" to
+                "OrganizationNumber must be exactly 9 digits",
+        ).forEach { (body, message) ->
+            test("an invalid identifier in the body returns 400 with '$message'") {
+                val fixture = RevokeRouteFixture()
+                fixture.authorize("maskinporten")
+                fixture.withApplication {
                     client.revoke(body = body).let {
                         it.status shouldBe HttpStatusCode.BadRequest
                         it.body<ApiError>().let { error ->
@@ -118,9 +118,9 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
                         }
                     }
                 }
+                fixture.lookups shouldBe emptyList()
+                fixture.messages shouldBe emptyList()
             }
-            fixture.lookups shouldBe emptyList()
-            fixture.messages shouldBe emptyList()
         }
 
         test("mismatched last name returns the name mismatch error") {

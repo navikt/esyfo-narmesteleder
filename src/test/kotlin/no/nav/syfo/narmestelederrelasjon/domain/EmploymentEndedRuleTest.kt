@@ -37,22 +37,22 @@ class EmploymentEndedRuleTest :
             EmploymentEndedRule.evaluate(organizationNumber, employments, today) shouldBe EmploymentEndedDecision.REVOKE
         }
 
-        test("keeps future employment without restricting its start date") {
-            listOf(null, LocalDate.of(2027, 12, 31)).forEach { endDate ->
+        listOf("without an end date" to null, "with an end date" to LocalDate.of(2027, 12, 31)).forEach { (case, endDate) ->
+            test("keeps future employment $case without restricting its start date") {
                 val employments = listOf(Employment(organizationNumber, endDate, startDate = today.plusMonths(1)))
                 EmploymentEndedRule.evaluate(organizationNumber, employments, today) shouldBe EmploymentEndedDecision.KEEP
             }
         }
 
-        test("keeps when one of several employments qualifies regardless of order") {
-            val employments = listOf(
-                Employment(OrganizationNumber("910000002"), null),
-                Employment(organizationNumber, LocalDate.of(2026, 3, 30)),
-                Employment(organizationNumber, LocalDate.of(2026, 3, 31)),
-                Employment(null, null),
-            )
-            listOf(employments, employments.reversed()).forEach {
-                EmploymentEndedRule.evaluate(organizationNumber, it, today) shouldBe EmploymentEndedDecision.KEEP
+        val severalEmployments = listOf(
+            Employment(OrganizationNumber("910000002"), null),
+            Employment(organizationNumber, LocalDate.of(2026, 3, 30)),
+            Employment(organizationNumber, LocalDate.of(2026, 3, 31)),
+            Employment(null, null),
+        )
+        listOf("given" to severalEmployments, "reversed" to severalEmployments.reversed()).forEach { (order, employments) ->
+            test("keeps when one of several employments in $order order qualifies") {
+                EmploymentEndedRule.evaluate(organizationNumber, employments, today) shouldBe EmploymentEndedDecision.KEEP
             }
         }
 

@@ -48,8 +48,8 @@ class EregNarmestelederrelasjonOrganizationTest :
                 .findName(orgNumber) shouldBe OrganizationNameResult.Missing
         }
 
-        listOf(null, " ", "").forEach { preferredName ->
-            test("returns Missing for a missing or blank preferred organization name: ${preferredName ?: "missing"}") {
+        listOf("missing" to null, "blank" to " ", "empty" to "").forEach { (case, preferredName) ->
+            test("returns Missing for a $case preferred organization name") {
                 val organization = EregNarmestelederrelasjonOrganization(
                     RecordingEregClient {
                         UpstreamResult.Success(Organisasjon(orgNumber.value, Navn(sammensattnavn = preferredName)))

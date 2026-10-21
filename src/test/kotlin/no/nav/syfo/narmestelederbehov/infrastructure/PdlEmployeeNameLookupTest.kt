@@ -32,9 +32,13 @@ class PdlEmployeeNameLookupTest :
             client.requests shouldBe listOf(ident.value, ident.value)
         }
 
-        test("not found and missing name or folkeregisterident give NotFound") {
-            listOf(null, person.copy(person = PersonResponse(emptyList())), person.copy(identer = listOf(Ident("actor", "AKTORID")))).forEach {
-                PdlEmployeeNameLookup(StubPdlClient(UpstreamResult.Success(it))).find(ident) shouldBe EmployeeNameLookupResult.NotFound
+        listOf(
+            "no person" to null,
+            "a missing name" to person.copy(person = PersonResponse(emptyList())),
+            "a missing folkeregisterident" to person.copy(identer = listOf(Ident("actor", "AKTORID"))),
+        ).forEach { (case, response) ->
+            test("$case gives NotFound") {
+                PdlEmployeeNameLookup(StubPdlClient(UpstreamResult.Success(response))).find(ident) shouldBe EmployeeNameLookupResult.NotFound
             }
         }
 

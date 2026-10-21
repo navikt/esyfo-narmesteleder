@@ -40,9 +40,13 @@ class PdlEmployeePersonLookupTest :
                 EmployeePersonLookupResult.Found(EmployeePerson(BehovPersonName("Test", "Middle", "Employee"), null))
         }
 
-        test("not found and missing name or folkeregisterident give NotFound") {
-            listOf(null, person.copy(person = PersonResponse(emptyList())), person.copy(identer = listOf(Ident("actor", "AKTORID")))).forEach {
-                lookup(UpstreamResult.Success(it)).find(employeeIdent) shouldBe EmployeePersonLookupResult.NotFound
+        listOf(
+            "no person" to null,
+            "a missing name" to person.copy(person = PersonResponse(emptyList())),
+            "a missing folkeregisterident" to person.copy(identer = listOf(Ident("actor", "AKTORID"))),
+        ).forEach { (case, response) ->
+            test("$case gives NotFound") {
+                lookup(UpstreamResult.Success(response)).find(employeeIdent) shouldBe EmployeePersonLookupResult.NotFound
             }
         }
 

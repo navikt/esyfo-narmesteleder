@@ -39,15 +39,14 @@ private val diagnosticTestEvent = applicationEvent<Unit>(
 
 class RuntimeDiagnosticsTest :
     FunSpec({
-        test("the production encoder keeps distinct transport causes without exception payloads") {
-            val cases = listOf(
-                UnknownHostException("person-12345678901.example") to "dns",
-                SocketTimeoutException("token-secret") to "timeout",
-                ConnectException("request-person-12345678901") to "connection",
-                SSLHandshakeException("upstream-body-canary") to "tls",
-                IllegalStateException("authorization-canary") to "unknown",
-            )
-            cases.forEach { (root, expectedKind) ->
+        listOf(
+            UnknownHostException("person-12345678901.example") to "dns",
+            SocketTimeoutException("token-secret") to "timeout",
+            ConnectException("request-person-12345678901") to "connection",
+            SSLHandshakeException("upstream-body-canary") to "tls",
+            IllegalStateException("authorization-canary") to "unknown",
+        ).forEach { (root, expectedKind) ->
+            test("the production encoder keeps the $expectedKind transport cause ${root.javaClass.simpleName} without exception payloads") {
                 val wrapped = IllegalStateException("request-body-canary", root)
                 withProductionLogger("runtime-diagnostics-test") { logger ->
                     logger.captureProductionLogs().use { capture ->
@@ -89,8 +88,17 @@ class RuntimeDiagnosticsTest :
             diagnostics.exceptionType shouldBe $$"ApiErrorException$InternalServerErrorException"
             diagnostics.causeType shouldBe "SocketTimeoutException"
             failure.failureDiagnostics().exceptionType shouldBe "SocketTimeoutException"
-            listOf(null, 42, 600).forEach { status ->
-                failure.copy(status = status).failureDiagnostics().upstreamStatus shouldBe null
+        }
+
+        listOf(null, 42, 600).forEach { status ->
+            test("omits the missing or out-of-range upstream status $status") {
+                val failure = UpstreamFailure(
+                    UpstreamName("texas"),
+                    UpstreamFailureStage.TOKEN_EXCHANGE,
+                    status,
+                    SocketTimeoutException("private-canary"),
+                )
+                failure.failureDiagnostics().upstreamStatus shouldBe null
             }
         }
 

@@ -46,8 +46,8 @@ class ManagerContactInputTest :
             shouldThrow<IllegalArgumentException> { PhoneNumber("+47 99 99 99 99") }
         }
 
-        test("reports the first invalid email entry before errors in later entries") {
-            listOf("invalid;", "invalid;person @example.test", "invalid; ;valid@example.test").forEach { email ->
+        listOf("invalid;", "invalid;person @example.test", "invalid; ;valid@example.test").forEach { email ->
+            test("reports the first invalid email entry before errors in later entries of '$email'") {
                 managerContact(email = email).normalize() shouldBe ManagerContactNormalization.Invalid(
                     listOf(
                         ManagerContactValidationIssue(

@@ -35,8 +35,8 @@ class SubmitNarmestelederrelasjonUseCaseTest :
             effects shouldBe listOf("access")
         }
 
-        test("normalizes before access and passes the submitted employee last name and source to establish") {
-            listOf(systemUser to RelationSource.LPS, personnelManager to RelationSource.PERSONNEL_MANAGER).forEach { (subject, source) ->
+        listOf(systemUser to RelationSource.LPS, personnelManager to RelationSource.PERSONNEL_MANAGER).forEach { (subject, source) ->
+            test("normalizes before access and passes the submitted employee last name and source $source to establish") {
                 val effects = mutableListOf<String>()
                 var established: EstablishNarmestelederrelasjonCommand? = null
                 val useCase = SubmitNarmestelederrelasjonUseCase(

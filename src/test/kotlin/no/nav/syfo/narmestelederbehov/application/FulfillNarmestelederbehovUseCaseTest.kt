@@ -184,16 +184,18 @@ class FulfillNarmestelederbehovUseCaseTest :
             }
         }
 
-        test("invalid contact takes precedence over missing behov and denied access") {
-            val effects = mutableListOf<String>()
-            val invalidCommand = command(email = "invalid", mobile = "+47-99999999")
-            listOf(
-                FakeBehovRepository(null, effects) to FakeOrganizationAccess(effects = effects),
-                FakeBehovRepository(behov, effects) to
-                    FakeOrganizationAccess(OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS), effects),
-            ).forEach { (repository, access) ->
-                createUseCase(repository = repository, access = access, effects = effects)
-                    .execute(invalidCommand) shouldBe FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
+        listOf(
+            Triple("missing behov", null, OrganizationAccessResult.Granted(organizationName = null)),
+            Triple("denied access", behov, OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)),
+        ).forEach { (case, behovForFulfillment, accessResult) ->
+            test("invalid contact takes precedence over $case") {
+                val effects = mutableListOf<String>()
+                val invalidCommand = command(email = "invalid", mobile = "+47-99999999")
+                createUseCase(
+                    repository = FakeBehovRepository(behovForFulfillment, effects),
+                    access = FakeOrganizationAccess(accessResult, effects),
+                    effects = effects,
+                ).execute(invalidCommand) shouldBe FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
                     listOf(
                         ManagerContactValidationIssue(ManagerContactField.MOBILE, ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS),
                         ManagerContactValidationIssue(ManagerContactField.EMAIL, ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID),

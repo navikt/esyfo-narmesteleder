@@ -38,15 +38,15 @@ class OpenApiLinemanagerSchemaTest :
             managerRef shouldBe "#/components/schemas/Manager"
         }
 
-        test("Manager schema exists in OpenAPI documentation and matches domain") {
-            val schemas = openApiSchemas(PUBLIC_OPENAPI)
+        listOf("linemanager" to Manager::class, "fulfillment" to FulfillmentManager::class).forEach { (api, manager) ->
+            test("Manager schema exists in OpenAPI documentation and matches the $api Manager") {
+                val schemas = openApiSchemas(PUBLIC_OPENAPI)
 
-            val managerSchema = schemas["Manager"] as Map<*, *>?
-            managerSchema shouldNotBe null
-            val managerProps =
-                (managerSchema!!["properties"] as Map<*, *>).keys.map { it as String }.toSet()
+                val managerSchema = schemas["Manager"] as Map<*, *>?
+                managerSchema shouldNotBe null
+                val managerProps =
+                    (managerSchema!!["properties"] as Map<*, *>).keys.map { it as String }.toSet()
 
-            listOf(Manager::class, FulfillmentManager::class).forEach { manager ->
                 managerProps.shouldContainAll(manager.memberProperties.map { it.name }.toSet())
             }
         }

@@ -47,18 +47,18 @@ class EstablishNarmestelederrelasjonUseCaseTest :
             )
         }
 
-        test("rejects without publishing at the first failing relation check") {
-            val mismatchingManager = manager.copy(
-                name = manager.name.copy(lastName = "Different", registeredNames = listOf(RegisteredName("Different"))),
-            )
-            listOf(
-                RejectionCase(false, EmploymentResult.InOrganization, defaultPeople, EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber), listOf("sykmelding")),
-                RejectionCase(true, EmploymentResult.None, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None), listOf("sykmelding", "employment")),
-                RejectionCase(true, EmploymentResult.NotInOrganization, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization), listOf("sykmelding", "employment")),
-                RejectionCase(true, EmploymentResult.InOrganization, mapOf(managerIdent to manager), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee")),
-                RejectionCase(true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee", "manager")),
-                RejectionCase(true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee, managerIdent to mismatchingManager), EstablishNarmestelederrelasjonResult.ManagerNameMismatch, listOf("sykmelding", "employment", "employee", "manager", "metric")),
-            ).forEach { case ->
+        val mismatchingManager = manager.copy(
+            name = manager.name.copy(lastName = "Different", registeredNames = listOf(RegisteredName("Different"))),
+        )
+        listOf(
+            RejectionCase("no active sykmelding", false, EmploymentResult.InOrganization, defaultPeople, EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber), listOf("sykmelding")),
+            RejectionCase("no employment", true, EmploymentResult.None, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None), listOf("sykmelding", "employment")),
+            RejectionCase("employment outside the organization", true, EmploymentResult.NotInOrganization, defaultPeople, EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization), listOf("sykmelding", "employment")),
+            RejectionCase("a missing employee", true, EmploymentResult.InOrganization, mapOf(managerIdent to manager), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee")),
+            RejectionCase("a missing manager", true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee), EstablishNarmestelederrelasjonResult.PersonNotFound, listOf("sykmelding", "employment", "employee", "manager")),
+            RejectionCase("a manager name mismatch", true, EmploymentResult.InOrganization, mapOf(employeeIdent to employee, managerIdent to mismatchingManager), EstablishNarmestelederrelasjonResult.ManagerNameMismatch, listOf("sykmelding", "employment", "employee", "manager", "metric")),
+        ).forEach { case ->
+            test("rejects without publishing at the first failing relation check: ${case.label}") {
                 val effects = mutableListOf<String>()
                 val publisher = RecordingPublisher(effects)
                 val recordedMatches = mutableListOf<LastNameMatch>()
@@ -119,9 +119,9 @@ class EstablishNarmestelederrelasjonUseCaseTest :
             recordedMatches shouldBe listOf(LastNameMatch.Exact(false))
         }
 
-        test("employee and manager Unavailable stop before validation or publishing") {
-            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
-            listOf(employeeIdent, managerIdent).forEach { unavailableIdent ->
+        listOf("employee" to employeeIdent, "manager" to managerIdent).forEach { (person, unavailableIdent) ->
+            test("$person Unavailable stops before validation or publishing") {
+                val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
                 val effects = mutableListOf<String>()
                 val publisher = RecordingPublisher(effects)
                 val useCase = createEstablisher(effects, publisher = publisher, unavailable = unavailableIdent to failure)
@@ -257,6 +257,7 @@ private class RecordingPublisher(
 }
 
 private data class RejectionCase(
+    val label: String,
     val active: Boolean,
     val employment: EmploymentResult,
     val people: Map<PersonalIdentificationNumber, PersonDetails>,

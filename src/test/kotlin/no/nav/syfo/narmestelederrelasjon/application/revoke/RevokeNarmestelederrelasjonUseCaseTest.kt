@@ -84,27 +84,27 @@ class RevokeNarmestelederrelasjonUseCaseTest :
             }
         }
 
-        test("unavailable access stops outsiders before publishing even for inactive relations without a revoke rejection") {
-            val failure = UpstreamFailure(
-                UpstreamName("arbeidsgiver-altinn-tilganger"),
-                UpstreamFailureStage.RESPONSE,
-                503,
-                IllegalStateException("private upstream body ${organization.value}"),
-            )
-            listOf(true, false).forEach { active ->
+        listOf(true, false).forEach { active ->
+            test("unavailable access stops outsiders before publishing an ${if (active) "active" else "inactive"} relation without a revoke rejection") {
+                val failure = UpstreamFailure(
+                    UpstreamName("arbeidsgiver-altinn-tilganger"),
+                    UpstreamFailureStage.RESPONSE,
+                    503,
+                    IllegalStateException("private upstream body ${organization.value}"),
+                )
                 val (useCase, effects, commands) = fixture(lookup = relation(active), access = OrganizationAccessResult.Unavailable(failure))
                 val result = useCase.execute(id, user(outsider))
                 result shouldBe RevokeNarmestelederrelasjonResult.UpstreamUnavailable(failure)
                 result.shouldBeInstanceOf<RevokeNarmestelederrelasjonResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
                 effects shouldBe listOf("lookup", "access")
                 commands shouldBe emptyList()
+                contract.assertValid(capture.records, expectedCount = 0)
             }
-            contract.assertValid(capture.records, expectedCount = 0)
         }
 
-        test("employee and manager bypass unavailable organization access and publish once") {
-            val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
-            listOf(employee to RevocationInitiator.EMPLOYEE, manager to RevocationInitiator.LINEMANAGER).forEach { (ident, initiator) ->
+        listOf(employee to RevocationInitiator.EMPLOYEE, manager to RevocationInitiator.LINEMANAGER).forEach { (ident, initiator) ->
+            test("$initiator bypasses unavailable organization access and publishes once") {
+                val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
                 val (useCase, effects, commands) = fixture(access = OrganizationAccessResult.Unavailable(failure))
                 useCase.execute(id, user(ident)) shouldBe RevokeNarmestelederrelasjonResult.Revoked(initiator)
                 effects shouldBe listOf("lookup", "publish")
@@ -112,21 +112,21 @@ class RevokeNarmestelederrelasjonUseCaseTest :
             }
         }
 
-        test("employee and manager bypass organization access and publish once") {
-            listOf(employee to RevocationInitiator.EMPLOYEE, manager to RevocationInitiator.LINEMANAGER).forEach { (ident, initiator) ->
+        listOf(employee to RevocationInitiator.EMPLOYEE, manager to RevocationInitiator.LINEMANAGER).forEach { (ident, initiator) ->
+            test("$initiator bypasses denied organization access and publishes once") {
                 val (useCase, effects, commands) = fixture(access = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS))
                 useCase.execute(id, user(ident)) shouldBe RevokeNarmestelederrelasjonResult.Revoked(initiator)
                 effects shouldBe listOf("lookup", "publish")
                 commands shouldBe listOf(PublishNarmestelederrelasjonRevocationCommand(employee, organization, initiator))
+                capture.records.shouldBeEmpty()
             }
-            capture.records.shouldBeEmpty()
         }
 
-        test("authorized outsider and system user use distinct sources") {
-            listOf(
-                user(outsider) to RevocationInitiator.PERSONNEL_MANAGER,
-                system to RevocationInitiator.LPS,
-            ).forEach { (subject, initiator) ->
+        listOf(
+            Triple("an authorized outsider", user(outsider), RevocationInitiator.PERSONNEL_MANAGER),
+            Triple("a system user", system, RevocationInitiator.LPS),
+        ).forEach { (subjectName, subject, initiator) ->
+            test("$subjectName uses the distinct source $initiator") {
                 val (useCase, effects, commands) = fixture()
                 useCase.execute(id, subject) shouldBe RevokeNarmestelederrelasjonResult.Revoked(initiator)
                 effects shouldBe listOf("lookup", "access", "publish")

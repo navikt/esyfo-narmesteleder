@@ -409,12 +409,11 @@ class ExposedEmploymentReconciliationRepositoryTest :
             controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
         }
 
-        test("notes the first source revocation, also for a relation that was never seeded, and makes it due first") {
-            val seeded = insertEmploymentRelation(to = now)
-            insertControlRow(seeded, now.plusSeconds(86_400))
-            val unseeded = insertEmploymentRelation(to = now)
+        listOf(true, false).forEach { seeded ->
+            test("notes the first source revocation for a ${if (seeded) "seeded" else "never seeded"} relation and makes it due first") {
+                val id = insertEmploymentRelation(to = now)
+                if (seeded) insertControlRow(id, now.plusSeconds(86_400))
 
-            listOf(seeded, unseeded).forEach { id ->
                 repository.recordSourceRevocation(id, now) shouldBe true
                 repository.recordSourceRevocation(id, now.plusSeconds(60)) shouldBe false
                 controlRow(id).also {

@@ -42,11 +42,11 @@ private val organization = OrganizationNumber("123456789")
 
 class SubmitNarmestelederrelasjonRouteTest :
     FunSpec({
-        test("published submissions return 202 and increment the corresponding existing counter") {
-            listOf(
-                Triple("https://test.maskinporten.no", COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS, "maskinporten"),
-                Triple("https://tokenx.example.com", COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER, "tokenx"),
-            ).forEach { (issuer, counter, provider) ->
+        listOf(
+            Triple("https://test.maskinporten.no", COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS, "maskinporten"),
+            Triple("https://tokenx.example.com", COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER, "tokenx"),
+        ).forEach { (issuer, counter, provider) ->
+            test("a published $provider submission returns 202 and increments the corresponding existing counter") {
                 val fixture = SubmitFixture()
                 fixture.authorize(provider)
                 val before = counter.count()
@@ -123,14 +123,15 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("invalid request bodies retain INVALID_FORMAT") {
-            val fixture = SubmitFixture()
-            fixture.authorize("tokenx")
-            fixture.withApplication {
-                listOf(
-                    """{"name":"Ola Nordmann"}""",
-                    """{"employeeIdentificationNumber":"12345678901","lastName":"Employee","orgNumber":"12345678","manager":{"nationalIdentificationNumber":"10987654321","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}}""",
-                ).forEach { body ->
+        listOf(
+            "an unknown body" to """{"name":"Ola Nordmann"}""",
+            "a short organization number" to
+                """{"employeeIdentificationNumber":"12345678901","lastName":"Employee","orgNumber":"12345678","manager":{"nationalIdentificationNumber":"10987654321","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}}""",
+        ).forEach { (case, body) ->
+            test("a request body with $case retains INVALID_FORMAT") {
+                val fixture = SubmitFixture()
+                fixture.authorize("tokenx")
+                fixture.withApplication {
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         bearerAuth(createMockToken("11223344556", issuer = "https://tokenx.example.com"))
@@ -142,22 +143,26 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("invalid identifiers in the body return 400 with the validation message") {
-            val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> error("Access must not be checked") })
-            fixture.authorize("tokenx")
-            fun submission(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321"): String {
-                val managerJson =
-                    """{"nationalIdentificationNumber":"$manager","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}"""
-                return """{"orgNumber":"$org","employeeIdentificationNumber":"$employee","lastName":"Employee","manager":$managerJson}"""
-            }
-            fixture.withApplication {
-                listOf(
-                    submission(employee = "1234567890") to "PersonalIdentificationNumber must be exactly 11 digits",
-                    submission(org = "12345678") to "OrganizationNumber must be exactly 9 digits",
-                    submission(manager = "1098765432a") to "PersonalIdentificationNumber must be exactly 11 digits",
-                    // The first invalid identifier in the JSON document decides the message.
-                    submission(employee = "1234567890", org = "12345678") to "OrganizationNumber must be exactly 9 digits",
-                ).forEach { (body, message) ->
+        fun submission(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321"): String {
+            val managerJson =
+                """{"nationalIdentificationNumber":"$manager","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}"""
+            return """{"orgNumber":"$org","employeeIdentificationNumber":"$employee","lastName":"Employee","manager":$managerJson}"""
+        }
+        listOf(
+            Triple("a short employee identifier", submission(employee = "1234567890"), "PersonalIdentificationNumber must be exactly 11 digits"),
+            Triple("a short organization number", submission(org = "12345678"), "OrganizationNumber must be exactly 9 digits"),
+            Triple("a non-numeric manager identifier", submission(manager = "1098765432a"), "PersonalIdentificationNumber must be exactly 11 digits"),
+            // The first invalid identifier in the JSON document decides the message.
+            Triple(
+                "an invalid organization number before an invalid employee identifier",
+                submission(employee = "1234567890", org = "12345678"),
+                "OrganizationNumber must be exactly 9 digits",
+            ),
+        ).forEach { (case, body, message) ->
+            test("a body with $case returns 400 with the validation message") {
+                val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> error("Access must not be checked") })
+                fixture.authorize("tokenx")
+                fixture.withApplication {
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         bearerAuth(createMockToken("11223344556", issuer = "https://tokenx.example.com"))

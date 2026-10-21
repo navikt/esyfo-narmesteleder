@@ -6,10 +6,10 @@ import java.time.OffsetDateTime
 
 class NarmestelederLeesahKafkaMessageTest :
     FunSpec({
-        test("only an employment-ended revocation carries the source's revocation time") {
-            val timestamp = OffsetDateTime.parse("2026-06-15T14:00:00+02:00")
+        val timestamp = OffsetDateTime.parse("2026-06-15T14:00:00+02:00")
 
-            (LeesahStatus.entries + null).forEach { status ->
+        (LeesahStatus.entries + null).forEach { status ->
+            test("only an employment-ended revocation carries the source's revocation time (status $status)") {
                 val relasjon = narmestelederLeesahKafkaMessage().copy(status = status, timestamp = timestamp).toLeesahNarmestelederrelasjon()
 
                 relasjon.sourceEmploymentRevocationAt shouldBe

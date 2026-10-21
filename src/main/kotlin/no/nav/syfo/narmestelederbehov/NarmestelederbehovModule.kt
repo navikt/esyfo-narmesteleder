@@ -13,8 +13,8 @@ import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 
-fun Application.narmestelederbehovModule() {
-    koinModules(narmestelederbehovDependencies())
+fun Application.narmestelederbehovModule(settings: NarmestelederbehovSettings) {
+    koinModules(narmestelederbehovDependencies(settings))
     val getNarmestelederbehov = get<GetNarmestelederbehovUseCase>()
     val fulfillNarmestelederbehov = get<FulfillNarmestelederbehovUseCase>()
     val listNarmestelederbehov = get<ListNarmestelederbehovUseCase>()

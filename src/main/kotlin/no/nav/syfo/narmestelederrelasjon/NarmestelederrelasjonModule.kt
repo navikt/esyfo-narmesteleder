@@ -21,8 +21,8 @@ import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 
-fun Application.narmestelederrelasjonModule() {
-    koinModules(narmestelederrelasjonDependencies())
+fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonSettings) {
+    koinModules(narmestelederrelasjonDependencies(settings))
     val submit = get<SubmitNarmestelederrelasjonUseCase>()
     val revoke = get<RevokeActiveNarmestelederrelasjonUseCase>()
     val lookupActiveNarmesteleder = get<LookupActiveNarmestelederUseCase>()
@@ -31,7 +31,6 @@ fun Application.narmestelederrelasjonModule() {
     val getNarmestelederrelasjon = get<GetNarmestelederrelasjonUseCase>()
     val revokeNarmestelederrelasjon = get<RevokeNarmestelederrelasjonUseCase>()
     val texasHttpClient = get<TexasHttpClient>()
-    val preAuthorizedApps = get<NarmestelederrelasjonSettings>().lineManagerLookupPreAuthorizedApps
     routing {
         apiV1 {
             registerSubmitNarmestelederrelasjonApi(submit = submit, texasHttpClient = texasHttpClient)
@@ -41,7 +40,7 @@ fun Application.narmestelederrelasjonModule() {
             registerLineManagerLookupApi(
                 lookupActiveNarmesteleder = lookupActiveNarmesteleder,
                 texasHttpClient = texasHttpClient,
-                preAuthorizedApps = preAuthorizedApps,
+                preAuthorizedApps = settings.lineManagerLookupPreAuthorizedApps,
             )
             registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = searchActiveNarmestelederrelasjoner, texasHttpClient = texasHttpClient)
             registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = listActiveNarmesteledereForEmployee, texasHttpClient = texasHttpClient)

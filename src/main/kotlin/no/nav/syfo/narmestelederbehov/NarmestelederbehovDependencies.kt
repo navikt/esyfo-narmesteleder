@@ -43,12 +43,12 @@ import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 
-fun narmestelederbehovDependencies() = module {
-    single { NarmestelederbehovCreationSettings(persistenceEnabled = get<NarmestelederbehovSettings>().persistLeesahNlBehov) }
+fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = module {
+    single { NarmestelederbehovCreationSettings(persistenceEnabled = settings.persistLeesahNlBehov) }
     single {
         NarmestelederbehovDialogFactory(
-            narmestelederbehovApiUrl = narmestelederbehovApiUrl(get<NarmestelederbehovSettings>().publicIngressUrl),
-            frontendBaseUrl = get<NarmestelederbehovSettings>().frontendBaseUrl,
+            narmestelederbehovApiUrl = narmestelederbehovApiUrl(settings.publicIngressUrl),
+            frontendBaseUrl = settings.frontendBaseUrl,
         )
     }
     single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
@@ -65,7 +65,7 @@ fun narmestelederbehovDependencies() = module {
         UpdateDialogTask(
             completeFulfilledDialogs = get(),
             expireDialogs = get(),
-            pollingInterval = get<NarmestelederbehovSettings>().dialogUpdatePollingInterval,
+            pollingInterval = settings.dialogUpdatePollingInterval,
         )
     }
     single {

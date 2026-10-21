@@ -28,7 +28,7 @@ class DependencyInjectionTest :
             test("every registered constructor dependency is defined for $name configuration") {
                 module {
                     includes(applicationModules(environment, isLocalEnv))
-                    includes(capabilityDependencies)
+                    includes(capabilityDependencies(environment))
                 }.verify(extraTypes = valuesNotRegisteredInKoin)
             }
 
@@ -36,7 +36,7 @@ class DependencyInjectionTest :
             test("no definition is registered twice for $name configuration") {
                 koinApplication(createEagerInstances = false) {
                     allowOverride(false)
-                    modules(applicationModules(environment, isLocalEnv) + capabilityDependencies)
+                    modules(applicationModules(environment, isLocalEnv) + capabilityDependencies(environment))
                 }.close()
             }
         }
@@ -53,10 +53,10 @@ private fun naisEnvironmentWithoutEnvVars() = NaisEnvironment(
 )
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
-private val capabilityDependencies = listOf(
+private fun capabilityDependencies(environment: Environment) = listOf(
     organisasjonstilgangDependencies(),
-    narmestelederrelasjonDependencies(),
-    narmestelederbehovDependencies(),
+    narmestelederrelasjonDependencies(environment.narmestelederrelasjonSettings()),
+    narmestelederbehovDependencies(environment.narmestelederbehovSettings()),
     narmestelederstatistikkDependencies(),
     sykmeldingDependencies(),
 )
@@ -65,7 +65,6 @@ private val capabilityDependencies = listOf(
 private val valuesNotRegisteredInKoin = listOf(
     Boolean::class,
     Duration::class,
-    Set::class,
     TexasEnvironment::class,
     ValkeyEnvironment::class,
     HttpClientEngine::class,

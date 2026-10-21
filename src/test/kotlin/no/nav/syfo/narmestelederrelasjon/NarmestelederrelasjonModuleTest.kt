@@ -39,7 +39,6 @@ class NarmestelederrelasjonModuleTest :
                 single { ApplicationState() }
                 single<DatabaseInterface> { UnusedDatabase }
                 single<Database> { mockk() }
-                single { settings }
                 single<TexasHttpClient> { mockk() }
                 single<OrganizationAccess> { mockk() }
                 single<AaregClient> { mockk() }
@@ -53,7 +52,7 @@ class NarmestelederrelasjonModuleTest :
             testApplication {
                 application {
                     platformModule(listOf(externalDependencies))
-                    narmestelederrelasjonModule()
+                    narmestelederrelasjonModule(settings)
                 }
 
                 // Missing tokens are rejected before clients or repositories are used.

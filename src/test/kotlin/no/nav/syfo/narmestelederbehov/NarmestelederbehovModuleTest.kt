@@ -43,7 +43,6 @@ class NarmestelederbehovModuleTest :
                 single { ApplicationState() }
                 single<DatabaseInterface> { UnusedDatabase }
                 single<Database> { mockk() }
-                single { settings }
                 single { Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC) }
                 single<TexasHttpClient> { mockk() }
                 single<OrganizationAccess> { mockk() }
@@ -55,7 +54,7 @@ class NarmestelederbehovModuleTest :
             testApplication {
                 application {
                     platformModule(listOf(externalDependencies))
-                    narmestelederbehovModule()
+                    narmestelederbehovModule(settings)
                     get<UpdateDialogTask>() shouldNotBe null
                 }
 

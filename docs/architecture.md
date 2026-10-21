@@ -280,9 +280,11 @@ Owns application assembly:
 - aggregate routes and operational endpoints.
 
 Business classes do not depend on Koin or bootstrap. Capabilities never see
-the bootstrap `Environment`; bootstrap registers capability-owned settings such
-as `NarmestelederbehovSettings` and `NarmestelederrelasjonSettings`, and passes
-single feature flags directly to consumers. `BootstrapBoundaryTest` fails if a
+the bootstrap `Environment`. Bootstrap maps it to capability-owned settings such
+as `NarmestelederbehovSettings` and `NarmestelederrelasjonSettings` and passes
+them as parameters to the capability module, which hands them on to its
+`<capability>Dependencies(settings)`; settings are not registered in Koin.
+Single feature flags are passed directly to consumers. `BootstrapBoundaryTest` fails if a
 business module references `bootstrap`.
 
 `Application.module()` delegates to `Application.bootstrap()`, which reads the
@@ -297,8 +299,8 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule()
-    narmestelederbehovModule()
+    narmestelederrelasjonModule(environment.narmestelederrelasjonSettings())
+    narmestelederbehovModule(environment.narmestelederbehovSettings())
     narmestelederstatistikkModule()
     sykmeldingModule()
     configureKafkaConsumers(environment)

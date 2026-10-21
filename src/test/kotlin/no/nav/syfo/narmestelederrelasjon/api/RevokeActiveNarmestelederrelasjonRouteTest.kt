@@ -138,7 +138,7 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             fixture.messages shouldBe emptyList()
         }
 
-        test("access denial returns the legacy 403") {
+        test("access denial returns 403 with MISSING_ORG_ACCESS") {
             val fixture = RevokeRouteFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS) })
             fixture.authorize("maskinporten")
             fixture.withApplication {

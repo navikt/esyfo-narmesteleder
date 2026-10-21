@@ -142,13 +142,13 @@ class RevokeNarmestelederrelasjonUseCaseTest :
             capture.records.shouldBeEmpty()
         }
 
-        val legacyRejectionReasons = mapOf(
+        val publishedRejectionReasons = mapOf(
             DenialReason.MISSING_ORGANIZATION_ACCESS to "MISSING_ORG_ACCESS",
             DenialReason.MISSING_RESOURCE_ACCESS to "MISSING_ALITINN_RESOURCE_ACCESS",
         )
         listOf("outsider" to user(outsider), "system user" to system).forEach { (subjectName, subject) ->
             DenialReason.entries.forEach { reason ->
-                val expectedRejection = legacyRejectionReasons[reason].takeIf { subject is OrganizationAccessSubject.PersonnelManager }
+                val expectedRejection = publishedRejectionReasons[reason].takeIf { subject is OrganizationAccessSubject.PersonnelManager }
                 test("denied $subjectName with $reason never publishes, even for an inactive relation, and logs ${expectedRejection ?: "nothing"}") {
                     val (useCase, effects, commands) = fixture(
                         lookup = relation(revocable = false),

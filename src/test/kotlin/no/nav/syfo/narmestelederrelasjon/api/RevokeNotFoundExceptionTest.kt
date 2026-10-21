@@ -8,7 +8,7 @@ import no.nav.syfo.platform.api.ErrorType
 class RevokeNotFoundExceptionTest :
     FunSpec({
         RevokeNarmestelederrelasjonResult.Reason.entries.forEach { reason ->
-            test("revoke not found maps $reason to the legacy error") {
+            test("revoke not found maps $reason to the NOT_FOUND error") {
                 val exception = RevokeNarmestelederrelasjonResult.NotFound(reason).toRevokeNotFoundException()
                 exception.isAlreadyLogged shouldBe (reason == RevokeNarmestelederrelasjonResult.Reason.ACCESS_DENIED)
                 exception.errorMessage shouldBe "Linemanager relation not found"

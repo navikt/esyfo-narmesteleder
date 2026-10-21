@@ -117,7 +117,7 @@ class ListNarmestelederbehovRouteTest :
             Triple("orgNumber=$ORGANIZATION_NUMBER&createdAfter=invalid", ErrorType.BAD_REQUEST, "Invalid date format for createdAfter parameter. Expected ISO-8601 format."),
             Triple("createdAfter=1970-01-01T00:00:00Z", ErrorType.BAD_REQUEST, "Missing orgNumber parameter"),
         ).forEach { (query, type, message) ->
-            test("invalid query $query returns the legacy 400") {
+            test("invalid query $query returns 400 with its error message") {
                 val fixture = ListRouteFixture()
                 fixture.withApplication {
                     val response = client.get("$LIST_PATH?$query") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
@@ -142,7 +142,7 @@ class ListNarmestelederbehovRouteTest :
             }
         }
 
-        test("access denial returns the legacy 403 before reading") {
+        test("access denial returns 403 with MISSING_ORG_ACCESS before reading") {
             val fixture = ListRouteFixture(access = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS))
             fixture.withApplication {
                 val response = client.get("$LIST_PATH?$VALID_QUERY") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }

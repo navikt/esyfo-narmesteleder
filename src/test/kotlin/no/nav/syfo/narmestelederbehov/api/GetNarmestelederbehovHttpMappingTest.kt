@@ -57,7 +57,7 @@ class GetNarmestelederbehovHttpMappingTest :
             }
         }
 
-        test("missing id keeps legacy 404 message and type") {
+        test("missing id maps to the published 404 message and type") {
             val error = shouldThrow<ApiErrorException.NotFoundException> {
                 GetNarmestelederbehovResult.NotFound.toLinemanagerRequirementRead()
             }
@@ -77,7 +77,7 @@ class GetNarmestelederbehovHttpMappingTest :
                 ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
             ),
         ).forEach { (reason, expected) ->
-            test("denial $reason retains PUT and legacy 403 contract") {
+            test("denial $reason maps to the same 403 error type and message as PUT") {
                 val error = shouldThrow<ApiErrorException.ForbiddenException> {
                     GetNarmestelederbehovResult.AccessDenied(reason = reason, organizationNumber = OrganizationNumber("910000001"))
                         .toLinemanagerRequirementRead()

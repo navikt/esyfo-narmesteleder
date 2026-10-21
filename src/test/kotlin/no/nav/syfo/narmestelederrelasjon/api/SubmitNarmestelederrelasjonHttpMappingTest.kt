@@ -52,7 +52,7 @@ class SubmitNarmestelederrelasjonHttpMappingTest :
                 "Last name for employee on sick leave does not correspond with registered value for the given national identification number",
             ),
         ).forEach { (rejection, type, message) ->
-            test("maps establish rejection $rejection to an unlogged legacy 400") {
+            test("maps establish rejection $rejection to an unlogged 400 with its error type and message") {
                 val error = shouldThrow<ApiErrorException.BadRequestException> {
                     SubmitNarmestelederrelasjonResult.EstablishRejected(rejection).throwIfRejected()
                 }

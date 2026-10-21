@@ -41,7 +41,7 @@ class KafkaPublishNarmestelederrelasjonRevocationTest :
         }
 
         expectedSources.forEach { (initiator, source) ->
-            test("publishes the legacy message with Kafka source $source for $initiator") {
+            test("publishes the revocation message with Kafka source $source for $initiator") {
                 val producer = RecordingProducer()
                 val adapter = KafkaPublishNarmestelederrelasjonRevocation(producer)
                 adapter.publish(

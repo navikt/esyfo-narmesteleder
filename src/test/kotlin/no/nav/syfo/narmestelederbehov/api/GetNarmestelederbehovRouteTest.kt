@@ -47,7 +47,7 @@ import java.util.UUID
 
 class GetNarmestelederbehovRouteTest :
     FunSpec({
-        test("GET /requirement/{id} 200 maps the stored behov to the legacy response") {
+        test("GET /requirement/{id} 200 maps the stored behov to the published response") {
             val fixture = GetFixture(organizationName = "Bedrift AS")
             val behov = fixture.repository.seed()
             fixture.withApplication {
@@ -111,7 +111,7 @@ class GetNarmestelederbehovRouteTest :
             }
         }
 
-        test("GET /requirement/{id} 500 with the legacy message when reading fails unexpectedly") {
+        test("GET /requirement/{id} 500 with the generic error message when reading fails unexpectedly") {
             val fixture = GetFixture()
             fixture.repository.failure = IllegalStateException("database unavailable")
             fixture.withApplication {

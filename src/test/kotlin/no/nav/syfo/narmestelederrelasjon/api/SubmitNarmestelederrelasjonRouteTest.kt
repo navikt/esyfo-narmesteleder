@@ -59,7 +59,7 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("a rejected relation returns its legacy 400") {
+        test("a relation without an active sykmelding returns 400 with NO_ACTIVE_SICK_LEAVE") {
             val fixture = SubmitFixture(relationResult = EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organization))
             fixture.authorize("tokenx")
             fixture.withApplication {
@@ -86,7 +86,7 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("access denial returns the legacy 403") {
+        test("access denial returns 403 with MISSING_ORG_ACCESS") {
             val request = linemanager()
             val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS) })
             fixture.authorize("tokenx")

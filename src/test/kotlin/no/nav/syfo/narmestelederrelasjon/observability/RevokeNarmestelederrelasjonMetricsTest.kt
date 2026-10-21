@@ -14,7 +14,7 @@ class RevokeNarmestelederrelasjonMetricsTest :
             RevocationInitiator.PERSONNEL_MANAGER to "revoked_by_personnel_manager",
             RevocationInitiator.LPS to "revoked_by_lps",
         ).forEach { (initiator, tag) ->
-            test("increments the legacy $tag outcome tag for a revocation by $initiator") {
+            test("increments the $tag outcome tag for a revocation by $initiator") {
                 val counter = METRICS_REGISTRY.find(LINEMANAGER_REVOKE_BY_ID_TOTAL).tag("outcome", tag).counter()
                 val before = counter?.count() ?: 0.0
                 countLinemanagerRevokeById(RevokeNarmestelederrelasjonResult.Revoked(initiator))
@@ -22,7 +22,7 @@ class RevokeNarmestelederrelasjonMetricsTest :
             }
         }
 
-        test("increments the legacy already_revoked outcome tag for an already revoked relation") {
+        test("increments the already_revoked outcome tag for an already revoked relation") {
             val already = METRICS_REGISTRY.find(LINEMANAGER_REVOKE_BY_ID_TOTAL).tag("outcome", "already_revoked").counter()
             val before = already?.count() ?: 0.0
             countLinemanagerRevokeById(RevokeNarmestelederrelasjonResult.AlreadyRevoked)

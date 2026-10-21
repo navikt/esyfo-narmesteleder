@@ -30,7 +30,7 @@ class ExposedNarmestelederstatistikkRepositoryTest :
             TestDB.clearAllData()
         }
 
-        test("counts unique employees in each legacy statistic category") {
+        test("counts unique employees in each published statistic category") {
             insertBehov("12345678910", BehovStatus.BEHOV_CREATED)
             insertBehov("12345678910", BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED)
             insertBehov("12345678911", BehovStatus.BEHOV_FULFILLED)

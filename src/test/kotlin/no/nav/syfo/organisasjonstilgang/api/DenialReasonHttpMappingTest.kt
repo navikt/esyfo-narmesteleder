@@ -26,7 +26,7 @@ class DenialReasonHttpMappingTest :
                 true,
             ),
         ).forEach { case ->
-            test("maps ${case.reason} to the legacy 403 contract") {
+            test("maps ${case.reason} to 403 with its error type and message") {
                 val error = case.reason.toForbiddenException(organization)
                 val response = error.toApiError("/api/v1/linemanager")
                 response.status shouldBe HttpStatusCode.Forbidden

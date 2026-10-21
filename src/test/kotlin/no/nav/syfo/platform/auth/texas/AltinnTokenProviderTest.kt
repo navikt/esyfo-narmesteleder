@@ -36,7 +36,7 @@ class AltinnTokenProviderTest :
             val failure = UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 400, errors = listOf(UpstreamError("invalid_grant")))
             val texas = mockk<TexasHttpClient>()
             coEvery { texas.maskinportenSystemToken("target") } returns UpstreamResult.Failure(failure)
-            upstreamHttpClient(respondWithSystemToken, { error("Altinn must not be called") }).use {
+            upstreamHttpClient(respondWithSystemToken) { error("Altinn must not be called") }.use {
                 AltinnTokenProvider(texas, it, "https://altinn.test").token("target")
                     .shouldBeInstanceOf<UpstreamResult.Failure>().failure shouldBeSameInstanceAs failure
             }
@@ -44,7 +44,7 @@ class AltinnTokenProviderTest :
 
         listOf(400, 503).forEach { status ->
             test("exchange HTTP $status retains status and token exchange stage") {
-                upstreamHttpClient(respondWithSystemToken, { respondJson("private-response", HttpStatusCode.fromValue(status)) }).use {
+                upstreamHttpClient(respondWithSystemToken) { respondJson("private-response", HttpStatusCode.fromValue(status)) }.use {
                     val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_AUTHENTICATION
@@ -56,7 +56,7 @@ class AltinnTokenProviderTest :
 
         listOf("not-a-jwt", JWT.create().sign(Algorithm.none())).forEachIndexed { index, body ->
             test("invalid token $index including missing expiry is a response failure with status") {
-                upstreamHttpClient(respondWithSystemToken, { respondJson("\"$body\"") }).use {
+                upstreamHttpClient(respondWithSystemToken) { respondJson("\"$body\"") }.use {
                     val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_AUTHENTICATION
@@ -68,7 +68,7 @@ class AltinnTokenProviderTest :
 
         listOf<Throwable>(IOException("Unavailable"), HttpRequestTimeoutException("https://altinn.test", 10)).forEach { cause ->
             test("exchange ${cause.javaClass.simpleName} becomes token exchange failure without status") {
-                upstreamHttpClient(respondWithSystemToken, { throw cause }).use {
+                upstreamHttpClient(respondWithSystemToken) { throw cause }.use {
                     val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_AUTHENTICATION
@@ -81,7 +81,7 @@ class AltinnTokenProviderTest :
 
         test("exchange cancellation is rethrown") {
             val cancelled = CancellationException("Cancelled")
-            upstreamHttpClient(respondWithSystemToken, { throw cancelled }).use {
+            upstreamHttpClient(respondWithSystemToken) { throw cancelled }.use {
                 shouldThrow<CancellationException> {
                     AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
                 }.message shouldBe cancelled.message
@@ -90,7 +90,7 @@ class AltinnTokenProviderTest :
 
         test("body cancellation is rethrown") {
             val cancelled = CancellationException("Cancelled")
-            upstreamHttpClient(respondWithSystemToken, { respondJson("\"${altinnTestToken(3600)}\"") }).use {
+            upstreamHttpClient(respondWithSystemToken) { respondJson("\"${altinnTestToken(3600)}\"") }.use {
                 it.responsePipeline.intercept(HttpResponsePipeline.Receive) {
                     if (context.response.call.request.url.host == "altinn.test") throw cancelled
                 }
@@ -112,11 +112,11 @@ class AltinnTokenProviderTest :
                     texasCalls++
                     respondWithSystemToken(request)
                 }
-                upstreamHttpClient(tokenHandler, { request ->
+                upstreamHttpClient(tokenHandler) { request ->
                     request.url.encodedPath shouldBe "/authentication/api/v1/exchange/maskinporten"
                     exchanges++
                     respondJson("\"${if (exchanges == 1) initial else renewed}\"")
-                }).use {
+                }.use {
                     val provider = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test", clock)
                     provider.token("target").getOrThrow().accessToken shouldBe initial
                     val expected = if (secondsLeft > 300) initial else renewed
@@ -134,10 +134,10 @@ class AltinnTokenProviderTest :
         test("failed exchange is not cached") {
             var exchanges = 0
             val token = altinnTestToken(3600)
-            upstreamHttpClient(respondWithSystemToken, {
+            upstreamHttpClient(respondWithSystemToken) {
                 exchanges++
                 if (exchanges == 1) respondJson("invalid") else respondJson("\"$token\"")
-            }).use {
+            }.use {
                 val provider = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test")
                 provider.token("target").shouldBeInstanceOf<UpstreamResult.Failure>()
                 provider.token("target").getOrThrow().accessToken shouldBe token

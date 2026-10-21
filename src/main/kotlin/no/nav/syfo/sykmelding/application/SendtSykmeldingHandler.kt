@@ -31,21 +31,21 @@ private val sickLeaveFields: Map<String, (SickLeaveLogDetails) -> Any?> = mapOf(
     "action" to { it.action.name },
 )
 
-private val sickLeaveEmployerMissing = applicationEvent<SickLeaveLogDetails>(
+private val sickLeaveEmployerMissing = applicationEvent(
     name = "sick_leave_employer_missing",
     level = Level.ERROR,
     message = "Cannot process sick leave message because employer information is missing",
     fields = sickLeaveFields,
 )
 
-private val sickLeaveMessageSkipped = applicationEvent<SickLeaveLogDetails>(
+private val sickLeaveMessageSkipped = applicationEvent(
     name = "sick_leave_message_skipped",
     level = Level.WARN,
     message = "Sick leave message was skipped because an identifier is invalid",
     fields = sickLeaveFields + ("reason" to { it: SickLeaveLogDetails -> it.reason?.name }),
 )
 
-private val sickLeaveBehovSkippedActiveRelation = applicationEvent<SickLeaveLogDetails>(
+private val sickLeaveBehovSkippedActiveRelation = applicationEvent(
     name = "sick_leave_behov_skipped_active_relation",
     level = Level.INFO,
     message = "No nearest leader need created because the employee already has an active relation",

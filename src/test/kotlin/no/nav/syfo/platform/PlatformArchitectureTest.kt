@@ -44,4 +44,6 @@ private fun forbiddenReferences(bytes: ByteArray): List<String> = ClassFile.of()
     forbiddenType.findAll(value).map { it.value }.toList()
 }.distinct()
 
+// The constructor signature is the forbidden reference the guard must detect.
+@Suppress("unused")
 private class BootstrapReferenceFixture(val environment: Environment)

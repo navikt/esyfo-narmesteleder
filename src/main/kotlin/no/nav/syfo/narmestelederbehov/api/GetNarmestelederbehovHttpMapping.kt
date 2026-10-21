@@ -4,6 +4,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 
@@ -12,7 +13,7 @@ fun GetNarmestelederbehovResult.toLinemanagerRequirementRead(): LinemanagerRequi
     is GetNarmestelederbehovResult.Found -> behov.toLinemanagerRequirementRead(name, organizationName)
     GetNarmestelederbehovResult.NotFound ->
         throw ApiErrorException.NotFoundException(errorMessage = "LinemanagerRequirement", isAlreadyLogged = true)
-    is GetNarmestelederbehovResult.AccessDenied -> throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
+    is GetNarmestelederbehovResult.AccessDenied -> throw reason.toForbiddenException(organizationNumber, isAlreadyLogged = true)
     GetNarmestelederbehovResult.PersonNotFound ->
         throw ApiErrorException.InternalServerErrorException(errorMessage = "Something went wrong while fetching LinemanagerRequirement")
 }

@@ -31,6 +31,7 @@ import org.apache.kafka.common.errors.WakeupException
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
 
 class PersistSendtSykmeldingConsumerTest :
     FunSpec({
@@ -40,7 +41,7 @@ class PersistSendtSykmeldingConsumerTest :
             handler = handler,
             jacksonMapper = jacksonMapper(),
             kafkaConsumer = kafkaConsumer,
-            scope = kotlinx.coroutines.CoroutineScope(EmptyCoroutineContext),
+            scope = CoroutineScope(EmptyCoroutineContext),
             enabled = true,
         )
 
@@ -108,7 +109,7 @@ class PersistSendtSykmeldingConsumerTest :
             logger.addAppender(appender)
             try {
                 batchConsumer.listen()
-                withTimeout(5_000) { failure.await() } shouldBe fatal
+                withTimeout(5_000.milliseconds) { failure.await() } shouldBe fatal
                 val event = appender.list.single()
                 event.level shouldBe Level.ERROR
                 val fields = event.keyValuePairs.associate { it.key to it.value }

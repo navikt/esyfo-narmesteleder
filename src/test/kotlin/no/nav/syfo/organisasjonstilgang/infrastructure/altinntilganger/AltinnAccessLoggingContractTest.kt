@@ -24,7 +24,6 @@ import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
-import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
@@ -123,7 +122,7 @@ class AltinnAccessLoggingContractTest :
                                                 ListNarmestelederbehovUseCase(
                                                     UnreachableOpenRepository(),
                                                     access,
-                                                    NarmestelederbehovEmployeeName(mockk(), EmployeeNameLookup { error("Name lookup must not be called") }),
+                                                    NarmestelederbehovEmployeeName(mockk()) { error("Name lookup must not be called") },
                                                 ),
                                                 authClient,
                                             )
@@ -145,7 +144,7 @@ class AltinnAccessLoggingContractTest :
                             RuntimeLogContract(
                                 mapOf(
                                     "event_type" to setOf("api_request_failed"),
-                                    "exception_type" to setOf("ApiErrorException\$InternalServerErrorException"),
+                                    "exception_type" to setOf($$"ApiErrorException$InternalServerErrorException"),
                                 )
                             ).assertValid(capture.records, expectedCount = 1)
                             val serialized = capture.records.single()

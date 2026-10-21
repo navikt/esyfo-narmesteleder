@@ -32,7 +32,6 @@ import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.Employee
@@ -317,8 +316,7 @@ private class PutFixture {
         repository,
         organizationAccess,
         establish,
-        NarmestelederbehovDialog { DialogCompletion.Completed },
-    )
+    ) { DialogCompletion.Completed }
 
     init {
         texas.defaultMocks(

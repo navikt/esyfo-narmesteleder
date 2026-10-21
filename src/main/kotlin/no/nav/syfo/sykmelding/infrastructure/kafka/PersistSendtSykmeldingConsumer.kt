@@ -220,7 +220,7 @@ class PersistSendtSykmeldingConsumer(
         private const val CONSUMER_JOB_DELAY_SECONDS = 30L
         private const val CLOSE_DURATION_SECONDS = 10L
         private const val POLL_DURATION_SECONDS = 1L
-        private val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
+        private const val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
 
         fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = consumerProperties(
             env = env,

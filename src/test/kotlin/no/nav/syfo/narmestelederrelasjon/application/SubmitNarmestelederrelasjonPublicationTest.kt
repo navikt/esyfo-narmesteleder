@@ -13,7 +13,6 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 
@@ -29,20 +28,20 @@ class SubmitNarmestelederrelasjonPublicationTest :
             ).forEach { (subject, expectedSource) ->
                 val producer = RecordingProducer()
                 val establish = EstablishNarmestelederrelasjonUseCase(
-                    ActiveSykmeldingLookup { _, _ -> true },
-                    EmploymentLookup { _, _ -> EmploymentResult.InOrganization },
-                    PersonLookup { ident ->
+                    { _, _ -> true },
+                    { _, _ -> EmploymentResult.InOrganization },
+                    { ident ->
                         when (ident) {
                             employee -> PersonLookupResult.Found(PersonDetails(employee, name("Employee", "Middle", "Employee")))
                             manager -> PersonLookupResult.Found(PersonDetails(manager, name("Manager", "Other", "Manager")))
                             else -> PersonLookupResult.NotFound
                         }
                     },
-                    NameValidationMetrics { },
+                    { },
                     KafkaPublishNarmestelederrelasjon(producer),
                 )
                 val submit = SubmitNarmestelederrelasjonUseCase(
-                    OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
+                    { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
                     establish,
                 )
 

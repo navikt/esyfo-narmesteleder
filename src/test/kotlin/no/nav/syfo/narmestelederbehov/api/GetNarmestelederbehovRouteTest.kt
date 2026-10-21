@@ -14,7 +14,6 @@ import io.mockk.mockk
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
-import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
@@ -30,7 +29,6 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.ApiError
@@ -196,17 +194,17 @@ private class GetFixture(
     private val texas = mockk<TexasHttpClient>()
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,
-        organizationAccess = OrganizationAccess { _, _ ->
+        organizationAccess = { _, _ ->
             effects += "access"
             denialReason?.let { OrganizationAccessResult.Denied(it) } ?: OrganizationAccessResult.Granted(organizationName)
         },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
-            EmployeeNameLookup {
-                effects += "person"
-                unavailable?.let { EmployeeNameLookupResult.Unavailable(it) } ?: person?.let { EmployeeNameLookupResult.Found(it) } ?: EmployeeNameLookupResult.NotFound
-            },
-        ),
+        ) {
+            effects += "person"
+            unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
+                ?: person?.let { EmployeeNameLookupResult.Found(it) } ?: EmployeeNameLookupResult.NotFound
+        },
     )
 
     init {
@@ -259,7 +257,7 @@ private class FakeReadBehovRepository : NarmestelederbehovRepository {
         savedNames += id to name
     }
 
-    override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = error("GET must not read for fulfillment")
+    override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov = error("GET must not read for fulfillment")
 
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("GET must not look up open behov")
 

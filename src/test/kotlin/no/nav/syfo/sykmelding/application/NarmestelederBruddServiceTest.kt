@@ -5,7 +5,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmelding
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import java.time.OffsetDateTime
@@ -70,7 +69,7 @@ private class BruddFixture(
     val revoked = mutableListOf<RevokeNarmestelederrelasjonFromSendtSykmeldingCommand>()
     val repository = FakeBruddRepository(trackedSykmeldingId)
     val service = NarmestelederBruddService(
-        revokeNarmestelederrelasjon = RevokeNarmestelederrelasjonFromSendtSykmelding { command ->
+        revokeNarmestelederrelasjon = { command ->
             if (failRevocation) error("Kafka unavailable")
             revoked += command
         },

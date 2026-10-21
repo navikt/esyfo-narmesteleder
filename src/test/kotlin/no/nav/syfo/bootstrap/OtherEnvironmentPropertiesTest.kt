@@ -24,11 +24,16 @@ class OtherEnvironmentPropertiesTest :
 
         listOf(false to false, true to false, false to true).forEach { (revoke, observe) ->
             test("startup accepts revoke=$revoke and observe=$observe") {
-                shouldNotThrowAny {
+                val properties = shouldNotThrowAny {
                     OtherEnvironmentProperties.createForLocal().copy(
                         employmentCheckRevokeEnabled = revoke,
                         employmentCheckObserveSourceEnabled = observe,
                     )
+                }
+
+                with(properties) {
+                    employmentCheckRevokeEnabled shouldBe revoke
+                    employmentCheckObserveSourceEnabled shouldBe observe
                 }
             }
         }

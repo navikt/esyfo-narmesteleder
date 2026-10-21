@@ -29,13 +29,13 @@ class AltinnAuthorizationClientTest :
     FunSpec({
         listOf(AuthorizationDecision.Permit, AuthorizationDecision.Deny, AuthorizationDecision.NotApplicable).forEach { decision ->
             test("returns $decision from the external PDP response") {
-                upstreamHttpClient(respondWithSystemToken, { request ->
+                upstreamHttpClient(respondWithSystemToken) { request ->
                     if (request.url.encodedPath.contains("exchange")) {
                         respondJson("\"${altinnTestToken(3600)}\"")
                     } else {
                         respondJson("""{"Response":[{"Decision":"$decision"}]}""")
                     }
-                }).use {
+                }.use {
                     client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource") shouldBe UpstreamResult.Success(decision)
                 }
             }
@@ -43,13 +43,13 @@ class AltinnAuthorizationClientTest :
 
         listOf(400, 503).forEach { status ->
             test("PDP HTTP $status is a response failure with status") {
-                upstreamHttpClient(respondWithSystemToken, { request ->
+                upstreamHttpClient(respondWithSystemToken) { request ->
                     if (request.url.encodedPath.contains("exchange")) {
                         respondJson("\"${altinnTestToken(3600)}\"")
                     } else {
                         respondJson("private-provider-body", HttpStatusCode.fromValue(status))
                     }
-                }).use {
+                }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_PDP
@@ -61,13 +61,13 @@ class AltinnAuthorizationClientTest :
 
         listOf<Throwable>(IOException("Unavailable"), HttpRequestTimeoutException("https://altinn.test", 10)).forEach { cause ->
             test("PDP ${cause.javaClass.simpleName} is a request failure") {
-                upstreamHttpClient(respondWithSystemToken, { request ->
+                upstreamHttpClient(respondWithSystemToken) { request ->
                     if (request.url.encodedPath.contains("exchange")) {
                         respondJson("\"${altinnTestToken(3600)}\"")
                     } else {
                         throw cause
                     }
-                }).use {
+                }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_PDP
@@ -86,13 +86,13 @@ class AltinnAuthorizationClientTest :
             "multiple permits" to """{"Response":[{"Decision":"Permit"},{"Decision":"Permit"}]}""",
         ).forEach { (name, body) ->
             test("PDP $name fails closed with response status") {
-                upstreamHttpClient(respondWithSystemToken, { request ->
+                upstreamHttpClient(respondWithSystemToken) { request ->
                     if (request.url.encodedPath.contains("exchange")) {
                         respondJson("\"${altinnTestToken(3600)}\"")
                     } else {
                         respondJson(body)
                     }
-                }).use {
+                }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_PDP
@@ -109,7 +109,7 @@ class AltinnAuthorizationClientTest :
             null,
         ).forEach { statusCode ->
             test("Indeterminate with status $statusCode has only allowlisted detail and no cause") {
-                upstreamHttpClient(respondWithSystemToken, { request ->
+                upstreamHttpClient(respondWithSystemToken) { request ->
                     if (request.url.encodedPath.contains("exchange")) {
                         respondJson("\"${altinnTestToken(3600)}\"")
                     } else {
@@ -117,7 +117,7 @@ class AltinnAuthorizationClientTest :
                             """{"Response":[{"Decision":"Indeterminate","Status":{"StatusMessage":"private-exception-message","StatusDetails":["private-details"],"StatusCode":{"Value":${statusCode?.let { "\"$it\"" }},"StatusCode":{"Value":"private-nested-code"}}}}]}""",
                         )
                     }
-                }).use {
+                }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_PDP
@@ -134,7 +134,7 @@ class AltinnAuthorizationClientTest :
                 val failure = UpstreamFailure(UpstreamName(upstream), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IOException())
                 val provider = mockk<AltinnTokenProvider>()
                 coEvery { provider.token(any()) } returns UpstreamResult.Failure(failure)
-                upstreamHttpClient(respondWithSystemToken, { error("PDP must not be called") }).use {
+                upstreamHttpClient(respondWithSystemToken) { error("PDP must not be called") }.use {
                     client(it, provider).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure shouldBeSameInstanceAs failure
                 }
@@ -143,13 +143,13 @@ class AltinnAuthorizationClientTest :
 
         test("PDP cancellation is rethrown") {
             val cancelled = CancellationException("Cancelled")
-            upstreamHttpClient(respondWithSystemToken, { request ->
+            upstreamHttpClient(respondWithSystemToken) { request ->
                 if (request.url.encodedPath.contains("exchange")) {
                     respondJson("\"${altinnTestToken(3600)}\"")
                 } else {
                     throw cancelled
                 }
-            }).use {
+            }.use {
                 shouldThrow<CancellationException> {
                     client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                 }.message shouldBe cancelled.message
@@ -158,13 +158,13 @@ class AltinnAuthorizationClientTest :
 
         test("PDP body cancellation is rethrown") {
             val cancelled = CancellationException("Cancelled")
-            upstreamHttpClient(respondWithSystemToken, { request ->
+            upstreamHttpClient(respondWithSystemToken) { request ->
                 if (request.url.encodedPath.contains("exchange")) {
                     respondJson("\"${altinnTestToken(3600)}\"")
                 } else {
                     respondJson("""{"Response":[{"Decision":"Permit"}]}""")
                 }
-            }).use {
+            }.use {
                 it.responsePipeline.intercept(HttpResponsePipeline.Receive) {
                     if (subject.expectedType.type == AltinnAuthorizationResponse::class) throw cancelled
                 }

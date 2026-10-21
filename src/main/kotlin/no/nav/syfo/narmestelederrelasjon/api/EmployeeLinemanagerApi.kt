@@ -20,6 +20,8 @@ import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val EMPLOYEE_LINEMANAGER_API_PATH = "/employee/linemanager"
 
+private const val ORG_NUMBER_QUERY_PARAMETER = "orgNumber"
+
 fun Route.registerEmployeeLinemanagerApi(
     listActiveNarmesteledereForEmployee: ListActiveNarmesteledereForEmployeeUseCase,
     texasHttpClient: TexasHttpClient,
@@ -43,7 +45,7 @@ fun Route.registerEmployeeLinemanagerApi(
                 .getOrElse {
                     throw ApiErrorException.UnauthorizedException("Invalid token subject")
                 }
-            val orgNumber = call.getOptionalOrganizationNumberQueryParameter("orgNumber")
+            val orgNumber = call.getOptionalOrganizationNumberQueryParameter()
             val narmesteledere = listActiveNarmesteledereForEmployee.execute(employee, orgNumber)
             countEmployeeLinemanager(filtered = orgNumber != null)
             call.respond(HttpStatusCode.OK, narmesteledere.toResponse())
@@ -51,15 +53,15 @@ fun Route.registerEmployeeLinemanagerApi(
     }
 }
 
-private fun RoutingCall.getOptionalOrganizationNumberQueryParameter(name: String): OrganizationNumber? {
-    val values = queryParameters.getAll(name) ?: return null
+private fun RoutingCall.getOptionalOrganizationNumberQueryParameter(): OrganizationNumber? {
+    val values = queryParameters.getAll(ORG_NUMBER_QUERY_PARAMETER) ?: return null
     if (values.size != 1) {
-        throw ApiErrorException.BadRequestException("Expected exactly one $name parameter")
+        throw ApiErrorException.BadRequestException("Expected exactly one $ORG_NUMBER_QUERY_PARAMETER parameter")
     }
     return runCatching { OrganizationNumber(values.single()) }
         .getOrElse {
             throw ApiErrorException.BadRequestException(
-                it.message ?: "Invalid organization number format for $name parameter",
+                it.message ?: "Invalid organization number format for $ORG_NUMBER_QUERY_PARAMETER parameter",
                 type = ErrorType.INVALID_FORMAT,
             )
         }

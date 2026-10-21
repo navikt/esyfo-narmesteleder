@@ -4,6 +4,7 @@ import io.ktor.server.routing.RoutingCall
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovQuery
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovResult
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
@@ -30,7 +31,7 @@ fun ListNarmestelederbehovResult.toLinemanagerRequirementCollection(pageSize: In
         linemanagerRequirements = behov.map { it.behov.toLinemanagerRequirementRead(it.name, organizationName) },
         meta = PageInfo(size = behov.size, pageSize = pageSize, hasMore = hasMore, total = total),
     )
-    is ListNarmestelederbehovResult.AccessDenied -> throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
+    is ListNarmestelederbehovResult.AccessDenied -> throw reason.toForbiddenException(organizationNumber, isAlreadyLogged = true)
     ListNarmestelederbehovResult.PersonNotFound ->
         throw ApiErrorException.InternalServerErrorException(errorMessage = "Internal server error")
 }

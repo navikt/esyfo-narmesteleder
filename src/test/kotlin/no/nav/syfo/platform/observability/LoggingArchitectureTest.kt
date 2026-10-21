@@ -63,7 +63,7 @@ private fun isFormerLoggingClass(name: String): Boolean = setOf(
     "EventContext",
 ).any { type ->
     val owner = "no/nav/syfo/platform/observability/$type"
-    name == owner || name.startsWith("$owner\$")
+    name == owner || name.startsWith($$"$$owner$")
 }
 
 private fun forbiddenLogging(bytes: ByteArray): List<String> = ClassFile.of().parse(bytes).constantPool().mapNotNull { entry ->

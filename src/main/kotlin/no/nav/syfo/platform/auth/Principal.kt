@@ -32,3 +32,5 @@ fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
 
     else -> throw UnauthorizedException()
 }
+
+private fun maskinportenIdToOrgnumber(id: String): String = id.split(":")[1].trim()

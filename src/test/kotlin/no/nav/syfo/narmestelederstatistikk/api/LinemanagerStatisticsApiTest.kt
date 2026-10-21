@@ -17,10 +17,9 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
-import no.nav.syfo.narmestelederstatistikk.application.NarmestelederstatistikkRepository
 import no.nav.syfo.narmestelederstatistikk.observability.LINEMANAGER_STATISTICS_TOTAL
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.api.ErrorType
@@ -147,7 +146,7 @@ private const val STATISTICS_PATH = "$INTERNAL_API_V1_PATH$LINEMANAGER_STATISTIC
 private val mapper = jacksonObjectMapper()
 
 private class StatisticsApiFixture(
-    private val user: Boolean = false,
+    user: Boolean = false,
     denialReason: DenialReason? = null,
     activeToken: Boolean = true,
     unavailable: UpstreamFailure? = null,
@@ -161,14 +160,14 @@ private class StatisticsApiFixture(
         issuer = if (user) TOKENX_ISSUER else "https://test.maskinporten.no",
     )
     private val useCase = GetNarmestelederstatistikkUseCase(
-        organizationAccess = OrganizationAccess { subject, organization ->
+        organizationAccess = { subject, organization ->
             effects += "access"
             evaluations += subject to organization
             unavailable?.let { OrganizationAccessResult.Unavailable(it) }
                 ?: denialReason?.let { OrganizationAccessResult.Denied(it) }
                 ?: OrganizationAccessResult.Granted(null)
         },
-        repository = NarmestelederstatistikkRepository { organization ->
+        repository = { organization ->
             effects += "count"
             organizations += organization
             Narmestelederstatistikk(1, 2, 3)

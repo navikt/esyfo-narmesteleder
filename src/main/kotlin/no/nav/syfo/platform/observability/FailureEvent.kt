@@ -45,7 +45,7 @@ internal fun <T> applicationEvent(
         message = message,
         operation = operation,
         errorCodeFrom = errorCode,
-        fields = commonFields + failureFields<T>() + detailFields,
+        fields = commonFields + failureFields() + detailFields,
     )
 }
 

@@ -3,7 +3,6 @@ package no.nav.syfo.platform.auth.texas
 import io.ktor.server.application.createRouteScopedPlugin
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.auth.JwtIssuer
-import no.nav.syfo.platform.auth.TOKEN_ISSUER
 import no.nav.syfo.platform.observability.logger
 
 private val VALID_ISSUERS = listOf(JwtIssuer.TOKEN_X)
@@ -16,16 +15,7 @@ val TokenXTokenAuthPlugin = createRouteScopedPlugin(
     val client = pluginConfig.client.requireConfigured("TokenXTokenAuthPlugin")
 
     onCall { call ->
-        val issuer = try {
-            call.attributes.getOrNull(TOKEN_ISSUER)
-                ?.takeIf { it in VALID_ISSUERS }
-                ?: error("Missing or invalid token issuer")
-        } catch (e: Exception) {
-            throw ApiErrorException.UnauthorizedException("Failed to find issuer in token: ${e.message}", e)
-        }
-
-        val bearerToken =
-            call.bearerToken() ?: throw ApiErrorException.UnauthorizedException("No bearer token found in request")
+        val (issuer, bearerToken) = call.requireIssuedBearerToken(VALID_ISSUERS)
 
         when (issuer) {
             JwtIssuer.TOKEN_X -> call.authenticateTokenX(client, bearerToken)

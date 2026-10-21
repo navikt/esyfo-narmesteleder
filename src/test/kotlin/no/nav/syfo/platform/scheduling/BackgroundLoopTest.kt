@@ -30,14 +30,12 @@ class BackgroundLoopTest :
 
         beforeTest { capture = productionLogs.capture() }
         afterTest {
-            try {
+            capture.use { capture ->
                 capture.records.forEach {
                     contract.assertValid(listOf(it))
                     it shouldNotContain "private-payload-canary"
                     it shouldNotContain "private-cause-canary"
                 }
-            } finally {
-                capture.close()
             }
         }
 
@@ -51,16 +49,16 @@ class BackgroundLoopTest :
                 loop.start(this)
                 runCurrent()
                 iterations shouldBe 1
-                advanceTimeBy(99)
+                advanceTimeBy(99.milliseconds)
                 runCurrent()
                 iterations shouldBe 1
-                advanceTimeBy(1)
+                advanceTimeBy(1.milliseconds)
                 runCurrent()
                 iterations shouldBe 2
 
                 loop.stop()
                 loop.stop()
-                advanceTimeBy(1_000)
+                advanceTimeBy(1_000.milliseconds)
                 runCurrent()
                 iterations shouldBe 2
                 registry.get("${METRICS_NS}_background_loop_iterations_total").counter().count() shouldBe 2.0
@@ -80,7 +78,7 @@ class BackgroundLoopTest :
                 }
                 loop.start(this)
                 runCurrent()
-                advanceTimeBy(100)
+                advanceTimeBy(100.milliseconds)
                 runCurrent()
                 loop.stop()
 
@@ -114,7 +112,7 @@ class BackgroundLoopTest :
                 runCurrent()
                 loop.stop()
                 finished shouldBe true
-                delay(100)
+                delay(100.milliseconds)
                 registry.get("${METRICS_NS}_background_loop_iterations_total").counter().count() shouldBe 1.0
                 registry.get("${METRICS_NS}_background_loop_failures_total").counter().count() shouldBe 0.0
                 capture.records.size shouldBe 0
@@ -131,15 +129,15 @@ class BackgroundLoopTest :
                 }
                 loop.start(this)
                 runCurrent()
-                advanceTimeBy(50)
+                advanceTimeBy(50.milliseconds)
                 runCurrent()
                 registry.get("${METRICS_NS}_background_loop_failures_total").counter().count() shouldBe 1.0
 
-                advanceTimeBy(100)
+                advanceTimeBy(100.milliseconds)
                 runCurrent()
                 iterations shouldBe 2
                 loop.stop()
-                advanceTimeBy(1_000)
+                advanceTimeBy(1_000.milliseconds)
                 runCurrent()
 
                 iterations shouldBe 2

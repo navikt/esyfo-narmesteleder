@@ -90,10 +90,10 @@ class RuntimeDiagnosticsTest :
             diagnostics.failureStage shouldBe "token_exchange"
             diagnostics.upstreamStatus shouldBe 503
             diagnostics.failureKind shouldBe "timeout"
-            diagnostics.exceptionType shouldBe "ApiErrorException\$InternalServerErrorException"
+            diagnostics.exceptionType shouldBe $$"ApiErrorException$InternalServerErrorException"
             diagnostics.causeType shouldBe "SocketTimeoutException"
             failure.failureDiagnostics().exceptionType shouldBe "SocketTimeoutException"
-            listOf<Int?>(null, 42, 600).forEach { status ->
+            listOf(null, 42, 600).forEach { status ->
                 failure.copy(status = status).failureDiagnostics().upstreamStatus shouldBe null
             }
         }
@@ -195,8 +195,8 @@ class RuntimeDiagnosticsTest :
         test("nested exception classes keep their contract-valid binary name") {
             val diagnostic = ApiErrorException.InternalServerErrorException("private-canary").failureDiagnostics()
 
-            diagnostic.exceptionType shouldBe "ApiErrorException\$InternalServerErrorException"
-            diagnostic.causeType shouldBe "ApiErrorException\$InternalServerErrorException"
+            diagnostic.exceptionType shouldBe $$"ApiErrorException$InternalServerErrorException"
+            diagnostic.causeType shouldBe $$"ApiErrorException$InternalServerErrorException"
             diagnostic.causeTypes shouldBe listOf("InternalServerErrorException")
         }
 

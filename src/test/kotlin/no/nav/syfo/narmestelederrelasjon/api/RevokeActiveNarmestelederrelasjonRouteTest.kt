@@ -27,7 +27,6 @@ import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
@@ -217,7 +216,7 @@ private class RevokeRouteFixture(
     private val name: String = "Hansen",
     private val person: PersonDetails? = PersonDetails(resolvedIdent, PersonNameDetails("Test", name, registeredNames = listOf(RegisteredName(name)))),
     private val managerEmail: String = "manager@example.test",
-    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
+    access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
     private val unavailable: UpstreamFailure? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
@@ -231,7 +230,7 @@ private class RevokeRouteFixture(
     }
     private val useCase = RevokeActiveNarmestelederrelasjonUseCase(
         access,
-        PersonLookup {
+        {
             unavailable?.let { PersonLookupResult.Unavailable(it) } ?: person?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
         },
         MicrometerNameValidationMetrics(),

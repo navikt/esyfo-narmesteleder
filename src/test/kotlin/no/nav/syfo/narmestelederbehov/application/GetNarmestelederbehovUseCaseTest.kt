@@ -10,7 +10,6 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.observability.withProductionLogs
@@ -136,14 +135,14 @@ private class ReadFixture(
     }
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,
-        organizationAccess = OrganizationAccess { _, _ -> access.also { effects += "access" } },
+        organizationAccess = { _, _ -> access.also { effects += "access" } },
         employeeName = NarmestelederbehovEmployeeName(
-            repository,
-            EmployeeNameLookup {
-                effects += "person"
-                unavailable?.let { EmployeeNameLookupResult.Unavailable(it) } ?: person?.let { EmployeeNameLookupResult.Found(it) } ?: EmployeeNameLookupResult.NotFound
-            }
-        ),
+            repository
+        ) {
+            effects += "person"
+            unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
+                ?: person?.let { EmployeeNameLookupResult.Found(it) } ?: EmployeeNameLookupResult.NotFound
+        },
     )
 
     suspend fun execute(

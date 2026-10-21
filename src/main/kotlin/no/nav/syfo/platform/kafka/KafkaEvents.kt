@@ -76,7 +76,7 @@ private val kafkaFields: Map<String, (KafkaEventDetails) -> Any?> = mapOf(
     "missing_count" to { it.missingCount },
 )
 
-internal val kafkaConsumerFailed = applicationEvent<KafkaEventDetails>(
+internal val kafkaConsumerFailed = applicationEvent(
     name = "kafka_consumer_failed",
     level = Level.ERROR,
     message = "Kafka consumer failed; retrying consumption",
@@ -85,7 +85,7 @@ internal val kafkaConsumerFailed = applicationEvent<KafkaEventDetails>(
     fields = kafkaFields,
 )
 
-internal val kafkaConsumerCrashed = applicationEvent<KafkaEventDetails>(
+internal val kafkaConsumerCrashed = applicationEvent(
     name = "kafka_consumer_crashed",
     level = Level.ERROR,
     message = "Kafka consumer stopped after an unrecoverable failure",
@@ -94,7 +94,7 @@ internal val kafkaConsumerCrashed = applicationEvent<KafkaEventDetails>(
     fields = kafkaFields,
 )
 
-internal val kafkaBatchDiscarded = applicationEvent<KafkaEventDetails>(
+internal val kafkaBatchDiscarded = applicationEvent(
     name = "kafka_batch_discarded",
     level = Level.ERROR,
     message = "Failed Kafka batch was committed because commitOnAllErrors is enabled",
@@ -103,7 +103,7 @@ internal val kafkaBatchDiscarded = applicationEvent<KafkaEventDetails>(
     fields = kafkaFields,
 )
 
-internal val kafkaRecordSkippedError = applicationEvent<KafkaEventDetails>(
+internal val kafkaRecordSkippedError = applicationEvent(
     name = "kafka_record_skipped_error",
     level = Level.ERROR,
     message = "Kafka record was skipped after a processing failure",
@@ -112,7 +112,7 @@ internal val kafkaRecordSkippedError = applicationEvent<KafkaEventDetails>(
     fields = kafkaFields,
 )
 
-internal val kafkaRecordSkipped = applicationEvent<KafkaEventDetails>(
+internal val kafkaRecordSkipped = applicationEvent(
     name = "kafka_record_skipped",
     level = Level.WARN,
     message = "Kafka record was skipped",

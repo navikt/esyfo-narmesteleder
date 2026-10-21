@@ -11,6 +11,7 @@ import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederre
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countRevokeActiveNarmestelederrelasjon
+import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType

@@ -58,7 +58,7 @@ class FulfillmentLoggingContractTest :
             capture = productionLogs.capture()
         }
         afterTest {
-            try {
+            capture.use { capture ->
                 capture.records.forEach { line ->
                     privacyCanaries.forEach { line shouldNotContain it }
                     val record = mapper.readTree(line)
@@ -71,8 +71,6 @@ class FulfillmentLoggingContractTest :
                         line shouldNotContain behovId.value.toString()
                     }
                 }
-            } finally {
-                capture.close()
             }
         }
 

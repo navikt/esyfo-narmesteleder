@@ -223,16 +223,16 @@ private fun createEstablisher(
     metrics: NameValidationMetrics = NameValidationMetrics { effects += "metric" },
     publisher: RecordingPublisher = RecordingPublisher(effects),
 ): EstablishNarmestelederrelasjonUseCase = EstablishNarmestelederrelasjonUseCase(
-    ActiveSykmeldingLookup { _, _ ->
+    { _, _ ->
         effects += "sykmelding"
         activeFailure?.let { throw it }
         active
     },
-    EmploymentLookup { _, _ ->
+    { _, _ ->
         effects += "employment"
         employment
     },
-    PersonLookup { ident ->
+    { ident ->
         effects += if (ident == employeeIdent) "employee" else "manager"
         if (ident == unavailable?.first) PersonLookupResult.Unavailable(unavailable.second) else people[ident]?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
     },

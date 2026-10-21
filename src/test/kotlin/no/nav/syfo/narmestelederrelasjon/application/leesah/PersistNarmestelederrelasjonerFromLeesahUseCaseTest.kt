@@ -106,7 +106,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
         }
 
         test("logs only the register record id and Kafka position of an invalid record") {
-            val invalid = record(relasjon(sykmeldtFnr = "123"), partition = 3, offset = 42)
+            val invalid = record(relasjon(sykmeldtFnr = "1234567890X"), partition = 3, offset = 42)
 
             val event = captureInvalidRecordLogs { useCase.execute(listOf(invalid)) }.single()
 

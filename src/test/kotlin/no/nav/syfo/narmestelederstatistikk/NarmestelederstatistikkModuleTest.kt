@@ -11,6 +11,7 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import io.mockk.mockk
+import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.narmestelederstatistikk.api.LINEMANAGER_STATISTICS_API_PATH
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -21,7 +22,6 @@ import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.database.DatabaseInterface
 import no.nav.syfo.platform.observability.ApplicationState
-import no.nav.syfo.plugins.platformModule
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 import java.sql.Connection

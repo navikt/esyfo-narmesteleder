@@ -1,18 +1,19 @@
-package no.nav.syfo.plugins
+package no.nav.syfo.bootstrap
 
 import no.nav.syfo.platform.database.Database
 import no.nav.syfo.platform.database.DatabaseConfig
+import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.database.DatabaseInterface
 import org.koin.dsl.module
 import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
-internal fun databaseModule() = module {
+internal fun databaseModule(database: DatabaseEnvironment) = module {
     single<DatabaseInterface> {
         Database(
             DatabaseConfig(
-                jdbcUrl = env().database.jdbcUrl(),
-                username = env().database.username,
-                password = env().database.password,
+                jdbcUrl = database.jdbcUrl(),
+                username = database.username,
+                password = database.password,
             )
         )
     }

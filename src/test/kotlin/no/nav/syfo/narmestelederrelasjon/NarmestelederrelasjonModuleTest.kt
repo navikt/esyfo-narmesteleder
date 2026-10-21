@@ -6,9 +6,8 @@ import io.kotest.matchers.shouldNotBe
 import io.ktor.client.request.post
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
-import io.mockk.every
 import io.mockk.mockk
-import no.nav.syfo.bootstrap.Environment
+import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.integration.aareg.AaregClient
 import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
 import no.nav.syfo.integration.ereg.EregClient
@@ -20,12 +19,10 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.NAV_CALL_ID_HEADER
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.cache.ValkeyCache
 import no.nav.syfo.platform.database.DatabaseInterface
 import no.nav.syfo.platform.observability.ApplicationState
-import no.nav.syfo.plugins.platformModule
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 import java.sql.Connection
@@ -33,14 +30,15 @@ import java.sql.Connection
 class NarmestelederrelasjonModuleTest :
     FunSpec({
         test("registers its dependencies and mounts relasjon routes on their own API prefixes") {
-            val environment = mockk<Environment> {
-                every { texas } returns TexasEnvironment.createForLocal()
-            }
+            val settings = NarmestelederrelasjonSettings(
+                employmentCheckObserveSourceEnabled = false,
+                employmentCheckRevokeEnabled = false,
+                lineManagerLookupPreAuthorizedApps = setOf("syfo-budstikka"),
+            )
             val externalDependencies = module {
                 single { ApplicationState() }
                 single<DatabaseInterface> { UnusedDatabase }
                 single<Database> { mockk() }
-                single { environment }
                 single<TexasHttpClient> { mockk() }
                 single<OrganizationAccess> { mockk() }
                 single<AaregClient> { mockk() }
@@ -54,7 +52,7 @@ class NarmestelederrelasjonModuleTest :
             testApplication {
                 application {
                     platformModule(listOf(externalDependencies))
-                    narmestelederrelasjonModule()
+                    narmestelederrelasjonModule(settings)
                 }
 
                 // Missing tokens are rejected before clients or repositories are used.

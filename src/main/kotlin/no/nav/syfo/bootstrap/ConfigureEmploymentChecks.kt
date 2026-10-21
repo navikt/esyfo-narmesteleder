@@ -1,19 +1,17 @@
-package no.nav.syfo.plugins
+package no.nav.syfo.bootstrap
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
 import io.ktor.server.application.ServerReady
 import kotlinx.coroutines.runBlocking
-import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederrelasjon.application.CheckNarmestelederrelasjonEmploymentUseCase
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckSettings
 import no.nav.syfo.narmestelederrelasjon.application.SeedNarmestelederrelasjonEmploymentChecksUseCase
 import no.nav.syfo.platform.scheduling.BackgroundLoop
 import org.koin.ktor.ext.inject
 
-fun Application.configureEmploymentChecks() {
-    val environment by inject<Environment>()
-    if (!environment.otherProperties.employmentCheckEnabled) return
+internal fun Application.configureEmploymentChecks(other: OtherEnvironmentProperties) {
+    if (!other.employmentCheckEnabled) return
 
     val settings by inject<EmploymentCheckSettings>()
     val check by inject<CheckNarmestelederrelasjonEmploymentUseCase>()

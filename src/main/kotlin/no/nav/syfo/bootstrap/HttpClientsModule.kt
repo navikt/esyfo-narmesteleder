@@ -1,4 +1,4 @@
-package no.nav.syfo.plugins
+package no.nav.syfo.bootstrap
 
 import no.nav.syfo.integration.aareg.AaregClient
 import no.nav.syfo.integration.aareg.FakeAaregClient
@@ -23,19 +23,20 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTil
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
 import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
+import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.http.httpClientDefault
 import org.koin.core.module.Module
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
 
-internal fun httpClientsModule(isLocalEnv: Boolean) = module {
+internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironment, isLocalEnv: Boolean) = module {
     single { httpClientDefault() }
-    single { TexasHttpClient(client = get(), environment = env().texas) }
+    single { TexasHttpClient(client = get(), environment = texas) }
     single {
         AltinnTokenProvider(
             texasHttpClient = get(),
-            altinnBaseUrl = env().clientProperties.altinn3BaseUrl,
+            altinnBaseUrl = clients.altinn3BaseUrl,
             httpClient = get(),
         )
     }
@@ -45,9 +46,9 @@ internal fun httpClientsModule(isLocalEnv: Boolean) = module {
         local = { FakeAaregClient() },
         remote = {
             HttpAaregClient(
-                aaregBaseUrl = env().clientProperties.aaregBaseUrl,
+                aaregBaseUrl = clients.aaregBaseUrl,
                 texasHttpClient = get(),
-                scope = env().clientProperties.aaregScope,
+                scope = clients.aaregScope,
             )
         },
     )
@@ -57,9 +58,9 @@ internal fun httpClientsModule(isLocalEnv: Boolean) = module {
         remote = {
             HttpDinesykmeldteClient(
                 texasHttpClient = get(),
-                scope = env().clientProperties.dinesykmeldteScope,
+                scope = clients.dinesykmeldteScope,
                 httpClient = get(),
-                dinesykmeldteBaseUrl = env().clientProperties.dinesykmeldteBaseUrl,
+                dinesykmeldteBaseUrl = clients.dinesykmeldteBaseUrl,
             )
         },
     )
@@ -69,9 +70,9 @@ internal fun httpClientsModule(isLocalEnv: Boolean) = module {
         remote = {
             HttpPdlClient(
                 httpClient = get(),
-                pdlBaseUrl = env().clientProperties.pdlBaseUrl,
+                pdlBaseUrl = clients.pdlBaseUrl,
                 texasHttpClient = get(),
-                scope = env().clientProperties.pdlScope,
+                scope = clients.pdlScope,
             )
         },
     )
@@ -82,7 +83,7 @@ internal fun httpClientsModule(isLocalEnv: Boolean) = module {
             HttpAltinnTilgangerClient(
                 texasClient = get(),
                 httpClient = get(),
-                baseUrl = env().clientProperties.altinnTilgangerBaseUrl,
+                baseUrl = clients.altinnTilgangerBaseUrl,
             )
         },
     )
@@ -92,14 +93,14 @@ internal fun httpClientsModule(isLocalEnv: Boolean) = module {
         remote = {
             HttpDialogportenClient(
                 httpClient = get(),
-                baseUrl = env().clientProperties.altinn3BaseUrl,
+                baseUrl = clients.altinn3BaseUrl,
                 altinnTokenProvider = get(),
             )
         },
     )
     single<EregClient> {
         CachedEregClient(
-            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = env().clientProperties.eregBaseUrl),
+            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = clients.eregBaseUrl),
             cache = get(),
         )
     }
@@ -109,8 +110,8 @@ internal fun httpClientsModule(isLocalEnv: Boolean) = module {
         remote = {
             HttpAltinnAuthorizationClient(
                 httpClient = get(),
-                baseUrl = env().clientProperties.altinn3BaseUrl,
-                subscriptionKey = env().clientProperties.pdpSubscriptionKey,
+                baseUrl = clients.altinn3BaseUrl,
+                subscriptionKey = clients.pdpSubscriptionKey,
                 altinnTokenProvider = get(),
             )
         },

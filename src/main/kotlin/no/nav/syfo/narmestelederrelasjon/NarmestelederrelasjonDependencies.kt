@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon
 
-import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookup
@@ -70,7 +69,7 @@ import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 private val LOOKUP_DISCARDED_EMAIL_ADDRESS_METRICS = named("lookupDiscardedEmailAddressMetrics")
 private val EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_METRICS = named("employeeLinemanagerDiscardedEmailAddressMetrics")
 
-fun narmestelederrelasjonDependencies() = module {
+fun narmestelederrelasjonDependencies(settings: NarmestelederrelasjonSettings) = module {
     single<PublishNarmestelederrelasjon> { KafkaPublishNarmestelederrelasjon(get()) }
     single<PublishNarmestelederrelasjonRevocation> { KafkaPublishNarmestelederrelasjonRevocation(get()) }
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }
@@ -99,11 +98,10 @@ fun narmestelederrelasjonDependencies() = module {
     single<LeesahNarmestelederrelasjonRepository> { ExposedLeesahNarmestelederrelasjonRepository(get<ExposedDatabase>()) }
     single<NarmestelederRegisterMetrics> { MicrometerNarmestelederRegisterMetrics() }
     single {
-        val observeSource = get<Environment>().otherProperties.employmentCheckObserveSourceEnabled
         PersistNarmestelederrelasjonerFromLeesahUseCase(
             repository = get(),
             metrics = get(),
-            recordSourceEmploymentRevocation = if (observeSource) get() else null,
+            recordSourceEmploymentRevocation = if (settings.employmentCheckObserveSourceEnabled) get() else null,
         )
     }
     single { EmploymentCheckSettings() }
@@ -118,7 +116,7 @@ fun narmestelederrelasjonDependencies() = module {
             clock = get(),
             metrics = get(),
             publisher = get(),
-            revokeEnabled = get<Environment>().otherProperties.employmentCheckRevokeEnabled,
+            revokeEnabled = settings.employmentCheckRevokeEnabled,
         )
     }
     single { SeedNarmestelederrelasjonEmploymentChecksUseCase(get(), get(), get(), get()) }

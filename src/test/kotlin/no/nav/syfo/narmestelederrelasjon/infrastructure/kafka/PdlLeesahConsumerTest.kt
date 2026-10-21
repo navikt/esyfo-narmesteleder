@@ -25,7 +25,6 @@ import no.nav.person.pdl.leesah.Endringstype
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.person.pdl.leesah.navn.Navn
 import no.nav.person.pdl.leesah.navn.OriginaltNavn
-import no.nav.syfo.bootstrap.OtherEnvironmentProperties
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult
 import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerRelationPersonNameUpdateMetrics.Companion.RESULT_NOT_FOUND_IN_REGISTER
@@ -281,7 +280,7 @@ class PdlLeesahConsumerTest :
             val disabled = pdlLeesahConsumer(
                 kafkaConsumer,
                 updateRelationPersonNames,
-                env = OtherEnvironmentProperties.createForLocal().copy(pdlLeesahConsumerEnabled = false),
+                enabled = false,
             )
 
             disabled.listen()
@@ -315,11 +314,11 @@ private fun pdlLeesahConsumer(
     kafkaConsumer: KafkaConsumer<String, Personhendelse>,
     updateRelationPersonNames: UpdateRelationPersonNamesUseCase,
     scope: CoroutineScope = CoroutineScope(EmptyCoroutineContext),
-    env: OtherEnvironmentProperties = OtherEnvironmentProperties.createForLocal(),
+    enabled: Boolean = true,
 ): PdlLeesahConsumer = PdlLeesahConsumer(
     kafkaConsumer = kafkaConsumer,
     scope = scope,
-    env = env,
+    enabled = enabled,
     updateRelationPersonNames = updateRelationPersonNames,
     retryDelaySeconds = 0,
 )

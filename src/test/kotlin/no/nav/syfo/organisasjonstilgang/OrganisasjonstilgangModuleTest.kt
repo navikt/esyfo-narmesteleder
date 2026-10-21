@@ -7,6 +7,7 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import io.mockk.mockk
+import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.organisasjonstilgang.api.ACCESSIBLE_ORGANIZATIONS_API_PATH
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
 import no.nav.syfo.platform.api.API_V1_PATH
@@ -15,7 +16,6 @@ import no.nav.syfo.platform.api.NAV_CALL_ID_HEADER
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.database.DatabaseInterface
 import no.nav.syfo.platform.observability.ApplicationState
-import no.nav.syfo.plugins.platformModule
 import org.koin.dsl.module
 import java.sql.Connection
 

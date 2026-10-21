@@ -1,10 +1,9 @@
-package no.nav.syfo.plugins
+package no.nav.syfo.bootstrap
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
 import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
@@ -17,9 +16,8 @@ import org.koin.ktor.ext.inject
 import java.util.Collections
 import kotlin.getValue
 
-fun Application.configureBackgroundTasks() {
+internal fun Application.configureBackgroundTasks(other: OtherEnvironmentProperties) {
     val logger = logger()
-    val environment by inject<Environment>()
     val sendDialogTask by inject<SendDialogTask>()
     val updateDialogTask by inject<UpdateDialogTask>()
     val expireNarmestelederbehovTask by inject<ExpireNarmestelederbehovTask>()
@@ -34,10 +32,10 @@ fun Application.configureBackgroundTasks() {
                 logger.info("Promoted to leader — starting background tasks")
                 taskJobs.lock { jobs ->
                     jobs.cancelAndClear()
-                    if (environment.otherProperties.isDialogportenBackgroundTaskEnabled) {
+                    if (other.isDialogportenBackgroundTaskEnabled) {
                         jobs += launch { sendDialogTask.runTask() }
                         jobs += launch { updateDialogTask.runTask() }
-                        if (environment.otherProperties.personEnrichmentTaskEnabled) {
+                        if (other.personEnrichmentTaskEnabled) {
                             jobs += launch { personEnrichmentTask.runTask() }
                         }
                     } else {
@@ -46,7 +44,7 @@ fun Application.configureBackgroundTasks() {
                                 "Skipping Dialogporten background tasks",
                         )
                     }
-                    if (environment.otherProperties.maintenanceTaskEnabled) {
+                    if (other.maintenanceTaskEnabled) {
                         logger.info("Maintenance tasks are enabled. Starting behov expiry and sykmelding retention tasks.")
                         jobs += launch { expireNarmestelederbehovTask.runTask() }
                         jobs += launch { deleteOldSykmeldingerTask.runTask() }

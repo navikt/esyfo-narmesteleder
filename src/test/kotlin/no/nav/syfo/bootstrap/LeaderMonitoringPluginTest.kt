@@ -1,4 +1,4 @@
-package no.nav.syfo.plugins
+package no.nav.syfo.bootstrap
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe

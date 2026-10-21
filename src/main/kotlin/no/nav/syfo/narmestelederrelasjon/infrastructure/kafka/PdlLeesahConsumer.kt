@@ -9,7 +9,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.person.pdl.leesah.Personhendelse
-import no.nav.syfo.bootstrap.OtherEnvironmentProperties
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult
 import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.emitPersonUpdateMetrics
@@ -44,7 +43,7 @@ import kotlin.time.Duration.Companion.seconds
 class PdlLeesahConsumer(
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, Personhendelse>,
     private val scope: CoroutineScope,
-    private val env: OtherEnvironmentProperties,
+    private val enabled: Boolean,
     private val updateRelationPersonNames: UpdateRelationPersonNamesUseCase,
     private val pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
     private val retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
@@ -55,14 +54,14 @@ class PdlLeesahConsumer(
     constructor(
         kafkaConsumer: KafkaConsumer<String, Personhendelse>,
         scope: CoroutineScope,
-        env: OtherEnvironmentProperties,
+        enabled: Boolean,
         updateRelationPersonNames: UpdateRelationPersonNamesUseCase,
         pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
         retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
     ) : this(
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
-        env = env,
+        enabled = enabled,
         updateRelationPersonNames = updateRelationPersonNames,
         pollDuration = pollDuration,
         retryDelaySeconds = retryDelaySeconds,
@@ -76,7 +75,7 @@ class PdlLeesahConsumer(
     override fun listen() {
         // Defensive guard: RunningTasks already avoids creating this consumer when disabled,
         // but keep the check here for direct usage in tests or other callers outside that setup.
-        if (!env.pdlLeesahConsumerEnabled) {
+        if (!enabled) {
             logger.info("PDL Leesah consumer is disabled, not starting consumer for {}", PDL_LEESAH_TOPIC)
             return
         }

@@ -5,6 +5,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.api.toForbiddenException
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 
 fun Manager.toManagerContactInput(): ManagerContactInput = ManagerContactInput(
@@ -31,7 +32,7 @@ fun FulfillNarmestelederbehovResult.throwIfRejected() {
         FulfillNarmestelederbehovResult.BehovMissingAfterPublication ->
             throw ApiErrorException.NotFoundException("A LinemanagerRequirement was not found", isAlreadyLogged = true)
         is FulfillNarmestelederbehovResult.AccessDenied -> {
-            throw accessDeniedException(reason = reason, organizationNumber = organizationNumber)
+            throw reason.toForbiddenException(organizationNumber, isAlreadyLogged = true)
         }
         is FulfillNarmestelederbehovResult.NoActiveSykmelding -> throw ApiErrorException.BadRequestException(
             "No active sick leave found for the given organization number: ${organizationNumber.value}",

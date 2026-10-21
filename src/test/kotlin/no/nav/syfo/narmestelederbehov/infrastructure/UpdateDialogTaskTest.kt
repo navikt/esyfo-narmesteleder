@@ -28,7 +28,7 @@ class UpdateDialogTaskTest :
                 val calls = mutableListOf<String>()
                 val complete = CompleteDialogsFixture()
                 val expire = ExpireDialogsFixture()
-                complete.lifecycle.findFulfilled = {
+                complete.repository.findFulfilled = {
                     calls += "complete"
                     emptyList()
                 }
@@ -41,7 +41,7 @@ class UpdateDialogTaskTest :
                 task.execute()
 
                 calls shouldBe listOf("complete", "expire")
-                complete.lifecycle.fulfilledQueries shouldBe listOf(UPDATE_NOW.minusSeconds(10))
+                complete.repository.fulfilledQueries shouldBe listOf(UPDATE_NOW.minusSeconds(10))
                 expire.repository.expiryQueries shouldBe 1
             }
         }
@@ -50,7 +50,7 @@ class UpdateDialogTaskTest :
             val complete = CompleteDialogsFixture()
             val expire = ExpireDialogsFixture()
             val cancellation = CancellationException("cancel test")
-            complete.lifecycle.findFulfilled = { throw cancellation }
+            complete.repository.findFulfilled = { throw cancellation }
             val task = UpdateDialogTask(complete.useCase, expire.useCase, 5.minutes)
 
             shouldThrow<CancellationException> { task.execute() } shouldBe cancellation
@@ -62,20 +62,20 @@ class UpdateDialogTaskTest :
             runTest {
                 val complete = CompleteDialogsFixture()
                 val expire = ExpireDialogsFixture()
-                complete.lifecycle.findFulfilled = { throw IllegalStateException("private-diagnostic-canary") }
+                complete.repository.findFulfilled = { throw IllegalStateException("private-diagnostic-canary") }
                 val task = UpdateDialogTask(complete.useCase, expire.useCase, 7.minutes)
 
                 logs.capture().use { capture ->
                     val job = launch { task.runTask() }
                     try {
                         runCurrent()
-                        complete.lifecycle.fulfilledQueries.size shouldBe 1
+                        complete.repository.fulfilledQueries.size shouldBe 1
                         advanceTimeBy(7.minutes.inWholeMilliseconds - 1)
                         runCurrent()
-                        complete.lifecycle.fulfilledQueries.size shouldBe 1
+                        complete.repository.fulfilledQueries.size shouldBe 1
                         advanceTimeBy(1)
                         runCurrent()
-                        complete.lifecycle.fulfilledQueries.size shouldBe 2
+                        complete.repository.fulfilledQueries.size shouldBe 2
                         expire.repository.expiryQueries shouldBe 0
                         capture.records.size shouldBe 2
                         capture.records.forEach { output ->

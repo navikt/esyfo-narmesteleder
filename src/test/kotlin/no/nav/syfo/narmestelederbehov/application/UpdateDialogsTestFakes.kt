@@ -24,13 +24,30 @@ internal fun updateFailure() = UpstreamFailure(
     errors = listOf(UpstreamError("server_error")),
 )
 
-internal class RecordingDialogLifecycleRepository : NarmestelederbehovDialogLifecycleRepository {
+internal class RecordingUpdateDialogsRepository : NarmestelederbehovRepository {
     val fulfilledQueries = mutableListOf<Instant>()
     var expiryQueries = 0
     val expired = mutableListOf<Pair<NarmestelederbehovId, Instant>>()
     var findFulfilled: suspend () -> List<NarmestelederbehovDialogReference> = { emptyList() }
     var findExpired: suspend () -> List<NarmestelederbehovDialogReference> = { emptyList() }
     var markExpired: suspend () -> Unit = {}
+    val marked = mutableListOf<NarmestelederbehovId>()
+    var mark: suspend () -> MarkDialogCompletedResult = { MarkDialogCompletedResult.Marked }
+
+    override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
+    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
+    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
+    override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")
+    override suspend fun findOpenFor(employee: Employee) = error("Unexpected findOpenFor")
+    override suspend fun markFulfilled(id: NarmestelederbehovId) = error("Unexpected markFulfilled")
+    override suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?) = error("Unexpected markDialogCreated")
+    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
+
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult {
+        val result = mark()
+        marked += id
+        return result
+    }
 
     override suspend fun findFulfilledDialogs(createdBefore: Instant): List<NarmestelederbehovDialogReference> {
         fulfilledQueries += createdBefore
@@ -49,29 +66,10 @@ internal class RecordingDialogLifecycleRepository : NarmestelederbehovDialogLife
 }
 
 internal class CompleteDialogsFixture(batch: List<NarmestelederbehovDialogReference> = emptyList()) {
-    val lifecycle = RecordingDialogLifecycleRepository().apply { findFulfilled = { batch } }
+    val repository = RecordingUpdateDialogsRepository().apply { findFulfilled = { batch } }
     val calls = mutableListOf<UUID>()
-    val marked = mutableListOf<NarmestelederbehovId>()
     var complete: suspend (UUID) -> DialogCompletion = { DialogCompletion.Completed }
-    var mark: suspend () -> MarkDialogCompletedResult = { MarkDialogCompletedResult.Marked }
-    private val repository = object : NarmestelederbehovRepository {
-        override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-        override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
-        override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
-        override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")
-        override suspend fun findOpenFor(employee: Employee) = error("Unexpected findOpenFor")
-        override suspend fun markFulfilled(id: NarmestelederbehovId) = error("Unexpected markFulfilled")
-        override suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?) = error("Unexpected markDialogCreated")
-        override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
-
-        override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult {
-            val result = mark()
-            marked += id
-            return result
-        }
-    }
     val useCase = CompleteFulfilledNarmestelederbehovDialogsUseCase(
-        lifecycle,
         repository,
         { id ->
             calls += id
@@ -82,7 +80,7 @@ internal class CompleteDialogsFixture(batch: List<NarmestelederbehovDialogRefere
 }
 
 internal class ExpireDialogsFixture(batch: List<NarmestelederbehovDialogReference> = emptyList()) {
-    val repository = RecordingDialogLifecycleRepository().apply { findExpired = { batch } }
+    val repository = RecordingUpdateDialogsRepository().apply { findExpired = { batch } }
     val calls = mutableListOf<Pair<UUID, Instant>>()
     var expire: suspend (UUID) -> DialogExpiry = { DialogExpiry.Expired }
     val useCase = ExpireNarmestelederbehovDialogsUseCase(

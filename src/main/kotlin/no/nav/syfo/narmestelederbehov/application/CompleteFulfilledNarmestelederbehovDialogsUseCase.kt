@@ -6,13 +6,12 @@ import no.nav.syfo.logging.logEvent
 import java.time.Clock
 
 class CompleteFulfilledNarmestelederbehovDialogsUseCase(
-    private val lifecycleRepository: NarmestelederbehovDialogLifecycleRepository,
     private val repository: NarmestelederbehovRepository,
     private val dialog: NarmestelederbehovDialog,
     private val clock: Clock,
 ) {
     suspend fun execute() {
-        val batch = lifecycleRepository.findFulfilledDialogs(clock.instant().minusSeconds(10))
+        val batch = repository.findFulfilledDialogs(clock.instant().minusSeconds(10))
         logger.info("Found ${batch.size} fulfilled behovs to complete in dialogporten")
         for (behov in batch) {
             val details = DialogEventDetails(behov.id.value, behov.dialogId).copy(action = DialogAction.COMPLETE)

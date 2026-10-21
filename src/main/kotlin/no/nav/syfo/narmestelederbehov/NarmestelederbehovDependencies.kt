@@ -21,7 +21,6 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSett
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogExpiry
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogLifecycleRepository
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
@@ -32,7 +31,6 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbe
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovDialogLifecycleRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
@@ -56,11 +54,9 @@ fun narmestelederbehovDependencies() = module {
         )
     }
     single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
-    single<NarmestelederbehovDialogLifecycleRepository> { ExposedNarmestelederbehovDialogLifecycleRepository(get<Database>()) }
     single<NarmestelederbehovDialogExpiry> { DialogportenNarmestelederbehovDialogExpiry(get()) }
     single {
         CompleteFulfilledNarmestelederbehovDialogsUseCase(
-            lifecycleRepository = get(),
             repository = get(),
             dialog = get(),
             clock = get(),

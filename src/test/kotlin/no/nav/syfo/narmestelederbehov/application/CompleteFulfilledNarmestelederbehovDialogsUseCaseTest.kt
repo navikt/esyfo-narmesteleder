@@ -17,9 +17,9 @@ class CompleteFulfilledNarmestelederbehovDialogsUseCaseTest :
         test("queries once with a strict ten-second cutoff and does nothing for an empty batch") {
             val fixture = CompleteDialogsFixture()
             fixture.useCase.execute()
-            fixture.lifecycle.fulfilledQueries shouldBe listOf(UPDATE_NOW.minusSeconds(10))
+            fixture.repository.fulfilledQueries shouldBe listOf(UPDATE_NOW.minusSeconds(10))
             fixture.calls shouldBe emptyList()
-            fixture.marked shouldBe emptyList()
+            fixture.repository.marked shouldBe emptyList()
         }
 
         test("completed including already completed via the port is conditionally marked in query order, with only one full batch") {
@@ -29,13 +29,13 @@ class CompleteFulfilledNarmestelederbehovDialogsUseCaseTest :
             fixture.useCase.execute()
 
             fixture.calls shouldBe batch.map { it.dialogId }
-            fixture.marked shouldBe batch.map { it.id }
-            fixture.lifecycle.fulfilledQueries shouldBe listOf(UPDATE_NOW.minusSeconds(10))
+            fixture.repository.marked shouldBe batch.map { it.id }
+            fixture.repository.fulfilledQueries shouldBe listOf(UPDATE_NOW.minusSeconds(10))
         }
 
         test("a concurrent status change is only logged at info, with no new failure event") {
             val fixture = CompleteDialogsFixture(listOf(dialogReference()))
-            fixture.mark = { MarkDialogCompletedResult.NotFulfilled }
+            fixture.repository.mark = { MarkDialogCompletedResult.NotFulfilled }
 
             logs.capture().use { capture ->
                 fixture.useCase.execute()
@@ -60,7 +60,7 @@ class CompleteFulfilledNarmestelederbehovDialogsUseCaseTest :
                 }
                 var marks = 0
                 if (failureAt == "mark exception") {
-                    fixture.mark = {
+                    fixture.repository.mark = {
                         if (++marks == 1) throw IllegalStateException("private-diagnostic-canary")
                         MarkDialogCompletedResult.Marked
                     }
@@ -81,7 +81,7 @@ class CompleteFulfilledNarmestelederbehovDialogsUseCaseTest :
                     output shouldNotContain "private-diagnostic-canary"
                 }
                 fixture.calls shouldBe listOf(first.dialogId, second.dialogId)
-                fixture.marked shouldBe listOf(second.id)
+                fixture.repository.marked shouldBe listOf(second.id)
             }
         }
 
@@ -90,9 +90,9 @@ class CompleteFulfilledNarmestelederbehovDialogsUseCaseTest :
                 val cancellation = CancellationException("cancel test")
                 val fixture = CompleteDialogsFixture(listOf(dialogReference(), dialogReference(2)))
                 when (step) {
-                    "fetch" -> fixture.lifecycle.findFulfilled = { throw cancellation }
+                    "fetch" -> fixture.repository.findFulfilled = { throw cancellation }
                     "complete" -> fixture.complete = { throw cancellation }
-                    "mark" -> fixture.mark = { throw cancellation }
+                    "mark" -> fixture.repository.mark = { throw cancellation }
                 }
 
                 logs.capture().use { capture ->
@@ -100,7 +100,7 @@ class CompleteFulfilledNarmestelederbehovDialogsUseCaseTest :
                     capture.records.none { mapper.readTree(it)["event_type"]?.asText() == "dialogporten_dialog_failed" } shouldBe true
                 }
                 fixture.calls.size shouldBe if (step == "fetch") 0 else 1
-                fixture.marked shouldBe emptyList()
+                fixture.repository.marked shouldBe emptyList()
             }
         }
     })

@@ -8,7 +8,7 @@ import java.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 
 class ExpireNarmestelederbehovDialogsUseCase(
-    private val repository: NarmestelederbehovDialogLifecycleRepository,
+    private val repository: NarmestelederbehovRepository,
     private val dialog: NarmestelederbehovDialogExpiry,
     private val clock: Clock,
 ) {

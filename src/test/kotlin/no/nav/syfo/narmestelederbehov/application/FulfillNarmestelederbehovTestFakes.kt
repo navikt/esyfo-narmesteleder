@@ -22,6 +22,9 @@ internal class FakeBehovRepository(
     private val dialogStatusResult: MarkDialogCompletedResult = MarkDialogCompletedResult.Marked,
 ) : NarmestelederbehovRepository {
     override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
+    override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
+    override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
+    override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
     override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
     override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = null

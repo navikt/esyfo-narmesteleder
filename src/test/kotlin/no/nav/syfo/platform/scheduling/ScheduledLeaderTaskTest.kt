@@ -4,7 +4,7 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.ints.shouldBeExactly
@@ -22,7 +22,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ScheduledLeaderTaskTest :
-    DescribeSpec(
+    FunSpec(
         {
             val logger = LoggerFactory.getLogger("TestScheduledLeaderTask") as Logger
             val appender = ListAppender<ILoggingEvent>()
@@ -36,9 +36,9 @@ class ScheduledLeaderTaskTest :
             }
             beforeTest { appender.list.clear() }
 
-            describe("ScheduledLeaderTask") {
+            context("ScheduledLeaderTask") {
                 context("runTask") {
-                    it("should call execute on each iteration") {
+                    test("should call execute on each iteration") {
                         runTest {
                             var executeCount = 0
                             val task = TestScheduledLeaderTask(
@@ -66,7 +66,7 @@ class ScheduledLeaderTaskTest :
                         }
                     }
 
-                    it("should continue running after exception in execute") {
+                    test("should continue running after exception in execute") {
                         runTest {
                             var executeCount = 0
                             val task = TestScheduledLeaderTask(
@@ -102,7 +102,7 @@ class ScheduledLeaderTaskTest :
                         }
                     }
 
-                    it("should handle cancellation gracefully") {
+                    test("should handle cancellation gracefully") {
                         runTest {
                             val task = TestScheduledLeaderTask(
                                 interval = 100.milliseconds,
@@ -121,7 +121,7 @@ class ScheduledLeaderTaskTest :
                         }
                     }
 
-                    it("does not log cancellation thrown by the task") {
+                    test("does not log cancellation thrown by the task") {
                         runTest {
                             val task = TestScheduledLeaderTask(interval = 100.milliseconds) {
                                 throw CancellationException("cancelled")
@@ -133,7 +133,7 @@ class ScheduledLeaderTaskTest :
                         }
                     }
 
-                    it("logs wrapped cancellation as an ordinary task failure") {
+                    test("logs wrapped cancellation as an ordinary task failure") {
                         runTest {
                             val task = TestScheduledLeaderTask(interval = 100.milliseconds) {
                                 throw IllegalStateException("private-canary", CancellationException("cancelled"))
@@ -146,7 +146,7 @@ class ScheduledLeaderTaskTest :
                         }
                     }
 
-                    it("should stop when cancelled") {
+                    test("should stop when cancelled") {
                         runTest {
                             var executeCount = 0
                             val task = TestScheduledLeaderTask(

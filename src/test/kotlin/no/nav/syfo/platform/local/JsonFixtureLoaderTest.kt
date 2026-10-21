@@ -2,14 +2,14 @@ package no.nav.syfo.platform.local
 
 import com.fasterxml.jackson.core.JsonParseException
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.io.File
 import java.io.FileNotFoundException
 
 class JsonFixtureLoaderTest :
-    DescribeSpec({
+    FunSpec({
 
         // Test data class
         data class Person(
@@ -18,11 +18,11 @@ class JsonFixtureLoaderTest :
             val active: Boolean = false
         )
 
-        describe("JsonFixtureLoader with classpath resources") {
+        context("JsonFixtureLoader with classpath resources") {
             val loader = JsonFixtureLoader("classpath:fixtures")
 
-            describe("load()") {
-                it("should load and parse a valid JSON file") {
+            context("load()") {
+                test("should load and parse a valid JSON file") {
                     val person = loader.load<Person>("valid-person.json")
 
                     person.name shouldBe "Test Person"
@@ -30,52 +30,52 @@ class JsonFixtureLoaderTest :
                     person.active shouldBe true
                 }
 
-                it("should throw FileNotFoundException for missing file") {
+                test("should throw FileNotFoundException for missing file") {
                     shouldThrow<FileNotFoundException> {
                         loader.load<Person>("non-existent.json")
                     }
                 }
 
-                it("should throw JsonParseException for malformed JSON") {
+                test("should throw JsonParseException for malformed JSON") {
                     shouldThrow<JsonParseException> {
                         loader.load<Person>("malformed.json")
                     }
                 }
             }
 
-            describe("loadOrNull()") {
-                it("should load and parse a valid JSON file") {
+            context("loadOrNull()") {
+                test("should load and parse a valid JSON file") {
                     val person = loader.loadOrNull<Person>("valid-person.json")
 
                     person shouldNotBe null
                     person!!.name shouldBe "Test Person"
                 }
 
-                it("should return null for missing file") {
+                test("should return null for missing file") {
                     val result = loader.loadOrNull<Person>("non-existent.json")
 
                     result shouldBe null
                 }
 
-                it("should throw JsonParseException for malformed JSON") {
+                test("should throw JsonParseException for malformed JSON") {
                     shouldThrow<JsonParseException> {
                         loader.loadOrNull<Person>("malformed.json")
                     }
                 }
             }
 
-            describe("exists()") {
-                it("should return true for existing file") {
+            context("exists()") {
+                test("should return true for existing file") {
                     loader.exists("valid-person.json") shouldBe true
                 }
 
-                it("should return false for non-existent file") {
+                test("should return false for non-existent file") {
                     loader.exists("non-existent.json") shouldBe false
                 }
             }
         }
 
-        describe("JsonFixtureLoader with filesystem path") {
+        context("JsonFixtureLoader with filesystem path") {
             fun withTempDir(block: (File, JsonFixtureLoader) -> Unit) {
                 val tempDir = File(System.getProperty("java.io.tmpdir"), "json-fixture-test-${System.currentTimeMillis()}")
                 try {
@@ -89,8 +89,8 @@ class JsonFixtureLoaderTest :
                 }
             }
 
-            describe("load()") {
-                it("should load and parse a valid JSON file from filesystem") {
+            context("load()") {
+                test("should load and parse a valid JSON file from filesystem") {
                     withTempDir { _, loader ->
                         val person = loader.load<Person>("fs-person.json")
 
@@ -100,7 +100,7 @@ class JsonFixtureLoaderTest :
                     }
                 }
 
-                it("should throw FileNotFoundException for missing file") {
+                test("should throw FileNotFoundException for missing file") {
                     withTempDir { _, loader ->
                         shouldThrow<FileNotFoundException> {
                             loader.load<Person>("non-existent.json")
@@ -109,8 +109,8 @@ class JsonFixtureLoaderTest :
                 }
             }
 
-            describe("loadOrNull()") {
-                it("should load and parse a valid JSON file from filesystem") {
+            context("loadOrNull()") {
+                test("should load and parse a valid JSON file from filesystem") {
                     withTempDir { _, loader ->
                         val person = loader.loadOrNull<Person>("fs-person.json")
 
@@ -119,7 +119,7 @@ class JsonFixtureLoaderTest :
                     }
                 }
 
-                it("should return null for missing file") {
+                test("should return null for missing file") {
                     withTempDir { _, loader ->
                         val result = loader.loadOrNull<Person>("non-existent.json")
 
@@ -128,14 +128,14 @@ class JsonFixtureLoaderTest :
                 }
             }
 
-            describe("exists()") {
-                it("should return true for existing file") {
+            context("exists()") {
+                test("should return true for existing file") {
                     withTempDir { _, loader ->
                         loader.exists("fs-person.json") shouldBe true
                     }
                 }
 
-                it("should return false for non-existent file") {
+                test("should return false for non-existent file") {
                     withTempDir { _, loader ->
                         loader.exists("non-existent.json") shouldBe false
                     }
@@ -143,13 +143,13 @@ class JsonFixtureLoaderTest :
             }
         }
 
-        describe("Path normalization") {
-            it("should handle basePath without trailing slash") {
+        context("Path normalization") {
+            test("should handle basePath without trailing slash") {
                 val loader = JsonFixtureLoader("classpath:fixtures")
                 loader.exists("valid-person.json") shouldBe true
             }
 
-            it("should handle basePath with trailing slash") {
+            test("should handle basePath with trailing slash") {
                 val loader = JsonFixtureLoader("classpath:fixtures/")
                 loader.exists("valid-person.json") shouldBe true
             }

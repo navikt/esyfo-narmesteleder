@@ -1,6 +1,6 @@
 package no.nav.syfo.platform.observability
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
@@ -12,8 +12,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class LoggingArchitectureTest :
-    StringSpec({
-        "migrated application code uses the local logging entry point" {
+    FunSpec({
+        test("migrated application code uses the local logging entry point") {
             val classes = Path.of(AltinnTilgangerService::class.java.protectionDomain.codeSource.location.toURI())
             val violations = Files.walk(classes).use { files ->
                 files.filter { it.toString().endsWith(".class") }
@@ -24,25 +24,25 @@ class LoggingArchitectureTest :
             violations.shouldBeEmpty()
         }
 
-        "the guard detects native logging even when imports are aliased or omitted" {
+        test("the guard detects native logging even when imports are aliased or omitted") {
             forbiddenLogging(classBytes(NativeLoggingFixture::class.java)) shouldContain "org/slf4j/LoggerFactory"
             forbiddenLogging(classBytes(NativeLoggingFixture::class.java)) shouldContain "org/slf4j/Logger"
         }
 
-        "the guard detects standard output" {
+        test("the guard detects standard output") {
             forbiddenLogging(classBytes(StandardOutputFixture::class.java)) shouldContain "java/lang/System.out"
         }
 
-        "the guard detects direct library factory use outside the local entry point" {
+        test("the guard detects direct library factory use outside the local entry point") {
             forbiddenLogging(classBytes(DirectLibraryFactoryFixture::class.java)) shouldContain
                 "no/nav/esyfo/observability/ApplicationLoggerKt"
         }
 
-        "event severity and tracing context are not logger bypasses" {
+        test("event severity and tracing context are not logger bypasses") {
             forbiddenLogging(classBytes(TracingFixture::class.java)).shouldBeEmpty()
         }
 
-        "the local facade is allowed" {
+        test("the local facade is allowed") {
             forbiddenLogging(classBytes(ApplicationLoggingFixture::class.java)).shouldBeEmpty()
         }
     })

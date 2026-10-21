@@ -1,7 +1,7 @@
 package no.nav.syfo.platform.scheduling
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -12,9 +12,9 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class LeaderChangeSSEListenerTest :
-    DescribeSpec({
-        describe("idempotency guard") {
-            it("should prevent duplicate listener starts") {
+    FunSpec({
+        context("idempotency guard") {
+            test("should prevent duplicate listener starts") {
                 val mockEngine =
                     MockEngine { _ ->
                         respond("", HttpStatusCode.InternalServerError)
@@ -35,7 +35,7 @@ class LeaderChangeSSEListenerTest :
                 job.cancel()
             }
 
-            it("should default isLeader to false") {
+            test("should default isLeader to false") {
                 val mockEngine =
                     MockEngine { _ ->
                         respond("", HttpStatusCode.InternalServerError)
@@ -46,7 +46,7 @@ class LeaderChangeSSEListenerTest :
                 listener.isLeader.value shouldBe false
             }
 
-            it("should initialize leader state from simple API result") {
+            test("should initialize leader state from simple API result") {
                 val mockEngine =
                     MockEngine { _ ->
                         respond("", HttpStatusCode.InternalServerError)

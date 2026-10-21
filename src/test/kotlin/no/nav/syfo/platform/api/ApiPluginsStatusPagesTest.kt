@@ -7,7 +7,7 @@ import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -34,7 +34,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.LoggerFactory
 
 class ApiPluginsStatusPagesTest :
-    DescribeSpec({
+    FunSpec({
         val logAppender = ListAppender<ILoggingEvent>()
         val logger = LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME) as Logger
         val originalLevel = logger.level
@@ -58,8 +58,8 @@ class ApiPluginsStatusPagesTest :
             logAppender.list.clear()
         }
 
-        describe("StatusPages fallback logging") {
-            it("logs an upstream failure once with its metadata and no exception message") {
+        context("StatusPages fallback logging") {
+            test("logs an upstream failure once with its metadata and no exception message") {
                 val syntheticIdent = "00000000000"
                 val upstreamResponse = HttpClient(MockEngine { respond("Ukjent ident $syntheticIdent", HttpStatusCode.ServiceUnavailable) }).use {
                     it.get("http://aareg/")
@@ -123,7 +123,7 @@ class ApiPluginsStatusPagesTest :
                 }
             }
 
-            it("logs a GraphQL failure once with upstream_errors and no stack") {
+            test("logs a GraphQL failure once with upstream_errors and no stack") {
                 val failure = UpstreamFailure(
                     UpstreamName("pdl"),
                     UpstreamFailureStage.RESPONSE,
@@ -170,7 +170,7 @@ class ApiPluginsStatusPagesTest :
                 }
             }
 
-            it("includes paths in default NotFoundException errors and omits them when requested") {
+            test("includes paths in default NotFoundException errors and omits them when requested") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -194,7 +194,7 @@ class ApiPluginsStatusPagesTest :
                 }
             }
 
-            it("does not duplicate a terminal error that is already logged") {
+            test("does not duplicate a terminal error that is already logged") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -215,7 +215,7 @@ class ApiPluginsStatusPagesTest :
                 logAppender.list.shouldBeEmpty()
             }
 
-            it("preserves a hidden relation response without repeating its access rejection") {
+            test("preserves a hidden relation response without repeating its access rejection") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -231,7 +231,7 @@ class ApiPluginsStatusPagesTest :
                 logAppender.list.shouldBeEmpty()
             }
 
-            it("logs an application 400 once as a structured rejection") {
+            test("logs an application 400 once as a structured rejection") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -254,7 +254,7 @@ class ApiPluginsStatusPagesTest :
                 fields["error_type"] shouldBe "INVALID_FORMAT"
             }
 
-            it("logs Ktor bad requests with their resolved rejection reasons") {
+            test("logs Ktor bad requests with their resolved rejection reasons") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -282,7 +282,7 @@ class ApiPluginsStatusPagesTest :
                 fields.map { it["response_status"] } shouldBe listOf(400, 400)
             }
 
-            it("keeps unlogged 404 responses at INFO without a rejection event") {
+            test("keeps unlogged 404 responses at INFO without a rejection event") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -303,7 +303,7 @@ class ApiPluginsStatusPagesTest :
                 record.keyValuePairs.orEmpty().none { it.key == "event_type" } shouldBe true
             }
 
-            it("records one structured error for an unclassified server failure") {
+            test("records one structured error for an unclassified server failure") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -328,7 +328,7 @@ class ApiPluginsStatusPagesTest :
                 fields["cause_type"] shouldBe "IllegalStateException"
             }
 
-            it("does not expose the message of an unclassified failure") {
+            test("does not expose the message of an unclassified failure") {
                 testApplication {
                     application {
                         installContentNegotiation()
@@ -346,7 +346,7 @@ class ApiPluginsStatusPagesTest :
                 }
             }
 
-            it("rethrows cancellation without logging it as an error") {
+            test("rethrows cancellation without logging it as an error") {
                 testApplication {
                     application {
                         installStatusPages()

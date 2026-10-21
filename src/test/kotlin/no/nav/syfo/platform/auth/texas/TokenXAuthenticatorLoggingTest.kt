@@ -1,11 +1,11 @@
 package no.nav.syfo.platform.auth.texas
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
 class TokenXAuthenticatorLoggingTest :
-    StringSpec({
-        "ACR logging only permits the four approved values" {
+    FunSpec({
+        test("ACR logging only permits the four approved values") {
             listOf("Level3", "Level4", "idporten-loa-substantial", "idporten-loa-high").forEach {
                 it.logAcr() shouldBe it
             }

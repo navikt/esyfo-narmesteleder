@@ -1,16 +1,16 @@
 package no.nav.syfo.platform.observability
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 
 class MetricTest :
-    DescribeSpec({
+    FunSpec({
 
-        describe("bindJvmAndProcessMetrics") {
-            it("registers JVM heap, non-heap, GC, thread, process and system meters in the scrape registry") {
+        context("bindJvmAndProcessMetrics") {
+            test("registers JVM heap, non-heap, GC, thread, process and system meters in the scrape registry") {
                 bindJvmAndProcessMetrics()
 
                 val scrape = METRICS_REGISTRY.scrape()
@@ -25,7 +25,7 @@ class MetricTest :
                 scrape shouldContain "system_cpu_usage"
             }
 
-            it("is idempotent across repeated invocations") {
+            test("is idempotent across repeated invocations") {
                 bindJvmAndProcessMetrics()
                 val jvmGcMeterNamesAfterFirst = METRICS_REGISTRY.meters
                     .map { it.id.name }

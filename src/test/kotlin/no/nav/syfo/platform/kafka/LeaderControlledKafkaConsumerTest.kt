@@ -1,6 +1,6 @@
 package no.nav.syfo.platform.kafka
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
@@ -8,9 +8,9 @@ import kotlinx.coroutines.test.runTest
 import no.nav.syfo.platform.kafka.KafkaListener
 
 class LeaderControlledKafkaConsumerTest :
-    DescribeSpec({
-        describe("onLeaderChange") {
-            it("should only start the consumer when leadership is acquired") {
+    FunSpec({
+        context("onLeaderChange") {
+            test("should only start the consumer when leadership is acquired") {
                 val consumer = TestKafkaListener()
                 val leaderControlledConsumer = LeaderControlledKafkaConsumer(
                     consumer = consumer,
@@ -25,7 +25,7 @@ class LeaderControlledKafkaConsumerTest :
                 consumer.stopCount shouldBe 0
             }
 
-            it("should stop the consumer when leadership is lost") {
+            test("should stop the consumer when leadership is lost") {
                 val consumer = TestKafkaListener()
                 val leaderControlledConsumer = LeaderControlledKafkaConsumer(
                     consumer = consumer,
@@ -40,7 +40,7 @@ class LeaderControlledKafkaConsumerTest :
                 consumer.stopCount shouldBe 1
             }
 
-            it("should not start the consumer twice for repeated leader events") {
+            test("should not start the consumer twice for repeated leader events") {
                 val consumer = TestKafkaListener()
                 val leaderControlledConsumer = LeaderControlledKafkaConsumer(
                     consumer = consumer,
@@ -57,7 +57,7 @@ class LeaderControlledKafkaConsumerTest :
                 consumer.stopCount shouldBe 1
             }
 
-            it("should wait for stop to finish before starting again") {
+            test("should wait for stop to finish before starting again") {
                 val stopStarted = CompletableDeferred<Unit>()
                 val allowStopToFinish = CompletableDeferred<Unit>()
                 val consumer = BlockingTestKafkaListener(

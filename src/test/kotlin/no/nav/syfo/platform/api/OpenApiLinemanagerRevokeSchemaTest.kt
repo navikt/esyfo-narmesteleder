@@ -1,15 +1,15 @@
 package no.nav.syfo.platform.api
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainAll
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import org.yaml.snakeyaml.Yaml
 import kotlin.reflect.full.memberProperties
 
 class OpenApiLinemanagerRevokeSchemaTest :
-    StringSpec({
+    FunSpec({
 
-        "openapi LinemanagerRevoke schema matches LinemanagerRevoke domain properties" {
+        test("openapi LinemanagerRevoke schema matches LinemanagerRevoke domain properties") {
             val yamlText = this::class.java.classLoader
                 .getResource("openapi/documentation.yaml")!!
                 .readText()

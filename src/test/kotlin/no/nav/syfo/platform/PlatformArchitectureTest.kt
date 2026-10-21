@@ -1,6 +1,6 @@
 package no.nav.syfo.platform
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import no.nav.syfo.bootstrap.Environment
@@ -12,8 +12,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class PlatformArchitectureTest :
-    StringSpec({
-        "platform does not reference business modules, integration or application assembly" {
+    FunSpec({
+        test("platform does not reference business modules, integration or application assembly") {
             val classes = Path.of(Step::class.java.protectionDomain.codeSource.location.toURI())
             val violations = Files.walk(classes.resolve("no/nav/syfo/platform")).use { files ->
                 files.filter { it.toString().endsWith(".class") }
@@ -23,7 +23,7 @@ class PlatformArchitectureTest :
             violations.shouldBeEmpty()
         }
 
-        "the guard detects forbidden references in type descriptors" {
+        test("the guard detects forbidden references in type descriptors") {
             val type = BootstrapReferenceFixture::class.java
             val bytes = requireNotNull(type.getResourceAsStream("/${type.name.replace('.', '/')}.class"))
                 .use { it.readAllBytes() }

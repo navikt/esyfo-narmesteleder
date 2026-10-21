@@ -1,6 +1,6 @@
 package no.nav.syfo.platform.api
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.shouldBe
@@ -13,10 +13,10 @@ import kotlin.reflect.full.memberProperties
 import no.nav.syfo.narmestelederbehov.api.Manager as FulfillmentManager
 
 class OpenApiLinemanagerSchemaTest :
-    StringSpec({
+    FunSpec({
         val logger = logger()
 
-        "openapi Linemanager schema matches Linemanager and nested Manager properties" {
+        test("openapi Linemanager schema matches Linemanager and nested Manager properties") {
             val yamlText = this::class.java.classLoader
                 .getResource("openapi/documentation.yaml")!!
                 .readText()
@@ -47,7 +47,7 @@ class OpenApiLinemanagerSchemaTest :
             managerRef shouldBe "#/components/schemas/Manager"
         }
 
-        "Manager schema exists in OpenAPI documentation and matches domain" {
+        test("Manager schema exists in OpenAPI documentation and matches domain") {
             val yamlText = this::class.java.classLoader
                 .getResource("openapi/documentation.yaml")!!
                 .readText()

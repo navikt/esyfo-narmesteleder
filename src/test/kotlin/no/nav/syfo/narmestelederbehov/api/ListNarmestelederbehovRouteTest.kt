@@ -15,7 +15,6 @@ import io.mockk.mockk
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
-import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
@@ -31,7 +30,6 @@ import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.ApiError
@@ -241,13 +239,11 @@ private class ListRouteFixture(
             repository,
         ) {
             unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
-                ?: if (personFound) EmployeeNameLookupResult.Found(
-                    BehovPersonName(
-                        "Looked",
-                        null,
-                        "Up"
-                    )
-                ) else EmployeeNameLookupResult.NotFound
+                ?: if (personFound) {
+                    EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up"))
+                } else {
+                    EmployeeNameLookupResult.NotFound
+                }
         },
     )
 

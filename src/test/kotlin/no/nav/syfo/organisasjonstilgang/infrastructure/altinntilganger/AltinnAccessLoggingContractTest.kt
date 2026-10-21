@@ -10,11 +10,10 @@ import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
-import io.ktor.client.engine.mock.MockRequestHandler
-import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpStatusCode
+import io.ktor.client.engine.mock.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
 import io.mockk.mockk
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
@@ -24,7 +23,6 @@ import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
-import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
@@ -123,7 +121,7 @@ class AltinnAccessLoggingContractTest :
                                                 ListNarmestelederbehovUseCase(
                                                     UnreachableOpenRepository(),
                                                     access,
-                                                    NarmestelederbehovEmployeeName(mockk(), EmployeeNameLookup { error("Name lookup must not be called") }),
+                                                    NarmestelederbehovEmployeeName(mockk()) { error("Name lookup must not be called") },
                                                 ),
                                                 authClient,
                                             )

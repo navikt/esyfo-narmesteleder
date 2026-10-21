@@ -62,7 +62,7 @@ class GetNarmestelederrelasjonLoggingContractTest :
         ) = GetNarmestelederrelasjonUseCase(
             repository = object : NarmestelederrelasjonRepository {
                 override suspend fun findById(id: UUID) = lookup
-                override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? = error("Not used by GET")
+                override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon = error("Not used by GET")
             },
             organizationAccess = { _, _ -> access },
             activeSykmeldingLookup = { _, _ -> activeSykmelding },

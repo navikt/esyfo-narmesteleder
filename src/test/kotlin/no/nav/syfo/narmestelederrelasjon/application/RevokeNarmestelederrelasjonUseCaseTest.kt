@@ -42,7 +42,7 @@ class RevokeNarmestelederrelasjonUseCaseTest :
             val commands = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
             val useCase = RevokeNarmestelederrelasjonUseCase(
                 repository = object : NarmestelederrelasjonRepository {
-                    override suspend fun findById(id: UUID): NarmestelederrelasjonLookup? = error("Not used by revoke")
+                    override suspend fun findById(id: UUID): NarmestelederrelasjonLookup = error("Not used by revoke")
                     override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? {
                         effects.add("lookup")
                         return if (id == relationId) lookup else null

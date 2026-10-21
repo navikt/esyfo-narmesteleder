@@ -13,7 +13,6 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 

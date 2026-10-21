@@ -10,7 +10,6 @@ import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.upstream.UpstreamFailure

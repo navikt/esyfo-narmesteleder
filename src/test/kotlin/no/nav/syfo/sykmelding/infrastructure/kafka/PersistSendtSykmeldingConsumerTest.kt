@@ -41,7 +41,7 @@ class PersistSendtSykmeldingConsumerTest :
             handler = handler,
             jacksonMapper = jacksonMapper(),
             kafkaConsumer = kafkaConsumer,
-            scope = kotlinx.coroutines.CoroutineScope(EmptyCoroutineContext),
+            scope = CoroutineScope(EmptyCoroutineContext),
             enabled = true,
         )
 

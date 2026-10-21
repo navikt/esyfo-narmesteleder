@@ -41,7 +41,7 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
             access: OrganizationAccessResult = OrganizationAccessResult.Denied(denial),
         ) = RevokeNarmestelederrelasjonUseCase(
             repository = object : NarmestelederrelasjonRepository {
-                override suspend fun findById(id: UUID): NarmestelederrelasjonLookup? = error("Not used by revoke")
+                override suspend fun findById(id: UUID): NarmestelederrelasjonLookup = error("Not used by revoke")
                 override suspend fun findRevocableById(id: UUID) = if (found) {
                     RevocableNarmestelederrelasjon(id, employee, PersonalIdentificationNumber("10987654321"), org, isActive = false)
                 } else {

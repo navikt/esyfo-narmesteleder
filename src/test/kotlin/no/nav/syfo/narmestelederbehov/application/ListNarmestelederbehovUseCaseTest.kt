@@ -10,7 +10,6 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.observability.withProductionLogs
@@ -167,7 +166,7 @@ private class ListFixture(
     }
     private val useCase = ListNarmestelederbehovUseCase(
         repository = openRepository,
-        organizationAccess = OrganizationAccess { caller, organizationNumber ->
+        organizationAccess = { caller, organizationNumber ->
             organizationNumber shouldBe ORGANIZATION_NUMBER
             subject = caller
             effects += "access"
@@ -175,13 +174,22 @@ private class ListFixture(
         },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
-            EmployeeNameLookup { it ->
-                effects += "person"
-                lookedUp += it
-                unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
-                    ?: if (personFound) EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up")) else EmployeeNameLookupResult.NotFound
-            },
-        ),
+        ) { it ->
+            effects += "person"
+            lookedUp += it
+            unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
+                ?: if (personFound) {
+                    EmployeeNameLookupResult.Found(
+                        BehovPersonName(
+                            "Looked",
+                            null,
+                            "Up"
+                        )
+                    )
+                } else {
+                    EmployeeNameLookupResult.NotFound
+                }
+        },
     )
 
     suspend fun execute(

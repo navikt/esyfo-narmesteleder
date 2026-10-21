@@ -27,7 +27,6 @@ import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
-import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.RevokeActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails

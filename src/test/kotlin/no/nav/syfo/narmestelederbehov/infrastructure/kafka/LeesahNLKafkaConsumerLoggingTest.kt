@@ -10,10 +10,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import no.nav.syfo.integration.aareg.AAREG
-import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.FakeBehovRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -96,10 +94,10 @@ class LeesahNLKafkaConsumerLoggingTest :
         }
     })
 
-private fun unusedHandler() = NlBehovLeesahHandler(CreateNarmestelederbehov { error("Unexpected CreateNarmestelederbehov") })
+private fun unusedHandler() = NlBehovLeesahHandler { error("Unexpected CreateNarmestelederbehov") }
 
 private fun unusedFulfillBehovFromLeesah() = FulfillNarmestelederbehovFromLeesahUseCase(
     behovRepository = FakeBehovRepository(behov = null),
     metrics = { error("Unexpected fulfillment metric") },
-    dialog = NarmestelederbehovDialog { error("Unexpected dialog completion") },
+    dialog = { error("Unexpected dialog completion") },
 )

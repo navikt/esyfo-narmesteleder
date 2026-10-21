@@ -185,7 +185,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             val clock = object : Clock() {
                 override fun instant(): Instant = checkedAt
                 override fun getZone(): ZoneId = ZoneOffset.UTC
-                override fun withZone(zone: ZoneId): Clock = Clock.fixed(checkedAt, zone)
+                override fun withZone(zone: ZoneId): Clock = fixed(checkedAt, zone)
             }
 
             useCase(revokeEnabled = true, clock = clock) {

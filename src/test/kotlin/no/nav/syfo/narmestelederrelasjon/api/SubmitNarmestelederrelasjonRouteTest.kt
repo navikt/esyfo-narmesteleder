@@ -27,7 +27,6 @@ import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase

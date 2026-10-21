@@ -5,37 +5,24 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldMatch
-import io.kotest.matchers.string.shouldStartWith
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.spyk
 import nlBehovEntity
 import no.nav.syfo.altinn.dialogporten.service.DialogportenService
-import no.nav.syfo.integration.pdl.FakePdlClient
-import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmesteleder.db.FakeNarmestelederDb
 import no.nav.syfo.narmesteleder.db.NarmestelederBehovEntity
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
-import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogPatchResult
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.AttachmentUrlConsumerType
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Content
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValue
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValueItem
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
-import no.nav.syfo.pdl.PdlService
-import no.nav.syfo.platform.upstream.UpstreamError
-import no.nav.syfo.platform.upstream.UpstreamFailure
-import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
@@ -44,10 +31,6 @@ import java.util.*
 class DialogportenServiceTest :
     DescribeSpec({
         val dialogportenClient = mockk<DialogportenClient>()
-        val narmestelederbehovApiUrl = "https://test.nav.no/api/v1/linemanager/requirement"
-        val frontendBaseUrl = "https://frontend.test.nav.no"
-        val fakePdsClient = FakePdlClient()
-        val pdlService = spyk(PdlService(fakePdsClient))
 
         lateinit var fakeNarmestelederDb: FakeNarmestelederDb
         lateinit var spyNarmestelederDb: FakeNarmestelederDb
@@ -61,11 +44,6 @@ class DialogportenServiceTest :
                 DialogportenService(
                     dialogportenClient = dialogportenClient,
                     narmestelederDb = spyNarmestelederDb,
-                    dialogFactory = NarmestelederbehovDialogFactory(
-                        narmestelederbehovApiUrl = narmestelederbehovApiUrl,
-                        frontendBaseUrl = frontendBaseUrl,
-                    ),
-                    pdlService = pdlService,
                 )
             spyNarmestelederDb.clear()
         }
@@ -93,266 +71,6 @@ class DialogportenServiceTest :
                 appender.stop()
             }
         }
-        it("creates the dialog without a name on a PDL failure or not found and logs only failures") {
-            val pdlClient = mockk<PdlClient>()
-            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("server_error")))
-            val logger = LoggerFactory.getLogger(DialogportenService::class.java) as Logger
-            val appender = ListAppender<ILoggingEvent>().apply { start() }
-            val originalLevel = logger.level
-            logger.level = ch.qos.logback.classic.Level.TRACE
-            logger.addAppender(appender)
-            try {
-                listOf(UpstreamResult.Failure(failure), UpstreamResult.Success(null)).forEach { result ->
-                    appender.list.clear()
-                    val service = DialogportenService(dialogportenClient, spyNarmestelederDb, NarmestelederbehovDialogFactory(narmestelederbehovApiUrl, frontendBaseUrl), PdlService(pdlClient))
-                    val behov = spyNarmestelederDb.seed(nlBehovEntity())
-                    val dialog = slot<Dialog>()
-                    coEvery { pdlClient.getPerson(any()) } returns result
-                    coEvery { dialogportenClient.createDialog(capture(dialog)) } returns UpstreamResult.Success(UUID.randomUUID())
-                    service.sendToDialogporten(behov)
-                    dialog.isCaptured shouldBe true
-                    requireNotNull(spyNarmestelederDb.findBehovById(requireNotNull(behov.id))).fornavn shouldBe null
-                    val failures = appender.list.filter { event -> event.keyValuePairs.orEmpty().any { it.key == "event_type" && it.value == "dialog_person_enrichment_failed" } }
-                    failures.size shouldBe if (result is UpstreamResult.Failure) 1 else 0
-                }
-            } finally {
-                logger.detachAppender(appender)
-                appender.stop()
-                logger.level = originalLevel
-            }
-        }
-
-        describe("sendDocumentsToDialogporten") {
-            context("when there are no behov to send") {
-                it("should not call dialogporten client") {
-                    // Arrange
-                    // Act
-                    dialogportenService.sendDocumentsToDialogporten()
-
-                    // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(eq(BehovStatus.BEHOV_CREATED)) }
-                    coVerify(exactly = 0) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 0) { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) }
-                }
-            }
-
-            context("when there is one behov to send") {
-                it("should send document to dialogporten and update status to DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION") {
-                    // Arrange
-                    // Use a deterministic FNR where month digits (index 2-3) are >12,
-                    // ensuring ninToInfoString() always falls back to the d-nummer format.
-                    val deterministicFnr = "12991234567"
-                    val behovEntity = spyNarmestelederDb.seed(nlBehovEntity().copy(sykmeldtFnr = deterministicFnr))
-                    val dialogId = UUID.randomUUID()
-                    val dialogSlot = slot<Dialog>()
-
-                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns UpstreamResult.Success(dialogId)
-
-                    // Act
-                    dialogportenService.sendDocumentsToDialogporten()
-
-                    // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
-                    coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
-                    val updated = spyNarmestelederDb.findBehovById(behovEntity.id!!)!!
-                    updated.dialogId shouldBe dialogId
-                    updated.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-                    coVerify(exactly = 1) { pdlService.getPersonFor(eq(behovEntity.sykmeldtFnr)) }
-
-                    val capturedDialog = dialogSlot.captured
-                    capturedDialog.party shouldBe "urn:altinn:organization:identifier-no:${behovEntity.orgnummer}"
-                    capturedDialog.externalReference shouldBe behovEntity.id.toString()
-                    capturedDialog.isApiOnly shouldBe false
-                    capturedDialog.status shouldBe DialogStatus.RequiresAttention
-                    capturedDialog.attachments?.size shouldBe 2
-                    capturedDialog.attachments
-                        ?.first()
-                        ?.urls
-                        ?.first()
-                        ?.consumerType shouldBe AttachmentUrlConsumerType.Api
-                    capturedDialog.attachments
-                        ?.last()
-                        ?.urls
-                        ?.first()
-                        ?.consumerType shouldBe AttachmentUrlConsumerType.Gui
-                    capturedDialog.content.title.value
-                        .first()
-                        .value shouldStartWith "Oppgi nærmeste leder for"
-                    capturedDialog.content.title.value
-                        .first()
-                        .value shouldMatch Regex(""".+\(f\. \d{2}\.\d{2}\.\d{4}\)""")
-                }
-            }
-            context("when there are multiple documents to send") {
-                it("should send all documents to dialogporten") {
-                    // Arrange
-                    val behovEntity1 = nlBehovEntity()
-                    val behovEntity2 = nlBehovEntity()
-                    val dialogId1 = UUID.randomUUID()
-                    val dialogId2 = UUID.randomUUID()
-
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns
-                        listOf(
-                            behovEntity1,
-                            behovEntity2,
-                        )
-                    coEvery { dialogportenClient.createDialog(any()) } returnsMany listOf(UpstreamResult.Success(dialogId1), UpstreamResult.Success(dialogId2))
-                    coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
-
-                    // Act
-                    dialogportenService.sendDocumentsToDialogporten()
-
-                    // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
-                    coVerify(exactly = 2) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 2) { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) }
-                }
-            }
-
-            context("when dialogporten client throws exception") {
-                it("should log error and continue without updating document status") {
-                    // Arrange
-                    val behovEntity1 = nlBehovEntity()
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
-                    coEvery { dialogportenClient.createDialog(any()) } throws RuntimeException("Dialogporten error")
-
-                    // Act
-                    dialogportenService.sendDocumentsToDialogporten()
-
-                    // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
-                    coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 0) { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) }
-                }
-            }
-
-            context("when one dialog fails but others succeed") {
-                it("should continue processing remaining documents") {
-                    // Arrange
-                    val behovEntity1 = nlBehovEntity()
-                    val behovEntity2 = nlBehovEntity()
-                    val behovEntity3 = nlBehovEntity()
-                    val dialogId2 = UUID.randomUUID()
-                    val dialogId3 = UUID.randomUUID()
-
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns
-                        listOf(
-                            behovEntity1,
-                            behovEntity2,
-                            behovEntity3,
-                        )
-                    coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
-
-                    // First call succeeds, second fails, third succeeds
-                    var callCount = 0
-                    coEvery { dialogportenClient.createDialog(any()) } answers {
-                        callCount++
-                        when (callCount) {
-                            1 -> UpstreamResult.Success(dialogId2)
-                            2 -> throw RuntimeException("Error")
-                            3 -> UpstreamResult.Success(dialogId3)
-                            else -> throw RuntimeException("Unexpected call")
-                        }
-                    }
-
-                    // Act
-                    dialogportenService.sendDocumentsToDialogporten()
-
-                    // Assert
-                    coVerify(exactly = 1) { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) }
-                    coVerify(exactly = 3) { dialogportenClient.createDialog(any()) }
-                    coVerify(exactly = 2) { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } // Only 2 successful updates
-                }
-            }
-
-            context("when the behov leaves BEHOV_CREATED while the dialog is created") {
-                it("should keep the new status and log the created dialog") {
-                    val logger = LoggerFactory.getLogger(DialogportenService::class.java) as Logger
-                    val appender = ListAppender<ILoggingEvent>()
-                    val originalLevel = logger.level
-                    logger.level = ch.qos.logback.classic.Level.WARN
-                    appender.start()
-                    logger.addAppender(appender)
-                    try {
-                        val behovEntity = spyNarmestelederDb.seed(nlBehovEntity())
-                        val dialogId = UUID.randomUUID()
-                        coEvery { dialogportenClient.createDialog(any()) } coAnswers {
-                            spyNarmestelederDb.updateNlBehov(behovEntity.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
-                            UpstreamResult.Success(dialogId)
-                        }
-
-                        dialogportenService.sendToDialogporten(behovEntity)
-
-                        val stored = spyNarmestelederDb.findBehovById(behovEntity.id!!)!!
-                        stored.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
-                        stored.dialogId shouldBe null
-                        val fields = appender.list.single().keyValuePairs.associate { it.key to it.value }
-                        fields["event_type"] shouldBe "dialog_created_for_closed_behov"
-                        fields["behov_id"] shouldBe behovEntity.id.toString()
-                        fields["dialog_id"] shouldBe dialogId.toString()
-                    } finally {
-                        logger.detachAppender(appender)
-                        appender.stop()
-                        logger.level = originalLevel
-                    }
-                }
-            }
-
-            context("when dialog content includes correct resource URN") {
-                it("should use nav_syfo_dialog resource") {
-                    // Arrange
-                    val behovEntity1 = nlBehovEntity()
-                    val dialogId = UUID.randomUUID()
-                    val dialogSlot = slot<Dialog>()
-
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
-                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns UpstreamResult.Success(dialogId)
-                    coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
-
-                    // Act
-                    dialogportenService.sendDocumentsToDialogporten()
-
-                    // Assert
-                    val capturedDialog = dialogSlot.captured
-                    capturedDialog.serviceResource shouldBe "urn:altinn:resource:nav_syfo_oppgi-narmesteleder"
-                }
-            }
-
-            context("when dialog has attachment URLs") {
-                it("should create correct document link with linkId") {
-                    // Arrange
-                    val behovEntity1 = nlBehovEntity()
-                    val dialogId = UUID.randomUUID()
-                    val dialogSlot = slot<Dialog>()
-
-                    coEvery { spyNarmestelederDb.getNlBehovByStatus(BehovStatus.BEHOV_CREATED) } returns listOf(behovEntity1)
-                    coEvery { dialogportenClient.createDialog(capture(dialogSlot)) } returns UpstreamResult.Success(dialogId)
-                    coEvery { spyNarmestelederDb.markDialogCreated(any(), any(), any(), any(), any()) } returns true
-
-                    // Act
-                    dialogportenService.sendDocumentsToDialogporten()
-
-                    // Assert
-                    val capturedDialog = dialogSlot.captured
-                    val apiAttachmentUrl =
-                        capturedDialog.attachments
-                            ?.first()
-                            ?.urls
-                            ?.first()
-                    apiAttachmentUrl?.consumerType shouldBe AttachmentUrlConsumerType.Api
-                    apiAttachmentUrl?.url shouldBe "$narmestelederbehovApiUrl/${behovEntity1.id}"
-
-                    val guiAttachmentUrl =
-                        capturedDialog.attachments
-                            ?.last()
-                            ?.urls
-                            ?.first()
-                    guiAttachmentUrl?.consumerType shouldBe AttachmentUrlConsumerType.Gui
-                    guiAttachmentUrl?.url shouldBe "$frontendBaseUrl/ansatte/narmesteleder/${behovEntity1.id}"
-                }
-            }
-        }
-
         describe("Update status in dialogporten when behov is fulfilled") {
             context("when there are no fulfilled behovs") {
                 it("should not call dialogporten client") {
@@ -1008,19 +726,6 @@ class DialogportenServiceTest :
                         any<List<HttpDialogportenClient.DialogportenPatch>>(),
                     )
                 }
-            }
-        }
-
-        describe("sendToDialogporten") {
-            it("sendToDialogporten should call createDialog") {
-                // Arrange
-                val behovEntity = nlBehovEntity()
-
-                // Act
-                dialogportenService.sendToDialogporten(behovEntity)
-
-                // Assert
-                coVerify(exactly = 1) { dialogportenClient.createDialog(any()) }
             }
         }
 

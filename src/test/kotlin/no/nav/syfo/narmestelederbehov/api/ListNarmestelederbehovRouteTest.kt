@@ -261,6 +261,7 @@ private class ListRouteFixture(
 private class ListRouteRepository :
     OpenNarmestelederbehovRepository,
     NarmestelederbehovRepository {
+    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
     override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
     val rows = mutableListOf(routeDetails())

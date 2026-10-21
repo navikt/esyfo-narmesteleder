@@ -12,19 +12,24 @@ import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.application.PendingNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 
 class ExposedNarmestelederbehovRepository(private val database: Database) : NarmestelederbehovRepository {
@@ -113,6 +118,33 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
                 it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
             }
             if (updated == 1) MarkDialogCompletedResult.Marked else MarkDialogCompletedResult.NotFulfilled
+        }
+    }
+
+    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> = withContext(Dispatchers.IO) {
+        suspendTransaction(db = database) {
+            NarmestelederbehovTable.select(
+                NarmestelederbehovTable.id,
+                NarmestelederbehovTable.sykmeldtFnr,
+                NarmestelederbehovTable.orgnummer,
+                NarmestelederbehovTable.created,
+                NarmestelederbehovTable.dialogId,
+            ).where {
+                (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED) and
+                    (NarmestelederbehovTable.created less createdBefore.atOffset(ZoneOffset.UTC))
+            }.orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
+                .limit(limit)
+                .map { row ->
+                    PendingNarmestelederbehovDialog(
+                        id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
+                        employee = Employee(
+                            PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]),
+                            OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
+                        ),
+                        created = row[NarmestelederbehovTable.created].toInstant(),
+                        dialogId = row[NarmestelederbehovTable.dialogId],
+                    )
+                }
         }
     }
 

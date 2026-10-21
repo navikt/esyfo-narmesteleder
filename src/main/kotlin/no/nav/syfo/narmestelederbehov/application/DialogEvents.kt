@@ -4,7 +4,7 @@ import no.nav.syfo.logging.applicationEvent
 import org.slf4j.event.Level
 import java.util.UUID
 
-// Shared by CreateNarmestelederbehovUseCase and the legacy DialogportenService until the latter is migrated.
+// Shared by behov dialog creation, scheduled sending and the remaining legacy update/expire flow.
 
 internal enum class DialogAction {
     CREATE,

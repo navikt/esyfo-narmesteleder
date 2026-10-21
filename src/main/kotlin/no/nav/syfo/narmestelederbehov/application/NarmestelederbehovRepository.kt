@@ -6,6 +6,7 @@ import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import java.time.Instant
 import java.util.UUID
 
 interface NarmestelederbehovRepository {
@@ -22,12 +23,22 @@ interface NarmestelederbehovRepository {
 
     suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult
 
+    /** BEHOV_CREATED strictly older than [createdBefore], oldest first. */
+    suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog>
+
     /** Saves the dialog and the employee name, and sets DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, only while the behov is BEHOV_CREATED. */
     suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?): MarkDialogCreatedResult
 
     /** Returns [CreateBehovResult.AlreadyExists] when the employee already has an open behov in the organization. */
     suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult
 }
+
+data class PendingNarmestelederbehovDialog(
+    val id: NarmestelederbehovId,
+    val employee: Employee,
+    val created: Instant,
+    val dialogId: UUID?,
+)
 
 data class NewNarmestelederbehov(
     val employee: Employee,

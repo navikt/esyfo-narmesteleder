@@ -128,6 +128,7 @@ private class ListFixture(
     var requestedCreatedAfter: Instant? = null
     var subject: OrganizationAccessSubject? = null
     private val repository = object : NarmestelederbehovRepository {
+        override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
         override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
         override suspend fun findDetails(id: NarmestelederbehovId) = error("List must not find by id")

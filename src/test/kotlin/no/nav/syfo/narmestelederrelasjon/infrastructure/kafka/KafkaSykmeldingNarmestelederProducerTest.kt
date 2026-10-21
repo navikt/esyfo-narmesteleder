@@ -8,10 +8,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import linemanager
 import no.nav.syfo.application.kafka.JacksonKafkaSerializer
-import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.KafkaSykmeldingNarmestelederProducer.Companion.SYKEMELDING_NL_TOPIC
-import no.nav.syfo.pdl.Person
 import org.apache.kafka.common.serialization.Serializer
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -28,30 +26,23 @@ class KafkaSykmeldingNarmestelederProducerTest :
 
         fun nlResponse(): NlResponse {
             val relasjon = linemanager()
-            val linemanagerPerson = Person(
-                nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
-                name =
-                Navn(faker.name().firstName(), null, faker.name().lastName())
-            )
-            val sykmeldtPerson = Person(
-                nationalIdentificationNumber = relasjon.employeeIdentificationNumber,
-                name = Navn(faker.name().firstName(), null, faker.name().lastName())
-            )
+            val linemanagerName = Navn(faker.name().firstName(), null, faker.name().lastName())
+            val sykmeldtName = Navn(faker.name().firstName(), null, faker.name().lastName())
             return NlResponse(
                 orgnummer = relasjon.orgNumber.value,
                 leder = Leder(
                     fnr = relasjon.manager.nationalIdentificationNumber.value,
                     mobil = relasjon.manager.mobile,
                     epost = relasjon.manager.email,
-                    fornavn = linemanagerPerson.name.fornavn,
-                    etternavn = linemanagerPerson.name.etternavn,
+                    fornavn = linemanagerName.fornavn,
+                    etternavn = linemanagerName.etternavn,
                 ),
                 sykmeldt = Sykmeldt(
-                    fnr = sykmeldtPerson.nationalIdentificationNumber.value,
+                    fnr = relasjon.employeeIdentificationNumber.value,
                     navn = listOfNotNull(
-                        sykmeldtPerson.name.fornavn,
-                        sykmeldtPerson.name.mellomnavn,
-                        sykmeldtPerson.name.etternavn,
+                        sykmeldtName.fornavn,
+                        sykmeldtName.mellomnavn,
+                        sykmeldtName.etternavn,
                     ).joinToString(" "),
                 ),
                 utbetalesLonn = null,

@@ -1,6 +1,5 @@
 package no.nav.syfo.plugins
 
-import no.nav.syfo.altinn.dialogporten.task.SendDialogTask
 import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
@@ -23,7 +22,6 @@ internal fun tasksModule() = module {
             interval = Duration.parse(env().otherProperties.maintenanceTaskDelay),
         )
     }
-    single { SendDialogTask(dialogportenService = get()) }
     single {
         UpdateDialogTask(
             dialogportenService = get(),

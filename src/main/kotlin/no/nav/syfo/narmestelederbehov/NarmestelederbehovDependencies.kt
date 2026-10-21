@@ -22,6 +22,7 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.SendPendingNarmestelederbehovDialogsUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmployerMainOrganizationLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
@@ -34,6 +35,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbeho
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeePersonLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
 
@@ -46,6 +48,15 @@ fun narmestelederbehovDependencies() = module {
         )
     }
     single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
+    single {
+        SendPendingNarmestelederbehovDialogsUseCase(
+            repository = get(),
+            personLookup = get(),
+            dialog = get(),
+            clock = get(),
+        )
+    }
+    single { SendDialogTask(sendPendingDialogs = get()) }
     single<OpenNarmestelederbehovRepository> { ExposedOpenNarmestelederbehovRepository(get<Database>()) }
     single<NarmestelederbehovExpiryRepository> { ExposedNarmestelederbehovExpiryRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }

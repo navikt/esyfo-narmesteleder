@@ -120,32 +120,29 @@ fun Application.installStatusPages() {
     }
 }
 
-fun BadRequestException.toApiError(path: String?): ApiError {
-    val rootCause = this.rootCause()
-    return when (rootCause) {
-        is KotlinInvalidNullException -> {
-            ApiErrorException.BadRequestException(
-                "Invalid request body. Missing required field: ${rootCause.propertyName}",
-                type = ErrorType.INVALID_FORMAT
-            ).toApiError(path ?: "")
-        }
+fun BadRequestException.toApiError(path: String?) = when (val rootCause = this.rootCause()) {
+    is KotlinInvalidNullException -> {
+        ApiErrorException.BadRequestException(
+            "Invalid request body. Missing required field: ${rootCause.propertyName}",
+            type = ErrorType.INVALID_FORMAT
+        ).toApiError(path ?: "")
+    }
 
-        is IllegalArgumentException,
-        is ValueInstantiationException -> {
-            ApiErrorException.BadRequestException(
-                rootCause.message ?: "Invalid request body",
-                type = ErrorType.INVALID_FORMAT
-            ).toApiError(path ?: "")
-        }
+    is IllegalArgumentException,
+    is ValueInstantiationException -> {
+        ApiErrorException.BadRequestException(
+            rootCause.message ?: "Invalid request body",
+            type = ErrorType.INVALID_FORMAT
+        ).toApiError(path ?: "")
+    }
 
-        else -> {
-            ApiError(
-                status = HttpStatusCode.BadRequest,
-                type = ErrorType.BAD_REQUEST,
-                message = this.message ?: "Bad request",
-                path = path
-            )
-        }
+    else -> {
+        ApiError(
+            status = HttpStatusCode.BadRequest,
+            type = ErrorType.BAD_REQUEST,
+            message = this.message ?: "Bad request",
+            path = path
+        )
     }
 }
 

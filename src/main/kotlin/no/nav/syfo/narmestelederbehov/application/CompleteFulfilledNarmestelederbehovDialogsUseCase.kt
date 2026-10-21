@@ -13,14 +13,14 @@ class CompleteFulfilledNarmestelederbehovDialogsUseCase(
     suspend fun execute() {
         val batch = repository.findFulfilledDialogs(clock.instant().minusSeconds(10))
         logger.info("Found ${batch.size} fulfilled behovs to complete in dialogporten")
-        for (behov in batch) {
-            val details = DialogEventDetails(behov.id.value, behov.dialogId).copy(action = DialogAction.COMPLETE)
+        for ((id, dialogId) in batch) {
+            val details = DialogEventDetails(id.value, dialogId).copy(action = DialogAction.COMPLETE)
             try {
-                when (val result = dialog.complete(behov.dialogId)) {
+                when (val result = dialog.complete(dialogId)) {
                     DialogCompletion.Completed -> {
-                        when (repository.markDialogCompleted(behov.id)) {
-                            MarkDialogCompletedResult.Marked -> logger.info("Successfully updated Dialogporten for dialog ${behov.dialogId}")
-                            MarkDialogCompletedResult.NotFulfilled -> logger.info("Behov ${behov.id.value} is no longer fulfilled; dialog completion was not marked")
+                        when (repository.markDialogCompleted(id)) {
+                            MarkDialogCompletedResult.Marked -> logger.info("Successfully updated Dialogporten for dialog $dialogId")
+                            MarkDialogCompletedResult.NotFulfilled -> logger.info("Behov ${id.value} is no longer fulfilled; dialog completion was not marked")
                         }
                     }
                     is DialogCompletion.Unavailable -> logger.logEvent(dialogportenDialogFailed, details, upstreamFailure = result.failure)

@@ -17,15 +17,15 @@ class ExpireNarmestelederbehovDialogsUseCase(
         do {
             val batch = repository.findDialogsToExpire()
             logger.info("Batch: ${++batchNum}:: Found ${batch.size} expired behovs to expire in dialogporten")
-            for (behov in batch) {
-                val details = DialogEventDetails(behov.id.value, behov.dialogId).copy(action = DialogAction.EXPIRE)
+            for ((id, dialogId) in batch) {
+                val details = DialogEventDetails(id.value, dialogId).copy(action = DialogAction.EXPIRE)
                 try {
                     // Dialogporten requires a future time, with slack for retries and processing.
                     val expirationTime = clock.instant().plusSeconds(600)
-                    when (val result = dialog.expire(behov.dialogId, expirationTime)) {
+                    when (val result = dialog.expire(dialogId, expirationTime)) {
                         DialogExpiry.Expired -> {
-                            repository.markDialogExpired(behov.id, expirationTime)
-                            logger.info("Successfully updated expired behov ${behov.id.value} with expired date: $expirationTime")
+                            repository.markDialogExpired(id, expirationTime)
+                            logger.info("Successfully updated expired behov ${id.value} with expired date: $expirationTime")
                         }
                         is DialogExpiry.Unavailable -> logger.logEvent(dialogportenDialogFailed, details, upstreamFailure = result.failure)
                     }

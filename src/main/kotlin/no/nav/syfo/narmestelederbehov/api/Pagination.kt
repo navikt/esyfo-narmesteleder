@@ -19,11 +19,8 @@ fun RoutingCall.getCreatedAfter(): Instant {
     }
 }
 
-fun RoutingCall.getPageSize(): Int {
-    val pageSize = queryParameters["pageSize"]?.toIntOrNull()
-    return when (pageSize) {
-        null -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
-        in 1..LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE -> pageSize
-        else -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
-    }
+fun RoutingCall.getPageSize() = when (val pageSize = queryParameters["pageSize"]?.toIntOrNull()) {
+    null -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
+    in 1..LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE -> pageSize
+    else -> LinemanagerRequirementCollection.DEFAULT_PAGE_SIZE
 }

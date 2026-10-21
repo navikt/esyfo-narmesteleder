@@ -310,6 +310,6 @@ private class RecordingCreateNarmestelederbehov : CreateNarmestelederbehov {
 
 private fun List<Pair<LocalDate, LocalDate>>.toPeriods() = map { (fom, tom) -> SykmeldingsperiodeAGDTO(fom = fom, tom = tom) }
 
-private object UnusedSykmeldingDb : SykmeldingDb {
+internal object UnusedSykmeldingDb : SykmeldingDb {
     override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) = error("Unexpected sykmelding transaction")
 }

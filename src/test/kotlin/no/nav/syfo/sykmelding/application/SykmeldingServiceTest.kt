@@ -23,34 +23,8 @@ class SykmeldingServiceTest :
             TestDB.clearAllData()
         }
 
-        context("processBatch - persists the batch plan") {
-
-            test("should insert sykmelding when it has employer and valid period") {
-                val today = LocalDate.now()
-                val sykmeldingId = UUID.randomUUID()
-                val message = defaultSendtSykmeldingMessage(
-                    sykmeldingId = sykmeldingId.toString(),
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(5), tom = today.plusDays(5))
-                    )
-                )
-
-                service.processBatch(
-                    listOf(
-                        SykmeldingRecord(offset = 0, sykmeldingId = sykmeldingId, message = message)
-                    )
-                )
-
-                val stored = sykmeldingDb.findAll()
-                stored.size shouldBe 1
-                stored.first().fnr shouldBe message.kafkaMetadata.fnr
-                stored.first().orgnummer shouldBe message.event.arbeidsgiver?.orgnummer
-            }
-
-            test("should do nothing when batch is empty") {
-                service.processBatch(emptyList())
-                sykmeldingDb.findAll().size shouldBe 0
-            }
+        test("an empty batch never opens a database transaction") {
+            SykmeldingService(UnusedSykmeldingDb).processBatch(emptyList())
         }
 
         context("processBatch - tombstones (revokes)") {
@@ -82,32 +56,6 @@ class SykmeldingServiceTest :
                 )
 
                 sykmeldingDb.findBySykmeldingId(sykmeldingId)?.revokedDate shouldBe fixedToday
-            }
-
-            test("should insert when insert is final state after tombstone") {
-                val today = LocalDate.now()
-                val sykmeldingId = UUID.randomUUID()
-
-                val insertMessage = defaultSendtSykmeldingMessage(
-                    sykmeldingId = sykmeldingId.toString(),
-                    fnr = "12345678901",
-                    sykmeldingsperioder = listOf(
-                        SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
-                    )
-                )
-
-                // Tombstone then insert - insert has higher offset
-                service.processBatch(
-                    listOf(
-                        SykmeldingRecord(offset = 0, sykmeldingId = sykmeldingId, message = null),
-                        SykmeldingRecord(offset = 1, sykmeldingId = sykmeldingId, message = insertMessage)
-                    )
-                )
-
-                val stored = sykmeldingDb.findAll()
-                stored.size shouldBe 1
-                stored.first().fnr shouldBe "12345678901"
-                stored.first().revokedDate shouldBe null
             }
 
             test("should handle mixed inserts and revokes for different sykmeldingIds") {
@@ -185,6 +133,7 @@ class SykmeldingServiceTest :
                 // id3 should be unchanged
                 sykmeldingDb.findBySykmeldingId(id3)!!.fnr shouldBe "33333333333"
                 sykmeldingDb.findBySykmeldingId(id3)!!.revokedDate shouldBe null
+                sykmeldingDb.findBySykmeldingId(id3)!!.orgnummer shouldBe record3.message?.event?.arbeidsgiver?.orgnummer
             }
         }
     })

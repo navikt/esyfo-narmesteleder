@@ -7,12 +7,14 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.inOrder
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevocationInitiator
 import no.nav.syfo.narmestelederrelasjon.observability.LINEMANAGER_REVOKE_BY_ID_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
@@ -53,6 +55,26 @@ class RevokeNarmestelederrelasjonRouteTest :
                 organizationAccess.calls shouldBe emptyList()
             }
 
+            test("accepts an authorized Maskinporten system user as LPS") {
+                texasHttpClient.stubMaskinportenSystemUser()
+                withTestApplication {
+                    client.delete(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }.status shouldBe HttpStatusCode.Accepted
+                }
+                published.single().initiator shouldBe RevocationInitiator.LPS
+                organizationAccess.calls.map { it.second } shouldBe listOf(OrganizationNumber("123456789"))
+            }
+
+            test("masks a rejected Maskinporten system user with the 404") {
+                texasHttpClient.stubMaskinportenSystemUser()
+                organizationAccess.result = OrganizationAccessResult.Denied(DenialReason.SYSTEM_USER_REJECTED)
+                withTestApplication {
+                    val response = client.delete(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }
+                    response.status shouldBe HttpStatusCode.NotFound
+                    response.bodyAsText() shouldContain """"message":"Linemanager relation not found""""
+                }
+                published.size shouldBe 0
+            }
+
             test("accepts an already revoked relation without publishing") {
                 repository.revocableById = { revocableLookup(isActive = false) }
                 withTestApplication {
@@ -85,6 +107,13 @@ class RevokeNarmestelederrelasjonRouteTest :
                     invalid.status shouldBe HttpStatusCode.BadRequest
                     invalid.bodyAsText() shouldContain """"message":"Invalid UUID format for id parameter""""
                     client.delete(path(id.toString())).status shouldBe HttpStatusCode.Unauthorized
+                }
+                published.size shouldBe 0
+            }
+
+            test("treats the sibling search path as an invalid UUID") {
+                withTestApplication {
+                    client.delete(path("search")) { bearerAuth(token()) }.status shouldBe HttpStatusCode.BadRequest
                 }
                 published.size shouldBe 0
             }

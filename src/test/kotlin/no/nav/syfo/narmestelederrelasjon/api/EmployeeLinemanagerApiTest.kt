@@ -21,6 +21,7 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.employee.FakeEmployeeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.employee.ListActiveNarmesteledereForEmployeeUseCase
+import no.nav.syfo.narmestelederrelasjon.infrastructure.EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.observability.EMPLOYEE_LINEMANAGER_TOTAL
 import no.nav.syfo.platform.api.ErrorType
@@ -124,6 +125,13 @@ class EmployeeLinemanagerApiTest :
             }
         }
 
+        test("returns 401 without an authorization header") {
+            withEmployeeApi(useCase, texasHttpClient) {
+                client.get(EMPLOYEE_PATH).status shouldBe HttpStatusCode.Unauthorized
+                repository.lookups.shouldBeEmpty()
+            }
+        }
+
         test("returns 401 without leaking an invalid pid") {
             texasHttpClient.stubTokenX(pid = "abc")
             withEmployeeApi(useCase, texasHttpClient) {
@@ -144,6 +152,16 @@ class EmployeeLinemanagerApiTest :
                 client.getEmployee("?orgNumber=123456789").status shouldBe HttpStatusCode.OK
                 requestCount("false") shouldBeExactly unfilteredBefore + 1
                 requestCount("true") shouldBeExactly filteredBefore + 1
+            }
+        }
+
+        test("does not count rejected requests") {
+            val filteredBefore = requestCount("true")
+            val discardedBefore = discardedCount()
+            withEmployeeApi(useCase, texasHttpClient) {
+                client.getEmployee("?orgNumber=").status shouldBe HttpStatusCode.BadRequest
+                requestCount("true") shouldBeExactly filteredBefore
+                discardedCount() shouldBeExactly discardedBefore
             }
         }
     })
@@ -172,5 +190,10 @@ private fun withEmployeeApi(
 private fun requestCount(filtered: String): Double = METRICS_REGISTRY
     .find(EMPLOYEE_LINEMANAGER_TOTAL)
     .tag("filtered", filtered)
+    .counter()
+    ?.count() ?: 0.0
+
+private fun discardedCount(): Double = METRICS_REGISTRY
+    .find(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL)
     .counter()
     ?.count() ?: 0.0

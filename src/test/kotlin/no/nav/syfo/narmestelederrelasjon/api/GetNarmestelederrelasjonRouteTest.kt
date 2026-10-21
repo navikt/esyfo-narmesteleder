@@ -15,6 +15,7 @@ import no.nav.syfo.narmestelederrelasjon.application.inOrder
 import no.nav.syfo.narmestelederrelasjon.observability.GET_NARMESTELEDERRELASJON_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -40,6 +41,18 @@ class GetNarmestelederrelasjonRouteTest :
                     """.trimIndent()
                     organizationAccess.calls.map { it.second } shouldBe listOf(OrganizationNumber("123456789"))
                 }
+            }
+
+            test("returns the relation to a Maskinporten system user with organization access") {
+                texasHttpClient.stubMaskinportenSystemUser()
+                withTestApplication {
+                    val response = client.get(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }
+
+                    response.status shouldBe HttpStatusCode.OK
+                    response.headers[HttpHeaders.CacheControl] shouldBe "no-store"
+                    response.bodyAsText() shouldContain """"id":"$id""""
+                }
+                organizationAccess.calls.map { it.second } shouldBe listOf(OrganizationNumber("123456789"))
             }
 
             test("returns indistinguishable data-free masked 404 errors") {

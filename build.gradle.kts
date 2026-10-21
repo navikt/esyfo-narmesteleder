@@ -93,6 +93,7 @@ dependencies {
 }
 
 val customAvroCodeGeneration = tasks.register<JavaExec>("customAvroCodeGeneration") {
+    description = "Generates Java classes from Avro schemas using the Avro tools jar."
     inputs.file(personhendelseSchema)
     outputs.dir(avroCodeGenerationDir)
     classpath = avroTools
@@ -125,6 +126,7 @@ tasks {
     }
 
     register("printVersion") {
+        description = "Prints the current project version."
         doLast {
             println(project.version)
         }

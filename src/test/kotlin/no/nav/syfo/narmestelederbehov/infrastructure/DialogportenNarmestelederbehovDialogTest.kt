@@ -46,7 +46,7 @@ class DialogportenNarmestelederbehovDialogTest :
             client.calls shouldBe listOf("get")
         }
 
-        listOf<DialogStatus?>(DialogStatus.Completed, DialogStatus.RequiresAttention, null).forEach { status ->
+        listOf(DialogStatus.Completed, DialogStatus.RequiresAttention, null).forEach { status ->
             test("revision conflict rereads once and resolves status $status") {
                 val client = RecordingDialogportenClient(
                     reads = mutableListOf(dialogResult(), dialogResult(status)),

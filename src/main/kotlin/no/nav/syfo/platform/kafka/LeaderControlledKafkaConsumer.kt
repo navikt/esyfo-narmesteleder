@@ -2,7 +2,6 @@ package no.nav.syfo.platform.kafka
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import no.nav.syfo.platform.kafka.KafkaListener
 import org.slf4j.LoggerFactory
 
 class LeaderControlledKafkaConsumer(

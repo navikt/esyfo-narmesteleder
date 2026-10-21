@@ -93,7 +93,7 @@ class RuntimeDiagnosticsTest :
             diagnostics.exceptionType shouldBe $$"ApiErrorException$InternalServerErrorException"
             diagnostics.causeType shouldBe "SocketTimeoutException"
             failure.failureDiagnostics().exceptionType shouldBe "SocketTimeoutException"
-            listOf<Int?>(null, 42, 600).forEach { status ->
+            listOf(null, 42, 600).forEach { status ->
                 failure.copy(status = status).failureDiagnostics().upstreamStatus shouldBe null
             }
         }

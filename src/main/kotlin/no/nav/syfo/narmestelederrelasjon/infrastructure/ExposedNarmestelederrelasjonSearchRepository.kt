@@ -151,7 +151,7 @@ class ExposedNarmestelederrelasjonSearchRepository(
         employeeFirstNameLower: ExpressionWithColumnType<String>,
         employeeLastNameLower: ExpressionWithColumnType<String>,
     ): Op<Boolean> {
-        val filters = mutableListOf<Op<Boolean>>(
+        val filters = mutableListOf(
             NarmestelederTable.orgnummer eq orgNumber.value,
             NarmestelederTable.aktivTom.isNull(),
             NarmestelederTable.aktivFom lessEq now,

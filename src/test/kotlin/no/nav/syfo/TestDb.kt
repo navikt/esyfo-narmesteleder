@@ -14,11 +14,9 @@ import org.slf4j.LoggerFactory
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import java.sql.Connection
-import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
-import kotlin.time.ExperimentalTime
 import kotlin.use
 import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
@@ -96,20 +94,6 @@ class TestDB private constructor() {
             } catch (ex: Exception) {
                 log.error("Error", ex)
                 throw ex
-            }
-        }
-
-        @OptIn(ExperimentalTime::class)
-        fun updateCreated(id: UUID, timestamp: Instant) {
-            database.connection.use {
-                it.prepareStatement(
-                    "UPDATE nl_behov SET created = ? WHERE id = ?;"
-                ).use { preparedStatement ->
-                    preparedStatement.setTimestamp(1, Timestamp.from(timestamp))
-                    preparedStatement.setObject(2, id)
-                    preparedStatement.executeUpdate()
-                }
-                it.commit()
             }
         }
 

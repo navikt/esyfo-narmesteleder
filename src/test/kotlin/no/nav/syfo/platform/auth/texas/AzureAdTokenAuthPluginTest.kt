@@ -96,7 +96,7 @@ private fun startWithPlugin(configure: AzureAdTokenAuthPluginConfiguration.() ->
     startApplication()
 }
 
-private suspend fun callProtectedRoute(texasHttpClient: TexasHttpClient): HttpResponse {
+private fun callProtectedRoute(texasHttpClient: TexasHttpClient): HttpResponse {
     lateinit var response: HttpResponse
     testApplication {
         application {

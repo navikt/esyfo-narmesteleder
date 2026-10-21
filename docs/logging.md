@@ -118,7 +118,8 @@ these contain no personal data. It never contains response `data` or request var
 ## Testing
 
 Test the owner with the production Logback JSON encoder and validate every
-captured record with `RuntimeLogContract` before filtering by event name.
+captured record with `RuntimeLogContract` before filtering by event name. Use
+the shared test helper `ProductionLogs`; its `logs` do both.
 Assert level, event count, fields and sensitive-data canaries. The schema
 validates shape, not privacy. `LoggingArchitectureTest` keeps migrated packages
 on the local logging entry point.

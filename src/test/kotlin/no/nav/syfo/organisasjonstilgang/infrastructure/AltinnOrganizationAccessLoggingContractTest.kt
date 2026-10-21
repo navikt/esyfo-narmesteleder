@@ -13,7 +13,6 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import kotlinx.coroutines.CancellationException
-import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
@@ -29,6 +28,7 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Autho
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
+import no.nav.syfo.platform.observability.ProductionLogCapture
 import no.nav.syfo.platform.observability.ProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -45,7 +45,7 @@ class AltinnOrganizationAccessLoggingContractTest :
             rejectionReasons = setOf(SYSTEM_USER_ACCESS_NOT_GRANTED),
         )
         val productionLogs = extension(ProductionLogs(AltinnOrganizationAccess::class.java))
-        lateinit var capture: LogCapture
+        lateinit var capture: ProductionLogCapture
         val privacyCanaries = listOf(REQUESTED_ORG, SYSTEM_USER_ORG, SYSTEM_USER_ID, PERSON_IDENT, ACCESS_TOKEN)
 
         fun rejectionRecord() = capture.records.single().let {

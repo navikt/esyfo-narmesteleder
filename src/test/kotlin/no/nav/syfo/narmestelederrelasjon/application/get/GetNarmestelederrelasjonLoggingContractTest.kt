@@ -5,7 +5,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
-import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
@@ -15,6 +14,7 @@ import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.observability.ProductionLogCapture
 import no.nav.syfo.platform.observability.ProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -29,7 +29,7 @@ class GetNarmestelederrelasjonLoggingContractTest :
             narmestelederrelasjonOrganizationNameMissing,
         )
         val productionLogs = extension(ProductionLogs(GetNarmestelederrelasjonUseCase::class.java))
-        lateinit var capture: LogCapture
+        lateinit var capture: ProductionLogCapture
 
         val id = UUID.fromString("00000000-0000-0000-0000-00000000abcd")
         val employeeIdent = PersonalIdentificationNumber("12345678901")

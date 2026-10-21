@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -12,11 +9,11 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.platform.observability.withProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.UUID
 
@@ -76,17 +73,12 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
                 dialogIds = mapOf(WITH_DIALOG to DIALOG_ID, WITHOUT_DIALOG to null),
             )
 
-            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovFromLeesahUseCase::class.java) as Logger
-            val previous = logger.level
-            val appender = ListAppender<ILoggingEvent>().apply { start() }
-            logger.level = Level.INFO
-            logger.addAppender(appender)
-            try {
+            withProductionLogs(FulfillNarmestelederbehovFromLeesahUseCase::class.java, Level.INFO) { logs ->
                 val failure = UpstreamFailure(UpstreamName("altinn-authentication"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, errors = listOf(UpstreamError("server_error")))
                 useCase(effects, repository, completion = DialogCompletion.Unavailable(failure)).execute(EMPLOYEE)
 
                 effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "dialog", "fulfilled:$WITHOUT_DIALOG", "metric")
-                val events = appender.list.map { it.keyValuePairs.associate { pair -> pair.key to pair.value } }
+                val events = logs.logs.map { it.fields }
                 val failed = events.single { it["event_type"] == "narmestelederbehov_dialogporten_completion_failed" }
                 failed["upstream"] shouldBe "altinn-authentication"
                 failed["failure_stage"] shouldBe "token_exchange"
@@ -94,10 +86,6 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
                 failed["behov_id"] shouldBe WITH_DIALOG.value.toString()
                 events.filter { it["event_type"] == "narmestelederbehov_fulfilled_from_leesah" }
                     .map { it["dialogporten_completion"] } shouldBe listOf("FAILED", "NOT_APPLICABLE")
-            } finally {
-                logger.detachAppender(appender)
-                logger.level = previous
-                appender.stop()
             }
         }
 
@@ -116,18 +104,12 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
             test("propagates ${failure.javaClass.simpleName} from Dialogporten without business logging") {
                 val effects = mutableListOf<String>()
                 val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), dialogIds = mapOf(WITH_DIALOG to DIALOG_ID))
-                val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovFromLeesahUseCase::class.java) as Logger
-                val appender = ListAppender<ILoggingEvent>().apply { start() }
-                logger.addAppender(appender)
-                try {
+                withProductionLogs(FulfillNarmestelederbehovFromLeesahUseCase::class.java, Level.INFO) { logs ->
                     shouldThrow<Exception> {
                         useCase(effects, repository, dialogFailure = failure).execute(EMPLOYEE)
                     } shouldBe failure
                     effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "dialog")
-                    appender.list shouldBe emptyList()
-                } finally {
-                    logger.detachAppender(appender)
-                    appender.stop()
+                    logs.logs shouldBe emptyList()
                 }
             }
         }

@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -22,35 +19,23 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.api.STATUS_PAGES_LOGGER_NAME
 import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
+import no.nav.syfo.platform.observability.ProductionLogCapture
+import no.nav.syfo.platform.observability.ProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import org.slf4j.LoggerFactory
 
 class GetNarmestelederrelasjonRouteTest :
     FunSpec({
-        val failureLogs = ListAppender<ILoggingEvent>()
-        val statusPagesLogger = LoggerFactory.getLogger(STATUS_PAGES_LOGGER_NAME) as Logger
-        val originalSettings = statusPagesLogger.level to statusPagesLogger.isAdditive
-
-        beforeSpec {
-            statusPagesLogger.level = Level.TRACE
-            statusPagesLogger.isAdditive = false
-            failureLogs.start()
-            statusPagesLogger.addAppender(failureLogs)
-        }
-        afterSpec {
-            statusPagesLogger.detachAppender(failureLogs)
-            failureLogs.stop()
-            statusPagesLogger.level = originalSettings.first
-            statusPagesLogger.isAdditive = originalSettings.second
-        }
+        val productionLogs = extension(ProductionLogs(listOf(STATUS_PAGES_LOGGER_NAME)))
+        lateinit var failureLogs: ProductionLogCapture
+        afterTest { failureLogs.close() }
 
         with(NarmestelederrelasjonRouteFixture()) {
             beforeTest {
                 reset()
-                failureLogs.list.clear()
+                failureLogs = productionLogs.capture()
             }
 
             test("returns the exact PII response body with no-store") {
@@ -140,7 +125,7 @@ class GetNarmestelederrelasjonRouteTest :
                     """.trimIndent()
                 }
                 getOutcomeCount("found") shouldBe before + 1
-                failureLogs.list.size shouldBe 0
+                failureLogs.logs.size shouldBe 0
                 METRICS_REGISTRY.find(GET_NARMESTELEDERRELASJON_TOTAL).counters()
                     .map { it.id.getTag("outcome") }.toSet() shouldBe setOf("found", "not_found", "upstream_unavailable")
             }
@@ -167,14 +152,13 @@ class GetNarmestelederrelasjonRouteTest :
                         organization.calls shouldBe emptyList()
                     }
                     getOutcomeCount("upstream_unavailable") shouldBe before + 1
-                    val record = failureLogs.list.single()
-                    val fields = record.keyValuePairs.associate { it.key to it.value }
+                    val record = failureLogs.logs.single()
+                    val fields = record.fields
                     fields["event_type"] shouldBe "api_request_failed"
                     fields["upstream"] shouldBe failure.upstream.value
                     fields["failure_stage"] shouldBe failure.stage.logValue
                     fields["upstream_status"] shouldBe failure.status
-                    fields.toString() shouldNotContain "private-provider-message"
-                    record.formattedMessage shouldNotContain "private-provider-message"
+                    record.serialized shouldNotContain "private-provider-message"
                 }
             }
 
@@ -200,18 +184,16 @@ class GetNarmestelederrelasjonRouteTest :
                     body shouldNotContain "private upstream body"
                 }
                 getOutcomeCount("upstream_unavailable") shouldBe before + 1
-                val record = failureLogs.list.single()
+                val record = failureLogs.logs.single()
                 record.level shouldBe Level.ERROR
-                val fields = record.keyValuePairs.associate { it.key to it.value }
+                val fields = record.fields
                 fields["event_type"] shouldBe "api_request_failed"
                 fields["response_status"] shouldBe 500
                 fields["upstream"] shouldBe "ereg"
                 fields["failure_stage"] shouldBe "response"
                 fields["upstream_status"] shouldBe 503
-                fields.toString() shouldNotContain "123456789"
-                fields.toString() shouldNotContain "UpstreamRequestException"
-                record.formattedMessage shouldNotContain "123456789"
-                record.throwableProxy.message shouldNotContain "123456789"
+                record.serialized shouldNotContain "123456789"
+                record.serialized shouldNotContain "UpstreamRequestException"
             }
 
             test("returns a successful relation with null name and no-store when the employee name is incomplete") {

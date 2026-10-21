@@ -2,8 +2,6 @@ package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -38,7 +36,6 @@ import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.ProductionLogs
-import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.time.Instant
@@ -103,77 +100,75 @@ class AltinnAccessLoggingContractTest :
                             ListAccessibleOrganizationsUseCase::class.java.name,
                         ),
                     )
-                    val rootLogger = LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME) as Logger
-                    val allLogs = ListAppender<ILoggingEvent>().apply { start() }
+                    val otherLoggerErrors = ProductionLogs(listOf(Logger.ROOT_LOGGER_NAME), Level.ERROR)
                     productionLogs.install()
+                    otherLoggerErrors.install()
                     try {
-                        rootLogger.addAppender(allLogs)
-                        productionLogs.loggers.forEach { it.addAppender(allLogs) }
                         productionLogs.capture().use { capture ->
-                            upstreamHttpClient(scenario.token, scenario.upstream).use { http ->
-                                val service = AltinnTilgangerService(HttpAltinnTilgangerClient(texasHttpClient(http), http, "http://altinn"))
-                                val access = AltinnOrganizationAccess(service, FakeAltinnAuthorizationClient(), FakeEregClient())
-                                val authClient = mockk<TexasHttpClient>().also { it.stubTokenX(pid = ident) }
-                                testRouteApplication(
-                                    routes = {
-                                        apiV1 {
-                                            registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(service), authClient)
-                                            registerListNarmestelederbehovApi(
-                                                ListNarmestelederbehovUseCase(
-                                                    UnreachableOpenRepository(),
-                                                    access,
-                                                    NarmestelederbehovEmployeeName(mockk()) { error("Name lookup must not be called") },
-                                                ),
-                                                authClient,
-                                            )
+                            otherLoggerErrors.capture().use { rootCapture ->
+                                upstreamHttpClient(scenario.token, scenario.upstream).use { http ->
+                                    val service = AltinnTilgangerService(HttpAltinnTilgangerClient(texasHttpClient(http), http, "http://altinn"))
+                                    val access = AltinnOrganizationAccess(service, FakeAltinnAuthorizationClient(), FakeEregClient())
+                                    val authClient = mockk<TexasHttpClient>().also { it.stubTokenX(pid = ident) }
+                                    testRouteApplication(
+                                        routes = {
+                                            apiV1 {
+                                                registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(service), authClient)
+                                                registerListNarmestelederbehovApi(
+                                                    ListNarmestelederbehovUseCase(
+                                                        UnreachableOpenRepository(),
+                                                        access,
+                                                        NarmestelederbehovEmployeeName(mockk()) { error("Name lookup must not be called") },
+                                                    ),
+                                                    authClient,
+                                                )
+                                            }
+                                        },
+                                    ) {
+                                        val path = if (endpoint == "organizations") {
+                                            "$API_V1_PATH/access/organizations"
+                                        } else {
+                                            "$API_V1_PATH/linemanager/requirement?orgNumber=$orgNumber&createdAfter=1970-01-01T00:00:00Z"
                                         }
-                                    },
-                                ) {
-                                    val path = if (endpoint == "organizations") {
-                                        "$API_V1_PATH/access/organizations"
-                                    } else {
-                                        "$API_V1_PATH/linemanager/requirement?orgNumber=$orgNumber&createdAfter=1970-01-01T00:00:00Z"
+                                        val response = client.get(path) { bearerAuth(userToken) }
+                                        response.status shouldBe HttpStatusCode.InternalServerError
+                                        val body = jacksonObjectMapper().readTree(response.bodyAsText())
+                                        body["type"].asText() shouldBe "UPSTREAM_SERVICE_UNAVAILABLE"
+                                        body["message"].asText() shouldBe "An upstream service is unavailable"
                                     }
-                                    val response = client.get(path) { bearerAuth(userToken) }
-                                    response.status shouldBe HttpStatusCode.InternalServerError
-                                    val body = jacksonObjectMapper().readTree(response.bodyAsText())
-                                    body["type"].asText() shouldBe "UPSTREAM_SERVICE_UNAVAILABLE"
-                                    body["message"].asText() shouldBe "An upstream service is unavailable"
                                 }
-                            }
-                            RuntimeLogContract(
-                                mapOf(
-                                    "event_type" to setOf("api_request_failed"),
-                                    "exception_type" to setOf($$"ApiErrorException$InternalServerErrorException"),
-                                )
-                            ).assertValid(capture.records, expectedCount = 1)
-                            val serialized = capture.records.single()
-                            privacyCanaries.forEach { serialized shouldNotContain it }
-                            val record = jacksonObjectMapper().readTree(serialized)
-                            record["level"].asText() shouldBe "ERROR"
-                            record["logger_name"].asText() shouldBe STATUS_PAGES_LOGGER_NAME
-                            record["event_type"].asText() shouldBe "api_request_failed"
-                            record["upstream"].asText() shouldBe scenario.upstreamName
-                            record["failure_stage"].asText() shouldBe scenario.stage
-                            record["upstream_status"]?.asInt() shouldBe scenario.status
-                            if (scenario.errorCode != null) {
-                                record["upstream_errors"][0]["code"].asText() shouldBe scenario.errorCode
-                                record["upstream_errors"].size() shouldBe 1
-                            } else {
-                                record.has("upstream_errors") shouldBe false
-                            }
-                            allLogs.list.filter { it.level == Level.ERROR }.size shouldBe 1
-                            allLogs.list.filter { event ->
-                                event.keyValuePairs.orEmpty().any { it.key == "event_type" && it.value == "api_request_rejected" }
-                            }.size shouldBe 0
-                            allLogs.list.forEach { event ->
-                                privacyCanaries.forEach { event.formattedMessage shouldNotContain it }
+                                val allLogs = capture.logs + rootCapture.logs
+                                val statusPagesRecords = allLogs.filter { it.loggerName == STATUS_PAGES_LOGGER_NAME }.map { it.serialized }
+                                RuntimeLogContract(
+                                    mapOf(
+                                        "event_type" to setOf("api_request_failed"),
+                                        "exception_type" to setOf($$"ApiErrorException$InternalServerErrorException"),
+                                    )
+                                ).assertValid(statusPagesRecords, expectedCount = 1)
+                                val serialized = statusPagesRecords.single()
+                                privacyCanaries.forEach { serialized shouldNotContain it }
+                                val record = jacksonObjectMapper().readTree(serialized)
+                                record["level"].asText() shouldBe "ERROR"
+                                record["logger_name"].asText() shouldBe STATUS_PAGES_LOGGER_NAME
+                                record["event_type"].asText() shouldBe "api_request_failed"
+                                record["upstream"].asText() shouldBe scenario.upstreamName
+                                record["failure_stage"].asText() shouldBe scenario.stage
+                                record["upstream_status"]?.asInt() shouldBe scenario.status
+                                if (scenario.errorCode != null) {
+                                    record["upstream_errors"][0]["code"].asText() shouldBe scenario.errorCode
+                                    record["upstream_errors"].size() shouldBe 1
+                                } else {
+                                    record.has("upstream_errors") shouldBe false
+                                }
+                                allLogs.filter { it.level == Level.ERROR }.size shouldBe 1
+                                allLogs.filter { it.eventType == "api_request_rejected" }.size shouldBe 0
+                                allLogs.forEach { log ->
+                                    privacyCanaries.forEach { log.serialized shouldNotContain it }
+                                }
                             }
                         }
                     } finally {
-                        rootLogger.detachAppender(allLogs)
-                        productionLogs.loggers.forEach { it.detachAppender(allLogs) }
-                        allLogs.stop()
+                        otherLoggerErrors.restore()
                         productionLogs.restore()
                     }
                 }

@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -18,9 +15,10 @@ import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DIALOGPORTEN
+import no.nav.syfo.platform.observability.ProductionLogRecord
+import no.nav.syfo.platform.observability.withProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -167,7 +165,7 @@ class CreateNarmestelederbehovUseCaseTest :
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists }
 
                 effects shouldBe listOf("find-open", "metric:already-exists")
-                logs.map { it.formattedMessage } shouldBe listOf("Not inserting narmestelederbehov since one already for employee and org")
+                logs.map { it.message } shouldBe listOf("Not inserting narmestelederbehov since one already for employee and org")
             }
         }
 
@@ -211,7 +209,7 @@ class CreateNarmestelederbehovUseCaseTest :
 
                 dialogs shouldBe listOf(Triple(createdId, employee, null))
                 markedDialogs shouldBe listOf(Triple(createdId, dialogId, null))
-                val event = logs.single { it.level == Level.WARN }.fields()
+                val event = logs.single { it.level == Level.WARN }.fields
                 event["event_type"] shouldBe "dialog_person_enrichment_failed"
                 event["behov_id"] shouldBe createdId.value.toString()
                 event["upstream_status"] shouldBe 503
@@ -234,7 +232,7 @@ class CreateNarmestelederbehovUseCaseTest :
 
                 dialogs shouldBe listOf(Triple(createdId, employee, null))
                 markedDialogs shouldBe listOf(Triple(createdId, dialogId, null))
-                val event = logs.single { it.level == Level.WARN }.fields()
+                val event = logs.single { it.level == Level.WARN }.fields
                 event["event_type"] shouldBe "dialog_person_enrichment_failed"
                 event["behov_id"] shouldBe createdId.value.toString()
                 logs.none { it.level == Level.ERROR } shouldBe true
@@ -247,7 +245,7 @@ class CreateNarmestelederbehovUseCaseTest :
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
 
                 markedDialogs shouldBe emptyList()
-                val event = logs.single { it.level == Level.ERROR }.fields()
+                val event = logs.single { it.level == Level.ERROR }.fields
                 event["event_type"] shouldBe "dialogporten_dialog_failed"
                 event["behov_id"] shouldBe createdId.value.toString()
                 event["action"] shouldBe "CREATE"
@@ -262,7 +260,7 @@ class CreateNarmestelederbehovUseCaseTest :
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
 
                 markedDialogs shouldBe emptyList()
-                val event = logs.single { it.level == Level.ERROR }.fields()
+                val event = logs.single { it.level == Level.ERROR }.fields
                 event["event_type"] shouldBe "dialogporten_dialog_failed"
                 event["behov_id"] shouldBe createdId.value.toString()
                 event["action"] shouldBe "CREATE"
@@ -274,7 +272,7 @@ class CreateNarmestelederbehovUseCaseTest :
 
             val logs = captureLogs { fixture.useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
 
-            val event = logs.single { it.level == Level.WARN }.fields()
+            val event = logs.single { it.level == Level.WARN }.fields
             event["event_type"] shouldBe "dialog_created_for_closed_behov"
             event["behov_id"] shouldBe createdId.value.toString()
             event["dialog_id"] shouldBe dialogId.toString()
@@ -332,10 +330,11 @@ class CreateNarmestelederbehovUseCaseTest :
                     dialogs shouldBe emptyList()
                     markedDialogs shouldBe emptyList()
                     metrics.recorded shouldBe listOfNotNull(case.metric)
-                    val event = logs.single { it.level == Level.WARN }.keyValuePairs.associate { it.key to it.value }
+                    val record = logs.single { it.level == Level.WARN }
+                    val event = record.fields
                     event["event_type"] shouldBe "narmestelederbehov_stored_degraded"
                     event["reason"] shouldBe case.reason
-                    event.toString() shouldNotContain employee.personIdent.value
+                    record.serialized shouldNotContain employee.personIdent.value
                 }
             }
         }
@@ -349,7 +348,7 @@ class CreateNarmestelederbehovUseCaseTest :
                 )
             }
 
-            val events = logs.filter { it.level == Level.WARN }.map { event -> event.keyValuePairs.associate { it.key to it.value } }
+            val events = logs.filter { it.level == Level.WARN }.map { it.fields }
             events.map { it["behov_source"] } shouldBe listOf(NARMESTELEDER_LEESAH_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME)
             events.map { it["narmesteleder_id"] } shouldBe listOf(relationId.toString(), null, null)
             events.map { it["sykmelding_id"] } shouldBe listOf(null, sykmeldingId.toString(), null)
@@ -370,20 +369,7 @@ private class RecordingMetrics(private val effects: MutableList<String>) : Narme
     override fun recordStoredWithoutEmployment() = record("metric:stored-without-employment")
 }
 
-private fun ILoggingEvent.fields(): Map<String, Any?> = keyValuePairs.associate { it.key to it.value }
-
-private suspend fun captureLogs(block: suspend () -> Unit): List<ILoggingEvent> {
-    val logger = LoggerFactory.getLogger(CreateNarmestelederbehovUseCase::class.java) as Logger
-    val previousLevel = logger.level
-    val appender = ListAppender<ILoggingEvent>().also { it.start() }
-    logger.level = Level.INFO
-    logger.addAppender(appender)
-    try {
-        block()
-    } finally {
-        logger.detachAppender(appender)
-        appender.stop()
-        logger.level = previousLevel
-    }
-    return appender.list.toList()
+private suspend fun captureLogs(block: suspend () -> Unit): List<ProductionLogRecord> = withProductionLogs(CreateNarmestelederbehovUseCase::class.java, Level.INFO) { capture ->
+    block()
+    capture.logs
 }

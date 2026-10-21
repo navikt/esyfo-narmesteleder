@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.application.relationperson
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.maps.shouldNotContainKey
@@ -13,7 +10,8 @@ import no.nav.syfo.narmestelederrelasjon.application.relationperson.InMemoryRela
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.InMemoryRelationPersonRepository.Status
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonNameUpdateResult.Completed
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonNameUpdateResult.LookupIncomplete
-import org.slf4j.LoggerFactory
+import no.nav.syfo.platform.observability.ProductionLogCapture
+import no.nav.syfo.platform.observability.ProductionLogs
 
 class UpdateRelationPersonNamesUseCaseTest :
     FunSpec({
@@ -22,29 +20,21 @@ class UpdateRelationPersonNamesUseCaseTest :
         val per = "11111111111"
         val ada = registeredPerson("Ada", "Lovelace")
         val grace = registeredPerson("Grace", "Hopper")
-        val logAppender = ListAppender<ILoggingEvent>()
-        val logger = LoggerFactory.getLogger(UpdateRelationPersonNamesUseCase::class.java.name) as Logger
+        val productionLogs = extension(ProductionLogs(UpdateRelationPersonNamesUseCase::class.java, Level.INFO))
+        lateinit var logs: ProductionLogCapture
 
         lateinit var repository: InMemoryRelationPersonRepository
         lateinit var lookup: FakeBulkPersonLookup
         lateinit var metrics: RecordingRelationPersonNameUpdateMetrics
 
-        beforeSpec {
-            logger.level = Level.INFO
-            logAppender.start()
-            logger.addAppender(logAppender)
-        }
-
-        afterSpec {
-            logger.detachAppender(logAppender)
-        }
-
         beforeTest {
             repository = InMemoryRelationPersonRepository()
             lookup = FakeBulkPersonLookup()
             metrics = RecordingRelationPersonNameUpdateMetrics()
-            logAppender.list.clear()
+            logs = productionLogs.capture()
         }
+
+        afterTest { logs.close() }
 
         fun lookupAnswers(answer: (List<PersonalIdentificationNumber>) -> Map<PersonalIdentificationNumber, BulkPersonLookupResult>) {
             lookup = FakeBulkPersonLookup(answer)
@@ -122,6 +112,6 @@ class UpdateRelationPersonNamesUseCaseTest :
             metrics.lookupFailed shouldBe listOf(1)
             repository.updateRegisteredDetailsCalls shouldBe 0
             listOf(kari, ola, per).map(repository::row) shouldBe List(3) { Row(Status.PENDING) }
-            logAppender.list.shouldBeEmpty() // The consumer owns the terminal retry event.
+            logs.logs.shouldBeEmpty() // The consumer owns the terminal retry event.
         }
     })

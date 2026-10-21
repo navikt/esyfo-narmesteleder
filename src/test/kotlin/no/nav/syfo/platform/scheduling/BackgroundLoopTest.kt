@@ -12,9 +12,9 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
-import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.ProductionLogCapture
 import no.nav.syfo.platform.observability.ProductionLogs
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -22,7 +22,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class BackgroundLoopTest :
     FunSpec({
         val productionLogs = extension(ProductionLogs(BackgroundLoop::class.java))
-        lateinit var capture: LogCapture
+        lateinit var capture: ProductionLogCapture
         val contract = RuntimeLogContract.forEvents(
             backgroundLoopIterationFailed,
             exceptionTypes = setOf("IllegalStateException", "CancellationException", "TimeoutCancellationException"),

@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.doubles.shouldBeExactly
@@ -41,6 +38,8 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer.
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer.Companion.RESULT_SERIALIZATION_ERROR
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer.Companion.RESULT_TOMBSTONE
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
+import no.nav.syfo.platform.observability.ProductionLogCapture
+import no.nav.syfo.platform.observability.ProductionLogs
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -50,7 +49,6 @@ import org.apache.kafka.common.errors.RecordDeserializationException
 import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.record.TimestampType
-import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
 import kotlin.coroutines.EmptyCoroutineContext
@@ -61,34 +59,26 @@ class PdlLeesahConsumerTest :
         val fnr1 = "12345678910"
         val fnr2 = "01987654321"
         val partition = TopicPartition(PDL_LEESAH_TOPIC, 0)
-        val logAppender = ListAppender<ILoggingEvent>()
-        val logger = LoggerFactory.getLogger(PdlLeesahConsumer::class.java.name) as Logger
+        val productionLogs = extension(ProductionLogs(PdlLeesahConsumer::class.java, Level.INFO))
+        lateinit var logs: ProductionLogCapture
 
         lateinit var kafkaConsumer: KafkaConsumer<String, Personhendelse>
         lateinit var updateRelationPersonNames: UpdateRelationPersonNamesUseCase
         lateinit var consumer: PdlLeesahConsumer
-
-        beforeSpec {
-            logger.level = Level.INFO
-            logAppender.start()
-            logger.addAppender(logAppender)
-        }
-
-        afterSpec {
-            logger.detachAppender(logAppender)
-        }
 
         beforeTest {
             kafkaConsumer = mockk(relaxed = true)
             updateRelationPersonNames = mockk()
             coEvery { updateRelationPersonNames.execute(any()) } returns RelationPersonNameUpdateResult.Completed()
             consumer = pdlLeesahConsumer(kafkaConsumer, updateRelationPersonNames)
-            logAppender.list.clear()
+            logs = productionLogs.capture()
             removeMetrics(PDL_LEESAH_HENDELSE_TOTAL)
             removeMetrics(PDL_LEESAH_PERSON_UPDATE_TOTAL)
         }
 
-        fun loggedMessages(): String = logAppender.list.joinToString("\n") { it.formattedMessage }
+        afterTest { logs.close() }
+
+        fun loggedMessages(): String = logs.records.joinToString("\n")
 
         fun updateReturns(vararg personidenter: String, updatedCount: Int) {
             coEvery { updateRelationPersonNames.execute(personidenter.toList()) } returns RelationPersonNameUpdateResult.Completed(updatedCount = updatedCount)
@@ -110,27 +100,28 @@ class PdlLeesahConsumerTest :
         test("logConsumerFailure logs incomplete PDL batch counts without personal data") {
             consumer.logConsumerFailure(IncompleteBulkPersonLookupException(requestedCount = 10, missingCount = 2))
 
-            val fields = logAppender.list.single().fields()
+            val event = logs.logs.single()
+            val fields = event.fields
             fields["event_type"] shouldBe "kafka_consumer_failed"
             fields["consumer"] shouldBe "PDL_LEESAH"
             fields["error_code"] shouldBe "PDL_BULK_RESPONSE_INCOMPLETE"
             fields["requested_count"] shouldBe 10
             fields["missing_count"] shouldBe 2
-            fields.toString() shouldNotContain fnr1
+            event.serialized shouldNotContain fnr1
         }
 
         test("logConsumerFailure logs direct failures; call sites handle cancellation") {
             consumer.logConsumerFailure(CancellationException("cancelled"))
 
-            logAppender.list.single().fields()["event_type"] shouldBe "kafka_consumer_failed"
+            logs.logs.single()["event_type"] shouldBe "kafka_consumer_failed"
         }
 
         test("logConsumerFailure logs wrapped cancellation as an ordinary retry failure without the message") {
             consumer.logConsumerFailure(IllegalStateException("private-canary", CancellationException("cancelled")))
 
-            val event = logAppender.list.single()
-            event.fields()["event_type"] shouldBe "kafka_consumer_failed"
-            event.formattedMessage shouldNotContain "private-canary"
+            val event = logs.logs.single()
+            event["event_type"] shouldBe "kafka_consumer_failed"
+            event.serialized shouldNotContain "private-canary"
         }
 
         test("processRecords counts tombstones and ignored records and commits offsets without calling the use case") {
@@ -160,7 +151,7 @@ class PdlLeesahConsumerTest :
             shouldCommitUpTo(4L)
             processedCount() shouldBeExactly 2.0
             personUpdateCount(RESULT_UPDATED) shouldBeExactly 2.0
-            logAppender.list.map { it.formattedMessage } shouldBe listOf(
+            logs.logs.map { it.message } shouldBe listOf(
                 "Processed PDL Leesah name event batch relevantRecordCount=2, updatedCount=2, notFoundInRegisterCount=0, pdlNotFoundCount=0"
             )
         }
@@ -254,10 +245,10 @@ class PdlLeesahConsumerTest :
             verify(exactly = 1) { kafkaConsumer.seek(partition, 43L) }
             shouldCommitUpTo(43L)
             eventCount(RESULT_RECORD_DESERIALIZATION_SKIPPED) shouldBeExactly 1.0
-            val fields = logAppender.list.single().fields()
+            val fields = logs.logs.single().fields
             fields["event_type"] shouldBe "kafka_record_skipped_error"
             fields["reason"] shouldBe "MALFORMED_RECORD"
-            fields["offset"] shouldBe 42L
+            fields["offset"] shouldBe 42
             fields["partition"] shouldBe 0
             fields["failure_kind"] shouldBe "invalid_response"
             fields["cause_type"] shouldBe "SerializationException"
@@ -300,11 +291,11 @@ class PdlLeesahConsumerTest :
                 pdlLeesahConsumer(kafkaConsumer, updateRelationPersonNames, scope = scope).listen()
 
                 withTimeout(5_000.milliseconds) { failure.await() } shouldBe fatal
-                val event = logAppender.list.single { it.level == Level.ERROR }
-                val fields = event.fields()
+                val event = logs.logs.single { it.level == Level.ERROR }
+                val fields = event.fields
                 fields["event_type"] shouldBe "kafka_consumer_crashed"
                 fields["consumer"] shouldBe "PDL_LEESAH"
-                event.formattedMessage shouldNotContain "private-canary"
+                event.serialized shouldNotContain "private-canary"
             } finally {
                 scope.coroutineContext[Job]?.cancel()
             }
@@ -323,8 +314,6 @@ private fun pdlLeesahConsumer(
     updateRelationPersonNames = updateRelationPersonNames,
     retryDelaySeconds = 0,
 )
-
-private fun ILoggingEvent.fields(): Map<String, Any?> = keyValuePairs.associate { it.key to it.value }
 
 private fun removeMetrics(name: String) {
     METRICS_REGISTRY.find(name).meters().forEach(METRICS_REGISTRY::remove)

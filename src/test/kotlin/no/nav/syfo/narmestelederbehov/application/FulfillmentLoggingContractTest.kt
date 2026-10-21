@@ -9,13 +9,13 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldNotContain
 import kotlinx.coroutines.CancellationException
-import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.observability.ProductionLogCapture
 import no.nav.syfo.platform.observability.ProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -27,7 +27,7 @@ class FulfillmentLoggingContractTest :
         val mapper = jacksonObjectMapper()
         val contract = RuntimeLogContract.forEvents(fulfillmentCompleted, fulfillmentRejected)
         val productionLogs = extension(ProductionLogs(FulfillNarmestelederbehovUseCase::class.java))
-        lateinit var capture: LogCapture
+        lateinit var capture: ProductionLogCapture
         val privacyCanaries = listOf(
             employeeIdent.value, managerIdent.value, organizationNumber.value,
             "Employee", "EmployeeMiddle", "Employee",

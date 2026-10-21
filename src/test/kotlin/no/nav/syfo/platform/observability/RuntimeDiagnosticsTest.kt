@@ -1,8 +1,5 @@
 package no.nav.syfo.platform.observability
 
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.classic.util.LogbackMDCAdapter
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -17,7 +14,6 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import no.nav.esyfo.observability.createLogger
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.esyfo.observability.testkit.captureLogs
 import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
@@ -53,8 +49,8 @@ class RuntimeDiagnosticsTest :
             )
             cases.forEach { (root, expectedKind) ->
                 val wrapped = IllegalStateException("request-body-canary", root)
-                withProductionLogger { logger ->
-                    captureLogs(logger, "stdout_json").use { capture ->
+                withProductionLogger("runtime-diagnostics-test") { logger ->
+                    logger.captureProductionLogs().use { capture ->
                         logger.logEvent(diagnosticTestEvent, Unit, cause = wrapped)
                         capture.records shouldHaveSize 1
                         val json = capture.records.single()
@@ -105,8 +101,8 @@ class RuntimeDiagnosticsTest :
                 null,
                 ConnectException("private-canary"),
             )
-            withProductionLogger { logger ->
-                captureLogs(logger, "stdout_json").use { capture ->
+            withProductionLogger("runtime-diagnostics-test") { logger ->
+                logger.captureProductionLogs().use { capture ->
                     logger.logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
                     createLogger(logger).logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
                     RuntimeLogContract.forEvents(
@@ -133,8 +129,8 @@ class RuntimeDiagnosticsTest :
                 200,
                 errors = listOf(UpstreamError("server_error", "technical_id", "hentPerson.navn", "Ukjent problem oppsto"), UpstreamError("unknown")),
             )
-            withProductionLogger { logger ->
-                captureLogs(logger, "stdout_json").use { capture ->
+            withProductionLogger("runtime-diagnostics-test") { logger ->
+                logger.captureProductionLogs().use { capture ->
                     logger.logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
                     createLogger(logger).logEvent(
                         diagnosticTestEvent,
@@ -203,8 +199,8 @@ class RuntimeDiagnosticsTest :
         test("out-of-range Ktor response statuses are omitted without changing HTTP classification") {
             HttpClient(MockEngine { respond("private-canary", HttpStatusCode(42, "Unknown")) }).use { client ->
                 val failure = ClientRequestException(client.get("https://upstream.test/"), "private-canary")
-                withProductionLogger { logger ->
-                    captureLogs(logger, "stdout_json").use { capture ->
+                withProductionLogger("runtime-diagnostics-test") { logger ->
+                    logger.captureProductionLogs().use { capture ->
                         logger.logEvent(diagnosticTestEvent, Unit, cause = failure)
                         val serialized = capture.records.single()
                         val record = jacksonObjectMapper().readTree(serialized)
@@ -218,8 +214,8 @@ class RuntimeDiagnosticsTest :
         }
 
         test("diagnostics never throw for wrapped cancellation") {
-            withProductionLogger { logger ->
-                captureLogs(logger, "stdout_json").use { capture ->
+            withProductionLogger("runtime-diagnostics-test") { logger ->
+                logger.captureProductionLogs().use { capture ->
                     logger.logEvent(diagnosticTestEvent, Unit, cause = IllegalStateException(CancellationException("cancelled")))
                     capture.records shouldHaveSize 1
                 }
@@ -227,8 +223,8 @@ class RuntimeDiagnosticsTest :
         }
 
         test("fatal errors retain their class but never their message or cause payload") {
-            withProductionLogger { logger ->
-                captureLogs(logger, "stdout_json").use { capture ->
+            withProductionLogger("runtime-diagnostics-test") { logger ->
+                logger.captureProductionLogs().use { capture ->
                     logger.logEvent(diagnosticTestEvent, Unit, cause = LinkageError("private-canary", IllegalStateException("payload-canary")))
                     val record = jacksonObjectMapper().readTree(capture.records.single())
                     record["exception_type"].asText() shouldBe "LinkageError"
@@ -240,8 +236,8 @@ class RuntimeDiagnosticsTest :
         }
 
         test("PDL GraphQL errors retain approved structured diagnostics with the production encoder") {
-            withProductionLogger { logger ->
-                captureLogs(logger, "stdout_json").use { capture ->
+            withProductionLogger("runtime-diagnostics-test") { logger ->
+                logger.captureProductionLogs().use { capture ->
                     logger.logEvent(
                         pdlLookupDegraded,
                         PdlLookupDegradedDetails(
@@ -264,8 +260,8 @@ class RuntimeDiagnosticsTest :
             }
         }
         test("database SQL state remains actionable") {
-            withProductionLogger { logger ->
-                captureLogs(logger, "stdout_json").use { capture ->
+            withProductionLogger("runtime-diagnostics-test") { logger ->
+                logger.captureProductionLogs().use { capture ->
                     logger.logEvent(diagnosticTestEvent, Unit, cause = SQLException("person-payload-canary", "23505"))
                     val database = jacksonObjectMapper().readTree(capture.records[0])
                     database["sql_state"].asText() shouldBe "23505"
@@ -274,17 +270,3 @@ class RuntimeDiagnosticsTest :
             }
         }
     })
-
-private fun withProductionLogger(test: (ch.qos.logback.classic.Logger) -> Unit) {
-    val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
-    try {
-        context.putProperty("NAIS_CLUSTER_NAME", "test")
-        JoranConfigurator().apply {
-            this.context = context
-            doConfigure("src/main/resources/logback.xml")
-        }
-        test(context.getLogger("runtime-diagnostics-test"))
-    } finally {
-        context.stop()
-    }
-}

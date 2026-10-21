@@ -1,9 +1,6 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
@@ -21,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import no.nav.syfo.platform.kafka.jacksonMapper
+import no.nav.syfo.platform.observability.withProductionLogs
 import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -28,7 +26,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
-import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
@@ -104,22 +101,19 @@ class PersistSendtSykmeldingConsumerTest :
                 emptyMap(),
             )
             coEvery { handler.handleSykmeldingBatch(any()) } throws fatal
-            val logger = LoggerFactory.getLogger(PersistSendtSykmeldingConsumer::class.java) as Logger
-            val appender = ListAppender<ILoggingEvent>().apply { start() }
-            logger.addAppender(appender)
             try {
-                batchConsumer.listen()
-                withTimeout(5_000.milliseconds) { failure.await() } shouldBe fatal
-                val event = appender.list.single()
-                event.level shouldBe Level.ERROR
-                val fields = event.keyValuePairs.associate { it.key to it.value }
-                fields["event_type"] shouldBe "kafka_consumer_crashed"
-                fields["consumer"] shouldBe "SENT_SYKMELDING_PERSIST"
-                event.formattedMessage.contains("private-canary") shouldBe false
-                verify(exactly = 0) { kafkaConsumer.commitSync() }
+                withProductionLogs(PersistSendtSykmeldingConsumer::class.java, Level.ERROR) { logs ->
+                    batchConsumer.listen()
+                    withTimeout(5_000.milliseconds) { failure.await() } shouldBe fatal
+                    val event = logs.logs.single()
+                    event.level shouldBe Level.ERROR
+                    val fields = event.fields
+                    fields["event_type"] shouldBe "kafka_consumer_crashed"
+                    fields["consumer"] shouldBe "SENT_SYKMELDING_PERSIST"
+                    event.serialized.contains("private-canary") shouldBe false
+                    verify(exactly = 0) { kafkaConsumer.commitSync() }
+                }
             } finally {
-                logger.detachAppender(appender)
-                appender.stop()
                 scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
             }
         }

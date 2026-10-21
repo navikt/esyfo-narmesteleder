@@ -4,7 +4,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
-import no.nav.syfo.application.exception.UpstreamRequestException
 
 class UpstreamResultTest :
     FunSpec({

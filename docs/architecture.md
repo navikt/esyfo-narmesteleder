@@ -20,11 +20,19 @@ Canonical domain terms are defined in [`CONTEXT.md`](../CONTEXT.md).
 no.nav.syfo
 ├── bootstrap
 ├── platform
+│   ├── api
+│   ├── application
 │   ├── auth
+│   │   └── texas
+│   ├── cache
+│   ├── config
 │   ├── database
+│   ├── http
 │   ├── kafka
+│   ├── local
 │   ├── observability
-│   └── scheduling
+│   ├── scheduling
+│   └── upstream
 ├── integration                   # shared external clients, not a module
 │   ├── aareg
 │   ├── dinesykmeldte
@@ -234,9 +242,15 @@ layers because it has no business workflow to hide.
 
 Contains reusable technical mechanisms without domain rules:
 
-- `auth`: Ktor/Texas authentication and principal construction;
+- `api`: shared HTTP paths, errors and API plugins;
+- `auth`: Ktor authentication and principal construction;
+- `auth/texas`: Texas authentication plugins, token providers and client;
+- `cache`: generic Valkey cache and configuration;
+- `config`: shared environment-variable lookup;
 - `database`: data source, Flyway and shared transaction infrastructure;
+- `http`: shared HTTP client construction;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics;
+- `local`: JSON fixture loading for local adapters;
 - `observability`: metrics, health and common structured logging mechanisms;
 - `scheduling`: reusable scheduling mechanics. New scheduled work runs on
   all pods in a background loop and shares the work through database claims with a

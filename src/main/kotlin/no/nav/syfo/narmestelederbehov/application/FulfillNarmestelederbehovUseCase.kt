@@ -1,8 +1,6 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import kotlinx.coroutines.CancellationException
-import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
@@ -18,6 +16,8 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
+import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
 
 class FulfillNarmestelederbehovUseCase(
     private val behovRepository: NarmestelederbehovRepository,

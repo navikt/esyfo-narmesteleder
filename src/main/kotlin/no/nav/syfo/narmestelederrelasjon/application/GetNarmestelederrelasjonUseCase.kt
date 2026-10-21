@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult.NotFound
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult.NotFoundReason
 import no.nav.syfo.narmestelederrelasjon.domain.Narmestelederrelasjon
@@ -8,6 +7,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.observability.applicationLogger
 import java.util.UUID
 
 class GetNarmestelederrelasjonUseCase(

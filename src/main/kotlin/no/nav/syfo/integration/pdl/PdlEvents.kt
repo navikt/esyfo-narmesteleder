@@ -1,6 +1,6 @@
 package no.nav.syfo.integration.pdl
 
-import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.upstream.UpstreamError
 import org.slf4j.event.Level
 

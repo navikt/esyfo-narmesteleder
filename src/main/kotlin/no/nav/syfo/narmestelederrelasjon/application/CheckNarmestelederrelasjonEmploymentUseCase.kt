@@ -1,11 +1,11 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import kotlinx.coroutines.withTimeoutOrNull
-import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.logging.logEvent
-import no.nav.syfo.logging.rethrowCancellation
 import no.nav.syfo.narmestelederrelasjon.domain.EmploymentEndedDecision
 import no.nav.syfo.narmestelederrelasjon.domain.EmploymentEndedRule
+import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
+import no.nav.syfo.platform.observability.rethrowCancellation
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant

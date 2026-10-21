@@ -4,7 +4,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
 import io.ktor.server.application.ServerReady
 import kotlinx.coroutines.runBlocking
-import no.nav.syfo.application.environment.Environment
+import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederrelasjon.application.CheckNarmestelederrelasjonEmploymentUseCase
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckSettings
 import no.nav.syfo.narmestelederrelasjon.application.SeedNarmestelederrelasjonEmploymentChecksUseCase

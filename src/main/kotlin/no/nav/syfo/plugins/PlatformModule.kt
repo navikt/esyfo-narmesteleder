@@ -6,9 +6,9 @@ import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
-import no.nav.syfo.application.api.installApiPlugins
-import no.nav.syfo.application.api.registerPodApi
-import no.nav.syfo.application.metric.registerMetricApi
+import no.nav.syfo.platform.api.installApiPlugins
+import no.nav.syfo.platform.observability.registerMetricApi
+import no.nav.syfo.platform.observability.registerPodApi
 import org.koin.core.module.Module
 import org.koin.ktor.ext.get
 

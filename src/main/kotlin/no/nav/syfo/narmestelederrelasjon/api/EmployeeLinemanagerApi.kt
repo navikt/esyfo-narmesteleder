@@ -6,17 +6,17 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereForEmployeeUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countEmployeeLinemanager
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.texas.TokenXTokenAuthPlugin
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.TokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val EMPLOYEE_LINEMANAGER_API_PATH = "/employee/linemanager"
 

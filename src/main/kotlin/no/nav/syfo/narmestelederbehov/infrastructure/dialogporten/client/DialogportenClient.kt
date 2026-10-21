@@ -14,21 +14,21 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Content
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValue
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValueItem
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.platform.api.JSON_PATCH_CONTENT_TYPE
+import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
+import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
-import no.nav.syfo.texas.AltinnTokenProvider
-import no.nav.syfo.util.JSON_PATCH_CONTENT_TYPE
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 

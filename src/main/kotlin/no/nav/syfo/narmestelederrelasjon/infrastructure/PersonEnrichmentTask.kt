@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.application.task.ScheduledLeaderTask
 import no.nav.syfo.narmestelederrelasjon.application.EnrichPendingRelationPersonsUseCase
+import no.nav.syfo.platform.scheduling.ScheduledLeaderTask
 import kotlin.time.Duration
 
 class PersonEnrichmentTask(

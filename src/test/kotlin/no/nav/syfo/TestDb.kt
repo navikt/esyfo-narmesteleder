@@ -2,7 +2,7 @@ package no.nav.syfo
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.platform.database.DatabaseInterface
 import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
 import no.nav.syfo.sykmelding.infrastructure.SendtSykmeldingTable
 import org.flywaydb.core.Flyway

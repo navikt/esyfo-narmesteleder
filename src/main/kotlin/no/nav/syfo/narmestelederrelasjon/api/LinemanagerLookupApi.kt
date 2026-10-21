@@ -5,8 +5,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupRequest
@@ -14,9 +12,11 @@ import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupResponse
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.COUNT_LOOKUP_NARMESTELEDER
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.tryReceive
-import no.nav.syfo.texas.AzureAdTokenAuthPlugin
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.AzureAdTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val LINE_MANAGER_LOOKUP_PATH = "/lookup"
 

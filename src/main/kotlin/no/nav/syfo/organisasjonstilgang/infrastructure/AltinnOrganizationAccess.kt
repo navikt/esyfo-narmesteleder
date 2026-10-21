@@ -1,11 +1,7 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure
 
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.auth.UserPrincipal
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.integration.ereg.EregClient
-import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -16,6 +12,10 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Autho
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.System
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.COUNT_HAS_ALTINN3_RESOURCE
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.auth.UserPrincipal
+import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
 

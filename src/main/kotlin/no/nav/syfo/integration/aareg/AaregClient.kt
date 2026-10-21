@@ -11,14 +11,14 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import no.nav.syfo.application.api.NAV_CALL_ID_HEADER
+import no.nav.syfo.platform.api.NAV_CALL_ID_HEADER
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.http.httpClientDefault
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.util.httpClientDefault
 import org.slf4j.MDC
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException

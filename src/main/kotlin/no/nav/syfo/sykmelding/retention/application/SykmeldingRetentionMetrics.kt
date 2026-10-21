@@ -2,8 +2,8 @@ package no.nav.syfo.sykmelding.retention.application
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 class SykmeldingRetentionMetrics(
     meterRegistry: MeterRegistry = METRICS_REGISTRY,

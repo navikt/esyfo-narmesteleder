@@ -6,16 +6,16 @@ import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import kotlinx.coroutines.CancellationException
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.platform.auth.UserPrincipal
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.local.JsonFixtureLoader
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.util.JsonFixtureLoader
 
 internal val ALTINN_TILGANGER = UpstreamName("arbeidsgiver-altinn-tilganger")
 

@@ -15,7 +15,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AAREG
@@ -27,6 +26,7 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovSource
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjon
+import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import org.slf4j.LoggerFactory

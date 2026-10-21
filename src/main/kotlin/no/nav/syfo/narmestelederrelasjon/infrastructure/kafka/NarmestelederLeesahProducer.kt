@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
-import no.nav.syfo.util.logger
+import no.nav.syfo.platform.observability.logger
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 

@@ -4,12 +4,12 @@ import io.ktor.server.application.Application
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import no.nav.syfo.application.environment.isLocalEnv
-import no.nav.syfo.application.metric.bindJvmAndProcessMetrics
+import no.nav.syfo.bootstrap.isLocalEnv
 import no.nav.syfo.narmestelederbehov.narmestelederbehovModule
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonModule
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkModule
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
+import no.nav.syfo.platform.observability.bindJvmAndProcessMetrics
 import no.nav.syfo.plugins.applicationModules
 import no.nav.syfo.plugins.configureBackgroundTasks
 import no.nav.syfo.plugins.configureEmploymentChecks

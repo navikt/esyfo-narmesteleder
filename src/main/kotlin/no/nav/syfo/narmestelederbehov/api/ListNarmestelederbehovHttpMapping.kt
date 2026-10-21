@@ -1,12 +1,12 @@
 package no.nav.syfo.narmestelederbehov.api
 
 import io.ktor.server.routing.RoutingCall
-import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.narmesteleder.api.v1.getRequiredOrganizationNumberQueryParameter
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovQuery
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovResult
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
 
 // Parse order is part of the contract: it decides which 400 a request with several invalid parameters gets.

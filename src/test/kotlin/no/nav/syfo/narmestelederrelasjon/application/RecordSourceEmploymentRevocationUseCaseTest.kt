@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.syfo.logging.withProductionLogs
+import no.nav.syfo.platform.observability.withProductionLogs
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset

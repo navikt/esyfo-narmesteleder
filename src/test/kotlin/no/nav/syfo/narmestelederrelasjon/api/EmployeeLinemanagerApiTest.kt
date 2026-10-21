@@ -18,10 +18,6 @@ import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import no.nav.syfo.application.api.API_V1_PATH
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmestelederrelasjon
@@ -30,10 +26,14 @@ import no.nav.syfo.narmestelederrelasjon.application.ListActiveNarmesteledereFor
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.observability.EMPLOYEE_LINEMANAGER_TOTAL
+import no.nav.syfo.platform.api.API_V1_PATH
+import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import java.io.IOException
 import java.time.Instant
 import java.util.UUID

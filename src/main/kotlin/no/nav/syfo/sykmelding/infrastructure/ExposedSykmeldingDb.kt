@@ -3,12 +3,12 @@ package no.nav.syfo.sykmelding.infrastructure
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.syfo.logging.applicationEvent
-import no.nav.syfo.logging.logEvent
+import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.logEvent
+import no.nav.syfo.platform.observability.logger
 import no.nav.syfo.sykmelding.application.SendtSykmelding
 import no.nav.syfo.sykmelding.application.SykmeldingDb
 import no.nav.syfo.sykmelding.application.SykmeldingTransaction
-import no.nav.syfo.util.logger
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.statements.insertValue

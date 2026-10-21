@@ -5,7 +5,7 @@ import io.ktor.server.routing.routing
 import no.nav.syfo.narmestelederstatistikk.api.registerLinemanagerStatisticsApi
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.platform.api.internalApiV1
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 

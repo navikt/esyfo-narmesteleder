@@ -16,9 +16,6 @@ import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.coEvery
 import io.mockk.mockk
-import no.nav.syfo.application.api.ApiError
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupRequest
@@ -29,11 +26,14 @@ import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrela
 import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
+import no.nav.syfo.platform.api.ApiError
+import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import java.time.Instant
 import java.util.UUID
 

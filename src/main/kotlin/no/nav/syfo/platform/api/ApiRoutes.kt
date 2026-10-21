@@ -3,9 +3,7 @@ package no.nav.syfo.platform.api
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import io.ktor.util.AttributeKey
-import no.nav.syfo.application.api.API_V1_PATH
-import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.auth.AddTokenIssuerPlugin
+import no.nav.syfo.platform.auth.AddTokenIssuerPlugin
 
 private val TOKEN_ISSUER_INSTALLED = AttributeKey<Unit>("TokenIssuerInstalled")
 

@@ -2,10 +2,10 @@ package no.nav.syfo.narmestelederbehov.application
 
 import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.Event
-import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
 import org.slf4j.event.Level
 
 /**

@@ -8,7 +8,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import org.slf4j.LoggerFactory
 import kotlin.coroutines.cancellation.CancellationException
 

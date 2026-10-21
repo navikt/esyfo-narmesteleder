@@ -1,11 +1,11 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganization
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganizationsLookup
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.upstream.UpstreamResult
 
 class AltinnTilgangerService(

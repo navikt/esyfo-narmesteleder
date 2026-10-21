@@ -2,9 +2,9 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederRegisterMetrics
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 const val NARMESTELEDER_REGISTER_UPSERTED = "${METRICS_NS}_narmesteleder_register_upserted"
 const val NARMESTELEDER_REGISTER_INVALID_MESSAGE = "${METRICS_NS}_narmesteleder_register_invalid_message"

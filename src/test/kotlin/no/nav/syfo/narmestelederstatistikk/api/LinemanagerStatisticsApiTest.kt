@@ -13,12 +13,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.coEvery
 import io.mockk.mockk
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import no.nav.syfo.narmestelederstatistikk.application.NarmestelederstatistikkRepository
@@ -27,15 +23,19 @@ import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testApiApplication
+import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
+import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasIntrospectionResponse
 
 class LinemanagerStatisticsApiTest :
     FunSpec({

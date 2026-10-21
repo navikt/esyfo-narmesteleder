@@ -1,8 +1,8 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 const val HAS_ALTINN3_RESOURCE = "${METRICS_NS}_has_altinn3_resource"
 

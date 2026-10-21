@@ -9,7 +9,7 @@ import io.kotest.matchers.string.shouldNotContain
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import no.nav.syfo.logging.ProductionLogs
+import no.nav.syfo.platform.observability.ProductionLogs
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExpireNarmestelederbehovDialogsUseCaseTest :

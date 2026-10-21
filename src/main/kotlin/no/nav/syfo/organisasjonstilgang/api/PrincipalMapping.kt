@@ -1,12 +1,12 @@
 package no.nav.syfo.organisasjonstilgang.api
 
-import no.nav.syfo.application.auth.Principal
-import no.nav.syfo.application.auth.SystemPrincipal
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.auth.Principal
+import no.nav.syfo.platform.auth.SystemPrincipal
+import no.nav.syfo.platform.auth.UserPrincipal
 
 fun Principal.toOrganizationAccessSubject(): OrganizationAccessSubject = when (this) {
     is UserPrincipal -> toPersonnelManager()

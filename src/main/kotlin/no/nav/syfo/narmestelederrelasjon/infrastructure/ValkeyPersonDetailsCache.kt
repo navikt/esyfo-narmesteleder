@@ -1,13 +1,13 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.application.valkey.ValkeyCache
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
+import no.nav.syfo.platform.cache.ValkeyCache
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 class ValkeyPersonDetailsCache(private val valkeyCache: ValkeyCache) : PersonDetailsCache {
     override fun get(personIdent: PersonalIdentificationNumber): PersonDetails? {

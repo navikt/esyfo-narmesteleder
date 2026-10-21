@@ -2,7 +2,7 @@ package no.nav.syfo.narmesteleder.service
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.platform.kafka.KafkaListener
 import org.slf4j.LoggerFactory
 
 class LeaderControlledKafkaConsumer(

@@ -1,9 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.observability
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 const val ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS = "${METRICS_NS}_assign_linemanager_from_empty_form_by_lps"
 val COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS: Counter =

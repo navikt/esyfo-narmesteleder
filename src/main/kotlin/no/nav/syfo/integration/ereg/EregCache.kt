@@ -1,8 +1,6 @@
 package no.nav.syfo.integration.ereg
 
-import no.nav.syfo.application.valkey.COUNT_CACHE_HIT_EREG_GET_ORGANISASJON
-import no.nav.syfo.application.valkey.COUNT_CACHE_MISS_EREG_GET_ORGANISASJON
-import no.nav.syfo.application.valkey.ValkeyCache
+import no.nav.syfo.platform.cache.ValkeyCache
 
 class EregCache(
     private val valkeyCache: ValkeyCache,

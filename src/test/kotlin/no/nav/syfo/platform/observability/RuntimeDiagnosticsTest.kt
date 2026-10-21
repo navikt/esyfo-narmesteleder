@@ -1,0 +1,290 @@
+package no.nav.syfo.platform.observability
+
+import ch.qos.logback.classic.LoggerContext
+import ch.qos.logback.classic.joran.JoranConfigurator
+import ch.qos.logback.classic.util.LogbackMDCAdapter
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.request.get
+import io.ktor.http.HttpStatusCode
+import no.nav.esyfo.observability.createLogger
+import no.nav.esyfo.observability.testkit.RuntimeLogContract
+import no.nav.esyfo.observability.testkit.captureLogs
+import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
+import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
+import no.nav.syfo.integration.pdl.pdlLookupDegraded
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
+import org.slf4j.event.Level
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.sql.SQLException
+import javax.net.ssl.SSLHandshakeException
+import kotlin.coroutines.cancellation.CancellationException
+
+private val diagnosticTestEvent = applicationEvent<Unit>(
+    name = "diagnostic_test_failed",
+    level = Level.ERROR,
+    message = "Test failure",
+    upstream = "dialogporten",
+)
+
+class RuntimeDiagnosticsTest :
+    StringSpec({
+        "the production encoder keeps distinct transport causes without exception payloads" {
+            val cases = listOf(
+                UnknownHostException("person-12345678901.example") to "dns",
+                SocketTimeoutException("token-secret") to "timeout",
+                ConnectException("request-person-12345678901") to "connection",
+                SSLHandshakeException("upstream-body-canary") to "tls",
+                IllegalStateException("authorization-canary") to "unknown",
+            )
+            cases.forEach { (root, expectedKind) ->
+                val wrapped = IllegalStateException("request-body-canary", root)
+                withProductionLogger { logger ->
+                    captureLogs(logger, "stdout_json").use { capture ->
+                        logger.logEvent(diagnosticTestEvent, Unit, cause = wrapped)
+                        capture.records shouldHaveSize 1
+                        val json = capture.records.single()
+                        val record = jacksonObjectMapper().readTree(json)
+                        record["event_type"].asText() shouldBe "diagnostic_test_failed"
+                        record.has("operation") shouldBe false
+                        record.has("error_code") shouldBe false
+                        record["failure_kind"].asText() shouldBe expectedKind
+                        record["cause_type"].asText() shouldBe root.javaClass.simpleName
+                        record["cause_types"].size() shouldBe 2
+                        record["stack_trace"].asText() shouldContain root.javaClass.name
+                        record["upstream"].asText() shouldBe "dialogporten"
+                        record.has("outcome") shouldBe false
+                        record.has("failure_stage") shouldBe false
+                        record.has("upstream_status") shouldBe false
+                        listOf("12345678901", "token-secret", "upstream-body-canary", "authorization-canary", "request-body-canary")
+                            .forEach { json shouldNotContain it }
+                    }
+                }
+            }
+        }
+
+        "upstream metadata overrides throwable metadata without changing classification or cause types" {
+            val failure = UpstreamFailure(
+                UpstreamName("texas"),
+                UpstreamFailureStage.TOKEN_EXCHANGE,
+                503,
+                SocketTimeoutException("private-canary"),
+            )
+            val wrapped = ApiErrorException.InternalServerErrorException(cause = failure.cause)
+            val diagnostics = wrapped.failureDiagnostics(failure)
+            diagnostics.upstream shouldBe "texas"
+            diagnostics.failureStage shouldBe "token_exchange"
+            diagnostics.upstreamStatus shouldBe 503
+            diagnostics.failureKind shouldBe "timeout"
+            diagnostics.exceptionType shouldBe "ApiErrorException\$InternalServerErrorException"
+            diagnostics.causeType shouldBe "SocketTimeoutException"
+            failure.failureDiagnostics().exceptionType shouldBe "SocketTimeoutException"
+            listOf<Int?>(null, 42, 600).forEach { status ->
+                failure.copy(status = status).failureDiagnostics().upstreamStatus shouldBe null
+            }
+        }
+
+        "both logEvent overloads use the upstream failure cause when no explicit cause is given" {
+            val failure = UpstreamFailure(
+                UpstreamName("aareg"),
+                UpstreamFailureStage.REQUEST,
+                null,
+                ConnectException("private-canary"),
+            )
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
+                    createLogger(logger).logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
+                    RuntimeLogContract.forEvents(
+                        diagnosticTestEvent,
+                        exceptionTypes = setOf("ConnectException"),
+                    ).assertValid(capture.records, expectedCount = 2)
+                    capture.records.forEach { serialized ->
+                        serialized shouldNotContain "private-canary"
+                        val record = jacksonObjectMapper().readTree(serialized)
+                        record["upstream"].asText() shouldBe "aareg"
+                        record["failure_stage"].asText() shouldBe "request"
+                        record.has("upstream_status") shouldBe false
+                        record["cause_type"].asText() shouldBe "ConnectException"
+                        record["failure_kind"].asText() shouldBe "connection"
+                    }
+                }
+            }
+        }
+
+        "error responses log upstream_errors without exception metadata or stack through both overloads" {
+            val failure = UpstreamFailure(
+                UpstreamName("pdl"),
+                UpstreamFailureStage.RESPONSE,
+                200,
+                errors = listOf(UpstreamError("server_error", "technical_id", "hentPerson.navn", "Ukjent problem oppsto"), UpstreamError("unknown")),
+            )
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(diagnosticTestEvent, Unit, upstreamFailure = failure)
+                    createLogger(logger).logEvent(
+                        diagnosticTestEvent,
+                        Unit,
+                        cause = ApiErrorException.InternalServerErrorException("private-canary"),
+                        upstreamFailure = failure,
+                    )
+                    RuntimeLogContract.forEvents(diagnosticTestEvent).assertValid(capture.records, expectedCount = 2)
+                    capture.records.forEach { serialized ->
+                        serialized shouldNotContain "private-canary"
+                        val record = jacksonObjectMapper().readTree(serialized)
+                        record["failure_kind"].asText() shouldBe "error_response"
+                        record["upstream"].asText() shouldBe "pdl"
+                        record["failure_stage"].asText() shouldBe "response"
+                        record["upstream_status"].asInt() shouldBe 200
+                        record["upstream_errors"][0]["code"].asText() shouldBe "server_error"
+                        record["upstream_errors"][0]["detail"].asText() shouldBe "technical_id"
+                        record["upstream_errors"][0]["path"].asText() shouldBe "hentPerson.navn"
+                        record["upstream_errors"][0]["message"].asText() shouldBe "Ukjent problem oppsto"
+                        record["upstream_errors"].size() shouldBe 2
+                        record.has("stack_trace") shouldBe false
+                        record.has("exception_type") shouldBe false
+                        record.has("cause_type") shouldBe false
+                    }
+                }
+            }
+        }
+
+        "cause traversal terminates on cycles and retains the real origin" {
+            val first = IllegalStateException("first")
+            val second = ConnectException("second")
+            first.initCause(second)
+            second.initCause(first)
+            val diagnostic = first.failureDiagnostics()
+            diagnostic.causeTypes shouldBe listOf("IllegalStateException", "ConnectException")
+            diagnostic.failureKind shouldBe "connection"
+        }
+
+        "unsafe exception type names use the contract-valid fallback" {
+            val diagnostic = object : Throwable("private-canary") {}.failureDiagnostics()
+            diagnostic.exceptionType shouldBe "Exception"
+            diagnostic.causeType shouldBe "Exception"
+            diagnostic.causeTypes shouldBe listOf("Throwable")
+        }
+
+        "nested and anonymous failures use valid superclass categories without changing cause_types" {
+            class OddFailure : RuntimeException()
+
+            val diagnostic = OddFailure().apply {
+                initCause(object : IllegalStateException("private-canary") {})
+            }.failureDiagnostics()
+
+            diagnostic.exceptionType shouldBe "RuntimeException"
+            diagnostic.causeType shouldBe "IllegalStateException"
+            diagnostic.causeTypes shouldBe listOf("OddFailure", "Throwable")
+        }
+
+        "nested exception classes keep their contract-valid binary name" {
+            val diagnostic = ApiErrorException.InternalServerErrorException("private-canary").failureDiagnostics()
+
+            diagnostic.exceptionType shouldBe "ApiErrorException\$InternalServerErrorException"
+            diagnostic.causeType shouldBe "ApiErrorException\$InternalServerErrorException"
+            diagnostic.causeTypes shouldBe listOf("InternalServerErrorException")
+        }
+
+        "out-of-range Ktor response statuses are omitted without changing HTTP classification" {
+            HttpClient(MockEngine { respond("private-canary", HttpStatusCode(42, "Unknown")) }).use { client ->
+                val failure = ClientRequestException(client.get("https://upstream.test/"), "private-canary")
+                withProductionLogger { logger ->
+                    captureLogs(logger, "stdout_json").use { capture ->
+                        logger.logEvent(diagnosticTestEvent, Unit, cause = failure)
+                        val serialized = capture.records.single()
+                        val record = jacksonObjectMapper().readTree(serialized)
+                        record.has("upstream_status") shouldBe false
+                        record["failure_kind"].asText() shouldBe "http"
+                        record["exception_type"].asText() shouldBe "ClientRequestException"
+                        serialized shouldNotContain "private-canary"
+                    }
+                }
+            }
+        }
+
+        "diagnostics never throw for wrapped cancellation" {
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(diagnosticTestEvent, Unit, cause = IllegalStateException(CancellationException("cancelled")))
+                    capture.records shouldHaveSize 1
+                }
+            }
+        }
+
+        "fatal errors retain their class but never their message or cause payload" {
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(diagnosticTestEvent, Unit, cause = LinkageError("private-canary", IllegalStateException("payload-canary")))
+                    val record = jacksonObjectMapper().readTree(capture.records.single())
+                    record["exception_type"].asText() shouldBe "LinkageError"
+                    record["cause_type"].asText() shouldBe "IllegalStateException"
+                    capture.records.single() shouldNotContain "private-canary"
+                    capture.records.single() shouldNotContain "payload-canary"
+                }
+            }
+        }
+
+        "PDL GraphQL errors retain approved structured diagnostics with the production encoder" {
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(
+                        pdlLookupDegraded,
+                        PdlLookupDegradedDetails(
+                            reason = PdlLookupDegradedReason.GRAPHQL_ERRORS,
+                            pdlErrors = listOf(UpstreamError("not_found", "ugyldig_ident", "hentPersonBolk.navn", "Fant ikke person")),
+                            errorCount = 1,
+                        ),
+                    )
+                    RuntimeLogContract.forEvents(pdlLookupDegraded).assertValid(capture.records, expectedCount = 1)
+                    val record = jacksonObjectMapper().readTree(capture.records.single())
+                    record["event_type"].asText() shouldBe "pdl_lookup_degraded"
+                    record["reason"].asText() shouldBe "GRAPHQL_ERRORS"
+                    record["error_count"].asInt() shouldBe 1
+                    record["pdl_errors"][0]["code"].asText() shouldBe "not_found"
+                    record["pdl_errors"][0]["detail"].asText() shouldBe "ugyldig_ident"
+                    record["pdl_errors"][0]["path"].asText() shouldBe "hentPersonBolk.navn"
+                    record["pdl_errors"][0]["message"].asText() shouldBe "Fant ikke person"
+                    record["pdl_errors"][0].fieldNames().asSequence().toSet() shouldBe setOf("code", "detail", "path", "message")
+                }
+            }
+        }
+        "database SQL state remains actionable" {
+            withProductionLogger { logger ->
+                captureLogs(logger, "stdout_json").use { capture ->
+                    logger.logEvent(diagnosticTestEvent, Unit, cause = SQLException("person-payload-canary", "23505"))
+                    val database = jacksonObjectMapper().readTree(capture.records[0])
+                    database["sql_state"].asText() shouldBe "23505"
+                    capture.records[0] shouldNotContain "person-payload-canary"
+                }
+            }
+        }
+    })
+
+private fun withProductionLogger(test: (ch.qos.logback.classic.Logger) -> Unit) {
+    val context = LoggerContext().apply { mdcAdapter = LogbackMDCAdapter() }
+    try {
+        context.putProperty("NAIS_CLUSTER_NAME", "test")
+        JoranConfigurator().apply {
+            this.context = context
+            doConfigure("src/main/resources/logback.xml")
+        }
+        test(context.getLogger("runtime-diagnostics-test"))
+    } finally {
+        context.stop()
+    }
+}

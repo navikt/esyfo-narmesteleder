@@ -8,9 +8,6 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
-import no.nav.syfo.application.api.API_V1_PATH
-import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.api.installApiPlugins
 
 class ApiRoutesTest :
     FunSpec({

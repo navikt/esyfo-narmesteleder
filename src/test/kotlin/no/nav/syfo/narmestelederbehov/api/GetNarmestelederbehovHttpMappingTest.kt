@@ -3,8 +3,6 @@ package no.nav.syfo.narmestelederbehov.api
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
@@ -15,6 +13,8 @@ import no.nav.syfo.narmestelederbehov.application.narmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
 
 class GetNarmestelederbehovHttpMappingTest :
     FunSpec({

@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon
 
-import no.nav.syfo.application.environment.Environment
+import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookup

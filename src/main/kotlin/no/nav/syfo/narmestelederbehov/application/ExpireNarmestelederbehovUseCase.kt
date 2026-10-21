@@ -2,7 +2,7 @@ package no.nav.syfo.narmestelederbehov.application
 
 import kotlinx.coroutines.delay
 import no.nav.esyfo.observability.Event
-import no.nav.syfo.logging.applicationLogger
+import no.nav.syfo.platform.observability.applicationLogger
 import org.slf4j.event.Level
 import java.time.Clock
 import java.time.LocalDate

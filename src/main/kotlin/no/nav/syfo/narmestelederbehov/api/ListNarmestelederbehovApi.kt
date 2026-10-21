@@ -6,10 +6,10 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
-import no.nav.syfo.application.api.API_V1_PATH
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
-import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.api.API_V1_PATH
+import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val NARMESTELEDERBEHOV_PATH = "/linemanager/requirement"
 

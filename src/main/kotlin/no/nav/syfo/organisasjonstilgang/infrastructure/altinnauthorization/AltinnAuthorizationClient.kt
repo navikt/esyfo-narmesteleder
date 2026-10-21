@@ -8,14 +8,14 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
+import no.nav.syfo.platform.auth.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
-import no.nav.syfo.texas.AltinnTokenProvider
-import no.nav.syfo.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
 import kotlin.coroutines.cancellation.CancellationException
 
 internal val ALTINN_PDP = UpstreamName("altinn-pdp")

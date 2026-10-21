@@ -3,13 +3,13 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.application.ClaimedCheckOutcome
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckMetrics
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentComparisonResult
 import no.nav.syfo.narmestelederrelasjon.application.SourceObservationOutcome
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import java.util.concurrent.atomic.AtomicReference
 
 const val EMPLOYMENT_CHECK_TOTAL = "${METRICS_NS}_employment_check_total"

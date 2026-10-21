@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import no.nav.esyfo.observability.Event
-import no.nav.syfo.logging.applicationEvent
+import no.nav.syfo.platform.observability.applicationEvent
 import org.slf4j.event.Level
 
 internal val fulfillmentCompleted = Event<FulfillNarmestelederbehovResult.Fulfilled>(

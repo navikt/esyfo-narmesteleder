@@ -1,8 +1,8 @@
 package no.nav.syfo.narmestelederrelasjon.observability
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 const val EMPLOYEE_LINEMANAGER_TOTAL = "${METRICS_NS}_employee_linemanager_total"
 private const val FILTERED_TAG = "filtered"

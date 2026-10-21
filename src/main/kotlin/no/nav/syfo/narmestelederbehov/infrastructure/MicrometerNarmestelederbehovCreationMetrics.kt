@@ -2,9 +2,9 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationMetrics
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 const val CREATE_BEHOV_SKIPPED_NO_SICKLEAVE = "${METRICS_NS}_create_behov_skipped_no_active_sickleave"
 const val CREATE_BEHOV_SKIPPED_HAS_PRE_EXISTING = "${METRICS_NS}_create_behov_skipped_has_pre_existing"

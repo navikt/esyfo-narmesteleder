@@ -1,12 +1,12 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.upstream.UpstreamFailure
 
 data class BehovPersonName(val firstName: String, val middleName: String?, val lastName: String)

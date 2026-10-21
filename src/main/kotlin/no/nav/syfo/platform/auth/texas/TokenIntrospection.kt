@@ -1,0 +1,26 @@
+package no.nav.syfo.platform.auth.texas
+
+import kotlinx.coroutines.CancellationException
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+
+internal suspend fun introspectActiveToken(
+    client: TexasHttpClient,
+    issuer: String,
+    bearerToken: String,
+): TexasIntrospectionResponse {
+    val introspectionResponse = try {
+        client.introspectToken(issuer, bearerToken)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        throw ApiErrorException.InternalServerErrorException(cause = e)
+    }
+
+    if (!introspectionResponse.active) {
+        throw ApiErrorException.UnauthorizedException("Token is not active")
+    }
+
+    return introspectionResponse
+}

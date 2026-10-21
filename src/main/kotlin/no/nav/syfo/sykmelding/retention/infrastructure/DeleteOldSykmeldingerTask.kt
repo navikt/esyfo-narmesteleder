@@ -1,6 +1,6 @@
 package no.nav.syfo.sykmelding.retention.infrastructure
 
-import no.nav.syfo.application.task.ScheduledLeaderTask
+import no.nav.syfo.platform.scheduling.ScheduledLeaderTask
 import no.nav.syfo.sykmelding.retention.application.DeleteOldSykmeldinger
 import kotlin.time.Duration
 

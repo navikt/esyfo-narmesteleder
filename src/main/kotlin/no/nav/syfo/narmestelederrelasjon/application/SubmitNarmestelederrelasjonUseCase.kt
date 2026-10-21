@@ -1,8 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactNormalization
 import no.nav.syfo.narmestelederrelasjon.domain.NormalizedManagerContact
@@ -13,6 +11,8 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
+import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
 
 class SubmitNarmestelederrelasjonUseCase(
     private val organizationAccess: OrganizationAccess,

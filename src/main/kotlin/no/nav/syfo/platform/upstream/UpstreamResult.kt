@@ -1,7 +1,5 @@
 package no.nav.syfo.platform.upstream
 
-import no.nav.syfo.application.exception.UpstreamRequestException
-
 sealed interface UpstreamResult<out T> {
     data class Success<out T>(val value: T) : UpstreamResult<T>
     data class Failure(val failure: UpstreamFailure) : UpstreamResult<Nothing>

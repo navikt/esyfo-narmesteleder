@@ -22,10 +22,10 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
-import no.nav.syfo.texas.client.AuthorizationDetail
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.client.AuthorizationDetail
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
 import java.util.UUID
 
 internal const val TOKEN_X_ISSUER = "https://tokenx.example.com"

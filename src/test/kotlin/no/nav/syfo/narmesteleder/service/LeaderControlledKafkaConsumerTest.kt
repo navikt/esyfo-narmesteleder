@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import no.nav.syfo.application.kafka.KafkaListener
+import no.nav.syfo.platform.kafka.KafkaListener
 
 class LeaderControlledKafkaConsumerTest :
     DescribeSpec({

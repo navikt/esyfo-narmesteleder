@@ -3,7 +3,7 @@ package no.nav.syfo.integration.ereg
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.syfo.util.JsonFixtureLoader
+import no.nav.syfo.platform.local.JsonFixtureLoader
 
 class OrganisasjonTest :
     FunSpec({

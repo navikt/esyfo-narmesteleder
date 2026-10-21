@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederbehov
 
-import no.nav.syfo.application.environment.Environment
+import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederbehov.api.narmestelederbehovApiUrl
 import no.nav.syfo.narmestelederbehov.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.application.CompleteFulfilledNarmestelederbehovDialogsUseCase

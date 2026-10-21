@@ -21,9 +21,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import linemanager
-import no.nav.syfo.application.api.ApiError
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
@@ -42,15 +39,18 @@ import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.api.ApiError
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasIntrospectionResponse
 
 private val organization = OrganizationNumber("123456789")
 
@@ -287,7 +287,7 @@ private class SubmitFixture(
     fun authorize(
         provider: String,
         acr: String = "Level4",
-        scope: String = no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE,
+        scope: String = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
     ) {
         if (provider == "tokenx") {
             coEvery { texas.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(active = true, acr = acr, pid = "11223344556")
@@ -297,7 +297,7 @@ private class SubmitFixture(
                 scope = scope,
                 consumer = DefaultOrganization,
                 authorizationDetails = listOf(
-                    no.nav.syfo.texas.client.AuthorizationDetail(
+                    no.nav.syfo.platform.auth.texas.client.AuthorizationDetail(
                         type = "urn:altinn:systemuser",
                         systemuserOrg = DefaultOrganization,
                         systemuserId = listOf("some-user-id"),

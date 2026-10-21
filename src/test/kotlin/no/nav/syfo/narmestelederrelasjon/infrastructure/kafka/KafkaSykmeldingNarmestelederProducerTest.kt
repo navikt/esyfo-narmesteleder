@@ -7,9 +7,9 @@ import io.kotest.matchers.date.shouldBeAfter
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import linemanager
-import no.nav.syfo.application.kafka.JacksonKafkaSerializer
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.KafkaSykmeldingNarmestelederProducer.Companion.SYKEMELDING_NL_TOPIC
+import no.nav.syfo.platform.kafka.JacksonKafkaSerializer
 import org.apache.kafka.common.serialization.Serializer
 import java.time.OffsetDateTime
 import java.time.ZoneOffset

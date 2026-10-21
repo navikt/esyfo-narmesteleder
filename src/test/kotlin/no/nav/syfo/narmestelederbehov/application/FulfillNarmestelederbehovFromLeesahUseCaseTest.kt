@@ -17,6 +17,7 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import org.slf4j.LoggerFactory
+import java.time.Instant
 import java.util.UUID
 
 class FulfillNarmestelederbehovFromLeesahUseCaseTest :
@@ -144,6 +145,7 @@ private class LeesahBehovRepository(
     private val missing: Set<NarmestelederbehovId> = emptySet(),
     private val fulfillFailure: Throwable? = null,
 ) : NarmestelederbehovRepository {
+    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
     override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
     var requestedEmployee: Employee? = null

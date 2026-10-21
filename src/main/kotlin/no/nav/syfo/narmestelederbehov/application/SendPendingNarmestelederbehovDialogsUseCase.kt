@@ -6,7 +6,6 @@ import no.nav.syfo.logging.logEvent
 import java.time.Clock
 
 class SendPendingNarmestelederbehovDialogsUseCase(
-    private val pendingRepository: PendingNarmestelederbehovRepository,
     private val repository: NarmestelederbehovRepository,
     private val personLookup: EmployeePersonLookup,
     private val dialog: NarmestelederbehovDialogCreation,
@@ -15,7 +14,7 @@ class SendPendingNarmestelederbehovDialogsUseCase(
     suspend fun execute() {
         var batchNum = 0
         do {
-            val batch = pendingRepository.findPendingDialogs(clock.instant().minusSeconds(10), BATCH_SIZE)
+            val batch = repository.findPendingDialogs(clock.instant().minusSeconds(10), BATCH_SIZE)
             logger.info("Batch: ${++batchNum}: Found ${batch.size} behov to send to dialogporten. First created at ${batch.firstOrNull()?.created ?: "N/A"}")
             for (behov in batch) {
                 send(behov)

@@ -10,6 +10,7 @@ import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelas
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
+import java.time.Instant
 import java.util.UUID
 
 internal class FakeBehovRepository(
@@ -20,6 +21,7 @@ internal class FakeBehovRepository(
     private val dialogStatusFailure: Throwable? = null,
     private val dialogStatusResult: MarkDialogCompletedResult = MarkDialogCompletedResult.Marked,
 ) : NarmestelederbehovRepository {
+    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
     override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
     override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = null

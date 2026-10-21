@@ -22,6 +22,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DIALOGP
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import org.slf4j.LoggerFactory
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -70,6 +71,7 @@ class CreateNarmestelederbehovUseCaseTest :
             val dialogs = mutableListOf<Triple<NarmestelederbehovId, Employee, EmployeePerson?>>()
             val markedDialogs = mutableListOf<Triple<NarmestelederbehovId, UUID, BehovPersonName?>>()
             val repository = object : NarmestelederbehovRepository {
+                override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
                 override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
                 override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
                 override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")

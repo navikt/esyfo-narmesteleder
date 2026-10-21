@@ -18,6 +18,7 @@ import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
+import java.time.Instant
 import java.util.UUID
 
 class GetNarmestelederbehovUseCaseTest :
@@ -111,6 +112,7 @@ private class ReadFixture(
     var person: BehovPersonName? = null
     val savedNames = mutableListOf<BehovPersonName>()
     private val repository = object : NarmestelederbehovRepository {
+        override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
         override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
         override suspend fun findDetails(id: NarmestelederbehovId) = row.also { effects += "read" }

@@ -188,8 +188,12 @@ class SendPendingNarmestelederbehovDialogsUseCaseTest :
         listOf("create", "mark").forEach { step ->
             test("unexpected $step exceptions log CREATE and continue the batch") {
                 val fixture = SendDialogsFixture(listOf(pendingDialog(), pendingDialog(2)))
-                if (step == "create") fixture.create = { throw IllegalStateException("private-diagnostic-canary") }
-                if (step == "mark") fixture.mark = { throw IllegalStateException("private-diagnostic-canary") }
+                if (step == "create") {
+                    fixture.create = { throw IllegalStateException("private-diagnostic-canary") }
+                }
+                if (step == "mark") {
+                    fixture.mark = { throw IllegalStateException("private-diagnostic-canary") }
+                }
 
                 logs.capture().use { capture ->
                     fixture.useCase.execute()
@@ -258,6 +262,11 @@ internal class SendDialogsFixture(batch: List<PendingNarmestelederbehovDialog>) 
     var mark: suspend () -> MarkDialogCreatedResult = { markResult }
     var fetch: suspend (Int) -> List<PendingNarmestelederbehovDialog> = { pending.take(100) }
     private val repository = object : NarmestelederbehovRepository {
+        override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> {
+            queries += createdBefore to limit
+            return fetch(queries.size)
+        }
+
         override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
         override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
         override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")
@@ -275,10 +284,6 @@ internal class SendDialogsFixture(batch: List<PendingNarmestelederbehovDialog>) 
         }
     }
     val useCase = SendPendingNarmestelederbehovDialogsUseCase(
-        pendingRepository = { createdBefore, limit ->
-            queries += createdBefore to limit
-            fetch(queries.size)
-        },
         repository = repository,
         personLookup = {
             effects += "person"

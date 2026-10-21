@@ -60,6 +60,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.texas.client.TexasHttpClient
+import java.time.Instant
 import java.util.UUID
 
 class FulfillNarmestelederbehovRouteTest :
@@ -337,6 +338,7 @@ private class PutFixture {
 }
 
 private class FakePutBehovRepository : NarmestelederbehovRepository {
+    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
     override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
     private val behov = mutableMapOf<NarmestelederbehovId, Narmestelederbehov>()

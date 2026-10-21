@@ -175,7 +175,7 @@ private class ListFixture(
         },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
-            EmployeeNameLookup {
+            EmployeeNameLookup { it ->
                 effects += "person"
                 lookedUp += it
                 unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }

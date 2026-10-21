@@ -117,7 +117,7 @@ class AltinnAuthorizationClientTest :
                             """{"Response":[{"Decision":"Indeterminate","Status":{"StatusMessage":"private-exception-message","StatusDetails":["private-details"],"StatusCode":{"Value":${statusCode?.let { "\"$it\"" }},"StatusCode":{"Value":"private-nested-code"}}}}]}""",
                         )
                     }
-                }.use { it ->
+                }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_PDP

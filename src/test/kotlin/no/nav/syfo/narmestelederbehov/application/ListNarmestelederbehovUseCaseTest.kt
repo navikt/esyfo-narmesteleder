@@ -174,18 +174,12 @@ private class ListFixture(
         },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
-        ) { it ->
+        ) { ident ->
             effects += "person"
-            lookedUp += it
+            lookedUp += ident
             unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
                 ?: if (personFound) {
-                    EmployeeNameLookupResult.Found(
-                        BehovPersonName(
-                            "Looked",
-                            null,
-                            "Up"
-                        )
-                    )
+                    EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up"))
                 } else {
                     EmployeeNameLookupResult.NotFound
                 }

@@ -13,7 +13,7 @@ import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH

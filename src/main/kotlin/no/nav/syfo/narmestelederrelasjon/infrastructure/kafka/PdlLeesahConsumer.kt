@@ -9,8 +9,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.person.pdl.leesah.Personhendelse
-import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult
-import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonNameUpdateResult
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.emitPersonUpdateMetrics
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.KafkaEventConsumer

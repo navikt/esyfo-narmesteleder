@@ -14,7 +14,7 @@ import no.nav.syfo.integration.aareg.Ident
 import no.nav.syfo.integration.aareg.IdentType
 import no.nav.syfo.integration.aareg.Opplysningspliktig
 import no.nav.syfo.integration.aareg.OpplysningspliktigType
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentHistoryResult
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentHistoryResult
 import no.nav.syfo.narmestelederrelasjon.domain.Employment
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage

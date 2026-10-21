@@ -9,7 +9,7 @@ import io.kotest.matchers.shouldBe
 import io.ktor.http.HttpStatusCode
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason

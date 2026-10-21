@@ -5,11 +5,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.ClaimedEmploymentCheck
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckOutcome
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentCheckStats
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentReconciliationRepository
-import no.nav.syfo.narmestelederrelasjon.application.SOURCE_OBSERVATION_WINDOW
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.ClaimedEmploymentCheck
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckOutcome
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckStats
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentReconciliationRepository
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.SOURCE_OBSERVATION_WINDOW
 import org.jetbrains.exposed.v1.core.Coalesce
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression

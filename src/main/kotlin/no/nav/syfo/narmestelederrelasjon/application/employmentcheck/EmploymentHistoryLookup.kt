@@ -1,0 +1,15 @@
+package no.nav.syfo.narmestelederrelasjon.application.employmentcheck
+
+import no.nav.syfo.ident.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederrelasjon.domain.Employment
+import no.nav.syfo.platform.upstream.UpstreamFailure
+
+fun interface EmploymentHistoryLookup {
+    suspend fun findEmploymentHistory(personIdent: PersonalIdentificationNumber): EmploymentHistoryResult
+}
+
+sealed interface EmploymentHistoryResult {
+    data class Found(val employments: List<Employment>) : EmploymentHistoryResult
+
+    data class Unavailable(val failure: UpstreamFailure) : EmploymentHistoryResult
+}

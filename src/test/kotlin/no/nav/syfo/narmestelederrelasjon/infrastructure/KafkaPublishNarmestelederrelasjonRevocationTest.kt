@@ -7,7 +7,7 @@ import kotlinx.coroutines.test.runTest
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
-import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevocationInitiator
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource

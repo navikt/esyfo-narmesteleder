@@ -16,7 +16,7 @@ import io.ktor.http.HttpStatusCode
 import io.mockk.coEvery
 import io.mockk.coVerify
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.narmestelederrelasjon.application.OrganizationNameResult
+import no.nav.syfo.narmestelederrelasjon.application.get.OrganizationNameResult
 import no.nav.syfo.narmestelederrelasjon.observability.GET_NARMESTELEDERRELASJON_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult

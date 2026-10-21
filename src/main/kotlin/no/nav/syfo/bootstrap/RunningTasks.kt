@@ -12,8 +12,8 @@ import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmestelederbehov.infrastructure.kafka.NlBehovLeesahHandler
-import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
-import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
+import no.nav.syfo.narmestelederrelasjon.application.leesah.PersistNarmestelederrelasjonerFromLeesahUseCase
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PersistNarmestelederRegisterFromLeesahConsumer

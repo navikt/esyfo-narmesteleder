@@ -5,8 +5,8 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AaregArbeidsforholdOversikt
 import no.nav.syfo.integration.aareg.AaregClient
 import no.nav.syfo.integration.aareg.ArbeidsstedType
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentHistoryLookup
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentHistoryResult
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentHistoryLookup
+import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentHistoryResult
 import no.nav.syfo.narmestelederrelasjon.domain.Employment
 import no.nav.syfo.platform.upstream.UpstreamResult
 

@@ -11,9 +11,9 @@ import no.nav.syfo.integration.pdl.PdlLookupDegradedDetails
 import no.nav.syfo.integration.pdl.PdlLookupDegradedReason
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
 import no.nav.syfo.integration.pdl.toUpstreamError
-import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookup
-import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult
-import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.BulkPersonLookup
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.BulkPersonLookupResult
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RegisteredPerson
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 import no.nav.syfo.platform.upstream.UpstreamFailure

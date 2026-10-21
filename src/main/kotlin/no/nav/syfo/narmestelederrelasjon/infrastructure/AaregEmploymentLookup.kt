@@ -3,8 +3,8 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AaregClient
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentLookup
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentLookup
+import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
 import no.nav.syfo.platform.upstream.UpstreamResult
 
 class AaregEmploymentLookup(private val client: AaregClient) : EmploymentLookup {

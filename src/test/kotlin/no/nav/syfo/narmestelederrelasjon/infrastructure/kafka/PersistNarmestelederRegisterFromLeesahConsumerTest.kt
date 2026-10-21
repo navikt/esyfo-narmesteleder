@@ -12,11 +12,11 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
-import no.nav.syfo.narmestelederrelasjon.application.RecordingLeesahNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.RecordingNarmestelederRegisterMetrics
-import no.nav.syfo.narmestelederrelasjon.application.validated
+import no.nav.syfo.narmestelederrelasjon.application.leesah.LeesahNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.leesah.PersistNarmestelederrelasjonerFromLeesahUseCase
+import no.nav.syfo.narmestelederrelasjon.application.leesah.RecordingLeesahNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.leesah.RecordingNarmestelederRegisterMetrics
+import no.nav.syfo.narmestelederrelasjon.application.leesah.validated
 import no.nav.syfo.platform.kafka.jacksonMapper
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecord

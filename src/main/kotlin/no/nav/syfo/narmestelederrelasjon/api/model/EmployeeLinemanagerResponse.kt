@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.api.model
 
-import no.nav.syfo.narmestelederrelasjon.application.EmployeeNarmesteleder
+import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmesteleder
 import java.time.Instant
 import java.util.UUID
 

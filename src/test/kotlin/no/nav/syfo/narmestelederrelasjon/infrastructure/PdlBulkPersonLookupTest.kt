@@ -22,9 +22,9 @@ import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.integration.pdl.PersonBolkResponseData
 import no.nav.syfo.integration.pdl.ResponseError
 import no.nav.syfo.integration.pdl.pdlLookupDegraded
-import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult.Found
-import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult.NotFound
-import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.BulkPersonLookupResult.Found
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.BulkPersonLookupResult.NotFound
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RegisteredPerson
 import no.nav.syfo.platform.observability.withProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure

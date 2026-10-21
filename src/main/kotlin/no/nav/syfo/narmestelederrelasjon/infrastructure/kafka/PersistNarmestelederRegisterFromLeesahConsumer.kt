@@ -10,8 +10,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjonRecord
-import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
+import no.nav.syfo.narmestelederrelasjon.application.leesah.LeesahNarmestelederrelasjonRecord
+import no.nav.syfo.narmestelederrelasjon.application.leesah.PersistNarmestelederrelasjonerFromLeesahUseCase
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.KafkaEventConsumer
 import no.nav.syfo.platform.kafka.KafkaEventLogger

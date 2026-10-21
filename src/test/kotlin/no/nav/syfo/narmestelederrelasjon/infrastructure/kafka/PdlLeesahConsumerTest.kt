@@ -25,8 +25,8 @@ import no.nav.person.pdl.leesah.Endringstype
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.person.pdl.leesah.navn.Navn
 import no.nav.person.pdl.leesah.navn.OriginaltNavn
-import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult
-import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonNameUpdateResult
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerRelationPersonNameUpdateMetrics.Companion.RESULT_NOT_FOUND_IN_REGISTER
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerRelationPersonNameUpdateMetrics.Companion.RESULT_PDL_NOT_FOUND
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerRelationPersonNameUpdateMetrics.Companion.RESULT_UPDATED

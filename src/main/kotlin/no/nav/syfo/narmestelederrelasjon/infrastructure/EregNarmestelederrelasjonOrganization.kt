@@ -2,8 +2,8 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.integration.ereg.EregClient
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
-import no.nav.syfo.narmestelederrelasjon.application.OrganizationNameResult
+import no.nav.syfo.narmestelederrelasjon.application.get.NarmestelederrelasjonOrganization
+import no.nav.syfo.narmestelederrelasjon.application.get.OrganizationNameResult
 import no.nav.syfo.platform.upstream.UpstreamResult
 
 class EregNarmestelederrelasjonOrganization(

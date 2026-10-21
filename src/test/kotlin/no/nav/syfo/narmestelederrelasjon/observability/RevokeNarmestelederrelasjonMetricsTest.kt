@@ -2,8 +2,8 @@ package no.nav.syfo.narmestelederrelasjon.observability
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonResult
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 class RevokeNarmestelederrelasjonMetricsTest :

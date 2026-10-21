@@ -6,8 +6,8 @@ import io.kotest.matchers.string.shouldNotContain
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmestelederrelasjonerUseCase
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.platform.api.STATUS_PAGES_LOGGER_NAME
 

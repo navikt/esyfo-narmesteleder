@@ -10,7 +10,7 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupRequest
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupResponse
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
-import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
+import no.nav.syfo.narmestelederrelasjon.application.lookup.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.COUNT_LOOKUP_NARMESTELEDER
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType

@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
-import no.nav.syfo.narmestelederrelasjon.application.LeesahNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.leesah.LeesahNarmestelederrelasjon
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID

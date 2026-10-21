@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederbehov.api
 
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.platform.api.ApiErrorException

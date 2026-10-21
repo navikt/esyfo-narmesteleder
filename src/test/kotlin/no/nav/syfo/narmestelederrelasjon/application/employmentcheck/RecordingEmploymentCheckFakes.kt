@@ -1,0 +1,78 @@
+package no.nav.syfo.narmestelederrelasjon.application.employmentcheck
+
+import no.nav.syfo.narmestelederrelasjon.application.leesah.validated
+import java.time.Instant
+import java.util.UUID
+import kotlin.time.Duration
+
+internal class RecordingEmploymentCheckMetrics : EmploymentCheckMetrics {
+    val checks = mutableListOf<ClaimedCheckOutcome>()
+    val comparisons = mutableListOf<EmploymentComparisonResult>()
+    val observations = mutableListOf<SourceObservationOutcome>()
+    val refreshed = mutableListOf<EmploymentCheckStats>()
+
+    override fun recordCheck(outcome: ClaimedCheckOutcome) {
+        checks += outcome
+    }
+
+    override fun recordComparison(result: EmploymentComparisonResult) {
+        comparisons += result
+    }
+
+    override fun recordObservation(outcome: SourceObservationOutcome) {
+        observations += outcome
+    }
+
+    override fun refresh(stats: EmploymentCheckStats) {
+        refreshed += stats
+    }
+}
+
+internal data class RecordedCompletion(
+    val claim: ClaimedEmploymentCheck,
+    val outcome: EmploymentCheckOutcome,
+    val nextCheck: Instant,
+    val now: Instant,
+)
+
+internal class RecordingEmploymentReconciliationRepository : EmploymentReconciliationRepository {
+    var claims = emptyList<ClaimedEmploymentCheck>()
+    var completeSucceeds = true
+    var claimStillValid = true
+    var revokeEnabledWhenClaiming: Boolean? = null
+    val validated = mutableListOf<ClaimedEmploymentCheck>()
+    val completed = mutableListOf<RecordedCompletion>()
+    val observed = mutableMapOf<UUID, Instant>()
+    var seeded = 0
+    val seedRequests = mutableListOf<Pair<Int, Instant>>()
+    var stats = EmploymentCheckStats(onlyShadowUnder31Days = 0, onlyShadow31DaysOrMore = 0, due = 0)
+
+    override suspend fun seedMissing(limit: Int, now: Instant): Int {
+        seedRequests += limit to now
+        return seeded
+    }
+
+    override suspend fun claimDue(limit: Int, lease: Duration, now: Instant, revokeEnabled: Boolean): List<ClaimedEmploymentCheck> {
+        revokeEnabledWhenClaiming = revokeEnabled
+        return claims
+    }
+
+    override suspend fun complete(
+        claim: ClaimedEmploymentCheck,
+        outcome: EmploymentCheckOutcome,
+        nextCheck: Instant,
+        now: Instant,
+    ): Boolean {
+        completed += RecordedCompletion(claim, outcome, nextCheck, now)
+        return completeSucceeds
+    }
+
+    override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean {
+        validated += claim
+        return claimStillValid
+    }
+
+    override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean = observed.putIfAbsent(narmesteLederId, revokedAt) == null
+
+    override suspend fun stats(now: Instant): EmploymentCheckStats = stats
+}

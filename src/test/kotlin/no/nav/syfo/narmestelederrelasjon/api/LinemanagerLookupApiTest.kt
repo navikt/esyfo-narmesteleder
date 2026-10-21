@@ -23,7 +23,7 @@ import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerLookupResponse
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerResponse
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.LookupActiveNarmestelederUseCase
+import no.nav.syfo.narmestelederrelasjon.application.lookup.LookupActiveNarmestelederUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.platform.api.ApiError

@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.RegisteredPerson
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RegisteredPerson
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.insert

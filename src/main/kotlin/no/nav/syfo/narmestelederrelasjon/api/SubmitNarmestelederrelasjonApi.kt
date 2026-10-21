@@ -7,11 +7,11 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
-import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
-import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonCommand
-import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
+import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
+import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonCommand
+import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.observability.countSubmittedNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.api.toForbiddenException

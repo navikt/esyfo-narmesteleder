@@ -1,8 +1,8 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateMetrics
-import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonNameUpdateMetrics
+import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonNameUpdateResult
 import no.nav.syfo.platform.observability.METRICS_NS
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 

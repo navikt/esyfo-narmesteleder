@@ -4,7 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
-import no.nav.syfo.narmestelederrelasjon.application.RevocationInitiator
+import no.nav.syfo.narmestelederrelasjon.application.revoke.RevocationInitiator
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer

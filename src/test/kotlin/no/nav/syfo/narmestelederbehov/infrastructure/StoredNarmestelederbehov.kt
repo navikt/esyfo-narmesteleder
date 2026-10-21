@@ -29,6 +29,7 @@ internal data class StoredNarmestelederbehov(
     val behovStatus: BehovStatus,
     val dialogId: UUID?,
     val avbruttNarmestelederId: UUID?,
+    val expiredInDialogporten: Instant?,
 )
 
 internal fun insertNarmestelederbehov(
@@ -44,6 +45,7 @@ internal fun insertNarmestelederbehov(
     dialogId: UUID? = null,
     avbruttNarmestelederId: UUID? = null,
     created: Instant = Instant.now(),
+    expiredInDialogporten: Instant? = null,
 ): StoredNarmestelederbehov = transaction(TestDB.exposedDatabase) {
     val id = UUID.randomUUID()
     val createdAt = OffsetDateTime.ofInstant(created, ZoneOffset.UTC)
@@ -62,6 +64,7 @@ internal fun insertNarmestelederbehov(
         it[NarmestelederbehovTable.behovStatus] = behovStatus
         it[NarmestelederbehovTable.dialogId] = dialogId
         it[NarmestelederbehovTable.avbruttNarmestelederId] = avbruttNarmestelederId
+        it[NarmestelederbehovTable.expiredInDialogporten] = expiredInDialogporten?.atOffset(ZoneOffset.UTC)
     }
     requireNotNull(selectStoredNarmestelederbehov(id))
 }
@@ -91,4 +94,5 @@ private fun ResultRow.toStoredNarmestelederbehov() = StoredNarmestelederbehov(
     behovStatus = this[NarmestelederbehovTable.behovStatus],
     dialogId = this[NarmestelederbehovTable.dialogId],
     avbruttNarmestelederId = this[NarmestelederbehovTable.avbruttNarmestelederId],
+    expiredInDialogporten = this[NarmestelederbehovTable.expiredInDialogporten]?.toInstant(),
 )

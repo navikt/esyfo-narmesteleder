@@ -18,6 +18,7 @@ import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.application.texas.TexasEnvironment
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
+import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederrelasjon.application.EstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -25,6 +26,7 @@ import no.nav.syfo.plugins.platformModule
 import no.nav.syfo.texas.client.TexasHttpClient
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
+import org.koin.ktor.ext.get
 import java.sql.Connection
 import java.time.Clock
 import java.time.Instant
@@ -38,6 +40,7 @@ class NarmestelederbehovModuleTest :
                 every { otherProperties.persistLeesahNlBehov } returns false
                 every { otherProperties.publicIngressUrl } returns "https://api.example.invalid"
                 every { otherProperties.frontendBaseUrl } returns "https://frontend.example.invalid"
+                every { otherProperties.updateDialogportenTaskProperties.pollingDelay } returns "7m"
             }
             val externalDependencies = module {
                 single { ApplicationState() }
@@ -56,6 +59,7 @@ class NarmestelederbehovModuleTest :
                 application {
                     platformModule(listOf(externalDependencies))
                     narmestelederbehovModule()
+                    get<UpdateDialogTask>() shouldNotBe null
                 }
 
                 val itemPath = "$NARMESTELEDERBEHOV_PATH/00000000-0000-0000-0000-000000000001"

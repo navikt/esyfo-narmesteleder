@@ -1,6 +1,5 @@
 package no.nav.syfo.plugins
 
-import no.nav.syfo.altinn.dialogporten.task.UpdateDialogTask
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTask
@@ -20,12 +19,6 @@ internal fun tasksModule() = module {
         DeleteOldSykmeldingerTask(
             deleteOldSykmeldinger = get(),
             interval = Duration.parse(env().otherProperties.maintenanceTaskDelay),
-        )
-    }
-    single {
-        UpdateDialogTask(
-            dialogportenService = get(),
-            pollingInterval = Duration.parse(env().otherProperties.updateDialogportenTaskProperties.pollingDelay),
         )
     }
     single {

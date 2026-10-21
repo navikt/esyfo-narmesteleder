@@ -4,7 +4,7 @@ import no.nav.syfo.logging.applicationEvent
 import org.slf4j.event.Level
 import java.util.UUID
 
-// Shared by behov dialog creation, scheduled sending and the remaining legacy update/expire flow.
+// Shared by behov dialog creation and scheduled sending, completion and expiry.
 
 internal enum class DialogAction {
     CREATE,

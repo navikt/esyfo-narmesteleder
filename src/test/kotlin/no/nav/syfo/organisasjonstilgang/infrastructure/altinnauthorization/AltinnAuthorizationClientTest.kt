@@ -86,13 +86,13 @@ class AltinnAuthorizationClientTest :
             "multiple permits" to """{"Response":[{"Decision":"Permit"},{"Decision":"Permit"}]}""",
         ).forEach { (name, body) ->
             test("PDP $name fails closed with response status") {
-                upstreamHttpClient(respondWithSystemToken, { request ->
+                upstreamHttpClient(respondWithSystemToken) { request ->
                     if (request.url.encodedPath.contains("exchange")) {
                         respondJson("\"${altinnTestToken(3600)}\"")
                     } else {
                         respondJson(body)
                     }
-                }).use {
+                }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
                     failure.upstream shouldBe ALTINN_PDP

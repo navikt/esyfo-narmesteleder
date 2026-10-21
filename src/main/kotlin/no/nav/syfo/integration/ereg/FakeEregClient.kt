@@ -25,8 +25,6 @@ class FakeEregClient(
         failureRef.set(failure)
     }
 
-    fun clearFailure() = failureRef.set(null)
-
     override suspend fun getOrganisasjon(
         orgnummer: String
     ): UpstreamResult<Organisasjon?> {

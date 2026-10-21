@@ -3,7 +3,6 @@ package no.nav.syfo.platform
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
-import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.platform.application.Step
 import java.lang.classfile.ClassFile
 import java.lang.classfile.constantpool.ClassEntry
@@ -44,4 +43,4 @@ private fun forbiddenReferences(bytes: ByteArray): List<String> = ClassFile.of()
     forbiddenType.findAll(value).map { it.value }.toList()
 }.distinct()
 
-private class BootstrapReferenceFixture(val environment: Environment)
+private class BootstrapReferenceFixture

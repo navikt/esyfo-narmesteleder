@@ -16,10 +16,6 @@ class TestAaregClient : AaregClient {
         failure = null
     }
 
-    fun setFailure(failure: UpstreamFailure) {
-        this.failure = failure
-    }
-
     override suspend fun getArbeidsforholdHistorikk(personIdent: String): UpstreamResult<AaregArbeidsforholdOversikt> = getArbeidsforhold(personIdent)
 
     override suspend fun getArbeidsforhold(

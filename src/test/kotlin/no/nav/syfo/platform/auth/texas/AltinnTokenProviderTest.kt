@@ -81,7 +81,7 @@ class AltinnTokenProviderTest :
 
         test("exchange cancellation is rethrown") {
             val cancelled = CancellationException("Cancelled")
-            upstreamHttpClient(respondWithSystemToken, { throw cancelled }).use {
+            upstreamHttpClient(respondWithSystemToken) { throw cancelled }.use {
                 shouldThrow<CancellationException> {
                     AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
                 }.message shouldBe cancelled.message
@@ -112,11 +112,11 @@ class AltinnTokenProviderTest :
                     texasCalls++
                     respondWithSystemToken(request)
                 }
-                upstreamHttpClient(tokenHandler, { request ->
+                upstreamHttpClient(tokenHandler) { request ->
                     request.url.encodedPath shouldBe "/authentication/api/v1/exchange/maskinporten"
                     exchanges++
                     respondJson("\"${if (exchanges == 1) initial else renewed}\"")
-                }).use {
+                }.use {
                     val provider = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test", clock)
                     provider.token("target").getOrThrow().accessToken shouldBe initial
                     val expected = if (secondsLeft > 300) initial else renewed
@@ -134,10 +134,10 @@ class AltinnTokenProviderTest :
         test("failed exchange is not cached") {
             var exchanges = 0
             val token = altinnTestToken(3600)
-            upstreamHttpClient(respondWithSystemToken, {
+            upstreamHttpClient(respondWithSystemToken) {
                 exchanges++
                 if (exchanges == 1) respondJson("invalid") else respondJson("\"$token\"")
-            }).use {
+            }.use {
                 val provider = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test")
                 provider.token("target").shouldBeInstanceOf<UpstreamResult.Failure>()
                 provider.token("target").getOrThrow().accessToken shouldBe token

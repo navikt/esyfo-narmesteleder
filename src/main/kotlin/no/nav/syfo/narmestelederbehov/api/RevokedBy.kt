@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.domain
+package no.nav.syfo.narmestelederbehov.api
 
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
 

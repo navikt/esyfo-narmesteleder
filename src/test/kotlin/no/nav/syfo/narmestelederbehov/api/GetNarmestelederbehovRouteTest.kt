@@ -13,9 +13,6 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.mockk
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
-import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult

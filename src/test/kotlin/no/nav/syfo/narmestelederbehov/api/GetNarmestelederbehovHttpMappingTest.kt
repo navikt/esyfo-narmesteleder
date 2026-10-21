@@ -5,8 +5,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
-import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
 import no.nav.syfo.narmestelederbehov.application.narmestelederbehovDetails

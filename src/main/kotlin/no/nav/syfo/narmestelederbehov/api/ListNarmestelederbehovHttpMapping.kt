@@ -1,11 +1,13 @@
 package no.nav.syfo.narmestelederbehov.api
 
 import io.ktor.server.routing.RoutingCall
-import no.nav.syfo.narmesteleder.api.v1.getRequiredOrganizationNumberQueryParameter
+import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovQuery
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovResult
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.api.getRequiredQueryParameter
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
 
@@ -32,3 +34,12 @@ fun ListNarmestelederbehovResult.toLinemanagerRequirementCollection(pageSize: In
     ListNarmestelederbehovResult.PersonNotFound ->
         throw ApiErrorException.InternalServerErrorException(errorMessage = "Internal server error")
 }
+
+private fun RoutingCall.getRequiredOrganizationNumberQueryParameter(name: String): OrganizationNumber = getRequiredQueryParameter(name)
+    .runCatching { OrganizationNumber(this) }
+    .getOrElse {
+        throw ApiErrorException.BadRequestException(
+            it.message ?: "Invalid organization number format for $name parameter",
+            type = ErrorType.INVALID_FORMAT
+        )
+    }

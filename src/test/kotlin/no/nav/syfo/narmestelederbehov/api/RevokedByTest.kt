@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.domain
+package no.nav.syfo.narmestelederbehov.api
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldBeNull

@@ -1,10 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
-import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
-import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
-import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
-import no.nav.syfo.narmesteleder.api.v1.COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
-import no.nav.syfo.platform.observability.logger
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import java.time.OffsetDateTime
@@ -68,6 +63,5 @@ class KafkaSykmeldingNarmestelederProducer(private val producer: Producer<String
 
     companion object {
         const val SYKEMELDING_NL_TOPIC = "teamsykmelding.syfo-narmesteleder"
-        private val logger = logger()
     }
 }

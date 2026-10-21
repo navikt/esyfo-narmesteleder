@@ -1,10 +1,6 @@
 package no.nav.syfo.narmestelederbehov.api
 
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
-import no.nav.syfo.narmesteleder.domain.Name
-import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails

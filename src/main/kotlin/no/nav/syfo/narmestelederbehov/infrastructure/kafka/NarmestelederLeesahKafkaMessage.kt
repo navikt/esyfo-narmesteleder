@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka.model
+package no.nav.syfo.narmestelederbehov.infrastructure.kafka
 
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import no.nav.syfo.ident.OrganizationNumber

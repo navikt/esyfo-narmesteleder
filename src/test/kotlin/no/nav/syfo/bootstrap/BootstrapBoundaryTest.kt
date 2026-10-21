@@ -2,6 +2,7 @@ package no.nav.syfo.bootstrap
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import java.lang.classfile.ClassFile
 import java.lang.classfile.constantpool.ClassEntry
 import java.lang.classfile.constantpool.Utf8Entry
@@ -12,7 +13,7 @@ class BootstrapBoundaryTest :
     StringSpec({
         "business modules receive small settings and never reference bootstrap" {
             val classes = Path.of(Environment::class.java.protectionDomain.codeSource.location.toURI())
-            val violations = businessPackages.flatMap { pkg ->
+            val violations = (businessPackages + "integration").flatMap { pkg ->
                 Files.walk(classes.resolve("no/nav/syfo/$pkg")).use { files ->
                     files.filter { it.toString().endsWith(".class") }
                         .toList()
@@ -22,16 +23,29 @@ class BootstrapBoundaryTest :
             }
             violations.shouldBeEmpty()
         }
+
+        "root packages are only business modules and supporting packages" {
+            val classes = Path.of(Environment::class.java.protectionDomain.codeSource.location.toURI())
+            val rootPackages = Files.list(classes.resolve("no/nav/syfo")).use { entries ->
+                entries.filter { Files.isDirectory(it) }.map { it.fileName.toString() }.toList()
+            }
+            rootPackages shouldContainExactlyInAnyOrder businessPackages + supportingPackages
+        }
     })
 
 private val businessPackages = listOf(
-    "narmesteleder",
     "narmestelederbehov",
     "narmestelederrelasjon",
     "narmestelederstatistikk",
     "organisasjonstilgang",
     "sykmelding",
+)
+
+private val supportingPackages = listOf(
+    "bootstrap",
+    "ident",
     "integration",
+    "platform",
 )
 
 private fun referencesBootstrap(bytes: ByteArray): Boolean = ClassFile.of().parse(bytes).constantPool().any { entry ->

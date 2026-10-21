@@ -5,11 +5,12 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
+import no.nav.syfo.narmestelederrelasjon.api.model.Manager
 import no.nav.syfo.platform.observability.logger
 import org.yaml.snakeyaml.Yaml
 import kotlin.reflect.full.memberProperties
+import no.nav.syfo.narmestelederbehov.api.Manager as FulfillmentManager
 
 class OpenApiLinemanagerSchemaTest :
     StringSpec({
@@ -59,8 +60,8 @@ class OpenApiLinemanagerSchemaTest :
             val managerProps =
                 (managerSchema!!["properties"] as Map<*, *>).keys.map { it as String }.toSet()
 
-            val managerKotlinProps = Manager::class.memberProperties.map { it.name }.toSet()
-
-            managerProps.shouldContainAll(managerKotlinProps)
+            listOf(Manager::class, FulfillmentManager::class).forEach { manager ->
+                managerProps.shouldContainAll(manager.memberProperties.map { it.name }.toSet())
+            }
         }
     })

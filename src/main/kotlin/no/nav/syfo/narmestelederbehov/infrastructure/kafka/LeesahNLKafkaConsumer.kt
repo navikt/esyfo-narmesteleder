@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederbehov.infrastructure.kafka
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -12,7 +12,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.platform.kafka.KafkaEventConsumer
@@ -21,13 +20,16 @@ import no.nav.syfo.platform.kafka.KafkaListener
 import no.nav.syfo.platform.kafka.KafkaReason
 import no.nav.syfo.platform.kafka.kafkaConsumerCrashed
 import no.nav.syfo.platform.kafka.kafkaConsumerFailed
+import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
 import no.nav.syfo.platform.observability.rethrowCancellation
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
-import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.time.Duration
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
@@ -39,6 +41,14 @@ internal class LeesahRecordProcessingException(
 ) : RuntimeException("Leesah record processing failed", cause)
 
 const val TEAMSYKMELDING_NL_LEESAH_TOPIC = "teamsykmelding.syfo-narmesteleder-leesah"
+
+private val behovFulfillmentSkippedInvalidEmployee = applicationEvent<String>(
+    name = "nl_behov_fulfillment_skipped_invalid_employee",
+    level = Level.ERROR,
+    message = "Skipping behov fulfillment for NL message: invalid employee identifiers",
+    upstream = "kafka",
+    fields = mapOf("narmeste_leder_id" to { it }),
+)
 
 class LeesahNLKafkaConsumer(
     private val kafkaConsumer: KafkaConsumer<String, String>,
@@ -123,7 +133,7 @@ class LeesahNLKafkaConsumer(
 
     private suspend fun fulfillOpenBehov(message: NarmestelederLeesahKafkaMessage) {
         val employee = message.employeeOrNull()
-            ?: return logger.error("Skipping behov fulfillment for NL message ${message.narmesteLederId}: invalid employee identifiers")
+            ?: return logger.logEvent(behovFulfillmentSkippedInvalidEmployee, message.narmesteLederId.toString())
         fulfillBehovFromLeesah.execute(employee)
     }
 
@@ -165,7 +175,7 @@ class LeesahNLKafkaConsumer(
     }
 
     companion object {
-        private val logger = LoggerFactory.getLogger(LeesahNLKafkaConsumer::class.java)
+        private val logger = applicationLogger(LeesahNLKafkaConsumer::class.java)
         private const val DELAY_ON_ERROR_SECONDS = 60L
         private const val POLL_DURATION_SECONDS = 1L
     }

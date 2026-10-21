@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.db
+package no.nav.syfo.narmestelederbehov.infrastructure
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec

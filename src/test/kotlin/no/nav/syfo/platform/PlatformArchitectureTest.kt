@@ -32,7 +32,7 @@ class PlatformArchitectureTest :
     })
 
 private val forbiddenType = Regex(
-    "no/nav/syfo/(narmesteleder|narmestelederbehov|narmestelederrelasjon|narmestelederstatistikk|organisasjonstilgang|sykmelding|integration|bootstrap)/[\\w$/]+",
+    "no/nav/syfo/(narmestelederbehov|narmestelederrelasjon|narmestelederstatistikk|organisasjonstilgang|sykmelding|integration|bootstrap)/[\\w$/]+",
 )
 
 private fun forbiddenReferences(bytes: ByteArray): List<String> = ClassFile.of().parse(bytes).constantPool().flatMap { entry ->

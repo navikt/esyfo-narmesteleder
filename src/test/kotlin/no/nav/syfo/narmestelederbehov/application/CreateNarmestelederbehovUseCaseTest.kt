@@ -13,7 +13,6 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.integration.pdl.PDL
-import no.nav.syfo.narmesteleder.kafka.TEAMSYKMELDING_NL_LEESAH_TOPIC
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
@@ -351,7 +350,7 @@ class CreateNarmestelederbehovUseCaseTest :
             }
 
             val events = logs.filter { it.level == Level.WARN }.map { event -> event.keyValuePairs.associate { it.key to it.value } }
-            events.map { it["behov_source"] } shouldBe listOf(TEAMSYKMELDING_NL_LEESAH_TOPIC, SENDT_SYKMELDING_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME)
+            events.map { it["behov_source"] } shouldBe listOf(NARMESTELEDER_LEESAH_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME)
             events.map { it["narmesteleder_id"] } shouldBe listOf(relationId.toString(), null, null)
             events.map { it["sykmelding_id"] } shouldBe listOf(null, sykmeldingId.toString(), null)
         }

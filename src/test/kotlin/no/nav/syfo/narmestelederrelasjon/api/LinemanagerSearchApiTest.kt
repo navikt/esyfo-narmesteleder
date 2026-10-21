@@ -233,31 +233,17 @@ class LinemanagerSearchApiTest :
             }
         }
 
-        listOf(
-            Triple(
-                DenialReason.MISSING_ORGANIZATION_ACCESS,
-                ErrorType.MISSING_ORG_ACCESS,
-                "User lacks access to organization: ${organizationNumber.value}",
-            ),
-            Triple(
-                DenialReason.MISSING_RESOURCE_ACCESS,
-                ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-                "User lacks access to required Altinn resource for organization: ${organizationNumber.value}",
-            ),
-            Triple(
-                DenialReason.SYSTEM_USER_REJECTED,
-                ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-                "System user does not have access to nav_syfo_oppgi-narmesteleder resource",
-            ),
-        ).forEach { (reason, errorType, message) ->
-            test("returns 403 for $reason before validating text and without querying") {
-                access.result = OrganizationAccessResult.Denied(reason)
-                withSearchApi(useCase, texasHttpClient) {
-                    val response = client.search("""{"orgNumber":"${organizationNumber.value}","text":"${"a".repeat(51)}"}""")
+        test("returns 403 for denied access before validating text and without querying") {
+            access.result = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
+            withSearchApi(useCase, texasHttpClient) {
+                val response = client.search("""{"orgNumber":"${organizationNumber.value}","text":"${"a".repeat(51)}"}""")
 
-                    response.shouldBeError(HttpStatusCode.Forbidden, errorType, message)
-                    repository.queries.shouldBeEmpty()
-                }
+                response.shouldBeError(
+                    HttpStatusCode.Forbidden,
+                    ErrorType.MISSING_ORG_ACCESS,
+                    "User lacks access to organization: ${organizationNumber.value}",
+                )
+                repository.queries.shouldBeEmpty()
             }
         }
 

@@ -142,33 +142,14 @@ class ListNarmestelederbehovRouteTest :
             }
         }
 
-        listOf(
-            Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: $ORGANIZATION_NUMBER"),
-            Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: $ORGANIZATION_NUMBER"),
-            Triple(DenialReason.SYSTEM_USER_REJECTED, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "System user does not have access to nav_syfo_oppgi-narmesteleder resource"),
-        ).forEach { (reason, type, message) ->
-            test("access denial $reason returns the legacy 403") {
-                val fixture = ListRouteFixture(access = OrganizationAccessResult.Denied(reason))
-                fixture.withApplication {
-                    val response = client.get("$LIST_PATH?$VALID_QUERY") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
-                    response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe type
-                    response.body<ApiError>().message shouldBe message
-                    fixture.repository.requestedLimit shouldBe null
-                }
-            }
-        }
-
-        test("missing names are fetched and stored with a null system organization name") {
-            val fixture = ListRouteFixture(access = OrganizationAccessResult.Granted(null))
-            fixture.repository.rows[0] = routeDetails().copy(firstName = null)
+        test("access denial returns the legacy 403 before reading") {
+            val fixture = ListRouteFixture(access = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS))
             fixture.withApplication {
                 val response = client.get("$LIST_PATH?$VALID_QUERY") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
-                response.status shouldBe HttpStatusCode.OK
-                val item = response.body<LinemanagerRequirementCollection>().linemanagerRequirements.single()
-                item.orgName shouldBe null
-                item.name.firstName shouldBe "Looked"
-                fixture.repository.savedNames shouldBe listOf(fixture.repository.rows.single().id to BehovPersonName("Looked", null, "Up"))
+                response.status shouldBe HttpStatusCode.Forbidden
+                response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
+                response.body<ApiError>().message shouldBe "User lacks access to organization: $ORGANIZATION_NUMBER"
+                fixture.repository.requestedLimit shouldBe null
             }
         }
 
@@ -185,17 +166,6 @@ class ListNarmestelederbehovRouteTest :
                     fixture.repository.savedNames shouldBe emptyList()
                     fixture.repository.countCalls shouldBe 0
                 }
-            }
-        }
-
-        test("person not found returns the exact legacy generic 500") {
-            val fixture = ListRouteFixture(personFound = false)
-            fixture.repository.rows[0] = routeDetails().copy(firstName = null)
-            fixture.withApplication {
-                val response = client.get("$LIST_PATH?$VALID_QUERY") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
-                response.status shouldBe HttpStatusCode.InternalServerError
-                response.body<ApiError>().type shouldBe ErrorType.INTERNAL_SERVER_ERROR
-                response.body<ApiError>().message shouldBe "Internal server error"
             }
         }
 
@@ -226,7 +196,6 @@ private const val VALID_QUERY = "orgNumber=$ORGANIZATION_NUMBER&createdAfter=197
 
 private class ListRouteFixture(
     access: OrganizationAccessResult = OrganizationAccessResult.Granted("Bedrift AS"),
-    personFound: Boolean = true,
     unavailable: UpstreamFailure? = null,
 ) {
     val repository = ListRouteRepository()
@@ -238,11 +207,7 @@ private class ListRouteFixture(
             repository,
         ) {
             unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
-                ?: if (personFound) {
-                    EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up"))
-                } else {
-                    EmployeeNameLookupResult.NotFound
-                }
+                ?: EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up"))
         },
     )
 

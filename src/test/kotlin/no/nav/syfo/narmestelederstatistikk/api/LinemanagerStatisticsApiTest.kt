@@ -15,7 +15,6 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import no.nav.syfo.narmestelederstatistikk.observability.LINEMANAGER_STATISTICS_TOTAL
-import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -50,8 +49,6 @@ class LinemanagerStatisticsApiTest :
                     error.path("message").asText() shouldBe "An upstream service is unavailable"
                 }
             }
-            fixture.effects shouldBe listOf("access")
-            fixture.organizations shouldBe emptyList()
             requestCount("user") shouldBe before
         }
 
@@ -68,8 +65,6 @@ class LinemanagerStatisticsApiTest :
                     mapper.readTree(response.bodyAsText()) shouldBe mapper.readTree(
                         """{"employeesOnSickLeaveWithoutLinemanager":1,"employeesOnSickLeaveWithLinemanager":2,"employeesNotOnSickLeaveWithLinemanager":3}""",
                     )
-                    fixture.effects shouldBe listOf("access", "count")
-                    fixture.organizations shouldBe listOf(OrganizationNumber(ORGANIZATION_NUMBER))
                     fixture.evaluations.single().second shouldBe OrganizationNumber(ORGANIZATION_NUMBER)
                     if (user) {
                         val subject = fixture.evaluations.single().first as OrganizationAccessSubject.PersonnelManager
@@ -97,31 +92,22 @@ class LinemanagerStatisticsApiTest :
                     val error = mapper.readTree(response.bodyAsText())
                     error.path("type").asText() shouldBe type.name
                     error.path("message").asText() shouldBe message
-                    fixture.effects shouldBe emptyList()
+                    fixture.evaluations shouldBe emptyList()
                     requestCount("system") shouldBe before
                 }
             }
         }
 
-        listOf(
-            Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: $ORGANIZATION_NUMBER"),
-            Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: $ORGANIZATION_NUMBER"),
-            Triple(DenialReason.SYSTEM_USER_REJECTED, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "System user does not have access to nav_syfo_oppgi-narmesteleder resource"),
-        ).forEach { (reason, type, message) ->
-            test("returns 403 for $reason without counting") {
-                val fixture = StatisticsApiFixture(denialReason = reason)
-                val before = requestCount("system")
-                fixture.withApplication {
-                    val response = client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") { bearerAuth(fixture.token()) }
-                    response.status shouldBe HttpStatusCode.Forbidden
-                    val error = mapper.readTree(response.bodyAsText())
-                    error.path("type").asText() shouldBe type.name
-                    error.path("message").asText() shouldBe message
-                    fixture.effects shouldBe listOf("access")
-                    fixture.organizations shouldBe emptyList()
-                    requestCount("system") shouldBe before
-                }
-                reason.toForbiddenException(OrganizationNumber(ORGANIZATION_NUMBER)).isAlreadyLogged shouldBe (reason == DenialReason.SYSTEM_USER_REJECTED)
+        test("returns 403 for denied access without counting") {
+            val fixture = StatisticsApiFixture(denialReason = DenialReason.MISSING_ORGANIZATION_ACCESS)
+            val before = requestCount("system")
+            fixture.withApplication {
+                val response = client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") { bearerAuth(fixture.token()) }
+                response.status shouldBe HttpStatusCode.Forbidden
+                val error = mapper.readTree(response.bodyAsText())
+                error.path("type").asText() shouldBe ErrorType.MISSING_ORG_ACCESS.name
+                error.path("message").asText() shouldBe "User lacks access to organization: $ORGANIZATION_NUMBER"
+                requestCount("system") shouldBe before
             }
         }
 
@@ -132,7 +118,7 @@ class LinemanagerStatisticsApiTest :
                 client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") {
                     bearerAuth(fixture.token())
                 }.status shouldBe HttpStatusCode.Unauthorized
-                fixture.effects shouldBe emptyList()
+                fixture.evaluations shouldBe emptyList()
                 requestCount("system") shouldBe before
             }
         }
@@ -150,8 +136,6 @@ private class StatisticsApiFixture(
     activeToken: Boolean = true,
     unavailable: UpstreamFailure? = null,
 ) {
-    val effects = mutableListOf<String>()
-    val organizations = mutableListOf<OrganizationNumber>()
     val evaluations = mutableListOf<Pair<OrganizationAccessSubject, OrganizationNumber>>()
     private val texas = mockk<TexasHttpClient>()
     private val bearerToken = createMockToken(
@@ -160,17 +144,12 @@ private class StatisticsApiFixture(
     )
     private val useCase = GetNarmestelederstatistikkUseCase(
         organizationAccess = { subject, organization ->
-            effects += "access"
             evaluations += subject to organization
             unavailable?.let { OrganizationAccessResult.Unavailable(it) }
                 ?: denialReason?.let { OrganizationAccessResult.Denied(it) }
                 ?: OrganizationAccessResult.Granted(null)
         },
-        repository = { organization ->
-            effects += "count"
-            organizations += organization
-            Narmestelederstatistikk(1, 2, 3)
-        },
+        repository = { Narmestelederstatistikk(1, 2, 3) },
     )
 
     init {

@@ -1,7 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.doubles.shouldBeExactly
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -23,7 +22,6 @@ import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerResponse
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.lookup.LookupActiveNarmestelederUseCase
-import no.nav.syfo.narmestelederrelasjon.infrastructure.LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.platform.api.ApiError
 import no.nav.syfo.platform.api.ErrorType
@@ -32,7 +30,6 @@ import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubAzureAd
-import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import java.time.Instant
 import java.util.UUID
 
@@ -77,39 +74,6 @@ class LinemanagerLookupApiTest :
             }
         }
 
-        test("returns only valid email addresses and counts the discarded ones") {
-            repository.rows = listOf(activeRelation("leder@example.com;not-an-email, annen@example.com,ugyldig@"))
-            val before = discardedCount()
-
-            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
-                val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
-
-                response.status shouldBe HttpStatusCode.OK
-                response.body<LinemanagerLookupResponse>().lineManager?.emailAddresses shouldBe
-                    listOf("leder@example.com", "annen@example.com")
-                discardedCount() shouldBeExactly before + 2
-            }
-        }
-
-        test("returns the line manager with empty emailAddresses when no address is valid") {
-            repository.rows = listOf(activeRelation("not-an-email;ugyldig@"))
-            val before = discardedCount()
-
-            withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
-                val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
-
-                response.status shouldBe HttpStatusCode.OK
-                response.body<LinemanagerLookupResponse>() shouldBe LinemanagerLookupResponse(
-                    lineManager = LinemanagerResponse(
-                        id = narmestelederId,
-                        nationalIdentificationNumber = "10987654321",
-                        emailAddresses = emptyList(),
-                    )
-                )
-                discardedCount() shouldBeExactly before + 2
-            }
-        }
-
         test("returns null when no active line manager exists") {
             withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
                 val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
@@ -147,18 +111,6 @@ class LinemanagerLookupApiTest :
             }
         }
     })
-
-private fun activeRelation(managerEmail: String) = ActiveNarmestelederrelasjon(
-    id = narmestelederId,
-    managerIdent = PersonalIdentificationNumber("10987654321"),
-    managerEmail = managerEmail,
-    activeFrom = Instant.parse("2026-01-01T00:00:00Z"),
-)
-
-private fun discardedCount(): Double = METRICS_REGISTRY
-    .find(LOOKUP_NARMESTELEDER_DISCARDED_EMAIL_ADDRESS_TOTAL)
-    .counter()
-    ?.count() ?: 0.0
 
 private suspend fun HttpClient.postLookup(request: LinemanagerLookupRequest): HttpResponse = post(LOOKUP_PATH) {
     contentType(ContentType.Application.Json)

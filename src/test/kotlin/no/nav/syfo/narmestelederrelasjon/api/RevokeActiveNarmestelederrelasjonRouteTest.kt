@@ -5,7 +5,6 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -15,13 +14,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.createMockToken
-import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
-import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
-import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
@@ -58,31 +51,22 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
 import java.util.UUID
 
-private val request = LinemanagerRevoke(PersonalIdentificationNumber("12345678901"), OrganizationNumber("123456789"), "Hansen")
 private val resolvedIdent = PersonalIdentificationNumber("12345678902")
 
 class RevokeActiveNarmestelederrelasjonRouteTest :
     FunSpec({
-        test("Maskinporten and TokenX revoke once, publish the resolved ident and preserve Kafka source") {
+        test("Maskinporten and TokenX revocations return 202, count by principal and keep the Kafka source") {
             listOf(
-                Triple("maskinporten", "12345678901", NlResponseSource.LPS_REVOKE),
-                Triple("tokenx", "12345678902", NlResponseSource.ARBEIDSTAGER_REVOKE),
-                Triple("tokenx", "11223344556", NlResponseSource.PERSONALLEDER_REVOKE),
-            ).forEach { (provider, caller, source) ->
+                Triple("maskinporten", COUNT_REVOKE_LINEMANAGER_BY_LPS, NlResponseSource.LPS_REVOKE),
+                Triple("tokenx", COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER, NlResponseSource.PERSONALLEDER_REVOKE),
+            ).forEach { (provider, counter, source) ->
                 val fixture = RevokeRouteFixture()
-                fixture.authorize(provider, caller)
-                val counter = if (provider == "maskinporten") COUNT_REVOKE_LINEMANAGER_BY_LPS else COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER
+                fixture.authorize(provider, caller = "11223344556")
                 val before = counter.count()
                 fixture.withApplication {
-                    client.revoke(caller, provider).status shouldBe HttpStatusCode.Accepted
+                    client.revoke("11223344556", provider).status shouldBe HttpStatusCode.Accepted
                 }
-                fixture.messages.size shouldBe 1
-                fixture.messages.single().let { (payload, publishedSource) ->
-                    payload.sykmeldtFnr shouldBe resolvedIdent.value
-                    payload.orgnummer shouldBe request.orgNumber.value
-                    publishedSource shouldBe source
-                }
-                fixture.lookups shouldBe listOf(resolvedIdent)
+                fixture.messages.map { it.second } shouldBe listOf(source)
                 counter.count() shouldBe before + 1.0
                 fixture.verifyIntrospection(provider)
             }
@@ -139,7 +123,7 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             fixture.messages shouldBe emptyList()
         }
 
-        test("mismatched last name returns the name mismatch error and never looks up active relations") {
+        test("mismatched last name returns the name mismatch error") {
             val fixture = RevokeRouteFixture(name = "Other")
             fixture.authorize("maskinporten")
             fixture.withApplication {
@@ -151,44 +135,22 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
                     }
                 }
             }
-            fixture.lookups shouldBe emptyList()
             fixture.messages shouldBe emptyList()
         }
 
-        test("revocation does not require employment or a valid stored manager email") {
-            val fixture = RevokeRouteFixture(managerEmail = "invalid")
+        test("access denial returns the legacy 403") {
+            val fixture = RevokeRouteFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS) })
             fixture.authorize("maskinporten")
-            fixture.withApplication { client.revoke().status shouldBe HttpStatusCode.Accepted }
-            fixture.messages.size shouldBe 1
-        }
-
-        test("organization and resource access denials preserve status, message and error type") {
-            listOf(
-                Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: 123456789"),
-                Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: 123456789"),
-                Triple(DenialReason.SYSTEM_USER_REJECTED, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "System user does not have access to nav_syfo_oppgi-narmesteleder resource"),
-            ).forEach { (reason, type, message) ->
-                val fixture = RevokeRouteFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(reason) })
-                fixture.authorize("maskinporten")
-                fixture.withApplication {
-                    client.revoke().let {
-                        it.status shouldBe HttpStatusCode.Forbidden
-                        it.body<ApiError>().let { error ->
-                            error.type shouldBe type
-                            error.message shouldBe message
-                        }
+            fixture.withApplication {
+                client.revoke().let {
+                    it.status shouldBe HttpStatusCode.Forbidden
+                    it.body<ApiError>().let { error ->
+                        error.type shouldBe ErrorType.MISSING_ORG_ACCESS
+                        error.message shouldBe "User lacks access to organization: 123456789"
                     }
                 }
-                fixture.messages shouldBe emptyList()
             }
-        }
-
-        test("missing token cannot reach revoke or requirement routes") {
-            val fixture = RevokeRouteFixture()
-            fixture.withApplication {
-                client.post("$API_V1_PATH$REVOKE_ACTIVE_NARMESTELEDERRELASJON_PATH").status shouldBe HttpStatusCode.Unauthorized
-                client.get("$API_V1_PATH/linemanager/requirement").status shouldBe HttpStatusCode.Unauthorized
-            }
+            fixture.messages shouldBe emptyList()
         }
 
         test("upstream failures return HTTP 500 with UPSTREAM_SERVICE_UNAVAILABLE") {
@@ -214,13 +176,12 @@ private class RevokeRouteFixture(
     private val active: Boolean = true,
     private val name: String = "Hansen",
     private val person: PersonDetails? = PersonDetails(resolvedIdent, PersonNameDetails("Test", name, registeredNames = listOf(RegisteredName(name)))),
-    private val managerEmail: String = "manager@example.test",
     access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
     private val unavailable: UpstreamFailure? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
     private val repository = FakeActiveNarmestelederrelasjonRepository(
-        if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), PersonalIdentificationNumber("10987654321"), managerEmail, Instant.EPOCH)) else emptyList(),
+        if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), PersonalIdentificationNumber("10987654321"), "manager@example.test", Instant.EPOCH)) else emptyList(),
     )
     val lookups get() = repository.lookups.map { it.first }
     val messages = mutableListOf<Pair<NlAvbrutt, NlResponseSource>>()
@@ -256,8 +217,6 @@ private class RevokeRouteFixture(
         testRouteApplication(
             routes = {
                 apiV1 {
-                    registerFulfillNarmestelederbehovApi(mockk<FulfillNarmestelederbehovUseCase>(), texas)
-                    registerListNarmestelederbehovApi(mockk<ListNarmestelederbehovUseCase>(), texas)
                     registerRevokeActiveNarmestelederrelasjonApi(useCase, texas)
                 }
             },

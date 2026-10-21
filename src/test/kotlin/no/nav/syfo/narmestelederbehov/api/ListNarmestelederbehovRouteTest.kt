@@ -262,6 +262,9 @@ private class ListRouteRepository :
     OpenNarmestelederbehovRepository,
     NarmestelederbehovRepository {
     override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
+    override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
+    override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
+    override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
     override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
     val rows = mutableListOf(routeDetails())

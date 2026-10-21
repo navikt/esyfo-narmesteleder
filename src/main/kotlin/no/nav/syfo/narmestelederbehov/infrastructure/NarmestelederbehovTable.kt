@@ -27,6 +27,7 @@ object NarmestelederbehovTable : Table("nl_behov") {
     val behovReason = varchar("behov_reason", 255)
     val behovStatus = registerColumn("behov_status", BehovStatusColumnType())
     val dialogId = javaUUID("dialog_id").nullable()
+    val expiredInDialogporten = timestampWithTimeZone("expired_in_dialogporten").nullable()
     val avbruttNarmestelederId = javaUUID("avbrutt_narmesteleder_id").nullable()
 }
 

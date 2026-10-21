@@ -267,6 +267,9 @@ internal class SendDialogsFixture(batch: List<PendingNarmestelederbehovDialog>) 
             return fetch(queries.size)
         }
 
+        override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
+        override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
+        override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
         override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
         override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
         override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")

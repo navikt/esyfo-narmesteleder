@@ -3,11 +3,13 @@ package no.nav.syfo.narmestelederbehov
 import no.nav.syfo.application.environment.Environment
 import no.nav.syfo.narmestelederbehov.api.narmestelederbehovApiUrl
 import no.nav.syfo.narmestelederbehov.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederbehov.application.CompleteFulfilledNarmestelederbehovDialogsUseCase
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.application.EmployerMainOrganizationLookup
+import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovDialogsUseCase
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -18,6 +20,7 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationMetr
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
@@ -26,6 +29,7 @@ import no.nav.syfo.narmestelederbehov.application.SendPendingNarmestelederbehovD
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmployerMainOrganizationLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
+import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
@@ -36,8 +40,10 @@ import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFac
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
+import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.dsl.module
+import kotlin.time.Duration
 
 fun narmestelederbehovDependencies() = module {
     single { NarmestelederbehovCreationSettings(persistenceEnabled = get<Environment>().otherProperties.persistLeesahNlBehov) }
@@ -48,6 +54,22 @@ fun narmestelederbehovDependencies() = module {
         )
     }
     single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
+    single<NarmestelederbehovDialogExpiry> { DialogportenNarmestelederbehovDialogExpiry(get()) }
+    single {
+        CompleteFulfilledNarmestelederbehovDialogsUseCase(
+            repository = get(),
+            dialog = get(),
+            clock = get(),
+        )
+    }
+    single { ExpireNarmestelederbehovDialogsUseCase(repository = get(), dialog = get(), clock = get()) }
+    single {
+        UpdateDialogTask(
+            completeFulfilledDialogs = get(),
+            expireDialogs = get(),
+            pollingInterval = Duration.parse(get<Environment>().otherProperties.updateDialogportenTaskProperties.pollingDelay),
+        )
+    }
     single {
         SendPendingNarmestelederbehovDialogsUseCase(
             repository = get(),

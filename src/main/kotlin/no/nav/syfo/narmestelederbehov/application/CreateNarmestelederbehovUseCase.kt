@@ -50,7 +50,7 @@ class CreateNarmestelederbehovUseCase(
         if (command.sykmeldingKnownActive || activeSykmelding.hasActiveSykmelding(command.employee)) return Step.Proceed
         metrics.recordSkippedNoActiveSykmelding()
         logger.info(
-            "Not inserting NarmestelederBehovEntity as there is no active sick leave for employee with" +
+            "Not inserting narmestelederbehov as there is no active sick leave for employee with" +
                 " narmestelederId ${command.revokedRelationId}"
         )
         return Step.Stop(CreateNarmestelederbehovResult.NoActiveSykmelding)
@@ -94,7 +94,7 @@ class CreateNarmestelederbehovUseCase(
 
     private suspend fun store(behov: NewNarmestelederbehov): CreateStep<NarmestelederbehovId> = when (val created = repository.create(behov)) {
         is CreateBehovResult.Created -> {
-            logger.info("Inserted NarmestelederBehovEntity with id: ${created.id.value}")
+            logger.info("Inserted narmestelederbehov with id: ${created.id.value}")
             Step.Continue(created.id)
         }
         CreateBehovResult.AlreadyExists -> Step.Stop(alreadyExists())
@@ -148,7 +148,7 @@ class CreateNarmestelederbehovUseCase(
 
     private fun alreadyExists(): CreateNarmestelederbehovResult {
         metrics.recordSkippedAlreadyExists()
-        logger.info("Not inserting NarmestelederBehovEntity since one already for employee and org")
+        logger.info("Not inserting narmestelederbehov since one already for employee and org")
         return CreateNarmestelederbehovResult.AlreadyExists
     }
 

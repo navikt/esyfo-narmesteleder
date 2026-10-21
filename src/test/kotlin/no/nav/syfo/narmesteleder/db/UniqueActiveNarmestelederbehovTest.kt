@@ -3,28 +3,45 @@ package no.nav.syfo.narmesteleder.db
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import nlBehovEntity
 import no.nav.syfo.TestDB
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovTable
+import no.nav.syfo.narmestelederbehov.infrastructure.StoredNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.infrastructure.findStoredNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.infrastructure.insertNarmestelederbehov
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.postgresql.util.PSQLException
+import java.util.UUID
 
-private fun countBehov(sykmeldtFnr: String, orgnummer: String, statuses: List<BehovStatus>): Int = TestDB.database.connection.use { connection ->
-    connection.prepareStatement(
-        "SELECT count(*) FROM nl_behov WHERE sykemeldt_fnr = ? AND orgnummer = ? AND behov_status::text = ANY (?)",
-    ).use { statement ->
-        statement.setString(1, sykmeldtFnr)
-        statement.setString(2, orgnummer)
-        statement.setArray(3, connection.createArrayOf("text", statuses.map { it.name }.toTypedArray()))
-        statement.executeQuery().use { result ->
-            result.next()
-            result.getInt(1)
+private fun countBehov(sykmeldtFnr: String, orgnummer: String, statuses: List<BehovStatus>): Int = transaction(TestDB.exposedDatabase) {
+    NarmestelederbehovTable.select(NarmestelederbehovTable.id)
+        .where {
+            (NarmestelederbehovTable.sykmeldtFnr eq sykmeldtFnr) and
+                (NarmestelederbehovTable.orgnummer eq orgnummer) and
+                (NarmestelederbehovTable.behovStatus inList statuses)
         }
+        .count().toInt()
+}
+
+private fun updateStatus(id: UUID, status: BehovStatus) = transaction(TestDB.exposedDatabase) {
+    NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id }) {
+        it[behovStatus] = status
     }
 }
 
+private fun insertForSameEmployee(row: StoredNarmestelederbehov, status: BehovStatus = row.behovStatus) = insertNarmestelederbehov(
+    sykmeldtFnr = row.sykmeldtFnr,
+    orgnummer = row.orgnummer,
+    behovStatus = status,
+)
+
 class UniqueActiveNarmestelederbehovTest :
     FunSpec({
-        val db = PostgresNarmestelederDb(TestDB.database)
         val activeStatuses = listOf(BehovStatus.BEHOV_CREATED, BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)
         val inactiveStatuses = listOf(
             BehovStatus.BEHOV_FULFILLED,
@@ -41,11 +58,10 @@ class UniqueActiveNarmestelederbehovTest :
 
         inactiveStatuses.forEach { status ->
             test("allows repeated $status rows alongside one active row") {
-                val entity = nlBehovEntity().copy(behovStatus = status)
-                insertNlBehov(entity)
-                insertNlBehov(entity)
-                insertNlBehov(entity.copy(behovStatus = BehovStatus.BEHOV_CREATED))
-                insertNlBehov(entity)
+                val entity = insertNarmestelederbehov(behovStatus = status)
+                insertForSameEmployee(entity)
+                insertForSameEmployee(entity, BehovStatus.BEHOV_CREATED)
+                insertForSameEmployee(entity)
 
                 countBehov(entity.sykmeldtFnr, entity.orgnummer, listOf(status)) shouldBe 3
                 countBehov(entity.sykmeldtFnr, entity.orgnummer, activeStatuses) shouldBe 1
@@ -53,12 +69,11 @@ class UniqueActiveNarmestelederbehovTest :
         }
 
         test("allows active rows for different employees and different organizations") {
-            val entity = nlBehovEntity()
-            insertNlBehov(entity)
-            val otherEmployee = nlBehovEntity().sykmeldtFnr
-            val otherOrg = nlBehovEntity().orgnummer
-            insertNlBehov(entity.copy(sykmeldtFnr = otherEmployee))
-            insertNlBehov(entity.copy(orgnummer = otherOrg))
+            val entity = insertNarmestelederbehov(sykmeldtFnr = "00000000002", orgnummer = "000000002")
+            val otherEmployee = "00000000001"
+            val otherOrg = "000000001"
+            insertNarmestelederbehov(sykmeldtFnr = otherEmployee, orgnummer = entity.orgnummer)
+            insertNarmestelederbehov(sykmeldtFnr = entity.sykmeldtFnr, orgnummer = otherOrg)
 
             countBehov(entity.sykmeldtFnr, entity.orgnummer, activeStatuses) shouldBe 1
             countBehov(otherEmployee, entity.orgnummer, activeStatuses) shouldBe 1
@@ -66,23 +81,22 @@ class UniqueActiveNarmestelederbehovTest :
         }
 
         test("allows the only active row to switch between both active statuses") {
-            var entity = insertNlBehov(nlBehovEntity())
+            val entity = insertNarmestelederbehov()
             listOf(BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, BehovStatus.BEHOV_CREATED).forEach { status ->
-                entity = entity.copy(behovStatus = status)
-                db.updateNlBehov(entity)
-                TestDB.database.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
+                updateStatus(entity.id, status)
+                findStoredNarmestelederbehov(entity.id)?.behovStatus shouldBe status
             }
         }
 
         listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED).forEach { status ->
             activeStatuses.forEach { active ->
                 test("frees the $active slot when the row becomes $status") {
-                    val entity = insertNlBehov(nlBehovEntity().copy(behovStatus = active))
-                    db.updateNlBehov(entity.copy(behovStatus = status))
-                    insertNlBehov(entity.copy(behovStatus = active))
+                    val entity = insertNarmestelederbehov(behovStatus = active)
+                    updateStatus(entity.id, status)
+                    insertForSameEmployee(entity, active)
 
                     countBehov(entity.sykmeldtFnr, entity.orgnummer, activeStatuses) shouldBe 1
-                    TestDB.database.findBehovById(requireNotNull(entity.id))?.behovStatus shouldBe status
+                    findStoredNarmestelederbehov(entity.id)?.behovStatus shouldBe status
                 }
             }
         }
@@ -90,15 +104,16 @@ class UniqueActiveNarmestelederbehovTest :
         activeStatuses.forEach { occupied ->
             activeStatuses.forEach { requested ->
                 test("propagates an update violation to $requested when $occupied occupies the slot") {
-                    val active = insertNlBehov(nlBehovEntity().copy(behovStatus = occupied))
-                    val historical = insertNlBehov(active.copy(behovStatus = BehovStatus.BEHOV_FULFILLED))
+                    val active = insertNarmestelederbehov(behovStatus = occupied)
+                    val historical = insertForSameEmployee(active, BehovStatus.BEHOV_FULFILLED)
 
-                    val failure = shouldThrow<PSQLException> {
-                        db.updateNlBehov(historical.copy(behovStatus = requested))
+                    val failure = shouldThrow<Exception> {
+                        updateStatus(historical.id, requested)
                     }
-                    failure.sqlState shouldBe "23505"
-                    failure.serverErrorMessage?.constraint shouldBe "uq_nl_behov_active_employee_org"
-                    TestDB.database.findBehovById(requireNotNull(historical.id))?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                    val postgresFailure = generateSequence<Throwable>(failure) { it.cause }.filterIsInstance<PSQLException>().single()
+                    postgresFailure.sqlState shouldBe "23505"
+                    postgresFailure.serverErrorMessage?.constraint shouldBe "uq_nl_behov_active_employee_org"
+                    findStoredNarmestelederbehov(historical.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
                     countBehov(active.sykmeldtFnr, active.orgnummer, activeStatuses) shouldBe 1
                 }
             }

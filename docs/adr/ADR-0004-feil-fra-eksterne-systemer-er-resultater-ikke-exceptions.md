@@ -162,12 +162,15 @@ Mønsteret har seks deler:
   PDP eller Ereg, uten fallback eller avvisningslogg etter feilen. Ereg-broen
   er fjernet. `Success(null)` fra Ereg gir fortsatt 400
   `ORGANIZATION_NOT_FOUND`. Token-endepunktet `/dialogporten/token` er slettet.
-  Legacy `DialogportenService` bruker `getOrThrow()` for alle klientkall.
-  Både fullføring og utløp gjør `RevisionConflict` om til samme
-  `revision_conflict`-feil via `getOrThrow()` før databasen endres, uten ny GET.
-  Eksisterende catch logger `dialogporten_dialog_failed` med
-  `upstream_status = 412`; status og `expiredInDialogporten` forblir uendret,
-  slik at jobbene kan prøve igjen senere.
+  Planlagt fullføring og utløp bruker applikasjonsporter i
+  `narmestelederbehov`, uten `getOrThrow()`. Fullføring regner en allerede
+  `Completed` dialog som vellykket og henter dialogen på nytt ved
+  `RevisionConflict`; hvis den nå er `Completed`, markeres behovet betinget.
+  Utløp gjør `RevisionConflict` om til `Unavailable` med
+  `revision_conflict`, uten ny GET. Use casene logger
+  `dialogporten_dialog_failed` med action `COMPLETE` eller `EXPIRE`.
+  Ved feil forblir status og `expired_in_dialogporten` uendret, slik at
+  jobbene kan prøve igjen senere.
 
 ## Kontekst
 

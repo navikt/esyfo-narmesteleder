@@ -72,6 +72,9 @@ class CreateNarmestelederbehovUseCaseTest :
             val markedDialogs = mutableListOf<Triple<NarmestelederbehovId, UUID, BehovPersonName?>>()
             val repository = object : NarmestelederbehovRepository {
                 override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
+                override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
+                override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
+                override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
                 override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
                 override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
                 override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")
@@ -165,7 +168,7 @@ class CreateNarmestelederbehovUseCaseTest :
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists }
 
                 effects shouldBe listOf("find-open", "metric:already-exists")
-                logs.map { it.formattedMessage } shouldBe listOf("Not inserting NarmestelederBehovEntity since one already for employee and org")
+                logs.map { it.formattedMessage } shouldBe listOf("Not inserting narmestelederbehov since one already for employee and org")
             }
         }
 

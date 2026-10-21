@@ -26,12 +26,22 @@ interface NarmestelederbehovRepository {
     /** BEHOV_CREATED strictly older than [createdBefore], oldest first. */
     suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog>
 
+    /** Up to 100 fulfilled behov with dialogs, strictly older than [createdBefore], oldest first. */
+    suspend fun findFulfilledDialogs(createdBefore: Instant): List<NarmestelederbehovDialogReference>
+
+    /** Up to 100 BEHOV_EXPIRED or ERROR behov with dialogs and no expiry marker, oldest first. */
+    suspend fun findDialogsToExpire(): List<NarmestelederbehovDialogReference>
+
+    suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant)
+
     /** Saves the dialog and the employee name, and sets DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, only while the behov is BEHOV_CREATED. */
     suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?): MarkDialogCreatedResult
 
     /** Returns [CreateBehovResult.AlreadyExists] when the employee already has an open behov in the organization. */
     suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult
 }
+
+data class NarmestelederbehovDialogReference(val id: NarmestelederbehovId, val dialogId: UUID)
 
 data class PendingNarmestelederbehovDialog(
     val id: NarmestelederbehovId,

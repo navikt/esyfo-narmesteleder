@@ -30,14 +30,12 @@ class BackgroundLoopTest :
 
         beforeTest { capture = productionLogs.capture() }
         afterTest {
-            try {
+            capture.use { capture ->
                 capture.records.forEach {
                     contract.assertValid(listOf(it))
                     it shouldNotContain "private-payload-canary"
                     it shouldNotContain "private-cause-canary"
                 }
-            } finally {
-                capture.close()
             }
         }
 

@@ -83,10 +83,8 @@ class GetNarmestelederrelasjonLoggingContractTest :
             capture = productionLogs.capture()
         }
         afterTest {
-            try {
+            capture.use { capture ->
                 capture.records.forEach { line -> privacyCanaries.forEach { line shouldNotContain it } }
-            } finally {
-                capture.close()
             }
         }
 

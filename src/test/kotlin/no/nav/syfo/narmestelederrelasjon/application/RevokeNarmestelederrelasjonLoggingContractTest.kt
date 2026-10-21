@@ -54,14 +54,12 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
 
         beforeTest { capture = productionLogs.capture() }
         afterTest {
-            try {
+            capture.use { capture ->
                 capture.records.forEach { line ->
                     listOf(employee.value, outsider.value, org.value, "test-token", "test-system-user").forEach {
                         line shouldNotContain it
                     }
                 }
-            } finally {
-                capture.close()
             }
         }
 

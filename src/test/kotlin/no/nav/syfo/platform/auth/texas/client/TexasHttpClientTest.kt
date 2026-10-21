@@ -79,7 +79,7 @@ class TexasHttpClientTest :
 
         test("Maskinporten body cancellation is rethrown") {
             val cancelled = CancellationException("Cancelled")
-            upstreamHttpClient(respondWithSystemToken, { error("Unexpected upstream request") }).use {
+            upstreamHttpClient(respondWithSystemToken) { error("Unexpected upstream request") }.use {
                 it.responsePipeline.intercept(HttpResponsePipeline.Receive) {
                     if (subject.expectedType.type == TexasResponse::class) throw cancelled
                 }

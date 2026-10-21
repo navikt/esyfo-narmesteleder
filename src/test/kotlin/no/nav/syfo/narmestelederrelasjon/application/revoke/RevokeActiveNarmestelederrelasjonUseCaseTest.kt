@@ -7,7 +7,7 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
@@ -110,7 +110,11 @@ private class RevokeActiveFixture(
 ) {
     val calls = mutableListOf<String>()
     val matches = mutableListOf<LastNameMatch>()
-    val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber>>()
+    private val repository = FakeActiveNarmestelederrelasjonRepository(
+        rows = if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), employee, "invalid", Instant.EPOCH)) else emptyList(),
+        effects = calls,
+    )
+    val lookups get() = repository.lookups
     val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
     private val useCase = RevokeActiveNarmestelederrelasjonUseCase(
         { subject, org ->
@@ -125,13 +129,7 @@ private class RevokeActiveFixture(
             calls += "name"
             matches += it
         },
-        object : ActiveNarmestelederrelasjonRepository {
-            override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
-                calls += "active"
-                lookups += employeeIdent to organizationNumber
-                return if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), employee, "invalid", Instant.EPOCH)) else emptyList()
-            }
-        },
+        repository,
         RecordingRevocationPublisher {
             calls += "publish"
             published += it

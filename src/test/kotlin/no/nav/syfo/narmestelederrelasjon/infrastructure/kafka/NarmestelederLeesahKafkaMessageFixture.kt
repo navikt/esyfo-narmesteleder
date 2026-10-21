@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
-import faker
+import no.nav.syfo.faker
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID

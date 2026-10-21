@@ -16,7 +16,7 @@ class ExposedSykmeldingRetentionRepositoryTest :
         val cutoff = LocalDate.parse("2025-03-01")
 
         beforeTest {
-            TestDB.clearSendtSykmeldingData()
+            TestDB.clearAllData()
         }
 
         fun insert(tom: LocalDate, suffix: Int) {

@@ -27,8 +27,6 @@ class ExposedNarmestelederstatistikkRepositoryTest :
 
         beforeTest {
             TestDB.clearAllData()
-            TestDB.clearNarmestelederData()
-            TestDB.clearSendtSykmeldingData()
         }
 
         test("counts unique employees in each legacy statistic category") {

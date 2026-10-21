@@ -5,14 +5,13 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
-import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 class PersonTableInsertPendingTest :
     FunSpec({
         beforeTest {
-            TestDB.clearPersonData()
+            TestDB.clearAllData()
         }
 
         test("PersonTable mapping matches the database schema") {
@@ -32,13 +31,7 @@ class PersonTableInsertPendingTest :
             }
 
             test("leaves existing persons untouched and still inserts new fnrs") {
-                transaction(TestDB.exposedDatabase) {
-                    PersonTable.insert {
-                        it[fnr] = "12345678901"
-                        it[status] = "ACTIVE"
-                        it[fornavn] = "Ada"
-                    }
-                }
+                insertPerson("12345678901", status = "ACTIVE", firstName = "Ada")
 
                 insertPending(listOf("12345678901", "10987654321"))
 

@@ -6,8 +6,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.FakeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
 import no.nav.syfo.narmestelederrelasjon.application.RecordingRevocationPublisher
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
@@ -46,13 +45,10 @@ class RevokeNarmestelederrelasjonUseCaseTest :
             val effects = mutableListOf<String>()
             val commands = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
             val useCase = RevokeNarmestelederrelasjonUseCase(
-                repository = object : NarmestelederrelasjonRepository {
-                    override suspend fun findById(id: UUID): NarmestelederrelasjonLookup = error("Not used by revoke")
-                    override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? {
-                        effects.add("lookup")
-                        return if (id == relationId) lookup else null
-                    }
-                },
+                repository = FakeNarmestelederrelasjonRepository(
+                    revocableById = { id -> if (id == relationId) lookup else null },
+                    effects = effects,
+                ),
                 organizationAccess = { _, org ->
                     org shouldBe organization
                     effects.add("access")

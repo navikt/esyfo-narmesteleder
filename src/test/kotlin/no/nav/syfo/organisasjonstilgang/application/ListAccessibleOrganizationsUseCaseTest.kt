@@ -32,15 +32,3 @@ class ListAccessibleOrganizationsUseCaseTest :
             lookup.subject shouldBe subject
         }
     })
-
-private class FakeAccessibleOrganizationsLookup(
-    private val result: ListAccessibleOrganizationsResult,
-) : AccessibleOrganizationsLookup {
-    var subject: OrganizationAccessSubject.PersonnelManager? = null
-        private set
-
-    override suspend fun find(subject: OrganizationAccessSubject.PersonnelManager): ListAccessibleOrganizationsResult {
-        this.subject = subject
-        return result
-    }
-}

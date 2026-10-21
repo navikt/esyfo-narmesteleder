@@ -8,13 +8,12 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogPatchResult
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.RecordingDialogportenClient
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.dialogportenRevisionConflictFailure
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Content
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValue
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ContentValueItem
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -27,7 +26,7 @@ import java.util.UUID
 class DialogportenNarmestelederbehovDialogTest :
     FunSpec({
         test("fetches the revision and patches completed status") {
-            val client = RecordingDialogportenClient()
+            val client = dialogClient()
             DialogportenNarmestelederbehovDialog(client).complete(DIALOG_ID) shouldBe DialogCompletion.Completed
             client.calls shouldBe listOf("get", "patch")
             client.patchRevision shouldBe REVISION
@@ -41,14 +40,14 @@ class DialogportenNarmestelederbehovDialogTest :
         }
 
         test("already completed returns Completed without PATCH") {
-            val client = RecordingDialogportenClient(reads = mutableListOf(dialogResult(DialogStatus.Completed)))
+            val client = dialogClient(reads = mutableListOf(dialogResult(DialogStatus.Completed)))
             DialogportenNarmestelederbehovDialog(client).complete(DIALOG_ID) shouldBe DialogCompletion.Completed
             client.calls shouldBe listOf("get")
         }
 
         listOf(DialogStatus.Completed, DialogStatus.RequiresAttention, null).forEach { status ->
             test("revision conflict rereads once and resolves status $status") {
-                val client = RecordingDialogportenClient(
+                val client = dialogClient(
                     reads = mutableListOf(dialogResult(), dialogResult(status)),
                     patchResult = UpstreamResult.Success(DialogPatchResult.RevisionConflict),
                 )
@@ -72,7 +71,7 @@ class DialogportenNarmestelederbehovDialogTest :
         listOf("get", "patch", "reread").forEach { step ->
             test("$step failure is preserved without later calls") {
                 val failure = UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, errors = listOf(UpstreamError("server_error")))
-                val client = RecordingDialogportenClient(
+                val client = dialogClient(
                     reads = when (step) {
                         "get" -> mutableListOf(UpstreamResult.Failure(failure))
                         "reread" -> mutableListOf(dialogResult(), UpstreamResult.Failure(failure))
@@ -91,7 +90,7 @@ class DialogportenNarmestelederbehovDialogTest :
 
             listOf(IllegalStateException("unexpected"), CancellationException("cancelled")).forEach { failure ->
                 test("$step propagates ${failure.javaClass.simpleName} without catching it") {
-                    val client = RecordingDialogportenClient(
+                    val client = dialogClient(
                         reads = mutableListOf(dialogResult(), dialogResult()),
                         patchResult = UpstreamResult.Success(DialogPatchResult.RevisionConflict),
                         throwAt = step,
@@ -126,32 +125,23 @@ private fun dialogResult(status: DialogStatus? = DialogStatus.RequiresAttention)
     ),
 )
 
-private class RecordingDialogportenClient(
-    private val reads: MutableList<UpstreamResult<ExtendedDialog>> = mutableListOf(dialogResult()),
-    private val patchResult: UpstreamResult<DialogPatchResult> = UpstreamResult.Success(DialogPatchResult.Patched),
-    private val throwAt: String? = null,
-    private val thrown: Throwable? = null,
-) : DialogportenClient {
-    val calls = mutableListOf<String>()
-    var patchRevision: UUID? = null
-    var patches: List<HttpDialogportenClient.DialogportenPatch>? = null
-
-    override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> = error("Unexpected createDialog")
-
-    override suspend fun getDialogById(dialogId: UUID): UpstreamResult<ExtendedDialog> {
-        dialogId shouldBe DIALOG_ID
-        val step = if ("get" in calls) "reread" else "get"
-        calls += "get"
-        if (throwAt == step) throw requireNotNull(thrown)
-        return reads.removeAt(0)
-    }
-
-    override suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<HttpDialogportenClient.DialogportenPatch>): UpstreamResult<DialogPatchResult> {
-        dialogId shouldBe DIALOG_ID
-        calls += "patch"
-        patchRevision = revisionNumber
-        patches = patch
-        if (throwAt == "patch") throw requireNotNull(thrown)
-        return patchResult
-    }
+private fun dialogClient(
+    reads: MutableList<UpstreamResult<ExtendedDialog>> = mutableListOf(dialogResult()),
+    patchResult: UpstreamResult<DialogPatchResult> = UpstreamResult.Success(DialogPatchResult.Patched),
+    throwAt: String? = null,
+    thrown: Throwable? = null,
+): RecordingDialogportenClient {
+    var readCount = 0
+    return RecordingDialogportenClient(
+        expectedDialogId = DIALOG_ID,
+        read = {
+            val step = if (readCount++ == 0) "get" else "reread"
+            if (throwAt == step) throw requireNotNull(thrown)
+            reads.removeAt(0)
+        },
+        patch = {
+            if (throwAt == "patch") throw requireNotNull(thrown)
+            patchResult
+        },
+    )
 }

@@ -13,14 +13,14 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.mockk.coEvery
-import io.mockk.coVerify
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederrelasjon.application.get.OrganizationNameResult
+import no.nav.syfo.narmestelederrelasjon.application.inOrder
 import no.nav.syfo.narmestelederrelasjon.observability.GET_NARMESTELEDERRELASJON_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.api.STATUS_PAGES_LOGGER_NAME
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -64,14 +64,12 @@ class GetNarmestelederrelasjonRouteTest :
                     response.bodyAsText() shouldBe """
                         {"linemanagerRelation":{"id":"00000000-0000-0000-0000-000000000001","employee":{"name":{"firstName":"Employee","middleName":null,"lastName":"Person"},"nationalIdentificationNumber":"12345678901"},"organization":{"orgNumber":"123456789","name":"Organization"}}}
                     """.trimIndent()
-                    coVerify(exactly = 1) {
-                        organizationAccess.evaluate(any(), OrganizationNumber("123456789"))
-                    }
+                    organizationAccess.calls.map { it.second } shouldBe listOf(OrganizationNumber("123456789"))
                 }
             }
 
             test("returns the relation with no-store for a Maskinporten system user with organization access") {
-                introspectMaskinporten()
+                texasHttpClient.stubMaskinportenSystemUser()
 
                 withTestApplication {
                     val response = client.get(path(id.toString())) {
@@ -83,18 +81,15 @@ class GetNarmestelederrelasjonRouteTest :
                     response.bodyAsText() shouldBe """
                         {"linemanagerRelation":{"id":"00000000-0000-0000-0000-000000000001","employee":{"name":{"firstName":"Employee","middleName":null,"lastName":"Person"},"nationalIdentificationNumber":"12345678901"},"organization":{"orgNumber":"123456789","name":"Organization"}}}
                     """.trimIndent()
-                    coVerify(exactly = 1) {
-                        organizationAccess.evaluate(any(), OrganizationNumber("123456789"))
-                    }
+                    organizationAccess.calls.map { it.second } shouldBe listOf(OrganizationNumber("123456789"))
                 }
             }
 
             test("returns indistinguishable data-free masked 404 errors") {
                 val before = getOutcomeCount("not_found")
-                introspectMaskinporten()
-                coEvery { repository.findById(id) } returnsMany listOf(null, lookup(), lookup())
-                coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns
-                    OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
+                texasHttpClient.stubMaskinportenSystemUser()
+                repository.lookupById = inOrder(null, lookup(), lookup())
+                organizationAccess.result = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
 
                 withTestApplication {
                     val malformedId = "not-a-uuid"
@@ -133,7 +128,7 @@ class GetNarmestelederrelasjonRouteTest :
 
             test("returns 200 with an explicit null organization name and counts it as found") {
                 val before = getOutcomeCount("found")
-                coEvery { organization.findName(OrganizationNumber("123456789")) } returns OrganizationNameResult.Missing
+                organization.result = OrganizationNameResult.Missing
 
                 withTestApplication {
                     val response = client.get(path(id.toString())) { bearerAuth(token()) }
@@ -159,8 +154,8 @@ class GetNarmestelederrelasjonRouteTest :
             ).forEach { failure ->
                 test("system user ${failure.upstream} ${failure.status} failure returns 500 and increments upstream unavailable") {
                     val before = getOutcomeCount("upstream_unavailable")
-                    introspectMaskinporten()
-                    coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns OrganizationAccessResult.Unavailable(failure)
+                    texasHttpClient.stubMaskinportenSystemUser()
+                    organizationAccess.result = OrganizationAccessResult.Unavailable(failure)
                     withTestApplication {
                         val accessToken = token(MASKINPORTEN_ISSUER)
                         val response = client.get(path(id.toString())) { bearerAuth(accessToken) }
@@ -169,7 +164,7 @@ class GetNarmestelederrelasjonRouteTest :
                         val body = response.bodyAsText()
                         body shouldContain """"type":"UPSTREAM_SERVICE_UNAVAILABLE""""
                         listOf("private-provider-message", "123456789", accessToken).forEach { body shouldNotContain it }
-                        coVerify(exactly = 0) { organization.findName(OrganizationNumber("123456789")) }
+                        organization.calls shouldBe emptyList()
                     }
                     getOutcomeCount("upstream_unavailable") shouldBe before + 1
                     val record = failureLogs.list.single()
@@ -191,7 +186,7 @@ class GetNarmestelederrelasjonRouteTest :
                     503,
                     IllegalStateException("private upstream body 123456789"),
                 )
-                coEvery { organization.findName(OrganizationNumber("123456789")) } returns OrganizationNameResult.Unavailable(failure)
+                organization.result = OrganizationNameResult.Unavailable(failure)
 
                 withTestApplication {
                     val response = client.get(path(id.toString())) { bearerAuth(token()) }
@@ -220,7 +215,7 @@ class GetNarmestelederrelasjonRouteTest :
             }
 
             test("returns a successful relation with null name and no-store when the employee name is incomplete") {
-                coEvery { repository.findById(id) } returns lookup().copy(employeeFirstName = " ")
+                repository.lookupById = { lookup().copy(employeeFirstName = " ") }
 
                 withTestApplication {
                     val response = client.get(path(id.toString())) { bearerAuth(token()) }

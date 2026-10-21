@@ -7,8 +7,6 @@ import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -25,8 +23,7 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
         )
 
         beforeTest {
-            TestDB.clearNarmestelederData()
-            TestDB.clearPersonData()
+            TestDB.clearAllData()
         }
 
         test("returns active relations across organizations sorted by organization number") {
@@ -140,17 +137,7 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
         }
     })
 
-private fun insertManagerPerson() {
-    transaction(TestDB.exposedDatabase) {
-        PersonTable.insert {
-            it[fnr] = "10987654321"
-            it[status] = "ENRICHED"
-            it[fornavn] = "Manager"
-            it[mellomnavn] = "Middle"
-            it[etternavn] = "Person"
-        }
-    }
-}
+private fun insertManagerPerson() = insertPerson("10987654321", firstName = "Manager", middleName = "Middle", lastName = "Person")
 
 private fun insertEmployeeRelation(
     id: UUID = UUID.randomUUID(),
@@ -161,16 +148,13 @@ private fun insertEmployeeRelation(
     email: String = "manager@example.com",
     mobile: String = "99999999",
 ) {
-    transaction(TestDB.exposedDatabase) {
-        NarmestelederTable.insert {
-            it[narmestelederId] = id
-            it[orgnummer] = organization
-            it[sykmeldtFnr] = employeeIdent
-            it[narmestelederFnr] = "10987654321"
-            it[narmestelederEpost] = email
-            it[narmestelederTelefonnummer] = mobile
-            it[aktivFom] = from
-            it[aktivTom] = to
-        }
-    }
+    insertRelation(
+        narmestelederId = id,
+        employeeIdent = employeeIdent,
+        organizationNumber = organization,
+        activeFrom = from,
+        activeTo = to,
+        email = email,
+        mobile = mobile,
+    )
 }

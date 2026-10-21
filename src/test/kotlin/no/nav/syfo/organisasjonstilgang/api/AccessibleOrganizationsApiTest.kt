@@ -1,9 +1,6 @@
 package no.nav.syfo.organisasjonstilgang.api
 
-import DefaultOrganization
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.bearerAuth
@@ -13,18 +10,21 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.clearAllMocks
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganization
 import no.nav.syfo.organisasjonstilgang.application.AccessibleOrganizationsLookup
+import no.nav.syfo.organisasjonstilgang.application.FakeAccessibleOrganizationsLookup
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsResult
 import no.nav.syfo.organisasjonstilgang.application.ListAccessibleOrganizationsUseCase
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -58,7 +58,7 @@ class AccessibleOrganizationsApiTest :
                     ),
                 ),
             )
-            texasHttpClient.defaultMocks(pid = userIdent, acr = "Level4")
+            texasHttpClient.stubTokenX(pid = userIdent)
 
             withAccessibleOrganizationsApp(lookup, texasHttpClient) {
                 val response = client.get("$API_V1_PATH$ACCESSIBLE_ORGANIZATIONS_API_PATH") {
@@ -85,7 +85,7 @@ class AccessibleOrganizationsApiTest :
 
         test("returns an empty organizations list when no organizations are listed") {
             val lookup = FakeAccessibleOrganizationsLookup(ListAccessibleOrganizationsResult.Listed(emptyList()))
-            texasHttpClient.defaultMocks(pid = userIdent, acr = "Level4")
+            texasHttpClient.stubTokenX(pid = userIdent)
 
             withAccessibleOrganizationsApp(lookup, texasHttpClient) {
                 val response = client.get("$API_V1_PATH$ACCESSIBLE_ORGANIZATIONS_API_PATH") {
@@ -103,7 +103,7 @@ class AccessibleOrganizationsApiTest :
                     UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("Synthetic failure"))
                 )
             )
-            texasHttpClient.defaultMocks(pid = userIdent, acr = "Level4")
+            texasHttpClient.stubTokenX(pid = userIdent)
 
             withAccessibleOrganizationsApp(lookup, texasHttpClient) {
                 val response = client.get("$API_V1_PATH$ACCESSIBLE_ORGANIZATIONS_API_PATH") {
@@ -120,7 +120,7 @@ class AccessibleOrganizationsApiTest :
 
         test("returns the unchanged 403 error for a system principal without invoking the lookup") {
             val lookup = FakeAccessibleOrganizationsLookup(ListAccessibleOrganizationsResult.Listed(emptyList()))
-            texasHttpClient.defaultMocks(pid = null, consumer = DefaultOrganization, scope = MASKINPORTEN_NL_SCOPE)
+            texasHttpClient.stubMaskinportenSystemUser()
 
             withAccessibleOrganizationsApp(lookup, texasHttpClient) {
                 val response = client.get("$API_V1_PATH$ACCESSIBLE_ORGANIZATIONS_API_PATH") {
@@ -145,18 +145,6 @@ class AccessibleOrganizationsApiTest :
             }
         }
     })
-
-private class FakeAccessibleOrganizationsLookup(
-    private val result: ListAccessibleOrganizationsResult,
-) : AccessibleOrganizationsLookup {
-    var subject: OrganizationAccessSubject.PersonnelManager? = null
-        private set
-
-    override suspend fun find(subject: OrganizationAccessSubject.PersonnelManager): ListAccessibleOrganizationsResult {
-        this.subject = subject
-        return result
-    }
-}
 
 private fun withAccessibleOrganizationsApp(
     lookup: AccessibleOrganizationsLookup,

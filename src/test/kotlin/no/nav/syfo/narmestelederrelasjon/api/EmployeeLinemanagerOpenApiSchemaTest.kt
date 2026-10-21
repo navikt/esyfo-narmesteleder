@@ -5,7 +5,8 @@ import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.narmestelederrelasjon.api.model.EmployeeLinemanagerResponse
 import no.nav.syfo.narmestelederrelasjon.api.model.EmployeeLinemanagersResponse
-import org.yaml.snakeyaml.Yaml
+import no.nav.syfo.platform.api.INTERNAL_OPENAPI
+import no.nav.syfo.platform.api.openApiSchemas
 import kotlin.reflect.full.memberProperties
 
 class EmployeeLinemanagerOpenApiSchemaTest :
@@ -30,11 +31,4 @@ class EmployeeLinemanagerOpenApiSchemaTest :
         }
     })
 
-private fun employeeSchemas(): Map<*, *> {
-    val yamlText = EmployeeLinemanagerOpenApiSchemaTest::class.java.classLoader
-        .getResource("openapi/internal-documentation.yaml")
-        ?.readText()
-        ?: error("Missing internal OpenAPI documentation")
-    val root = Yaml().load<Map<String, Any>>(yamlText)
-    return (root["components"] as Map<*, *>)["schemas"] as Map<*, *>
-}
+private fun employeeSchemas(): Map<*, *> = openApiSchemas(INTERNAL_OPENAPI)

@@ -9,9 +9,8 @@ import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederrelasjon.application.FakeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -63,15 +62,10 @@ class GetNarmestelederrelasjonLoggingContractTest :
             activeSykmelding: Boolean = true,
             organizationName: OrganizationNameResult = OrganizationNameResult.Found("Organization"),
         ) = GetNarmestelederrelasjonUseCase(
-            repository = object : NarmestelederrelasjonRepository {
-                override suspend fun findById(id: UUID) = lookup
-                override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon = error("Not used by GET")
-            },
+            repository = FakeNarmestelederrelasjonRepository(lookupById = { lookup }),
             organizationAccess = { _, _ -> access },
             activeSykmeldingLookup = { _, _ -> activeSykmelding },
-            organization = object : NarmestelederrelasjonOrganization {
-                override suspend fun findName(orgNumber: OrganizationNumber) = organizationName
-            },
+            organization = FakeNarmestelederrelasjonOrganization(organizationName),
         )
 
         fun checkNotFoundEvent(outcomeCode: String) = mapper.readTree(capture.records.single()).also {

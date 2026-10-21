@@ -6,15 +6,11 @@ import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.narmestelederrelasjon.api.NARMESTELEDERRELASJON_API_PATH
-import org.yaml.snakeyaml.Yaml
 
 class OpenApiInternalLinemanagerRevokeSchemaTest :
     FunSpec({
 
-        val yamlText = OpenApiInternalLinemanagerRevokeSchemaTest::class.java.classLoader
-            .getResource("openapi/internal-documentation.yaml")!!
-            .readText()
-        val root = Yaml().load<Map<String, Any>>(yamlText)
+        val root = openApiDocument(INTERNAL_OPENAPI)
         val paths = root["paths"] as Map<*, *>
         val revokePath = "/internal/api/v1/linemanager/{id}"
         val relationPath = NARMESTELEDERRELASJON_API_PATH

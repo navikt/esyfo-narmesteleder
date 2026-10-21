@@ -1,8 +1,5 @@
 package no.nav.syfo.narmestelederstatistikk
 
-import DefaultOrganization
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -12,14 +9,16 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import io.mockk.mockk
 import no.nav.syfo.bootstrap.platformModule
+import no.nav.syfo.createMockToken
 import no.nav.syfo.narmestelederstatistikk.api.LINEMANAGER_STATISTICS_API_PATH
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.NAV_CALL_ID_HEADER
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.DefaultOrganization
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.database.DatabaseInterface
 import no.nav.syfo.platform.observability.ApplicationState
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -30,10 +29,7 @@ class NarmestelederstatistikkModuleTest :
     FunSpec({
         test("registers its dependencies and mounts statistics on the internal API only") {
             val texas = mockk<TexasHttpClient>().apply {
-                defaultMocks(
-                    systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"),
-                    scope = MASKINPORTEN_NL_SCOPE,
-                )
+                stubMaskinportenSystemUser(systemUserOrganization = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"))
             }
             val externalDependencies = module {
                 single { ApplicationState() }

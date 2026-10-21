@@ -7,8 +7,6 @@ import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
-import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -28,49 +26,34 @@ class ExposedNarmestelederrelasjonRepositoryTest :
         val activeFrom = OffsetDateTime.ofInstant(now, ZoneOffset.UTC).minusDays(1)
 
         beforeTest {
-            TestDB.clearNarmestelederData()
-            TestDB.clearPersonData()
+            TestDB.clearAllData()
         }
 
-        fun insertRelation(
+        fun insertCurrentRelation(
             id: UUID = UUID.randomUUID(),
             from: OffsetDateTime = activeFrom,
             to: OffsetDateTime? = null,
             employee: String = employeeIdent,
             manager: String = managerIdent,
         ) {
-            transaction(TestDB.exposedDatabase) {
-                NarmestelederTable.insert {
-                    it[narmestelederId] = id
-                    it[orgnummer] = "123456789"
-                    it[sykmeldtFnr] = employee
-                    it[narmestelederFnr] = manager
-                    it[narmestelederTelefonnummer] = "90000000"
-                    it[narmestelederEpost] = "manager@example.com"
-                    it[arbeidsgiverForskutterer] = true
-                    it[aktivFom] = from
-                    it[aktivTom] = to
-                }
-            }
+            insertRelation(
+                narmestelederId = id,
+                employeeIdent = employee,
+                managerIdent = manager,
+                activeFrom = from,
+                activeTo = to,
+                email = "manager@example.com",
+                mobile = "90000000",
+                employerAdvancesPay = true,
+            )
         }
 
-        fun insertPerson(ident: String, firstName: String, middleName: String? = null, lastName: String) {
-            transaction(TestDB.exposedDatabase) {
-                PersonTable.insert {
-                    it[PersonTable.fnr] = ident
-                    it[PersonTable.status] = "ENRICHED"
-                    it[PersonTable.fornavn] = firstName
-                    it[PersonTable.mellomnavn] = middleName
-                    it[PersonTable.etternavn] = lastName
-                    it[PersonTable.foedselsdato] = LocalDate.parse("1990-01-01")
-                }
-            }
-        }
+        fun insertNamedPerson(ident: String, firstName: String, middleName: String? = null, lastName: String) = insertPerson(ident, firstName = firstName, middleName = middleName, lastName = lastName, birthDate = LocalDate.parse("1990-01-01"))
 
         test("returns a current relation with employee name") {
             val id = UUID.randomUUID()
-            insertPerson(employeeIdent, "Employee", "Middle", "Person")
-            insertRelation(id)
+            insertNamedPerson(employeeIdent, "Employee", "Middle", "Person")
+            insertCurrentRelation(id)
 
             val relation = repository.findById(id)
 
@@ -83,7 +66,7 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
         test("returns names as null when person projections are absent") {
             val id = UUID.randomUUID()
-            insertRelation(id)
+            insertCurrentRelation(id)
 
             val relation = repository.findById(id)
 
@@ -92,14 +75,14 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
         test("marks a revoked relation as inactive") {
             val id = UUID.randomUUID()
-            insertRelation(id, to = activeFrom.plusSeconds(1))
+            insertCurrentRelation(id, to = activeFrom.plusSeconds(1))
 
             repository.findById(id)?.isActive shouldBe false
         }
 
         test("marks a future relation as inactive") {
             val id = UUID.randomUUID()
-            insertRelation(id, from = activeFrom.plusDays(2))
+            insertCurrentRelation(id, from = activeFrom.plusDays(2))
 
             repository.findById(id)?.isActive shouldBe false
         }
@@ -110,7 +93,7 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
         test("finds a revocable relation with both parties and organization without a person projection") {
             val id = UUID.randomUUID()
-            insertRelation(id)
+            insertCurrentRelation(id)
 
             repository.findRevocableById(id) shouldBe RevocableNarmestelederrelasjon(
                 id = id,
@@ -123,20 +106,20 @@ class ExposedNarmestelederrelasjonRepositoryTest :
 
         test("finds a revoked relation as inactive") {
             val id = UUID.randomUUID()
-            insertRelation(id, to = activeFrom.plusSeconds(1))
+            insertCurrentRelation(id, to = activeFrom.plusSeconds(1))
 
             repository.findRevocableById(id)?.isActive shouldBe false
         }
 
         test("finds a future-dated relation as revocable") {
             val id = UUID.randomUUID()
-            insertRelation(id, from = activeFrom.plusDays(2))
+            insertCurrentRelation(id, from = activeFrom.plusDays(2))
 
             repository.findRevocableById(id)?.isActive shouldBe true
         }
 
         test("returns null for an unknown revoke id") {
-            insertRelation()
+            insertCurrentRelation()
 
             repository.findRevocableById(UUID.randomUUID()).shouldBeNull()
         }
@@ -144,8 +127,8 @@ class ExposedNarmestelederrelasjonRepositoryTest :
         test("does not return a revoke relation belonging to another id") {
             val other = UUID.randomUUID()
             val wanted = UUID.randomUUID()
-            insertRelation(other, employee = "12345678902", manager = "10987654322")
-            insertRelation(wanted)
+            insertCurrentRelation(other, employee = "12345678902", manager = "10987654322")
+            insertCurrentRelation(wanted)
 
             repository.findRevocableById(other)?.employeeIdent shouldBe PersonalIdentificationNumber("12345678902")
             repository.findRevocableById(other)?.managerIdent shouldBe PersonalIdentificationNumber("10987654322")

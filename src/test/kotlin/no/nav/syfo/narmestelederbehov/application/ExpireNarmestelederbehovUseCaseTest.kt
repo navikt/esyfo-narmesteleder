@@ -50,13 +50,3 @@ class ExpireNarmestelederbehovUseCaseTest :
             repository.calls.single().first shouldBe LocalDate.parse("2026-03-17")
         }
     })
-
-private class RecordingExpiryRepository(results: List<Int>) : NarmestelederbehovExpiryRepository {
-    private val results = ArrayDeque(results)
-    val calls = mutableListOf<Pair<LocalDate, Int>>()
-
-    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int {
-        calls += sykmeldingMaxDate to limit
-        return results.removeFirst()
-    }
-}

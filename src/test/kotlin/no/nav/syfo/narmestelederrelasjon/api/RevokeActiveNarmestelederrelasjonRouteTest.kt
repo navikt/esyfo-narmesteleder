@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
-import DefaultOrganization
-import createMockToken
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
@@ -14,9 +12,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
@@ -25,7 +23,7 @@ import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCa
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeActiveNarmestelederrelasjonUseCase
@@ -50,7 +48,8 @@ import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -220,7 +219,10 @@ private class RevokeRouteFixture(
     private val unavailable: UpstreamFailure? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
-    val lookups = mutableListOf<PersonalIdentificationNumber>()
+    private val repository = FakeActiveNarmestelederrelasjonRepository(
+        if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), PersonalIdentificationNumber("10987654321"), managerEmail, Instant.EPOCH)) else emptyList(),
+    )
+    val lookups get() = repository.lookups.map { it.first }
     val messages = mutableListOf<Pair<NlAvbrutt, NlResponseSource>>()
     private val producer = object : SykmeldingNarmestelederProducer {
         override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) = error("Unexpected relation")
@@ -234,32 +236,15 @@ private class RevokeRouteFixture(
             unavailable?.let { PersonLookupResult.Unavailable(it) } ?: person?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
         },
         MicrometerNameValidationMetrics(),
-        object : ActiveNarmestelederrelasjonRepository {
-            override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
-                lookups += employeeIdent
-                return if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), PersonalIdentificationNumber("10987654321"), managerEmail, Instant.EPOCH)) else emptyList()
-            }
-        },
+        repository,
         KafkaPublishNarmestelederrelasjonRevocation(producer),
     )
 
     fun authorize(provider: String, caller: String = "12345678901") {
         if (provider == "maskinporten") {
-            coEvery { texas.introspectToken("maskinporten", any()) } returns TexasIntrospectionResponse(
-                active = true,
-                scope = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
-                consumer = DefaultOrganization,
-                authorizationDetails = listOf(
-                    no.nav.syfo.platform.auth.texas.client.AuthorizationDetail(
-                        type = "urn:altinn:systemuser",
-                        systemuserOrg = DefaultOrganization,
-                        systemuserId = listOf("some-user-id"),
-                        systemId = "some-system-id",
-                    ),
-                ),
-            )
+            texas.stubMaskinportenSystemUser()
         } else {
-            coEvery { texas.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(active = true, acr = "Level4", pid = caller)
+            texas.stubTokenX(pid = caller)
         }
     }
 

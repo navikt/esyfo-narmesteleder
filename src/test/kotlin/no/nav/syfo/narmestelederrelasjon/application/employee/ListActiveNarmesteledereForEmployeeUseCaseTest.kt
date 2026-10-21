@@ -12,13 +12,12 @@ class ListActiveNarmesteledereForEmployeeUseCaseTest :
     FunSpec({
         val employee = PersonalIdentificationNumber("12345678901")
         val organization = OrganizationNumber("123456789")
-        val repository = RecordingEmployeeRepository()
+        val repository = FakeEmployeeNarmestelederrelasjonRepository()
         val discardedEmailAddressMetrics = RecordingDiscardedEmailAddressMetrics()
         val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository, discardedEmailAddressMetrics)
 
         beforeTest {
-            repository.rows = emptyList()
-            repository.lookups.clear()
+            repository.reset()
             discardedEmailAddressMetrics.recorded.clear()
         }
 
@@ -78,16 +77,6 @@ class ListActiveNarmesteledereForEmployeeUseCaseTest :
             discardedEmailAddressMetrics.recorded shouldBe listOf(3)
         }
     })
-
-private class RecordingEmployeeRepository : EmployeeNarmestelederrelasjonRepository {
-    var rows = emptyList<EmployeeNarmestelederrelasjon>()
-    val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber?>>()
-
-    override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon> {
-        lookups.add(employeeIdent to organizationNumber)
-        return rows
-    }
-}
 
 private fun employeeRelation(id: UUID = UUID(0, 1)) = EmployeeNarmestelederrelasjon(
     id = id,

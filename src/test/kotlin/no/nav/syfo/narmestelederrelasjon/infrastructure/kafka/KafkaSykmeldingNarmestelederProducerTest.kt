@@ -1,13 +1,13 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
-import faker
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.date.shouldBeAfter
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import linemanager
+import no.nav.syfo.faker
 import no.nav.syfo.integration.pdl.Navn
+import no.nav.syfo.linemanager
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.KafkaSykmeldingNarmestelederProducer.Companion.SYKEMELDING_NL_TOPIC
 import no.nav.syfo.platform.kafka.JacksonKafkaSerializer
 import org.apache.kafka.common.serialization.Serializer

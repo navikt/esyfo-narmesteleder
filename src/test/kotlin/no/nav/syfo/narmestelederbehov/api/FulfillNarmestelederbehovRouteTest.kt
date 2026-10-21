@@ -1,8 +1,5 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import DefaultOrganization
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
@@ -17,14 +14,15 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import linemanager
-import manager
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregCache
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.Organisasjon
+import no.nav.syfo.linemanager
+import no.nav.syfo.manager
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -52,8 +50,9 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.DefaultOrganization
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -225,10 +224,7 @@ class FulfillNarmestelederbehovRouteTest :
         test("PUT /requirement/{id} 403 when principal lacks Altinn resource access to orgnumber") {
             withPutApplication { fixture ->
                 val id = fixture.seed()
-                fixture.texas.defaultMocks(
-                    consumer = DefaultOrganization.copy(ID = "0192:000000000"),
-                    scope = MASKINPORTEN_NL_SCOPE,
-                )
+                fixture.texas.stubMaskinportenSystemUser(consumer = DefaultOrganization.copy(ID = "0192:000000000"))
                 coEvery { fixture.pdp.authorize(any(), any(), any()) } returns
                     UpstreamResult.Success(AuthorizationDecision.Deny)
                 fixture.ereg.organisasjoner[fixture.orgNumber] = Organisasjon(
@@ -319,10 +315,7 @@ private class PutFixture {
     ) { DialogCompletion.Completed }
 
     init {
-        texas.defaultMocks(
-            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgNumber"),
-            scope = MASKINPORTEN_NL_SCOPE,
-        )
+        texas.stubMaskinportenSystemUser(systemUserOrganization = DefaultOrganization.copy(ID = "0192:$orgNumber"))
         coEvery { pdp.authorize(any(), any(), any()) } returns
             UpstreamResult.Success(AuthorizationDecision.Permit)
     }

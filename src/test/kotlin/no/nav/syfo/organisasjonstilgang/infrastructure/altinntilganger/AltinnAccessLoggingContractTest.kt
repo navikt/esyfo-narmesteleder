@@ -5,8 +5,6 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
@@ -17,6 +15,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.mockk.mockk
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.respondJson
@@ -37,6 +36,7 @@ import no.nav.syfo.platform.api.STATUS_PAGES_LOGGER_NAME
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.ProductionLogs
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -113,7 +113,7 @@ class AltinnAccessLoggingContractTest :
                             upstreamHttpClient(scenario.token, scenario.upstream).use { http ->
                                 val service = AltinnTilgangerService(HttpAltinnTilgangerClient(texasHttpClient(http), http, "http://altinn"))
                                 val access = AltinnOrganizationAccess(service, FakeAltinnAuthorizationClient(), FakeEregClient())
-                                val authClient = mockk<TexasHttpClient>().also { it.defaultMocks(pid = ident, acr = "Level4") }
+                                val authClient = mockk<TexasHttpClient>().also { it.stubTokenX(pid = ident) }
                                 testRouteApplication(
                                     routes = {
                                         apiV1 {

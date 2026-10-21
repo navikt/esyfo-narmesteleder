@@ -1,10 +1,10 @@
 package no.nav.syfo.sykmelding.application
 
-import defaultSendtSykmeldingMessage
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.syfo.TestDB
+import no.nav.syfo.defaultSendtSykmeldingMessage
 import no.nav.syfo.findAll
 import no.nav.syfo.findBySykmeldingId
 import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
@@ -20,7 +20,7 @@ class SykmeldingServiceTest :
         val service = SykmeldingService(sykmeldingDb)
 
         beforeEach {
-            TestDB.clearSendtSykmeldingData()
+            TestDB.clearAllData()
         }
 
         context("processBatch - persists the batch plan") {

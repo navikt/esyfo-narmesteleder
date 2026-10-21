@@ -14,9 +14,9 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregCache
-import no.nav.syfo.integration.ereg.EregClient
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.Organisasjon
+import no.nav.syfo.integration.ereg.RecordingEregClient
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -179,13 +179,8 @@ private class AccessFixture {
     val altinn = FakeAltinnTilgangerClient().also { it.accessPolicy.clear() }
     val pdp = RecordingAltinnAuthorizationClient()
     val ereg = FakeEregClient().also { it.organisasjoner.clear() }
-    var eregRequests = 0
-    private val recordingEreg = object : EregClient {
-        override suspend fun getOrganisasjon(orgnummer: String): UpstreamResult<Organisasjon?> {
-            eregRequests++
-            return ereg.getOrganisasjon(orgnummer)
-        }
-    }
+    private val recordingEreg = RecordingEregClient { ereg.getOrganisasjon(it) }
+    val eregRequests get() = recordingEreg.requests.size
     private val eregCache = mockk<EregCache> {
         every { getOrganisasjon(any()) } returns null
         every { putOrganisasjon(any(), any()) } just runs

@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
-import DefaultOrganization
-import createMockToken
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -17,11 +15,11 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import linemanager
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.linemanager
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -46,7 +44,8 @@ import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -289,21 +288,9 @@ private class SubmitFixture(
         scope: String = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
     ) {
         if (provider == "tokenx") {
-            coEvery { texas.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(active = true, acr = acr, pid = "11223344556")
+            texas.stubTokenX(pid = "11223344556", acr = acr)
         } else {
-            coEvery { texas.introspectToken("maskinporten", any()) } returns TexasIntrospectionResponse(
-                active = true,
-                scope = scope,
-                consumer = DefaultOrganization,
-                authorizationDetails = listOf(
-                    no.nav.syfo.platform.auth.texas.client.AuthorizationDetail(
-                        type = "urn:altinn:systemuser",
-                        systemuserOrg = DefaultOrganization,
-                        systemuserId = listOf("some-user-id"),
-                        systemId = "some-system-id",
-                    ),
-                ),
-            )
+            texas.stubMaskinportenSystemUser(scope = scope)
         }
     }
 

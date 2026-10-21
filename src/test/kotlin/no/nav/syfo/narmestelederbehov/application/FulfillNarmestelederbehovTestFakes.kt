@@ -1,15 +1,11 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import java.time.Instant
 import java.util.UUID
 
@@ -52,16 +48,6 @@ internal class FakeBehovRepository(
         dialogId: UUID,
         name: BehovPersonName?,
     ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
-}
-
-internal class FakeOrganizationAccess(
-    private val result: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
-    private val effects: MutableList<String> = mutableListOf(),
-) : OrganizationAccess {
-    override suspend fun evaluate(
-        subject: OrganizationAccessSubject,
-        organizationNumber: OrganizationNumber,
-    ) = result.also { effects += "access" }
 }
 
 internal class FakeRelationEstablisher(

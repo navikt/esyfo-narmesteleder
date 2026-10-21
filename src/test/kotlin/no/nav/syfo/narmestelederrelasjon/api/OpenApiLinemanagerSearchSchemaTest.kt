@@ -11,7 +11,8 @@ import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerReadCollection
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchPageInfo
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchRequest
 import no.nav.syfo.narmestelederrelasjon.api.model.Name
-import org.yaml.snakeyaml.Yaml
+import no.nav.syfo.platform.api.INTERNAL_LINEMANAGER_SEARCH_OPENAPI
+import no.nav.syfo.platform.api.openApiSchemas
 import kotlin.reflect.full.memberProperties
 
 class OpenApiLinemanagerSearchSchemaTest :
@@ -68,11 +69,4 @@ class OpenApiLinemanagerSearchSchemaTest :
         }
     })
 
-private fun schemas(): Map<*, *> {
-    val yamlText = OpenApiLinemanagerSearchSchemaTest::class.java.classLoader
-        .getResource("openapi/internal-linemanager-search.yaml")
-        ?.readText()
-        ?: error("Missing search OpenAPI documentation")
-    val root = Yaml().load<Map<String, Any>>(yamlText)
-    return (root["components"] as Map<*, *>)["schemas"] as Map<*, *>
-}
+private fun schemas(): Map<*, *> = openApiSchemas(INTERNAL_LINEMANAGER_SEARCH_OPENAPI)

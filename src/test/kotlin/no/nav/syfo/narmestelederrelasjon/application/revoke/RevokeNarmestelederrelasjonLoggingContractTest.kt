@@ -8,8 +8,7 @@ import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.FakeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RecordingRevocationPublisher
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.found
@@ -45,14 +44,11 @@ class RevokeNarmestelederrelasjonLoggingContractTest :
             found: Boolean = true,
             access: OrganizationAccessResult = OrganizationAccessResult.Denied(denial),
         ) = RevokeNarmestelederrelasjonUseCase(
-            repository = object : NarmestelederrelasjonRepository {
-                override suspend fun findById(id: UUID): NarmestelederrelasjonLookup = error("Not used by revoke")
-                override suspend fun findRevocableById(id: UUID) = if (found) {
-                    RevocableNarmestelederrelasjon(id, employee, PersonalIdentificationNumber("10987654321"), org, isActive = false)
-                } else {
-                    null
-                }
-            },
+            repository = FakeNarmestelederrelasjonRepository(
+                revocableById = { id ->
+                    if (found) RevocableNarmestelederrelasjon(id, employee, PersonalIdentificationNumber("10987654321"), org, isActive = false) else null
+                },
+            ),
             organizationAccess = { _, _ -> access },
             publisher = RecordingRevocationPublisher { error("Publisher must not be called") },
         ).execute(id, subject)

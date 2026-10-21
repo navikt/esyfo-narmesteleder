@@ -19,7 +19,6 @@ class ExposedNarmestelederbehovExpiryRepositoryTest :
 
         beforeTest {
             TestDB.clearAllData()
-            TestDB.clearSendtSykmeldingData()
         }
 
         fun storedStatus(id: UUID) = requireNotNull(findStoredNarmestelederbehov(id)).behovStatus

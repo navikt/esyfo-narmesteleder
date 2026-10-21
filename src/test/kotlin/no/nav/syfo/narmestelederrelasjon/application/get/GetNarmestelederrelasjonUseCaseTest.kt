@@ -7,14 +7,13 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.application.FakeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
-import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
-import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.domain.Narmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -49,10 +48,10 @@ class GetNarmestelederrelasjonUseCaseTest :
             organizationName: OrganizationNameResult = OrganizationNameResult.Found("Organization"),
             effects: MutableList<String> = mutableListOf(),
         ) = GetNarmestelederrelasjonUseCase(
-            FakeNarmestelederrelasjonRepository(lookup, effects),
-            FakeGetOrganizationAccess(access, effects),
+            FakeNarmestelederrelasjonRepository(lookupById = { lookup }, effects = effects),
+            FakeOrganizationAccess(access, effects),
             FakeGetActiveSykmeldingLookup(activeSykmelding, effects),
-            FakeGetOrganization(organizationName, effects),
+            FakeNarmestelederrelasjonOrganization(organizationName, effects),
         )
 
         test("returns the relation only to an organization-authorized caller") {
@@ -161,31 +160,9 @@ class GetNarmestelederrelasjonUseCaseTest :
         }
     })
 
-private class FakeNarmestelederrelasjonRepository(
-    private val lookup: NarmestelederrelasjonLookup?,
-    private val effects: MutableList<String>,
-) : NarmestelederrelasjonRepository {
-    override suspend fun findById(id: UUID) = lookup.also { effects += "lookup" }
-    override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon = error("Not used by GET")
-}
-
-private class FakeGetOrganizationAccess(
-    private val result: OrganizationAccessResult,
-    private val effects: MutableList<String>,
-) : OrganizationAccess {
-    override suspend fun evaluate(subject: OrganizationAccessSubject, organizationNumber: OrganizationNumber) = result.also { effects += "access" }
-}
-
 private class FakeGetActiveSykmeldingLookup(
     private val active: Boolean,
     private val effects: MutableList<String>,
 ) : ActiveSykmeldingLookup {
     override suspend fun hasActiveSykmelding(personIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber) = active.also { effects += "sykmelding" }
-}
-
-private class FakeGetOrganization(
-    private val result: OrganizationNameResult,
-    private val effects: MutableList<String>,
-) : NarmestelederrelasjonOrganization {
-    override suspend fun findName(orgNumber: OrganizationNumber) = result.also { effects += "organization" }
 }

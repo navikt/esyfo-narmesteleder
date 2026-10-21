@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederstatistikk.api
 
-import DefaultOrganization
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.bearerAuth
@@ -11,8 +8,8 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.mockk.coEvery
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
@@ -26,9 +23,11 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testApiApplication
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.DefaultOrganization
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubInactive
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -175,14 +174,12 @@ private class StatisticsApiFixture(
     )
 
     init {
-        texas.defaultMocks(
-            pid = if (user) EMPLOYEE_IDENT else null,
-            acr = if (user) "Level4" else null,
-            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"),
-            scope = MASKINPORTEN_NL_SCOPE,
-        )
         if (!activeToken) {
-            coEvery { texas.introspectToken(any(), any()) } returns TexasIntrospectionResponse(active = false)
+            texas.stubInactive()
+        } else if (user) {
+            texas.stubTokenX(pid = EMPLOYEE_IDENT)
+        } else {
+            texas.stubMaskinportenSystemUser(systemUserOrganization = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"))
         }
     }
 

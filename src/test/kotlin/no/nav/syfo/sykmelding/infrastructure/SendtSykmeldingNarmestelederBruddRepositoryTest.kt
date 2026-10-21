@@ -5,8 +5,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.sykmelding.application.SendtSykmeldingNarmestelederBrudd
-import org.jetbrains.exposed.v1.jdbc.deleteAll
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -16,9 +14,7 @@ class SendtSykmeldingNarmestelederBruddRepositoryTest :
         val repository = PostgresSendtSykmeldingNarmestelederBruddRepository(TestDB.exposedDatabase)
 
         beforeTest {
-            transaction(TestDB.exposedDatabase) {
-                SendtSykmeldingNarmestelederBruddTable.deleteAll()
-            }
+            TestDB.clearAllData()
         }
 
         test("stores and finds a tracked NL relation revoke") {

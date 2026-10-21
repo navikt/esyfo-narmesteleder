@@ -8,7 +8,7 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -22,7 +22,7 @@ private val subject = OrganizationAccessSubject.LpsSystemUser("synthetic-system-
 
 class SearchActiveNarmestelederrelasjonerUseCaseTest :
     FunSpec({
-        val access = SearchOrganizationAccess()
+        val access = FakeOrganizationAccess()
         val repository = SearchRepository()
         val useCase = SearchActiveNarmestelederrelasjonerUseCase(access, repository)
 
@@ -148,16 +148,6 @@ class SearchActiveNarmestelederrelasjonerUseCaseTest :
             }
         }
     })
-
-private class SearchOrganizationAccess : OrganizationAccess {
-    var result: OrganizationAccessResult = OrganizationAccessResult.Granted(null)
-    val calls = mutableListOf<Pair<OrganizationAccessSubject, OrganizationNumber>>()
-
-    override suspend fun evaluate(subject: OrganizationAccessSubject, organizationNumber: OrganizationNumber): OrganizationAccessResult {
-        calls.add(subject to organizationNumber)
-        return result
-    }
-}
 
 private class SearchRepository : NarmestelederrelasjonSearchRepository {
     var rows = emptyList<NarmestelederrelasjonSearchRow>()

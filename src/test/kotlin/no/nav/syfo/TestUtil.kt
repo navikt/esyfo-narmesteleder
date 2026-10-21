@@ -1,18 +1,13 @@
+package no.nav.syfo
+
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import io.mockk.coEvery
 import net.datafaker.Faker
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.api.model.Manager
 import no.nav.syfo.platform.auth.JwtIssuer
-import no.nav.syfo.platform.auth.texas.client.AuthorizationDetail
-import no.nav.syfo.platform.auth.texas.client.OrganizationId
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
-import no.nav.syfo.platform.auth.texas.client.TexasResponse
 import no.nav.syfo.sykmelding.application.Arbeidsgiver
 import no.nav.syfo.sykmelding.application.ArbeidsgiverSykmelding
 import no.nav.syfo.sykmelding.application.BrukerSvar
@@ -24,10 +19,9 @@ import no.nav.syfo.sykmelding.application.SykmeldingsperiodeAGDTO
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.util.*
-import no.nav.syfo.integration.ereg.Navn as EregNavn
+import java.util.Random
 
-val faker = Faker(Random(Instant.now().epochSecond))
+val faker = Faker(Random(760))
 
 fun manager(): Manager = Manager(
     nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
@@ -41,17 +35,6 @@ fun linemanager(): Linemanager = Linemanager(
     employeeIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
     orgNumber = OrganizationNumber(faker.numerify("#########")),
     lastName = faker.name().lastName(),
-)
-
-fun organisasjon() = Organisasjon(
-    organisasjonsnummer = faker.numerify("#########"),
-    navn = EregNavn(sammensattnavn = faker.name().fullName()),
-    inngaarIJuridiskEnheter = listOf(
-        Organisasjon(
-            organisasjonsnummer = faker.numerify("#########"),
-            navn = EregNavn(sammensattnavn = faker.name().fullName()),
-        )
-    ),
 )
 
 fun createMockToken(
@@ -82,62 +65,6 @@ fun createMockToken(
 
     val signedToken = builder.sign(algorithm)
     return signedToken
-}
-
-val DefaultOrganization = OrganizationId(
-    ID = "0192:123456789",
-    authority = "some-authority",
-)
-
-fun TexasHttpClient.defaultMocks(
-    pid: String? = null,
-    acr: String? = null,
-    scope: String? = null,
-    navident: String? = null,
-    systemBrukerOrganisasjon: OrganizationId? = DefaultOrganization,
-    consumer: OrganizationId = DefaultOrganization,
-    supplier: OrganizationId? = null
-) {
-    coEvery { systemToken(any(), any()) } returns TexasResponse(
-        accessToken = createMockToken(
-            ident = consumer.ID,
-            supplierId = supplier?.ID
-        ),
-        expiresIn = 3600L,
-        tokenType = "Bearer",
-    )
-
-    coEvery { introspectToken(any(), any()) } answers {
-        val identityProvider = firstArg<String>()
-
-        when (identityProvider) {
-            "maskinporten",
-            "tokenx" -> {
-                TexasIntrospectionResponse(
-                    active = true,
-                    pid = pid,
-                    acr = acr,
-                    sub = UUID.randomUUID().toString(),
-                    NAVident = navident,
-                    consumer = consumer,
-                    supplier = supplier,
-                    scope = scope,
-                    authorizationDetails = systemBrukerOrganisasjon?.let {
-                        listOf(
-                            AuthorizationDetail(
-                                type = "urn:altinn:systemuser",
-                                systemuserOrg = systemBrukerOrganisasjon,
-                                systemuserId = listOf("some-user-id"),
-                                systemId = "some-system-id"
-                            )
-                        )
-                    }
-                )
-            }
-
-            else -> TODO("Legg til identityProvider i mock")
-        }
-    }
 }
 
 fun defaultSendtSykmeldingMessage(
@@ -171,13 +98,3 @@ fun defaultSendtSykmeldingMessage(
         syketilfelleStartDato = sykmeldingsperioder.first().fom
     )
 )
-
-fun TexasHttpClient.defaultMocks(pid: String = "userIdentifier", acr: String = "Level4", navident: String? = null) {
-    coEvery { introspectToken(any(), any()) } returns TexasIntrospectionResponse(
-        active = true,
-        pid = pid,
-        acr = acr,
-        sub = UUID.randomUUID().toString(),
-        NAVident = navident
-    )
-}

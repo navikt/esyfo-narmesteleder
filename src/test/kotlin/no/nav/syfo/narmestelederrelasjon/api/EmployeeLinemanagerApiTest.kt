@@ -1,7 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import createMockToken
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -15,13 +14,13 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.clearMocks
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.employee.FakeEmployeeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.employee.ListActiveNarmesteledereForEmployeeUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
@@ -32,7 +31,9 @@ import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubInactive
+import no.nav.syfo.platform.auth.texas.stubIntrospectionFailure
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import java.io.IOException
 import java.time.Instant
@@ -44,17 +45,15 @@ private val responseMapper = jacksonObjectMapper()
 
 class EmployeeLinemanagerApiTest :
     FunSpec({
-        val repository = EmployeeApiRepository()
+        val repository = FakeEmployeeNarmestelederrelasjonRepository()
         val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository, MicrometerDiscardedEmailAddressMetrics.employeeLinemanager())
         val texasHttpClient = mockk<TexasHttpClient>()
 
         beforeTest {
-            repository.rows = emptyList()
-            repository.lookups.clear()
+            repository.reset()
             clearMocks(texasHttpClient)
             // Texas active=true validates audience and expiry before the application handles the request.
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level4", pid = caller.value)
+            texasHttpClient.stubTokenX(pid = caller.value)
         }
 
         test("returns the unchanged JSON shape without exposing employee details") {
@@ -159,7 +158,7 @@ class EmployeeLinemanagerApiTest :
         }
 
         test("returns 401 for an inactive TokenX token") {
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(active = false)
+            texasHttpClient.stubInactive(provider = "tokenx")
             withEmployeeApi(useCase, texasHttpClient) {
                 client.getEmployee().status shouldBe HttpStatusCode.Unauthorized
                 repository.lookups.shouldBeEmpty()
@@ -168,7 +167,7 @@ class EmployeeLinemanagerApiTest :
 
         test("returns generic 500 when TokenX introspection fails") {
             val failureMessage = "Texas is unavailable"
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } throws IOException(failureMessage)
+            texasHttpClient.stubIntrospectionFailure(IOException(failureMessage), provider = "tokenx")
             withEmployeeApi(useCase, texasHttpClient) {
                 val response = client.getEmployee()
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -180,8 +179,7 @@ class EmployeeLinemanagerApiTest :
         }
 
         test("returns 401 without leaking an invalid pid") {
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level4", pid = "abc")
+            texasHttpClient.stubTokenX(pid = "abc")
             withEmployeeApi(useCase, texasHttpClient) {
                 val response = client.getEmployee()
                 response.status shouldBe HttpStatusCode.Unauthorized
@@ -193,8 +191,7 @@ class EmployeeLinemanagerApiTest :
         }
 
         test("returns 401 when TokenX has no pid") {
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level4", pid = null)
+            texasHttpClient.stubTokenX(pid = null)
             withEmployeeApi(useCase, texasHttpClient) {
                 client.getEmployee().status shouldBe HttpStatusCode.Unauthorized
                 repository.lookups.shouldBeEmpty()
@@ -202,8 +199,7 @@ class EmployeeLinemanagerApiTest :
         }
 
         test("returns 403 below Level4") {
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level3", pid = caller.value)
+            texasHttpClient.stubTokenX(pid = caller.value, acr = "Level3")
             withEmployeeApi(useCase, texasHttpClient) {
                 client.getEmployee().status shouldBe HttpStatusCode.Forbidden
                 repository.lookups.shouldBeEmpty()
@@ -274,16 +270,6 @@ class EmployeeLinemanagerApiTest :
             }
         }
     })
-
-private class EmployeeApiRepository : EmployeeNarmestelederrelasjonRepository {
-    var rows = emptyList<EmployeeNarmestelederrelasjon>()
-    val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber?>>()
-
-    override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon> {
-        lookups.add(employeeIdent to organizationNumber)
-        return rows
-    }
-}
 
 private fun apiRelation(id: UUID = UUID(0, 1)) = EmployeeNarmestelederrelasjon(
     id = id,

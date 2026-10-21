@@ -3,8 +3,8 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
+import no.nav.syfo.narmestelederbehov.application.RecordingExpiryRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -28,15 +28,6 @@ class ExpireNarmestelederbehovTaskTest :
 
             task.execute()
 
-            repository.calls shouldBe listOf(LocalDate.parse("2026-03-01"))
+            repository.calls.map { it.first } shouldBe listOf(LocalDate.parse("2026-03-01"))
         }
     })
-
-private class RecordingExpiryRepository : NarmestelederbehovExpiryRepository {
-    val calls = mutableListOf<LocalDate>()
-
-    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int {
-        calls += sykmeldingMaxDate
-        return 0
-    }
-}

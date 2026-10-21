@@ -42,6 +42,21 @@ class GetNarmestelederbehovHttpMappingTest :
             dto.revokedBy shouldBe RevokedBy.LINEMANAGER
         }
 
+        mapOf(
+            BehovReason.DEAKTIVERT_LEDER to RevokedBy.LINEMANAGER,
+            BehovReason.DEAKTIVERT_ARBEIDSTAKER to RevokedBy.EMPLOYEE,
+            BehovReason.DEAKTIVERT_ARBEIDSTAKER_INNSENDT_SYKMELDING to RevokedBy.EMPLOYEE,
+            BehovReason.NY_LEDER to null,
+        ).forEach { (reason, revokedBy) ->
+            test("maps behov reason $reason to revokedBy $revokedBy") {
+                GetNarmestelederbehovResult.Found(
+                    behov = narmestelederbehovDetails(reason = reason),
+                    name = BehovPersonName(firstName = "First", middleName = null, lastName = "Last"),
+                    organizationName = "Org",
+                ).toLinemanagerRequirementRead().revokedBy shouldBe revokedBy
+            }
+        }
+
         test("missing id keeps legacy 404 message and type") {
             val error = shouldThrow<ApiErrorException.NotFoundException> {
                 GetNarmestelederbehovResult.NotFound.toLinemanagerRequirementRead()

@@ -153,25 +153,27 @@ class GetNarmestelederrelasjonUseCaseTest :
             notFoundEvent("RELATION_INACTIVE")
         }
 
+        data class IncompleteNameCase(
+            val description: String,
+            val lookup: NarmestelederrelasjonLookup,
+            val expectedFirstName: String?,
+            val expectedLastName: String?,
+        )
+
         listOf(
-            "missing first name" to lookup().copy(employeeFirstName = null),
-            "blank first name" to lookup().copy(employeeFirstName = " "),
-            "missing last name" to lookup().copy(employeeLastName = null),
-            "blank last name" to lookup().copy(employeeLastName = ""),
-        ).forEach { (description, incompleteLookup) ->
-            test("returns the relation with a nullable name for $description") {
+            IncompleteNameCase("missing first name", lookup().copy(employeeFirstName = null), null, "private-last-name"),
+            IncompleteNameCase("blank first name", lookup().copy(employeeFirstName = " "), null, "private-last-name"),
+            IncompleteNameCase("missing last name", lookup().copy(employeeLastName = null), "private-first-name", null),
+            IncompleteNameCase("blank last name", lookup().copy(employeeLastName = ""), "private-first-name", null),
+        ).forEach { case ->
+            test("returns the relation with a nullable name for ${case.description}") {
                 val effects = mutableListOf<String>()
-                query(lookup = incompleteLookup, effects = effects).execute(id, caller) shouldBe
+                query(lookup = case.lookup, effects = effects).execute(id, caller) shouldBe
                     GetNarmestelederrelasjonResult.Found(
                         Narmestelederrelasjon(
                             id = id,
                             orgNumber = orgNumber,
-                            employee = RelationPerson(
-                                employeeIdent,
-                                incompleteLookup.employeeFirstName?.takeIf(String::isNotBlank),
-                                null,
-                                incompleteLookup.employeeLastName?.takeIf(String::isNotBlank),
-                            ),
+                            employee = RelationPerson(employeeIdent, case.expectedFirstName, null, case.expectedLastName),
                         ),
                         "Organization",
                     )

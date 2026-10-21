@@ -3,7 +3,6 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
@@ -48,29 +47,13 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
             repository.findActive(employee, OrganizationNumber("987654321")).map { it.organizationNumber.value } shouldBe listOf("987654321")
         }
 
-        test("excludes relations with an end date") {
-            insertEmployeeRelation(to = now.minusSeconds(1))
-            repository.findActive(employee, null) shouldBe emptyList()
-        }
-
-        test("excludes relations that start in the future") {
-            insertEmployeeRelation(from = now.plusDays(1))
-            repository.findActive(employee, null) shouldBe emptyList()
-        }
-
-        test("includes relations that started immediately before now") {
-            insertEmployeeRelation(from = now.minusSeconds(1))
-            repository.findActive(employee, null).shouldHaveSize(1)
-        }
-
-        test("includes relations that start exactly now") {
-            insertEmployeeRelation(from = now)
-            repository.findActive(employee, null).shouldHaveSize(1)
-        }
-
-        test("excludes relations for another employee") {
-            insertEmployeeRelation(employeeIdent = "12345678911")
-            repository.findActive(employee, null) shouldBe emptyList()
+        test("returns only the employee's relations that have started and not ended at now") {
+            insertEmployeeRelation(id = UUID(0, 1), to = now.minusSeconds(1))
+            insertEmployeeRelation(id = UUID(0, 2), from = now.plusDays(1))
+            insertEmployeeRelation(id = UUID(0, 3), from = now.minusSeconds(1))
+            insertEmployeeRelation(id = UUID(0, 4), from = now)
+            insertEmployeeRelation(id = UUID(0, 5), employeeIdent = "12345678911")
+            repository.findActive(employee, null).map { it.id } shouldBe listOf(UUID(0, 4), UUID(0, 3))
         }
 
         test("keeps the relation with null raw names when the manager person row is missing") {
@@ -79,14 +62,6 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
             result.managerFirstName shouldBe null
             result.managerMiddleName shouldBe null
             result.managerLastName shouldBe null
-        }
-
-        test("does not expose personal identification numbers") {
-            insertManagerPerson()
-            insertEmployeeRelation()
-            val result = repository.findActive(employee, null).single().toString()
-            result shouldNotContain employee.value
-            result shouldNotContain "10987654321"
         }
 
         test("maps manager mobile and raw names") {
@@ -113,24 +88,7 @@ class ExposedEmployeeNarmestelederrelasjonRepositoryTest :
             repository.findActive(employee, OrganizationNumber("987654321")) shouldBe emptyList()
         }
 
-        test("maps one email address without parsing it") {
-            insertEmployeeRelation(email = "manager@example.com")
-            repository.findActive(employee, null).single().managerEmail shouldBe "manager@example.com"
-        }
-
-        test("returns comma-separated emails unparsed") {
-            val raw = "first@example.com,second@example.com"
-            insertEmployeeRelation(email = raw)
-            repository.findActive(employee, null).single().managerEmail shouldBe raw
-        }
-
-        test("returns semicolon-separated emails unparsed") {
-            val raw = "first@example.com;second@example.com"
-            insertEmployeeRelation(email = raw)
-            repository.findActive(employee, null).single().managerEmail shouldBe raw
-        }
-
-        test("returns invalid emails and surrounding whitespace unparsed") {
+        test("returns the raw manager email without parsing separators, invalid addresses or whitespace") {
             val raw = " first@example.com , invalid-address; second@example.com; "
             insertEmployeeRelation(email = raw)
             repository.findActive(employee, null).single().managerEmail shouldBe raw

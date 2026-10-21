@@ -34,6 +34,8 @@ class KafkaPublishNarmestelederrelasjonRevocationTest :
             )
             expectedSources.keys shouldBe RevocationInitiator.entries.toSet()
             NlResponseSource.ARBEIDSFORHOLD_REVOKE.source shouldBe "narmesteleder-arbeidsforhold"
+            // Same value as the kilde stored for a sendt sykmelding brudd; "esyo" is the established spelling.
+            NlResponseSource.ARBEIDSTAGER_SYKMELDING_REVOKE.source shouldBe "esyo-narmesteleder.arbeidstager.sykmelding.deaktivert"
             expectedSources.forEach { (initiator, source) ->
                 adapter.publish(
                     PublishNarmestelederrelasjonRevocationCommand(

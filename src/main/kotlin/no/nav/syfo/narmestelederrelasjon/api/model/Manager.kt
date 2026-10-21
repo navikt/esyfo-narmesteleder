@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.domain
+package no.nav.syfo.narmestelederrelasjon.api.model
 
 import no.nav.syfo.ident.PersonalIdentificationNumber
 

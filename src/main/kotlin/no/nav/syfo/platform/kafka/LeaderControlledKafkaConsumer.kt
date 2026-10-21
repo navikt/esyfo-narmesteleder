@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.service
+package no.nav.syfo.platform.kafka
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

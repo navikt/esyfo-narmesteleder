@@ -1,7 +1,9 @@
 package no.nav.syfo.platform.kafka
 
+import no.nav.esyfo.observability.ApplicationLogger
 import no.nav.esyfo.observability.Event
 import no.nav.esyfo.observability.causeChain
+import no.nav.esyfo.observability.createLogger
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.observability.EventContext
 import no.nav.syfo.platform.observability.applicationEvent
@@ -30,7 +32,9 @@ internal data class KafkaEventDetails(
     val errorCode: String? = null,
 )
 
-internal class KafkaEventLogger(private val logger: Logger, private val consumer: KafkaEventConsumer) {
+internal class KafkaEventLogger(private val logger: ApplicationLogger, private val consumer: KafkaEventConsumer) {
+    constructor(logger: Logger, consumer: KafkaEventConsumer) : this(createLogger(logger), consumer)
+
     fun log(
         event: Event<EventContext<KafkaEventDetails>>,
         reason: KafkaReason? = null,

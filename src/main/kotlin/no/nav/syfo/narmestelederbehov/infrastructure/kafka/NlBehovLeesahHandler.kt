@@ -1,14 +1,12 @@
-package no.nav.syfo.narmesteleder.kafka
+package no.nav.syfo.narmestelederbehov.infrastructure.kafka
 
-import no.nav.syfo.narmesteleder.api.v1.COUNT_CREATE_LINEMANAGER_REQUIREMENT
-import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
-import no.nav.syfo.platform.observability.logger
 import org.slf4j.event.Level
 
 private enum class MissingStatusReason {
@@ -25,7 +23,7 @@ private val nlMessageStatusSkipped = applicationEvent<MissingStatusReason>(
 )
 
 class NlBehovLeesahHandler(private val createNarmestelederbehov: CreateNarmestelederbehov) {
-    private val logger = logger()
+    private val logger = applicationLogger(NlBehovLeesahHandler::class.java)
 
     suspend fun handleByLeesahStatus(command: CreateNarmestelederbehovCommand, status: LeesahStatus?) {
         logger.info("Processing NL message with status: $status")

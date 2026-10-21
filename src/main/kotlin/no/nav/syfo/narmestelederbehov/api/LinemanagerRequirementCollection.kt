@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
-
 class LinemanagerRequirementCollection(
     val linemanagerRequirements: List<LinemanagerRequirementRead>,
     val meta: PageInfo,

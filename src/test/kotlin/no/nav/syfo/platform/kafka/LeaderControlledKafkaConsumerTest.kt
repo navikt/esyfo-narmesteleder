@@ -1,4 +1,4 @@
-package no.nav.syfo.narmesteleder.service
+package no.nav.syfo.platform.kafka
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe

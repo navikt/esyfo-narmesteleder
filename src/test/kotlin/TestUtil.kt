@@ -5,8 +5,8 @@ import net.datafaker.Faker
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.Organisasjon
-import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
+import no.nav.syfo.narmestelederrelasjon.api.model.Manager
 import no.nav.syfo.platform.auth.JwtIssuer
 import no.nav.syfo.platform.auth.texas.client.AuthorizationDetail
 import no.nav.syfo.platform.auth.texas.client.OrganizationId
@@ -29,7 +29,6 @@ import no.nav.syfo.integration.ereg.Navn as EregNavn
 
 val faker = Faker(Random(Instant.now().epochSecond))
 
-fun faker() = faker
 fun manager(): Manager = Manager(
     nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
     mobile = "+47${faker.numerify("########")}",

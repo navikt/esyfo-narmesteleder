@@ -82,6 +82,7 @@ narmesteleder:
   narmesteleder (`aktivTom` is empty), saving the status before completing
   the Dialogporten dialog;
 - own `nl_behov`;
+- consume Leesah in `infrastructure.kafka` and create needs from the events;
 - coordinate Dialogporten state and retry behavior.
 
 It establishes a relation through an application contract owned by
@@ -242,14 +243,16 @@ layers because it has no business workflow to hide.
 
 Contains reusable technical mechanisms without domain rules:
 
-- `api`: shared HTTP paths, errors and API plugins;
+- `api`: shared HTTP paths, errors, API plugins and path/query parameter
+  helpers;
 - `auth`: Ktor authentication and principal construction;
 - `auth/texas`: Texas authentication plugins, token providers and client;
 - `cache`: generic Valkey cache and configuration;
 - `config`: shared environment-variable lookup;
 - `database`: data source, Flyway and shared transaction infrastructure;
 - `http`: shared HTTP client construction;
-- `kafka`: producer/consumer construction and reusable lifecycle mechanics;
+- `kafka`: producer/consumer construction and reusable lifecycle mechanics,
+  including `LeaderControlledKafkaConsumer`;
 - `local`: JSON fixture loading for local adapters;
 - `observability`: metrics, health and common structured logging mechanisms;
 - `scheduling`: reusable scheduling mechanics. New scheduled work runs on
@@ -361,8 +364,8 @@ bootstrap -> all modules and integration
 Rules:
 
 - Module dependencies follow the arrows above and never form a cycle, also not
-  indirectly through legacy or root packages. Existing cycles through legacy
-  code disappear as flows are migrated and are tracked in #544.
+  indirectly through root packages. The only root packages are the business
+  modules, `ident`, `integration`, `platform` and `bootstrap`.
 - `domain` has no Ktor, Kafka, Exposed, JDBC, Koin, HTTP-client or environment
   dependencies.
 - `application` depends on its domain and small ports, never its
@@ -480,8 +483,8 @@ being introduced through #681):
   `ApiErrorException` with `UPSTREAM_SERVICE_UNAVAILABLE` and the failure
   attached; Kafka consumers and scheduled jobs apply their own retry or
   postponement rule.
-- Legacy code that has not moved yet calls `getOrThrow()`, which throws
-  `UpstreamRequestException`. Both are removed with the last legacy caller.
+- No production code calls `getOrThrow()` any more. It and
+  `UpstreamRequestException` are left for a separate cleanup.
 
 Database failures, Kafka publishing failures and programming errors remain
 exceptions.
@@ -580,14 +583,18 @@ Each migrated vertical flow includes:
    contracts where applicable;
 3. architecture tests for the packages introduced by that flow.
 
-Keep existing endpoint, OpenAPI, Kafka and PostgreSQL coverage. Remove broad
-fixtures such as `FakesWrapper` incrementally as individual flows migrate.
+Keep existing endpoint, OpenAPI, Kafka and PostgreSQL coverage. New tests use
+small, explicitly seeded fakes instead of broad shared fixtures.
 
-Do not create architecture tests for empty target packages or large exception
-lists for legacy code. Add rules when real code moves, then expand them until
-the final repository-wide rules can replace the migration-specific checks.
+Architecture tests enforce the repository-wide rules, including the allowed
+root packages. Do not add large exception lists.
 
 ## Migration approach
+
+The migration from the legacy `narmesteleder` package is complete (#625). All
+business code lives in the modules above, and shared mechanisms live in
+`platform`. The notes below record where the migrated flows ended up and which
+changes remain separate.
 
 `GET /api/v1/access/organizations` now lives in `organisasjonstilgang` as `ListAccessibleOrganizationsUseCase`.
 
@@ -603,20 +610,16 @@ consumers still have to move to a shared consumer runner (#623).
 The fulfillment foundation and its remaining activation work are described in
 [Fulfillment migration status](narmestelederbehov-fulfillment-migration.md).
 
-The first implementation slice is fulfillment of a narmestelederbehov. It
-creates only the target packages, Koin seams, application contracts and
-architecture rules required by that complete flow.
-
-Subsequent slices migrate one business action or query at a time. A slice must
-preserve external HTTP and Kafka contracts, database behavior, authentication
-and authorization order, configuration names/defaults, logging safety and
+Each slice migrated one business action or query at a time and preserved
+external HTTP and Kafka contracts, database behavior, authentication and
+authorization order, configuration names/defaults, logging safety and
 side-effect ordering.
 
 The direct submission and employee-and-organization revoke routes now live in
 `narmestelederrelasjon`; the requirement routes live in `narmestelederbehov`.
 Revocation triggered by sendt sykmelding goes through the
-`RevokeNarmestelederrelasjonFromSendtSykmelding` contract, so no legacy code
-publishes relation revocations any more.
+`RevokeNarmestelederrelasjonFromSendtSykmelding` contract. The Leesah consumer
+that creates needs lives in `narmestelederbehov.infrastructure.kafka`.
 
 The following are separate changes and must not be hidden inside structural
 pull requests:

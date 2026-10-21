@@ -86,5 +86,4 @@ internals. The parity tests are replaced with tests of the single owner.
 `FakeAaregClient` remains seeded local-development infrastructure and supports
 existing tests. `TestAaregClient` is an empty, explicitly seeded test-only fake
 for focused characterization tests, with reset between cases. It avoids
-coupling new tests to local-development data while `FakesWrapper` and its
-dependent fixtures are phased out.
+coupling new tests to local-development data.

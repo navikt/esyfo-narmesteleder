@@ -14,6 +14,7 @@ import no.nav.syfo.narmestelederrelasjon.observability.countRevokeActiveNarmeste
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.api.toForbiddenException
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal

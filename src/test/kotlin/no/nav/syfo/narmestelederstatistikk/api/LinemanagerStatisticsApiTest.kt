@@ -27,6 +27,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testApiApplication
+import no.nav.syfo.platform.api.toForbiddenException
 import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse

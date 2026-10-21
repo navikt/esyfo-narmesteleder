@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
 
 class PdlLeesahConsumerTest :
     FunSpec({
@@ -298,7 +299,7 @@ class PdlLeesahConsumerTest :
             try {
                 pdlLeesahConsumer(kafkaConsumer, updateRelationPersonNames, scope = scope).listen()
 
-                withTimeout(5_000) { failure.await() } shouldBe fatal
+                withTimeout(5_000.milliseconds) { failure.await() } shouldBe fatal
                 val event = logAppender.list.single { it.level == Level.ERROR }
                 val fields = event.fields()
                 fields["event_type"] shouldBe "kafka_consumer_crashed"

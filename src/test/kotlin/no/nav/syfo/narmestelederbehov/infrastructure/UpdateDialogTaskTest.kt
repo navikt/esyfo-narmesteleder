@@ -16,6 +16,7 @@ import no.nav.syfo.narmestelederbehov.application.CompleteDialogsFixture
 import no.nav.syfo.narmestelederbehov.application.ExpireDialogsFixture
 import no.nav.syfo.narmestelederbehov.application.UPDATE_NOW
 import no.nav.syfo.platform.observability.ProductionLogs
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -70,10 +71,10 @@ class UpdateDialogTaskTest :
                     try {
                         runCurrent()
                         complete.repository.fulfilledQueries.size shouldBe 1
-                        advanceTimeBy(7.minutes.inWholeMilliseconds - 1)
+                        advanceTimeBy((7.minutes.inWholeMilliseconds - 1).milliseconds)
                         runCurrent()
                         complete.repository.fulfilledQueries.size shouldBe 1
-                        advanceTimeBy(1)
+                        advanceTimeBy(1.milliseconds)
                         runCurrent()
                         complete.repository.fulfilledQueries.size shouldBe 2
                         expire.repository.expiryQueries shouldBe 0

@@ -51,11 +51,11 @@ class ScheduledLeaderTaskTest :
                 runCurrent()
                 executeCount.shouldBeExactly(1)
 
-                advanceTimeBy(100)
+                advanceTimeBy(100.milliseconds)
                 runCurrent()
                 executeCount.shouldBeExactly(2)
 
-                advanceTimeBy(100)
+                advanceTimeBy(100.milliseconds)
                 runCurrent()
                 executeCount.shouldBeExactly(3)
 
@@ -82,7 +82,7 @@ class ScheduledLeaderTaskTest :
                 runCurrent()
                 executeCount.shouldBeExactly(1)
 
-                advanceTimeBy(100)
+                advanceTimeBy(100.milliseconds)
                 runCurrent()
                 executeCount.shouldBeExactly(2)
                 val event = appender.list.single { it.level == Level.ERROR }
@@ -160,7 +160,7 @@ class ScheduledLeaderTaskTest :
                 executeCount.shouldBeExactly(1)
 
                 job.cancelAndJoin()
-                advanceTimeBy(1_000)
+                advanceTimeBy(1_000.milliseconds)
                 runCurrent()
 
                 executeCount.shouldBeExactly(1)

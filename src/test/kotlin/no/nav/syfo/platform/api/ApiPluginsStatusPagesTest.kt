@@ -99,7 +99,7 @@ class ApiPluginsStatusPagesTest :
                     RuntimeLogContract(
                         mapOf(
                             "event_type" to setOf("api_request_failed"),
-                            "exception_type" to setOf("ApiErrorException\$InternalServerErrorException"),
+                            "exception_type" to setOf($$"ApiErrorException$InternalServerErrorException"),
                         )
                     ).assertValid(capture.records, expectedCount = 1)
                     val serialized = capture.records.single()

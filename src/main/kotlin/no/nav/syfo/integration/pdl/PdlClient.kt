@@ -24,9 +24,9 @@ internal val PDL = UpstreamName("pdl")
 
 @Language("GraphQL")
 private val getPersonQuery =
-    """
-    query(${'$'}ident: ID!){
-      person: hentPerson(ident: ${'$'}ident) {
+    $$"""
+    query($ident: ID!){
+      person: hentPerson(ident: $ident) {
         navn(historikk: false) {
           fornavn
           mellomnavn
@@ -34,7 +34,7 @@ private val getPersonQuery =
         }
         foedselsdato { foedselsdato }
       }
-      identer: hentIdenter(ident: ${'$'}ident, historikk: false) {
+      identer: hentIdenter(ident: $ident, historikk: false) {
           identer {
             ident,
             gruppe

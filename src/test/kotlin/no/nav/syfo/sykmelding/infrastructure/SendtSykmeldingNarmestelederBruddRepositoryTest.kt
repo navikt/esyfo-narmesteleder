@@ -1,6 +1,6 @@
 package no.nav.syfo.sykmelding.infrastructure
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
@@ -12,7 +12,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 class SendtSykmeldingNarmestelederBruddRepositoryTest :
-    DescribeSpec({
+    FunSpec({
         val repository = PostgresSendtSykmeldingNarmestelederBruddRepository(TestDB.exposedDatabase)
 
         beforeTest {
@@ -21,7 +21,7 @@ class SendtSykmeldingNarmestelederBruddRepositoryTest :
             }
         }
 
-        it("stores and finds a tracked NL relation revoke") {
+        test("stores and finds a tracked NL relation revoke") {
             val brudd = SendtSykmeldingNarmestelederBrudd(
                 sykmeldingId = UUID.randomUUID(),
                 fnr = "12345678901",

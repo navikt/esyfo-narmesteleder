@@ -1,6 +1,6 @@
 package no.nav.syfo.platform.api
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.client.request.get
@@ -11,9 +11,9 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 
 class SwaggerAvailabilityTest :
-    StringSpec({
+    FunSpec({
 
-        "swagger ui is available" {
+        test("swagger ui is available") {
             testApplication {
                 application {
                     routing {
@@ -27,7 +27,7 @@ class SwaggerAvailabilityTest :
             }
         }
 
-        "openapi yaml is available" {
+        test("openapi yaml is available") {
             testApplication {
                 application {
                     routing {
@@ -39,7 +39,7 @@ class SwaggerAvailabilityTest :
                 response.bodyAsText() shouldContain "openapi: 3.0.3"
             }
         }
-        "linemanager search openapi yaml is available" {
+        test("linemanager search openapi yaml is available") {
             testApplication {
                 application {
                     routing {
@@ -52,7 +52,7 @@ class SwaggerAvailabilityTest :
             }
         }
 
-        "internal openapi yaml is available" {
+        test("internal openapi yaml is available") {
             testApplication {
                 application {
                     routing {

@@ -1,6 +1,6 @@
 package no.nav.syfo.bootstrap
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import java.lang.classfile.ClassFile
@@ -10,8 +10,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class BootstrapBoundaryTest :
-    StringSpec({
-        "business modules receive small settings and never reference bootstrap" {
+    FunSpec({
+        test("business modules receive small settings and never reference bootstrap") {
             val classes = Path.of(Environment::class.java.protectionDomain.codeSource.location.toURI())
             val violations = (businessPackages + "integration").flatMap { pkg ->
                 Files.walk(classes.resolve("no/nav/syfo/$pkg")).use { files ->
@@ -24,7 +24,7 @@ class BootstrapBoundaryTest :
             violations.shouldBeEmpty()
         }
 
-        "root packages are only business modules and supporting packages" {
+        test("root packages are only business modules and supporting packages") {
             val classes = Path.of(Environment::class.java.protectionDomain.codeSource.location.toURI())
             val rootPackages = Files.list(classes.resolve("no/nav/syfo")).use { entries ->
                 entries.filter { Files.isDirectory(it) }.map { it.fileName.toString() }.toList()

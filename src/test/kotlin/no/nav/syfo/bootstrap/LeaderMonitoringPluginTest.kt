@@ -1,6 +1,6 @@
 package no.nav.syfo.bootstrap
 
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.client.HttpClient
@@ -13,28 +13,28 @@ import no.nav.syfo.platform.scheduling.LeaderChange
 import no.nav.syfo.platform.scheduling.LeaderChangeSSEListener
 
 class LeaderMonitoringPluginTest :
-    DescribeSpec({
+    FunSpec({
 
-        describe("deriveLeaderChange") {
-            it("should return Promoted when transitioning from non-leader to leader") {
+        context("deriveLeaderChange") {
+            test("should return Promoted when transitioning from non-leader to leader") {
                 deriveLeaderChange(wasLeader = false, isLeader = true) shouldBe LeaderChange.Promoted
             }
 
-            it("should return Demoted when transitioning from leader to non-leader") {
+            test("should return Demoted when transitioning from leader to non-leader") {
                 deriveLeaderChange(wasLeader = true, isLeader = false) shouldBe LeaderChange.Demoted
             }
 
-            it("should return Unaffected when remaining non-leader") {
+            test("should return Unaffected when remaining non-leader") {
                 deriveLeaderChange(wasLeader = false, isLeader = false) shouldBe LeaderChange.Unaffected
             }
 
-            it("should return Unaffected when remaining leader") {
+            test("should return Unaffected when remaining leader") {
                 deriveLeaderChange(wasLeader = true, isLeader = true) shouldBe LeaderChange.Unaffected
             }
         }
 
-        describe("LeaderChange sealed interface") {
-            it("should support exhaustive when matching") {
+        context("LeaderChange sealed interface") {
+            test("should support exhaustive when matching") {
                 val results =
                     listOf(
                         LeaderChange.Promoted,
@@ -51,27 +51,27 @@ class LeaderMonitoringPluginTest :
             }
         }
 
-        describe("deriveLeaderChangeEvent") {
-            it("should skip the initial default non-leader emission") {
+        context("deriveLeaderChangeEvent") {
+            test("should skip the initial default non-leader emission") {
                 deriveLeaderChangeEvent(index = 0, wasLeader = false, isLeader = false) shouldBe null
             }
 
-            it("should emit promoted after the initial default non-leader emission") {
+            test("should emit promoted after the initial default non-leader emission") {
                 deriveLeaderChangeEvent(index = 1, wasLeader = false, isLeader = true) shouldBe LeaderChange.Promoted
             }
 
-            it("should emit promoted when the pod is already leader on initial state") {
+            test("should emit promoted when the pod is already leader on initial state") {
                 deriveLeaderChangeEvent(index = 0, wasLeader = false, isLeader = true) shouldBe LeaderChange.Promoted
             }
         }
 
-        describe("registerLeaderStatusGauge") {
+        context("registerLeaderStatusGauge") {
             fun newListener(): LeaderChangeSSEListener {
                 val httpClient = HttpClient(MockEngine { respond("", HttpStatusCode.InternalServerError) })
                 return LeaderChangeSSEListener(httpClient, "http://localhost/elector", false)
             }
 
-            it("reports 0 for a non-leader pod") {
+            test("reports 0 for a non-leader pod") {
                 val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
                 val listener = newListener()
 
@@ -80,7 +80,7 @@ class LeaderMonitoringPluginTest :
                 gauge.value() shouldBe 0.0
             }
 
-            it("has no labels and reflects the false to true leader transition") {
+            test("has no labels and reflects the false to true leader transition") {
                 val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
                 val listener = newListener()
 
@@ -96,7 +96,7 @@ class LeaderMonitoringPluginTest :
                 gauge.value() shouldBe 0.0
             }
 
-            it("emits the label-free leader status metric in the scrape output") {
+            test("emits the label-free leader status metric in the scrape output") {
                 val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
                 val listener = newListener()
                 registerLeaderStatusGauge(listener, registry)
@@ -106,7 +106,7 @@ class LeaderMonitoringPluginTest :
                 registry.scrape() shouldContain "syfo_narmesteleder_leader_status 1.0"
             }
 
-            it("replaces the listener state when the registry is reused") {
+            test("replaces the listener state when the registry is reused") {
                 val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
                 val initialListener = newListener().apply { initializeLeaderState(isLeader = true) }
                 registerLeaderStatusGauge(initialListener, registry)
@@ -123,7 +123,7 @@ class LeaderMonitoringPluginTest :
                 registry.scrape() shouldContain "syfo_narmesteleder_leader_status 1.0"
             }
 
-            it("clears listener state when its application stops") {
+            test("clears listener state when its application stops") {
                 val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
                 val listener = newListener().apply { initializeLeaderState(isLeader = true) }
                 registerLeaderStatusGauge(listener, registry)

@@ -6,7 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import defaultSendtSykmeldingMessage
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
@@ -34,10 +34,10 @@ import java.time.LocalDate
 import java.util.UUID
 
 class SendtSykmeldingHandlerTest :
-    DescribeSpec({
+    FunSpec({
 
         val createNarmestelederbehov = RecordingCreateNarmestelederbehov()
-        val sykmeldingService = mockk<SykmeldingService>()
+        val sykmeldingService = SykmeldingService(UnusedSykmeldingDb)
         val narmestelederBruddService = mockk<NarmestelederBruddService>()
         var hasActiveRelation = false
         var relationLookupFailure: IllegalStateException? = null
@@ -61,11 +61,10 @@ class SendtSykmeldingHandlerTest :
             relationLookups.clear()
             createNarmestelederbehov.commands.clear()
             createNarmestelederbehov.result = CreateNarmestelederbehovResult.Disabled
-            coEvery { sykmeldingService.processBatch(any()) } just Runs
             coEvery { narmestelederBruddService.revokeFromSendtSykmelding(any(), any(), any(), any(), any()) } just Runs
         }
 
-        it("logs only the validated sykmelding UUID when employer information is missing") {
+        test("logs only the validated sykmelding UUID when employer information is missing") {
             val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
             val originalLevel = logger.level
             val appender = ListAppender<ILoggingEvent>()
@@ -91,7 +90,7 @@ class SendtSykmeldingHandlerTest :
             }
         }
 
-        it("keeps the skipped message action and reason bounded without logging invalid identifiers") {
+        test("keeps the skipped message action and reason bounded without logging invalid identifiers") {
             val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
             val previousLevel = logger.level
             val appender = ListAppender<ILoggingEvent>().apply { start() }
@@ -116,7 +115,7 @@ class SendtSykmeldingHandlerTest :
             }
         }
 
-        it("logs an active relation skip at info without employee or organization identifiers") {
+        test("logs an active relation skip at info without employee or organization identifiers") {
             hasActiveRelation = true
             val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
             val previousLevel = logger.level
@@ -145,7 +144,7 @@ class SendtSykmeldingHandlerTest :
             }
         }
 
-        describe("sykmeldingKnownActive") {
+        context("sykmeldingKnownActive") {
             val today = LocalDate.now()
             listOf(
                 "period includes today" to listOf(today.minusDays(5) to today.plusDays(5)),
@@ -157,7 +156,7 @@ class SendtSykmeldingHandlerTest :
                     today.plusDays(10) to today.plusDays(20),
                 ),
             ).forEach { (name, periods) ->
-                it("is true when $name") {
+                test("is true when $name") {
                     handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(sykmeldingsperioder = periods.toPeriods()))
 
                     createNarmestelederbehov.commands.single().sykmeldingKnownActive shouldBe true
@@ -175,7 +174,7 @@ class SendtSykmeldingHandlerTest :
                     today.plusDays(10) to today.plusDays(20),
                 ),
             ).forEach { (name, periods) ->
-                it("is false when $name") {
+                test("is false when $name") {
                     handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(sykmeldingsperioder = periods.toPeriods()))
 
                     createNarmestelederbehov.commands.single().sykmeldingKnownActive shouldBe false
@@ -183,9 +182,9 @@ class SendtSykmeldingHandlerTest :
             }
         }
 
-        describe("handleSendtSykmelding general behavior") {
+        context("handleSendtSykmelding general behavior") {
 
-            it("does not create NL behov when an active relation exists in the same organization") {
+            test("does not create NL behov when an active relation exists in the same organization") {
                 hasActiveRelation = true
                 val message = defaultSendtSykmeldingMessage(riktigNarmesteLeder = null)
                 val countBefore = COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count()
@@ -199,7 +198,7 @@ class SendtSykmeldingHandlerTest :
                 COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count() shouldBe countBefore + 1
             }
 
-            it("propagates an active relation lookup failure without creating NL behov") {
+            test("propagates an active relation lookup failure without creating NL behov") {
                 relationLookupFailure = IllegalStateException("Relation lookup unavailable")
                 val countBefore = COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count()
 
@@ -211,7 +210,7 @@ class SendtSykmeldingHandlerTest :
                 COUNT_CREATE_BEHOV_SKIPPED_HAS_ACTIVE_NARMESTELEDER.count() shouldBe countBefore
             }
 
-            it("should not create NL behov when riktigNarmesteLeder is answered") {
+            test("should not create NL behov when riktigNarmesteLeder is answered") {
                 val message = defaultSendtSykmeldingMessage(
                     riktigNarmesteLeder = RiktigNarmesteLeder(
                         sporsmaltekst = "Er dette riktig leder?",
@@ -225,7 +224,7 @@ class SendtSykmeldingHandlerTest :
                 relationLookups shouldBe emptyList()
             }
 
-            it("should revoke NL relation and track Kafka metadata when riktigNarmesteLeder is answered NEI") {
+            test("should revoke NL relation and track Kafka metadata when riktigNarmesteLeder is answered NEI") {
                 val message = defaultSendtSykmeldingMessage(
                     riktigNarmesteLeder = RiktigNarmesteLeder(
                         sporsmaltekst = "Er dette riktig leder?",
@@ -248,7 +247,7 @@ class SendtSykmeldingHandlerTest :
                 relationLookups shouldBe emptyList()
             }
 
-            it("should create NL behov with correct command when riktigNarmesteLeder is null") {
+            test("should create NL behov with correct command when riktigNarmesteLeder is null") {
                 val today = LocalDate.now()
                 val message = defaultSendtSykmeldingMessage(
                     fnr = "12345678901",
@@ -274,13 +273,13 @@ class SendtSykmeldingHandlerTest :
                 relationLookups shouldBe listOf(PersonalIdentificationNumber("12345678901") to OrganizationNumber("999888777"))
             }
 
-            it("passes a missing juridiskOrgnummer on to the use case") {
+            test("passes a missing juridiskOrgnummer on to the use case") {
                 handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(juridiskOrgnummer = null))
 
                 createNarmestelederbehov.commands.single().mainOrganization shouldBe MainOrganizationSource.FromSykmelding(null)
             }
 
-            it("throws so the record is retried when an upstream is unavailable") {
+            test("throws so the record is retried when an upstream is unavailable") {
                 createNarmestelederbehov.result = CreateNarmestelederbehovResult.UpstreamUnavailable(
                     UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, 503, IllegalStateException()),
                 )
@@ -295,7 +294,7 @@ class SendtSykmeldingHandlerTest :
                 CreateNarmestelederbehovResult.NoActiveSykmelding,
                 CreateNarmestelederbehovResult.Disabled,
             ).forEach { result ->
-                it("completes without error when the use case returns $result") {
+                test("completes without error when the use case returns $result") {
                     createNarmestelederbehov.result = result
 
                     handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage())
@@ -304,7 +303,7 @@ class SendtSykmeldingHandlerTest :
                 }
             }
 
-            it("should not create NL behov when arbeidsgiver is null") {
+            test("should not create NL behov when arbeidsgiver is null") {
                 val message = defaultSendtSykmeldingMessage()
                     .copy(event = defaultSendtSykmeldingMessage().event.copy(arbeidsgiver = null))
 
@@ -314,14 +313,14 @@ class SendtSykmeldingHandlerTest :
                 relationLookups shouldBe emptyList()
             }
 
-            it("should not create NL behov when fnr is invalid") {
+            test("should not create NL behov when fnr is invalid") {
                 handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(fnr = "123"))
 
                 createNarmestelederbehov.commands.shouldBeEmpty()
                 relationLookups shouldBe emptyList()
             }
 
-            it("should not create NL behov when orgnummer is invalid") {
+            test("should not create NL behov when orgnummer is invalid") {
                 handler.handleNarmestelederbehov(defaultSendtSykmeldingMessage(orgnummer = "123"))
 
                 createNarmestelederbehov.commands.shouldBeEmpty()
@@ -341,3 +340,7 @@ private class RecordingCreateNarmestelederbehov : CreateNarmestelederbehov {
 }
 
 private fun List<Pair<LocalDate, LocalDate>>.toPeriods() = map { (fom, tom) -> SykmeldingsperiodeAGDTO(fom = fom, tom = tom) }
+
+private object UnusedSykmeldingDb : SykmeldingDb {
+    override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) = error("Unexpected sykmelding transaction")
+}

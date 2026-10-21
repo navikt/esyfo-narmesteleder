@@ -4,7 +4,7 @@ import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.util.LogbackMDCAdapter
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -42,8 +42,8 @@ private val diagnosticTestEvent = applicationEvent<Unit>(
 )
 
 class RuntimeDiagnosticsTest :
-    StringSpec({
-        "the production encoder keeps distinct transport causes without exception payloads" {
+    FunSpec({
+        test("the production encoder keeps distinct transport causes without exception payloads") {
             val cases = listOf(
                 UnknownHostException("person-12345678901.example") to "dns",
                 SocketTimeoutException("token-secret") to "timeout",
@@ -77,7 +77,7 @@ class RuntimeDiagnosticsTest :
             }
         }
 
-        "upstream metadata overrides throwable metadata without changing classification or cause types" {
+        test("upstream metadata overrides throwable metadata without changing classification or cause types") {
             val failure = UpstreamFailure(
                 UpstreamName("texas"),
                 UpstreamFailureStage.TOKEN_EXCHANGE,
@@ -98,7 +98,7 @@ class RuntimeDiagnosticsTest :
             }
         }
 
-        "both logEvent overloads use the upstream failure cause when no explicit cause is given" {
+        test("both logEvent overloads use the upstream failure cause when no explicit cause is given") {
             val failure = UpstreamFailure(
                 UpstreamName("aareg"),
                 UpstreamFailureStage.REQUEST,
@@ -126,7 +126,7 @@ class RuntimeDiagnosticsTest :
             }
         }
 
-        "error responses log upstream_errors without exception metadata or stack through both overloads" {
+        test("error responses log upstream_errors without exception metadata or stack through both overloads") {
             val failure = UpstreamFailure(
                 UpstreamName("pdl"),
                 UpstreamFailureStage.RESPONSE,
@@ -163,7 +163,7 @@ class RuntimeDiagnosticsTest :
             }
         }
 
-        "cause traversal terminates on cycles and retains the real origin" {
+        test("cause traversal terminates on cycles and retains the real origin") {
             val first = IllegalStateException("first")
             val second = ConnectException("second")
             first.initCause(second)
@@ -173,14 +173,14 @@ class RuntimeDiagnosticsTest :
             diagnostic.failureKind shouldBe "connection"
         }
 
-        "unsafe exception type names use the contract-valid fallback" {
+        test("unsafe exception type names use the contract-valid fallback") {
             val diagnostic = object : Throwable("private-canary") {}.failureDiagnostics()
             diagnostic.exceptionType shouldBe "Exception"
             diagnostic.causeType shouldBe "Exception"
             diagnostic.causeTypes shouldBe listOf("Throwable")
         }
 
-        "nested and anonymous failures use valid superclass categories without changing cause_types" {
+        test("nested and anonymous failures use valid superclass categories without changing cause_types") {
             class OddFailure : RuntimeException()
 
             val diagnostic = OddFailure().apply {
@@ -192,7 +192,7 @@ class RuntimeDiagnosticsTest :
             diagnostic.causeTypes shouldBe listOf("OddFailure", "Throwable")
         }
 
-        "nested exception classes keep their contract-valid binary name" {
+        test("nested exception classes keep their contract-valid binary name") {
             val diagnostic = ApiErrorException.InternalServerErrorException("private-canary").failureDiagnostics()
 
             diagnostic.exceptionType shouldBe "ApiErrorException\$InternalServerErrorException"
@@ -200,7 +200,7 @@ class RuntimeDiagnosticsTest :
             diagnostic.causeTypes shouldBe listOf("InternalServerErrorException")
         }
 
-        "out-of-range Ktor response statuses are omitted without changing HTTP classification" {
+        test("out-of-range Ktor response statuses are omitted without changing HTTP classification") {
             HttpClient(MockEngine { respond("private-canary", HttpStatusCode(42, "Unknown")) }).use { client ->
                 val failure = ClientRequestException(client.get("https://upstream.test/"), "private-canary")
                 withProductionLogger { logger ->
@@ -217,7 +217,7 @@ class RuntimeDiagnosticsTest :
             }
         }
 
-        "diagnostics never throw for wrapped cancellation" {
+        test("diagnostics never throw for wrapped cancellation") {
             withProductionLogger { logger ->
                 captureLogs(logger, "stdout_json").use { capture ->
                     logger.logEvent(diagnosticTestEvent, Unit, cause = IllegalStateException(CancellationException("cancelled")))
@@ -226,7 +226,7 @@ class RuntimeDiagnosticsTest :
             }
         }
 
-        "fatal errors retain their class but never their message or cause payload" {
+        test("fatal errors retain their class but never their message or cause payload") {
             withProductionLogger { logger ->
                 captureLogs(logger, "stdout_json").use { capture ->
                     logger.logEvent(diagnosticTestEvent, Unit, cause = LinkageError("private-canary", IllegalStateException("payload-canary")))
@@ -239,7 +239,7 @@ class RuntimeDiagnosticsTest :
             }
         }
 
-        "PDL GraphQL errors retain approved structured diagnostics with the production encoder" {
+        test("PDL GraphQL errors retain approved structured diagnostics with the production encoder") {
             withProductionLogger { logger ->
                 captureLogs(logger, "stdout_json").use { capture ->
                     logger.logEvent(
@@ -263,7 +263,7 @@ class RuntimeDiagnosticsTest :
                 }
             }
         }
-        "database SQL state remains actionable" {
+        test("database SQL state remains actionable") {
             withProductionLogger { logger ->
                 captureLogs(logger, "stdout_json").use { capture ->
                     logger.logEvent(diagnosticTestEvent, Unit, cause = SQLException("person-payload-canary", "23505"))

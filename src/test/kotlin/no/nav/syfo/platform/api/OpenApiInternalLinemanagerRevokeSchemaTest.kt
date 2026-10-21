@@ -1,6 +1,6 @@
 package no.nav.syfo.platform.api
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactly
@@ -9,7 +9,7 @@ import no.nav.syfo.narmestelederrelasjon.api.NARMESTELEDERRELASJON_API_PATH
 import org.yaml.snakeyaml.Yaml
 
 class OpenApiInternalLinemanagerRevokeSchemaTest :
-    StringSpec({
+    FunSpec({
 
         val yamlText = OpenApiInternalLinemanagerRevokeSchemaTest::class.java.classLoader
             .getResource("openapi/internal-documentation.yaml")!!
@@ -19,19 +19,19 @@ class OpenApiInternalLinemanagerRevokeSchemaTest :
         val revokePath = "/internal/api/v1/linemanager/{id}"
         val relationPath = NARMESTELEDERRELASJON_API_PATH
 
-        "openapi documents the revoke endpoint on the path registered in code" {
+        test("openapi documents the revoke endpoint on the path registered in code") {
             paths.keys.map { it as String } shouldContain revokePath
             NARMESTELEDERRELASJON_API_PATH shouldBe revokePath
         }
 
-        "openapi documents the revoke responses the endpoint can return" {
+        test("openapi documents the revoke responses the endpoint can return") {
             val delete = (paths[revokePath] as Map<*, *>)["delete"] as Map<*, *>
             val responses = (delete["responses"] as Map<*, *>).keys.map { it.toString() }
 
             responses shouldContainExactly listOf("202", "400", "401", "403", "404", "500")
         }
 
-        "openapi documents the active relation read endpoint and its masked not found response" {
+        test("openapi documents the active relation read endpoint and its masked not found response") {
             val get = (paths[relationPath] as Map<*, *>)["get"] as Map<*, *>
             val responses = (get["responses"] as Map<*, *>).keys.map { it.toString() }
 
@@ -39,21 +39,21 @@ class OpenApiInternalLinemanagerRevokeSchemaTest :
             (get["description"] as String).contains("avoid disclosing whether the relation exists") shouldBe true
         }
 
-        "openapi documents the relation read endpoint as TokenX and Maskinporten" {
+        test("openapi documents the relation read endpoint as TokenX and Maskinporten") {
             val get = (paths[relationPath] as Map<*, *>)["get"] as Map<*, *>
             val security = (get["security"] as List<*>).map { (it as Map<*, *>).keys.single() }
 
             security shouldContainExactly listOf("maskinporten_jwt", "tokenx_jwt")
         }
 
-        "openapi documents the revoke endpoint as TokenX and Maskinporten" {
+        test("openapi documents the revoke endpoint as TokenX and Maskinporten") {
             val delete = (paths[revokePath] as Map<*, *>)["delete"] as Map<*, *>
             val security = (delete["security"] as List<*>).map { (it as Map<*, *>).keys.single() }
 
             security shouldContainExactly listOf("maskinporten_jwt", "tokenx_jwt")
         }
 
-        "openapi ErrorType enum contains the error types the endpoint uses" {
+        test("openapi ErrorType enum contains the error types the endpoint uses") {
             val schemas = (root["components"] as Map<*, *>)["schemas"] as Map<*, *>
             val errorTypes = ((schemas["ErrorType"] as Map<*, *>)["enum"] as List<*>).map { it as String }
 
@@ -64,7 +64,7 @@ class OpenApiInternalLinemanagerRevokeSchemaTest :
             )
         }
 
-        "openapi declares exactly the read response fields and no additional properties" {
+        test("openapi declares exactly the read response fields and no additional properties") {
             val schemas = (root["components"] as Map<*, *>)["schemas"] as Map<*, *>
             val response = schemas["NarmestelederrelasjonApiResponse"] as Map<*, *>
             val relation = schemas["LinemanagerRelation"] as Map<*, *>
@@ -100,7 +100,7 @@ class OpenApiInternalLinemanagerRevokeSchemaTest :
             organization["additionalProperties"] shouldBe false
         }
 
-        "openapi documents no-store on successful and masked responses" {
+        test("openapi documents no-store on successful and masked responses") {
             val get = (paths[relationPath] as Map<*, *>)["get"] as Map<*, *>
             val responses = get["responses"] as Map<*, *>
             val successfulHeaders = (responses["200"] as Map<*, *>)["headers"] as Map<*, *>

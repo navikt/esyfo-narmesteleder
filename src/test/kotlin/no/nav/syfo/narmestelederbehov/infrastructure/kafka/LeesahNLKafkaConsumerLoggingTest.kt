@@ -5,11 +5,15 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import no.nav.syfo.integration.aareg.AAREG
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.application.FakeBehovRepository
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -19,8 +23,8 @@ import org.slf4j.LoggerFactory
 import kotlin.coroutines.EmptyCoroutineContext
 
 class LeesahNLKafkaConsumerLoggingTest :
-    StringSpec({
-        "record processing failures retain partition and offset without payloads" {
+    FunSpec({
+        test("record processing failures retain partition and offset without payloads") {
             val logger = LoggerFactory.getLogger(LeesahNLKafkaConsumer::class.java) as Logger
             val appender = ListAppender<ILoggingEvent>()
             appender.start()
@@ -29,8 +33,8 @@ class LeesahNLKafkaConsumerLoggingTest :
                 val consumer = LeesahNLKafkaConsumer(
                     kafkaConsumer = mockk<KafkaConsumer<String, String>>(),
                     jacksonMapper = jacksonObjectMapper(),
-                    handler = mockk(),
-                    fulfillBehovFromLeesah = mockk(),
+                    handler = unusedHandler(),
+                    fulfillBehovFromLeesah = unusedFulfillBehovFromLeesah(),
                     scope = CoroutineScope(EmptyCoroutineContext),
                 )
                 consumer.logConsumerFailure(LeesahRecordProcessingException(3, 42, IllegalStateException("private-canary")))
@@ -48,7 +52,7 @@ class LeesahNLKafkaConsumerLoggingTest :
             }
         }
 
-        "record processing failures name the unavailable upstream reported by the use case" {
+        test("record processing failures name the unavailable upstream reported by the use case") {
             val logger = LoggerFactory.getLogger(LeesahNLKafkaConsumer::class.java) as Logger
             val appender = ListAppender<ILoggingEvent>()
             appender.start()
@@ -57,8 +61,8 @@ class LeesahNLKafkaConsumerLoggingTest :
                 val consumer = LeesahNLKafkaConsumer(
                     kafkaConsumer = mockk<KafkaConsumer<String, String>>(),
                     jacksonMapper = jacksonObjectMapper(),
-                    handler = mockk(),
-                    fulfillBehovFromLeesah = mockk(),
+                    handler = unusedHandler(),
+                    fulfillBehovFromLeesah = unusedFulfillBehovFromLeesah(),
                     scope = CoroutineScope(EmptyCoroutineContext),
                 )
                 val aaregUnavailable = UpstreamFailure(AAREG, UpstreamFailureStage.REQUEST, null, IllegalStateException("private-canary"))
@@ -76,12 +80,12 @@ class LeesahNLKafkaConsumerLoggingTest :
             }
         }
 
-        "fatal errors are rethrown unchanged even when committing processing errors" {
+        test("fatal errors are rethrown unchanged even when committing processing errors") {
             val consumer = LeesahNLKafkaConsumer(
                 kafkaConsumer = mockk<KafkaConsumer<String, String>>(),
                 jacksonMapper = jacksonObjectMapper(),
-                handler = mockk(),
-                fulfillBehovFromLeesah = mockk(),
+                handler = unusedHandler(),
+                fulfillBehovFromLeesah = unusedFulfillBehovFromLeesah(),
                 scope = CoroutineScope(EmptyCoroutineContext),
             )
             consumer.commitOnAllErrors = true
@@ -91,3 +95,11 @@ class LeesahNLKafkaConsumerLoggingTest :
             shouldThrow<LinkageError> { consumer.handleProccessingError(record, fatal) } shouldBe fatal
         }
     })
+
+private fun unusedHandler() = NlBehovLeesahHandler(CreateNarmestelederbehov { error("Unexpected CreateNarmestelederbehov") })
+
+private fun unusedFulfillBehovFromLeesah() = FulfillNarmestelederbehovFromLeesahUseCase(
+    behovRepository = FakeBehovRepository(behov = null),
+    metrics = { error("Unexpected fulfillment metric") },
+    dialog = NarmestelederbehovDialog { error("Unexpected dialog completion") },
+)

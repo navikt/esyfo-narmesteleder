@@ -1,14 +1,14 @@
 package no.nav.syfo.sykmelding.application
 
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.logging.applicationEvent
-import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
 import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjon
-import no.nav.syfo.util.logger
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
+import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.logEvent
+import no.nav.syfo.platform.observability.logger
 import org.slf4j.event.Level
 import java.util.UUID
 

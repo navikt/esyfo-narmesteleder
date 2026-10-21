@@ -9,7 +9,6 @@ import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withTimeout
-import no.nav.syfo.application.kafka.jacksonMapper
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmesteleder.kafka.model.NarmestelederLeesahKafkaMessage
@@ -17,6 +16,7 @@ import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.platform.kafka.jacksonMapper
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import org.apache.kafka.clients.consumer.ConsumerRecord

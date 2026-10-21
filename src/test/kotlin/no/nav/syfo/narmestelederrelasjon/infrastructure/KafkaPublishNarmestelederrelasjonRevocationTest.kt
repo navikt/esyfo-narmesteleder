@@ -4,8 +4,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.test.runTest
-import no.nav.syfo.application.kafka.KafkaEnvironment
-import no.nav.syfo.application.kafka.producerProperties
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
@@ -14,6 +12,8 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
+import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.producerProperties
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringSerializer
 import kotlin.time.Duration.Companion.milliseconds

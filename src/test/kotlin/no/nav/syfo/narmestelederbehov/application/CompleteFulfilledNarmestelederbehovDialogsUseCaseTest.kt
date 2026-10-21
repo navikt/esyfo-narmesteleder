@@ -7,7 +7,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import kotlinx.coroutines.CancellationException
-import no.nav.syfo.logging.ProductionLogs
+import no.nav.syfo.platform.observability.ProductionLogs
 
 class CompleteFulfilledNarmestelederbehovDialogsUseCaseTest :
     FunSpec({

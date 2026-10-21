@@ -12,10 +12,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import no.nav.syfo.logging.ProductionLogs
 import no.nav.syfo.narmestelederbehov.application.CompleteDialogsFixture
 import no.nav.syfo.narmestelederbehov.application.ExpireDialogsFixture
 import no.nav.syfo.narmestelederbehov.application.UPDATE_NOW
+import no.nav.syfo.platform.observability.ProductionLogs
 import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalCoroutinesApi::class)

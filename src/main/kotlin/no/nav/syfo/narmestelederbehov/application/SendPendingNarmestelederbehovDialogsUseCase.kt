@@ -1,8 +1,8 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import kotlinx.coroutines.CancellationException
-import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.logging.logEvent
+import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
 import java.time.Clock
 import java.util.UUID
 

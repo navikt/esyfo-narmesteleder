@@ -14,11 +14,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
-import no.nav.syfo.logging.applicationEvent
-import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.logging.logEvent
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
+import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
 import org.slf4j.event.Level
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds

@@ -9,8 +9,8 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.integration.aareg.AAREG
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import org.apache.kafka.clients.consumer.ConsumerRecord

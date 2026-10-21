@@ -2,10 +2,10 @@ package no.nav.syfo.plugins
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
-import no.nav.syfo.application.ApplicationState
-import no.nav.syfo.application.environment.Environment
-import no.nav.syfo.application.environment.LocalEnvironment
-import no.nav.syfo.application.environment.NaisEnvironment
+import no.nav.syfo.bootstrap.Environment
+import no.nav.syfo.bootstrap.LocalEnvironment
+import no.nav.syfo.bootstrap.NaisEnvironment
+import no.nav.syfo.platform.observability.ApplicationState
 import org.koin.core.module.Module
 import org.koin.core.scope.Scope
 import org.koin.dsl.module

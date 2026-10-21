@@ -11,9 +11,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerSearchRequest
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerCommand
@@ -21,9 +18,12 @@ import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederre
 import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederrelasjonerUseCase
 import no.nav.syfo.narmestelederrelasjon.observability.countLinemanagerSearch
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val LINEMANAGER_SEARCH_API_PATH = "/linemanager/search"
 

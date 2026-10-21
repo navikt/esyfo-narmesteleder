@@ -10,11 +10,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import no.nav.syfo.application.kafka.KafkaEventConsumer
-import no.nav.syfo.application.kafka.KafkaEventLogger
-import no.nav.syfo.application.kafka.KafkaListener
-import no.nav.syfo.application.kafka.KafkaReason
-import no.nav.syfo.application.kafka.kafkaConsumerFailed
+import no.nav.syfo.platform.kafka.KafkaEventConsumer
+import no.nav.syfo.platform.kafka.KafkaEventLogger
+import no.nav.syfo.platform.kafka.KafkaListener
+import no.nav.syfo.platform.kafka.KafkaReason
+import no.nav.syfo.platform.kafka.kafkaConsumerFailed
 import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.application.SendtSykmeldingKafkaMessage

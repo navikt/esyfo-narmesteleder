@@ -1,8 +1,8 @@
 package no.nav.syfo.plugins
 
-import no.nav.syfo.application.database.Database
-import no.nav.syfo.application.database.DatabaseConfig
-import no.nav.syfo.application.database.DatabaseInterface
+import no.nav.syfo.platform.database.Database
+import no.nav.syfo.platform.database.DatabaseConfig
+import no.nav.syfo.platform.database.DatabaseInterface
 import org.koin.dsl.module
 import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 

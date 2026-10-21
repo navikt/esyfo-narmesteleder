@@ -1,8 +1,8 @@
 package no.nav.syfo.plugins
 
-import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
-import no.nav.syfo.application.leaderelection.LeaderElection
-import no.nav.syfo.util.httpClientSSE
+import no.nav.syfo.platform.http.httpClientSSE
+import no.nav.syfo.platform.scheduling.LeaderChangeSSEListener
+import no.nav.syfo.platform.scheduling.LeaderElection
 import org.koin.dsl.module
 
 internal fun leaderElectionModule(isLocalEnv: Boolean) = module {
@@ -13,5 +13,5 @@ internal fun leaderElectionModule(isLocalEnv: Boolean) = module {
             isLocalEnv = isLocalEnv,
         )
     }
-    single { LeaderElection(httpClient = get(), electorPath = env().otherProperties.electorPath) }
+    single { LeaderElection(httpClient = get(), electorPath = env().otherProperties.electorPath, isLocal = isLocalEnv) }
 }

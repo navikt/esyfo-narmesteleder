@@ -2,8 +2,8 @@ package no.nav.syfo.narmestelederrelasjon.api
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjonResult
+import no.nav.syfo.platform.api.ErrorType
 
 class RevokeNotFoundExceptionTest :
     FunSpec({

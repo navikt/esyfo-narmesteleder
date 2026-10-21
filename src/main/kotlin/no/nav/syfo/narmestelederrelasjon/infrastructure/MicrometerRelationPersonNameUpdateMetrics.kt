@@ -1,10 +1,10 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateMetrics
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 internal const val PDL_LEESAH_PERSON_UPDATE_TOTAL = "${METRICS_NS}_pdl_leesah_person_update_total"
 

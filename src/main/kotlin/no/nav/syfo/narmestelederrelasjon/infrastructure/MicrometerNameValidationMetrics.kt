@@ -2,11 +2,11 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.DistributionSummary
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.application.NameValidationMetrics
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.isAccepted
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import java.util.concurrent.ConcurrentHashMap
 
 private const val PARALLEL_NAMES_VALIDATION_TOTAL = "${METRICS_NS}_parallel_names_validation_total"

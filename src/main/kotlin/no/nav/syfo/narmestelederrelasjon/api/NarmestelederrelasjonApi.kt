@@ -12,11 +12,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.method
 import io.ktor.server.routing.route
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.api.INTERNAL_API_V1_PATH
-import no.nav.syfo.application.auth.Principal
-import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.narmesteleder.api.v1.getUUIDFromPathVariable
 import no.nav.syfo.narmestelederrelasjon.api.model.toResponse
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult
@@ -26,10 +21,15 @@ import no.nav.syfo.narmestelederrelasjon.application.RevokeNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.observability.countGetNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.observability.countLinemanagerRevokeById
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
+import no.nav.syfo.platform.auth.Principal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.util.logger
+import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.observability.logger
 import java.util.UUID
 
 private val logger = logger("no.nav.syfo.narmestelederrelasjon.api.NarmestelederrelasjonApi")

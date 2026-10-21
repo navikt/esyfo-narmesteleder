@@ -15,8 +15,8 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 fun Route.registerFulfillNarmestelederbehovApi(
     fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,

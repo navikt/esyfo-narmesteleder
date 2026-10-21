@@ -17,12 +17,8 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import no.nav.syfo.application.api.API_V1_PATH
-import no.nav.syfo.application.api.ApiError
-import no.nav.syfo.application.api.ErrorType
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.logging.assertSingleUpstreamFailureLog
 import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -48,15 +44,19 @@ import no.nav.syfo.narmestelederrelasjon.observability.COUNT_REVOKE_LINEMANAGER_
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
+import no.nav.syfo.platform.api.API_V1_PATH
+import no.nav.syfo.platform.api.ApiError
+import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.texas.client.TexasIntrospectionResponse
 import java.time.Instant
 import java.util.UUID
 
@@ -248,10 +248,10 @@ private class RevokeRouteFixture(
         if (provider == "maskinporten") {
             coEvery { texas.introspectToken("maskinporten", any()) } returns TexasIntrospectionResponse(
                 active = true,
-                scope = no.nav.syfo.texas.MASKINPORTEN_NL_SCOPE,
+                scope = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
                 consumer = DefaultOrganization,
                 authorizationDetails = listOf(
-                    no.nav.syfo.texas.client.AuthorizationDetail(
+                    no.nav.syfo.platform.auth.texas.client.AuthorizationDetail(
                         type = "urn:altinn:systemuser",
                         systemuserOrg = DefaultOrganization,
                         systemuserId = listOf("some-user-id"),

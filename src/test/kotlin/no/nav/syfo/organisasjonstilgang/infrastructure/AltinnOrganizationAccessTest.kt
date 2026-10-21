@@ -10,8 +10,6 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.CachedEregClient
@@ -28,6 +26,8 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Autho
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage

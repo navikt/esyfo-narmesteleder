@@ -2,13 +2,13 @@ package no.nav.syfo.plugins
 
 import io.kotest.core.spec.style.FunSpec
 import io.ktor.client.engine.HttpClientEngine
-import no.nav.syfo.application.environment.OtherEnvironmentProperties
-import no.nav.syfo.application.texas.TexasEnvironment
-import no.nav.syfo.application.valkey.ValkeyEnvironment
+import no.nav.syfo.bootstrap.OtherEnvironmentProperties
 import no.nav.syfo.narmestelederbehov.narmestelederbehovDependencies
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonDependencies
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
+import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.sykmelding.sykmeldingDependencies
 import org.apache.kafka.clients.producer.Producer
 import org.koin.dsl.koinApplication

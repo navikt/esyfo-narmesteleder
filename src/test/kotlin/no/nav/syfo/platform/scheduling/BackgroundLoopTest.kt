@@ -14,8 +14,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import no.nav.esyfo.observability.testkit.LogCapture
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.logging.ProductionLogs
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.ProductionLogs
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)

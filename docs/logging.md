@@ -22,7 +22,7 @@ logger.logEvent(dialogportenDialogFailed, details, cause = exception)
 
 - One event per operational outcome. Variants become a bounded `reason` or
   `action` enum, logged as the enum name.
-- The helper in `logging/FailureEvent.kt` adds technical fields derived from the
+- The helper in `platform/observability/FailureEvent.kt` adds technical fields derived from the
   cause: `failure_kind`, `exception_type`, `cause_type(s)`, `upstream`,
   `upstream_status`, `failure_stage` and `sql_state`. It also logs a sanitized
   stack trace that contains class names and frames, never exception messages.
@@ -38,7 +38,7 @@ logger.logEvent(dialogportenDialogFailed, details, cause = exception)
   `ApiErrorException$InternalServerErrorException`. Classification,
   `failure_stage`, `cause_types` (simple names) and the sanitized
   TechnicalFailure stack stay in the app.
-- Kafka consumers share the events in `application/kafka/KafkaEvents.kt` and
+- Kafka consumers share the events in `platform/kafka/KafkaEvents.kt` and
   log them through `KafkaEventLogger`, which adds a bounded `consumer` field.
 - Code already using `applicationLogger` keeps using it.
 

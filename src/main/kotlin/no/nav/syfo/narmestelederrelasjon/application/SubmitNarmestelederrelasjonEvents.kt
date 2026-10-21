@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.application
 
-import no.nav.syfo.logging.applicationEvent
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
+import no.nav.syfo.platform.observability.applicationEvent
 import org.slf4j.event.Level
 
 internal data class ContactValidationRejectedDetails(val validationIssues: List<ManagerContactValidationIssue>)

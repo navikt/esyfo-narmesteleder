@@ -11,9 +11,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
-import no.nav.syfo.application.texas.TexasEnvironment
-import no.nav.syfo.texas.client.TexasHttpClient
-import no.nav.syfo.util.httpClientDefault
+import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.http.httpClientDefault
 
 internal const val TEST_SYSTEM_TOKEN = "system-token"
 

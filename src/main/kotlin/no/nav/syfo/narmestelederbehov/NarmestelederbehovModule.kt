@@ -9,7 +9,7 @@ import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCa
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.platform.api.apiV1
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 

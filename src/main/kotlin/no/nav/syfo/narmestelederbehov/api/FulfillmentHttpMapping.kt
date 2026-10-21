@@ -1,12 +1,12 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.narmesteleder.domain.Manager
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
 
 fun Manager.toManagerContactInput(): ManagerContactInput = ManagerContactInput(
     nationalIdentificationNumber,

@@ -1,8 +1,8 @@
 package no.nav.syfo.integration.ereg
 
+import no.nav.syfo.platform.local.JsonFixtureLoader
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamResult
-import no.nav.syfo.util.JsonFixtureLoader
 import java.util.concurrent.atomic.AtomicReference
 
 /**

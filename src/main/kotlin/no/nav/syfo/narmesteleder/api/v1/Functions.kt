@@ -1,9 +1,9 @@
 package no.nav.syfo.narmesteleder.api.v1
 
 import io.ktor.server.routing.RoutingCall
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
 import java.util.UUID
 
 fun RoutingCall.getUUIDFromPathVariable(name: String): UUID {

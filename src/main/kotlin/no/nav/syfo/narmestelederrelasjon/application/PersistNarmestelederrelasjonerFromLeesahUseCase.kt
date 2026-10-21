@@ -2,8 +2,8 @@ package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.logging.applicationEvent
-import no.nav.syfo.logging.logEvent
+import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.logEvent
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 

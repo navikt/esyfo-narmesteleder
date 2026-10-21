@@ -20,8 +20,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
-import no.nav.syfo.application.environment.OtherEnvironmentProperties
-import no.nav.syfo.application.kafka.jacksonMapper
+import no.nav.syfo.bootstrap.OtherEnvironmentProperties
+import no.nav.syfo.platform.kafka.jacksonMapper
 import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.ConsumerRecord

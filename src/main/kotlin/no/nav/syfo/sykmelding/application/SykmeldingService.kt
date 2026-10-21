@@ -1,8 +1,8 @@
 package no.nav.syfo.sykmelding.application
 
-import no.nav.syfo.logging.applicationEvent
-import no.nav.syfo.logging.logEvent
-import no.nav.syfo.util.logger
+import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.logEvent
+import no.nav.syfo.platform.observability.logger
 import org.slf4j.event.Level
 import java.time.Clock
 import java.time.LocalDate

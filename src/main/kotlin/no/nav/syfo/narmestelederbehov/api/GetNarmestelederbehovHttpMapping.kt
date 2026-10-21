@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import no.nav.syfo.application.exception.ApiErrorException
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmesteleder.domain.LineManagerRequirementStatus
 import no.nav.syfo.narmesteleder.domain.LinemanagerRequirementRead
@@ -10,6 +8,8 @@ import no.nav.syfo.narmesteleder.domain.RevokedBy
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
 
 fun GetNarmestelederbehovResult.toLinemanagerRequirementRead(): LinemanagerRequirementRead = when (this) {
     is GetNarmestelederbehovResult.UpstreamUnavailable -> throw failure.toUpstreamUnavailableException()

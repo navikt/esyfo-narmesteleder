@@ -3,8 +3,8 @@ package no.nav.syfo.narmestelederbehov.api
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovResult
+import no.nav.syfo.platform.api.ApiErrorException
 
 class ListNarmestelederbehovHttpMappingTest :
     FunSpec({

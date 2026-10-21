@@ -1,9 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.observability
 
 import io.micrometer.core.instrument.Counter
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonResult
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 const val GET_NARMESTELEDERRELASJON_TOTAL = "${METRICS_NS}_get_narmestelederrelasjon_total"
 

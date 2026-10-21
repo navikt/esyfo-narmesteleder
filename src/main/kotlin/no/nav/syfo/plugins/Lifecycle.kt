@@ -3,8 +3,8 @@ package no.nav.syfo.plugins
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStarted
 import io.ktor.server.application.ApplicationStopped
-import no.nav.syfo.application.ApplicationState
-import no.nav.syfo.util.logger
+import no.nav.syfo.platform.observability.ApplicationState
+import no.nav.syfo.platform.observability.logger
 
 fun Application.configureLifecycleHooks(applicationState: ApplicationState = ApplicationState()) {
     val logger = logger()

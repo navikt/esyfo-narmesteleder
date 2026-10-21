@@ -7,8 +7,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.http.HttpStatusCode
-import no.nav.syfo.application.api.ErrorType
-import no.nav.syfo.application.exception.ApiErrorException
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovResult
 import no.nav.syfo.narmestelederrelasjon.application.EmploymentResult
@@ -16,6 +14,8 @@ import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName

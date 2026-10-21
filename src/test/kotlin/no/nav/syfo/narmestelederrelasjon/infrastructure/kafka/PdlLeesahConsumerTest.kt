@@ -25,8 +25,7 @@ import no.nav.person.pdl.leesah.Endringstype
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.person.pdl.leesah.navn.Navn
 import no.nav.person.pdl.leesah.navn.OriginaltNavn
-import no.nav.syfo.application.environment.OtherEnvironmentProperties
-import no.nav.syfo.application.metric.METRICS_REGISTRY
+import no.nav.syfo.bootstrap.OtherEnvironmentProperties
 import no.nav.syfo.narmestelederrelasjon.application.RelationPersonNameUpdateResult
 import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerRelationPersonNameUpdateMetrics.Companion.RESULT_NOT_FOUND_IN_REGISTER
@@ -42,6 +41,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer.
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer.Companion.RESULT_RECORD_DESERIALIZATION_SKIPPED
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer.Companion.RESULT_SERIALIZATION_ERROR
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer.Companion.RESULT_TOMBSTONE
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer

@@ -2,7 +2,7 @@ package no.nav.syfo.narmestelederrelasjon
 
 import io.ktor.server.application.Application
 import io.ktor.server.routing.routing
-import no.nav.syfo.application.environment.Environment
+import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmestelederrelasjon.api.registerEmployeeLinemanagerApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLineManagerLookupApi
 import no.nav.syfo.narmestelederrelasjon.api.registerLinemanagerSearchApi
@@ -18,7 +18,7 @@ import no.nav.syfo.narmestelederrelasjon.application.SearchActiveNarmestelederre
 import no.nav.syfo.narmestelederrelasjon.application.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.internalApiV1
-import no.nav.syfo.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 

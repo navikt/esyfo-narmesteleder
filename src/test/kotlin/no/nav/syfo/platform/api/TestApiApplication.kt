@@ -12,9 +12,6 @@ import io.ktor.server.routing.Routing
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import no.nav.syfo.application.api.installApiPlugins
-import no.nav.syfo.application.api.installContentNegotiation
-import no.nav.syfo.application.api.installStatusPages
 
 /**
  * Starts the same request-handling plugins as production, without Koin, so route tests

@@ -15,13 +15,13 @@ import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
+import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
+import no.nav.syfo.platform.auth.texas.altinnTestToken
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
-import no.nav.syfo.texas.AltinnTokenProvider
-import no.nav.syfo.texas.altinnTestToken
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 

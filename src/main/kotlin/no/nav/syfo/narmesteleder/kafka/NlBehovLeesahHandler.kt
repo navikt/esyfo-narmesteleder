@@ -1,14 +1,14 @@
 package no.nav.syfo.narmesteleder.kafka
 
-import no.nav.syfo.application.exception.toUpstreamUnavailableException
-import no.nav.syfo.logging.applicationEvent
-import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmesteleder.api.v1.COUNT_CREATE_LINEMANAGER_REQUIREMENT
 import no.nav.syfo.narmesteleder.kafka.model.LeesahStatus
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovCommand
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovResult
-import no.nav.syfo.util.logger
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
+import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.logEvent
+import no.nav.syfo.platform.observability.logger
 import org.slf4j.event.Level
 
 private enum class MissingStatusReason {

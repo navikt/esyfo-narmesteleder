@@ -9,8 +9,8 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
 import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
-import no.nav.syfo.application.events.LeaderChange
-import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
+import no.nav.syfo.platform.scheduling.LeaderChange
+import no.nav.syfo.platform.scheduling.LeaderChangeSSEListener
 
 class LeaderMonitoringPluginTest :
     DescribeSpec({

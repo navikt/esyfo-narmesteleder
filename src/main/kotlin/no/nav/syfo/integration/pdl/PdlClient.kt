@@ -9,13 +9,13 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
 import io.ktor.utils.io.CancellationException
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
-import no.nav.syfo.texas.client.TexasHttpClient
 import org.intellij.lang.annotations.Language
 
 private const val BEHANDLINGSNUMMER_NARMESTELEDER = "B506"

@@ -2,11 +2,11 @@ package no.nav.syfo.narmestelederrelasjon.application
 
 import no.nav.esyfo.observability.Event
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.logging.applicationEvent
-import no.nav.syfo.logging.applicationLogger
-import no.nav.syfo.logging.logEvent
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult.Found
 import no.nav.syfo.narmestelederrelasjon.application.BulkPersonLookupResult.NotFound
+import no.nav.syfo.platform.observability.applicationEvent
+import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
 import org.slf4j.event.Level
 
 private const val OPERATION = "enrich_relation_persons"

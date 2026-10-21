@@ -8,10 +8,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.person.pdl.leesah.Personhendelse
-import no.nav.syfo.application.environment.Environment
-import no.nav.syfo.application.kafka.consumerProperties
-import no.nav.syfo.application.kafka.jacksonMapper
-import no.nav.syfo.application.leaderelection.LeaderChangeSSEListener
+import no.nav.syfo.bootstrap.Environment
 import no.nav.syfo.narmesteleder.kafka.LeesahNLKafkaConsumer
 import no.nav.syfo.narmesteleder.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmesteleder.service.LeaderControlledKafkaConsumer
@@ -21,10 +18,13 @@ import no.nav.syfo.narmestelederrelasjon.application.UpdateRelationPersonNamesUs
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PersistNarmestelederRegisterFromLeesahConsumer
+import no.nav.syfo.platform.kafka.consumerProperties
+import no.nav.syfo.platform.kafka.jacksonMapper
+import no.nav.syfo.platform.observability.logger
+import no.nav.syfo.platform.scheduling.LeaderChangeSSEListener
 import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.infrastructure.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.infrastructure.kafka.SendtSykmeldingKafkaConsumer
-import no.nav.syfo.util.logger
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject

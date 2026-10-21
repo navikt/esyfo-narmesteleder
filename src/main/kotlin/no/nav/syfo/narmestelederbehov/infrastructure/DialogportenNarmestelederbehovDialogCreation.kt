@@ -1,12 +1,12 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import no.nav.syfo.logging.applicationLogger
 import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
+import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.upstream.UpstreamResult
 
 class DialogportenNarmestelederbehovDialogCreation(

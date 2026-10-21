@@ -12,12 +12,12 @@ import io.ktor.client.statement.HttpResponsePipeline
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import no.nav.syfo.application.auth.UserPrincipal
 import no.nav.syfo.integration.TEST_SYSTEM_TOKEN
 import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
+import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName

@@ -1,8 +1,8 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import no.nav.syfo.application.task.ScheduledLeaderTask
 import no.nav.syfo.narmestelederbehov.application.CompleteFulfilledNarmestelederbehovDialogsUseCase
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovDialogsUseCase
+import no.nav.syfo.platform.scheduling.ScheduledLeaderTask
 import kotlin.time.Duration
 
 class UpdateDialogTask(

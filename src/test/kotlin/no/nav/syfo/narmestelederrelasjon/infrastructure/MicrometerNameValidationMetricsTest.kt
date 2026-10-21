@@ -3,9 +3,9 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.doubles.shouldBeExactly
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.application.metric.METRICS_NS
-import no.nav.syfo.application.metric.METRICS_REGISTRY
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
+import no.nav.syfo.platform.observability.METRICS_NS
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 class MicrometerNameValidationMetricsTest :
     FunSpec({

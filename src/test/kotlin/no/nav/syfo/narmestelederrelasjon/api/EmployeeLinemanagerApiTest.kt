@@ -14,6 +14,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.clearMocks
+import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
@@ -129,6 +130,15 @@ class EmployeeLinemanagerApiTest :
             withEmployeeApi(useCase, texasHttpClient) {
                 client.get(EMPLOYEE_PATH).status shouldBe HttpStatusCode.Unauthorized
                 repository.lookups.shouldBeEmpty()
+            }
+        }
+
+        test("returns 401 for a Maskinporten token without introspection") {
+            withEmployeeApi(useCase, texasHttpClient) {
+                val response = client.get(EMPLOYEE_PATH) { bearerAuth(createMockToken("ignored", issuer = MASKINPORTEN_ISSUER)) }
+                response.status shouldBe HttpStatusCode.Unauthorized
+                repository.lookups.shouldBeEmpty()
+                coVerify(exactly = 0) { texasHttpClient.introspectToken(any(), any()) }
             }
         }
 

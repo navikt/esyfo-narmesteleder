@@ -58,6 +58,32 @@ class SykmeldingServiceTest :
                 sykmeldingDb.findBySykmeldingId(sykmeldingId)?.revokedDate shouldBe fixedToday
             }
 
+            test("should insert when insert is final state after tombstone") {
+                val today = LocalDate.now()
+                val sykmeldingId = UUID.randomUUID()
+
+                val insertMessage = defaultSendtSykmeldingMessage(
+                    sykmeldingId = sykmeldingId.toString(),
+                    fnr = "12345678901",
+                    sykmeldingsperioder = listOf(
+                        SykmeldingsperiodeAGDTO(fom = today.minusDays(10), tom = today.minusDays(5))
+                    )
+                )
+
+                // Tombstone then insert - insert has higher offset
+                service.processBatch(
+                    listOf(
+                        SykmeldingRecord(offset = 0, sykmeldingId = sykmeldingId, message = null),
+                        SykmeldingRecord(offset = 1, sykmeldingId = sykmeldingId, message = insertMessage)
+                    )
+                )
+
+                val stored = sykmeldingDb.findAll()
+                stored.size shouldBe 1
+                stored.first().fnr shouldBe "12345678901"
+                stored.first().revokedDate shouldBe null
+            }
+
             test("should handle mixed inserts and revokes for different sykmeldingIds") {
                 val today = LocalDate.now()
                 val revokeId = UUID.randomUUID()

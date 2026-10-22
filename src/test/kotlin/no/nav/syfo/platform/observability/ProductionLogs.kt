@@ -146,8 +146,9 @@ internal class ProductionLogCapture(
     val records: List<String> get() = recorder.snapshot()
 
     /**
-     * Parsed records. Every record carrying an `event_type` is first validated with [RuntimeLogContract], and no
-     * record may carry `logging_context_invalid`.
+     * Parsed records. Every record carrying an `event_type` is first checked against the [RuntimeLogContract] schema,
+     * and no record may carry `logging_context_invalid`. The catalog is built from the captured records, so event
+     * names are not checked against a closed catalog; validate [records] with an explicit catalog for that.
      */
     val logs: List<ProductionLogRecord>
         get() = records.also(::assertRuntimeLogContract).map(::ProductionLogRecord)

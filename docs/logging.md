@@ -119,7 +119,11 @@ these contain no personal data. It never contains response `data` or request var
 
 Test the owner with the production Logback JSON encoder and validate every
 captured record with `RuntimeLogContract` before filtering by event name. Use
-the shared test helper `ProductionLogs`; its `logs` do both.
+the shared test helper `ProductionLogs` for the encoder. Its `logs` check the
+schema shape and reject `logging_context_invalid`, but they build the catalog
+from the captured records, so they do not check event names against a closed
+catalog. A test that locks event names validates `records` with its own
+`RuntimeLogContract` catalog.
 Assert level, event count, fields and sensitive-data canaries. The schema
 validates shape, not privacy. `LoggingArchitectureTest` keeps migrated packages
 on the local logging entry point.

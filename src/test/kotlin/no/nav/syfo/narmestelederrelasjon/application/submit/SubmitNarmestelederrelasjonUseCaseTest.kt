@@ -12,6 +12,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -21,7 +22,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 private val employeeIdent = PersonalIdentificationNumber("12345678901")
 private val organizationNumber = OrganizationNumber("123456789")
 private val manager = ManagerContactInput(PersonalIdentificationNumber("10987654321"), "Manager", " manager@example.test ", "+47 90 00 00 00")
-private val systemUser = OrganizationAccessSubject.LpsSystemUser("system-id", organizationNumber)
+private val systemUser = OrganizationAccessSubject.LpsSystemUser("system-id", OrganizationNumber("999777555"))
 private val personnelManager = OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber("11223344556"), AccessToken("test-token"))
 
 class SubmitNarmestelederrelasjonUseCaseTest :
@@ -39,13 +40,9 @@ class SubmitNarmestelederrelasjonUseCaseTest :
             test("normalizes before access and passes the submitted employee last name and source $source to establish") {
                 val effects = mutableListOf<String>()
                 var established: EstablishNarmestelederrelasjonCommand? = null
+                val access = FakeOrganizationAccess(organizationNumber, effects = effects)
                 val useCase = SubmitNarmestelederrelasjonUseCase(
-                    { accessSubject, organization ->
-                        effects += "access"
-                        accessSubject shouldBe subject
-                        organization shouldBe organizationNumber
-                        OrganizationAccessResult.Granted(organizationName = null)
-                    },
+                    access,
                     {
                         effects += "establish"
                         established = it
@@ -53,6 +50,7 @@ class SubmitNarmestelederrelasjonUseCaseTest :
                     },
                 )
                 useCase.execute(command(subject)) shouldBe SubmitNarmestelederrelasjonResult.Established(source)
+                access.calls shouldBe listOf(subject to organizationNumber)
                 effects shouldBe listOf("access", "establish")
                 established?.manager?.mobile?.value shouldBe "+4790000000"
                 established?.manager?.email?.value shouldBe "manager@example.test"

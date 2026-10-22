@@ -10,6 +10,7 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.observability.withProductionLogs
@@ -104,10 +105,10 @@ class ListNarmestelederbehovUseCaseTest :
 
         test("a system user has a null organization name") {
             val fixture = ListFixture(access = OrganizationAccessResult.Granted(null))
-            val subject = OrganizationAccessSubject.LpsSystemUser("system", ORGANIZATION_NUMBER)
+            val subject = OrganizationAccessSubject.LpsSystemUser("system", OrganizationNumber("999777555"))
             val result = fixture.execute(subject = subject) as ListNarmestelederbehovResult.Listed
             result.organizationName shouldBe null
-            fixture.subject shouldBe subject
+            fixture.organizationAccess.calls shouldBe listOf(subject to ORGANIZATION_NUMBER)
         }
     })
 
@@ -120,12 +121,12 @@ private class ListFixture(
     private val unavailable: UpstreamFailure? = null,
 ) {
     val effects = mutableListOf<String>()
+    val organizationAccess = FakeOrganizationAccess(ORGANIZATION_NUMBER, access, effects)
     val lookedUp = mutableListOf<PersonalIdentificationNumber>()
     val savedNames = mutableListOf<Pair<NarmestelederbehovId, BehovPersonName>>()
     var requestedLimit: Int? = null
     var requestedOrganization: OrganizationNumber? = null
     var requestedCreatedAfter: Instant? = null
-    var subject: OrganizationAccessSubject? = null
     private val repository = object : NarmestelederbehovRepository {
         override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
         override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
@@ -166,12 +167,7 @@ private class ListFixture(
     }
     private val useCase = ListNarmestelederbehovUseCase(
         repository = openRepository,
-        organizationAccess = { caller, organizationNumber ->
-            organizationNumber shouldBe ORGANIZATION_NUMBER
-            subject = caller
-            effects += "access"
-            access
-        },
+        organizationAccess = organizationAccess,
         employeeName = NarmestelederbehovEmployeeName(
             repository,
         ) { ident ->

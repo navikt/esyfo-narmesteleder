@@ -8,7 +8,7 @@ import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
 
 val DefaultOrganization = OrganizationId(
-    ID = "0192:123456789",
+    ID = "0192:999777555",
     authority = "some-authority",
 )
 

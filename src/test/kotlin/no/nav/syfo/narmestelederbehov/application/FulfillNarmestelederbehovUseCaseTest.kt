@@ -111,7 +111,7 @@ class FulfillNarmestelederbehovUseCaseTest :
             val effects = mutableListOf<String>()
             val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException("private-exception-canary"))
             val result = createUseCase(
-                access = FakeOrganizationAccess(OrganizationAccessResult.Unavailable(failure), effects),
+                access = FakeOrganizationAccess(organizationNumber, OrganizationAccessResult.Unavailable(failure), effects),
                 effects = effects,
             ).execute(command())
             result shouldBe FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
@@ -193,7 +193,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                 val invalidCommand = command(email = "invalid", mobile = "+47-99999999")
                 createUseCase(
                     repository = FakeBehovRepository(behovForFulfillment, effects),
-                    access = FakeOrganizationAccess(accessResult, effects),
+                    access = FakeOrganizationAccess(organizationNumber, accessResult, effects),
                     effects = effects,
                 ).execute(invalidCommand) shouldBe FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
                     listOf(
@@ -223,7 +223,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                 val effects = mutableListOf<String>()
                 createUseCase(
                     repository = FakeBehovRepository(case.behovForFulfillment, effects),
-                    access = FakeOrganizationAccess(case.accessResult, effects),
+                    access = FakeOrganizationAccess(organizationNumber, case.accessResult, effects),
                     effects = effects,
                 ).execute(command()) shouldBe case.result
 
@@ -404,7 +404,7 @@ internal val personnelManager = OrganizationAccessSubject.PersonnelManager(
 )
 internal val lpsSystemUser = OrganizationAccessSubject.LpsSystemUser(
     systemUserId = "system-user",
-    systemUserOrganizationNumber = organizationNumber,
+    systemUserOrganizationNumber = OrganizationNumber("999777555"),
 )
 
 internal fun command(
@@ -433,7 +433,7 @@ internal fun createUseCase(
     effects: MutableList<String> = mutableListOf(),
 ) = FulfillNarmestelederbehovUseCase(
     behovRepository = repository ?: FakeBehovRepository(behov, effects),
-    organizationAccess = access ?: FakeOrganizationAccess(effects = effects),
+    organizationAccess = access ?: FakeOrganizationAccess(organizationNumber, effects = effects),
     establishRelation = relation ?: FakeRelationEstablisher(effects),
     dialog = dialog ?: FakeDialog(effects = effects),
 )

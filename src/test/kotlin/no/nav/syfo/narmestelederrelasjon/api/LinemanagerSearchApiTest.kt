@@ -62,7 +62,7 @@ private val responseMapper = jacksonObjectMapper()
 
 class LinemanagerSearchApiTest :
     FunSpec({
-        val access = FakeOrganizationAccess()
+        val access = FakeOrganizationAccess(organizationNumber)
         val repository = RouteSearchRepository()
         val useCase = SearchActiveNarmestelederrelasjonerUseCase(access, repository)
         val texasHttpClient = mockk<TexasHttpClient>()
@@ -74,7 +74,6 @@ class LinemanagerSearchApiTest :
             repository.queries.clear()
             clearMocks(texasHttpClient)
             texasHttpClient.stubMaskinportenSystemUser(
-                systemUserOrganization = DefaultOrganization.copy(ID = "0192:${organizationNumber.value}"),
                 systemUserId = SYSTEM_USER_ID,
                 systemId = "system-id",
             )
@@ -133,7 +132,7 @@ class LinemanagerSearchApiTest :
                 body.path("meta").path("nextPageToken").asText() shouldBe
                     LinemanagerSearchCursor(firstName = "ola", lastName = "nordmann", id = 1).toPageToken()
                 access.calls shouldBe listOf(
-                    OrganizationAccessSubject.LpsSystemUser(SYSTEM_USER_ID, organizationNumber) to organizationNumber,
+                    OrganizationAccessSubject.LpsSystemUser(SYSTEM_USER_ID, OrganizationNumber(DefaultOrganization.ID.removePrefix("0192:"))) to organizationNumber,
                 )
                 repository.queries.single().pageSize shouldBe 1
             }

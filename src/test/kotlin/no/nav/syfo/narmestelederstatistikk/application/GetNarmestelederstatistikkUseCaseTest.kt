@@ -18,7 +18,7 @@ class GetNarmestelederstatistikkUseCaseTest :
         test("unavailable access stops before counting") {
             val effects = mutableListOf<String>()
             val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
-            val access = FakeOrganizationAccess(OrganizationAccessResult.Unavailable(failure), effects)
+            val access = FakeOrganizationAccess(organizationNumber, OrganizationAccessResult.Unavailable(failure), effects)
             val repository = StatisticsRepository(effects)
             val result = GetNarmestelederstatistikkUseCase(access, repository).execute(organizationNumber, subject)
             result shouldBe GetNarmestelederstatistikkResult.UpstreamUnavailable(failure)
@@ -31,7 +31,7 @@ class GetNarmestelederstatistikkUseCaseTest :
         DenialReason.entries.forEach { reason ->
             test("returns AccessDenied without counting when access is denied with $reason") {
                 val effects = mutableListOf<String>()
-                val access = FakeOrganizationAccess(OrganizationAccessResult.Denied(reason), effects)
+                val access = FakeOrganizationAccess(organizationNumber, OrganizationAccessResult.Denied(reason), effects)
                 val repository = StatisticsRepository(effects)
                 val useCase = GetNarmestelederstatistikkUseCase(access, repository)
 
@@ -44,7 +44,7 @@ class GetNarmestelederstatistikkUseCaseTest :
 
         test("returns Found after evaluating the supplied subject and organization before counting") {
             val effects = mutableListOf<String>()
-            val access = FakeOrganizationAccess(OrganizationAccessResult.Granted(null), effects)
+            val access = FakeOrganizationAccess(organizationNumber, OrganizationAccessResult.Granted(null), effects)
             val repository = StatisticsRepository(effects)
             val useCase = GetNarmestelederstatistikkUseCase(access, repository)
 

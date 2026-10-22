@@ -16,6 +16,7 @@ import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistik
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import no.nav.syfo.narmestelederstatistikk.observability.LINEMANAGER_STATISTICS_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.api.ErrorType
@@ -71,7 +72,8 @@ class LinemanagerStatisticsApiTest :
                         subject.personIdent shouldBe PersonalIdentificationNumber(EMPLOYEE_IDENT)
                         subject.accessToken.value() shouldBe fixture.token()
                     } else {
-                        fixture.evaluations.single().first shouldBe OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(ORGANIZATION_NUMBER))
+                        fixture.evaluations.single().first shouldBe
+                            OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(DefaultOrganization.ID.removePrefix("0192:")))
                     }
                     requestCount(principalType) shouldBe before + 1
                 }
@@ -136,19 +138,20 @@ private class StatisticsApiFixture(
     activeToken: Boolean = true,
     unavailable: UpstreamFailure? = null,
 ) {
-    val evaluations = mutableListOf<Pair<OrganizationAccessSubject, OrganizationNumber>>()
+    private val organizationAccess = FakeOrganizationAccess(
+        OrganizationNumber(ORGANIZATION_NUMBER),
+        unavailable?.let { OrganizationAccessResult.Unavailable(it) }
+            ?: denialReason?.let { OrganizationAccessResult.Denied(it) }
+            ?: OrganizationAccessResult.Granted(null),
+    )
+    val evaluations get() = organizationAccess.calls
     private val texas = mockk<TexasHttpClient>()
     private val bearerToken = createMockToken(
         if (user) EMPLOYEE_IDENT else ORGANIZATION_NUMBER,
         issuer = if (user) TOKENX_ISSUER else "https://test.maskinporten.no",
     )
     private val useCase = GetNarmestelederstatistikkUseCase(
-        organizationAccess = { subject, organization ->
-            evaluations += subject to organization
-            unavailable?.let { OrganizationAccessResult.Unavailable(it) }
-                ?: denialReason?.let { OrganizationAccessResult.Denied(it) }
-                ?: OrganizationAccessResult.Granted(null)
-        },
+        organizationAccess = organizationAccess,
         repository = { Narmestelederstatistikk(1, 2, 3) },
     )
 
@@ -158,7 +161,7 @@ private class StatisticsApiFixture(
         } else if (user) {
             texas.stubTokenX(pid = EMPLOYEE_IDENT)
         } else {
-            texas.stubMaskinportenSystemUser(systemUserOrganization = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"))
+            texas.stubMaskinportenSystemUser()
         }
     }
 

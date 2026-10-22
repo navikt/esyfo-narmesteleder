@@ -72,7 +72,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             organization: FakeNarmestelederrelasjonOrganization = FakeNarmestelederrelasjonOrganization(organizationName, effects),
         ) = GetNarmestelederrelasjonUseCase(
             FakeNarmestelederrelasjonRepository(lookupById = { lookup }, effects = effects),
-            FakeOrganizationAccess(access, effects),
+            FakeOrganizationAccess(orgNumber, access, effects),
             FakeGetActiveSykmeldingLookup(activeSykmelding, effects),
             organization,
         )
@@ -96,20 +96,25 @@ class GetNarmestelederrelasjonUseCaseTest :
             }
         }
 
-        test("returns the relation only to an organization-authorized caller without logging") {
-            val effects = mutableListOf<String>()
-            val organization = FakeNarmestelederrelasjonOrganization(effects = effects)
-            query(effects = effects, organization = organization).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.Found(
-                Narmestelederrelasjon(
-                    id = id,
-                    orgNumber = orgNumber,
-                    employee = RelationPerson(employeeIdent, "private-first-name", null, "private-last-name"),
-                ),
-                "Organization",
-            )
-            effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
-            organization.calls shouldBe listOf(orgNumber)
-            capture.records.shouldBeEmpty()
+        listOf(
+            "personnel manager" to caller,
+            "system user" to OrganizationAccessSubject.LpsSystemUser("system-user", OrganizationNumber("999777555")),
+        ).forEach { (description, subject) ->
+            test("returns the relation only to an organization-authorized $description without logging") {
+                val effects = mutableListOf<String>()
+                val organization = FakeNarmestelederrelasjonOrganization(effects = effects)
+                query(effects = effects, organization = organization).execute(id, subject) shouldBe GetNarmestelederrelasjonResult.Found(
+                    Narmestelederrelasjon(
+                        id = id,
+                        orgNumber = orgNumber,
+                        employee = RelationPerson(employeeIdent, "private-first-name", null, "private-last-name"),
+                    ),
+                    "Organization",
+                )
+                effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
+                organization.calls shouldBe listOf(orgNumber)
+                capture.records.shouldBeEmpty()
+            }
         }
 
         test("masks missing organization access and logs the denial reason") {

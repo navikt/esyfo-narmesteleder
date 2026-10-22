@@ -28,7 +28,7 @@ internal const val MASKINPORTEN_ISSUER = "https://test.maskinporten.no"
 internal class NarmestelederrelasjonRouteFixture {
     val texasHttpClient = mockk<TexasHttpClient>()
     val repository = FakeNarmestelederrelasjonRepository()
-    val organizationAccess = FakeOrganizationAccess()
+    val organizationAccess = FakeOrganizationAccess(OrganizationNumber("123456789"))
     val organization = FakeNarmestelederrelasjonOrganization()
     val activeSykmeldingLookup = ActiveSykmeldingLookup { _, _ -> true }
     val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()

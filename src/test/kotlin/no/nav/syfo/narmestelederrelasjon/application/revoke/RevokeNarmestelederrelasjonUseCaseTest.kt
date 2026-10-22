@@ -16,6 +16,7 @@ import no.nav.syfo.narmestelederrelasjon.application.RecordingRevocationPublishe
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.observability.ProductionLogCapture
@@ -40,7 +41,7 @@ class RevokeNarmestelederrelasjonUseCaseTest :
         val manager = PersonalIdentificationNumber("10987654321")
         val outsider = PersonalIdentificationNumber("11111111111")
         val organization = OrganizationNumber("123456789")
-        val system = OrganizationAccessSubject.LpsSystemUser("test-system-user", organization)
+        val system = OrganizationAccessSubject.LpsSystemUser("test-system-user", OrganizationNumber("999777555"))
         val privacyCanaries = listOf(employee.value, manager.value, outsider.value, organization.value, "test-token", "test-system-user")
 
         fun user(ident: PersonalIdentificationNumber) = OrganizationAccessSubject.PersonnelManager(ident, AccessToken("test-token"))
@@ -64,11 +65,7 @@ class RevokeNarmestelederrelasjonUseCaseTest :
                     revocableById = { id -> if (id == relationId) lookup else null },
                     effects = effects,
                 ),
-                organizationAccess = { _, org ->
-                    org shouldBe organization
-                    effects.add("access")
-                    access
-                },
+                organizationAccess = FakeOrganizationAccess(organization, access, effects),
                 publisher = RecordingRevocationPublisher { command ->
                     effects.add("publish")
                     commands.add(command)

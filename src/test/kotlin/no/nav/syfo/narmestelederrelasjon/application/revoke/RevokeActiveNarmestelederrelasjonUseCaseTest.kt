@@ -17,6 +17,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -30,7 +31,7 @@ import java.util.UUID
 private val employee = PersonalIdentificationNumber("12345678901")
 private val resolved = PersonalIdentificationNumber("12345678902")
 private val organization = OrganizationNumber("123456789")
-private val lps = OrganizationAccessSubject.LpsSystemUser("system-user", organization)
+private val lps = OrganizationAccessSubject.LpsSystemUser("system-user", OrganizationNumber("999777555"))
 
 class RevokeActiveNarmestelederrelasjonUseCaseTest :
     FunSpec({
@@ -101,7 +102,7 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
     })
 
 private class RevokeActiveFixture(
-    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
+    private val access: OrganizationAccess = FakeOrganizationAccess(organization),
     name: String = "Hansen",
     registeredNames: List<RegisteredName> = listOf(RegisteredName(name)),
     person: PersonDetails? = PersonDetails(resolved, PersonNameDetails("Test", name, registeredNames = registeredNames)),

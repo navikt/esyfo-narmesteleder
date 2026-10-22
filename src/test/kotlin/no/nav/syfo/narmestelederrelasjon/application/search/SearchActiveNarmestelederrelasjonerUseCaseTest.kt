@@ -18,11 +18,11 @@ import java.time.Instant
 import java.util.UUID
 
 private val organizationNumber = OrganizationNumber("123456789")
-private val subject = OrganizationAccessSubject.LpsSystemUser("synthetic-system-user", organizationNumber)
+private val subject = OrganizationAccessSubject.LpsSystemUser("synthetic-system-user", OrganizationNumber("999777555"))
 
 class SearchActiveNarmestelederrelasjonerUseCaseTest :
     FunSpec({
-        val access = FakeOrganizationAccess()
+        val access = FakeOrganizationAccess(organizationNumber)
         val repository = SearchRepository()
         val useCase = SearchActiveNarmestelederrelasjonerUseCase(access, repository)
 

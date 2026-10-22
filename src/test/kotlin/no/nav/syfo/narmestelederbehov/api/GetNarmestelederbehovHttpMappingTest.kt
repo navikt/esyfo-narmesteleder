@@ -47,6 +47,7 @@ class GetNarmestelederbehovHttpMappingTest :
             BehovReason.DEAKTIVERT_ARBEIDSTAKER to RevokedBy.EMPLOYEE,
             BehovReason.DEAKTIVERT_ARBEIDSTAKER_INNSENDT_SYKMELDING to RevokedBy.EMPLOYEE,
             BehovReason.NY_LEDER to null,
+            BehovReason.UKJENT to null,
         ).forEach { (reason, revokedBy) ->
             test("maps behov reason $reason to revokedBy $revokedBy") {
                 GetNarmestelederbehovResult.Found(

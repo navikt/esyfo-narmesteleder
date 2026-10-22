@@ -65,7 +65,10 @@ class GetNarmestelederrelasjonLoggingContractTest :
                 override suspend fun findRevocableById(id: UUID): RevocableNarmestelederrelasjon? = error("Not used by GET")
             },
             organizationAccess = { _, _ -> access },
-            activeSykmeldingLookup = { _, _ -> activeSykmelding },
+            personIdentifiersLookup = { ident, _ -> PersonIdentifiersLookupResult.Found(PersonIdentifiers(ident, listOf(ident))) },
+            activeSykmeldingLookup = { _, _, _ ->
+                if (activeSykmelding) ActiveSykmeldingResult.Found else ActiveSykmeldingResult.NotFound
+            },
             organization = object : NarmestelederrelasjonOrganization {
                 override suspend fun findName(orgNumber: OrganizationNumber) = organizationName
             },

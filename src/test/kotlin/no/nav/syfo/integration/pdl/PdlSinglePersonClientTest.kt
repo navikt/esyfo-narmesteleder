@@ -29,6 +29,25 @@ class PdlSinglePersonClientTest :
             )
         }
 
+        test("identity lookup selects the current folkeregisterident independent of response order and includes history") {
+            lookupIdentifiers {
+                respondJson(
+                    """{"data":{"identer":{"identer":[
+                        {"ident":"$HISTORICAL_IDENT_2","historisk":true,"gruppe":"FOLKEREGISTERIDENT"},
+                        {"ident":"$ACTOR_IDENT","historisk":false,"gruppe":"AKTORID"},
+                        {"ident":"$CURRENT_IDENT","historisk":false,"gruppe":"FOLKEREGISTERIDENT"},
+                        {"ident":"$HISTORICAL_IDENT_1","historisk":true,"gruppe":"FOLKEREGISTERIDENT"},
+                        {"ident":"$HISTORICAL_IDENT_2","historisk":true,"gruppe":"FOLKEREGISTERIDENT"}
+                    ]}}}""",
+                )
+            } shouldBe UpstreamResult.Success(
+                PdlPersonIdentifiers(
+                    current = CURRENT_IDENT,
+                    all = listOf(CURRENT_IDENT, HISTORICAL_IDENT_2, HISTORICAL_IDENT_1),
+                ),
+            )
+        }
+
         test("4xx gives a RESPONSE failure with status") {
             lookup { respondJson("{}", HttpStatusCode.BadRequest) }.failure().assertMetadata(UpstreamFailureStage.RESPONSE, 400)
         }
@@ -78,6 +97,25 @@ class PdlSinglePersonClientTest :
 
         test("bad_request with ugyldig_ident gives Success null") {
             lookup { respondJson("""{"errors":[{"extensions":{"code":"bad_request","id":"ugyldig_ident"}}]}""") } shouldBe UpstreamResult.Success(null)
+        }
+
+        test("identity not_found gives Success null") {
+            lookupIdentifiers { respondJson("""{"errors":[{"extensions":{"code":"not_found"}}]}""") } shouldBe UpstreamResult.Success(null)
+        }
+
+        test("identity response without a current folkeregisterident gives incomplete_response") {
+            lookupIdentifiers { respondJson("""{"data":{"identer":{"identer":[]}}}""") }.identityFailure().errors shouldBe listOf(UpstreamError("incomplete_response"))
+        }
+
+        test("identity response with multiple current folkeregisteridents gives incomplete_response") {
+            lookupIdentifiers {
+                respondJson(
+                    """{"data":{"identer":{"identer":[
+                        {"ident":"$CURRENT_IDENT","historisk":false,"gruppe":"FOLKEREGISTERIDENT"},
+                        {"ident":"$CURRENT_IDENT_2","historisk":false,"gruppe":"FOLKEREGISTERIDENT"}
+                    ]}}}""",
+                )
+            }.identityFailure().errors shouldBe listOf(UpstreamError("incomplete_response"))
         }
 
         test("a mix of not_found and invalid ident gives Success null even with data") {
@@ -160,13 +198,24 @@ class PdlSinglePersonClientTest :
     })
 
 private const val SYNTHETIC_IDENT = "12345678901"
+private const val CURRENT_IDENT = "12345678901"
+private const val CURRENT_IDENT_2 = "12345678902"
+private const val HISTORICAL_IDENT_1 = "12345678903"
+private const val HISTORICAL_IDENT_2 = "12345678904"
+private const val ACTOR_IDENT = "12345678905"
 private const val FULL_DATA = """{"person":{"navn":[{"fornavn":"Test","etternavn":"Person"}]},"identer":{"identer":[{"ident":"12345678901","gruppe":"FOLKEREGISTERIDENT"}]}}"""
 
 private suspend fun lookup(upstream: MockRequestHandler): UpstreamResult<PdlPerson?> = upstreamHttpClient(respondWithSystemToken, upstream).use { http ->
     HttpPdlClient(http, "http://pdl", texasHttpClient(http), "api://pdl/.default").getPerson(SYNTHETIC_IDENT)
 }
 
+private suspend fun lookupIdentifiers(upstream: MockRequestHandler): UpstreamResult<PdlPersonIdentifiers?> = upstreamHttpClient(respondWithSystemToken, upstream).use { http ->
+    HttpPdlClient(http, "http://pdl", texasHttpClient(http), "api://pdl/.default").getPersonIdentifiers(SYNTHETIC_IDENT)
+}
+
 private fun UpstreamResult<PdlPerson?>.failure() = shouldBeInstanceOf<UpstreamResult.Failure>().failure
+
+private fun UpstreamResult<PdlPersonIdentifiers?>.identityFailure() = shouldBeInstanceOf<UpstreamResult.Failure>().failure
 
 private fun UpstreamFailure.assertMetadata(expectedStage: UpstreamFailureStage, expectedStatus: Int?) {
     upstream shouldBe PDL

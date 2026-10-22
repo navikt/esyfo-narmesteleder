@@ -8,6 +8,7 @@ import no.nav.syfo.integration.pdl.Ident
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.integration.pdl.PdlPerson
+import no.nav.syfo.integration.pdl.PdlPersonIdentifiers
 import no.nav.syfo.integration.pdl.PersonResponse
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
@@ -47,5 +48,6 @@ class PdlPersonLookupTest :
 
 private class StubPdlClient(private val result: UpstreamResult<PdlPerson?>) : PdlClient {
     override suspend fun getPerson(ident: String) = result
+    override suspend fun getPersonIdentifiers(ident: String): UpstreamResult<PdlPersonIdentifiers?> = UpstreamResult.Success(null)
     override suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse> = error("Not used")
 }

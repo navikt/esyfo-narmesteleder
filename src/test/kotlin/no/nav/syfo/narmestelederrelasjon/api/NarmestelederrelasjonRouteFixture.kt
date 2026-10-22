@@ -9,11 +9,15 @@ import io.mockk.mockk
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederrelasjon.application.ActiveSykmeldingResult
 import no.nav.syfo.narmestelederrelasjon.application.GetNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonLookup
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrganization
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.OrganizationNameResult
+import no.nav.syfo.narmestelederrelasjon.application.PersonIdentifiers
+import no.nav.syfo.narmestelederrelasjon.application.PersonIdentifiersLookup
+import no.nav.syfo.narmestelederrelasjon.application.PersonIdentifiersLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
 import no.nav.syfo.narmestelederrelasjon.application.RecordingRevocationPublisher
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
@@ -36,7 +40,10 @@ internal class NarmestelederrelasjonRouteFixture {
     val repository = mockk<NarmestelederrelasjonRepository>()
     val organizationAccess = mockk<OrganizationAccess>()
     val organization = mockk<NarmestelederrelasjonOrganization>()
-    val activeSykmeldingLookup = ActiveSykmeldingLookup { _, _ -> true }
+    val activeSykmeldingLookup = ActiveSykmeldingLookup { _, _, _ -> ActiveSykmeldingResult.Found }
+    val personIdentifiersLookup = PersonIdentifiersLookup { ident, _ ->
+        PersonIdentifiersLookupResult.Found(PersonIdentifiers(ident, listOf(ident)))
+    }
     val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
     val revokeNarmestelederrelasjon = RevokeNarmestelederrelasjonUseCase(
         repository,
@@ -44,10 +51,11 @@ internal class NarmestelederrelasjonRouteFixture {
         RecordingRevocationPublisher { command -> published.add(command) },
     )
     val getNarmestelederrelasjon = GetNarmestelederrelasjonUseCase(
-        repository,
-        organizationAccess,
-        activeSykmeldingLookup,
-        organization,
+        repository = repository,
+        organizationAccess = organizationAccess,
+        personIdentifiersLookup = personIdentifiersLookup,
+        activeSykmeldingLookup = activeSykmeldingLookup,
+        organization = organization,
     )
     val id = UUID.fromString("00000000-0000-0000-0000-000000000001")
     val employeeIdent = "12345678901"

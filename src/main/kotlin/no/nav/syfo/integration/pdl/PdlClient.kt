@@ -44,10 +44,31 @@ private val getPersonQuery =
 """
         .trimIndent()
 
+@Language("GraphQL")
+private val getPersonIdentifiersQuery =
+    """
+    query(${'$'}ident: ID!){
+      identer: hentIdenter(ident: ${'$'}ident, historikk: true) {
+          identer {
+            ident,
+            historisk,
+            gruppe
+          }
+        }
+    }
+"""
+        .trimIndent()
+
 interface PdlClient {
     suspend fun getPerson(ident: String): UpstreamResult<PdlPerson?>
+    suspend fun getPersonIdentifiers(ident: String): UpstreamResult<PdlPersonIdentifiers?>
     suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse>
 }
+
+data class PdlPersonIdentifiers(
+    val current: String,
+    val all: List<String>,
+)
 
 class HttpPdlClient(
     private val httpClient: HttpClient,
@@ -69,6 +90,18 @@ class HttpPdlClient(
 
         return when {
             errors.isEmpty() -> response.toPdlPerson()
+            errors.all { it.meansPersonNotFound() } -> UpstreamResult.Success(null)
+            else -> graphQlFailure(errors.map { it.toUpstreamError() })
+        }
+    }
+
+    override suspend fun getPersonIdentifiers(ident: String): UpstreamResult<PdlPersonIdentifiers?> {
+        val request = GetPersonRequest(query = getPersonIdentifiersQuery, variables = GetPersonVariables(ident = ident))
+        val response = postQuery<GetPersonResponse>(request).getOrElse { return UpstreamResult.Failure(it) }
+        val errors = response.errors.orEmpty()
+
+        return when {
+            errors.isEmpty() -> response.toPdlPersonIdentifiers()
             errors.all { it.meansPersonNotFound() } -> UpstreamResult.Success(null)
             else -> graphQlFailure(errors.map { it.toUpstreamError() })
         }
@@ -127,6 +160,27 @@ private fun GetPersonResponse.toPdlPerson(): UpstreamResult<PdlPerson?> {
     val identer = data?.identer
     return if (person != null && identer != null) {
         UpstreamResult.Success(PdlPerson(person, identer.identer))
+    } else {
+        graphQlFailure(listOf(INCOMPLETE_RESPONSE))
+    }
+}
+
+private fun GetPersonResponse.toPdlPersonIdentifiers(): UpstreamResult<PdlPersonIdentifiers?> {
+    val identer = data?.identer?.identer
+    if (identer == null) {
+        return graphQlFailure(listOf(INCOMPLETE_RESPONSE))
+    }
+
+    val folkeregisteridenter = identer.filter { it.gruppe == Ident.GRUPPE_IDENT_FNR }
+    val current = folkeregisteridenter.filterNot { it.historisk }
+    return if (current.size == 1) {
+        val currentIdent = current.single().ident
+        UpstreamResult.Success(
+            PdlPersonIdentifiers(
+                current = currentIdent,
+                all = listOf(currentIdent) + folkeregisteridenter.filter { it.historisk }.map(Ident::ident).distinct().filterNot { it == currentIdent },
+            ),
+        )
     } else {
         graphQlFailure(listOf(INCOMPLETE_RESPONSE))
     }

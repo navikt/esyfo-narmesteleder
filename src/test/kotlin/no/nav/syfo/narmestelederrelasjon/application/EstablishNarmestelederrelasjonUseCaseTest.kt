@@ -16,6 +16,8 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationManager
 import no.nav.syfo.narmestelederrelasjon.domain.RelationPerson
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.narmestelederrelasjon.domain.normalize
+import no.nav.syfo.narmestelederrelasjon.infrastructure.CachedPersonLookup
+import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonDetailsCache
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -31,6 +33,9 @@ class EstablishNarmestelederrelasjonUseCaseTest :
             val useCase = createEstablisher(
                 effects = effects,
                 people = mapOf(employeeIdent to resolvedEmployee, managerIdent to resolvedManager),
+                personIdentifiers = PersonIdentifiersLookup { _, _ ->
+                    identifiersResult(PersonIdentifiers(resolvedEmployee.personIdent, listOf(resolvedEmployee.personIdent)))
+                },
                 publisher = publisher,
             )
 
@@ -42,6 +47,86 @@ class EstablishNarmestelederrelasjonUseCaseTest :
                 organizationNumber = organizationNumber,
                 source = RelationSource.PERSONNEL_MANAGER,
             )
+        }
+
+        test("publishes when only a third historical ident has active sick leave") {
+            val effects = mutableListOf<String>()
+            val publisher = RecordingPublisher(effects)
+            val currentIdent = PersonalIdentificationNumber("12121212121")
+            val historicalIdent = PersonalIdentificationNumber("13131313131")
+            val thirdHistoricalIdent = PersonalIdentificationNumber("14141414141")
+            val identifiers = PersonIdentifiers(currentIdent, listOf(currentIdent, historicalIdent, thirdHistoricalIdent))
+            val useCase = createEstablisher(
+                effects = effects,
+                publisher = publisher,
+                people = mapOf(
+                    employeeIdent to employee.copy(personIdent = currentIdent),
+                    managerIdent to manager,
+                ),
+                personIdentifiers = PersonIdentifiersLookup { _, _ -> identifiersResult(identifiers) },
+                activeLookup = { personIdents, _ ->
+                    if (thirdHistoricalIdent in personIdents) ActiveSykmeldingResult.Found else ActiveSykmeldingResult.NotFound
+                },
+            )
+
+            useCase.execute(command()) shouldBe EstablishNarmestelederrelasjonResult.Published
+            publisher.command?.employee?.personIdent shouldBe currentIdent
+        }
+
+        test("publishes the fresh current ident when cached person details contain the historical ident") {
+            val currentIdent = PersonalIdentificationNumber("12121212121")
+            val cachedEmployee = employee.copy(personIdent = employeeIdent)
+            val personLookup = CachedPersonLookup(
+                delegate = PersonLookup { ident ->
+                    if (ident == managerIdent) {
+                        PersonLookupResult.Found(manager)
+                    } else {
+                        error("The employee should be resolved from the cache")
+                    }
+                },
+                cache = InMemoryPersonDetailsCache(mapOf(employeeIdent to cachedEmployee)),
+            )
+            val publisher = RecordingPublisher(mutableListOf())
+            val useCase = createEstablisher(
+                effects = mutableListOf(),
+                publisher = publisher,
+                personIdentifiers = PersonIdentifiersLookup { _, _ ->
+                    identifiersResult(PersonIdentifiers(currentIdent, listOf(currentIdent, employeeIdent)))
+                },
+                personLookup = personLookup,
+            )
+
+            useCase.execute(command()) shouldBe EstablishNarmestelederrelasjonResult.Published
+            publisher.command?.employee?.personIdent shouldBe currentIdent
+        }
+
+        test("returns PersonNotFound when PDL cannot resolve the employee identities") {
+            val effects = mutableListOf<String>()
+            val publisher = RecordingPublisher(effects)
+            val useCase = createEstablisher(
+                effects = effects,
+                publisher = publisher,
+                personIdentifiers = PersonIdentifiersLookup { _, _ -> PersonIdentifiersLookupResult.NotFound },
+            )
+
+            useCase.execute(command()) shouldBe EstablishNarmestelederrelasjonResult.PersonNotFound
+            effects shouldBe emptyList()
+            publisher.command shouldBe null
+        }
+
+        test("returns UpstreamUnavailable when PDL identity resolution fails") {
+            val effects = mutableListOf<String>()
+            val publisher = RecordingPublisher(effects)
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+            val useCase = createEstablisher(
+                effects = effects,
+                publisher = publisher,
+                personIdentifiers = PersonIdentifiersLookup { _, _ -> PersonIdentifiersLookupResult.Unavailable(failure) },
+            )
+
+            useCase.execute(command()) shouldBe EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            effects shouldBe emptyList()
+            publisher.command shouldBe null
         }
 
         test("rejects without publishing at the first failing relation check") {
@@ -216,29 +301,37 @@ private fun command(employeeLastName: String? = null): EstablishNarmestelederrel
 private fun createEstablisher(
     effects: MutableList<String>,
     active: Boolean = true,
+    activeLookup: ((List<PersonalIdentificationNumber>, OrganizationNumber) -> ActiveSykmeldingResult)? = null,
     activeFailure: Throwable? = null,
     employment: EmploymentResult = EmploymentResult.InOrganization,
     people: Map<PersonalIdentificationNumber, PersonDetails> = defaultPeople,
     unavailable: Pair<PersonalIdentificationNumber, UpstreamFailure>? = null,
+    personIdentifiers: PersonIdentifiersLookup = PersonIdentifiersLookup { ident, _ ->
+        identifiersResult(PersonIdentifiers(ident, listOf(ident)))
+    },
+    personLookup: PersonLookup? = null,
     metrics: NameValidationMetrics = NameValidationMetrics { effects += "metric" },
     publisher: RecordingPublisher = RecordingPublisher(effects),
 ): EstablishNarmestelederrelasjonUseCase = EstablishNarmestelederrelasjonUseCase(
-    ActiveSykmeldingLookup { _, _ ->
+    personIdentifiers,
+    ActiveSykmeldingLookup { personIdents, organization, _ ->
         effects += "sykmelding"
         activeFailure?.let { throw it }
-        active
+        activeLookup?.invoke(personIdents, organization) ?: if (active) ActiveSykmeldingResult.Found else ActiveSykmeldingResult.NotFound
     },
     EmploymentLookup { _, _ ->
         effects += "employment"
         employment
     },
-    PersonLookup { ident ->
+    personLookup ?: PersonLookup { ident ->
         effects += if (ident == employeeIdent) "employee" else "manager"
         if (ident == unavailable?.first) PersonLookupResult.Unavailable(unavailable.second) else people[ident]?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
     },
     metrics,
     publisher,
 )
+
+private fun identifiersResult(identifiers: PersonIdentifiers) = PersonIdentifiersLookupResult.Found(identifiers)
 
 private class RecordingPublisher(
     private val effects: MutableList<String>,
@@ -250,6 +343,18 @@ private class RecordingPublisher(
         effects += "publish"
         failure?.let { throw it }
         this.command = command
+    }
+}
+
+private class InMemoryPersonDetailsCache(
+    initial: Map<PersonalIdentificationNumber, PersonDetails>,
+) : PersonDetailsCache {
+    private val entries = initial.toMutableMap()
+
+    override fun get(personIdent: PersonalIdentificationNumber): PersonDetails? = entries[personIdent]
+
+    override fun put(personIdent: PersonalIdentificationNumber, personDetails: PersonDetails) {
+        entries[personIdent] = personDetails
     }
 }
 

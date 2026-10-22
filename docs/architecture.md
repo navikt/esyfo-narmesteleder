@@ -98,6 +98,12 @@ Owns established and revoked narmesteleder relations:
 - establish and revoke relations;
 - validate a relation before establishing it: the manager's contact details,
   active sykmelding, employment, persons in PDL and submitted last names.
+  Active-sykmelding validation resolves the employee's current and historical
+  `FOLKEREGISTERIDENT` values freshly from PDL and checks Dinesykmeldte for all
+  of them. A newly established relation publishes the fresh current identity,
+  while Aareg and the person-name lookup continue to use the submitted
+  identity. Relation GET performs the same fresh identity resolution before
+  checking active sick leave, so a stored historical identity remains usable.
   Establishing and revoking only publish a message; the relation is stored when
   the resulting Leesah event is consumed, so validation must happen before
   publishing;
@@ -222,8 +228,19 @@ A client used by only one module lives in that module's `infrastructure`. It
 moves to `integration` when a second module needs it.
 
 The shared Ereg, PDL, Aareg and Dinesykmeldte clients live in `integration`.
-Ereg caching is provided by the `CachedEregClient` decorator; module adapters
-own the mapping from client results and failures to their ports.
+The PDL client keeps the ordinary person lookup current-only and exposes a
+separate identity-only lookup with `historikk: true`; the relation adapter
+derives one current `FOLKEREGISTERIDENT` and the complete deduplicated identity
+set from that response. Ereg caching is provided by the `CachedEregClient`
+decorator; module adapters own the mapping from client results and failures to
+their ports. Dinesykmeldte failures remain `UpstreamResult` values; the
+relation adapter can continue checking later identities after a failure and
+only reports unavailable when no identity returns a positive result. The
+relation lookup records operation, outcome and whether a historical identity
+hit in `syfo-narmesteleder_narmestelederrelasjon_active_sykmelding_lookup_total`
+without exposing identifiers. Fresh PDL identity-resolution outcomes are
+recorded per operation in
+`syfo-narmesteleder_narmestelederrelasjon_person_identifiers_lookup_total`.
 
 ### `ident`
 

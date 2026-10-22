@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
 import no.nav.syfo.narmestelederbehov.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.domain.Employee
+import no.nav.syfo.platform.upstream.getOrThrow
 
 class DinesykmeldteActiveSykmeldingLookup(
     private val client: DinesykmeldteClient,
@@ -10,5 +11,5 @@ class DinesykmeldteActiveSykmeldingLookup(
     override suspend fun hasActiveSykmelding(employee: Employee): Boolean = client.getIsActiveSykmelding(
         fnr = employee.personIdent.value,
         orgnummer = employee.organizationNumber.value,
-    )
+    ).getOrThrow()
 }

@@ -13,6 +13,7 @@ import java.util.UUID
 class GetNarmestelederrelasjonUseCase(
     private val repository: NarmestelederrelasjonRepository,
     private val organizationAccess: OrganizationAccess,
+    private val personIdentifiersLookup: PersonIdentifiersLookup,
     private val activeSykmeldingLookup: ActiveSykmeldingLookup,
     private val organization: NarmestelederrelasjonOrganization,
 ) {
@@ -35,8 +36,27 @@ class GetNarmestelederrelasjonUseCase(
                 return NotFound(NotFoundReason.ACCESS_DENIED, denialReason = access.reason).log()
         }
 
-        if (!activeSykmeldingLookup.hasActiveSykmelding(lookup.employeeIdent, lookup.organizationNumber)) {
-            return NotFound(NotFoundReason.NO_ACTIVE_SYKMELDING).log()
+        val identifiers = when (
+            val result = personIdentifiersLookup.find(
+                lookup.employeeIdent,
+                PersonIdentifiersLookupOperation.GET_RELATION,
+            )
+        ) {
+            is PersonIdentifiersLookupResult.Found -> result.identifiers
+            PersonIdentifiersLookupResult.NotFound -> return NotFound(NotFoundReason.PERSON_NOT_FOUND).log()
+            is PersonIdentifiersLookupResult.Unavailable -> return GetNarmestelederrelasjonResult.UpstreamUnavailable(result.failure)
+        }
+
+        when (
+            val activeSykmelding = activeSykmeldingLookup.findActiveSykmelding(
+                personIdents = identifiers.all,
+                organizationNumber = lookup.organizationNumber,
+                operation = ActiveSykmeldingOperation.GET_RELATION,
+            )
+        ) {
+            ActiveSykmeldingResult.Found -> Unit
+            ActiveSykmeldingResult.NotFound -> return NotFound(NotFoundReason.NO_ACTIVE_SYKMELDING).log()
+            is ActiveSykmeldingResult.Unavailable -> return GetNarmestelederrelasjonResult.UpstreamUnavailable(activeSykmelding.failure)
         }
 
         val organizationName = when (val result = organization.findName(lookup.organizationNumber)) {

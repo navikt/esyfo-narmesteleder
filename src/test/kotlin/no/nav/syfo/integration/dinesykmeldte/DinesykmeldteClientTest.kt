@@ -3,6 +3,7 @@ package no.nav.syfo.integration.dinesykmeldte
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -11,6 +12,8 @@ import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamResult
 import kotlin.coroutines.cancellation.CancellationException
 
 class DinesykmeldteClientTest :
@@ -29,28 +32,29 @@ class DinesykmeldteClientTest :
                 }
             )
 
-            client.getIsActiveSykmelding(fnr, orgnummer) shouldBe true
+            client.getIsActiveSykmelding(fnr, orgnummer) shouldBe UpstreamResult.Success(true)
             authorization shouldBe "Bearer $TEST_SYSTEM_TOKEN"
             path shouldBe HttpDinesykmeldteClient.DINESYKMELDTE_ACTIVE_SYKMELDING_PATH
         }
 
-        test("wraps 4xx responses in DinesykmeldteClientException") {
+        test("returns a RESPONSE failure for 4xx responses") {
             val client = dinesykmeldteClient(dinesykmeldte = { respondJson("", HttpStatusCode.BadRequest) })
 
-            shouldThrow<DinesykmeldteClientException> {
-                client.getIsActiveSykmelding(fnr, orgnummer)
-            }
+            val failure = client.getIsActiveSykmelding(fnr, orgnummer).shouldBeInstanceOf<UpstreamResult.Failure>().failure
+            failure.upstream shouldBe DINESYKMELDTE
+            failure.stage shouldBe UpstreamFailureStage.RESPONSE
+            failure.status shouldBe 400
         }
 
-        test("wraps system token failures in DinesykmeldteClientException") {
+        test("returns the Texas failure when acquiring the system token fails") {
             val client = dinesykmeldteClient(
                 token = { respondJson("", HttpStatusCode.InternalServerError) },
                 dinesykmeldte = { respondJson("true") },
             )
 
-            shouldThrow<DinesykmeldteClientException> {
-                client.getIsActiveSykmelding(fnr, orgnummer)
-            }
+            val failure = client.getIsActiveSykmelding(fnr, orgnummer).shouldBeInstanceOf<UpstreamResult.Failure>().failure
+            failure.upstream.value shouldBe "texas"
+            failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
         }
 
         test("propagates cancellation while acquiring system token") {

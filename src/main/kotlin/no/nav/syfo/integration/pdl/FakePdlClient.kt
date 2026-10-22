@@ -29,6 +29,10 @@ class FakePdlClient : PdlClient {
         )
     }
 
+    override suspend fun getPersonIdentifiers(ident: String): UpstreamResult<PdlPersonIdentifiers> = UpstreamResult.Success(
+        PdlPersonIdentifiers(current = ident, all = listOf(ident)),
+    )
+
     override suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse> {
         val hentPersonBolk = idents.map { fnr ->
             val faker = Faker(Random(fnr.toLong()))

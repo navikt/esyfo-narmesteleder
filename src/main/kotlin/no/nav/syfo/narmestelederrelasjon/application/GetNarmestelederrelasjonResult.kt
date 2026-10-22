@@ -20,6 +20,7 @@ sealed interface GetNarmestelederrelasjonResult {
         RELATION_NOT_FOUND,
         RELATION_INACTIVE,
         ACCESS_DENIED,
+        PERSON_NOT_FOUND,
         NO_ACTIVE_SYKMELDING,
     }
 }

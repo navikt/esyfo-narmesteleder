@@ -21,6 +21,7 @@ data class IdentResponse(
 data class Ident(
     val ident: String,
     val gruppe: String,
+    val historisk: Boolean = false,
 ) {
     companion object {
         const val GRUPPE_IDENT_FNR = "FOLKEREGISTERIDENT"

@@ -108,6 +108,9 @@ paths:
       description: |
         Returns only a current active relation: `aktiv_tom` must be null and `aktiv_fom` must
         not be in the future, with an active sykmelding for the employee at the organization.
+        The active-sykmelding check uses the employee's current and historical
+        `FOLKEREGISTERIDENT` values resolved freshly from PDL, not only the identity stored
+        on the relation.
         TokenX users and Maskinporten system users with Altinn access to the relation's organization
         may read it. An unknown, inactive, relation without active sykmelding, unauthorized relation,
         or malformed id returns the same empty 404 response to avoid disclosing whether the relation exists.

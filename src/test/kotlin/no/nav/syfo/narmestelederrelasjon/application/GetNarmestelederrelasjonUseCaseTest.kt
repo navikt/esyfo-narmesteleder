@@ -42,13 +42,19 @@ class GetNarmestelederrelasjonUseCaseTest :
             lookup: NarmestelederrelasjonLookup? = lookup(),
             access: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
             activeSykmelding: Boolean = true,
+            personIdentifiers: PersonIdentifiersLookupResult = PersonIdentifiersLookupResult.Found(PersonIdentifiers(employeeIdent, listOf(employeeIdent))),
+            activeLookup: ((List<PersonalIdentificationNumber>, OrganizationNumber) -> ActiveSykmeldingResult)? = null,
             organizationName: OrganizationNameResult = OrganizationNameResult.Found("Organization"),
             effects: MutableList<String> = mutableListOf(),
         ) = GetNarmestelederrelasjonUseCase(
-            FakeNarmestelederrelasjonRepository(lookup, effects),
-            FakeGetOrganizationAccess(access, effects),
-            FakeGetActiveSykmeldingLookup(activeSykmelding, effects),
-            FakeGetOrganization(organizationName, effects),
+            repository = FakeNarmestelederrelasjonRepository(lookup, effects),
+            organizationAccess = FakeGetOrganizationAccess(access, effects),
+            personIdentifiersLookup = FakeGetPersonIdentifiersLookup(personIdentifiers, effects),
+            activeSykmeldingLookup = FakeGetActiveSykmeldingLookup(
+                activeLookup ?: { _, _ -> if (activeSykmelding) ActiveSykmeldingResult.Found else ActiveSykmeldingResult.NotFound },
+                effects,
+            ),
+            organization = FakeGetOrganization(organizationName, effects),
         )
 
         test("returns the relation only to an organization-authorized caller") {
@@ -61,7 +67,7 @@ class GetNarmestelederrelasjonUseCaseTest :
                 ),
                 "Organization",
             )
-            effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
+            effects shouldBe listOf("lookup", "access", "identifiers", "sykmelding", "organization")
         }
 
         test("masks missing organization access") {
@@ -89,7 +95,62 @@ class GetNarmestelederrelasjonUseCaseTest :
             val effects = mutableListOf<String>()
             query(activeSykmelding = false, effects = effects).execute(id, caller) shouldBe
                 GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.NO_ACTIVE_SYKMELDING)
-            effects shouldBe listOf("lookup", "access", "sykmelding")
+            effects shouldBe listOf("lookup", "access", "identifiers", "sykmelding")
+        }
+
+        test("checks active sykmelding across the current and historical identities") {
+            val effects = mutableListOf<String>()
+            val historicalIdent = PersonalIdentificationNumber("12345678912")
+            var checkedIdents: List<PersonalIdentificationNumber>? = null
+
+            query(
+                personIdentifiers = PersonIdentifiersLookupResult.Found(PersonIdentifiers(employeeIdent, listOf(employeeIdent, historicalIdent))),
+                activeLookup = { personIdents, _ ->
+                    checkedIdents = personIdents
+                    if (historicalIdent in personIdents) ActiveSykmeldingResult.Found else ActiveSykmeldingResult.NotFound
+                },
+                effects = effects,
+            ).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.Found(
+                Narmestelederrelasjon(
+                    id = id,
+                    orgNumber = orgNumber,
+                    employee = RelationPerson(employeeIdent, "Employee", null, "Person"),
+                ),
+                "Organization",
+            )
+            checkedIdents shouldBe listOf(employeeIdent, historicalIdent)
+        }
+
+        test("returns PersonNotFound when PDL cannot resolve the stored employee identities") {
+            val effects = mutableListOf<String>()
+
+            query(
+                personIdentifiers = PersonIdentifiersLookupResult.NotFound,
+                effects = effects,
+            ).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.PERSON_NOT_FOUND)
+            effects shouldBe listOf("lookup", "access", "identifiers")
+        }
+
+        test("returns UpstreamUnavailable when PDL identity resolution fails") {
+            val effects = mutableListOf<String>()
+            val failure = UpstreamFailure(UpstreamName("pdl"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+
+            query(
+                personIdentifiers = PersonIdentifiersLookupResult.Unavailable(failure),
+                effects = effects,
+            ).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            effects shouldBe listOf("lookup", "access", "identifiers")
+        }
+
+        test("returns UpstreamUnavailable when active sick leave lookup fails") {
+            val effects = mutableListOf<String>()
+            val failure = UpstreamFailure(UpstreamName("dinesykmeldte"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
+
+            query(
+                activeLookup = { _, _ -> ActiveSykmeldingResult.Unavailable(failure) },
+                effects = effects,
+            ).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.UpstreamUnavailable(failure)
+            effects shouldBe listOf("lookup", "access", "identifiers", "sykmelding")
         }
 
         test("masks an inactive relation before authorization lookup") {
@@ -121,7 +182,7 @@ class GetNarmestelederrelasjonUseCaseTest :
                         ),
                         "Organization",
                     )
-                effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
+                effects shouldBe listOf("lookup", "access", "identifiers", "sykmelding", "organization")
             }
         }
 
@@ -136,7 +197,7 @@ class GetNarmestelederrelasjonUseCaseTest :
                     ),
                     organizationName = null,
                 )
-            effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
+            effects shouldBe listOf("lookup", "access", "identifiers", "sykmelding", "organization")
         }
 
         test("returns UpstreamUnavailable with the unchanged failure after organization lookup") {
@@ -146,7 +207,7 @@ class GetNarmestelederrelasjonUseCaseTest :
             query(organizationName = OrganizationNameResult.Unavailable(failure), effects = effects)
                 .execute(id, caller).shouldBeInstanceOf<GetNarmestelederrelasjonResult.UpstreamUnavailable>()
                 .failure shouldBeSameInstanceAs failure
-            effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
+            effects shouldBe listOf("lookup", "access", "identifiers", "sykmelding", "organization")
         }
 
         test("does not perform authorization lookup when no relation exists") {
@@ -173,10 +234,24 @@ private class FakeGetOrganizationAccess(
 }
 
 private class FakeGetActiveSykmeldingLookup(
-    private val active: Boolean,
+    private val result: (List<PersonalIdentificationNumber>, OrganizationNumber) -> ActiveSykmeldingResult,
     private val effects: MutableList<String>,
 ) : ActiveSykmeldingLookup {
-    override suspend fun hasActiveSykmelding(personIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber) = active.also { effects += "sykmelding" }
+    override suspend fun findActiveSykmelding(
+        personIdents: List<PersonalIdentificationNumber>,
+        organizationNumber: OrganizationNumber,
+        operation: ActiveSykmeldingOperation,
+    ): ActiveSykmeldingResult = result(personIdents, organizationNumber).also { effects += "sykmelding" }
+}
+
+private class FakeGetPersonIdentifiersLookup(
+    private val result: PersonIdentifiersLookupResult,
+    private val effects: MutableList<String>,
+) : PersonIdentifiersLookup {
+    override suspend fun find(
+        personIdent: PersonalIdentificationNumber,
+        operation: PersonIdentifiersLookupOperation,
+    ): PersonIdentifiersLookupResult = result.also { effects += "identifiers" }
 }
 
 private class FakeGetOrganization(

@@ -29,17 +29,20 @@ class SubmitNarmestelederrelasjonPublicationTest :
             ).forEach { (subject, expectedSource) ->
                 val producer = RecordingProducer()
                 val establish = EstablishNarmestelederrelasjonUseCase(
-                    ActiveSykmeldingLookup { _, _ -> true },
-                    EmploymentLookup { _, _ -> EmploymentResult.InOrganization },
-                    PersonLookup { ident ->
+                    personIdentifiersLookup = PersonIdentifiersLookup { ident, _ ->
+                        PersonIdentifiersLookupResult.Found(PersonIdentifiers(ident, listOf(ident)))
+                    },
+                    activeSykmeldingLookup = ActiveSykmeldingLookup { _, _, _ -> ActiveSykmeldingResult.Found },
+                    employmentLookup = EmploymentLookup { _, _ -> EmploymentResult.InOrganization },
+                    personLookup = PersonLookup { ident ->
                         when (ident) {
                             employee -> PersonLookupResult.Found(PersonDetails(employee, name("Employee", "Middle", "Employee")))
                             manager -> PersonLookupResult.Found(PersonDetails(manager, name("Manager", "Other", "Manager")))
                             else -> PersonLookupResult.NotFound
                         }
                     },
-                    NameValidationMetrics { },
-                    KafkaPublishNarmestelederrelasjon(producer),
+                    nameValidationMetrics = NameValidationMetrics { },
+                    relationPublisher = KafkaPublishNarmestelederrelasjon(producer),
                 )
                 val submit = SubmitNarmestelederrelasjonUseCase(
                     OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },

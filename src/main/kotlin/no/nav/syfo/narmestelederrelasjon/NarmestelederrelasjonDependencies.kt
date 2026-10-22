@@ -26,6 +26,7 @@ import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonOrgani
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonSearchRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersistNarmestelederrelasjonerFromLeesahUseCase
+import no.nav.syfo.narmestelederrelasjon.application.PersonIdentifiersLookup
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
@@ -60,6 +61,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNameValidation
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerNarmestelederRegisterMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerRelationPersonNameUpdateMetrics
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlBulkPersonLookup
+import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonIdentifiersLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PdlPersonLookup
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ValkeyPersonDetailsCache
 import org.koin.core.qualifier.named
@@ -86,12 +88,13 @@ fun narmestelederrelasjonDependencies(settings: NarmestelederrelasjonSettings) =
     single { ListActiveNarmesteledereForEmployeeUseCase(get(), get(EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_METRICS)) }
     single<ActiveSykmeldingLookup> { DinesykmeldteActiveSykmeldingLookup(get()) }
     single<EmploymentLookup> { AaregEmploymentLookup(get()) }
+    single<PersonIdentifiersLookup> { PdlPersonIdentifiersLookup(get()) }
     single<PersonLookup> { CachedPersonLookup(PdlPersonLookup(get()), ValkeyPersonDetailsCache(get())) }
     single<NameValidationMetrics> { MicrometerNameValidationMetrics() }
-    single<EstablishNarmestelederrelasjon> { EstablishNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
+    single<EstablishNarmestelederrelasjon> { EstablishNarmestelederrelasjonUseCase(get(), get(), get(), get(), get(), get()) }
     single { SubmitNarmestelederrelasjonUseCase(get(), get()) }
     single<NarmestelederrelasjonOrganization> { EregNarmestelederrelasjonOrganization(get()) }
-    single<GetNarmestelederrelasjonUseCase> { GetNarmestelederrelasjonUseCase(get(), get(), get(), get()) }
+    single<GetNarmestelederrelasjonUseCase> { GetNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
     single<RevokeNarmestelederrelasjonUseCase> { RevokeNarmestelederrelasjonUseCase(get(), get(), get()) }
     single { RevokeActiveNarmestelederrelasjonUseCase(get(), get(), get(), get(), get()) }
     single<RevokeNarmestelederrelasjonFromSendtSykmelding> { RevokeNarmestelederrelasjonFromSendtSykmeldingUseCase(get()) }

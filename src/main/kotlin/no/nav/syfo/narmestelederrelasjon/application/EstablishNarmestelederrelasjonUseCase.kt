@@ -9,6 +9,7 @@ import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
 
 class EstablishNarmestelederrelasjonUseCase(
+    private val personIdentifiersLookup: PersonIdentifiersLookup,
     private val activeSykmeldingLookup: ActiveSykmeldingLookup,
     private val employmentLookup: EmploymentLookup,
     private val personLookup: PersonLookup,
@@ -16,7 +17,8 @@ class EstablishNarmestelederrelasjonUseCase(
     private val relationPublisher: PublishNarmestelederrelasjon,
 ) : EstablishNarmestelederrelasjon {
     override suspend fun execute(command: EstablishNarmestelederrelasjonCommand): EstablishNarmestelederrelasjonResult {
-        verifyActiveSykmelding(command).orStop { return it }
+        val identifiers = findPersonIdentifiers(command.employeeIdent).orStop { return it }
+        verifyActiveSykmelding(command, identifiers).orStop { return it }
         verifyEmployment(command).orStop { return it }
         val employeeAndManager = findEmployeeAndManager(command).orStop { return it }
         verifyManagerName(employeeAndManager.manager, command).orStop { return it }
@@ -24,7 +26,7 @@ class EstablishNarmestelederrelasjonUseCase(
         relationPublisher.publish(
             PublishNarmestelederrelasjonCommand(
                 employee = RelationPerson(
-                    personIdent = employeeAndManager.employee.personIdent,
+                    personIdent = identifiers.current,
                     firstName = employeeAndManager.employee.name.firstName,
                     middleName = employeeAndManager.employee.name.middleName,
                     lastName = employeeAndManager.employee.name.lastName,
@@ -44,10 +46,28 @@ class EstablishNarmestelederrelasjonUseCase(
         return EstablishNarmestelederrelasjonResult.Published
     }
 
-    private suspend fun verifyActiveSykmelding(command: EstablishNarmestelederrelasjonCommand): EstablishStep<Unit> = if (activeSykmeldingLookup.hasActiveSykmelding(command.employeeIdent, command.organizationNumber)) {
-        Step.Proceed
-    } else {
-        Step.Stop(EstablishNarmestelederrelasjonResult.NoActiveSykmelding(command.organizationNumber))
+    private suspend fun findPersonIdentifiers(personIdent: PersonalIdentificationNumber): EstablishStep<PersonIdentifiers> = when (
+        val result = personIdentifiersLookup.find(personIdent, PersonIdentifiersLookupOperation.ESTABLISH_RELATION)
+    ) {
+        is PersonIdentifiersLookupResult.Found -> Step.Continue(result.identifiers)
+        PersonIdentifiersLookupResult.NotFound -> Step.Stop(EstablishNarmestelederrelasjonResult.PersonNotFound)
+        is PersonIdentifiersLookupResult.Unavailable -> Step.Stop(EstablishNarmestelederrelasjonResult.UpstreamUnavailable(result.failure))
+    }
+
+    private suspend fun verifyActiveSykmelding(
+        command: EstablishNarmestelederrelasjonCommand,
+        identifiers: PersonIdentifiers,
+    ): EstablishStep<Unit> = when (
+        val result = activeSykmeldingLookup.findActiveSykmelding(
+            personIdents = identifiers.all,
+            organizationNumber = command.organizationNumber,
+            operation = ActiveSykmeldingOperation.ESTABLISH_RELATION,
+        )
+    ) {
+        ActiveSykmeldingResult.Found -> Step.Proceed
+        ActiveSykmeldingResult.NotFound -> Step.Stop(EstablishNarmestelederrelasjonResult.NoActiveSykmelding(command.organizationNumber))
+        is ActiveSykmeldingResult.Unavailable ->
+            Step.Stop(EstablishNarmestelederrelasjonResult.UpstreamUnavailable(result.failure))
     }
 
     private suspend fun verifyEmployment(command: EstablishNarmestelederrelasjonCommand): EstablishStep<Unit> = when (val employment = employmentLookup.findEmployment(command.employeeIdent, command.organizationNumber)) {

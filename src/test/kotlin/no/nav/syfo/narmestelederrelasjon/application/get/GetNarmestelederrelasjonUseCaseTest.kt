@@ -69,11 +69,12 @@ class GetNarmestelederrelasjonUseCaseTest :
             activeSykmelding: Boolean = true,
             organizationName: OrganizationNameResult = OrganizationNameResult.Found("Organization"),
             effects: MutableList<String> = mutableListOf(),
+            organization: FakeNarmestelederrelasjonOrganization = FakeNarmestelederrelasjonOrganization(organizationName, effects),
         ) = GetNarmestelederrelasjonUseCase(
             FakeNarmestelederrelasjonRepository(lookupById = { lookup }, effects = effects),
             FakeOrganizationAccess(access, effects),
             FakeGetActiveSykmeldingLookup(activeSykmelding, effects),
-            FakeNarmestelederrelasjonOrganization(organizationName, effects),
+            organization,
         )
 
         fun notFoundEvent(outcomeCode: String): JsonNode {
@@ -97,7 +98,8 @@ class GetNarmestelederrelasjonUseCaseTest :
 
         test("returns the relation only to an organization-authorized caller without logging") {
             val effects = mutableListOf<String>()
-            query(effects = effects).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.Found(
+            val organization = FakeNarmestelederrelasjonOrganization(effects = effects)
+            query(effects = effects, organization = organization).execute(id, caller) shouldBe GetNarmestelederrelasjonResult.Found(
                 Narmestelederrelasjon(
                     id = id,
                     orgNumber = orgNumber,
@@ -106,6 +108,7 @@ class GetNarmestelederrelasjonUseCaseTest :
                 "Organization",
             )
             effects shouldBe listOf("lookup", "access", "sykmelding", "organization")
+            organization.calls shouldBe listOf(orgNumber)
             capture.records.shouldBeEmpty()
         }
 

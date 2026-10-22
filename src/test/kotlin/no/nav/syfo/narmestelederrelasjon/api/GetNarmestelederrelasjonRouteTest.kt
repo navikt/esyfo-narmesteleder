@@ -40,6 +40,7 @@ class GetNarmestelederrelasjonRouteTest :
                         {"linemanagerRelation":{"id":"00000000-0000-0000-0000-000000000001","employee":{"name":{"firstName":"Employee","middleName":null,"lastName":"Person"},"nationalIdentificationNumber":"12345678901"},"organization":{"orgNumber":"123456789","name":"Organization"}}}
                     """.trimIndent()
                     organizationAccess.calls.map { it.second } shouldBe listOf(OrganizationNumber("123456789"))
+                    organization.calls shouldBe listOf(OrganizationNumber("123456789"))
                 }
             }
 

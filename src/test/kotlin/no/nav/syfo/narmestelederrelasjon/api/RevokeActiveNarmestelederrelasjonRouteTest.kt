@@ -11,6 +11,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
+import io.micrometer.core.instrument.Counter
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.createMockToken
@@ -53,18 +54,26 @@ import java.util.UUID
 
 private val resolvedIdent = PersonalIdentificationNumber("12345678902")
 
+private data class RevokeCase(
+    val provider: String,
+    val caller: String,
+    val counter: Counter,
+    val source: NlResponseSource,
+)
+
 class RevokeActiveNarmestelederrelasjonRouteTest :
     FunSpec({
         listOf(
-            Triple("maskinporten", COUNT_REVOKE_LINEMANAGER_BY_LPS, NlResponseSource.LPS_REVOKE),
-            Triple("tokenx", COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER, NlResponseSource.PERSONALLEDER_REVOKE),
-        ).forEach { (provider, counter, source) ->
+            RevokeCase("maskinporten", "11223344556", COUNT_REVOKE_LINEMANAGER_BY_LPS, NlResponseSource.LPS_REVOKE),
+            RevokeCase("tokenx", "11223344556", COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER, NlResponseSource.PERSONALLEDER_REVOKE),
+            RevokeCase("tokenx", resolvedIdent.value, COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER, NlResponseSource.ARBEIDSTAGER_REVOKE),
+        ).forEach { (provider, caller, counter, source) ->
             test("a $provider revocation returns 202, counts by principal and keeps the Kafka source $source") {
                 val fixture = RevokeRouteFixture()
-                fixture.authorize(provider, caller = "11223344556")
+                fixture.authorize(provider, caller = caller)
                 val before = counter.count()
                 fixture.withApplication {
-                    client.revoke("11223344556", provider).status shouldBe HttpStatusCode.Accepted
+                    client.revoke(caller, provider).status shouldBe HttpStatusCode.Accepted
                 }
                 fixture.messages.map { it.second } shouldBe listOf(source)
                 counter.count() shouldBe before + 1.0

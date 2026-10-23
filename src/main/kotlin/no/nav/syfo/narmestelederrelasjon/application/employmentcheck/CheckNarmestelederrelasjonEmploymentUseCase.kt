@@ -42,11 +42,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
             EmploymentCheckOutcome.REVOKED -> publishRevocation(claim, checkedAt)
             else -> Completion.Ready(outcome, checkedAt)
         }
-        return when (completion) {
-            Completion.Stale -> ClaimedCheckOutcome.STALE
-            Completion.Timeout -> ClaimedCheckOutcome.TIMEOUT
-            is Completion.Ready -> complete(claim, history, completion)
-        }
+        return completion.toCheckOutcome(claim, history)
     }
 
     private suspend fun findEmploymentHistory(claim: ClaimedEmploymentCheck): EmploymentHistoryResult? {
@@ -110,6 +106,15 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         val checked = completion.outcome.toClaimedOutcome()
         if (!revokeEnabled && claim.sourceRevokedAt != null) compare(claim, checked)
         return checked
+    }
+
+    private suspend fun Completion.toCheckOutcome(
+        claim: ClaimedEmploymentCheck,
+        history: EmploymentHistoryResult,
+    ): ClaimedCheckOutcome = when (this) {
+        Completion.Stale -> ClaimedCheckOutcome.STALE
+        Completion.Timeout -> ClaimedCheckOutcome.TIMEOUT
+        is Completion.Ready -> complete(claim, history, this)
     }
 
     /** Only for a relation team sykmelding revoked because the employment ended. A failed lookup is compared when it is retried. */

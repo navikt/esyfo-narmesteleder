@@ -40,6 +40,11 @@ This is the repository for narmesteleder-api, a service that provides an API for
 
 **Defaults**: Planning/research/drafts → `.local-notes/`. Finalized docs → `docs/`. Task tracking → session state.
 
+When adding, removing, renaming or materially changing an HTTP entry point,
+Kafka consumer, scheduled task, application use case, cross-module contract,
+database effect or external-system interaction, update `docs/data-flow.md` in
+the same change.
+
 ## Repository Instructions
 
 This file documents the repository's conventions, commands, and boundaries. Update it directly when the technology stack, build and test commands, authentication, database, messaging, or operational practices change.

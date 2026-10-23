@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -184,7 +185,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
                 name = BehovPersonName(firstName = "First", middleName = "Middle", lastName = "Last"),
             )
 
-            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+            assertSoftly(requireNotNull(findStoredNarmestelederbehov(before.id))) {
                 fornavn shouldBe "First"
                 mellomnavn shouldBe "Middle"
                 etternavn shouldBe "Last"
@@ -217,7 +218,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
 
             fulfillmentRepository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, dialogId)
 
-            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+            assertSoftly(requireNotNull(findStoredNarmestelederbehov(before.id))) {
                 behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
                 copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
             }
@@ -236,7 +237,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
 
             fulfillmentRepository.markDialogCompleted(id) shouldBe MarkDialogCompletedResult.Marked
 
-            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+            assertSoftly(requireNotNull(findStoredNarmestelederbehov(before.id))) {
                 behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
                 copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
             }
@@ -262,7 +263,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
             lifecycleRepository.markDialogCreated(id, createdDialogId, BehovPersonName("First", "Middle", "Last")) shouldBe
                 MarkDialogCreatedResult.Marked
 
-            with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+            assertSoftly(requireNotNull(findStoredNarmestelederbehov(before.id))) {
                 behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                 dialogId shouldBe createdDialogId
                 fornavn shouldBe "First"
@@ -285,7 +286,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
 
             lifecycleRepository.markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.Marked
 
-            with(requireNotNull(findStoredNarmestelederbehov(row.id))) {
+            assertSoftly(requireNotNull(findStoredNarmestelederbehov(row.id))) {
                 behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
                 fornavn.shouldBeNull()
                 etternavn.shouldBeNull()
@@ -335,7 +336,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
         test("creates a behov with every column") {
             val result = lifecycleRepository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
 
-            with(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
+            assertSoftly(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
                 sykmeldtFnr shouldBe "12345678901"
                 orgnummer shouldBe "910000001"
                 hovedenhetOrgnummer shouldBe "910000009"
@@ -352,7 +353,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
             val result = lifecycleRepository.create(newBehov.copy(manager = null, revokedRelationId = null))
                 .shouldBeInstanceOf<CreateBehovResult.Created>()
 
-            with(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
+            assertSoftly(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
                 narmestelederFnr.shouldBeNull()
                 avbruttNarmestelederId.shouldBeNull()
             }

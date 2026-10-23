@@ -1,17 +1,15 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.RegisteredPerson
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonRepository
+import no.nav.syfo.platform.database.ioTransaction
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.statements.UpdateStatement
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -19,7 +17,7 @@ import java.time.ZoneOffset
 class ExposedRelationPersonRepository(
     private val database: Database,
 ) : RelationPersonRepository {
-    override suspend fun findPending(limit: Int): List<PersonalIdentificationNumber> = inTransaction {
+    override suspend fun findPending(limit: Int): List<PersonalIdentificationNumber> = database.ioTransaction {
         PersonTable
             .select(PersonTable.fnr)
             .where { PersonTable.status eq PersonStatus.PENDING.name }
@@ -32,7 +30,7 @@ class ExposedRelationPersonRepository(
         if (enriched.isEmpty() && notFound.isEmpty()) {
             return
         }
-        inTransaction {
+        database.ioTransaction {
             enriched.forEach { (personIdent, person) ->
                 PersonTable.update({ PersonTable.fnr eq personIdent.value }) {
                     it.setRegisteredDetails(person)
@@ -47,14 +45,14 @@ class ExposedRelationPersonRepository(
         }
     }
 
-    override suspend fun findExisting(personIdents: Collection<PersonalIdentificationNumber>): List<PersonalIdentificationNumber> = inTransaction {
+    override suspend fun findExisting(personIdents: Collection<PersonalIdentificationNumber>): List<PersonalIdentificationNumber> = database.ioTransaction {
         PersonTable
             .select(PersonTable.fnr)
             .where { PersonTable.fnr inList personIdents.map(PersonalIdentificationNumber::value) }
             .map { PersonalIdentificationNumber(it[PersonTable.fnr]) }
     }
 
-    override suspend fun updateRegisteredDetails(persons: Map<PersonalIdentificationNumber, RegisteredPerson>): Set<PersonalIdentificationNumber> = inTransaction {
+    override suspend fun updateRegisteredDetails(persons: Map<PersonalIdentificationNumber, RegisteredPerson>): Set<PersonalIdentificationNumber> = database.ioTransaction {
         val updatedAt = OffsetDateTime.now(ZoneOffset.UTC)
         persons
             .filter { (personIdent, person) ->
@@ -64,10 +62,6 @@ class ExposedRelationPersonRepository(
                 } > 0
             }
             .keys
-    }
-
-    private suspend fun <T> inTransaction(block: () -> T): T = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) { block() }
     }
 }
 

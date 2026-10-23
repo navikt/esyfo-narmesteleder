@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -17,6 +15,7 @@ import no.nav.syfo.narmestelederbehov.application.SendPendingNarmestelederbehovD
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.platform.database.ioTransaction
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.Table
@@ -30,7 +29,6 @@ import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.time.Instant
 import java.time.LocalDate
@@ -45,53 +43,47 @@ class ExposedNarmestelederbehovLifecycleRepository(
     ExpireNarmestelederbehovDialogsRepository {
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
 
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            NarmestelederbehovTable.select(
-                NarmestelederbehovTable.id,
-                NarmestelederbehovTable.sykmeldtFnr,
-                NarmestelederbehovTable.orgnummer,
-                NarmestelederbehovTable.created,
-                NarmestelederbehovTable.dialogId,
-            ).where {
-                (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED) and
-                    (NarmestelederbehovTable.created less createdBefore.atOffset(ZoneOffset.UTC))
-            }.orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-                .limit(limit)
-                .map { row ->
-                    PendingNarmestelederbehovDialog(
-                        id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
-                        employee = Employee(
-                            PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]),
-                            OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
-                        ),
-                        created = row[NarmestelederbehovTable.created].toInstant(),
-                        dialogId = row[NarmestelederbehovTable.dialogId],
-                    )
-                }
-        }
+    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> = database.ioTransaction {
+        NarmestelederbehovTable.select(
+            NarmestelederbehovTable.id,
+            NarmestelederbehovTable.sykmeldtFnr,
+            NarmestelederbehovTable.orgnummer,
+            NarmestelederbehovTable.created,
+            NarmestelederbehovTable.dialogId,
+        ).where {
+            (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED) and
+                (NarmestelederbehovTable.created less createdBefore.atOffset(ZoneOffset.UTC))
+        }.orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
+            .limit(limit)
+            .map { row ->
+                PendingNarmestelederbehovDialog(
+                    id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
+                    employee = Employee(
+                        PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]),
+                        OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
+                    ),
+                    created = row[NarmestelederbehovTable.created].toInstant(),
+                    dialogId = row[NarmestelederbehovTable.dialogId],
+                )
+            }
     }
 
-    override suspend fun findDialogsToExpire(): List<NarmestelederbehovDialogReference> = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            NarmestelederbehovTable.select(NarmestelederbehovTable.id, NarmestelederbehovTable.dialogId)
-                .where {
-                    (NarmestelederbehovTable.behovStatus inList listOf(BehovStatus.BEHOV_EXPIRED, BehovStatus.ERROR)) and
-                        NarmestelederbehovTable.expiredInDialogporten.isNull() and
-                        NarmestelederbehovTable.dialogId.isNotNull()
-                }
-                .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-                .limit(100)
-                .map { NarmestelederbehovDialogReference(NarmestelederbehovId(it[NarmestelederbehovTable.id]), requireNotNull(it[NarmestelederbehovTable.dialogId])) }
-        }
+    override suspend fun findDialogsToExpire(): List<NarmestelederbehovDialogReference> = database.ioTransaction {
+        NarmestelederbehovTable.select(NarmestelederbehovTable.id, NarmestelederbehovTable.dialogId)
+            .where {
+                (NarmestelederbehovTable.behovStatus inList listOf(BehovStatus.BEHOV_EXPIRED, BehovStatus.ERROR)) and
+                    NarmestelederbehovTable.expiredInDialogporten.isNull() and
+                    NarmestelederbehovTable.dialogId.isNotNull()
+            }
+            .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
+            .limit(100)
+            .map { NarmestelederbehovDialogReference(NarmestelederbehovId(it[NarmestelederbehovTable.id]), requireNotNull(it[NarmestelederbehovTable.dialogId])) }
     }
 
     override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) {
-        withContext(Dispatchers.IO) {
-            suspendTransaction(db = database) {
-                NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {
-                    it[expiredInDialogporten] = expirationTime.atOffset(ZoneOffset.UTC)
-                }
+        database.ioTransaction {
+            NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {
+                it[expiredInDialogporten] = expirationTime.atOffset(ZoneOffset.UTC)
             }
         }
     }
@@ -100,67 +92,61 @@ class ExposedNarmestelederbehovLifecycleRepository(
         id: NarmestelederbehovId,
         dialogId: UUID,
         name: BehovPersonName?,
-    ): MarkDialogCreatedResult = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            val updated = NarmestelederbehovTable.update({
-                (NarmestelederbehovTable.id eq id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED)
-            }) {
-                it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-                it[NarmestelederbehovTable.dialogId] = dialogId
-                it[fornavn] = name?.firstName
-                it[mellomnavn] = name?.middleName
-                it[etternavn] = name?.lastName
-            }
-            if (updated == 1) MarkDialogCreatedResult.Marked else MarkDialogCreatedResult.NotCreated
+    ): MarkDialogCreatedResult = database.ioTransaction {
+        val updated = NarmestelederbehovTable.update({
+            (NarmestelederbehovTable.id eq id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED)
+        }) {
+            it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
+            it[NarmestelederbehovTable.dialogId] = dialogId
+            it[fornavn] = name?.firstName
+            it[mellomnavn] = name?.middleName
+            it[etternavn] = name?.lastName
         }
+        if (updated == 1) MarkDialogCreatedResult.Marked else MarkDialogCreatedResult.NotCreated
     }
 
     // The partial unique index on open behov is the only unique constraint besides the generated id, so an ignored insert means an open behov already exists.
-    override suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            NarmestelederbehovTable.insertReturning(returning = listOf(NarmestelederbehovTable.id), ignoreErrors = true) {
-                it[orgnummer] = behov.employee.organizationNumber.value
-                it[hovedenhetOrgnummer] = behov.mainOrganizationNumber
-                it[sykmeldtFnr] = behov.employee.personIdent.value
-                it[narmestelederFnr] = behov.manager?.value
-                it[behovReason] = behov.reason.name
-                it[behovStatus] = behov.status
-                it[avbruttNarmestelederId] = behov.revokedRelationId
-            }.singleOrNull()
-                ?.let { CreateBehovResult.Created(NarmestelederbehovId(it[NarmestelederbehovTable.id])) }
-                ?: CreateBehovResult.AlreadyExists
-        }
+    override suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult = database.ioTransaction {
+        NarmestelederbehovTable.insertReturning(returning = listOf(NarmestelederbehovTable.id), ignoreErrors = true) {
+            it[orgnummer] = behov.employee.organizationNumber.value
+            it[hovedenhetOrgnummer] = behov.mainOrganizationNumber
+            it[sykmeldtFnr] = behov.employee.personIdent.value
+            it[narmestelederFnr] = behov.manager?.value
+            it[behovReason] = behov.reason.name
+            it[behovStatus] = behov.status
+            it[avbruttNarmestelederId] = behov.revokedRelationId
+        }.singleOrNull()
+            ?.let { CreateBehovResult.Created(NarmestelederbehovId(it[NarmestelederbehovTable.id])) }
+            ?: CreateBehovResult.AlreadyExists
     }
 
-    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            val ids = NarmestelederbehovTable
-                .join(
-                    SendtSykmeldingTomTable,
-                    JoinType.INNER,
-                    additionalConstraint = {
-                        (NarmestelederbehovTable.sykmeldtFnr eq SendtSykmeldingTomTable.fnr) and
-                            (NarmestelederbehovTable.orgnummer eq SendtSykmeldingTomTable.orgnummer)
-                    },
-                )
-                .select(NarmestelederbehovTable.id)
-                .where {
-                    (SendtSykmeldingTomTable.tom less sykmeldingMaxDate) and
-                        (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
-                }
-                .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-                .limit(limit)
-                .map { it[NarmestelederbehovTable.id] }
+    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int = database.ioTransaction {
+        val ids = NarmestelederbehovTable
+            .join(
+                SendtSykmeldingTomTable,
+                JoinType.INNER,
+                additionalConstraint = {
+                    (NarmestelederbehovTable.sykmeldtFnr eq SendtSykmeldingTomTable.fnr) and
+                        (NarmestelederbehovTable.orgnummer eq SendtSykmeldingTomTable.orgnummer)
+                },
+            )
+            .select(NarmestelederbehovTable.id)
+            .where {
+                (SendtSykmeldingTomTable.tom less sykmeldingMaxDate) and
+                    (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
+            }
+            .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
+            .limit(limit)
+            .map { it[NarmestelederbehovTable.id] }
 
-            if (ids.isEmpty()) {
-                0
-            } else {
-                NarmestelederbehovTable.update({
-                    (NarmestelederbehovTable.id inList ids) and
-                        (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
-                }) {
-                    it[behovStatus] = BehovStatus.BEHOV_EXPIRED
-                }
+        if (ids.isEmpty()) {
+            0
+        } else {
+            NarmestelederbehovTable.update({
+                (NarmestelederbehovTable.id inList ids) and
+                    (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
+            }) {
+                it[behovStatus] = BehovStatus.BEHOV_EXPIRED
             }
         }
     }

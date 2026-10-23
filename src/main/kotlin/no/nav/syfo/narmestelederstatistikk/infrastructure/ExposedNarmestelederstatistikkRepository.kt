@@ -1,10 +1,9 @@
 package no.nav.syfo.narmestelederstatistikk.infrastructure
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import no.nav.syfo.narmestelederstatistikk.application.NarmestelederstatistikkRepository
+import no.nav.syfo.platform.database.ioTransaction
 import org.jetbrains.exposed.v1.core.ColumnType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.Table
@@ -22,7 +21,6 @@ import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.postgresql.util.PGobject
 import java.time.Clock
 import java.time.LocalDate
@@ -37,14 +35,12 @@ class ExposedNarmestelederstatistikkRepository(
         val activeNarmesteleder = activeNarmestelederIn(organizationNumber, now)
         val activeSykmelding = activeSykmeldingFor(now.toLocalDate())
 
-        return withContext(Dispatchers.IO) {
-            suspendTransaction(db = database) {
-                Narmestelederstatistikk(
-                    employeesOnSickLeaveWithoutNarmesteleder = countEmployeesWithOpenBehov(organizationNumber),
-                    employeesOnSickLeaveWithNarmesteleder = countEmployeesWithNarmesteleder(activeNarmesteleder and exists(activeSykmelding)),
-                    employeesNotOnSickLeaveWithNarmesteleder = countEmployeesWithNarmesteleder(activeNarmesteleder and notExists(activeSykmelding)),
-                )
-            }
+        return database.ioTransaction {
+            Narmestelederstatistikk(
+                employeesOnSickLeaveWithoutNarmesteleder = countEmployeesWithOpenBehov(organizationNumber),
+                employeesOnSickLeaveWithNarmesteleder = countEmployeesWithNarmesteleder(activeNarmesteleder and exists(activeSykmelding)),
+                employeesNotOnSickLeaveWithNarmesteleder = countEmployeesWithNarmesteleder(activeNarmesteleder and notExists(activeSykmelding)),
+            )
         }
     }
 

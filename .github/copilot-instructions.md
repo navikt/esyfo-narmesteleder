@@ -60,6 +60,7 @@ This file is maintained locally in this repository; it is not generated or synch
 - Check `build.gradle.kts` for actual dependencies before suggesting libraries
 - Use Flyway for all database migrations — never modify existing migrations
 - Parameterized queries always — never string interpolation in SQL
+- Use `Database.ioTransaction` for suspendable Exposed JDBC transactions; do not duplicate `withContext(Dispatchers.IO)` and `suspendTransaction`
 - Follow the existing data access pattern in the repository (extension functions, repositories, etc.)
 - Structured logging — check which pattern this repo uses (KotlinLogging, SLF4J, kv() fields, MDC)
 - Follow existing code patterns in the repository

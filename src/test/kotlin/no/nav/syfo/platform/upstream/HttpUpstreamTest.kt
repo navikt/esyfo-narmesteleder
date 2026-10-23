@@ -71,11 +71,11 @@ class HttpUpstreamTest :
                     .decodeUpstream<Unit>(expectedUpstream) { throw cause }
                     .shouldBeInstanceOf<UpstreamResult.Failure>()
                     .failure shouldBe UpstreamFailure(
-                        expectedUpstream,
-                        UpstreamFailureStage.RESPONSE,
-                        HttpStatusCode.OK.value,
-                        cause,
-                    )
+                    expectedUpstream,
+                    UpstreamFailureStage.RESPONSE,
+                    HttpStatusCode.OK.value,
+                    cause,
+                )
             }
         }
 

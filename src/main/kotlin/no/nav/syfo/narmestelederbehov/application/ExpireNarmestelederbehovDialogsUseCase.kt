@@ -2,13 +2,22 @@ package no.nav.syfo.narmestelederbehov.application
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 import java.time.Clock
+import java.time.Instant
 import kotlin.time.Duration.Companion.milliseconds
 
+interface ExpireNarmestelederbehovDialogsRepository {
+    /** Up to 100 BEHOV_EXPIRED or ERROR behov with dialogs and no expiry marker, oldest first. */
+    suspend fun findDialogsToExpire(): List<NarmestelederbehovDialogReference>
+
+    suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant)
+}
+
 class ExpireNarmestelederbehovDialogsUseCase(
-    private val repository: NarmestelederbehovRepository,
+    private val repository: ExpireNarmestelederbehovDialogsRepository,
     private val dialog: NarmestelederbehovDialogExpiry,
     private val clock: Clock,
 ) {

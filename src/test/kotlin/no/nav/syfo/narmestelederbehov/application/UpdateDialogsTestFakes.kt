@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -24,24 +23,11 @@ internal fun updateFailure() = UpstreamFailure(
     errors = listOf(UpstreamError("server_error")),
 )
 
-internal class RecordingUpdateDialogsRepository : NarmestelederbehovRepository {
+internal class RecordingCompleteDialogsRepository : CompleteFulfilledNarmestelederbehovDialogsRepository {
     val fulfilledQueries = mutableListOf<Instant>()
-    var expiryQueries = 0
-    val expired = mutableListOf<Pair<NarmestelederbehovId, Instant>>()
     var findFulfilled: suspend () -> List<NarmestelederbehovDialogReference> = { emptyList() }
-    var findExpired: suspend () -> List<NarmestelederbehovDialogReference> = { emptyList() }
-    var markExpired: suspend () -> Unit = {}
     val marked = mutableListOf<NarmestelederbehovId>()
     var mark: suspend () -> MarkDialogCompletedResult = { MarkDialogCompletedResult.Marked }
-
-    override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
-    override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")
-    override suspend fun findOpenFor(employee: Employee) = error("Unexpected findOpenFor")
-    override suspend fun markFulfilled(id: NarmestelederbehovId) = error("Unexpected markFulfilled")
-    override suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?) = error("Unexpected markDialogCreated")
-    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
     override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult {
         val result = mark()
@@ -53,6 +39,13 @@ internal class RecordingUpdateDialogsRepository : NarmestelederbehovRepository {
         fulfilledQueries += createdBefore
         return findFulfilled()
     }
+}
+
+internal class RecordingExpireDialogsRepository : ExpireNarmestelederbehovDialogsRepository {
+    var expiryQueries = 0
+    val expired = mutableListOf<Pair<NarmestelederbehovId, Instant>>()
+    var findExpired: suspend () -> List<NarmestelederbehovDialogReference> = { emptyList() }
+    var markExpired: suspend () -> Unit = {}
 
     override suspend fun findDialogsToExpire(): List<NarmestelederbehovDialogReference> {
         expiryQueries++
@@ -66,7 +59,7 @@ internal class RecordingUpdateDialogsRepository : NarmestelederbehovRepository {
 }
 
 internal class CompleteDialogsFixture(batch: List<NarmestelederbehovDialogReference> = emptyList()) {
-    val repository = RecordingUpdateDialogsRepository().apply { findFulfilled = { batch } }
+    val repository = RecordingCompleteDialogsRepository().apply { findFulfilled = { batch } }
     val calls = mutableListOf<UUID>()
     var complete: suspend (UUID) -> DialogCompletion = { DialogCompletion.Completed }
     val useCase = CompleteFulfilledNarmestelederbehovDialogsUseCase(
@@ -80,7 +73,7 @@ internal class CompleteDialogsFixture(batch: List<NarmestelederbehovDialogRefere
 }
 
 internal class ExpireDialogsFixture(batch: List<NarmestelederbehovDialogReference> = emptyList()) {
-    val repository = RecordingUpdateDialogsRepository().apply { findExpired = { batch } }
+    val repository = RecordingExpireDialogsRepository().apply { findExpired = { batch } }
     val calls = mutableListOf<Pair<UUID, Instant>>()
     var expire: suspend (UUID) -> DialogExpiry = { DialogExpiry.Expired }
     val useCase = ExpireNarmestelederbehovDialogsUseCase(

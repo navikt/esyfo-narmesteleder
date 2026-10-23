@@ -14,7 +14,6 @@ import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import java.time.Instant
 import java.util.UUID
 
 class FulfillNarmestelederbehovFromLeesahUseCaseTest :
@@ -126,20 +125,8 @@ private class LeesahBehovRepository(
     private val dialogIds: Map<NarmestelederbehovId, UUID?> = emptyMap(),
     private val missing: Set<NarmestelederbehovId> = emptySet(),
     private val fulfillFailure: Throwable? = null,
-) : NarmestelederbehovRepository {
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-    override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-    override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-    override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
-
+) : FulfillNarmestelederbehovFromLeesahRepository {
     var requestedEmployee: Employee? = null
-
-    override suspend fun findDetails(id: NarmestelederbehovId) = error("Leesah fulfillment must not read details")
-
-    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Leesah fulfillment must not save names")
-
-    override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Leesah fulfillment must not read for fulfillment")
 
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> {
         effects += "find"
@@ -157,17 +144,11 @@ private class LeesahBehovRepository(
         effects += "dialog-status:$id"
         return MarkDialogCompletedResult.Marked
     }
-
-    override suspend fun markDialogCreated(
-        id: NarmestelederbehovId,
-        dialogId: UUID,
-        name: BehovPersonName?,
-    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }
 
 private fun useCase(
     effects: MutableList<String>,
-    repository: NarmestelederbehovRepository,
+    repository: FulfillNarmestelederbehovFromLeesahRepository,
     dialogFailure: Throwable? = null,
     completion: DialogCompletion = DialogCompletion.Completed,
 ) = FulfillNarmestelederbehovFromLeesahUseCase(

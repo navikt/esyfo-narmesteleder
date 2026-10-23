@@ -2,18 +2,26 @@ package no.nav.syfo.narmestelederbehov
 
 import no.nav.syfo.narmestelederbehov.api.narmestelederbehovApiUrl
 import no.nav.syfo.narmestelederbehov.application.ActiveSykmeldingLookup
+import no.nav.syfo.narmestelederbehov.application.CompleteFulfilledNarmestelederbehovDialogsRepository
 import no.nav.syfo.narmestelederbehov.application.CompleteFulfilledNarmestelederbehovDialogsUseCase
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.application.EmployerMainOrganizationLookup
+import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovDialogsRepository
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovDialogsUseCase
+import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.LeesahFulfillmentMetrics
+import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
@@ -21,18 +29,17 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpiryRepository
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeNameRepository
+import no.nav.syfo.narmestelederbehov.application.SendPendingNarmestelederbehovDialogsRepository
 import no.nav.syfo.narmestelederbehov.application.SendPendingNarmestelederbehovDialogsUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmployerMainOrganizationLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovExpiryRepository
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovFulfillmentRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovLifecycleRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovReadRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerLeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
@@ -41,6 +48,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.PdlEmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.koin.dsl.binds
 import org.koin.dsl.module
 
 fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = module {
@@ -51,7 +59,22 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
             frontendBaseUrl = settings.frontendBaseUrl,
         )
     }
-    single<NarmestelederbehovRepository> { ExposedNarmestelederbehovRepository(get<Database>()) }
+    single { ExposedNarmestelederbehovReadRepository(get<Database>()) } binds arrayOf(
+        GetNarmestelederbehovRepository::class,
+        NarmestelederbehovEmployeeNameRepository::class,
+        ListNarmestelederbehovRepository::class,
+    )
+    single { ExposedNarmestelederbehovFulfillmentRepository(get<Database>()) } binds arrayOf(
+        FulfillNarmestelederbehovRepository::class,
+        FulfillNarmestelederbehovFromLeesahRepository::class,
+        CompleteFulfilledNarmestelederbehovDialogsRepository::class,
+    )
+    single { ExposedNarmestelederbehovLifecycleRepository(get<Database>()) } binds arrayOf(
+        CreateNarmestelederbehovRepository::class,
+        SendPendingNarmestelederbehovDialogsRepository::class,
+        ExpireNarmestelederbehovRepository::class,
+        ExpireNarmestelederbehovDialogsRepository::class,
+    )
     single<NarmestelederbehovDialogExpiry> { DialogportenNarmestelederbehovDialogExpiry(get()) }
     single {
         CompleteFulfilledNarmestelederbehovDialogsUseCase(
@@ -77,8 +100,6 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
         )
     }
     single { SendDialogTask(sendPendingDialogs = get()) }
-    single<OpenNarmestelederbehovRepository> { ExposedOpenNarmestelederbehovRepository(get<Database>()) }
-    single<NarmestelederbehovExpiryRepository> { ExposedNarmestelederbehovExpiryRepository(get<Database>()) }
     single<NarmestelederbehovDialog> { DialogportenNarmestelederbehovDialog(get()) }
     single { FulfillNarmestelederbehovUseCase(get(), get(), get(), get()) }
     single<LeesahFulfillmentMetrics> { MicrometerLeesahFulfillmentMetrics() }

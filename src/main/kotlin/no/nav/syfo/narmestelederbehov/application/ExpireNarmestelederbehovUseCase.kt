@@ -9,8 +9,16 @@ import java.time.LocalDate
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+interface ExpireNarmestelederbehovRepository {
+    /**
+     * Sets up to [limit] open behov to BEHOV_EXPIRED when a sendt sykmelding for the same employee
+     * and organization has tom strictly before [sykmeldingMaxDate]. Returns the number of expired behov.
+     */
+    suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int
+}
+
 class ExpireNarmestelederbehovUseCase(
-    private val repository: NarmestelederbehovExpiryRepository,
+    private val repository: ExpireNarmestelederbehovRepository,
     private val settings: NarmestelederbehovExpirySettings,
     private val clock: Clock,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,

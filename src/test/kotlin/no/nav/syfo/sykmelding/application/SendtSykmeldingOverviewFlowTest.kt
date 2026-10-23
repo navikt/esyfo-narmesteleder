@@ -10,8 +10,8 @@ import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCas
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovLifecycleRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovReadRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederrelasjon.application.lookup.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.search.NarmestelederrelasjonSearchQuery
@@ -34,7 +34,7 @@ class SendtSykmeldingOverviewFlowTest :
         val handler = SendtSykmeldingHandler(
             createNarmestelederbehov = CreateNarmestelederbehovUseCase(
                 settings = NarmestelederbehovCreationSettings(persistenceEnabled = true),
-                repository = ExposedNarmestelederbehovRepository(TestDB.exposedDatabase),
+                repository = ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase),
                 // Employer metadata and the current period make these external lookups unnecessary.
                 activeSykmelding = { error("Unexpected sick leave lookup") },
                 mainOrganization = { error("Unexpected main organization lookup") },
@@ -55,7 +55,7 @@ class SendtSykmeldingOverviewFlowTest :
                 ExposedActiveNarmestelederrelasjonRepository(TestDB.exposedDatabase),
             ),
         )
-        val openBehovRepository = ExposedOpenNarmestelederbehovRepository(TestDB.exposedDatabase)
+        val openBehovRepository = ExposedNarmestelederbehovReadRepository(TestDB.exposedDatabase)
         val relationSearchRepository = ExposedNarmestelederrelasjonSearchRepository(TestDB.exposedDatabase)
         val activeSickLeaveQuery = NarmestelederrelasjonSearchQuery(
             orgNumber = organization,

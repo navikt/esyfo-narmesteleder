@@ -1,13 +1,27 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import kotlinx.coroutines.CancellationException
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 import java.time.Clock
+import java.time.Instant
 import java.util.UUID
 
+interface SendPendingNarmestelederbehovDialogsRepository {
+    /** BEHOV_CREATED strictly older than [createdBefore], oldest first. */
+    suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog>
+
+    /** Saves the dialog and employee name only while the behov is BEHOV_CREATED. */
+    suspend fun markDialogCreated(
+        id: NarmestelederbehovId,
+        dialogId: UUID,
+        name: BehovPersonName?,
+    ): MarkDialogCreatedResult
+}
+
 class SendPendingNarmestelederbehovDialogsUseCase(
-    private val repository: NarmestelederbehovRepository,
+    private val repository: SendPendingNarmestelederbehovDialogsRepository,
     private val personLookup: EmployeePersonLookup,
     private val dialog: NarmestelederbehovDialogCreation,
     private val clock: Clock,

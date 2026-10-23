@@ -13,9 +13,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
-class ExposedNarmestelederbehovExpiryRepositoryTest :
+class ExposedNarmestelederbehovLifecycleRepositoryExpiryTest :
     FunSpec({
-        val repository = ExposedNarmestelederbehovExpiryRepository(TestDB.exposedDatabase)
+        val repository = ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase)
 
         beforeTest {
             TestDB.clearAllData()

@@ -6,123 +6,44 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
+import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovDialogsRepository
+import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
-import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogReference
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.PendingNarmestelederbehovDialog
+import no.nav.syfo.narmestelederbehov.application.SendPendingNarmestelederbehovDialogsRepository
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
-import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
-import org.jetbrains.exposed.v1.jdbc.updateReturning
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
-class ExposedNarmestelederbehovRepository(private val database: Database) : NarmestelederbehovRepository {
-    override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            NarmestelederbehovTable.select(
-                NarmestelederbehovTable.id,
-                NarmestelederbehovTable.orgnummer,
-                NarmestelederbehovTable.hovedenhetOrgnummer,
-                NarmestelederbehovTable.sykmeldtFnr,
-                NarmestelederbehovTable.narmestelederFnr,
-                NarmestelederbehovTable.fornavn,
-                NarmestelederbehovTable.mellomnavn,
-                NarmestelederbehovTable.etternavn,
-                NarmestelederbehovTable.created,
-                NarmestelederbehovTable.updated,
-                NarmestelederbehovTable.behovStatus,
-                NarmestelederbehovTable.behovReason,
-            ).where { NarmestelederbehovTable.id eq id.value }.singleOrNull()?.toNarmestelederbehovDetails()
-        }
-    }
-
-    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) {
-        withContext(Dispatchers.IO) {
-            suspendTransaction(db = database) {
-                NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {
-                    it[fornavn] = name.firstName
-                    it[mellomnavn] = name.middleName
-                    it[etternavn] = name.lastName
-                }
-            }
-        }
-    }
-
-    override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            NarmestelederbehovTable
-                .select(
-                    NarmestelederbehovTable.id,
-                    NarmestelederbehovTable.orgnummer,
-                    NarmestelederbehovTable.sykmeldtFnr,
-                )
-                .where { NarmestelederbehovTable.id eq id.value }
-                .singleOrNull()
-                ?.let { row ->
-                    Narmestelederbehov(
-                        id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
-                        employee = Employee(
-                            PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]),
-                            OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
-                        ),
-                    )
-                }
-        }
-    }
-
-    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            NarmestelederbehovTable.select(NarmestelederbehovTable.id)
-                .where {
-                    (NarmestelederbehovTable.sykmeldtFnr eq employee.personIdent.value) and
-                        (NarmestelederbehovTable.orgnummer eq employee.organizationNumber.value) and
-                        (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
-                }
-                .map { NarmestelederbehovId(it[NarmestelederbehovTable.id]) }
-        }
-    }
-
-    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            NarmestelederbehovTable.updateReturning(
-                returning = listOf(NarmestelederbehovTable.dialogId),
-                where = { NarmestelederbehovTable.id eq id.value },
-            ) {
-                it[behovStatus] = BehovStatus.BEHOV_FULFILLED
-            }.singleOrNull()?.let { MarkFulfilledResult.Marked(id, it[NarmestelederbehovTable.dialogId]) }
-                ?: MarkFulfilledResult.Missing
-        }
-    }
-
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            val updated = NarmestelederbehovTable.update({
-                (NarmestelederbehovTable.id eq id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_FULFILLED)
-            }) {
-                it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-            }
-            if (updated == 1) MarkDialogCompletedResult.Marked else MarkDialogCompletedResult.NotFulfilled
-        }
-    }
+class ExposedNarmestelederbehovLifecycleRepository(
+    private val database: Database,
+) : CreateNarmestelederbehovRepository,
+    SendPendingNarmestelederbehovDialogsRepository,
+    ExpireNarmestelederbehovRepository,
+    ExpireNarmestelederbehovDialogsRepository {
+    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
 
     override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> = withContext(Dispatchers.IO) {
         suspendTransaction(db = database) {
@@ -148,20 +69,6 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
                         dialogId = row[NarmestelederbehovTable.dialogId],
                     )
                 }
-        }
-    }
-
-    override suspend fun findFulfilledDialogs(createdBefore: Instant): List<NarmestelederbehovDialogReference> = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            NarmestelederbehovTable.select(NarmestelederbehovTable.id, NarmestelederbehovTable.dialogId)
-                .where {
-                    (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_FULFILLED) and
-                        (NarmestelederbehovTable.created less createdBefore.atOffset(ZoneOffset.UTC)) and
-                        NarmestelederbehovTable.dialogId.isNotNull()
-                }
-                .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-                .limit(100)
-                .map { NarmestelederbehovDialogReference(NarmestelederbehovId(it[NarmestelederbehovTable.id]), requireNotNull(it[NarmestelederbehovTable.dialogId])) }
         }
     }
 
@@ -224,4 +131,44 @@ class ExposedNarmestelederbehovRepository(private val database: Database) : Narm
                 ?: CreateBehovResult.AlreadyExists
         }
     }
+
+    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int = withContext(Dispatchers.IO) {
+        suspendTransaction(db = database) {
+            val ids = NarmestelederbehovTable
+                .join(
+                    SendtSykmeldingTomTable,
+                    JoinType.INNER,
+                    additionalConstraint = {
+                        (NarmestelederbehovTable.sykmeldtFnr eq SendtSykmeldingTomTable.fnr) and
+                            (NarmestelederbehovTable.orgnummer eq SendtSykmeldingTomTable.orgnummer)
+                    },
+                )
+                .select(NarmestelederbehovTable.id)
+                .where {
+                    (SendtSykmeldingTomTable.tom less sykmeldingMaxDate) and
+                        (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
+                }
+                .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
+                .limit(limit)
+                .map { it[NarmestelederbehovTable.id] }
+
+            if (ids.isEmpty()) {
+                0
+            } else {
+                NarmestelederbehovTable.update({
+                    (NarmestelederbehovTable.id inList ids) and
+                        (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
+                }) {
+                    it[behovStatus] = BehovStatus.BEHOV_EXPIRED
+                }
+            }
+        }
+    }
+}
+
+/** Read-only view of the `sendt_sykmelding` columns needed to expire behov. */
+private object SendtSykmeldingTomTable : Table("sendt_sykmelding") {
+    val fnr = text("fnr")
+    val orgnummer = varchar("orgnummer", 9)
+    val tom = date("tom")
 }

@@ -11,6 +11,13 @@ import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import java.time.Instant
 
+/** Open statuses are BEHOV_CREATED and DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION. */
+interface ListNarmestelederbehovRepository {
+    suspend fun findOpen(organizationNumber: OrganizationNumber, createdAfter: Instant, limit: Int): List<NarmestelederbehovDetails>
+
+    suspend fun countOpen(organizationNumber: OrganizationNumber, createdAfter: Instant): Long
+}
+
 data class ListNarmestelederbehovQuery(
     val organizationNumber: OrganizationNumber,
     val createdAfter: Instant,
@@ -33,7 +40,7 @@ sealed interface ListNarmestelederbehovResult {
 }
 
 class ListNarmestelederbehovUseCase(
-    private val repository: OpenNarmestelederbehovRepository,
+    private val repository: ListNarmestelederbehovRepository,
     private val organizationAccess: OrganizationAccess,
     private val employeeName: NarmestelederbehovEmployeeName,
 ) {

@@ -26,9 +26,11 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import java.time.Instant
 import java.util.UUID
 
-class ExposedNarmestelederbehovRepositoryTest :
+class ExposedNarmestelederbehovRepositoriesTest :
     FunSpec({
-        val repository = ExposedNarmestelederbehovRepository(TestDB.exposedDatabase)
+        val readRepository = ExposedNarmestelederbehovReadRepository(TestDB.exposedDatabase)
+        val fulfillmentRepository = ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase)
+        val lifecycleRepository = ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase)
         val now = Instant.parse("2026-10-01T10:00:00Z")
         val cutoff = now.minusSeconds(10)
 
@@ -45,7 +47,7 @@ class ExposedNarmestelederbehovRepositoryTest :
                 insertNarmestelederbehov(behovStatus = status, created = now.minusSeconds(600))
             }
 
-            repository.findPendingDialogs(cutoff, 100) shouldBe listOf(oldest, newer).map { row ->
+            lifecycleRepository.findPendingDialogs(cutoff, 100) shouldBe listOf(oldest, newer).map { row ->
                 PendingNarmestelederbehovDialog(
                     id = NarmestelederbehovId(row.id),
                     employee = Employee(PersonalIdentificationNumber(row.sykmeldtFnr), OrganizationNumber(row.orgnummer)),
@@ -64,11 +66,11 @@ class ExposedNarmestelederbehovRepositoryTest :
                 insertNarmestelederbehov(created = cutoff.minusSeconds(seconds.toLong()))
             }
 
-            repository.findPendingDialogs(cutoff, 100).map { it.id.value } shouldBe rows.reversed().take(100).map { it.id }
+            lifecycleRepository.findPendingDialogs(cutoff, 100).map { it.id.value } shouldBe rows.reversed().take(100).map { it.id }
         }
 
         test("returns no pending dialogs when the table is empty") {
-            repository.findPendingDialogs(cutoff, 100) shouldBe emptyList()
+            lifecycleRepository.findPendingDialogs(cutoff, 100) shouldBe emptyList()
         }
 
         test("fulfilled query requires a dialog and strict age cutoff, orders oldest first and leaves rows unchanged") {
@@ -82,7 +84,7 @@ class ExposedNarmestelederbehovRepositoryTest :
                 insertNarmestelederbehov(behovStatus = status, dialogId = UUID.randomUUID(), created = now.minusSeconds(600))
             }
 
-            repository.findFulfilledDialogs(cutoff) shouldBe listOf(oldest, newer).map { it.dialogReference() }
+            fulfillmentRepository.findFulfilledDialogs(cutoff) shouldBe listOf(oldest, newer).map { it.dialogReference() }
             (excluded + oldest + newer).forEach { findStoredNarmestelederbehov(it.id) shouldBe it }
         }
 
@@ -98,7 +100,7 @@ class ExposedNarmestelederbehovRepositoryTest :
                 insertNarmestelederbehov(behovStatus = status, dialogId = UUID.randomUUID(), created = now.minusSeconds(600))
             }
 
-            repository.findDialogsToExpire() shouldBe listOf(oldest, recent).map { it.dialogReference() }
+            lifecycleRepository.findDialogsToExpire() shouldBe listOf(oldest, recent).map { it.dialogReference() }
             (excluded + oldest + recent).forEach { findStoredNarmestelederbehov(it.id) shouldBe it }
         }
 
@@ -108,7 +110,11 @@ class ExposedNarmestelederbehovRepositoryTest :
                     insertNarmestelederbehov(behovStatus = status, dialogId = UUID.randomUUID(), created = cutoff.minusSeconds(seconds.toLong()))
                 }
 
-                val result = if (status == BehovStatus.BEHOV_FULFILLED) repository.findFulfilledDialogs(cutoff) else repository.findDialogsToExpire()
+                val result = if (status == BehovStatus.BEHOV_FULFILLED) {
+                    fulfillmentRepository.findFulfilledDialogs(cutoff)
+                } else {
+                    lifecycleRepository.findDialogsToExpire()
+                }
 
                 result shouldBe rows.reversed().take(100).map { it.dialogReference() }
             }
@@ -127,20 +133,20 @@ class ExposedNarmestelederbehovRepositoryTest :
             val other = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID())
             val expirationTime = now.plusSeconds(600)
 
-            repository.markDialogExpired(NarmestelederbehovId(row.id), expirationTime)
+            lifecycleRepository.markDialogExpired(NarmestelederbehovId(row.id), expirationTime)
 
             val stored = requireNotNull(findStoredNarmestelederbehov(row.id))
             stored shouldBe row.copy(expiredInDialogporten = expirationTime, updated = stored.updated)
             stored.updated.isAfter(row.updated) shouldBe true
             findStoredNarmestelederbehov(other.id) shouldBe other
-            repository.findDialogsToExpire() shouldBe listOf(other.dialogReference())
+            lifecycleRepository.findDialogsToExpire() shouldBe listOf(other.dialogReference())
         }
 
         test("queries return empty lists when no dialogs exist and marking a missing row is harmless") {
-            repository.findFulfilledDialogs(cutoff) shouldBe emptyList()
-            repository.findDialogsToExpire() shouldBe emptyList()
-            repository.markDialogExpired(NarmestelederbehovId(UUID.randomUUID()), now)
-            repository.findDialogsToExpire() shouldBe emptyList()
+            fulfillmentRepository.findFulfilledDialogs(cutoff) shouldBe emptyList()
+            lifecycleRepository.findDialogsToExpire() shouldBe emptyList()
+            lifecycleRepository.markDialogExpired(NarmestelederbehovId(UUID.randomUUID()), now)
+            lifecycleRepository.findDialogsToExpire() shouldBe emptyList()
         }
 
         test("reads every response field without changing the row") {
@@ -152,7 +158,7 @@ class ExposedNarmestelederbehovRepositoryTest :
                 narmestelederFnr = null,
             )
             val id = NarmestelederbehovId(row.id)
-            val result = requireNotNull(repository.findDetails(id))
+            val result = requireNotNull(readRepository.findDetails(id))
             result.id shouldBe id
             result.employeeIdent shouldBe PersonalIdentificationNumber(row.sykmeldtFnr)
             result.organizationNumber shouldBe OrganizationNumber(row.orgnummer)
@@ -165,7 +171,7 @@ class ExposedNarmestelederbehovRepositoryTest :
             result.updated shouldBe row.updated
             result.status shouldBe row.behovStatus
             result.reason shouldBe row.behovReason
-            repository.findDetails(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
+            readRepository.findDetails(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
             findStoredNarmestelederbehov(row.id) shouldBe row
         }
 
@@ -173,7 +179,7 @@ class ExposedNarmestelederbehovRepositoryTest :
             val before = insertNarmestelederbehov()
             val id = NarmestelederbehovId(before.id)
 
-            repository.saveEmployeeName(
+            readRepository.saveEmployeeName(
                 id = id,
                 name = BehovPersonName(firstName = "First", middleName = "Middle", lastName = "Last"),
             )
@@ -190,11 +196,11 @@ class ExposedNarmestelederbehovRepositoryTest :
             val row = insertNarmestelederbehov()
             val id = NarmestelederbehovId(row.id)
 
-            repository.findForFulfillment(id) shouldBe Narmestelederbehov(
+            fulfillmentRepository.findForFulfillment(id) shouldBe Narmestelederbehov(
                 id,
                 Employee(PersonalIdentificationNumber(row.sykmeldtFnr), OrganizationNumber(row.orgnummer)),
             )
-            repository.findForFulfillment(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
+            fulfillmentRepository.findForFulfillment(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
         }
 
         test("marks a behov with dialog id without overwriting unrelated fields") {
@@ -209,7 +215,7 @@ class ExposedNarmestelederbehovRepositoryTest :
             )
             val id = NarmestelederbehovId(before.id)
 
-            repository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, dialogId)
+            fulfillmentRepository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, dialogId)
 
             with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
                 behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
@@ -220,15 +226,15 @@ class ExposedNarmestelederbehovRepositoryTest :
         test("marks a behov with no dialog and returns Missing for an absent row") {
             val id = NarmestelederbehovId(insertNarmestelederbehov().id)
 
-            repository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, null)
-            repository.markFulfilled(NarmestelederbehovId(UUID.randomUUID())) shouldBe MarkFulfilledResult.Missing
+            fulfillmentRepository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, null)
+            fulfillmentRepository.markFulfilled(NarmestelederbehovId(UUID.randomUUID())) shouldBe MarkFulfilledResult.Missing
         }
 
         test("marks a completed dialog status without changing other fields") {
             val before = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED)
             val id = NarmestelederbehovId(before.id)
 
-            repository.markDialogCompleted(id) shouldBe MarkDialogCompletedResult.Marked
+            fulfillmentRepository.markDialogCompleted(id) shouldBe MarkDialogCompletedResult.Marked
 
             with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
                 behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
@@ -239,13 +245,13 @@ class ExposedNarmestelederbehovRepositoryTest :
         test("does not overwrite a status changed by another writer") {
             val before = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED)
 
-            repository.markDialogCompleted(NarmestelederbehovId(before.id)) shouldBe MarkDialogCompletedResult.NotFulfilled
+            fulfillmentRepository.markDialogCompleted(NarmestelederbehovId(before.id)) shouldBe MarkDialogCompletedResult.NotFulfilled
 
             findStoredNarmestelederbehov(before.id) shouldBe before
         }
 
         test("reports NotFulfilled for a missing row when persisting completed dialog status") {
-            repository.markDialogCompleted(NarmestelederbehovId(UUID.randomUUID())) shouldBe MarkDialogCompletedResult.NotFulfilled
+            fulfillmentRepository.markDialogCompleted(NarmestelederbehovId(UUID.randomUUID())) shouldBe MarkDialogCompletedResult.NotFulfilled
         }
 
         test("marks a created dialog with dialog id and employee name without changing other fields") {
@@ -253,7 +259,7 @@ class ExposedNarmestelederbehovRepositoryTest :
             val id = NarmestelederbehovId(before.id)
             val createdDialogId = UUID.randomUUID()
 
-            repository.markDialogCreated(id, createdDialogId, BehovPersonName("First", "Middle", "Last")) shouldBe
+            lifecycleRepository.markDialogCreated(id, createdDialogId, BehovPersonName("First", "Middle", "Last")) shouldBe
                 MarkDialogCreatedResult.Marked
 
             with(requireNotNull(findStoredNarmestelederbehov(before.id))) {
@@ -277,7 +283,7 @@ class ExposedNarmestelederbehovRepositoryTest :
             val row = insertNarmestelederbehov()
             val id = NarmestelederbehovId(row.id)
 
-            repository.markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.Marked
+            lifecycleRepository.markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.Marked
 
             with(requireNotNull(findStoredNarmestelederbehov(row.id))) {
                 behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
@@ -290,8 +296,8 @@ class ExposedNarmestelederbehovRepositoryTest :
             val before = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED)
             val id = NarmestelederbehovId(before.id)
 
-            repository.markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.NotCreated
-            repository.markDialogCreated(NarmestelederbehovId(UUID.randomUUID()), UUID.randomUUID(), null) shouldBe
+            lifecycleRepository.markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.NotCreated
+            lifecycleRepository.markDialogCreated(NarmestelederbehovId(UUID.randomUUID()), UUID.randomUUID(), null) shouldBe
                 MarkDialogCreatedResult.NotCreated
 
             findStoredNarmestelederbehov(before.id) shouldBe before
@@ -314,7 +320,7 @@ class ExposedNarmestelederbehovRepositoryTest :
                 insert(BehovStatus.BEHOV_CREATED, personIdent = "10987654321")
                 insert(BehovStatus.BEHOV_CREATED, organizationNumber = "910000002")
 
-                repository.findOpenFor(employee).map { it.value } shouldBe listOf(open)
+                lifecycleRepository.findOpenFor(employee).map { it.value } shouldBe listOf(open)
             }
         }
         val newBehov = NewNarmestelederbehov(
@@ -327,7 +333,7 @@ class ExposedNarmestelederbehovRepositoryTest :
         )
 
         test("creates a behov with every column") {
-            val result = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+            val result = lifecycleRepository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
 
             with(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
                 sykmeldtFnr shouldBe "12345678901"
@@ -343,7 +349,7 @@ class ExposedNarmestelederbehovRepositoryTest :
         }
 
         test("creates a behov without manager or revoked relation") {
-            val result = repository.create(newBehov.copy(manager = null, revokedRelationId = null))
+            val result = lifecycleRepository.create(newBehov.copy(manager = null, revokedRelationId = null))
                 .shouldBeInstanceOf<CreateBehovResult.Created>()
 
             with(requireNotNull(findStoredNarmestelederbehov(result.id.value))) {
@@ -353,29 +359,29 @@ class ExposedNarmestelederbehovRepositoryTest :
         }
 
         test("reports AlreadyExists without storing when the employee has an open behov in the organization") {
-            val existing = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+            val existing = lifecycleRepository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
 
-            repository.create(newBehov.copy(status = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)) shouldBe CreateBehovResult.AlreadyExists
+            lifecycleRepository.create(newBehov.copy(status = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)) shouldBe CreateBehovResult.AlreadyExists
 
-            repository.findOpenFor(newBehov.employee) shouldBe listOf(existing.id)
+            lifecycleRepository.findOpenFor(newBehov.employee) shouldBe listOf(existing.id)
         }
 
         test("stores exactly one open behov when concurrent creates race") {
             val results = coroutineScope {
-                (1..2).map { async { repository.create(newBehov) } }.awaitAll()
+                (1..2).map { async { lifecycleRepository.create(newBehov) } }.awaitAll()
             }
 
             results.count { it is CreateBehovResult.Created } shouldBe 1
             results.count { it == CreateBehovResult.AlreadyExists } shouldBe 1
-            repository.findOpenFor(newBehov.employee).size shouldBe 1
+            lifecycleRepository.findOpenFor(newBehov.employee).size shouldBe 1
         }
 
         test("creates a behov alongside closed and error behov for the same employee and organization") {
-            repository.create(newBehov.copy(status = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND)).shouldBeInstanceOf<CreateBehovResult.Created>()
-            val closed = repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
-            repository.markFulfilled(closed.id)
+            lifecycleRepository.create(newBehov.copy(status = BehovStatus.ARBEIDSFORHOLD_NOT_FOUND)).shouldBeInstanceOf<CreateBehovResult.Created>()
+            val closed = lifecycleRepository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+            fulfillmentRepository.markFulfilled(closed.id)
 
-            repository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
+            lifecycleRepository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
         }
     })
 

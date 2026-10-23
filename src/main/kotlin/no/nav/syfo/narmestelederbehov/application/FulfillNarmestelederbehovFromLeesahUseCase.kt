@@ -8,12 +8,21 @@ import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 import org.slf4j.event.Level
 
+interface FulfillNarmestelederbehovFromLeesahRepository {
+    /** Open statuses are BEHOV_CREATED and DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION. */
+    suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId>
+
+    suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult
+
+    suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult
+}
+
 /**
  * Fulfills the employee's open behov when Leesah reports an active narmesteleder registered outside this service.
  * The status is saved before the Dialogporten dialog is completed, so a dialog failure leaves the behov fulfilled.
  */
 class FulfillNarmestelederbehovFromLeesahUseCase(
-    private val behovRepository: NarmestelederbehovRepository,
+    private val behovRepository: FulfillNarmestelederbehovFromLeesahRepository,
     private val metrics: LeesahFulfillmentMetrics,
     private val dialog: NarmestelederbehovDialog,
 ) {

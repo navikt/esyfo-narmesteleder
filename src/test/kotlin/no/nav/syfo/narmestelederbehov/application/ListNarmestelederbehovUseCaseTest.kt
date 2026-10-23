@@ -6,7 +6,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -19,7 +18,6 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
-import java.util.UUID
 
 class ListNarmestelederbehovUseCaseTest :
     FunSpec({
@@ -127,30 +125,11 @@ private class ListFixture(
     var requestedLimit: Int? = null
     var requestedOrganization: OrganizationNumber? = null
     var requestedCreatedAfter: Instant? = null
-    private val repository = object : NarmestelederbehovRepository {
-        override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-        override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-        override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-        override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-        override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
-
-        override suspend fun findDetails(id: NarmestelederbehovId) = error("List must not find by id")
-        override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) {
-            effects += "save"
-            savedNames += id to name
-        }
-        override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("List must not read for fulfillment")
-        override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("List must not look up open behov by employee")
-        override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("List must not fulfill")
-        override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("List must not complete dialogs")
-
-        override suspend fun markDialogCreated(
-            id: NarmestelederbehovId,
-            dialogId: UUID,
-            name: BehovPersonName?,
-        ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
+    private val employeeNameRepository = NarmestelederbehovEmployeeNameRepository { id, name ->
+        effects += "save"
+        savedNames += id to name
     }
-    private val openRepository = object : OpenNarmestelederbehovRepository {
+    private val repository = object : ListNarmestelederbehovRepository {
         override suspend fun findOpen(organizationNumber: OrganizationNumber, createdAfter: Instant, limit: Int): List<NarmestelederbehovDetails> {
             effects += "find"
             requestedLimit = limit
@@ -166,10 +145,10 @@ private class ListFixture(
         }
     }
     private val useCase = ListNarmestelederbehovUseCase(
-        repository = openRepository,
+        repository = repository,
         organizationAccess = organizationAccess,
         employeeName = NarmestelederbehovEmployeeName(
-            repository,
+            employeeNameRepository,
         ) { ident ->
             effects += "person"
             lookedUp += ident

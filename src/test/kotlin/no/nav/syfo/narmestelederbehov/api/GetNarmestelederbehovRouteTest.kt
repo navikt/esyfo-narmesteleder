@@ -13,18 +13,13 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
+import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
-import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeNameRepository
 import no.nav.syfo.narmestelederbehov.application.narmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
-import no.nav.syfo.narmestelederbehov.domain.Employee
-import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -42,7 +37,6 @@ import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import java.time.Instant
 import java.util.UUID
 
 class GetNarmestelederbehovRouteTest :
@@ -142,7 +136,7 @@ private class GetFixture(
             denialReason?.let { OrganizationAccessResult.Denied(it) } ?: OrganizationAccessResult.Granted(organizationName)
         },
         employeeName = NarmestelederbehovEmployeeName(
-            repository,
+            NarmestelederbehovEmployeeNameRepository { id, name -> repository.savedNames += id to name },
         ) {
             unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
                 ?: EmployeeNameLookupResult.Found(BehovPersonName(firstName = "Looked", middleName = null, lastName = "Up"))
@@ -163,13 +157,7 @@ private class GetFixture(
     }
 }
 
-private class FakeReadBehovRepository : NarmestelederbehovRepository {
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-    override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-    override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-    override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
-
+private class FakeReadBehovRepository : GetNarmestelederbehovRepository {
     private val behov = mutableMapOf<NarmestelederbehovId, NarmestelederbehovDetails>()
     val savedNames = mutableListOf<Pair<NarmestelederbehovId, BehovPersonName>>()
     var failure: Exception? = null
@@ -191,22 +179,4 @@ private class FakeReadBehovRepository : NarmestelederbehovRepository {
         failure?.let { throw it }
         return behov[id]
     }
-
-    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) {
-        savedNames += id to name
-    }
-
-    override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov = error("GET must not read for fulfillment")
-
-    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("GET must not look up open behov")
-
-    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("GET must not write")
-
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("GET must not write")
-
-    override suspend fun markDialogCreated(
-        id: NarmestelederbehovId,
-        dialogId: UUID,
-        name: BehovPersonName?,
-    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }

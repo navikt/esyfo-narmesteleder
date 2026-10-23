@@ -19,8 +19,16 @@ import no.nav.syfo.platform.application.orStop
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 
+interface FulfillNarmestelederbehovRepository {
+    suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov?
+
+    suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult
+
+    suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult
+}
+
 class FulfillNarmestelederbehovUseCase(
-    private val behovRepository: NarmestelederbehovRepository,
+    private val behovRepository: FulfillNarmestelederbehovRepository,
     private val organizationAccess: OrganizationAccess,
     private val establishRelation: EstablishNarmestelederrelasjon,
     private val dialog: NarmestelederbehovDialog,

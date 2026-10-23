@@ -19,7 +19,6 @@ import no.nav.syfo.platform.observability.ProductionLogRecord
 import no.nav.syfo.platform.observability.withProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -67,17 +66,7 @@ class CreateNarmestelederbehovUseCaseTest :
             val created = mutableListOf<NewNarmestelederbehov>()
             val dialogs = mutableListOf<Triple<NarmestelederbehovId, Employee, EmployeePerson?>>()
             val markedDialogs = mutableListOf<Triple<NarmestelederbehovId, UUID, BehovPersonName?>>()
-            val repository = object : NarmestelederbehovRepository {
-                override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-                override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-                override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-                override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-                override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
-                override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
-                override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")
-                override suspend fun markFulfilled(id: NarmestelederbehovId) = error("Unexpected markFulfilled")
-                override suspend fun markDialogCompleted(id: NarmestelederbehovId) = error("Unexpected markDialogCompleted")
-
+            val repository = object : CreateNarmestelederbehovRepository {
                 override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = openBehov.also { effects += "find-open" }
 
                 override suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult {

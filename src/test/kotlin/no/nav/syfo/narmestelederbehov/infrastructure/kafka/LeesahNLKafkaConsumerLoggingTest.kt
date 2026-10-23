@@ -7,8 +7,12 @@ import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import no.nav.syfo.integration.aareg.AAREG
-import no.nav.syfo.narmestelederbehov.application.FakeBehovRepository
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
+import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
+import no.nav.syfo.narmestelederbehov.domain.Employee
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.observability.ProductionLogCapture
 import no.nav.syfo.platform.observability.ProductionLogs
@@ -82,7 +86,13 @@ class LeesahNLKafkaConsumerLoggingTest :
 private fun unusedHandler() = NlBehovLeesahHandler { error("Unexpected CreateNarmestelederbehov") }
 
 private fun unusedFulfillBehovFromLeesah() = FulfillNarmestelederbehovFromLeesahUseCase(
-    behovRepository = FakeBehovRepository(behov = null),
+    behovRepository = object : FulfillNarmestelederbehovFromLeesahRepository {
+        override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("Unexpected open behov lookup")
+
+        override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("Unexpected fulfillment")
+
+        override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("Unexpected dialog status")
+    },
     metrics = { error("Unexpected fulfillment metric") },
     dialog = { error("Unexpected dialog completion") },
 )

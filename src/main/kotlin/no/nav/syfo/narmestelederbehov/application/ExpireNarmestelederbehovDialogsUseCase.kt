@@ -26,26 +26,32 @@ class ExpireNarmestelederbehovDialogsUseCase(
         do {
             val batch = repository.findDialogsToExpire()
             logger.info("Batch: ${++batchNum}:: Found ${batch.size} expired behovs to expire in dialogporten")
-            for ((id, dialogId) in batch) {
-                val details = DialogEventDetails(id.value, dialogId).copy(action = DialogAction.EXPIRE)
-                try {
-                    // Dialogporten requires a future time, with slack for retries and processing.
-                    val expirationTime = clock.instant().plusSeconds(600)
-                    when (val result = dialog.expire(dialogId, expirationTime)) {
-                        DialogExpiry.Expired -> {
-                            repository.markDialogExpired(id, expirationTime)
-                            logger.info("Successfully updated expired behov ${id.value} with expired date: $expirationTime")
-                        }
-                        is DialogExpiry.Unavailable -> logger.logEvent(dialogportenDialogFailed, details, upstreamFailure = result.failure)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.logEvent(dialogportenDialogFailed, details, cause = e)
-                }
-            }
+            expireDialogs(batch)
             delay(100.milliseconds)
         } while (batch.size >= BATCH_SIZE && batchNum < MAX_BATCHES)
+    }
+
+    private suspend fun expireDialogs(batch: List<NarmestelederbehovDialogReference>) {
+        batch.forEach { reference -> expireDialog(reference) }
+    }
+
+    private suspend fun expireDialog(reference: NarmestelederbehovDialogReference) {
+        val details = DialogEventDetails(reference.id.value, reference.dialogId).copy(action = DialogAction.EXPIRE)
+        try {
+            // Dialogporten requires a future time, with slack for retries and processing.
+            val expirationTime = clock.instant().plusSeconds(600)
+            when (val result = dialog.expire(reference.dialogId, expirationTime)) {
+                DialogExpiry.Expired -> {
+                    repository.markDialogExpired(reference.id, expirationTime)
+                    logger.info("Successfully updated expired behov ${reference.id.value} with expired date: $expirationTime")
+                }
+                is DialogExpiry.Unavailable -> logger.logEvent(dialogportenDialogFailed, details, upstreamFailure = result.failure)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.logEvent(dialogportenDialogFailed, details, cause = e)
+        }
     }
 
     private companion object {

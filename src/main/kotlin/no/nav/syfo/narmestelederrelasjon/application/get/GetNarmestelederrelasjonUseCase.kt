@@ -29,19 +29,28 @@ class GetNarmestelederrelasjonUseCase(
             return NotFound(NotFoundReason.RELATION_INACTIVE).log()
         }
 
-        when (val access = organizationAccess.evaluate(accessSubject, lookup.organizationNumber)) {
-            is OrganizationAccessResult.Granted -> Unit
-
-            is OrganizationAccessResult.Unavailable -> return GetNarmestelederrelasjonResult.UpstreamUnavailable(access.failure)
-
-            is OrganizationAccessResult.Denied ->
-                return NotFound(NotFoundReason.ACCESS_DENIED, denialReason = access.reason).log()
+        evaluateAccess(accessSubject, lookup)?.let {
+            return it
         }
-
         if (!activeSykmeldingLookup.hasActiveSykmelding(lookup.employeeIdent, lookup.organizationNumber)) {
             return NotFound(NotFoundReason.NO_ACTIVE_SYKMELDING).log()
         }
+        return findRelationWithOrganizationName(lookup)
+    }
 
+    private suspend fun evaluateAccess(
+        accessSubject: OrganizationAccessSubject,
+        lookup: NarmestelederrelasjonLookup,
+    ): GetNarmestelederrelasjonResult? =
+        when (val access = organizationAccess.evaluate(accessSubject, lookup.organizationNumber)) {
+            is OrganizationAccessResult.Granted -> null
+            is OrganizationAccessResult.Unavailable -> GetNarmestelederrelasjonResult.UpstreamUnavailable(access.failure)
+            is OrganizationAccessResult.Denied -> NotFound(NotFoundReason.ACCESS_DENIED, denialReason = access.reason).log()
+        }
+
+    private suspend fun findRelationWithOrganizationName(
+        lookup: NarmestelederrelasjonLookup,
+    ): GetNarmestelederrelasjonResult {
         val organizationName = when (val result = organization.findName(lookup.organizationNumber)) {
             is OrganizationNameResult.Found -> result.name
 

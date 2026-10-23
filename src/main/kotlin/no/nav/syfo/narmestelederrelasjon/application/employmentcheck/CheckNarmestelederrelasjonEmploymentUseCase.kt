@@ -36,46 +36,79 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
     }
 
     private suspend fun check(claim: ClaimedEmploymentCheck): ClaimedCheckOutcome {
+        val history = findEmploymentHistory(claim) ?: return ClaimedCheckOutcome.TIMEOUT
+        val checkedAt = clock.instant()
+        val outcome = decide(claim, history, today = ruleDate(claim, checkedAt))
+        val completion = when (outcome) {
+            EmploymentCheckOutcome.REVOKED -> publishRevocation(claim, checkedAt)
+            else -> Completion.Ready(outcome, checkedAt)
+        }
+        return when (completion) {
+            Completion.Stale -> ClaimedCheckOutcome.STALE
+            Completion.Timeout -> ClaimedCheckOutcome.TIMEOUT
+            is Completion.Ready -> complete(claim, history, completion)
+        }
+    }
+
+    private suspend fun findEmploymentHistory(claim: ClaimedEmploymentCheck): EmploymentHistoryResult? {
         val elapsed = Duration.between(claim.claimedAt, clock.instant()).toKotlinDuration()
         val lookupBudget = settings.lease - CLAIM_SAFETY_MARGIN - elapsed
         // Only this timeout is swallowed; cancellation of the loop propagates.
-        val history = withTimeoutOrNull(lookupBudget) {
+        return withTimeoutOrNull(lookupBudget) {
             employmentHistoryLookup.findEmploymentHistory(claim.employeeIdent)
-        } ?: return ClaimedCheckOutcome.TIMEOUT
+        }
+    }
 
-        var now = clock.instant()
+    private fun ruleDate(claim: ClaimedEmploymentCheck, now: Instant): LocalDate {
         // A comparison judges the relation on the Norwegian date the source revoked it, even if we ingest or check it later.
         val ruleInstant = if (revokeEnabled) now else claim.sourceRevokedAt ?: now
-        var outcome = decide(claim, history, today = LocalDate.ofInstant(ruleInstant, NORWEGIAN_TIME))
-        if (outcome == EmploymentCheckOutcome.REVOKED) {
-            val publishElapsed = Duration.between(claim.claimedAt, now).toKotlinDuration()
-            if (publishElapsed + publisher.maxPublishDuration >= settings.lease - CLAIM_SAFETY_MARGIN) return ClaimedCheckOutcome.TIMEOUT
-            if (!repository.isClaimStillValid(claim, now)) return ClaimedCheckOutcome.STALE
-            try {
-                publisher.publish(
-                    PublishNarmestelederrelasjonRevocationCommand(claim.employeeIdent, claim.organizationNumber, RevocationInitiator.EMPLOYMENT_ENDED),
-                )
-            } catch (ex: Exception) {
-                ex.rethrowCancellation()
-                outcome = EmploymentCheckOutcome.FAILED
-                logger.logEvent(employmentCheckRevocationFailed, claim.narmesteLederId, cause = ex)
-            }
-            now = clock.instant()
+        return LocalDate.ofInstant(ruleInstant, NORWEGIAN_TIME)
+    }
+
+    private suspend fun publishRevocation(claim: ClaimedEmploymentCheck, now: Instant): Completion {
+        val publishElapsed = Duration.between(claim.claimedAt, now).toKotlinDuration()
+        if (publishElapsed + publisher.maxPublishDuration >= settings.lease - CLAIM_SAFETY_MARGIN) {
+            return Completion.Timeout
         }
-        if (!repository.complete(claim, outcome, nextCheck = nextCheck(outcome, now), now = now)) {
-            if (outcome == EmploymentCheckOutcome.REVOKED) logger.event(employmentCheckRevocationClaimLost, claim.narmesteLederId)
+        if (!repository.isClaimStillValid(claim, now)) {
+            return Completion.Stale
+        }
+
+        val outcome = try {
+            publisher.publish(
+                PublishNarmestelederrelasjonRevocationCommand(claim.employeeIdent, claim.organizationNumber, RevocationInitiator.EMPLOYMENT_ENDED),
+            )
+            EmploymentCheckOutcome.REVOKED
+        } catch (ex: Exception) {
+            ex.rethrowCancellation()
+            logger.logEvent(employmentCheckRevocationFailed, claim.narmesteLederId, cause = ex)
+            EmploymentCheckOutcome.FAILED
+        }
+        return Completion.Ready(outcome, clock.instant())
+    }
+
+    private suspend fun complete(
+        claim: ClaimedEmploymentCheck,
+        history: EmploymentHistoryResult,
+        completion: Completion.Ready,
+    ): ClaimedCheckOutcome {
+        val claimCompleted = repository.complete(
+            claim,
+            completion.outcome,
+            nextCheck = nextCheck(completion.outcome, completion.completedAt),
+            now = completion.completedAt,
+        )
+        if (!claimCompleted) {
+            if (completion.outcome == EmploymentCheckOutcome.REVOKED) {
+                logger.event(employmentCheckRevocationClaimLost, claim.narmesteLederId)
+            }
             // Another pod owns the row now and logs its own check.
             return ClaimedCheckOutcome.CLAIM_LOST
         }
         if (history is EmploymentHistoryResult.Unavailable) {
             logger.logEvent(employmentCheckFailed, claim.narmesteLederId, upstreamFailure = history.failure)
         }
-        val checked = when (outcome) {
-            EmploymentCheckOutcome.VALID -> ClaimedCheckOutcome.VALID
-            EmploymentCheckOutcome.WOULD_REVOKE -> ClaimedCheckOutcome.WOULD_REVOKE
-            EmploymentCheckOutcome.FAILED -> ClaimedCheckOutcome.FAILED
-            EmploymentCheckOutcome.REVOKED -> ClaimedCheckOutcome.REVOKED
-        }
+        val checked = completion.outcome.toClaimedOutcome()
         if (!revokeEnabled && claim.sourceRevokedAt != null) compare(claim, checked)
         return checked
     }
@@ -111,6 +144,24 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         now.plus(Duration.ofDays(1))
     } else {
         now.atOffset(UTC).plusMonths(1).toInstant()
+    }
+
+    private fun EmploymentCheckOutcome.toClaimedOutcome(): ClaimedCheckOutcome = when (this) {
+        EmploymentCheckOutcome.VALID -> ClaimedCheckOutcome.VALID
+        EmploymentCheckOutcome.WOULD_REVOKE -> ClaimedCheckOutcome.WOULD_REVOKE
+        EmploymentCheckOutcome.FAILED -> ClaimedCheckOutcome.FAILED
+        EmploymentCheckOutcome.REVOKED -> ClaimedCheckOutcome.REVOKED
+    }
+
+    private sealed interface Completion {
+        data class Ready(
+            val outcome: EmploymentCheckOutcome,
+            val completedAt: Instant,
+        ) : Completion
+
+        data object Stale : Completion
+
+        data object Timeout : Completion
     }
 
     companion object {

@@ -27,15 +27,15 @@ import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.platform.api.NAV_CALL_ID_HEADER
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.texas.client.TEXAS
 import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.captureProductionLogs
 import no.nav.syfo.platform.observability.logEvent
 import no.nav.syfo.platform.observability.withProductionLogger
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import no.nav.syfo.platform.upstream.UpstreamRequestException
 import no.nav.syfo.platform.upstream.UpstreamResult
-import no.nav.syfo.platform.upstream.getOrThrow
+import no.nav.syfo.platform.upstream.getOrElse
 import org.slf4j.MDC
 import org.slf4j.event.Level
 import java.net.SocketTimeoutException
@@ -58,7 +58,7 @@ class AaregClientTest :
             val expected = FakeAaregClient()
                 .apply { arbeidsForholdForIdent[personIdent] = listOf("123456789" to "987654321") }
                 .getArbeidsforhold(personIdent)
-                .getOrThrow()
+                .getOrElse { error("expected success") }
             var authorization: String? = null
             var path: String? = null
             val client = aaregClient(
@@ -171,7 +171,7 @@ class AaregClientTest :
                 }
             )
 
-            val employments = client.getArbeidsforholdHistorikk(personIdent).getOrThrow().arbeidsforholdoversikter
+            val employments = client.getArbeidsforholdHistorikk(personIdent).getOrElse { error("expected success") }.arbeidsforholdoversikter
             employments.map { it.startdato } shouldBe listOf(LocalDate.of(2025, 1, 1), null, null)
             employments.map { it.sluttdato } shouldBe listOf(LocalDate.of(2026, 3, 31), null, null)
         }
@@ -287,7 +287,7 @@ class AaregClientTest :
 private fun UpstreamResult.Failure.shouldNotExposePersonalIdentificationNumber(personIdent: String) {
     toString() shouldNotContain personIdent
     failure.toString() shouldNotContain personIdent
-    shouldThrow<UpstreamRequestException> { getOrThrow() }.message.orEmpty() shouldNotContain personIdent
+    failure.toUpstreamUnavailableException().message.orEmpty() shouldNotContain personIdent
 }
 
 private suspend fun withTraceId(traceId: String?, action: suspend () -> Unit) {

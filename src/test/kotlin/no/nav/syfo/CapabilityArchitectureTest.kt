@@ -20,39 +20,39 @@ class CapabilityArchitectureTest :
     FunSpec({
         test("application and domain stay independent of frameworks and infrastructure") {
             val layout = capabilityLayout()
-            val violations = layout.capabilities.flatMap { capability ->
-                capability.classFilesIn("application", "domain").flatMap { file ->
-                    forbiddenLayerReferences(layout, Files.readAllBytes(file))
-                        .map { "${layout.classes.relativize(file)}: $it" }
+            with(
+                layout.capabilities.flatMap { capability ->
+                    capability.classFilesIn("application", "domain").flatMap { file ->
+                        forbiddenLayerReferences(layout, Files.readAllBytes(file))
+                            .map { "${layout.classes.relativize(file)}: $it" }
+                    }
                 }
-            }
-
-            with(violations) {
+            ) {
                 shouldBeEmpty()
             }
         }
 
         test("capabilities do not reference another capability infrastructure") {
             val layout = capabilityLayout()
-            val violations = layout.capabilities.flatMap { capability ->
-                capability.classFiles().flatMap { file ->
-                    forbiddenCapabilityInfrastructure(layout, capability, Files.readAllBytes(file))
-                        .map { "${layout.classes.relativize(file)}: $it" }
+            with(
+                layout.capabilities.flatMap { capability ->
+                    capability.classFiles().flatMap { file ->
+                        forbiddenCapabilityInfrastructure(layout, capability, Files.readAllBytes(file))
+                            .map { "${layout.classes.relativize(file)}: $it" }
+                    }
                 }
-            }
-
-            with(violations) {
+            ) {
                 shouldBeEmpty()
             }
         }
 
         test("the layer guard detects framework and infrastructure references") {
-            val violations = forbiddenLayerReferences(
-                capabilityLayout(),
-                classBytes(ForbiddenLayerReferenceFixture::class.java),
-            )
-
-            with(violations) {
+            with(
+                forbiddenLayerReferences(
+                    capabilityLayout(),
+                    classBytes(ForbiddenLayerReferenceFixture::class.java),
+                ),
+            ) {
                 shouldContain("io/ktor/server/application/Application")
                 shouldContain("org/jetbrains/exposed/v1/core/Table")
                 shouldContain("org/apache/kafka/clients/producer/KafkaProducer")
@@ -65,21 +65,23 @@ class CapabilityArchitectureTest :
         test("the capability guard distinguishes own and another capability infrastructure") {
             val layout = capabilityLayout()
             val narmestelederbehov = layout.capabilityContaining(FulfillNarmestelederbehovUseCase::class.java)
-            val ownInfrastructureReferences = forbiddenCapabilityInfrastructure(
-                layout,
-                narmestelederbehov,
-                classBytes(OwnInfrastructureReferenceFixture::class.java),
-            )
-            val otherInfrastructureReferences = forbiddenCapabilityInfrastructure(
-                layout,
-                narmestelederbehov,
-                classBytes(OtherInfrastructureReferenceFixture::class.java),
-            )
 
-            with(ownInfrastructureReferences) {
+            with(
+                forbiddenCapabilityInfrastructure(
+                    layout,
+                    narmestelederbehov,
+                    classBytes(OwnInfrastructureReferenceFixture::class.java),
+                ),
+            ) {
                 shouldBeEmpty()
             }
-            with(otherInfrastructureReferences) {
+            with(
+                forbiddenCapabilityInfrastructure(
+                    layout,
+                    narmestelederbehov,
+                    classBytes(OtherInfrastructureReferenceFixture::class.java),
+                ),
+            ) {
                 shouldContain("no/nav/syfo/organisasjonstilgang/infrastructure/AltinnOrganizationAccess")
             }
         }

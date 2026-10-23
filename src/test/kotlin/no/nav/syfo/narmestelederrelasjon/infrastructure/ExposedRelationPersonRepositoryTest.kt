@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -50,14 +51,14 @@ class ExposedRelationPersonRepositoryTest :
                 notFound = listOf(PersonalIdentificationNumber(second)),
             )
 
-            with(person(first)) {
+            assertSoftly(person(first)) {
                 this[PersonTable.status] shouldBe PersonStatus.ENRICHED.name
                 this[PersonTable.fornavn] shouldBe ada.firstName
                 this[PersonTable.mellomnavn] shouldBe ada.middleName
                 this[PersonTable.etternavn] shouldBe ada.lastName
                 this[PersonTable.foedselsdato] shouldBe ada.birthDate
             }
-            with(person(second)) {
+            assertSoftly(person(second)) {
                 this[PersonTable.status] shouldBe PersonStatus.NOT_FOUND.name
                 this[PersonTable.fornavn] shouldBe "Old"
             }
@@ -76,7 +77,7 @@ class ExposedRelationPersonRepositoryTest :
             val updated = repository.updateRegisteredDetails(mapOf(PersonalIdentificationNumber(first) to ada, PersonalIdentificationNumber(second) to ada))
 
             updated shouldBe setOf(PersonalIdentificationNumber(first))
-            with(person(first)) {
+            assertSoftly(person(first)) {
                 this[PersonTable.status] shouldBe PersonStatus.ENRICHED.name
                 this[PersonTable.fornavn] shouldBe ada.firstName
                 this[PersonTable.mellomnavn] shouldBe ada.middleName

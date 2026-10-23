@@ -1,5 +1,6 @@
 package no.nav.syfo.bootstrap
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -31,7 +32,7 @@ class OtherEnvironmentPropertiesTest :
                     )
                 }
 
-                with(properties) {
+                assertSoftly(properties) {
                     employmentCheckRevokeEnabled shouldBe revoke
                     employmentCheckObserveSourceEnabled shouldBe observe
                 }

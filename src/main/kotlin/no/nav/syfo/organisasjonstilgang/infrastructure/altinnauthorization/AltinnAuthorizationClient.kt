@@ -2,7 +2,6 @@ package no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -15,8 +14,9 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.decodeUpstream
 import no.nav.syfo.platform.upstream.getOrElse
-import kotlin.coroutines.cancellation.CancellationException
+import no.nav.syfo.platform.upstream.requestUpstream
 
 internal val ALTINN_PDP = UpstreamName("altinn-pdp")
 
@@ -51,31 +51,17 @@ class HttpAltinnAuthorizationClient(
         }
     }
 
-    private suspend fun postAuthorize(token: String, request: AltinnAuthorizationRequest): UpstreamResult<HttpResponse> = try {
-        UpstreamResult.Success(
-            httpClient.post("$baseUrl/authorization/api/v1/authorize") {
-                header("Ocp-Apim-Subscription-Key", subscriptionKey)
-                header("Content-Type", "application/json")
-                header("Accept", "application/json")
-                bearerAuth(token)
-                setBody(request)
-            },
-        )
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: ResponseException) {
-        failure(UpstreamFailureStage.RESPONSE, e.response.status.value, e)
-    } catch (e: Exception) {
-        failure(UpstreamFailureStage.REQUEST, null, e)
+    private suspend fun postAuthorize(token: String, request: AltinnAuthorizationRequest): UpstreamResult<HttpResponse> = requestUpstream(ALTINN_PDP) {
+        httpClient.post("$baseUrl/authorization/api/v1/authorize") {
+            header("Ocp-Apim-Subscription-Key", subscriptionKey)
+            header("Content-Type", "application/json")
+            header("Accept", "application/json")
+            bearerAuth(token)
+            setBody(request)
+        }
     }
 
-    private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> = try {
-        UpstreamResult.Success(response.body<AltinnAuthorizationResponse>().response.single())
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
-    }
+    private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> = response.decodeUpstream(ALTINN_PDP) { body<AltinnAuthorizationResponse>().response.single() }
 
     private fun indeterminateFailure(result: DecisionResult, status: Int): UpstreamResult.Failure {
         val detail = result.status?.statusCode?.value?.takeIf { it in allowedStatusCodes } ?: "unknown"
@@ -83,8 +69,6 @@ class HttpAltinnAuthorizationClient(
             UpstreamFailure(ALTINN_PDP, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("indeterminate", detail = detail))),
         )
     }
-
-    private fun failure(stage: UpstreamFailureStage, status: Int?, cause: Throwable) = UpstreamResult.Failure(UpstreamFailure(ALTINN_PDP, stage, status, cause))
 
     private val allowedStatusCodes = setOf(
         "urn:oasis:names:tc:xacml:1.0:status:syntax-error",

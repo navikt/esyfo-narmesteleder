@@ -2,7 +2,7 @@ package no.nav.syfo
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldContainAll
 import io.ktor.server.application.Application
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovReadRepository
@@ -20,70 +20,52 @@ class CapabilityArchitectureTest :
     FunSpec({
         test("application and domain stay independent of frameworks and infrastructure") {
             val layout = capabilityLayout()
-            with(
-                layout.capabilities.flatMap { capability ->
-                    capability.classFilesIn("application", "domain").flatMap { file ->
-                        forbiddenLayerReferences(layout, Files.readAllBytes(file))
-                            .map { "${layout.classes.relativize(file)}: $it" }
-                    }
+            layout.capabilities.flatMap { capability ->
+                capability.classFilesIn("application", "domain").flatMap { file ->
+                    forbiddenLayerReferences(layout, Files.readAllBytes(file))
+                        .map { "${layout.classes.relativize(file)}: $it" }
                 }
-            ) {
-                shouldBeEmpty()
-            }
+            }.shouldBeEmpty()
         }
 
         test("capabilities do not reference another capability infrastructure") {
             val layout = capabilityLayout()
-            with(
-                layout.capabilities.flatMap { capability ->
-                    capability.classFiles().flatMap { file ->
-                        forbiddenCapabilityInfrastructure(layout, capability, Files.readAllBytes(file))
-                            .map { "${layout.classes.relativize(file)}: $it" }
-                    }
+            layout.capabilities.flatMap { capability ->
+                capability.classFiles().flatMap { file ->
+                    forbiddenCapabilityInfrastructure(layout, capability, Files.readAllBytes(file))
+                        .map { "${layout.classes.relativize(file)}: $it" }
                 }
-            ) {
-                shouldBeEmpty()
-            }
+            }.shouldBeEmpty()
         }
 
         test("the layer guard detects framework and infrastructure references") {
-            with(
-                forbiddenLayerReferences(
-                    capabilityLayout(),
-                    classBytes(ForbiddenLayerReferenceFixture::class.java),
-                ),
-            ) {
-                shouldContain("io/ktor/server/application/Application")
-                shouldContain("org/jetbrains/exposed/v1/core/Table")
-                shouldContain("org/apache/kafka/clients/producer/KafkaProducer")
-                shouldContain(
+            forbiddenLayerReferences(
+                capabilityLayout(),
+                classBytes(ForbiddenLayerReferenceFixture::class.java),
+            ) shouldContainAll
+                listOf(
+                    "io/ktor/server/application/Application",
+                    "org/jetbrains/exposed/v1/core/Table",
+                    "org/apache/kafka/clients/producer/KafkaProducer",
                     "no/nav/syfo/narmestelederbehov/infrastructure/ExposedNarmestelederbehovReadRepository",
                 )
-            }
         }
 
         test("the capability guard distinguishes own and another capability infrastructure") {
             val layout = capabilityLayout()
             val narmestelederbehov = layout.capabilityContaining(FulfillNarmestelederbehovUseCase::class.java)
 
-            with(
-                forbiddenCapabilityInfrastructure(
-                    layout,
-                    narmestelederbehov,
-                    classBytes(OwnInfrastructureReferenceFixture::class.java),
-                ),
-            ) {
-                shouldBeEmpty()
-            }
-            with(
-                forbiddenCapabilityInfrastructure(
-                    layout,
-                    narmestelederbehov,
-                    classBytes(OtherInfrastructureReferenceFixture::class.java),
-                ),
-            ) {
-                shouldContain("no/nav/syfo/organisasjonstilgang/infrastructure/AltinnOrganizationAccess")
-            }
+            forbiddenCapabilityInfrastructure(
+                layout,
+                narmestelederbehov,
+                classBytes(OwnInfrastructureReferenceFixture::class.java),
+            ).shouldBeEmpty()
+            forbiddenCapabilityInfrastructure(
+                layout,
+                narmestelederbehov,
+                classBytes(OtherInfrastructureReferenceFixture::class.java),
+            ) shouldContainAll
+                listOf("no/nav/syfo/organisasjonstilgang/infrastructure/AltinnOrganizationAccess")
         }
     })
 

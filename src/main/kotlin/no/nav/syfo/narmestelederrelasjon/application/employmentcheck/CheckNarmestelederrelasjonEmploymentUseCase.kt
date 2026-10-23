@@ -38,8 +38,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
     private suspend fun check(claim: ClaimedEmploymentCheck): ClaimedCheckOutcome {
         val history = findEmploymentHistory(claim) ?: return ClaimedCheckOutcome.TIMEOUT
         val checkedAt = clock.instant()
-        val outcome = decide(claim, history, today = ruleDate(claim, checkedAt))
-        val completion = when (outcome) {
+        val completion = when (val outcome = decide(claim, history, today = ruleDate(claim, checkedAt))) {
             EmploymentCheckOutcome.REVOKED -> publishRevocation(claim, checkedAt)
             else -> Completion.Ready(outcome, checkedAt)
         }

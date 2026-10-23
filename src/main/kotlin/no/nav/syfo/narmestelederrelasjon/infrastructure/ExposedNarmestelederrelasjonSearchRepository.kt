@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.search.LinemanagerSearchCursor
@@ -12,6 +10,7 @@ import no.nav.syfo.narmestelederrelasjon.application.search.SearchManager
 import no.nav.syfo.narmestelederrelasjon.application.search.SearchName
 import no.nav.syfo.narmestelederrelasjon.application.search.SearchNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.search.SearchPerson
+import no.nav.syfo.platform.database.ioTransaction
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
 import org.jetbrains.exposed.v1.core.JoinType
@@ -35,7 +34,6 @@ import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.time.Clock
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -54,93 +52,91 @@ class ExposedNarmestelederrelasjonSearchRepository(
         val employeeFirstNameLower = employeePerson[PersonTable.fornavn].lowerCase()
         val employeeLastNameLower = employeePerson[PersonTable.etternavn].lowerCase()
 
-        return withContext(Dispatchers.IO) {
-            suspendTransaction(db = database) {
-                val joinedTables = NarmestelederTable
-                    .join(
-                        otherTable = employeePerson,
-                        joinType = JoinType.LEFT,
-                        onColumn = NarmestelederTable.sykmeldtFnr,
-                        otherColumn = employeePerson[PersonTable.fnr],
-                    )
-                    .join(
-                        otherTable = managerPerson,
-                        joinType = JoinType.LEFT,
-                        onColumn = NarmestelederTable.narmestelederFnr,
-                        otherColumn = managerPerson[PersonTable.fnr],
-                    )
+        return database.ioTransaction {
+            val joinedTables = NarmestelederTable
+                .join(
+                    otherTable = employeePerson,
+                    joinType = JoinType.LEFT,
+                    onColumn = NarmestelederTable.sykmeldtFnr,
+                    otherColumn = employeePerson[PersonTable.fnr],
+                )
+                .join(
+                    otherTable = managerPerson,
+                    joinType = JoinType.LEFT,
+                    onColumn = NarmestelederTable.narmestelederFnr,
+                    otherColumn = managerPerson[PersonTable.fnr],
+                )
 
-                joinedTables
-                    // Keep this projection restricted: index-only scans on person_fnr_names_idx require person columns
-                    // to be only fornavn, mellomnavn, and etternavn; do not reintroduce selectAll().
-                    .select(
-                        listOf(
-                            NarmestelederTable.id,
-                            NarmestelederTable.narmestelederId,
-                            NarmestelederTable.orgnummer,
-                            NarmestelederTable.aktivFom,
-                            NarmestelederTable.sykmeldtFnr,
-                            NarmestelederTable.narmestelederFnr,
-                            NarmestelederTable.narmestelederEpost,
-                            NarmestelederTable.narmestelederTelefonnummer,
-                            employeePerson[PersonTable.fornavn],
-                            employeePerson[PersonTable.mellomnavn],
-                            employeePerson[PersonTable.etternavn],
-                            employeeFirstNameLower,
-                            employeeLastNameLower,
-                            managerPerson[PersonTable.fornavn],
-                            managerPerson[PersonTable.mellomnavn],
-                            managerPerson[PersonTable.etternavn],
+            joinedTables
+                // Keep this projection restricted: index-only scans on person_fnr_names_idx require person columns
+                // to be only fornavn, mellomnavn, and etternavn; do not reintroduce selectAll().
+                .select(
+                    listOf(
+                        NarmestelederTable.id,
+                        NarmestelederTable.narmestelederId,
+                        NarmestelederTable.orgnummer,
+                        NarmestelederTable.aktivFom,
+                        NarmestelederTable.sykmeldtFnr,
+                        NarmestelederTable.narmestelederFnr,
+                        NarmestelederTable.narmestelederEpost,
+                        NarmestelederTable.narmestelederTelefonnummer,
+                        employeePerson[PersonTable.fornavn],
+                        employeePerson[PersonTable.mellomnavn],
+                        employeePerson[PersonTable.etternavn],
+                        employeeFirstNameLower,
+                        employeeLastNameLower,
+                        managerPerson[PersonTable.fornavn],
+                        managerPerson[PersonTable.mellomnavn],
+                        managerPerson[PersonTable.etternavn],
+                    ),
+                )
+                .where {
+                    query.toWhereClause(
+                        now,
+                        employeePerson,
+                        managerPerson,
+                        employeeFirstNameLower,
+                        employeeLastNameLower,
+                    )
+                }
+                .orderBy(
+                    employeeFirstNameLower to SortOrder.ASC_NULLS_LAST,
+                    employeeLastNameLower to SortOrder.ASC_NULLS_LAST,
+                    NarmestelederTable.id to SortOrder.ASC,
+                )
+                .limit(query.pageSize + 1)
+                .map { row ->
+                    NarmestelederrelasjonSearchRow(
+                        cursor = LinemanagerSearchCursor(
+                            firstName = row[employeeFirstNameLower],
+                            lastName = row[employeeLastNameLower],
+                            id = row[NarmestelederTable.id].value,
+                        ),
+                        linemanager = SearchNarmestelederrelasjon(
+                            id = row[NarmestelederTable.narmestelederId],
+                            orgNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
+                            activeFrom = row[NarmestelederTable.aktivFom].toInstant(),
+                            employee = SearchPerson(
+                                nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
+                                name = row.toName(
+                                    firstName = employeePerson[PersonTable.fornavn],
+                                    middleName = employeePerson[PersonTable.mellomnavn],
+                                    lastName = employeePerson[PersonTable.etternavn],
+                                ),
+                            ),
+                            manager = SearchManager(
+                                nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.narmestelederFnr]),
+                                name = row.toName(
+                                    firstName = managerPerson[PersonTable.fornavn],
+                                    middleName = managerPerson[PersonTable.mellomnavn],
+                                    lastName = managerPerson[PersonTable.etternavn],
+                                ),
+                                email = row[NarmestelederTable.narmestelederEpost],
+                                mobile = row[NarmestelederTable.narmestelederTelefonnummer],
+                            ),
                         ),
                     )
-                    .where {
-                        query.toWhereClause(
-                            now,
-                            employeePerson,
-                            managerPerson,
-                            employeeFirstNameLower,
-                            employeeLastNameLower,
-                        )
-                    }
-                    .orderBy(
-                        employeeFirstNameLower to SortOrder.ASC_NULLS_LAST,
-                        employeeLastNameLower to SortOrder.ASC_NULLS_LAST,
-                        NarmestelederTable.id to SortOrder.ASC,
-                    )
-                    .limit(query.pageSize + 1)
-                    .map { row ->
-                        NarmestelederrelasjonSearchRow(
-                            cursor = LinemanagerSearchCursor(
-                                firstName = row[employeeFirstNameLower],
-                                lastName = row[employeeLastNameLower],
-                                id = row[NarmestelederTable.id].value,
-                            ),
-                            linemanager = SearchNarmestelederrelasjon(
-                                id = row[NarmestelederTable.narmestelederId],
-                                orgNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
-                                activeFrom = row[NarmestelederTable.aktivFom].toInstant(),
-                                employee = SearchPerson(
-                                    nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
-                                    name = row.toName(
-                                        firstName = employeePerson[PersonTable.fornavn],
-                                        middleName = employeePerson[PersonTable.mellomnavn],
-                                        lastName = employeePerson[PersonTable.etternavn],
-                                    ),
-                                ),
-                                manager = SearchManager(
-                                    nationalIdentificationNumber = PersonalIdentificationNumber(row[NarmestelederTable.narmestelederFnr]),
-                                    name = row.toName(
-                                        firstName = managerPerson[PersonTable.fornavn],
-                                        middleName = managerPerson[PersonTable.mellomnavn],
-                                        lastName = managerPerson[PersonTable.etternavn],
-                                    ),
-                                    email = row[NarmestelederTable.narmestelederEpost],
-                                    mobile = row[NarmestelederTable.narmestelederTelefonnummer],
-                                ),
-                            ),
-                        )
-                    }
-            }
+                }
         }
     }
 

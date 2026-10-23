@@ -1,7 +1,6 @@
 package no.nav.syfo.sykmelding.infrastructure
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import no.nav.syfo.platform.database.ioTransaction
 import no.nav.syfo.sykmelding.application.PersistedSendtSykmeldingNarmestelederBrudd
 import no.nav.syfo.sykmelding.application.SendtSykmeldingNarmestelederBrudd
 import no.nav.syfo.sykmelding.application.SendtSykmeldingNarmestelederBruddRepository
@@ -14,7 +13,6 @@ import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.util.UUID
 
 object SendtSykmeldingNarmestelederBruddTable : Table("sendt_sykmelding_narmesteleder_brudd") {
@@ -35,29 +33,25 @@ class PostgresSendtSykmeldingNarmestelederBruddRepository(
     private val database: Database,
 ) : SendtSykmeldingNarmestelederBruddRepository {
 
-    override suspend fun findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmeldingNarmestelederBrudd? = withContext(Dispatchers.IO) {
-        suspendTransaction(db = database) {
-            SendtSykmeldingNarmestelederBruddTable
-                .selectAll()
-                .where { SendtSykmeldingNarmestelederBruddTable.sykmeldingId eq sykmeldingId }
-                .singleOrNull()
-                ?.toSendtSykmeldingNarmestelederBrudd()
-        }
+    override suspend fun findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmeldingNarmestelederBrudd? = database.ioTransaction {
+        SendtSykmeldingNarmestelederBruddTable
+            .selectAll()
+            .where { SendtSykmeldingNarmestelederBruddTable.sykmeldingId eq sykmeldingId }
+            .singleOrNull()
+            ?.toSendtSykmeldingNarmestelederBrudd()
     }
 
     override suspend fun insert(brudd: SendtSykmeldingNarmestelederBrudd) {
-        withContext(Dispatchers.IO) {
-            suspendTransaction(db = database) {
-                SendtSykmeldingNarmestelederBruddTable.insert {
-                    it[sykmeldingId] = brudd.sykmeldingId
-                    it[fnr] = brudd.fnr
-                    it[orgnummer] = brudd.orgnummer
-                    it[kafkaTopic] = brudd.kafkaTopic
-                    it[kafkaPartition] = brudd.kafkaPartition
-                    it[kafkaOffset] = brudd.kafkaOffset
-                    it[kilde] = brudd.kilde
-                    it[created] = brudd.created
-                }
+        database.ioTransaction {
+            SendtSykmeldingNarmestelederBruddTable.insert {
+                it[sykmeldingId] = brudd.sykmeldingId
+                it[fnr] = brudd.fnr
+                it[orgnummer] = brudd.orgnummer
+                it[kafkaTopic] = brudd.kafkaTopic
+                it[kafkaPartition] = brudd.kafkaPartition
+                it[kafkaOffset] = brudd.kafkaOffset
+                it[kilde] = brudd.kilde
+                it[created] = brudd.created
             }
         }
     }

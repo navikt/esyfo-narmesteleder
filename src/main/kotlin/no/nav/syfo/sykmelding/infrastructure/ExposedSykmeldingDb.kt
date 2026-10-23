@@ -2,7 +2,7 @@ package no.nav.syfo.sykmelding.infrastructure
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import no.nav.syfo.platform.database.ioTransaction
 import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.logEvent
 import no.nav.syfo.platform.observability.logger
@@ -16,7 +16,6 @@ import org.jetbrains.exposed.v1.javatime.CurrentTimestampWithTimeZone
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.slf4j.event.Level
 import java.time.LocalDate
@@ -83,9 +82,9 @@ class ExposedSykmeldingDb(
         private fun deleteBySykmeldingIds(sykmeldingIds: List<UUID>): Int = SendtSykmeldingTable.deleteWhere { SendtSykmeldingTable.sykmeldingId inList sykmeldingIds }
     }
 
-    override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) = withContext(dispatcher) {
+    override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) {
         try {
-            suspendTransaction(db = database) {
+            database.ioTransaction(dispatcher) {
                 // Preserve the legacy behavior: a failed batch is not retried within the adapter.
                 maxAttempts = 1
                 TransactionImpl.block()

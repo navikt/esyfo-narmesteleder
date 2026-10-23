@@ -2,7 +2,6 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.ClaimedEmploymentCheck
@@ -10,6 +9,7 @@ import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentC
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckStats
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentReconciliationRepository
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.SOURCE_OBSERVATION_WINDOW
+import no.nav.syfo.platform.database.ioTransaction
 import org.jetbrains.exposed.v1.core.Coalesce
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression
@@ -32,7 +32,6 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
@@ -55,28 +54,26 @@ class ExposedEmploymentReconciliationRepository(
 ) : EmploymentReconciliationRepository {
     override suspend fun seedMissing(limit: Int, now: Instant): Int {
         require(limit > 0) { "limit must be greater than zero" }
-        return withContext(dispatcher) {
-            suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-                // Each target column is paired with its value so the INSERT and SELECT lists cannot drift apart.
-                val values: List<Pair<Column<*>, Expression<*>>> = listOf(
-                    EmploymentReconciliationTable.narmestelederId to NarmestelederTable.narmestelederId,
-                    EmploymentReconciliationTable.status to
-                        QueryParameter(EmploymentCheckStatus.READY, EmploymentReconciliationTable.status.columnType),
-                    EmploymentReconciliationTable.nextCheckAt to firstCheck,
-                    EmploymentReconciliationTable.created to
-                        QueryParameter(now.atOffset(ZoneOffset.UTC), EmploymentReconciliationTable.created.columnType),
-                )
-                val missing = NarmestelederTable.join(
-                    otherTable = EmploymentReconciliationTable,
-                    joinType = JoinType.LEFT,
-                    onColumn = NarmestelederTable.narmestelederId,
-                    otherColumn = EmploymentReconciliationTable.narmestelederId,
-                ).select(values.map { it.second }).where {
-                    NarmestelederTable.aktivTom.isNull() and EmploymentReconciliationTable.narmestelederId.isNull()
-                }.orderBy(NarmestelederTable.narmestelederId to SortOrder.ASC).limit(limit)
+        return database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            // Each target column is paired with its value so the INSERT and SELECT lists cannot drift apart.
+            val values: List<Pair<Column<*>, Expression<*>>> = listOf(
+                EmploymentReconciliationTable.narmestelederId to NarmestelederTable.narmestelederId,
+                EmploymentReconciliationTable.status to
+                    QueryParameter(EmploymentCheckStatus.READY, EmploymentReconciliationTable.status.columnType),
+                EmploymentReconciliationTable.nextCheckAt to firstCheck,
+                EmploymentReconciliationTable.created to
+                    QueryParameter(now.atOffset(ZoneOffset.UTC), EmploymentReconciliationTable.created.columnType),
+            )
+            val missing = NarmestelederTable.join(
+                otherTable = EmploymentReconciliationTable,
+                joinType = JoinType.LEFT,
+                onColumn = NarmestelederTable.narmestelederId,
+                otherColumn = EmploymentReconciliationTable.narmestelederId,
+            ).select(values.map { it.second }).where {
+                NarmestelederTable.aktivTom.isNull() and EmploymentReconciliationTable.narmestelederId.isNull()
+            }.orderBy(NarmestelederTable.narmestelederId to SortOrder.ASC).limit(limit)
 
-                EmploymentReconciliationTable.insertIgnore(missing, columns = values.map { it.first }) ?: 0
-            }
+            EmploymentReconciliationTable.insertIgnore(missing, columns = values.map { it.first }) ?: 0
         }
     }
 
@@ -84,68 +81,66 @@ class ExposedEmploymentReconciliationRepository(
         require(limit > 0) { "limit must be greater than zero" }
         require(lease.isPositive() && lease.isFinite()) { "lease must be positive and finite" }
         val leaseUntil = now.plus(lease.toJavaDuration()).atOffset(ZoneOffset.UTC)
-        return withContext(dispatcher) {
-            suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-                val token = UUID.randomUUID()
-                val pending = comparisonPending(now)
-                val active = NarmestelederTable.aktivTom.isNull()
-                val eligibleRelation = if (revokeEnabled) active else active or pending
-                val due = EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC)
-                val readyDue = (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY) and
-                    if (revokeEnabled) {
-                        due or (EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE)
-                    } else {
-                        due
-                    }
-                val expiredClaim = (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and due
-                val claimed = EmploymentReconciliationTable.join(
-                    otherTable = NarmestelederTable,
-                    joinType = JoinType.INNER,
-                    onColumn = EmploymentReconciliationTable.narmestelederId,
-                    otherColumn = NarmestelederTable.narmestelederId,
-                ).select(
-                    EmploymentReconciliationTable.narmestelederId,
-                    NarmestelederTable.orgnummer,
-                    NarmestelederTable.sykmeldtFnr,
-                    EmploymentReconciliationTable.sourceRevocationObservedAt,
-                    pending,
-                ).where {
-                    eligibleRelation and (readyDue or expiredClaim)
-                }.orderBy(
-                    EmploymentReconciliationTable.nextCheckAt to SortOrder.ASC,
-                    EmploymentReconciliationTable.narmestelederId to SortOrder.ASC,
-                ).limit(limit)
-                    // Lock only the control rows, so Leesah upserts on narmeste_leder neither block nor get skipped.
-                    .forUpdate(
-                        ForUpdateOption.PostgreSQL.ForUpdate(
-                            ForUpdateOption.PostgreSQL.MODE.SKIP_LOCKED,
-                            EmploymentReconciliationTable,
-                        ),
-                    ).map { row ->
-                        ClaimedEmploymentCheck(
-                            narmesteLederId = row[EmploymentReconciliationTable.narmestelederId],
-                            organizationNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
-                            employeeIdent = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
-                            claimToken = token,
-                            claimedAt = now,
-                            sourceRevokedAt = row[EmploymentReconciliationTable.sourceRevocationObservedAt]
-                                .takeIf { !revokeEnabled && row[pending] }
-                                ?.toInstant(),
-                        )
-                    }
-                if (claimed.isNotEmpty()) {
-                    // The control rows are still locked; no external work occurs in this transaction.
-                    EmploymentReconciliationTable.update({
-                        EmploymentReconciliationTable.narmestelederId inList claimed.map { it.narmesteLederId }
-                    }) {
-                        it[status] = EmploymentCheckStatus.CLAIMED
-                        it[claimToken] = token
-                        it[nextCheckAt] = leaseUntil
-                    }
+        return database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+            val token = UUID.randomUUID()
+            val pending = comparisonPending(now)
+            val active = NarmestelederTable.aktivTom.isNull()
+            val eligibleRelation = if (revokeEnabled) active else active or pending
+            val due = EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC)
+            val readyDue = (EmploymentReconciliationTable.status eq EmploymentCheckStatus.READY) and
+                if (revokeEnabled) {
+                    due or (EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE)
+                } else {
+                    due
                 }
-                // suspendTransaction commits before this list leaves the repository.
-                claimed
+            val expiredClaim = (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and due
+            val claimed = EmploymentReconciliationTable.join(
+                otherTable = NarmestelederTable,
+                joinType = JoinType.INNER,
+                onColumn = EmploymentReconciliationTable.narmestelederId,
+                otherColumn = NarmestelederTable.narmestelederId,
+            ).select(
+                EmploymentReconciliationTable.narmestelederId,
+                NarmestelederTable.orgnummer,
+                NarmestelederTable.sykmeldtFnr,
+                EmploymentReconciliationTable.sourceRevocationObservedAt,
+                pending,
+            ).where {
+                eligibleRelation and (readyDue or expiredClaim)
+            }.orderBy(
+                EmploymentReconciliationTable.nextCheckAt to SortOrder.ASC,
+                EmploymentReconciliationTable.narmestelederId to SortOrder.ASC,
+            ).limit(limit)
+                // Lock only the control rows, so Leesah upserts on narmeste_leder neither block nor get skipped.
+                .forUpdate(
+                    ForUpdateOption.PostgreSQL.ForUpdate(
+                        ForUpdateOption.PostgreSQL.MODE.SKIP_LOCKED,
+                        EmploymentReconciliationTable,
+                    ),
+                ).map { row ->
+                    ClaimedEmploymentCheck(
+                        narmesteLederId = row[EmploymentReconciliationTable.narmestelederId],
+                        organizationNumber = OrganizationNumber(row[NarmestelederTable.orgnummer]),
+                        employeeIdent = PersonalIdentificationNumber(row[NarmestelederTable.sykmeldtFnr]),
+                        claimToken = token,
+                        claimedAt = now,
+                        sourceRevokedAt = row[EmploymentReconciliationTable.sourceRevocationObservedAt]
+                            .takeIf { !revokeEnabled && row[pending] }
+                            ?.toInstant(),
+                    )
+                }
+            if (claimed.isNotEmpty()) {
+                // The control rows are still locked; no external work occurs in this transaction.
+                EmploymentReconciliationTable.update({
+                    EmploymentReconciliationTable.narmestelederId inList claimed.map { it.narmesteLederId }
+                }) {
+                    it[status] = EmploymentCheckStatus.CLAIMED
+                    it[claimToken] = token
+                    it[nextCheckAt] = leaseUntil
+                }
             }
+            // The transaction commits before this list leaves the repository.
+            claimed
         }
     }
 
@@ -154,48 +149,44 @@ class ExposedEmploymentReconciliationRepository(
         outcome: EmploymentCheckOutcome,
         nextCheck: Instant,
         now: Instant,
-    ): Boolean = withContext(dispatcher) {
-        suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-            EmploymentReconciliationTable.update({
-                (EmploymentReconciliationTable.narmestelederId eq claim.narmesteLederId) and
-                    (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and
-                    (EmploymentReconciliationTable.claimToken eq claim.claimToken)
-            }) {
-                it[status] = EmploymentCheckStatus.READY
-                it[claimToken] = null
-                it[lastCheckedAt] = now.atOffset(ZoneOffset.UTC)
-                it[lastOutcome] = outcome
-                it[nextCheckAt] = nextCheck.atOffset(ZoneOffset.UTC)
-                if (outcome == EmploymentCheckOutcome.WOULD_REVOKE) {
-                    it[shadowWouldRevokeAt] = Coalesce(
-                        shadowWouldRevokeAt,
-                        QueryParameter(now.atOffset(ZoneOffset.UTC), shadowWouldRevokeAt.columnType),
-                    )
-                } else if (outcome == EmploymentCheckOutcome.VALID) {
-                    // Keeping the relation ends a run of would-revoke decisions; a failed lookup does not.
-                    it[shadowWouldRevokeAt] = null
-                }
-            } > 0
-        }
+    ): Boolean = database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+        EmploymentReconciliationTable.update({
+            (EmploymentReconciliationTable.narmestelederId eq claim.narmesteLederId) and
+                (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and
+                (EmploymentReconciliationTable.claimToken eq claim.claimToken)
+        }) {
+            it[status] = EmploymentCheckStatus.READY
+            it[claimToken] = null
+            it[lastCheckedAt] = now.atOffset(ZoneOffset.UTC)
+            it[lastOutcome] = outcome
+            it[nextCheckAt] = nextCheck.atOffset(ZoneOffset.UTC)
+            if (outcome == EmploymentCheckOutcome.WOULD_REVOKE) {
+                it[shadowWouldRevokeAt] = Coalesce(
+                    shadowWouldRevokeAt,
+                    QueryParameter(now.atOffset(ZoneOffset.UTC), shadowWouldRevokeAt.columnType),
+                )
+            } else if (outcome == EmploymentCheckOutcome.VALID) {
+                // Keeping the relation ends a run of would-revoke decisions; a failed lookup does not.
+                it[shadowWouldRevokeAt] = null
+            }
+        } > 0
     }
 
-    override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean = withContext(dispatcher) {
-        suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-            !EmploymentReconciliationTable.join(
-                otherTable = NarmestelederTable,
-                joinType = JoinType.INNER,
-                onColumn = EmploymentReconciliationTable.narmestelederId,
-                otherColumn = NarmestelederTable.narmestelederId,
-            ).select(EmploymentReconciliationTable.narmestelederId).where {
-                (EmploymentReconciliationTable.narmestelederId eq claim.narmesteLederId) and
-                    (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and
-                    (EmploymentReconciliationTable.claimToken eq claim.claimToken) and
-                    (EmploymentReconciliationTable.nextCheckAt greater now.atOffset(ZoneOffset.UTC)) and
-                    (NarmestelederTable.orgnummer eq claim.organizationNumber.value) and
-                    (NarmestelederTable.sykmeldtFnr eq claim.employeeIdent.value) and
-                    NarmestelederTable.aktivTom.isNull()
-            }.empty()
-        }
+    override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean = database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+        !EmploymentReconciliationTable.join(
+            otherTable = NarmestelederTable,
+            joinType = JoinType.INNER,
+            onColumn = EmploymentReconciliationTable.narmestelederId,
+            otherColumn = NarmestelederTable.narmestelederId,
+        ).select(EmploymentReconciliationTable.narmestelederId).where {
+            (EmploymentReconciliationTable.narmestelederId eq claim.narmesteLederId) and
+                (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and
+                (EmploymentReconciliationTable.claimToken eq claim.claimToken) and
+                (EmploymentReconciliationTable.nextCheckAt greater now.atOffset(ZoneOffset.UTC)) and
+                (NarmestelederTable.orgnummer eq claim.organizationNumber.value) and
+                (NarmestelederTable.sykmeldtFnr eq claim.employeeIdent.value) and
+                NarmestelederTable.aktivTom.isNull()
+        }.empty()
     }
 
     override fun recordSourceRevocation(narmesteLederId: UUID, revokedAt: Instant): Boolean = transaction(
@@ -226,27 +217,25 @@ class ExposedEmploymentReconciliationRepository(
         firstObservation
     }
 
-    override suspend fun stats(now: Instant): EmploymentCheckStats = withContext(dispatcher) {
-        suspendTransaction(db = database, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-            val shadowCutoff = now.minus(31, ChronoUnit.DAYS).atOffset(ZoneOffset.UTC)
-            val wouldRevoke = EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE
+    override suspend fun stats(now: Instant): EmploymentCheckStats = database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+        val shadowCutoff = now.minus(31, ChronoUnit.DAYS).atOffset(ZoneOffset.UTC)
+        val wouldRevoke = EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE
 
-            fun countActive(condition: Op<Boolean>): Long = EmploymentReconciliationTable.join(
-                otherTable = NarmestelederTable,
-                joinType = JoinType.INNER,
-                onColumn = EmploymentReconciliationTable.narmestelederId,
-                otherColumn = NarmestelederTable.narmestelederId,
-            ).selectAll().where {
-                NarmestelederTable.aktivTom.isNull() and condition
-            }.count()
+        fun countActive(condition: Op<Boolean>): Long = EmploymentReconciliationTable.join(
+            otherTable = NarmestelederTable,
+            joinType = JoinType.INNER,
+            onColumn = EmploymentReconciliationTable.narmestelederId,
+            otherColumn = NarmestelederTable.narmestelederId,
+        ).selectAll().where {
+            NarmestelederTable.aktivTom.isNull() and condition
+        }.count()
 
-            EmploymentCheckStats(
-                onlyShadowUnder31Days = countActive(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt greater shadowCutoff)),
-                onlyShadow31DaysOrMore = countActive(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt lessEq shadowCutoff)),
-                // Includes expired leases, like claimDue.
-                due = countActive(EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC)),
-            )
-        }
+        EmploymentCheckStats(
+            onlyShadowUnder31Days = countActive(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt greater shadowCutoff)),
+            onlyShadow31DaysOrMore = countActive(wouldRevoke and (EmploymentReconciliationTable.shadowWouldRevokeAt lessEq shadowCutoff)),
+            // Includes expired leases, like claimDue.
+            due = countActive(EmploymentReconciliationTable.nextCheckAt lessEq now.atOffset(ZoneOffset.UTC)),
+        )
     }
 }
 

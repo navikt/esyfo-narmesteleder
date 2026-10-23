@@ -567,10 +567,13 @@ SQL statement. For example, write flows, API queries and maintenance may have
 separate focused contracts over `nl_behov`.
 
 New and migrated repository adapters use Exposed DSL (`Table` and
-`suspendTransaction`), not new raw JDBC (`DatabaseInterface`) or Exposed DAO
-code. Existing JDBC/DAO implementations migrate when their adapter is touched.
-The separate broad migration remains follow-up work; moving a flow alone does
-not imply a schema, query-semantics or transaction change.
+`Database.ioTransaction`), not new raw JDBC (`DatabaseInterface`) or Exposed
+DAO code. The shared helper keeps blocking JDBC work on the configured
+coroutine context and delegates transaction handling to Exposed
+`suspendTransaction`. Do not duplicate `withContext(Dispatchers.IO)` around
+repository transactions. Existing JDBC/DAO implementations migrate when their
+adapter is touched. The separate broad migration remains follow-up work; moving
+a flow alone does not imply a schema, query-semantics or transaction change.
 
 A database transaction does not include Kafka, Dialogporten or another remote
 system. The use case owns and tests the order between those effects.

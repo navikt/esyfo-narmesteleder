@@ -9,7 +9,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRe
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
 import org.apache.kafka.clients.producer.KafkaProducer
-import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.v1.core.Table
 import java.lang.classfile.ClassFile
 import java.lang.classfile.constantpool.ClassEntry
 import java.lang.classfile.constantpool.Utf8Entry
@@ -49,7 +49,7 @@ class CapabilityArchitectureTest :
             )
 
             violations shouldContain "io/ktor/server/application/Application"
-            violations shouldContain "org/jetbrains/exposed/sql/Table"
+            violations shouldContain "org/jetbrains/exposed/v1/core/Table"
             violations shouldContain "org/apache/kafka/clients/producer/KafkaProducer"
             violations shouldContain
                 "no/nav/syfo/narmestelederbehov/infrastructure/ExposedNarmestelederbehovReadRepository"

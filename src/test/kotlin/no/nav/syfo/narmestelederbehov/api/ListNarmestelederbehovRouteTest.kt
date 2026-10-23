@@ -14,18 +14,13 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookupResult
+import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
-import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
-import no.nav.syfo.narmestelederbehov.application.OpenNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeNameRepository
 import no.nav.syfo.narmestelederbehov.application.narmestelederbehovDetails
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
-import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
@@ -44,7 +39,6 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
-import java.util.UUID
 
 class ListNarmestelederbehovRouteTest :
     FunSpec({
@@ -204,7 +198,7 @@ private class ListRouteFixture(
         repository = repository,
         organizationAccess = { _, _ -> access },
         employeeName = NarmestelederbehovEmployeeName(
-            repository,
+            NarmestelederbehovEmployeeNameRepository { id, name -> repository.savedNames += id to name },
         ) {
             unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
                 ?: EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up"))
@@ -223,15 +217,7 @@ private class ListRouteFixture(
     }
 }
 
-private class ListRouteRepository :
-    OpenNarmestelederbehovRepository,
-    NarmestelederbehovRepository {
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-    override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-    override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-    override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
-
+private class ListRouteRepository : ListNarmestelederbehovRepository {
     val rows = mutableListOf(routeDetails())
     val savedNames = mutableListOf<Pair<NarmestelederbehovId, BehovPersonName>>()
     var requestedLimit: Int? = null
@@ -251,21 +237,6 @@ private class ListRouteRepository :
         countCalls++
         return 42L
     }
-    override suspend fun findDetails(id: NarmestelederbehovId) = error("List must not read by id")
-    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) {
-        savedNames += id to name
-    }
-    override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("List must not read for fulfillment")
-    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("List must not look up open behov by employee")
-
-    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("List must not fulfill")
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("List must not complete dialogs")
-
-    override suspend fun markDialogCreated(
-        id: NarmestelederbehovId,
-        dialogId: UUID,
-        name: BehovPersonName?,
-    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }
 
 private fun routeDetails() = narmestelederbehovDetails(

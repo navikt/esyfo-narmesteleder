@@ -19,8 +19,12 @@ sealed interface GetNarmestelederbehovResult {
     data object PersonNotFound : GetNarmestelederbehovResult
 }
 
+fun interface GetNarmestelederbehovRepository {
+    suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails?
+}
+
 class GetNarmestelederbehovUseCase(
-    private val repository: NarmestelederbehovRepository,
+    private val repository: GetNarmestelederbehovRepository,
     private val organizationAccess: OrganizationAccess,
     private val employeeName: NarmestelederbehovEmployeeName,
 ) {

@@ -261,22 +261,11 @@ internal class SendDialogsFixture(batch: List<PendingNarmestelederbehovDialog>) 
     var markResult: MarkDialogCreatedResult = MarkDialogCreatedResult.Marked
     var mark: suspend () -> MarkDialogCreatedResult = { markResult }
     var fetch: suspend (Int) -> List<PendingNarmestelederbehovDialog> = { pending.take(100) }
-    private val repository = object : NarmestelederbehovRepository {
+    private val repository = object : SendPendingNarmestelederbehovDialogsRepository {
         override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> {
             queries += createdBefore to limit
             return fetch(queries.size)
         }
-
-        override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-        override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-        override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-        override suspend fun findDetails(id: NarmestelederbehovId) = error("Unexpected findDetails")
-        override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Unexpected saveEmployeeName")
-        override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("Unexpected findForFulfillment")
-        override suspend fun findOpenFor(employee: Employee) = error("Unexpected findOpenFor")
-        override suspend fun markFulfilled(id: NarmestelederbehovId) = error("Unexpected markFulfilled")
-        override suspend fun markDialogCompleted(id: NarmestelederbehovId) = error("Unexpected markDialogCompleted")
-        override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
 
         override suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?): MarkDialogCreatedResult {
             effects += "mark"

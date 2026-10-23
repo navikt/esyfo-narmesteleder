@@ -23,15 +23,11 @@ import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.linemanager
 import no.nav.syfo.manager
-import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
+import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDetails
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -56,7 +52,6 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
-import java.time.Instant
 import java.util.UUID
 
 class FulfillNarmestelederbehovRouteTest :
@@ -297,13 +292,7 @@ private class PutFixture {
     }
 }
 
-private class FakePutBehovRepository : NarmestelederbehovRepository {
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-    override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-    override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-    override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
-
+private class FakePutBehovRepository : FulfillNarmestelederbehovRepository {
     private val behov = mutableMapOf<NarmestelederbehovId, Narmestelederbehov>()
     val fulfilled = mutableListOf<NarmestelederbehovId>()
 
@@ -313,13 +302,7 @@ private class FakePutBehovRepository : NarmestelederbehovRepository {
         return id.value
     }
 
-    override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = null
-
-    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Fulfillment must not save employee name")
-
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov[id]
-
-    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("Fulfillment must not look up open behov")
 
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult {
         if (id !in behov) return MarkFulfilledResult.Missing
@@ -328,12 +311,6 @@ private class FakePutBehovRepository : NarmestelederbehovRepository {
     }
 
     override suspend fun markDialogCompleted(id: NarmestelederbehovId) = MarkDialogCompletedResult.Marked
-
-    override suspend fun markDialogCreated(
-        id: NarmestelederbehovId,
-        dialogId: UUID,
-        name: BehovPersonName?,
-    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }
 
 private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture) -> Unit) {

@@ -1,12 +1,21 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import kotlinx.coroutines.CancellationException
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 import java.time.Clock
+import java.time.Instant
+
+interface CompleteFulfilledNarmestelederbehovDialogsRepository {
+    /** Up to 100 fulfilled behov with dialogs, strictly older than [createdBefore], oldest first. */
+    suspend fun findFulfilledDialogs(createdBefore: Instant): List<NarmestelederbehovDialogReference>
+
+    suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult
+}
 
 class CompleteFulfilledNarmestelederbehovDialogsUseCase(
-    private val repository: NarmestelederbehovRepository,
+    private val repository: CompleteFulfilledNarmestelederbehovDialogsRepository,
     private val dialog: NarmestelederbehovDialog,
     private val clock: Clock,
 ) {

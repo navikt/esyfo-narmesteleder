@@ -1,12 +1,10 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
-import java.time.Instant
 import java.util.UUID
 
 internal class FakeBehovRepository(
@@ -16,20 +14,8 @@ internal class FakeBehovRepository(
     private val markResult: MarkFulfilledResult? = null,
     private val dialogStatusFailure: Throwable? = null,
     private val dialogStatusResult: MarkDialogCompletedResult = MarkDialogCompletedResult.Marked,
-) : NarmestelederbehovRepository {
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-    override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-    override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-    override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-    override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
-
-    override suspend fun findDetails(id: NarmestelederbehovId): NarmestelederbehovDetails? = null
-
-    override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) = error("Fulfillment must not save employee name")
-
+) : FulfillNarmestelederbehovRepository {
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov.also { effects += "load" }
-
-    override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("Fulfillment must not look up open behov")
 
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult {
         effects += "fulfilled"
@@ -42,12 +28,6 @@ internal class FakeBehovRepository(
         dialogStatusFailure?.let { throw it }
         return dialogStatusResult
     }
-
-    override suspend fun markDialogCreated(
-        id: NarmestelederbehovId,
-        dialogId: UUID,
-        name: BehovPersonName?,
-    ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
 }
 
 internal class FakeRelationEstablisher(

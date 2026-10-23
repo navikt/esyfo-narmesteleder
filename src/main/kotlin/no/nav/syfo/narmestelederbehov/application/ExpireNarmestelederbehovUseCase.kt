@@ -10,7 +10,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class ExpireNarmestelederbehovUseCase(
-    private val repository: NarmestelederbehovExpiryRepository,
+    private val repository: ExpireNarmestelederbehovRepository,
     private val settings: NarmestelederbehovExpirySettings,
     private val clock: Clock,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,

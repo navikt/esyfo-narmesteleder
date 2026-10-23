@@ -11,7 +11,6 @@ import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedOpenNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederrelasjon.application.lookup.HasActiveNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.search.NarmestelederrelasjonSearchQuery
@@ -55,7 +54,7 @@ class SendtSykmeldingOverviewFlowTest :
                 ExposedActiveNarmestelederrelasjonRepository(TestDB.exposedDatabase),
             ),
         )
-        val openBehovRepository = ExposedOpenNarmestelederbehovRepository(TestDB.exposedDatabase)
+        val openBehovRepository = ExposedNarmestelederbehovRepository(TestDB.exposedDatabase)
         val relationSearchRepository = ExposedNarmestelederrelasjonSearchRepository(TestDB.exposedDatabase)
         val activeSickLeaveQuery = NarmestelederrelasjonSearchQuery(
             orgNumber = organization,

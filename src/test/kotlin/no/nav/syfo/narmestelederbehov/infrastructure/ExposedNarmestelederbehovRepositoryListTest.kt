@@ -7,9 +7,9 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import java.time.Instant
 
-class ExposedOpenNarmestelederbehovRepositoryTest :
+class ExposedNarmestelederbehovRepositoryListTest :
     FunSpec({
-        val repository = ExposedOpenNarmestelederbehovRepository(TestDB.exposedDatabase)
+        val repository = ExposedNarmestelederbehovRepository(TestDB.exposedDatabase)
 
         beforeTest {
             TestDB.clearAllData()

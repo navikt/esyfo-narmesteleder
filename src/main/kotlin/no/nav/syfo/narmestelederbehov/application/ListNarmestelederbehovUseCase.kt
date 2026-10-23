@@ -33,7 +33,7 @@ sealed interface ListNarmestelederbehovResult {
 }
 
 class ListNarmestelederbehovUseCase(
-    private val repository: OpenNarmestelederbehovRepository,
+    private val repository: ListNarmestelederbehovRepository,
     private val organizationAccess: OrganizationAccess,
     private val employeeName: NarmestelederbehovEmployeeName,
 ) {

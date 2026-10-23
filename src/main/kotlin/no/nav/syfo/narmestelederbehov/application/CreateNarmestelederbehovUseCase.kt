@@ -10,13 +10,24 @@ import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 import java.util.UUID
 
+interface CreateNarmestelederbehovRepository {
+    /** Open statuses are BEHOV_CREATED and DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION. */
+    suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId>
+
+    /** Returns [CreateBehovResult.AlreadyExists] when the employee already has an open behov in the organization. */
+    suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult
+
+    /** Saves the dialog and employee name only while the behov is BEHOV_CREATED. */
+    suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?): MarkDialogCreatedResult
+}
+
 /**
  * Stores a new behov when the employee has an active sykmelding and no open behov in the organization.
  * A behov whose main organization cannot be resolved is still stored, with an error status and no dialog.
  */
 class CreateNarmestelederbehovUseCase(
     private val settings: NarmestelederbehovCreationSettings,
-    private val repository: NarmestelederbehovRepository,
+    private val repository: CreateNarmestelederbehovRepository,
     private val activeSykmelding: ActiveSykmeldingLookup,
     private val mainOrganization: EmployerMainOrganizationLookup,
     private val personLookup: EmployeePersonLookup,

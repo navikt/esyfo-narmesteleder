@@ -1,7 +1,13 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+
+fun interface NarmestelederbehovEmployeeNameRepository {
+    suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName)
+}
+
 class NarmestelederbehovEmployeeName(
-    private val repository: NarmestelederbehovRepository,
+    private val repository: NarmestelederbehovEmployeeNameRepository,
     private val employeeNameLookup: EmployeeNameLookup,
 ) {
     suspend fun resolve(behov: NarmestelederbehovDetails): EmployeeNameLookupResult {

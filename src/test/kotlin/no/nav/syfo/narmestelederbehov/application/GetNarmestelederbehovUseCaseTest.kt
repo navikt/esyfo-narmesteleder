@@ -6,7 +6,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -18,7 +17,6 @@ import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import java.time.Instant
 import java.util.UUID
 
 class GetNarmestelederbehovUseCaseTest :
@@ -112,34 +110,18 @@ private class ReadFixture(
     val organizationAccess = FakeOrganizationAccess(row?.organizationNumber, access, effects)
     var person: BehovPersonName? = null
     val savedNames = mutableListOf<BehovPersonName>()
-    private val repository = object : NarmestelederbehovRepository {
-        override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int) = error("Unexpected findPendingDialogs")
-        override suspend fun findFulfilledDialogs(createdBefore: Instant) = error("Unexpected findFulfilledDialogs")
-        override suspend fun findDialogsToExpire() = error("Unexpected findDialogsToExpire")
-        override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) = error("Unexpected markDialogExpired")
-        override suspend fun create(behov: NewNarmestelederbehov) = error("Unexpected create")
-
-        override suspend fun findDetails(id: NarmestelederbehovId) = row.also { effects += "read" }
-        override suspend fun saveEmployeeName(id: NarmestelederbehovId, name: BehovPersonName) {
-            effects += "save-name"
-            savedNames += name
-        }
-        override suspend fun findForFulfillment(id: NarmestelederbehovId) = error("GET must not use fulfillment lookup")
-        override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("GET must not look up open behov")
-        override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("GET must not write")
-        override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("GET must not write")
-
-        override suspend fun markDialogCreated(
-            id: NarmestelederbehovId,
-            dialogId: UUID,
-            name: BehovPersonName?,
-        ): MarkDialogCreatedResult = error("Unexpected markDialogCreated")
+    private val repository = GetNarmestelederbehovRepository { _ ->
+        row.also { effects += "read" }
+    }
+    private val employeeNameRepository = NarmestelederbehovEmployeeNameRepository { _, name ->
+        effects += "save-name"
+        savedNames += name
     }
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,
         organizationAccess = organizationAccess,
         employeeName = NarmestelederbehovEmployeeName(
-            repository
+            employeeNameRepository
         ) {
             effects += "person"
             unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }

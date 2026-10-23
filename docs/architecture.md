@@ -430,7 +430,7 @@ Use one small class for one meaningful business action or query. Name it
 
 ```kotlin
 class FulfillNarmestelederbehovUseCase(
-    private val repository: NarmestelederbehovRepository,
+    private val repository: FulfillNarmestelederbehovRepository,
     private val organizationAccess: OrganizationAccess,
     private val establishRelation: EstablishNarmestelederrelasjon,
     private val dialogporten: NarmestelederbehovDialog,
@@ -527,7 +527,7 @@ exceptions.
 A port is an interface requested by application code:
 
 ```kotlin
-interface NarmestelederbehovRepository {
+interface FulfillNarmestelederbehovRepository {
     suspend fun findForFulfillment(
         id: RequirementId,
     ): Narmestelederbehov?
@@ -537,16 +537,20 @@ interface NarmestelederbehovRepository {
 An adapter implements the port using a mechanism:
 
 ```kotlin
-class PostgresNarmestelederbehovRepository(
+class ExposedNarmestelederbehovRepository(
     private val database: Database,
-) : NarmestelederbehovRepository
+) : FulfillNarmestelederbehovRepository,
+    CreateNarmestelederbehovRepository
 ```
 
 Ports live in `application`. Adapters live in the owning module's
 `infrastructure` package. An adapter for an external system used by several
 modules calls the shared client in `integration`; see
-[`integration`](#integration). Name ports by capability and adapters by mechanism.
-Do not use `I` prefixes or generic `Impl` suffixes in migrated code.
+[`integration`](#integration). Give each use case a role-specific port with only
+the operations it needs. One persistence adapter may implement several such
+ports when they use the same table and transaction mechanism. Name ports by
+capability and adapters by mechanism. Do not use `I` prefixes or generic `Impl`
+suffixes in migrated code.
 
 ## Persistence and transactions
 

@@ -20,7 +20,6 @@ flowchart LR
     sendtTopic[teamsykmelding.syfo-sendt-sykmelding]
     sourceLeesah[teamsykmelding.syfo-narmesteleder-leesah]
     pdlLeesah[pdl.leesah-v1]
-    tasks[Background tasks]
 
     subgraph app[esyfo-narmesteleder]
         access[organisasjonstilgang]
@@ -28,7 +27,9 @@ flowchart LR
         relation[narmestelederrelasjon]
         sykmelding[sykmelding]
         statistics[narmestelederstatistikk]
+        tasks[Background tasks]
         db[(PostgreSQL)]
+        cache[(Valkey)]
     end
 
     external[PDL / Aareg / Ereg / Dinesykmeldte]
@@ -46,9 +47,9 @@ flowchart LR
     sourceLeesah -.-> behov
     sourceLeesah -.-> relation
     pdlLeesah -.-> relation
-    tasks --> behov
-    tasks --> relation
-    tasks --> sykmelding
+    tasks -.-> behov
+    tasks -.-> relation
+    tasks -.-> sykmelding
 
     behov --> access
     behov --> relation
@@ -67,15 +68,21 @@ flowchart LR
     relation --> db
     sykmelding --> db
     statistics --> db
+    access --> cache
+    relation --> cache
 
     relation --> commandTopic
     relation -.-> esyfoLeesah
 ```
 
 The database is shared physically, but table ownership follows the capability
-boundaries described in [Application architecture](architecture.md). In
-particular, `narmestelederstatistikk` reads private projections over tables
-owned by other capabilities and never writes to them.
+boundaries described in [Application architecture](architecture.md).
+`narmestelederstatistikk` reads private projections over tables owned by other
+capabilities and never writes to them. Relation search and behov expiry also
+read `sendt_sykmelding` through private read-only projections.
+
+Valkey caches Ereg organization data and PDL-derived person details used by
+organization access and relation flows.
 
 ## Runtime entry points
 
@@ -84,16 +91,16 @@ owned by other capabilities and never writes to them.
 | Trigger                                       | Capability                | Application entry point                      | Main data flow                                                                                      |
 | --------------------------------------------- | ------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `GET /api/v1/access/organizations`            | `organisasjonstilgang`    | `ListAccessibleOrganizationsUseCase`         | Resolve organizations available to the authenticated personnel manager through Altinn Tilganger.    |
-| `GET /api/v1/linemanager/requirement`         | `narmestelederbehov`      | `ListNarmestelederbehovUseCase`              | Check organization access, read open needs and resolve employee names.                              |
-| `GET /api/v1/linemanager/requirement/{id}`    | `narmestelederbehov`      | `GetNarmestelederbehovUseCase`               | Read one need, resolve the employee name and check organization access.                             |
+| `GET /api/v1/linemanager/requirement` | `narmestelederbehov` | `ListNarmestelederbehovUseCase` | Check organization access, read open needs, then resolve and persist missing employee names through PDL. |
+| `GET /api/v1/linemanager/requirement/{id}` | `narmestelederbehov` | `GetNarmestelederbehovUseCase` | Read one need, resolve and persist a missing employee name through PDL, then check organization access. This legacy order is tracked by [#602](https://github.com/navikt/esyfo-narmesteleder/issues/602). |
 | `PUT /api/v1/linemanager/requirement/{id}`    | `narmestelederbehov`      | `FulfillNarmestelederbehovUseCase`           | Check access, establish a relation, mark the need fulfilled and complete its Dialogporten dialog.   |
 | `POST /api/v1/linemanager`                    | `narmestelederrelasjon`   | `SubmitNarmestelederrelasjonUseCase`         | Check access, validate the proposed relation and publish an establishment command.                  |
-| `POST /api/v1/linemanager/revoke`             | `narmestelederrelasjon`   | `RevokeActiveNarmestelederrelasjonUseCase`   | Check access and submitted identity data, then publish a revocation command.                        |
+| `POST /api/v1/linemanager/revoke` | `narmestelederrelasjon` | `RevokeActiveNarmestelederrelasjonUseCase` | Check organization access, resolve the employee in PDL, validate the submitted last name and read the active relation before publishing. No active relation is treated as success. |
 | `POST /internal/api/v1/lookup`                | `narmestelederrelasjon`   | `LookupActiveNarmestelederUseCase`           | Read the active relation for an employee and organization.                                          |
 | `POST /internal/api/v1/linemanager/search`    | `narmestelederrelasjon`   | `SearchActiveNarmestelederrelasjonerUseCase` | Check organization access and search active relations.                                              |
 | `GET /internal/api/v1/employee/linemanager`   | `narmestelederrelasjon`   | `ListActiveNarmesteledereForEmployeeUseCase` | Read active relations for the authenticated employee.                                               |
-| `GET /internal/api/v1/linemanager/{id}`       | `narmestelederrelasjon`   | `GetNarmestelederrelasjonUseCase`            | Read a relation, check access and enrich the response with organization and active-sykmelding data. |
-| `DELETE /internal/api/v1/linemanager/{id}`    | `narmestelederrelasjon`   | `RevokeNarmestelederrelasjonUseCase`         | Read the relation, check access and publish a revocation command.                                   |
+| `GET /internal/api/v1/linemanager/{id}` | `narmestelederrelasjon` | `GetNarmestelederrelasjonUseCase` | Read the relation, check access, require an active sykmelding and enrich the response with the Ereg organization name. No active sykmelding returns 404. |
+| `DELETE /internal/api/v1/linemanager/{id}` | `narmestelederrelasjon` | `RevokeNarmestelederrelasjonUseCase` | Read the relation and publish a revocation. The employee or manager in the relation may revoke directly; other callers require organization access. |
 | `GET /internal/api/v1/linemanager/statistics` | `narmestelederstatistikk` | `GetNarmestelederstatistikkUseCase`          | Check organization access and aggregate a read model across behov, relation and sykmelding tables.  |
 
 Operational health, metrics, OpenAPI and Swagger endpoints belong to
@@ -105,7 +112,7 @@ Operational health, metrics, OpenAPI and Swagger endpoints belong to
 | ------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `teamsykmelding.syfo-sendt-sykmelding`     | `SendtSykmeldingKafkaConsumer`                   | Handles the employee's `riktigNarmesteLeder` answer. It creates a need when no answer exists, or publishes a relation revocation when the answer is `NEI`.                              |
 | `teamsykmelding.syfo-sendt-sykmelding`     | `PersistSendtSykmeldingConsumer`                 | Normalizes, deduplicates and persists sendt sykmelding records used by searches, statistics, expiry and retention. Leader-controlled and feature-flagged.                               |
-| `teamsykmelding.syfo-narmesteleder-leesah` | `LeesahNLKafkaConsumer`                          | Creates a need when a relation is deactivated and fulfils open needs when an active relation is observed.                                                                               |
+| `teamsykmelding.syfo-narmesteleder-leesah` | `LeesahNLKafkaConsumer` | Requests a need for qualifying employee-, manager-, personnel-manager- or LPS-triggered deactivations, and fulfils open needs when an active relation is observed. |
 | `teamsykmelding.syfo-narmesteleder-leesah` | `PersistNarmestelederRegisterFromLeesahConsumer` | Validates and stores the local relation register, registers persons for enrichment and republishes valid records to the team-esyfo Leesah topic. Leader-controlled and feature-flagged. |
 | `pdl.leesah-v1`                            | `PdlLeesahConsumer`                              | Refreshes names in the relation-person projection after relevant PDL name events. Leader-controlled and feature-flagged.                                                                |
 
@@ -121,6 +128,14 @@ Operational health, metrics, OpenAPI and Swagger endpoints belong to
 | Every pod, database claims with leases | `employment-check-seed` loop   | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates reconciliation work for active relations.                                                  |
 | Every pod, database claims with leases | `employment-check` loop        | `CheckNarmestelederrelasjonEmploymentUseCase` checks employment through Aareg and optionally publishes revocations.                                   |
 
+All background work is feature-flagged. `DIALOGPORTEN_TASK_ENABLED` controls
+`SendDialogTask` and `UpdateDialogTask`. `PersonEnrichmentTask` requires both
+that flag and `PERSON_ENRICHMENT_TASK_ENABLED` because it starts inside the
+Dialogporten branch. `BEHOV_MAINTENANCE_TASK_ENABLED` controls behov expiry and
+sykmelding retention. `EMPLOYMENT_CHECK_ENABLED` controls both employment
+loops, while publishing revocations additionally requires
+`EMPLOYMENT_CHECK_REVOKE_ENABLED`.
+
 ## Main write flows
 
 ### Sendt sykmelding creates a need
@@ -132,7 +147,7 @@ sequenceDiagram
     participant Sykmelding as SendtSykmeldingHandler
     participant Relation as HasActiveNarmestelederrelasjon
     participant Behov as CreateNarmestelederbehov
-    participant Upstream as Dinesykmeldte / Aareg / PDL
+    participant Upstream as Dinesykmeldte / PDL
     participant DB as PostgreSQL
     participant Dialog as Dialogporten
 
@@ -143,12 +158,18 @@ sequenceDiagram
     DB-->>Relation: Active relations
     alt No active relation
         Sykmelding->>Behov: Create need
-        Behov->>Upstream: Verify active sykmelding and resolve main organization
-        Behov->>DB: Insert active need if it does not already exist
-        opt Dialogporten creation succeeds immediately
+        Behov->>DB: Stop if an open need already exists
+        opt No sykmeldingsperiode covers today
+            Behov->>Upstream: Verify active sykmelding (Dinesykmeldte)
+        end
+        Note over Behov: Main organization comes from the sykmelding (juridiskOrgnummer), not Aareg
+        Behov->>DB: Insert need (partial unique index guards concurrent inserts)
+        opt Need was stored with a main organization
             Behov->>Upstream: Resolve optional person details
             Behov->>Dialog: Create dialog
-            Behov->>DB: Store dialog state
+            opt Dialog created
+                Behov->>DB: Store dialog state
+            end
         end
     else Active relation exists
         Sykmelding-->>Consumer: Skip creation
@@ -156,8 +177,10 @@ sequenceDiagram
 ```
 
 The database unique constraint prevents concurrent sources from creating more
-than one active need for the same employee and organization. Dialog creation
-can be completed later by `SendDialogTask`.
+than one active need for the same employee and organization. A behov stored
+without a main organization has an error status and no dialog. For a
+`BEHOV_CREATED` behov, failed dialog creation can be retried later by
+`SendDialogTask`.
 
 ### Fulfil a need and establish a relation
 
@@ -245,15 +268,19 @@ flowchart LR
     publish --> command[teamsykmelding.syfo-narmesteleder]
     command -.-> source[source Leesah processing]
     source -.-> register[Local relation register becomes inactive]
-    source -.-> behov[Create a new behov for deactivation events]
+    source -.->|Deactivated by employee, manager, personnel manager or LPS| behov[Request a new behov]
 ```
 
 The three triggers intentionally have different validation:
 
 - explicit revocation checks organization access and the relevant submitted or
-  stored relation data;
+  stored relation data, except that `DELETE /internal/api/v1/linemanager/{id}`
+  lets the employee or the manager in the relation revoke it without an
+  organization access check;
 - sendt sykmelding revocation trusts the event and records the processed brudd
-  to avoid duplicate publication;
+  after publishing, so a redelivered sykmelding is not published again once
+  the brudd is stored; a failure between publishing and storing can still
+  publish twice;
 - employment reconciliation never revokes after a failed Aareg lookup and
   publishes only when the revocation feature flag is enabled.
 
@@ -265,16 +292,12 @@ sequenceDiagram
     participant Consumer as PersistNarmestelederRegisterFromLeesahConsumer
     participant UseCase as PersistNarmestelederrelasjonerFromLeesahUseCase
     participant DB as PostgreSQL
-    participant Compare as Employment reconciliation
     participant Target as team-esyfo.syfo-narmesteleder-leesah
 
     Source-->>Consumer: Batch of relation events
     Consumer->>UseCase: Validated transport records
     UseCase->>UseCase: Reject invalid identifiers and fields
     UseCase->>DB: Upsert relations and involved persons
-    opt Source employment revocation is observed
-        UseCase->>Compare: Record source revocation for shadow comparison
-    end
     UseCase-->>Consumer: Valid persisted records
     Consumer->>Target: Republish records
     Consumer->>Source: Commit offsets
@@ -284,23 +307,34 @@ Persistence commits before republishing. If publication fails after the
 database commit, the batch is retried; downstream consumers must tolerate
 duplicates.
 
+Tombstones are forwarded without being stored. The event contract, status
+mapping and duplicate behavior are documented in
+[syfo-narmesteleder-leesah](kafka/syfo-narmesteleder-leesah.md).
+
 The separate `LeesahNLKafkaConsumer` reads the same source topic for the behov
 lifecycle:
 
 - an active relation fulfils the employee's open needs and completes their
   dialogs;
-- a deactivated relation requests a new need.
+- qualifying employee-, manager-, personnel-manager- and LPS-triggered
+  deactivations request a new need. Employment-ended and new-manager
+  deactivations do not.
+
+A qualifying request can still be skipped when behov persistence is disabled,
+there is already an open need, or the employee has no active sykmelding.
+Despite its name, `PERSIST_LEESAH_NL_BEHOV` controls behov creation from every
+source, including sendt sykmelding.
 
 ### Maintain the relation-person projection
 
 ```mermaid
 flowchart LR
-    relationBatch[Persisted Leesah relations] --> pending[(relation_person pending)]
+    relationBatch[Persisted Leesah relations] --> pending[(person: PENDING)]
     pdlEvent[PDL NAVN_V1 event] --> refresh[UpdateRelationPersonNamesUseCase]
     pending --> enrich[EnrichPendingRelationPersonsUseCase]
     refresh --> pdl[PDL bulk lookup]
     enrich --> pdl
-    pdl --> projection[(relation_person names)]
+    pdl --> projection[(person: names)]
 ```
 
 Leesah ingestion registers involved employees and managers. Names are filled
@@ -329,9 +363,18 @@ flowchart LR
 3. Pre-authorized internal machine lookup uses Azure AD client authorization
    and reads the relation register directly.
 
-`GetNarmestelederstatistikkUseCase` is the exceptional cross-table read model:
-it checks organization access, then reads private table projections over
-`nl_behov`, `narmeste_leder` and `sendt_sykmelding`.
+The behov GET endpoints are not currently read-only. When an employee name is
+missing, they resolve it through PDL and persist it in `nl_behov`. The list
+endpoint checks organization access first. The single-behov endpoint performs
+the name lookup and write before its organization-access check; this legacy
+ordering is tracked by
+[#602](https://github.com/navikt/esyfo-narmesteleder/issues/602).
+
+`GetNarmestelederstatistikkUseCase` is the widest cross-table read model: it
+checks organization access, then reads private table projections over
+`nl_behov`, `narmeste_leder` and `sendt_sykmelding`. Relation search
+(`hasActiveSickLeave`) and behov expiry also read `sendt_sykmelding` through
+private read-only projections.
 
 ## Failure and consistency boundaries
 

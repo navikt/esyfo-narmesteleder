@@ -537,20 +537,22 @@ interface FulfillNarmestelederbehovRepository {
 An adapter implements the port using a mechanism:
 
 ```kotlin
-class ExposedNarmestelederbehovRepository(
+class ExposedNarmestelederbehovFulfillmentRepository(
     private val database: Database,
 ) : FulfillNarmestelederbehovRepository,
-    CreateNarmestelederbehovRepository
+    FulfillNarmestelederbehovFromLeesahRepository
 ```
 
 Ports live in `application`. Adapters live in the owning module's
 `infrastructure` package. An adapter for an external system used by several
 modules calls the shared client in `integration`; see
 [`integration`](#integration). Give each use case a role-specific port with only
-the operations it needs. One persistence adapter may implement several such
-ports when they use the same table and transaction mechanism. Name ports by
-capability and adapters by mechanism. Do not use `I` prefixes or generic `Impl`
-suffixes in migrated code.
+the operations it needs. A persistence adapter may implement several related
+ports when they form a cohesive workflow and use the same table and transaction
+mechanism. Split table-wide adapters by responsibility when unrelated read,
+fulfillment or lifecycle operations would otherwise accumulate in one class.
+Name ports by capability and adapters by mechanism. Do not use `I` prefixes or
+generic `Impl` suffixes in migrated code.
 
 ## Persistence and transactions
 

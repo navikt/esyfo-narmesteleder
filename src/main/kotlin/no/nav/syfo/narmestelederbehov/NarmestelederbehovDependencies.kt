@@ -37,7 +37,9 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbe
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovFulfillmentRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovLifecycleRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovReadRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerLeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
@@ -57,16 +59,20 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
             frontendBaseUrl = settings.frontendBaseUrl,
         )
     }
-    single { ExposedNarmestelederbehovRepository(get<Database>()) } binds arrayOf(
-        CreateNarmestelederbehovRepository::class,
+    single { ExposedNarmestelederbehovReadRepository(get<Database>()) } binds arrayOf(
         GetNarmestelederbehovRepository::class,
         NarmestelederbehovEmployeeNameRepository::class,
         ListNarmestelederbehovRepository::class,
-        ExpireNarmestelederbehovRepository::class,
+    )
+    single { ExposedNarmestelederbehovFulfillmentRepository(get<Database>()) } binds arrayOf(
         FulfillNarmestelederbehovRepository::class,
         FulfillNarmestelederbehovFromLeesahRepository::class,
-        SendPendingNarmestelederbehovDialogsRepository::class,
         CompleteFulfilledNarmestelederbehovDialogsRepository::class,
+    )
+    single { ExposedNarmestelederbehovLifecycleRepository(get<Database>()) } binds arrayOf(
+        CreateNarmestelederbehovRepository::class,
+        SendPendingNarmestelederbehovDialogsRepository::class,
+        ExpireNarmestelederbehovRepository::class,
         ExpireNarmestelederbehovDialogsRepository::class,
     )
     single<NarmestelederbehovDialogExpiry> { DialogportenNarmestelederbehovDialogExpiry(get()) }

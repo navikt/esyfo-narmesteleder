@@ -10,6 +10,34 @@ import java.util.UUID
 
 internal const val SENDT_SYKMELDING_BRUDD_KILDE = "esyo-narmesteleder.arbeidstager.sykmelding.deaktivert"
 
+data class SendtSykmeldingNarmestelederBrudd(
+    val sykmeldingId: UUID,
+    val fnr: String,
+    val orgnummer: String,
+    val kafkaTopic: String,
+    val kafkaPartition: Int,
+    val kafkaOffset: Long,
+    val kilde: String,
+    val created: OffsetDateTime,
+)
+
+data class PersistedSendtSykmeldingNarmestelederBrudd(
+    val id: UUID,
+    val sykmeldingId: UUID,
+    val fnr: String,
+    val orgnummer: String,
+    val kafkaTopic: String,
+    val kafkaPartition: Int,
+    val kafkaOffset: Long,
+    val kilde: String,
+    val created: OffsetDateTime,
+)
+
+interface SendtSykmeldingNarmestelederBruddRepository {
+    suspend fun findBySykmeldingId(sykmeldingId: UUID): PersistedSendtSykmeldingNarmestelederBrudd?
+    suspend fun insert(brudd: SendtSykmeldingNarmestelederBrudd)
+}
+
 class NarmestelederBruddService(
     private val revokeNarmestelederrelasjon: RevokeNarmestelederrelasjonFromSendtSykmelding,
     private val bruddRepository: SendtSykmeldingNarmestelederBruddRepository,

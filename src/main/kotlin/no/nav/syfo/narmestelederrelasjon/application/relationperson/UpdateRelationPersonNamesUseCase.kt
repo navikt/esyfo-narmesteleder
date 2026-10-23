@@ -32,8 +32,9 @@ class UpdateRelationPersonNamesUseCase(
         return updateExistingPersons(relevantIdents, existingIdents)
     }
 
-    private fun relevantIdents(personidenter: List<String>): List<PersonalIdentificationNumber> =
-        personidenter.filter(PersonalIdentificationNumber::isValid).distinct().map(::PersonalIdentificationNumber)
+    private fun relevantIdents(personidenter: List<String>): List<PersonalIdentificationNumber> {
+        return personidenter.filter(PersonalIdentificationNumber::isValid).distinct().map(::PersonalIdentificationNumber)
+    }
 
     private fun completeWithoutExistingPersons(relevantIdents: List<PersonalIdentificationNumber>): Completed {
         logger.info(

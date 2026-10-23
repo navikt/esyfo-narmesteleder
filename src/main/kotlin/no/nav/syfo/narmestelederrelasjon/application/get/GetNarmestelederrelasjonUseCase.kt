@@ -41,8 +41,7 @@ class GetNarmestelederrelasjonUseCase(
     private suspend fun evaluateAccess(
         accessSubject: OrganizationAccessSubject,
         lookup: NarmestelederrelasjonLookup,
-    ): GetNarmestelederrelasjonResult? =
-        when (val access = organizationAccess.evaluate(accessSubject, lookup.organizationNumber)) {
+    ): GetNarmestelederrelasjonResult? = when (val access = organizationAccess.evaluate(accessSubject, lookup.organizationNumber)) {
             is OrganizationAccessResult.Granted -> null
             is OrganizationAccessResult.Unavailable -> GetNarmestelederrelasjonResult.UpstreamUnavailable(access.failure)
             is OrganizationAccessResult.Denied -> NotFound(NotFoundReason.ACCESS_DENIED, denialReason = access.reason).log()

@@ -7,15 +7,15 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import io.mockk.coEvery
-import io.mockk.coVerify
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederrelasjon.application.inOrder
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevocationInitiator
 import no.nav.syfo.narmestelederrelasjon.observability.LINEMANAGER_REVOKE_BY_ID_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -30,9 +30,8 @@ class RevokeNarmestelederrelasjonRouteTest :
 
             test("unavailable organization access returns 500 and logs once without publishing or counting") {
                 val failure = UpstreamFailure(UpstreamName("arbeidsgiver-altinn-tilganger"), UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))
-                coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns OrganizationAccessResult.Unavailable(failure)
-                coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                    TexasIntrospectionResponse(active = true, acr = "Level4", pid = "11111111111")
+                organizationAccess.result = OrganizationAccessResult.Unavailable(failure)
+                texasHttpClient.stubTokenX(pid = "11111111111")
                 val before = METRICS_REGISTRY.find(LINEMANAGER_REVOKE_BY_ID_TOTAL).counters().sumOf { it.count() }
                 assertSingleUpstreamFailureLog(upstream = failure.upstream.value) {
                     withTestApplication {
@@ -53,21 +52,31 @@ class RevokeNarmestelederrelasjonRouteTest :
                     published.single().employeeIdent shouldBe PersonalIdentificationNumber(employeeIdent)
                     published.single().initiator shouldBe RevocationInitiator.EMPLOYEE
                 }
-                coVerify(exactly = 0) { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) }
+                organizationAccess.calls shouldBe emptyList()
             }
 
-            test("accepts the relation's line manager without organization access") {
-                coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                    TexasIntrospectionResponse(active = true, acr = "Level4", pid = "10987654321")
+            test("accepts an authorized Maskinporten system user as LPS") {
+                texasHttpClient.stubMaskinportenSystemUser()
                 withTestApplication {
-                    client.delete(path(id.toString())) { bearerAuth(token()) }.status shouldBe HttpStatusCode.Accepted
+                    client.delete(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }.status shouldBe HttpStatusCode.Accepted
                 }
-                published.single().initiator shouldBe RevocationInitiator.LINEMANAGER
-                coVerify(exactly = 0) { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) }
+                published.single().initiator shouldBe RevocationInitiator.LPS
+                organizationAccess.calls.map { it.second } shouldBe listOf(OrganizationNumber("123456789"))
+            }
+
+            test("masks a rejected Maskinporten system user with the 404") {
+                texasHttpClient.stubMaskinportenSystemUser()
+                organizationAccess.result = OrganizationAccessResult.Denied(DenialReason.SYSTEM_USER_REJECTED)
+                withTestApplication {
+                    val response = client.delete(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }
+                    response.status shouldBe HttpStatusCode.NotFound
+                    response.bodyAsText() shouldContain """"message":"Linemanager relation not found""""
+                }
+                published.size shouldBe 0
             }
 
             test("accepts an already revoked relation without publishing") {
-                coEvery { repository.findRevocableById(id) } returns revocableLookup(isActive = false)
+                repository.revocableById = { revocableLookup(isActive = false) }
                 withTestApplication {
                     client.delete(path(id.toString())) { bearerAuth(token()) }.status shouldBe HttpStatusCode.Accepted
                 }
@@ -75,11 +84,9 @@ class RevokeNarmestelederrelasjonRouteTest :
             }
 
             test("returns the same 404 body for an unknown relation and denied access") {
-                coEvery { repository.findRevocableById(id) } returnsMany listOf(null, revocableLookup())
-                coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns
-                    OrganizationAccessResult.Denied(DenialReason.MISSING_RESOURCE_ACCESS)
-                coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                    TexasIntrospectionResponse(active = true, acr = "Level4", pid = "11111111111")
+                repository.revocableById = inOrder(null, revocableLookup())
+                organizationAccess.result = OrganizationAccessResult.Denied(DenialReason.MISSING_RESOURCE_ACCESS)
+                texasHttpClient.stubTokenX(pid = "11111111111")
                 withTestApplication {
                     val first = client.delete(path(id.toString())) { bearerAuth(token()) }
                     val second = client.delete(path(id.toString())) { bearerAuth(token()) }
@@ -100,26 +107,6 @@ class RevokeNarmestelederrelasjonRouteTest :
                     invalid.status shouldBe HttpStatusCode.BadRequest
                     invalid.bodyAsText() shouldContain """"message":"Invalid UUID format for id parameter""""
                     client.delete(path(id.toString())).status shouldBe HttpStatusCode.Unauthorized
-                }
-                published.size shouldBe 0
-            }
-
-            test("accepts an authorized Maskinporten system user") {
-                introspectMaskinporten()
-                withTestApplication {
-                    client.delete(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }.status shouldBe HttpStatusCode.Accepted
-                }
-                published.single().initiator shouldBe RevocationInitiator.LPS
-            }
-
-            test("masks a denied Maskinporten system user with the legacy 404") {
-                introspectMaskinporten()
-                coEvery { organizationAccess.evaluate(any(), OrganizationNumber("123456789")) } returns
-                    OrganizationAccessResult.Denied(DenialReason.SYSTEM_USER_REJECTED)
-                withTestApplication {
-                    val response = client.delete(path(id.toString())) { bearerAuth(token(MASKINPORTEN_ISSUER)) }
-                    response.status shouldBe HttpStatusCode.NotFound
-                    response.bodyAsText() shouldContain """"message":"Linemanager relation not found""""
                 }
                 published.size shouldBe 0
             }

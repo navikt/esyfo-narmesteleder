@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.application.leesah
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
@@ -13,7 +10,8 @@ import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentR
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.RecordSourceEmploymentRevocationUseCase
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.RecordingEmploymentCheckMetrics
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.RecordingEmploymentReconciliationRepository
-import org.slf4j.LoggerFactory
+import no.nav.syfo.platform.observability.ProductionLogRecord
+import no.nav.syfo.platform.observability.withProductionLogs
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -94,7 +92,7 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
             test("skips a record where $reason and does not call the repository") {
                 val logged = captureInvalidRecordLogs { useCase.execute(listOf(record(relasjon))).shouldBeEmpty() }
 
-                logged.single().fields()["validation_reason"] shouldBe reason
+                logged.single()["validation_reason"] shouldBe reason
                 repository.calls.shouldBeEmpty()
                 metrics.upserted.shouldBeEmpty()
                 metrics.invalid shouldBe 1
@@ -108,16 +106,16 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
         }
 
         test("logs only the register record id and Kafka position of an invalid record") {
-            val invalid = record(relasjon(sykmeldtFnr = "123"), partition = 3, offset = 42)
+            val invalid = record(relasjon(sykmeldtFnr = "1234567890X"), partition = 3, offset = 42)
 
             val event = captureInvalidRecordLogs { useCase.execute(listOf(invalid)) }.single()
 
-            val fields = event.fields()
+            val fields = event.fields
             fields["event_type"] shouldBe "nl_register_record_invalid"
             fields["narmesteleder_id"] shouldBe invalid.relasjon.narmestelederId.toString()
             fields["partition"] shouldBe 3
-            fields["offset"] shouldBe 42L
-            val logged = event.formattedMessage + fields
+            fields["offset"] shouldBe 42
+            val logged = event.serialized
             logged shouldNotContain invalid.relasjon.sykmeldtFnr
             logged shouldNotContain invalid.relasjon.orgnummer
             logged shouldNotContain invalid.relasjon.narmestelederFnr
@@ -135,23 +133,10 @@ class PersistNarmestelederrelasjonerFromLeesahUseCaseTest :
         }
     })
 
-private fun captureInvalidRecordLogs(block: () -> Unit): List<ILoggingEvent> {
-    val appender = ListAppender<ILoggingEvent>().apply { start() }
-    val logger = LoggerFactory.getLogger(PersistNarmestelederrelasjonerFromLeesahUseCase::class.java) as Logger
-    val previousLevel = logger.level
-    logger.level = Level.WARN
-    logger.addAppender(appender)
-    try {
-        block()
-        return appender.list.toList()
-    } finally {
-        logger.detachAppender(appender)
-        logger.level = previousLevel
-        appender.stop()
-    }
+private suspend fun captureInvalidRecordLogs(block: () -> Unit): List<ProductionLogRecord> = withProductionLogs(PersistNarmestelederrelasjonerFromLeesahUseCase::class.java, Level.WARN) { capture ->
+    block()
+    capture.logs
 }
-
-private fun ILoggingEvent.fields() = keyValuePairs.associate { it.key to it.value }
 
 private fun record(relasjon: LeesahNarmestelederrelasjon, partition: Int = 0, offset: Long = 0) = LeesahNarmestelederrelasjonRecord(partition = partition, offset = offset, relasjon = relasjon)
 

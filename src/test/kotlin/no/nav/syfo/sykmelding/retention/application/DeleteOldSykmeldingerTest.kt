@@ -1,19 +1,14 @@
 package no.nav.syfo.sykmelding.retention.application
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.OutputStreamAppender
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import net.logstash.logback.encoder.LogstashEncoder
-import org.slf4j.LoggerFactory
-import java.io.ByteArrayOutputStream
+import no.nav.syfo.platform.observability.ProductionLogCapture
+import no.nav.syfo.platform.observability.ProductionLogs
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -22,38 +17,10 @@ import java.time.ZoneOffset
 class DeleteOldSykmeldingerTest :
     FunSpec({
         val clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC)
-        val logOutput = ByteArrayOutputStream()
-        val logger = LoggerFactory.getLogger(DeleteOldSykmeldinger::class.java) as Logger
-        val originalLevel = logger.level
-        val originalAdditive = logger.isAdditive
-        val encoder = LogstashEncoder().apply {
-            context = logger.loggerContext
-            start()
-        }
-        val appender = OutputStreamAppender<ILoggingEvent>().apply {
-            context = logger.loggerContext
-            this.encoder = encoder
-            setOutputStream(logOutput)
-            start()
-        }
-
-        beforeSpec {
-            logger.level = Level.INFO
-            logger.isAdditive = false
-            logger.addAppender(appender)
-        }
-
-        afterSpec {
-            logger.detachAppender(appender)
-            logger.level = originalLevel
-            logger.isAdditive = originalAdditive
-            appender.stop()
-            encoder.stop()
-        }
-
-        beforeTest {
-            logOutput.reset()
-        }
+        val productionLogs = extension(ProductionLogs(DeleteOldSykmeldinger::class.java, Level.INFO))
+        lateinit var logOutput: ProductionLogCapture
+        beforeTest { logOutput = productionLogs.capture() }
+        afterTest { logOutput.close() }
 
         test("deletes batches until the repository has no old sykmeldinger") {
             val meterRegistry = SimpleMeterRegistry()
@@ -80,11 +47,11 @@ class DeleteOldSykmeldingerTest :
 
 private fun MeterRegistry.deletedSykmeldinger(): Double = counter(SykmeldingRetentionMetrics.DELETED_OLD_SYKMELDINGER).count()
 
-private fun assertCompletedCleanupLog(logOutput: ByteArrayOutputStream, deletedCount: Int) {
-    val logLines = logOutput.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
+private fun assertCompletedCleanupLog(logOutput: ProductionLogCapture, deletedCount: Int) {
+    val logLines = logOutput.logs
     logLines shouldHaveSize 1
 
-    val logRecord = jacksonObjectMapper().readTree(logLines.single())
+    val logRecord = logLines.single().json
     logRecord["level"].asText() shouldBe "INFO"
     logRecord["logger_name"].asText() shouldBe DeleteOldSykmeldinger::class.java.name
     logRecord["message"].asText() shouldBe "Sykmelding retention cleanup completed"

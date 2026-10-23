@@ -7,15 +7,22 @@ import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.util.LogbackMDCAdapter
 import ch.qos.logback.core.Appender
+import ch.qos.logback.core.AppenderBase
+import ch.qos.logback.core.OutputStreamAppender
+import ch.qos.logback.core.encoder.Encoder
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.module.kotlin.convertValue
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.listeners.AfterSpecListener
 import io.kotest.core.listeners.BeforeSpecListener
 import io.kotest.core.spec.Spec
-import no.nav.esyfo.observability.testkit.LogCapture
-import no.nav.esyfo.observability.testkit.captureLogs
+import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import org.slf4j.LoggerFactory
 
 internal const val PRODUCTION_JSON_APPENDER = "stdout_json"
 private const val PRODUCTION_LOGBACK_CONFIG = "src/main/resources/logback.xml"
+private val CONTRACT_CATALOG_FIELDS = listOf("event_type", "error_code", "operation", "exception_type", "rejection_reason")
+private val logMapper = jacksonObjectMapper()
 
 /** A fresh Logback context configured from the production logback.xml. Callers must [LoggerContext.stop] it. */
 internal fun productionLoggerContext(): LoggerContext = LoggerContext().apply {
@@ -34,10 +41,12 @@ internal fun productionLoggerContext(): LoggerContext = LoggerContext().apply {
 
 internal fun LoggerContext.productionJsonAppender(): Appender<ILoggingEvent> = requireNotNull(getLogger(Logger.ROOT_LOGGER_NAME).getAppender(PRODUCTION_JSON_APPENDER))
 
-internal fun Logger.captureProductionLogs(): LogCapture = captureLogs(this, PRODUCTION_JSON_APPENDER)
+/** Captures this logger's events encoded by its context's production JSON appender. */
+internal fun Logger.captureProductionLogs(): ProductionLogCapture = ProductionLogCapture(listOf(this), loggerContext.productionJsonAppender())
 
 /**
  * Routes the named application loggers through the production Logback encoder, as docs/logging.md requires.
+ * [restore] puts back each logger's level, additivity and appenders.
  *
  * Register it spec-wide with `val productionLogs = extension(ProductionLogs(Owner::class.java))`, or call
  * [install]/[restore] around a single test.
@@ -50,7 +59,6 @@ internal class ProductionLogs(
     constructor(owner: Class<*>, level: Level = Level.TRACE) : this(listOf(owner.name), level)
 
     val loggers: List<Logger> = loggerNames.map { LoggerFactory.getLogger(it) as Logger }
-    val logger: Logger get() = loggers.first()
 
     private var installation: Installation? = null
 
@@ -77,7 +85,8 @@ internal class ProductionLogs(
         current.context.stop()
     }
 
-    fun capture(): LogCapture = logger.captureProductionLogs()
+    /** Captures events from every installed logger, in emission order, until the capture is closed. */
+    fun capture(): ProductionLogCapture = ProductionLogCapture(loggers, checkNotNull(installation) { "Production logs are not installed" }.appender)
 
     override suspend fun beforeSpec(spec: Spec) = install()
 
@@ -90,12 +99,16 @@ internal class ProductionLogs(
     )
 }
 
-/** Routes [owner]'s logs through the production Logback encoder for the duration of [block]. */
-internal suspend fun withProductionLogs(owner: Class<*>, block: suspend (LogCapture) -> Unit) {
-    val productionLogs = ProductionLogs(owner)
+/** Routes [owner]'s logs at [level] through the production Logback encoder for the duration of [block]. */
+internal suspend fun <T> withProductionLogs(
+    owner: Class<*>,
+    level: Level = Level.TRACE,
+    block: suspend (ProductionLogCapture) -> T,
+): T {
+    val productionLogs = ProductionLogs(owner, level)
     productionLogs.install()
     try {
-        productionLogs.capture().use { block(it) }
+        return productionLogs.capture().use { block(it) }
     } finally {
         productionLogs.restore()
     }
@@ -109,4 +122,87 @@ internal inline fun <T> withProductionLogger(name: String, block: (Logger) -> T)
     } finally {
         context.stop()
     }
+}
+
+/** Records encoded by the production JSON encoder. They remain readable after [close]. */
+internal class ProductionLogCapture(
+    private val loggers: List<Logger>,
+    productionAppender: Appender<ILoggingEvent>,
+) : AutoCloseable {
+    private val recorder: EncodingRecorder
+
+    init {
+        require(productionAppender is OutputStreamAppender<ILoggingEvent>) { "The production appender must be an OutputStreamAppender" }
+        val encoder = requireNotNull(productionAppender.encoder) { "The production appender has no encoder" }
+        check(encoder.isStarted) { "The production encoder must already be started" }
+        recorder = EncodingRecorder(encoder).apply {
+            context = productionAppender.context
+            start()
+        }
+        loggers.forEach { it.addAppender(recorder) }
+    }
+
+    /** Serialized JSON lines. */
+    val records: List<String> get() = recorder.snapshot()
+
+    /**
+     * Parsed records. Every record carrying an `event_type` is first checked against the [RuntimeLogContract] schema,
+     * and no record may carry `logging_context_invalid`. The catalog is built from the captured records, so event
+     * names are not checked against a closed catalog; validate [records] with an explicit catalog for that.
+     */
+    val logs: List<ProductionLogRecord>
+        get() = records.also(::assertRuntimeLogContract).map(::ProductionLogRecord)
+
+    override fun close() {
+        loggers.forEach { it.detachAppender(recorder) }
+        recorder.stop()
+    }
+}
+
+/** One captured record, decoded from the production JSON encoder. */
+internal class ProductionLogRecord(val serialized: String) {
+    val json: JsonNode = logMapper.readTree(serialized)
+
+    /** Root fields, including structured key-value pairs. JSON integers decode as [Int] when they fit. */
+    val fields: Map<String, Any?> = logMapper.convertValue(json)
+
+    val level: Level get() = Level.toLevel(json.path("level").asText(), null)
+    val message: String get() = json.path("message").asText()
+    val loggerName: String get() = json.path("logger_name").asText()
+    val eventType: String? get() = fields["event_type"] as String?
+
+    /** The logged throwable's message, read from the first `stack_trace` line, or null without a throwable. */
+    val throwableMessage: String?
+        get() = (fields["stack_trace"] as String?)?.lineSequence()?.first()?.substringAfter(": ", "")
+
+    operator fun get(field: String): Any? = fields[field]
+
+    override fun toString(): String = serialized
+}
+
+private fun assertRuntimeLogContract(records: List<String>) {
+    val parsed = records.map(logMapper::readTree)
+    parsed.forEachIndexed { index, record ->
+        check(!record.has("logging_context_invalid")) { "Record ${index + 1} has an invalid log context" }
+    }
+    val events = records.filterIndexed { index, _ -> parsed[index].has("event_type") }
+    if (events.isEmpty()) return
+    val catalog = CONTRACT_CATALOG_FIELDS.associateWith { field ->
+        parsed.mapNotNull { record -> record[field]?.takeIf(JsonNode::isTextual)?.asText() }.toSet()
+    }.filterValues { it.isNotEmpty() }
+    RuntimeLogContract(catalog).assertValid(events)
+}
+
+private class EncodingRecorder(private val encoder: Encoder<ILoggingEvent>) : AppenderBase<ILoggingEvent>() {
+    private val encoded = mutableListOf<String>()
+
+    override fun append(event: ILoggingEvent) {
+        // Freeze lazy MDC and message fields while the emitting thread still has its context.
+        event.prepareForDeferredProcessing()
+        synchronized(encoded) {
+            encoded += encoder.encode(event).decodeToString().trimEnd('\r', '\n')
+        }
+    }
+
+    fun snapshot(): List<String> = synchronized(encoded) { encoded.toList() }
 }

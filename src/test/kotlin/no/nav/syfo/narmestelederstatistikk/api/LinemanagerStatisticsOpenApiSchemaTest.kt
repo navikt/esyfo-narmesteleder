@@ -2,7 +2,8 @@ package no.nav.syfo.narmestelederstatistikk.api
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import org.yaml.snakeyaml.Yaml
+import no.nav.syfo.platform.api.INTERNAL_OPENAPI
+import no.nav.syfo.platform.api.openApiSchemas
 import kotlin.reflect.full.memberProperties
 
 class LinemanagerStatisticsOpenApiSchemaTest :
@@ -17,11 +18,4 @@ class LinemanagerStatisticsOpenApiSchemaTest :
         }
     })
 
-private fun statisticsSchemas(): Map<*, *> {
-    val yamlText = LinemanagerStatisticsOpenApiSchemaTest::class.java.classLoader
-        .getResource("openapi/internal-documentation.yaml")
-        ?.readText()
-        ?: error("Missing internal OpenAPI documentation")
-    val root = Yaml().load<Map<String, Any>>(yamlText)
-    return (root["components"] as Map<*, *>)["schemas"] as Map<*, *>
-}
+private fun statisticsSchemas(): Map<*, *> = openApiSchemas(INTERNAL_OPENAPI)

@@ -24,8 +24,8 @@ class NarmestelederLeesahSchemaTest :
                 messageProperties.map { it.name }
         }
 
-        test("schema nullability matches the message") {
-            messageProperties.forEach { property ->
+        messageProperties.forEach { property ->
+            test("schema nullability of ${property.name} matches the message") {
                 val allowsNull = schemaProperties[property.name]["type"].typeNames().contains("null")
                 Pair(property.name, allowsNull) shouldBe Pair(property.name, property.returnType.isMarkedNullable)
             }

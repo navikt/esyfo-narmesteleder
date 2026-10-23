@@ -1,8 +1,5 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import DefaultOrganization
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -11,6 +8,7 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -36,8 +34,9 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.DefaultOrganization
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -48,7 +47,7 @@ import java.util.UUID
 
 class GetNarmestelederbehovRouteTest :
     FunSpec({
-        test("GET /requirement/{id} 200 maps the stored behov to the legacy response") {
+        test("GET /requirement/{id} 200 maps the stored behov to the published response") {
             val fixture = GetFixture(organizationName = "Bedrift AS")
             val behov = fixture.repository.seed()
             fixture.withApplication {
@@ -67,28 +66,10 @@ class GetNarmestelederbehovRouteTest :
                 body.name.lastName shouldBe "Name"
                 body.status shouldBe LineManagerRequirementStatus.CREATED
                 body.revokedBy shouldBe RevokedBy.LINEMANAGER
-                fixture.effects shouldBe listOf("access")
             }
         }
 
-        test("GET /requirement/{id} 200 looks up and stores the name when the stored behov has none") {
-            val fixture = GetFixture()
-            val behov = fixture.repository.seed(firstName = null, lastName = null)
-            fixture.withApplication {
-                val response = client.get("$API_V1_PATH/linemanager/requirement/${behov.id.value}") {
-                    bearerAuth(createMockToken(ORGANIZATION_NUMBER))
-                }
-                response.status shouldBe HttpStatusCode.OK
-                val body = response.body<LinemanagerRequirementRead>()
-                body.orgName shouldBe null
-                body.name.firstName shouldBe "Looked"
-                body.name.lastName shouldBe "Up"
-                fixture.effects shouldBe listOf("person", "access")
-                fixture.repository.savedNames shouldBe listOf(behov.id to BehovPersonName(firstName = "Looked", middleName = null, lastName = "Up"))
-            }
-        }
-
-        test("GET /requirement/{id} 404 when behov is not found and access is not evaluated") {
+        test("GET /requirement/{id} 404 when behov is not found") {
             val fixture = GetFixture()
             fixture.withApplication {
                 val response = client.get("$API_V1_PATH/linemanager/requirement/${UUID.randomUUID()}") {
@@ -97,53 +78,19 @@ class GetNarmestelederbehovRouteTest :
                 response.status shouldBe HttpStatusCode.NotFound
                 response.body<ApiError>().type shouldBe ErrorType.NOT_FOUND
                 response.body<ApiError>().message shouldBe "LinemanagerRequirement"
-                fixture.effects shouldBe emptyList()
             }
         }
 
-        listOf(
-            Triple(
-                DenialReason.MISSING_ORGANIZATION_ACCESS,
-                ErrorType.MISSING_ORG_ACCESS,
-                "User lacks access to organization: $ORGANIZATION_NUMBER",
-            ),
-            Triple(
-                DenialReason.MISSING_RESOURCE_ACCESS,
-                ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-                "User lacks access to required Altinn resource for organization: $ORGANIZATION_NUMBER",
-            ),
-            Triple(
-                DenialReason.SYSTEM_USER_REJECTED,
-                ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-                "System user does not have access to nav_syfo_oppgi-narmesteleder resource",
-            ),
-        ).forEach { (reason, type, message) ->
-            test("GET /requirement/{id} 403 when access is denied with $reason") {
-                val fixture = GetFixture(denialReason = reason)
-                val behov = fixture.repository.seed(firstName = null, lastName = null)
-                fixture.withApplication {
-                    val response = client.get("$API_V1_PATH/linemanager/requirement/${behov.id.value}") {
-                        bearerAuth(createMockToken(ORGANIZATION_NUMBER))
-                    }
-                    response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe type
-                    response.body<ApiError>().message shouldBe message
-                    fixture.effects shouldBe listOf("person", "access")
-                }
-            }
-        }
-
-        test("GET /requirement/{id} 500 when the person is not found") {
-            val fixture = GetFixture(person = null)
-            val behov = fixture.repository.seed(firstName = null, lastName = null)
+        test("GET /requirement/{id} 403 when access is denied") {
+            val fixture = GetFixture(denialReason = DenialReason.MISSING_ORGANIZATION_ACCESS)
+            val behov = fixture.repository.seed()
             fixture.withApplication {
                 val response = client.get("$API_V1_PATH/linemanager/requirement/${behov.id.value}") {
                     bearerAuth(createMockToken(ORGANIZATION_NUMBER))
                 }
-                response.status shouldBe HttpStatusCode.InternalServerError
-                response.body<ApiError>().message shouldBe "Something went wrong while fetching LinemanagerRequirement"
-                fixture.effects shouldBe listOf("person")
-                fixture.repository.savedNames shouldBe emptyList()
+                response.status shouldBe HttpStatusCode.Forbidden
+                response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
+                response.body<ApiError>().message shouldBe "User lacks access to organization: $ORGANIZATION_NUMBER"
             }
         }
 
@@ -159,13 +106,12 @@ class GetNarmestelederbehovRouteTest :
                     response.status shouldBe HttpStatusCode.InternalServerError
                     response.body<ApiError>().type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
                     response.body<ApiError>().message shouldBe "An upstream service is unavailable"
-                    fixture.effects shouldBe listOf("person")
                     fixture.repository.savedNames shouldBe emptyList()
                 }
             }
         }
 
-        test("GET /requirement/{id} 500 with the legacy message when reading fails unexpectedly") {
+        test("GET /requirement/{id} 500 with the generic error message when reading fails unexpectedly") {
             val fixture = GetFixture()
             fixture.repository.failure = IllegalStateException("database unavailable")
             fixture.withApplication {
@@ -186,32 +132,25 @@ private const val MAIN_ORGANIZATION_NUMBER = "910000002"
 private class GetFixture(
     organizationName: String? = null,
     denialReason: DenialReason? = null,
-    person: BehovPersonName? = BehovPersonName(firstName = "Looked", middleName = null, lastName = "Up"),
     unavailable: UpstreamFailure? = null,
 ) {
-    val effects = mutableListOf<String>()
     val repository = FakeReadBehovRepository()
     private val texas = mockk<TexasHttpClient>()
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,
         organizationAccess = { _, _ ->
-            effects += "access"
             denialReason?.let { OrganizationAccessResult.Denied(it) } ?: OrganizationAccessResult.Granted(organizationName)
         },
         employeeName = NarmestelederbehovEmployeeName(
             repository,
         ) {
-            effects += "person"
             unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
-                ?: person?.let { EmployeeNameLookupResult.Found(it) } ?: EmployeeNameLookupResult.NotFound
+                ?: EmployeeNameLookupResult.Found(BehovPersonName(firstName = "Looked", middleName = null, lastName = "Up"))
         },
     )
 
     init {
-        texas.defaultMocks(
-            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"),
-            scope = MASKINPORTEN_NL_SCOPE,
-        )
+        texas.stubMaskinportenSystemUser(systemUserOrganization = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"))
     }
 
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {

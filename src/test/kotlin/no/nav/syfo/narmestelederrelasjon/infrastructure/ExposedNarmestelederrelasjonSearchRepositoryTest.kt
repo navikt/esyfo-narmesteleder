@@ -13,7 +13,6 @@ import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
 import java.time.Instant
@@ -31,9 +30,7 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
         val orgNumber = OrganizationNumber("123456789")
 
         beforeTest {
-            TestDB.clearNarmestelederData()
-            TestDB.clearPersonData()
-            TestDB.clearSendtSykmeldingData()
+            TestDB.clearAllData()
         }
 
         context("search") {
@@ -41,9 +38,9 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
                 val employeeFnr = "12345678910"
                 val managerFnr = "10987654321"
                 val narmestelederId = UUID.randomUUID()
-                insertPerson(employeeFnr, firstName = "Ola", middleName = "Mellom", lastName = "Nordmann")
-                insertPerson(managerFnr, firstName = "Kari", lastName = "Nordmann")
-                insertRelation(
+                insertSearchPerson(employeeFnr, firstName = "Ola", middleName = "Mellom", lastName = "Nordmann")
+                insertSearchPerson(managerFnr, firstName = "Kari", lastName = "Nordmann")
+                insertSearchRelation(
                     employeeFnr = employeeFnr,
                     managerFnr = managerFnr,
                     email = "kari@example.com",
@@ -80,7 +77,7 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
             }
 
             test("keeps active relations when person rows are missing and returns null names") {
-                insertRelation(
+                insertSearchRelation(
                     employeeFnr = "12345678910",
                     managerFnr = "10987654321",
                 )
@@ -101,26 +98,26 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
             test("filters on orgnumber, manager fnr, activeTom null and activeFrom not in the future") {
                 val expectedEmployeeFnr = "12345678910"
                 val expectedManagerFnr = "10987654321"
-                insertRelation(
+                insertSearchRelation(
                     employeeFnr = expectedEmployeeFnr,
                     managerFnr = expectedManagerFnr,
                 )
-                insertRelation(
+                insertSearchRelation(
                     employeeFnr = "12345678911",
                     managerFnr = expectedManagerFnr,
                     orgnummer = "987654321",
                 )
-                insertRelation(
+                insertSearchRelation(
                     employeeFnr = "12345678912",
                     managerFnr = expectedManagerFnr,
                     aktivTom = now.minusDays(1),
                 )
-                insertRelation(
+                insertSearchRelation(
                     employeeFnr = "12345678913",
                     managerFnr = expectedManagerFnr,
                     aktivFom = now.plusDays(1),
                 )
-                insertRelation(
+                insertSearchRelation(
                     employeeFnr = "12345678914",
                     managerFnr = "10987654322",
                 )
@@ -138,11 +135,11 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
 
             test("filters on employee national identification number") {
                 val expectedEmployeeFnr = "12345678910"
-                insertRelation(
+                insertSearchRelation(
                     employeeFnr = expectedEmployeeFnr,
                     managerFnr = "10987654321",
                 )
-                insertRelation(
+                insertSearchRelation(
                     employeeFnr = "12345678911",
                     managerFnr = "10987654321",
                 )
@@ -163,12 +160,12 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
                 val managerFnr = "10987654321"
                 val otherEmployeeFnr = "12345678911"
                 val otherManagerFnr = "10987654322"
-                insertPerson(employeeFnr, firstName = "Ola", lastName = "Nordmann")
-                insertPerson(managerFnr, firstName = "Kari", lastName = "Lunde")
-                insertPerson(otherEmployeeFnr, firstName = "Anne", lastName = "Hansen")
-                insertPerson(otherManagerFnr, firstName = "Ola", lastName = "Bjerke")
-                insertRelation(employeeFnr = employeeFnr, managerFnr = managerFnr)
-                insertRelation(employeeFnr = otherEmployeeFnr, managerFnr = otherManagerFnr)
+                insertSearchPerson(employeeFnr, firstName = "Ola", lastName = "Nordmann")
+                insertSearchPerson(managerFnr, firstName = "Kari", lastName = "Lunde")
+                insertSearchPerson(otherEmployeeFnr, firstName = "Anne", lastName = "Hansen")
+                insertSearchPerson(otherManagerFnr, firstName = "Ola", lastName = "Bjerke")
+                insertSearchRelation(employeeFnr = employeeFnr, managerFnr = managerFnr)
+                insertSearchRelation(employeeFnr = otherEmployeeFnr, managerFnr = otherManagerFnr)
 
                 val results = repository.search(
                     NarmestelederrelasjonSearchQuery(
@@ -184,8 +181,8 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
 
             test("treats LIKE wildcard characters in name searches as literals") {
                 val employeeFnr = "12345678910"
-                insertPerson(employeeFnr, firstName = "Ola", lastName = "Nordmann")
-                insertRelation(employeeFnr = employeeFnr, managerFnr = "10987654321")
+                insertSearchPerson(employeeFnr, firstName = "Ola", lastName = "Nordmann")
+                insertSearchRelation(employeeFnr = employeeFnr, managerFnr = "10987654321")
 
                 val results = repository.search(
                     NarmestelederrelasjonSearchQuery(
@@ -202,8 +199,8 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
                 val nationalIdentificationNumber = PersonalIdentificationNumber("12345678910")
                 val employeeFnr = "12345678911"
                 val managerFnr = "10987654321"
-                insertRelation(employeeFnr = nationalIdentificationNumber.value, managerFnr = managerFnr)
-                insertRelation(employeeFnr = employeeFnr, managerFnr = nationalIdentificationNumber.value)
+                insertSearchRelation(employeeFnr = nationalIdentificationNumber.value, managerFnr = managerFnr)
+                insertSearchRelation(employeeFnr = employeeFnr, managerFnr = nationalIdentificationNumber.value)
 
                 val results = repository.search(
                     NarmestelederrelasjonSearchQuery(
@@ -230,7 +227,7 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
                     revokedInFutureEmployeeFnr,
                     noSickLeaveEmployeeFnr,
                 ).forEach {
-                    insertRelation(employeeFnr = it, managerFnr = "10987654321")
+                    insertSearchRelation(employeeFnr = it, managerFnr = "10987654321")
                 }
                 val today = now.toLocalDate()
                 insertSendtSykmelding(fnr = activeEmployeeFnr, tom = today)
@@ -287,30 +284,30 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
             }
 
             test("sorts employee names case-insensitively by first name, last name, and relation id") {
-                val benteId = insertRelation(
+                val benteId = insertSearchRelation(
                     employeeFnr = "12345678910",
                     managerFnr = "10987654321",
                 )
-                val firstAdaId = insertRelation(
+                val firstAdaId = insertSearchRelation(
                     employeeFnr = "12345678911",
                     managerFnr = "10987654321",
                 )
-                val secondAdaId = insertRelation(
+                val secondAdaId = insertSearchRelation(
                     employeeFnr = "12345678912",
                     managerFnr = "10987654321",
                 )
-                val adaSolId = insertRelation(
+                val adaSolId = insertSearchRelation(
                     employeeFnr = "12345678913",
                     managerFnr = "10987654321",
                 )
-                val missingPersonId = insertRelation(
+                val missingPersonId = insertSearchRelation(
                     employeeFnr = "12345678914",
                     managerFnr = "10987654321",
                 )
-                insertPerson("12345678910", firstName = "Bente", lastName = "Andersen")
-                insertPerson("12345678911", firstName = "Ada", lastName = "Lund")
-                insertPerson("12345678912", firstName = "ada", lastName = "lund")
-                insertPerson("12345678913", firstName = "ADA", lastName = "Sol")
+                insertSearchPerson("12345678910", firstName = "Bente", lastName = "Andersen")
+                insertSearchPerson("12345678911", firstName = "Ada", lastName = "Lund")
+                insertSearchPerson("12345678912", firstName = "ada", lastName = "lund")
+                insertSearchPerson("12345678913", firstName = "ADA", lastName = "Sol")
 
                 val results = repository.search(
                     NarmestelederrelasjonSearchQuery(
@@ -324,39 +321,39 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
             }
 
             test("paginates stably through equal and missing employee names") {
-                val benteId = insertRelation(
+                val benteId = insertSearchRelation(
                     employeeFnr = "12345678910",
                     managerFnr = "10987654321",
                 )
-                val firstAdaId = insertRelation(
+                val firstAdaId = insertSearchRelation(
                     employeeFnr = "12345678911",
                     managerFnr = "10987654321",
                 )
-                val secondAdaId = insertRelation(
+                val secondAdaId = insertSearchRelation(
                     employeeFnr = "12345678912",
                     managerFnr = "10987654321",
                 )
-                val adaWithoutLastNameId = insertRelation(
+                val adaWithoutLastNameId = insertSearchRelation(
                     employeeFnr = "12345678913",
                     managerFnr = "10987654321",
                 )
-                val secondAdaWithoutLastNameId = insertRelation(
+                val secondAdaWithoutLastNameId = insertSearchRelation(
                     employeeFnr = "12345678914",
                     managerFnr = "10987654321",
                 )
-                val firstMissingPersonId = insertRelation(
+                val firstMissingPersonId = insertSearchRelation(
                     employeeFnr = "12345678915",
                     managerFnr = "10987654321",
                 )
-                val secondMissingPersonId = insertRelation(
+                val secondMissingPersonId = insertSearchRelation(
                     employeeFnr = "12345678916",
                     managerFnr = "10987654321",
                 )
-                insertPerson("12345678910", firstName = "Bente", lastName = "Andersen")
-                insertPerson("12345678911", firstName = "Ada", lastName = "Lund")
-                insertPerson("12345678912", firstName = "ada", lastName = "lund")
-                insertPerson("12345678913", firstName = "Ada")
-                insertPerson("12345678914", firstName = "ada")
+                insertSearchPerson("12345678910", firstName = "Bente", lastName = "Andersen")
+                insertSearchPerson("12345678911", firstName = "Ada", lastName = "Lund")
+                insertSearchPerson("12345678912", firstName = "ada", lastName = "lund")
+                insertSearchPerson("12345678913", firstName = "Ada")
+                insertSearchPerson("12345678914", firstName = "ada")
 
                 val firstPage = repository.search(
                     NarmestelederrelasjonSearchQuery(
@@ -405,25 +402,14 @@ class ExposedNarmestelederrelasjonSearchRepositoryTest :
         }
     })
 
-private fun insertPerson(
+private fun insertSearchPerson(
     fnr: String,
     firstName: String? = null,
     middleName: String? = null,
     lastName: String? = null,
-) {
-    transaction(TestDB.exposedDatabase) {
-        PersonTable.insert {
-            it[PersonTable.fnr] = fnr
-            it[PersonTable.status] = "ENRICHED"
-            it[PersonTable.fornavn] = firstName
-            it[PersonTable.mellomnavn] = middleName
-            it[PersonTable.etternavn] = lastName
-            it[PersonTable.foedselsdato] = LocalDate.parse("1990-01-01")
-        }
-    }
-}
+) = insertPerson(fnr, firstName = firstName, middleName = middleName, lastName = lastName, birthDate = LocalDate.parse("1990-01-01"))
 
-private fun insertRelation(
+private fun insertSearchRelation(
     employeeFnr: String,
     managerFnr: String,
     orgnummer: String = "123456789",
@@ -432,19 +418,17 @@ private fun insertRelation(
     email: String = "leder@example.com",
     mobile: String = "99999999",
     narmestelederId: UUID = UUID.randomUUID(),
-): Int = transaction(TestDB.exposedDatabase) {
-    NarmestelederTable.insertAndGetId {
-        it[NarmestelederTable.narmestelederId] = narmestelederId
-        it[NarmestelederTable.orgnummer] = orgnummer
-        it[sykmeldtFnr] = employeeFnr
-        it[narmestelederFnr] = managerFnr
-        it[narmestelederTelefonnummer] = mobile
-        it[narmestelederEpost] = email
-        it[arbeidsgiverForskutterer] = true
-        it[NarmestelederTable.aktivFom] = aktivFom
-        it[NarmestelederTable.aktivTom] = aktivTom
-    }.value
-}
+): Int = insertRelation(
+    narmestelederId = narmestelederId,
+    employeeIdent = employeeFnr,
+    managerIdent = managerFnr,
+    organizationNumber = orgnummer,
+    activeFrom = aktivFom,
+    activeTo = aktivTom,
+    email = email,
+    mobile = mobile,
+    employerAdvancesPay = true,
+)
 
 private object SendtSykmeldingSeedTable : Table("sendt_sykmelding") {
     val sykmeldingId = javaUUID("sykmelding_id")

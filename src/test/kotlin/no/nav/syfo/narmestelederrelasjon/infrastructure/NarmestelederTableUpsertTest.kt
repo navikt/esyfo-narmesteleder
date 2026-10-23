@@ -1,9 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import faker
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
+import no.nav.syfo.faker
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.leesah.NarmestelederrelasjonUpsert
@@ -19,7 +19,7 @@ import java.util.UUID
 class NarmestelederTableUpsertTest :
     FunSpec({
         beforeTest {
-            TestDB.clearNarmestelederData()
+            TestDB.clearAllData()
         }
 
         test("NarmestelederTable mapping matches the database schema") {

@@ -5,13 +5,12 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.pdl.Foedselsdato
-import no.nav.syfo.integration.pdl.GetPersonBolkResponse
 import no.nav.syfo.integration.pdl.Ident
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.integration.pdl.PDL
-import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.integration.pdl.PdlPerson
 import no.nav.syfo.integration.pdl.PersonResponse
+import no.nav.syfo.integration.pdl.StubPdlClient
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
@@ -27,12 +26,7 @@ class PdlEmployeePersonLookupTest :
         val names = listOf(Navn("Test", "Middle", "Employee"), Navn("Previous", null, "Name"))
         val person = PdlPerson(PersonResponse(names), listOf(Ident(employeeIdent.value, Ident.GRUPPE_IDENT_FNR)))
 
-        fun lookup(result: UpstreamResult<PdlPerson?>) = PdlEmployeePersonLookup(
-            object : PdlClient {
-                override suspend fun getPerson(ident: String): UpstreamResult<PdlPerson?> = result
-                override suspend fun getPersonBolk(idents: List<String>): UpstreamResult<GetPersonBolkResponse> = error("Not used")
-            },
-        )
+        fun lookup(result: UpstreamResult<PdlPerson?>) = PdlEmployeePersonLookup(StubPdlClient(result))
 
         test("maps the first name and the first birth date") {
             val birthDates = listOf(Foedselsdato(LocalDate.of(1990, 1, 2)), Foedselsdato(LocalDate.of(1980, 3, 4)))
@@ -46,9 +40,13 @@ class PdlEmployeePersonLookupTest :
                 EmployeePersonLookupResult.Found(EmployeePerson(BehovPersonName("Test", "Middle", "Employee"), null))
         }
 
-        test("not found and missing name or folkeregisterident give NotFound") {
-            listOf(null, person.copy(person = PersonResponse(emptyList())), person.copy(identer = listOf(Ident("actor", "AKTORID")))).forEach {
-                lookup(UpstreamResult.Success(it)).find(employeeIdent) shouldBe EmployeePersonLookupResult.NotFound
+        listOf(
+            "no person" to null,
+            "a missing name" to person.copy(person = PersonResponse(emptyList())),
+            "a missing folkeregisterident" to person.copy(identer = listOf(Ident("actor", "AKTORID"))),
+        ).forEach { (case, response) ->
+            test("$case gives NotFound") {
+                lookup(UpstreamResult.Success(response)).find(employeeIdent) shouldBe EmployeePersonLookupResult.NotFound
             }
         }
 

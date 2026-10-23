@@ -6,7 +6,6 @@ import no.nav.syfo.TestDB
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.leesah.validated
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.narmestelederLeesahKafkaMessage
-import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
@@ -15,19 +14,13 @@ class ExposedLeesahNarmestelederrelasjonRepositoryTest :
         val repository = ExposedLeesahNarmestelederrelasjonRepository(TestDB.exposedDatabase)
 
         beforeTest {
-            TestDB.clearNarmestelederData()
-            TestDB.clearPersonData()
+            TestDB.clearAllData()
         }
 
         test("stores every relation and inserts missing persons as pending in one call") {
             val first = narmestelederLeesahKafkaMessage().toLeesahNarmestelederrelasjon().validated()
             val second = narmestelederLeesahKafkaMessage().toLeesahNarmestelederrelasjon().validated()
-            transaction(TestDB.exposedDatabase) {
-                PersonTable.insert {
-                    it[fnr] = "12345678901"
-                    it[status] = "ACTIVE"
-                }
-            }
+            insertPerson("12345678901", status = "ACTIVE")
 
             repository.upsertAll(listOf(first, second), listOf("12345678901", "10987654321").map(::PersonalIdentificationNumber))
 

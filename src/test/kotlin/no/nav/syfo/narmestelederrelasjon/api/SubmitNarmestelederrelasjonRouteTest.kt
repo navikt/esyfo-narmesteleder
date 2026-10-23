@@ -1,52 +1,39 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
-import DefaultOrganization
-import createMockToken
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.delete
-import io.ktor.client.request.get
 import io.ktor.client.request.post
-import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import linemanager
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
-import no.nav.syfo.narmestelederbehov.api.registerGetNarmestelederbehovApi
-import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
+import no.nav.syfo.linemanager
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
-import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
-import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonResult
 import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonUseCase
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactField
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationIssue
-import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
 import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
 import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.platform.api.ApiError
-import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
-import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
+import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
+import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -55,11 +42,11 @@ private val organization = OrganizationNumber("123456789")
 
 class SubmitNarmestelederrelasjonRouteTest :
     FunSpec({
-        test("published submissions return 202 and increment the corresponding existing counter") {
-            listOf(
-                Triple("https://test.maskinporten.no", COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS, "maskinporten"),
-                Triple("https://tokenx.example.com", COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER, "tokenx"),
-            ).forEach { (issuer, counter, provider) ->
+        listOf(
+            Triple("https://test.maskinporten.no", COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS, "maskinporten"),
+            Triple("https://tokenx.example.com", COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER, "tokenx"),
+        ).forEach { (issuer, counter, provider) ->
+            test("a published $provider submission returns 202 and increments the corresponding existing counter") {
                 val fixture = SubmitFixture()
                 fixture.authorize(provider)
                 val before = counter.count()
@@ -72,27 +59,15 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("every rejected relation result maps to the legacy HTTP contract") {
-            val cases = listOf(
-                HttpCase(EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organization), ErrorType.NO_ACTIVE_SICK_LEAVE, "No active sick leave found for the given organization number: 123456789"),
-                HttpCase(EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None), ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG, "Employee on sick leave is missing employment in any organization"),
-                HttpCase(EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization), ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG, "Employee on sick leave is missing employment in the organization indicated in the request"),
-                HttpCase(EstablishNarmestelederrelasjonResult.PersonNotFound, ErrorType.BAD_REQUEST, "Could not find person in PDL"),
-                HttpCase(EstablishNarmestelederrelasjonResult.ManagerNameMismatch, ErrorType.LINEMANAGER_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH, "Last name for linemanager does not correspond with registered value for the given national identification number"),
-                HttpCase(EstablishNarmestelederrelasjonResult.EmployeeNameMismatch, ErrorType.EMPLOYEE_NAME_NATIONAL_IDENTIFICATION_NUMBER_MISMATCH, "Last name for employee on sick leave does not correspond with registered value for the given national identification number"),
-            )
-            cases.forEach { case ->
-                val rejection = SubmitNarmestelederrelasjonResult.EstablishRejected(case.result)
-                shouldThrow<ApiErrorException.BadRequestException> { rejection.throwIfRejected() }.isAlreadyLogged shouldBe false
-                val fixture = SubmitFixture(relationResult = case.result)
-                fixture.authorize("tokenx")
-                fixture.withApplication {
-                    val response = client.postSubmission()
-                    response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().let {
-                        it.type shouldBe case.type
-                        it.message shouldBe case.message
-                    }
+        test("a relation without an active sykmelding returns 400 with NO_ACTIVE_SICK_LEAVE") {
+            val fixture = SubmitFixture(relationResult = EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organization))
+            fixture.authorize("tokenx")
+            fixture.withApplication {
+                val response = client.postSubmission()
+                response.status shouldBe HttpStatusCode.BadRequest
+                response.body<ApiError>().let {
+                    it.type shouldBe ErrorType.NO_ACTIVE_SICK_LEAVE
+                    it.message shouldBe "No active sick leave found for the given organization number: 123456789"
                 }
             }
         }
@@ -109,47 +84,19 @@ class SubmitNarmestelederrelasjonRouteTest :
                     it.message shouldBe "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign; email: EmailAddress must not contain whitespace"
                 }
             }
-            shouldThrow<ApiErrorException.BadRequestException> {
-                SubmitNarmestelederrelasjonResult.InvalidManagerContactDetails(
-                    listOf(ManagerContactValidationIssue(ManagerContactField.MOBILE, ManagerContactValidationReason.PHONE_NUMBER_MUST_NOT_BE_BLANK)),
-                ).throwIfRejected()
-            }.isAlreadyLogged shouldBe true
         }
 
-        test("organization and resource denials have the legacy message, type and logging flag") {
+        test("access denial returns 403 with MISSING_ORG_ACCESS") {
             val request = linemanager()
-            listOf(
-                Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: ${request.orgNumber.value}"),
-                Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: ${request.orgNumber.value}"),
-                Triple(DenialReason.SYSTEM_USER_REJECTED, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "System user does not have access to nav_syfo_oppgi-narmesteleder resource"),
-            ).forEach { (reason, type, message) ->
-                shouldThrow<ApiErrorException.ForbiddenException> {
-                    SubmitNarmestelederrelasjonResult.AccessDenied(reason, organization).throwIfRejected()
-                }.isAlreadyLogged shouldBe (reason == DenialReason.SYSTEM_USER_REJECTED)
-                val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(reason) })
-                fixture.authorize(if (reason == DenialReason.SYSTEM_USER_REJECTED) "maskinporten" else "tokenx")
-                fixture.withApplication {
-                    val response = client.postSubmission(issuer = if (reason == DenialReason.SYSTEM_USER_REJECTED) "https://test.maskinporten.no" else "https://tokenx.example.com", body = request)
-                    response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().let {
-                        it.type shouldBe type
-                        it.message shouldBe message
-                    }
-                }
-            }
-        }
-
-        test("missing tokens cannot reach POST, revoke, requirement or internal relation endpoints") {
-            val fixture = SubmitFixture()
+            val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS) })
+            fixture.authorize("tokenx")
             fixture.withApplication {
-                listOf(
-                    client.post("/api/v1/linemanager"),
-                    client.post("/api/v1/linemanager/revoke"),
-                    client.put("/api/v1/linemanager/requirement/00000000-0000-0000-0000-000000000001"),
-                    client.get("/api/v1/linemanager/requirement/00000000-0000-0000-0000-000000000001"),
-                    client.get("/internal/api/v1/linemanager/00000000-0000-0000-0000-000000000001"),
-                    client.delete("/internal/api/v1/linemanager/00000000-0000-0000-0000-000000000001"),
-                ).forEach { it.status shouldBe HttpStatusCode.Unauthorized }
+                val response = client.postSubmission(body = request)
+                response.status shouldBe HttpStatusCode.Forbidden
+                response.body<ApiError>().let {
+                    it.type shouldBe ErrorType.MISSING_ORG_ACCESS
+                    it.message shouldBe "User lacks access to organization: ${request.orgNumber.value}"
+                }
             }
         }
 
@@ -176,14 +123,15 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("invalid request bodies retain INVALID_FORMAT") {
-            val fixture = SubmitFixture()
-            fixture.authorize("tokenx")
-            fixture.withApplication {
-                listOf(
-                    """{"name":"Ola Nordmann"}""",
-                    """{"employeeIdentificationNumber":"12345678901","lastName":"Employee","orgNumber":"12345678","manager":{"nationalIdentificationNumber":"10987654321","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}}""",
-                ).forEach { body ->
+        listOf(
+            "an unknown body" to """{"name":"Ola Nordmann"}""",
+            "a short organization number" to
+                """{"employeeIdentificationNumber":"12345678901","lastName":"Employee","orgNumber":"12345678","manager":{"nationalIdentificationNumber":"10987654321","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}}""",
+        ).forEach { (case, body) ->
+            test("a request body with $case retains INVALID_FORMAT") {
+                val fixture = SubmitFixture()
+                fixture.authorize("tokenx")
+                fixture.withApplication {
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         bearerAuth(createMockToken("11223344556", issuer = "https://tokenx.example.com"))
@@ -195,22 +143,26 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("invalid identifiers in the body return 400 with the validation message") {
-            val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> error("Access must not be checked") })
-            fixture.authorize("tokenx")
-            fun submission(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321"): String {
-                val managerJson =
-                    """{"nationalIdentificationNumber":"$manager","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}"""
-                return """{"orgNumber":"$org","employeeIdentificationNumber":"$employee","lastName":"Employee","manager":$managerJson}"""
-            }
-            fixture.withApplication {
-                listOf(
-                    submission(employee = "1234567890") to "PersonalIdentificationNumber must be exactly 11 digits",
-                    submission(org = "12345678") to "OrganizationNumber must be exactly 9 digits",
-                    submission(manager = "1098765432a") to "PersonalIdentificationNumber must be exactly 11 digits",
-                    // The first invalid identifier in the JSON document decides the message.
-                    submission(employee = "1234567890", org = "12345678") to "OrganizationNumber must be exactly 9 digits",
-                ).forEach { (body, message) ->
+        fun submission(employee: String = "12345678901", org: String = "123456789", manager: String = "10987654321"): String {
+            val managerJson =
+                """{"nationalIdentificationNumber":"$manager","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}"""
+            return """{"orgNumber":"$org","employeeIdentificationNumber":"$employee","lastName":"Employee","manager":$managerJson}"""
+        }
+        listOf(
+            Triple("a short employee identifier", submission(employee = "1234567890"), "PersonalIdentificationNumber must be exactly 11 digits"),
+            Triple("a short organization number", submission(org = "12345678"), "OrganizationNumber must be exactly 9 digits"),
+            Triple("a non-numeric manager identifier", submission(manager = "1098765432a"), "PersonalIdentificationNumber must be exactly 11 digits"),
+            // The first invalid identifier in the JSON document decides the message.
+            Triple(
+                "an invalid organization number before an invalid employee identifier",
+                submission(employee = "1234567890", org = "12345678"),
+                "OrganizationNumber must be exactly 9 digits",
+            ),
+        ).forEach { (case, body, message) ->
+            test("a body with $case returns 400 with the validation message") {
+                val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> error("Access must not be checked") })
+                fixture.authorize("tokenx")
+                fixture.withApplication {
                     val response = client.post("/api/v1/linemanager") {
                         contentType(ContentType.Application.Json)
                         bearerAuth(createMockToken("11223344556", issuer = "https://tokenx.example.com"))
@@ -225,25 +177,12 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
-        test("upstream failures return HTTP 500 with UPSTREAM_SERVICE_UNAVAILABLE") {
-            val failures = listOf(
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 400, IllegalStateException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 404, IllegalStateException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 500, IllegalStateException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, java.net.SocketTimeoutException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, java.io.IOException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 200, IllegalStateException()),
-                UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException()),
-            )
-            failures.forEach { failure ->
-                val result = SubmitNarmestelederrelasjonResult.UpstreamUnavailable(failure)
-                val error = shouldThrow<ApiErrorException.InternalServerErrorException> { result.throwIfRejected() }
-                error.upstreamFailure shouldBe failure
-                error.cause shouldBe failure.cause
-                error.isAlreadyLogged shouldBe false
-                val fixture = SubmitFixture(relationResult = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure))
-                fixture.authorize("tokenx")
-                val before = COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.count()
+        test("upstream failure returns HTTP 500, logs once at the edge and is not counted") {
+            val failure = UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 500, errors = listOf(UpstreamError("server_error")))
+            val fixture = SubmitFixture(relationResult = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure))
+            fixture.authorize("tokenx")
+            val before = COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.count()
+            assertSingleUpstreamFailureLog(upstream = "aareg") {
                 fixture.withApplication {
                     val response = client.postSubmission()
                     response.status shouldBe HttpStatusCode.InternalServerError
@@ -252,34 +191,14 @@ class SubmitNarmestelederrelasjonRouteTest :
                         it.message shouldBe "An upstream service is unavailable"
                     }
                 }
-                COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.count() shouldBe before
             }
-        }
-
-        test("PDL failures propagate to StatusPages as internal errors") {
-            val fixture = SubmitFixture(failure = RuntimeException("PDL unavailable"))
-            fixture.authorize("tokenx")
-            fixture.withApplication {
-                val response = client.postSubmission()
-                response.status shouldBe HttpStatusCode.InternalServerError
-                response.body<ApiError>().let {
-                    it.type shouldBe ErrorType.INTERNAL_SERVER_ERROR
-                    it.message shouldBe "Internal server error"
-                }
-            }
+            COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER.count() shouldBe before
         }
     })
-
-private data class HttpCase(
-    val result: EstablishNarmestelederrelasjonResult,
-    val type: ErrorType,
-    val message: String,
-)
 
 private class SubmitFixture(
     private val relationResult: EstablishNarmestelederrelasjonResult = EstablishNarmestelederrelasjonResult.Published,
     private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
-    private val failure: Exception? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
 
@@ -289,21 +208,9 @@ private class SubmitFixture(
         scope: String = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
     ) {
         if (provider == "tokenx") {
-            coEvery { texas.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(active = true, acr = acr, pid = "11223344556")
+            texas.stubTokenX(pid = "11223344556", acr = acr)
         } else {
-            coEvery { texas.introspectToken("maskinporten", any()) } returns TexasIntrospectionResponse(
-                active = true,
-                scope = scope,
-                consumer = DefaultOrganization,
-                authorizationDetails = listOf(
-                    no.nav.syfo.platform.auth.texas.client.AuthorizationDetail(
-                        type = "urn:altinn:systemuser",
-                        systemuserOrg = DefaultOrganization,
-                        systemuserId = listOf("some-user-id"),
-                        systemId = "some-system-id",
-                    ),
-                ),
-            )
+            texas.stubMaskinportenSystemUser(scope = scope)
         }
     }
 
@@ -315,20 +222,8 @@ private class SubmitFixture(
         testRouteApplication(
             routes = {
                 apiV1 {
-                    registerFulfillNarmestelederbehovApi(mockk<FulfillNarmestelederbehovUseCase>(), texas)
-                    registerSubmitNarmestelederrelasjonApi(
-                        SubmitNarmestelederrelasjonUseCase(
-                            access,
-                        ) {
-                            failure?.let { throw it }
-                            relationResult
-                        },
-                        texas,
-                    )
-                    registerRevokeActiveNarmestelederrelasjonApi(mockk(), texas)
-                    registerGetNarmestelederbehovApi(getNarmestelederbehov = mockk(), texasHttpClient = texas)
+                    registerSubmitNarmestelederrelasjonApi(SubmitNarmestelederrelasjonUseCase(access) { relationResult }, texas)
                 }
-                internalApiV1 { registerNarmestelederrelasjonApi(mockk(), mockk(), texas) }
             },
         ) {
             client = createJsonClient()

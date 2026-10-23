@@ -6,14 +6,11 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.integration.aareg.AaregArbeidsforholdOversikt
-import no.nav.syfo.integration.aareg.AaregClient
 import no.nav.syfo.integration.aareg.Arbeidsforholdoversikt
-import no.nav.syfo.integration.aareg.Arbeidssted
-import no.nav.syfo.integration.aareg.ArbeidsstedType
-import no.nav.syfo.integration.aareg.Ident
-import no.nav.syfo.integration.aareg.IdentType
-import no.nav.syfo.integration.aareg.Opplysningspliktig
-import no.nav.syfo.integration.aareg.OpplysningspliktigType
+import no.nav.syfo.integration.aareg.StubAaregClient
+import no.nav.syfo.integration.aareg.aaregEmployment
+import no.nav.syfo.integration.aareg.aaregOverview
+import no.nav.syfo.integration.aareg.organizationIdent
 import no.nav.syfo.narmestelederbehov.application.MainOrganizationResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -25,7 +22,7 @@ class AaregEmployerMainOrganizationLookupTest :
         val employee = Employee(PersonalIdentificationNumber("12345678901"), OrganizationNumber("910000001"))
 
         test("returns the reporting organization of the employment in the employee's organization") {
-            val client = StubClient {
+            val client = stubClient {
                 overview(
                     employment("910000002", "920000002"),
                     employment("910000001", "920000001"),
@@ -37,49 +34,30 @@ class AaregEmployerMainOrganizationLookupTest :
         }
 
         test("returns EmploymentMissing without employment in the organization") {
-            AaregEmployerMainOrganizationLookup(StubClient { overview(employment("910000002", "920000002")) })
+            AaregEmployerMainOrganizationLookup(stubClient { overview(employment("910000002", "920000002")) })
                 .findMainOrganization(employee) shouldBe MainOrganizationResult.EmploymentMissing
-            AaregEmployerMainOrganizationLookup(StubClient { AaregArbeidsforholdOversikt() })
+            AaregEmployerMainOrganizationLookup(stubClient { AaregArbeidsforholdOversikt() })
                 .findMainOrganization(employee) shouldBe MainOrganizationResult.EmploymentMissing
         }
 
         test("returns MainOrganizationMissing when the employment has no reporting organization number") {
-            AaregEmployerMainOrganizationLookup(StubClient { overview(employment("910000001", null)) })
+            AaregEmployerMainOrganizationLookup(stubClient { overview(employment("910000001", null)) })
                 .findMainOrganization(employee) shouldBe MainOrganizationResult.MainOrganizationMissing
         }
 
         test("returns Unavailable and preserves the upstream failure") {
             val failure = UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
-            val client = object : AaregClient {
-                override suspend fun getArbeidsforhold(personIdent: String) = UpstreamResult.Failure(failure)
-
-                override suspend fun getArbeidsforholdHistorikk(personIdent: String) = error("History lookup is not used by this adapter")
-            }
+            val client = StubAaregClient(current = { UpstreamResult.Failure(failure) })
 
             AaregEmployerMainOrganizationLookup(client).findMainOrganization(employee) shouldBe MainOrganizationResult.Unavailable(failure)
         }
     })
 
-private class StubClient(private val result: () -> AaregArbeidsforholdOversikt) : AaregClient {
-    val requests = mutableListOf<String>()
+private fun stubClient(result: () -> AaregArbeidsforholdOversikt) = StubAaregClient(current = { UpstreamResult.Success(result()) })
 
-    override suspend fun getArbeidsforholdHistorikk(personIdent: String): UpstreamResult<AaregArbeidsforholdOversikt> = error("History lookup is not used by this adapter")
+private fun overview(vararg employments: Arbeidsforholdoversikt) = aaregOverview(*employments)
 
-    override suspend fun getArbeidsforhold(personIdent: String): UpstreamResult<AaregArbeidsforholdOversikt> {
-        requests += personIdent
-        return UpstreamResult.Success(result())
-    }
-}
-
-private fun overview(vararg employments: Arbeidsforholdoversikt) = AaregArbeidsforholdOversikt(employments.toList())
-
-private fun employment(organizationNumber: String, reportingOrganizationNumber: String?) = Arbeidsforholdoversikt(
-    arbeidssted = Arbeidssted(
-        type = ArbeidsstedType.Underenhet,
-        identer = listOf(Ident(IdentType.ORGANISASJONSNUMMER, organizationNumber, true)),
-    ),
-    opplysningspliktig = Opplysningspliktig(
-        OpplysningspliktigType.Hovedenhet,
-        reportingOrganizationNumber?.let { listOf(Ident(IdentType.ORGANISASJONSNUMMER, it, true)) } ?: emptyList(),
-    ),
+private fun employment(organizationNumber: String, reportingOrganizationNumber: String?) = aaregEmployment(
+    workplaceIdents = listOf(organizationIdent(organizationNumber)),
+    reportingOrganizationNumber = reportingOrganizationNumber,
 )

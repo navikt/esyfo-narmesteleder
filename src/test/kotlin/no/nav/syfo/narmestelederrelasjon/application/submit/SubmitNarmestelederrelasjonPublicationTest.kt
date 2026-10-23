@@ -22,14 +22,14 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 
 class SubmitNarmestelederrelasjonPublicationTest :
     FunSpec({
-        test("both caller types publish the unchanged Kafka payload and source") {
-            val employee = PersonalIdentificationNumber("12345678901")
-            val manager = PersonalIdentificationNumber("10987654321")
-            val organization = OrganizationNumber("123456789")
-            listOf(
-                OrganizationAccessSubject.LpsSystemUser("system-id", organization) to NlResponseSource.LPS,
-                OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber("11223344556"), AccessToken("test-token")) to NlResponseSource.PERSONALLEDER,
-            ).forEach { (subject, expectedSource) ->
+        val employee = PersonalIdentificationNumber("12345678901")
+        val manager = PersonalIdentificationNumber("10987654321")
+        val organization = OrganizationNumber("123456789")
+        listOf(
+            OrganizationAccessSubject.LpsSystemUser("system-id", organization) to NlResponseSource.LPS,
+            OrganizationAccessSubject.PersonnelManager(PersonalIdentificationNumber("11223344556"), AccessToken("test-token")) to NlResponseSource.PERSONALLEDER,
+        ).forEach { (subject, expectedSource) ->
+            test("a ${subject::class.simpleName} caller publishes the unchanged Kafka payload and source $expectedSource") {
                 val producer = RecordingProducer()
                 val establish = EstablishNarmestelederrelasjonUseCase(
                     { _, _ -> true },

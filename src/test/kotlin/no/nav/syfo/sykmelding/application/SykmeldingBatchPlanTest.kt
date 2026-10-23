@@ -1,10 +1,10 @@
 package no.nav.syfo.sykmelding.application
 
-import defaultSendtSykmeldingMessage
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
+import no.nav.syfo.defaultSendtSykmeldingMessage
 import java.time.LocalDate
 import java.util.UUID
 

@@ -7,7 +7,7 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
@@ -17,6 +17,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.PersonNameDetails
 import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -30,7 +31,7 @@ import java.util.UUID
 private val employee = PersonalIdentificationNumber("12345678901")
 private val resolved = PersonalIdentificationNumber("12345678902")
 private val organization = OrganizationNumber("123456789")
-private val lps = OrganizationAccessSubject.LpsSystemUser("system-user", organization)
+private val lps = OrganizationAccessSubject.LpsSystemUser("system-user", OrganizationNumber("999777555"))
 
 class RevokeActiveNarmestelederrelasjonUseCaseTest :
     FunSpec({
@@ -78,12 +79,12 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
             fixture.calls shouldBe listOf("access", "person", "name", "active")
         }
 
-        test("LPS, employee and personnel manager use resolved ident and expected Kafka initiator") {
-            listOf(
-                lps to RevocationInitiator.LPS,
-                OrganizationAccessSubject.PersonnelManager(resolved, AccessToken("test")) to RevocationInitiator.EMPLOYEE,
-                OrganizationAccessSubject.PersonnelManager(employee, AccessToken("test")) to RevocationInitiator.PERSONNEL_MANAGER,
-            ).forEach { (subject, initiator) ->
+        listOf(
+            lps to RevocationInitiator.LPS,
+            OrganizationAccessSubject.PersonnelManager(resolved, AccessToken("test")) to RevocationInitiator.EMPLOYEE,
+            OrganizationAccessSubject.PersonnelManager(employee, AccessToken("test")) to RevocationInitiator.PERSONNEL_MANAGER,
+        ).forEach { (subject, initiator) ->
+            test("a revocation by $initiator uses the resolved ident and the expected Kafka initiator") {
                 val fixture = RevokeActiveFixture()
                 fixture.execute(subject) shouldBe RevokeActiveNarmestelederrelasjonResult.Revoked(initiator)
                 fixture.calls shouldBe listOf("access", "person", "name", "active", "publish")
@@ -101,7 +102,7 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
     })
 
 private class RevokeActiveFixture(
-    private val access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
+    private val access: OrganizationAccess = FakeOrganizationAccess(organization),
     name: String = "Hansen",
     registeredNames: List<RegisteredName> = listOf(RegisteredName(name)),
     person: PersonDetails? = PersonDetails(resolved, PersonNameDetails("Test", name, registeredNames = registeredNames)),
@@ -110,7 +111,11 @@ private class RevokeActiveFixture(
 ) {
     val calls = mutableListOf<String>()
     val matches = mutableListOf<LastNameMatch>()
-    val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber>>()
+    private val repository = FakeActiveNarmestelederrelasjonRepository(
+        rows = if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), employee, "invalid", Instant.EPOCH)) else emptyList(),
+        effects = calls,
+    )
+    val lookups get() = repository.lookups
     val published = mutableListOf<PublishNarmestelederrelasjonRevocationCommand>()
     private val useCase = RevokeActiveNarmestelederrelasjonUseCase(
         { subject, org ->
@@ -125,13 +130,7 @@ private class RevokeActiveFixture(
             calls += "name"
             matches += it
         },
-        object : ActiveNarmestelederrelasjonRepository {
-            override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
-                calls += "active"
-                lookups += employeeIdent to organizationNumber
-                return if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), employee, "invalid", Instant.EPOCH)) else emptyList()
-            }
-        },
+        repository,
         RecordingRevocationPublisher {
             calls += "publish"
             published += it

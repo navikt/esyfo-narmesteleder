@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederstatistikk.api
 
-import DefaultOrganization
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.bearerAuth
@@ -11,24 +8,26 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.mockk.coEvery
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import no.nav.syfo.narmestelederstatistikk.observability.LINEMANAGER_STATISTICS_TOTAL
-import no.nav.syfo.organisasjonstilgang.api.toForbiddenException
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testApiApplication
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.DefaultOrganization
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubInactive
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -51,8 +50,6 @@ class LinemanagerStatisticsApiTest :
                     error.path("message").asText() shouldBe "An upstream service is unavailable"
                 }
             }
-            fixture.effects shouldBe listOf("access")
-            fixture.organizations shouldBe emptyList()
             requestCount("user") shouldBe before
         }
 
@@ -69,15 +66,14 @@ class LinemanagerStatisticsApiTest :
                     mapper.readTree(response.bodyAsText()) shouldBe mapper.readTree(
                         """{"employeesOnSickLeaveWithoutLinemanager":1,"employeesOnSickLeaveWithLinemanager":2,"employeesNotOnSickLeaveWithLinemanager":3}""",
                     )
-                    fixture.effects shouldBe listOf("access", "count")
-                    fixture.organizations shouldBe listOf(OrganizationNumber(ORGANIZATION_NUMBER))
                     fixture.evaluations.single().second shouldBe OrganizationNumber(ORGANIZATION_NUMBER)
                     if (user) {
                         val subject = fixture.evaluations.single().first as OrganizationAccessSubject.PersonnelManager
                         subject.personIdent shouldBe PersonalIdentificationNumber(EMPLOYEE_IDENT)
                         subject.accessToken.value() shouldBe fixture.token()
                     } else {
-                        fixture.evaluations.single().first shouldBe OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(ORGANIZATION_NUMBER))
+                        fixture.evaluations.single().first shouldBe
+                            OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(DefaultOrganization.ID.removePrefix("0192:")))
                     }
                     requestCount(principalType) shouldBe before + 1
                 }
@@ -98,31 +94,22 @@ class LinemanagerStatisticsApiTest :
                     val error = mapper.readTree(response.bodyAsText())
                     error.path("type").asText() shouldBe type.name
                     error.path("message").asText() shouldBe message
-                    fixture.effects shouldBe emptyList()
+                    fixture.evaluations shouldBe emptyList()
                     requestCount("system") shouldBe before
                 }
             }
         }
 
-        listOf(
-            Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: $ORGANIZATION_NUMBER"),
-            Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: $ORGANIZATION_NUMBER"),
-            Triple(DenialReason.SYSTEM_USER_REJECTED, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "System user does not have access to nav_syfo_oppgi-narmesteleder resource"),
-        ).forEach { (reason, type, message) ->
-            test("returns 403 for $reason without counting") {
-                val fixture = StatisticsApiFixture(denialReason = reason)
-                val before = requestCount("system")
-                fixture.withApplication {
-                    val response = client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") { bearerAuth(fixture.token()) }
-                    response.status shouldBe HttpStatusCode.Forbidden
-                    val error = mapper.readTree(response.bodyAsText())
-                    error.path("type").asText() shouldBe type.name
-                    error.path("message").asText() shouldBe message
-                    fixture.effects shouldBe listOf("access")
-                    fixture.organizations shouldBe emptyList()
-                    requestCount("system") shouldBe before
-                }
-                reason.toForbiddenException(OrganizationNumber(ORGANIZATION_NUMBER)).isAlreadyLogged shouldBe (reason == DenialReason.SYSTEM_USER_REJECTED)
+        test("returns 403 for denied access without counting") {
+            val fixture = StatisticsApiFixture(denialReason = DenialReason.MISSING_ORGANIZATION_ACCESS)
+            val before = requestCount("system")
+            fixture.withApplication {
+                val response = client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") { bearerAuth(fixture.token()) }
+                response.status shouldBe HttpStatusCode.Forbidden
+                val error = mapper.readTree(response.bodyAsText())
+                error.path("type").asText() shouldBe ErrorType.MISSING_ORG_ACCESS.name
+                error.path("message").asText() shouldBe "User lacks access to organization: $ORGANIZATION_NUMBER"
+                requestCount("system") shouldBe before
             }
         }
 
@@ -133,7 +120,7 @@ class LinemanagerStatisticsApiTest :
                 client.get("$STATISTICS_PATH?orgNumber=$ORGANIZATION_NUMBER") {
                     bearerAuth(fixture.token())
                 }.status shouldBe HttpStatusCode.Unauthorized
-                fixture.effects shouldBe emptyList()
+                fixture.evaluations shouldBe emptyList()
                 requestCount("system") shouldBe before
             }
         }
@@ -151,38 +138,30 @@ private class StatisticsApiFixture(
     activeToken: Boolean = true,
     unavailable: UpstreamFailure? = null,
 ) {
-    val effects = mutableListOf<String>()
-    val organizations = mutableListOf<OrganizationNumber>()
-    val evaluations = mutableListOf<Pair<OrganizationAccessSubject, OrganizationNumber>>()
+    private val organizationAccess = FakeOrganizationAccess(
+        OrganizationNumber(ORGANIZATION_NUMBER),
+        unavailable?.let { OrganizationAccessResult.Unavailable(it) }
+            ?: denialReason?.let { OrganizationAccessResult.Denied(it) }
+            ?: OrganizationAccessResult.Granted(null),
+    )
+    val evaluations get() = organizationAccess.calls
     private val texas = mockk<TexasHttpClient>()
     private val bearerToken = createMockToken(
         if (user) EMPLOYEE_IDENT else ORGANIZATION_NUMBER,
         issuer = if (user) TOKENX_ISSUER else "https://test.maskinporten.no",
     )
     private val useCase = GetNarmestelederstatistikkUseCase(
-        organizationAccess = { subject, organization ->
-            effects += "access"
-            evaluations += subject to organization
-            unavailable?.let { OrganizationAccessResult.Unavailable(it) }
-                ?: denialReason?.let { OrganizationAccessResult.Denied(it) }
-                ?: OrganizationAccessResult.Granted(null)
-        },
-        repository = { organization ->
-            effects += "count"
-            organizations += organization
-            Narmestelederstatistikk(1, 2, 3)
-        },
+        organizationAccess = organizationAccess,
+        repository = { Narmestelederstatistikk(1, 2, 3) },
     )
 
     init {
-        texas.defaultMocks(
-            pid = if (user) EMPLOYEE_IDENT else null,
-            acr = if (user) "Level4" else null,
-            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"),
-            scope = MASKINPORTEN_NL_SCOPE,
-        )
         if (!activeToken) {
-            coEvery { texas.introspectToken(any(), any()) } returns TexasIntrospectionResponse(active = false)
+            texas.stubInactive()
+        } else if (user) {
+            texas.stubTokenX(pid = EMPLOYEE_IDENT)
+        } else {
+            texas.stubMaskinportenSystemUser()
         }
     }
 

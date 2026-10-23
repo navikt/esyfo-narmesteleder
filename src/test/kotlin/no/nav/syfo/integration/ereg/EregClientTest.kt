@@ -157,13 +157,13 @@ class EregClientTest :
             receivingBody shouldBe true
         }
 
-        test("logs Ereg failure metadata without the organization number or upstream body") {
-            withProductionLogger("ereg-client-diagnostics-test") { logger ->
-                val contract = RuntimeLogContract.forEvents(
-                    eregDiagnosticTestEvent,
-                    exceptionTypes = setOf("ClientRequestException", "ServerResponseException"),
-                )
-                listOf(HttpStatusCode.BadRequest, HttpStatusCode.InternalServerError).forEach { status ->
+        listOf(HttpStatusCode.BadRequest, HttpStatusCode.InternalServerError).forEach { status ->
+            test("logs Ereg failure metadata for status ${status.value} without the organization number or upstream body") {
+                withProductionLogger("ereg-client-diagnostics-test") { logger ->
+                    val contract = RuntimeLogContract.forEvents(
+                        eregDiagnosticTestEvent,
+                        exceptionTypes = setOf("ClientRequestException", "ServerResponseException"),
+                    )
                     eregHttpClient { respondJson("private response body $orgNumber", status) }.use { httpClient ->
                         val result = HttpEregClient("http://ereg", httpClient).getOrganisasjon(orgNumber)
                             .shouldBeInstanceOf<UpstreamResult.Failure>()

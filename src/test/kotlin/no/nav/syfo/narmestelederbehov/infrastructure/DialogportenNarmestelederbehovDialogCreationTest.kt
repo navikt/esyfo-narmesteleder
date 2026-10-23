@@ -9,11 +9,7 @@ import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogPatchResult
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.RecordingDialogportenClient
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -42,7 +38,7 @@ class DialogportenNarmestelederbehovDialogCreationTest :
 
         test("sends the dialog for the employee and person to Dialogporten and returns its id") {
             val person = EmployeePerson(BehovPersonName("Kari", "Mellom", "Nordmann"), LocalDate.of(1985, 6, 7))
-            val client = RecordingCreateDialogportenClient(dialogId)
+            val client = creatingClient(dialogId)
 
             DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, person) shouldBe
                 NarmestelederbehovDialogCreationResult.Created(dialogId)
@@ -51,7 +47,7 @@ class DialogportenNarmestelederbehovDialogCreationTest :
         }
 
         test("sends the dialog without person details when none are known") {
-            val client = RecordingCreateDialogportenClient(dialogId)
+            val client = creatingClient(dialogId)
 
             DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) shouldBe
                 NarmestelederbehovDialogCreationResult.Created(dialogId)
@@ -61,29 +57,14 @@ class DialogportenNarmestelederbehovDialogCreationTest :
 
         test("returns the Dialogporten failure so the caller can log it and leave the behov for retry") {
             val failure = UpstreamFailure(UpstreamName("dialogporten"), UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))
-            val client = RecordingCreateDialogportenClient(dialogId, UpstreamResult.Failure(failure))
+            val client = creatingClient(dialogId, UpstreamResult.Failure(failure))
 
             DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) shouldBe
                 NarmestelederbehovDialogCreationResult.Unavailable(failure)
         }
     })
 
-private class RecordingCreateDialogportenClient(
+private fun creatingClient(
     dialogId: UUID,
-    private val result: UpstreamResult<UUID> = UpstreamResult.Success(dialogId),
-) : DialogportenClient {
-    val created = mutableListOf<Dialog>()
-
-    override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> {
-        created += dialog
-        return result
-    }
-
-    override suspend fun getDialogById(dialogId: UUID): UpstreamResult<ExtendedDialog> = error("Unexpected getDialogById")
-
-    override suspend fun patchDialog(
-        dialogId: UUID,
-        revisionNumber: UUID,
-        patch: List<HttpDialogportenClient.DialogportenPatch>,
-    ): UpstreamResult<DialogPatchResult> = error("Unexpected patchDialog")
-}
+    result: UpstreamResult<UUID> = UpstreamResult.Success(dialogId),
+) = RecordingDialogportenClient(create = { result })

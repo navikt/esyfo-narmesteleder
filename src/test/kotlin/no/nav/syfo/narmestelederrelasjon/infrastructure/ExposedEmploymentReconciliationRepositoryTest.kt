@@ -21,7 +21,6 @@ import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
@@ -44,12 +43,10 @@ class ExposedEmploymentReconciliationRepositoryTest :
         val repository = ExposedEmploymentReconciliationRepository(TestDB.exposedDatabase)
 
         beforeTest {
-            transaction(TestDB.exposedDatabase) { EmploymentReconciliationTable.deleteAll() }
-            TestDB.clearNarmestelederData()
+            TestDB.clearAllData()
         }
         afterSpec {
-            transaction(TestDB.exposedDatabase) { EmploymentReconciliationTable.deleteAll() }
-            TestDB.clearNarmestelederData()
+            TestDB.clearAllData()
         }
 
         test("all repository operations use READ COMMITTED even when the database defaults to REPEATABLE READ") {
@@ -412,12 +409,11 @@ class ExposedEmploymentReconciliationRepositoryTest :
             controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
         }
 
-        test("notes the first source revocation, also for a relation that was never seeded, and makes it due first") {
-            val seeded = insertEmploymentRelation(to = now)
-            insertControlRow(seeded, now.plusSeconds(86_400))
-            val unseeded = insertEmploymentRelation(to = now)
+        listOf(true, false).forEach { seeded ->
+            test("notes the first source revocation for a ${if (seeded) "seeded" else "never seeded"} relation and makes it due first") {
+                val id = insertEmploymentRelation(to = now)
+                if (seeded) insertControlRow(id, now.plusSeconds(86_400))
 
-            listOf(seeded, unseeded).forEach { id ->
                 repository.recordSourceRevocation(id, now) shouldBe true
                 repository.recordSourceRevocation(id, now.plusSeconds(60)) shouldBe false
                 controlRow(id).also {
@@ -559,17 +555,11 @@ private fun insertEmploymentRelation(
     from: Instant = now.minusSeconds(60 * 86_400),
     to: Instant? = null,
 ): UUID {
-    transaction(TestDB.exposedDatabase) {
-        NarmestelederTable.insert {
-            it[narmestelederId] = id
-            it[orgnummer] = "123456789"
-            it[sykmeldtFnr] = "12345678901"
-            it[narmestelederFnr] = "10987654321"
-            it[narmestelederTelefonnummer] = "99887766"
-            it[narmestelederEpost] = "leder@example.com"
-            it[aktivFom] = from.atOffset(ZoneOffset.UTC)
-            it[aktivTom] = to?.atOffset(ZoneOffset.UTC)
-        }
-    }
+    insertRelation(
+        narmestelederId = id,
+        activeFrom = from.atOffset(ZoneOffset.UTC),
+        activeTo = to?.atOffset(ZoneOffset.UTC),
+        mobile = "99887766",
+    )
     return id
 }

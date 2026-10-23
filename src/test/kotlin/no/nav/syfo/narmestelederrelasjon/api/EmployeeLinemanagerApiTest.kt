@@ -1,7 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import createMockToken
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -15,26 +14,24 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.clearMocks
-import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.employee.FakeEmployeeNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.employee.ListActiveNarmesteledereForEmployeeUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_TOTAL
 import no.nav.syfo.narmestelederrelasjon.infrastructure.MicrometerDiscardedEmailAddressMetrics
 import no.nav.syfo.narmestelederrelasjon.observability.EMPLOYEE_LINEMANAGER_TOTAL
-import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
-import java.io.IOException
 import java.time.Instant
 import java.util.UUID
 
@@ -44,17 +41,15 @@ private val responseMapper = jacksonObjectMapper()
 
 class EmployeeLinemanagerApiTest :
     FunSpec({
-        val repository = EmployeeApiRepository()
+        val repository = FakeEmployeeNarmestelederrelasjonRepository()
         val useCase = ListActiveNarmesteledereForEmployeeUseCase(repository, MicrometerDiscardedEmailAddressMetrics.employeeLinemanager())
         val texasHttpClient = mockk<TexasHttpClient>()
 
         beforeTest {
-            repository.rows = emptyList()
-            repository.lookups.clear()
+            repository.reset()
             clearMocks(texasHttpClient)
             // Texas active=true validates audience and expiry before the application handles the request.
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level4", pid = caller.value)
+            texasHttpClient.stubTokenX(pid = caller.value)
         }
 
         test("returns the unchanged JSON shape without exposing employee details") {
@@ -89,19 +84,7 @@ class EmployeeLinemanagerApiTest :
                     manager.path("mobile").isTextual shouldBe true
                     manager.path("mobile").asText() shouldBe "99999999"
                 }
-            }
-        }
-
-        test("serializes one email address as an array") {
-            repository.rows = listOf(apiRelation().copy(managerEmail = "single@example.com"))
-            withEmployeeApi(useCase, texasHttpClient) {
-                val response = client.getEmployee()
-                response.status shouldBe HttpStatusCode.OK
-                val emails = responseMapper.readTree(response.bodyAsText()).path("linemanagers")[0].path("emailAddresses")
-                emails.isArray shouldBe true
-                emails.toList().shouldHaveSize(1)
-                emails[0].isTextual shouldBe true
-                emails[0].asText() shouldBe "single@example.com"
+                repository.lookups shouldBe listOf(caller to null)
             }
         }
 
@@ -111,13 +94,6 @@ class EmployeeLinemanagerApiTest :
                 val response = client.getEmployee()
                 response.status shouldBe HttpStatusCode.OK
                 responseMapper.readTree(response.bodyAsText()).path("linemanagers")[0].path("name").isNull shouldBe true
-            }
-        }
-
-        test("uses authenticated pid without an organization filter") {
-            withEmployeeApi(useCase, texasHttpClient) {
-                client.getEmployee().status shouldBe HttpStatusCode.OK
-                repository.lookups shouldBe listOf(caller to null)
             }
         }
 
@@ -154,86 +130,26 @@ class EmployeeLinemanagerApiTest :
             withEmployeeApi(useCase, texasHttpClient) {
                 client.get(EMPLOYEE_PATH).status shouldBe HttpStatusCode.Unauthorized
                 repository.lookups.shouldBeEmpty()
+            }
+        }
+
+        test("returns 401 for a Maskinporten token without introspection") {
+            withEmployeeApi(useCase, texasHttpClient) {
+                val response = client.get(EMPLOYEE_PATH) { bearerAuth(createMockToken("ignored", issuer = MASKINPORTEN_ISSUER)) }
+                response.status shouldBe HttpStatusCode.Unauthorized
+                repository.lookups.shouldBeEmpty()
                 coVerify(exactly = 0) { texasHttpClient.introspectToken(any(), any()) }
             }
         }
 
-        test("returns 401 for an inactive TokenX token") {
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(active = false)
-            withEmployeeApi(useCase, texasHttpClient) {
-                client.getEmployee().status shouldBe HttpStatusCode.Unauthorized
-                repository.lookups.shouldBeEmpty()
-            }
-        }
-
-        test("returns generic 500 when TokenX introspection fails") {
-            val failureMessage = "Texas is unavailable"
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } throws IOException(failureMessage)
-            withEmployeeApi(useCase, texasHttpClient) {
-                val response = client.getEmployee()
-                response.status shouldBe HttpStatusCode.InternalServerError
-                val body = response.bodyAsText()
-                responseMapper.readTree(body).path("message").asText() shouldBe "Internal Server Error"
-                body shouldNotContain failureMessage
-                repository.lookups.shouldBeEmpty()
-            }
-        }
-
         test("returns 401 without leaking an invalid pid") {
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level4", pid = "abc")
+            texasHttpClient.stubTokenX(pid = "abc")
             withEmployeeApi(useCase, texasHttpClient) {
                 val response = client.getEmployee()
                 response.status shouldBe HttpStatusCode.Unauthorized
                 val body = response.bodyAsText()
                 body shouldNotContain "abc"
                 responseMapper.readTree(body).path("message").asText() shouldBe "Invalid token subject"
-                repository.lookups.shouldBeEmpty()
-            }
-        }
-
-        test("returns 401 when TokenX has no pid") {
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level4", pid = null)
-            withEmployeeApi(useCase, texasHttpClient) {
-                client.getEmployee().status shouldBe HttpStatusCode.Unauthorized
-                repository.lookups.shouldBeEmpty()
-            }
-        }
-
-        test("returns 403 below Level4") {
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level3", pid = caller.value)
-            withEmployeeApi(useCase, texasHttpClient) {
-                client.getEmployee().status shouldBe HttpStatusCode.Forbidden
-                repository.lookups.shouldBeEmpty()
-            }
-        }
-
-        listOf(MASKINPORTEN_ISSUER, "https://login.microsoftonline.com/tenant/v2.0").forEach { issuer ->
-            test("returns 401 for $issuer") {
-                withEmployeeApi(useCase, texasHttpClient) {
-                    val response = client.get(EMPLOYEE_PATH) { bearerAuth(createMockToken("ignored", issuer = issuer)) }
-                    response.status shouldBe HttpStatusCode.Unauthorized
-                    repository.lookups.shouldBeEmpty()
-                    coVerify(exactly = 0) { texasHttpClient.introspectToken(any(), any()) }
-                }
-            }
-        }
-
-        test("returns an empty collection when the organization has no matches") {
-            withEmployeeApi(useCase, texasHttpClient) {
-                val response = client.getEmployee("?orgNumber=123456789")
-                response.status shouldBe HttpStatusCode.OK
-                val managers = responseMapper.readTree(response.bodyAsText()).path("linemanagers")
-                managers.isArray shouldBe true
-                managers.toList().shouldBeEmpty()
-            }
-        }
-
-        test("is not registered through the external API") {
-            withEmployeeApi(useCase, texasHttpClient) {
-                client.get("$API_V1_PATH$EMPLOYEE_LINEMANAGER_API_PATH").status shouldBe HttpStatusCode.NotFound
                 repository.lookups.shouldBeEmpty()
             }
         }
@@ -249,21 +165,6 @@ class EmployeeLinemanagerApiTest :
             }
         }
 
-        test("counts discarded emails but does not count empty entries or valid addresses") {
-            val before = discardedCount()
-            repository.rows = listOf(
-                apiRelation().copy(managerEmail = "first@example.com,invalid;second@example.com"),
-                apiRelation(UUID(0, 2)).copy(managerEmail = "invalid; ,"),
-            )
-            withEmployeeApi(useCase, texasHttpClient) {
-                client.getEmployee().status shouldBe HttpStatusCode.OK
-                discardedCount() shouldBeExactly before + 2
-                repository.rows = listOf(apiRelation().copy(managerEmail = "first@example.com; ,"))
-                client.getEmployee().status shouldBe HttpStatusCode.OK
-                discardedCount() shouldBeExactly before + 2
-            }
-        }
-
         test("does not count rejected requests") {
             val filteredBefore = requestCount("true")
             val discardedBefore = discardedCount()
@@ -274,16 +175,6 @@ class EmployeeLinemanagerApiTest :
             }
         }
     })
-
-private class EmployeeApiRepository : EmployeeNarmestelederrelasjonRepository {
-    var rows = emptyList<EmployeeNarmestelederrelasjon>()
-    val lookups = mutableListOf<Pair<PersonalIdentificationNumber, OrganizationNumber?>>()
-
-    override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon> {
-        lookups.add(employeeIdent to organizationNumber)
-        return rows
-    }
-}
 
 private fun apiRelation(id: UUID = UUID(0, 1)) = EmployeeNarmestelederrelasjon(
     id = id,

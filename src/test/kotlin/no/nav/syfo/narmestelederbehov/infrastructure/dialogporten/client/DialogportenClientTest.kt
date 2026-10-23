@@ -213,10 +213,10 @@ class DialogportenClientTest :
                 decoding shouldBe true
             }
         }
-        test("diagnostics log status and upstream metadata without token response body or exception messages") {
-            withProductionLogger("dialogporten-client-diagnostics-test") { logger ->
-                val event = applicationEvent<Unit>("dialogporten_diagnostic_test_failed", Level.ERROR, "Dialogporten test failure")
-                listOf(400, 503, 200).forEach { status ->
+        listOf(400, 503, 200).forEach { status ->
+            test("diagnostics log status $status and upstream metadata without token response body or exception messages") {
+                withProductionLogger("dialogporten-client-diagnostics-test") { logger ->
+                    val event = applicationEvent<Unit>("dialogporten_diagnostic_test_failed", Level.ERROR, "Dialogporten test failure")
                     upstreamHttpClient(respondWithSystemToken) { respondJson("\"private-body-canary\"", HttpStatusCode.fromValue(status)) }.use { http ->
                         val failure = HttpDialogportenClient("https://dialogporten.test", http, provider).getDialogById(id)
                             .shouldBeInstanceOf<UpstreamResult.Failure>().failure

@@ -1,7 +1,6 @@
 package no.nav.syfo.platform.auth.texas
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import createMockToken
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -16,14 +15,13 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
-import io.mockk.coEvery
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.installContentNegotiation
 import no.nav.syfo.platform.api.installStatusPages
 import no.nav.syfo.platform.auth.AddTokenIssuerPlugin
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
 
 private const val CALLING_APP = "calling-app"
 private const val AZURE_AD_ISSUER = "https://login.microsoftonline.com/tenant/v2.0"
@@ -64,10 +62,7 @@ class AzureAdTokenAuthPluginTest :
 
         test("responds 401 when the token is not active") {
             val texasHttpClient = mockk<TexasHttpClient>()
-            coEvery { texasHttpClient.introspectToken(any(), any()) } returns TexasIntrospectionResponse(
-                active = false,
-                azp = CALLING_APP,
-            )
+            texasHttpClient.stubInactive(azp = CALLING_APP)
 
             val response = callProtectedRoute(texasHttpClient)
 
@@ -76,7 +71,7 @@ class AzureAdTokenAuthPluginTest :
 
         test("responds 500 with INTERNAL_SERVER_ERROR when Texas introspection fails") {
             val texasHttpClient = mockk<TexasHttpClient>()
-            coEvery { texasHttpClient.introspectToken(any(), any()) } throws RuntimeException("Texas unavailable")
+            texasHttpClient.stubIntrospectionFailure(RuntimeException("Texas unavailable"))
 
             val response = callProtectedRoute(texasHttpClient)
 

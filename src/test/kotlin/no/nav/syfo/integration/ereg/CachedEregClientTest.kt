@@ -77,11 +77,3 @@ private class CacheFixture {
     }
     val cache = EregCache(valkey)
 }
-
-private class RecordingEregClient(private val result: () -> UpstreamResult<Organisasjon?>) : EregClient {
-    val requests = mutableListOf<String>()
-    override suspend fun getOrganisasjon(orgnummer: String): UpstreamResult<Organisasjon?> {
-        requests += orgnummer
-        return result()
-    }
-}

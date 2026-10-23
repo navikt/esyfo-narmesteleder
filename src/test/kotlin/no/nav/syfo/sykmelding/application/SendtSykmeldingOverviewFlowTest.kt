@@ -1,9 +1,9 @@
-package no.nav.syfo
+package no.nav.syfo.sykmelding.application
 
-import defaultSendtSykmeldingMessage
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.mockk
+import no.nav.syfo.TestDB
+import no.nav.syfo.defaultSendtSykmeldingMessage
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
@@ -17,15 +17,9 @@ import no.nav.syfo.narmestelederrelasjon.application.lookup.HasActiveNarmesteled
 import no.nav.syfo.narmestelederrelasjon.application.search.NarmestelederrelasjonSearchQuery
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.infrastructure.ExposedNarmestelederrelasjonSearchRepository
-import no.nav.syfo.narmestelederrelasjon.infrastructure.NarmestelederTable
-import no.nav.syfo.sykmelding.application.NarmestelederBruddService
-import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
-import no.nav.syfo.sykmelding.application.SykmeldingRecord
-import no.nav.syfo.sykmelding.application.SykmeldingService
-import no.nav.syfo.sykmelding.application.SykmeldingsperiodeAGDTO
+import no.nav.syfo.narmestelederrelasjon.infrastructure.insertRelation
 import no.nav.syfo.sykmelding.infrastructure.ExposedSykmeldingDb
-import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import no.nav.syfo.sykmelding.infrastructure.PostgresSendtSykmeldingNarmestelederBruddRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -52,7 +46,11 @@ class SendtSykmeldingOverviewFlowTest :
                 metrics = MicrometerNarmestelederbehovCreationMetrics(),
             ),
             sykmeldingService = SykmeldingService(ExposedSykmeldingDb(TestDB.exposedDatabase)),
-            narmestelederBruddService = mockk<NarmestelederBruddService>(),
+            // Overview sykmeldinger have no leader answer, so no relation is revoked.
+            narmestelederBruddService = NarmestelederBruddService(
+                revokeNarmestelederrelasjon = { error("Unexpected revocation") },
+                bruddRepository = PostgresSendtSykmeldingNarmestelederBruddRepository(TestDB.exposedDatabase),
+            ),
             hasActiveNarmestelederrelasjon = HasActiveNarmestelederrelasjonUseCase(
                 ExposedActiveNarmestelederrelasjonRepository(TestDB.exposedDatabase),
             ),
@@ -66,11 +64,11 @@ class SendtSykmeldingOverviewFlowTest :
         )
 
         beforeTest {
-            clearOverviewFlowData()
+            TestDB.clearAllData()
             dialogCalls.clear()
         }
         afterTest {
-            clearOverviewFlowData()
+            TestDB.clearAllData()
         }
 
         test("sendt sykmelding without a leader answer shows an employee with an active relation only in Aktiv sykmelding") {
@@ -133,27 +131,17 @@ private suspend fun SendtSykmeldingHandler.handleOverviewSykmelding(employee: Pe
     handleNarmestelederbehov(message)
 }
 
-private fun clearOverviewFlowData() {
-    TestDB.clearAllData()
-    TestDB.clearNarmestelederData()
-    TestDB.clearSendtSykmeldingData()
-}
-
 private fun insertOverviewRelation(
     employee: PersonalIdentificationNumber,
     organization: OrganizationNumber,
     activeTo: OffsetDateTime? = null,
 ) {
-    transaction(TestDB.exposedDatabase) {
-        NarmestelederTable.insert {
-            it[narmestelederId] = UUID.randomUUID()
-            it[orgnummer] = organization.value
-            it[sykmeldtFnr] = employee.value
-            it[narmestelederFnr] = "10987654321"
-            it[narmestelederTelefonnummer] = "90000000"
-            it[narmestelederEpost] = "manager@example.com"
-            it[aktivFom] = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(1)
-            it[aktivTom] = activeTo
-        }
-    }
+    insertRelation(
+        employeeIdent = employee.value,
+        organizationNumber = organization.value,
+        activeFrom = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(1),
+        activeTo = activeTo,
+        email = "manager@example.com",
+        mobile = "90000000",
+    )
 }

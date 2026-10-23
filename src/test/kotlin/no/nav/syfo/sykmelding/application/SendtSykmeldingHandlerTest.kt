@@ -1,10 +1,6 @@
 package no.nav.syfo.sykmelding.application
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
-import defaultSendtSykmeldingMessage
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -15,6 +11,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
+import no.nav.syfo.defaultSendtSykmeldingMessage
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.aareg.AAREG
@@ -27,9 +24,9 @@ import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederrelasjon.application.HasActiveNarmestelederrelasjon
 import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.observability.withProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.util.UUID
 
@@ -65,82 +62,54 @@ class SendtSykmeldingHandlerTest :
         }
 
         test("logs only the validated sykmelding UUID when employer information is missing") {
-            val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
-            val originalLevel = logger.level
-            val appender = ListAppender<ILoggingEvent>()
-            appender.start()
-            logger.level = Level.ERROR
-            logger.addAppender(appender)
-            try {
+            withProductionLogs(SendtSykmeldingHandler::class.java, Level.ERROR) { logs ->
                 val id = UUID.randomUUID()
                 val message = defaultSendtSykmeldingMessage(sykmeldingId = id.toString())
                     .let { it.copy(event = it.event.copy(arbeidsgiver = null)) }
 
                 handler.handleNarmestelederbehov(message)
 
-                val fields = appender.list.single().keyValuePairs.associate { it.key to it.value }
+                val event = logs.logs.single()
+                val fields = event.fields
                 fields["event_type"] shouldBe "sick_leave_employer_missing"
                 fields["action"] shouldBe "CREATE_BEHOV"
                 fields["sykmelding_id"] shouldBe id.toString()
-                fields.toString().contains(message.kafkaMetadata.fnr) shouldBe false
-            } finally {
-                logger.detachAppender(appender)
-                appender.stop()
-                logger.level = originalLevel
+                event.serialized.contains(message.kafkaMetadata.fnr) shouldBe false
             }
         }
 
         test("keeps the skipped message action and reason bounded without logging invalid identifiers") {
-            val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
-            val previousLevel = logger.level
-            val appender = ListAppender<ILoggingEvent>().apply { start() }
-            logger.level = Level.WARN
-            logger.addAppender(appender)
-            try {
+            withProductionLogs(SendtSykmeldingHandler::class.java, Level.WARN) { logs ->
                 val id = UUID.randomUUID()
                 val message = defaultSendtSykmeldingMessage(sykmeldingId = id.toString())
                     .let { it.copy(kafkaMetadata = it.kafkaMetadata.copy(fnr = "private-canary")) }
                 handler.handleNarmestelederbehov(message)
 
-                val fields = appender.list.single().keyValuePairs.associate { it.key to it.value }
+                val event = logs.logs.single()
+                val fields = event.fields
                 fields["event_type"] shouldBe "sick_leave_message_skipped"
                 fields["action"] shouldBe "CREATE_BEHOV"
                 fields["reason"] shouldBe "PERSON_ID_INVALID"
                 fields["sykmelding_id"] shouldBe id.toString()
-                fields.toString().contains("private-canary") shouldBe false
-            } finally {
-                logger.detachAppender(appender)
-                appender.stop()
-                logger.level = previousLevel
+                event.serialized.contains("private-canary") shouldBe false
             }
         }
 
         test("logs an active relation skip at info without employee or organization identifiers") {
             hasActiveRelation = true
-            val logger = LoggerFactory.getLogger(SendtSykmeldingHandler::class.java) as Logger
-            val previousLevel = logger.level
-            val appender = ListAppender<ILoggingEvent>().apply { start() }
-            logger.level = Level.INFO
-            logger.addAppender(appender)
-            try {
+            withProductionLogs(SendtSykmeldingHandler::class.java, Level.INFO) { logs ->
                 val message = defaultSendtSykmeldingMessage(sykmeldingId = UUID.randomUUID().toString())
 
                 handler.handleNarmestelederbehov(message)
 
-                val event = appender.list.single {
-                    it.keyValuePairs?.any { field -> field.key == "event_type" && field.value == "sick_leave_behov_skipped_active_relation" } == true
-                }
+                val event = logs.logs.single { it.eventType == "sick_leave_behov_skipped_active_relation" }
                 event.level shouldBe Level.INFO
-                val fields = event.keyValuePairs.associate { it.key to it.value }
+                val fields = event.fields
                 fields["sykmelding_id"] shouldBe message.event.sykmeldingId
                 fields["action"] shouldBe "CREATE_BEHOV"
-                val logOutput = appender.list.joinToString { "${it.formattedMessage} ${it.keyValuePairs}" }
+                val logOutput = logs.records.joinToString("\n")
                 logOutput.contains(message.kafkaMetadata.fnr) shouldBe false
                 logOutput.contains(requireNotNull(message.event.arbeidsgiver).orgnummer) shouldBe false
-            } finally {
-                logger.detachAppender(appender)
-                appender.stop()
-                logger.level = previousLevel
             }
         }
 
@@ -341,6 +310,6 @@ private class RecordingCreateNarmestelederbehov : CreateNarmestelederbehov {
 
 private fun List<Pair<LocalDate, LocalDate>>.toPeriods() = map { (fom, tom) -> SykmeldingsperiodeAGDTO(fom = fom, tom = tom) }
 
-private object UnusedSykmeldingDb : SykmeldingDb {
+internal object UnusedSykmeldingDb : SykmeldingDb {
     override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) = error("Unexpected sykmelding transaction")
 }

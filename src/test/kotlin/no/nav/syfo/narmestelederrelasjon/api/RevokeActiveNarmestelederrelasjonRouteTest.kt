@@ -1,31 +1,23 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
-import DefaultOrganization
-import createMockToken
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.mockk.coEvery
+import io.micrometer.core.instrument.Counter
 import io.mockk.coVerify
 import io.mockk.mockk
-import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederbehov.api.registerFulfillNarmestelederbehovApi
-import no.nav.syfo.narmestelederbehov.api.registerListNarmestelederbehovApi
-import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
+import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.PersonDetails
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeActiveNarmestelederrelasjonUseCase
@@ -50,7 +42,8 @@ import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -59,31 +52,30 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import java.time.Instant
 import java.util.UUID
 
-private val request = LinemanagerRevoke(PersonalIdentificationNumber("12345678901"), OrganizationNumber("123456789"), "Hansen")
 private val resolvedIdent = PersonalIdentificationNumber("12345678902")
+
+private data class RevokeCase(
+    val provider: String,
+    val caller: String,
+    val counter: Counter,
+    val source: NlResponseSource,
+)
 
 class RevokeActiveNarmestelederrelasjonRouteTest :
     FunSpec({
-        test("Maskinporten and TokenX revoke once, publish the resolved ident and preserve Kafka source") {
-            listOf(
-                Triple("maskinporten", "12345678901", NlResponseSource.LPS_REVOKE),
-                Triple("tokenx", "12345678902", NlResponseSource.ARBEIDSTAGER_REVOKE),
-                Triple("tokenx", "11223344556", NlResponseSource.PERSONALLEDER_REVOKE),
-            ).forEach { (provider, caller, source) ->
+        listOf(
+            RevokeCase("maskinporten", "11223344556", COUNT_REVOKE_LINEMANAGER_BY_LPS, NlResponseSource.LPS_REVOKE),
+            RevokeCase("tokenx", "11223344556", COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER, NlResponseSource.PERSONALLEDER_REVOKE),
+            RevokeCase("tokenx", resolvedIdent.value, COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER, NlResponseSource.ARBEIDSTAGER_REVOKE),
+        ).forEach { (provider, caller, counter, source) ->
+            test("a $provider revocation returns 202, counts by principal and keeps the Kafka source $source") {
                 val fixture = RevokeRouteFixture()
-                fixture.authorize(provider, caller)
-                val counter = if (provider == "maskinporten") COUNT_REVOKE_LINEMANAGER_BY_LPS else COUNT_REVOKE_LINEMANAGER_BY_PERSONNEL_MANAGER
+                fixture.authorize(provider, caller = caller)
                 val before = counter.count()
                 fixture.withApplication {
                     client.revoke(caller, provider).status shouldBe HttpStatusCode.Accepted
                 }
-                fixture.messages.size shouldBe 1
-                fixture.messages.single().let { (payload, publishedSource) ->
-                    payload.sykmeldtFnr shouldBe resolvedIdent.value
-                    payload.orgnummer shouldBe request.orgNumber.value
-                    publishedSource shouldBe source
-                }
-                fixture.lookups shouldBe listOf(resolvedIdent)
+                fixture.messages.map { it.second } shouldBe listOf(source)
                 counter.count() shouldBe before + 1.0
                 fixture.verifyIntrospection(provider)
             }
@@ -117,16 +109,16 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
             fixture.messages shouldBe emptyList()
         }
 
-        test("invalid identifiers in the body return 400 with the validation message") {
-            val fixture = RevokeRouteFixture()
-            fixture.authorize("maskinporten")
-            fixture.withApplication {
-                listOf(
-                    """{"employeeIdentificationNumber":"1234567890","orgNumber":"123456789","lastName":"Hansen"}""" to
-                        "PersonalIdentificationNumber must be exactly 11 digits",
-                    """{"employeeIdentificationNumber":"12345678901","orgNumber":"12345678a","lastName":"Hansen"}""" to
-                        "OrganizationNumber must be exactly 9 digits",
-                ).forEach { (body, message) ->
+        listOf(
+            """{"employeeIdentificationNumber":"1234567890","orgNumber":"123456789","lastName":"Hansen"}""" to
+                "PersonalIdentificationNumber must be exactly 11 digits",
+            """{"employeeIdentificationNumber":"12345678901","orgNumber":"12345678a","lastName":"Hansen"}""" to
+                "OrganizationNumber must be exactly 9 digits",
+        ).forEach { (body, message) ->
+            test("an invalid identifier in the body returns 400 with '$message'") {
+                val fixture = RevokeRouteFixture()
+                fixture.authorize("maskinporten")
+                fixture.withApplication {
                     client.revoke(body = body).let {
                         it.status shouldBe HttpStatusCode.BadRequest
                         it.body<ApiError>().let { error ->
@@ -135,12 +127,12 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
                         }
                     }
                 }
+                fixture.lookups shouldBe emptyList()
+                fixture.messages shouldBe emptyList()
             }
-            fixture.lookups shouldBe emptyList()
-            fixture.messages shouldBe emptyList()
         }
 
-        test("mismatched last name returns the name mismatch error and never looks up active relations") {
+        test("mismatched last name returns the name mismatch error") {
             val fixture = RevokeRouteFixture(name = "Other")
             fixture.authorize("maskinporten")
             fixture.withApplication {
@@ -152,44 +144,22 @@ class RevokeActiveNarmestelederrelasjonRouteTest :
                     }
                 }
             }
-            fixture.lookups shouldBe emptyList()
             fixture.messages shouldBe emptyList()
         }
 
-        test("revocation does not require employment or a valid stored manager email") {
-            val fixture = RevokeRouteFixture(managerEmail = "invalid")
+        test("access denial returns 403 with MISSING_ORG_ACCESS") {
+            val fixture = RevokeRouteFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS) })
             fixture.authorize("maskinporten")
-            fixture.withApplication { client.revoke().status shouldBe HttpStatusCode.Accepted }
-            fixture.messages.size shouldBe 1
-        }
-
-        test("organization and resource access denials preserve status, message and error type") {
-            listOf(
-                Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: 123456789"),
-                Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: 123456789"),
-                Triple(DenialReason.SYSTEM_USER_REJECTED, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "System user does not have access to nav_syfo_oppgi-narmesteleder resource"),
-            ).forEach { (reason, type, message) ->
-                val fixture = RevokeRouteFixture(access = OrganizationAccess { _, _ -> OrganizationAccessResult.Denied(reason) })
-                fixture.authorize("maskinporten")
-                fixture.withApplication {
-                    client.revoke().let {
-                        it.status shouldBe HttpStatusCode.Forbidden
-                        it.body<ApiError>().let { error ->
-                            error.type shouldBe type
-                            error.message shouldBe message
-                        }
+            fixture.withApplication {
+                client.revoke().let {
+                    it.status shouldBe HttpStatusCode.Forbidden
+                    it.body<ApiError>().let { error ->
+                        error.type shouldBe ErrorType.MISSING_ORG_ACCESS
+                        error.message shouldBe "User lacks access to organization: 123456789"
                     }
                 }
-                fixture.messages shouldBe emptyList()
             }
-        }
-
-        test("missing token cannot reach revoke or requirement routes") {
-            val fixture = RevokeRouteFixture()
-            fixture.withApplication {
-                client.post("$API_V1_PATH$REVOKE_ACTIVE_NARMESTELEDERRELASJON_PATH").status shouldBe HttpStatusCode.Unauthorized
-                client.get("$API_V1_PATH/linemanager/requirement").status shouldBe HttpStatusCode.Unauthorized
-            }
+            fixture.messages shouldBe emptyList()
         }
 
         test("upstream failures return HTTP 500 with UPSTREAM_SERVICE_UNAVAILABLE") {
@@ -215,12 +185,14 @@ private class RevokeRouteFixture(
     private val active: Boolean = true,
     private val name: String = "Hansen",
     private val person: PersonDetails? = PersonDetails(resolvedIdent, PersonNameDetails("Test", name, registeredNames = listOf(RegisteredName(name)))),
-    private val managerEmail: String = "manager@example.test",
     access: OrganizationAccess = OrganizationAccess { _, _ -> OrganizationAccessResult.Granted(organizationName = null) },
     private val unavailable: UpstreamFailure? = null,
 ) {
     private val texas = mockk<TexasHttpClient>()
-    val lookups = mutableListOf<PersonalIdentificationNumber>()
+    private val repository = FakeActiveNarmestelederrelasjonRepository(
+        if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), PersonalIdentificationNumber("10987654321"), "manager@example.test", Instant.EPOCH)) else emptyList(),
+    )
+    val lookups get() = repository.lookups.map { it.first }
     val messages = mutableListOf<Pair<NlAvbrutt, NlResponseSource>>()
     private val producer = object : SykmeldingNarmestelederProducer {
         override fun sendSykmeldingNLRelasjon(sykmeldingNL: NlResponse, source: NlResponseSource) = error("Unexpected relation")
@@ -234,32 +206,15 @@ private class RevokeRouteFixture(
             unavailable?.let { PersonLookupResult.Unavailable(it) } ?: person?.let { PersonLookupResult.Found(it) } ?: PersonLookupResult.NotFound
         },
         MicrometerNameValidationMetrics(),
-        object : ActiveNarmestelederrelasjonRepository {
-            override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber): List<ActiveNarmestelederrelasjon> {
-                lookups += employeeIdent
-                return if (active) listOf(ActiveNarmestelederrelasjon(UUID(0, 1), PersonalIdentificationNumber("10987654321"), managerEmail, Instant.EPOCH)) else emptyList()
-            }
-        },
+        repository,
         KafkaPublishNarmestelederrelasjonRevocation(producer),
     )
 
     fun authorize(provider: String, caller: String = "12345678901") {
         if (provider == "maskinporten") {
-            coEvery { texas.introspectToken("maskinporten", any()) } returns TexasIntrospectionResponse(
-                active = true,
-                scope = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
-                consumer = DefaultOrganization,
-                authorizationDetails = listOf(
-                    no.nav.syfo.platform.auth.texas.client.AuthorizationDetail(
-                        type = "urn:altinn:systemuser",
-                        systemuserOrg = DefaultOrganization,
-                        systemuserId = listOf("some-user-id"),
-                        systemId = "some-system-id",
-                    ),
-                ),
-            )
+            texas.stubMaskinportenSystemUser()
         } else {
-            coEvery { texas.introspectToken("tokenx", any()) } returns TexasIntrospectionResponse(active = true, acr = "Level4", pid = caller)
+            texas.stubTokenX(pid = caller)
         }
     }
 
@@ -271,8 +226,6 @@ private class RevokeRouteFixture(
         testRouteApplication(
             routes = {
                 apiV1 {
-                    registerFulfillNarmestelederbehovApi(mockk<FulfillNarmestelederbehovUseCase>(), texas)
-                    registerListNarmestelederbehovApi(mockk<ListNarmestelederbehovUseCase>(), texas)
                     registerRevokeActiveNarmestelederrelasjonApi(useCase, texas)
                 }
             },

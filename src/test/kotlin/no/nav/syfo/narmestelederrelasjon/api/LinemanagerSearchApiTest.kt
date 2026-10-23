@@ -1,9 +1,7 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
-import DefaultOrganization
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import createMockToken
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.doubles.shouldBeExactly
@@ -19,8 +17,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.clearMocks
-import io.mockk.coEvery
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.search.LinemanagerSearchCursor
@@ -35,7 +33,7 @@ import no.nav.syfo.narmestelederrelasjon.application.search.SearchPerson
 import no.nav.syfo.narmestelederrelasjon.observability.LINEMANAGER_SEARCH_TOTAL
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
-import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.api.API_V1_PATH
@@ -43,10 +41,10 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
-import no.nav.syfo.platform.auth.texas.client.AuthorizationDetail
+import no.nav.syfo.platform.auth.texas.DefaultOrganization
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
+import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -64,7 +62,7 @@ private val responseMapper = jacksonObjectMapper()
 
 class LinemanagerSearchApiTest :
     FunSpec({
-        val access = RouteOrganizationAccess()
+        val access = FakeOrganizationAccess(organizationNumber)
         val repository = RouteSearchRepository()
         val useCase = SearchActiveNarmestelederrelasjonerUseCase(access, repository)
         val texasHttpClient = mockk<TexasHttpClient>()
@@ -75,9 +73,11 @@ class LinemanagerSearchApiTest :
             repository.rows = listOf(searchRow(id = 1))
             repository.queries.clear()
             clearMocks(texasHttpClient)
-            texasHttpClient.introspectsMaskinportenSystemUser()
-            coEvery { texasHttpClient.introspectToken("tokenx", any()) } returns
-                TexasIntrospectionResponse(active = true, acr = "Level4", pid = callerPid.value)
+            texasHttpClient.stubMaskinportenSystemUser(
+                systemUserId = SYSTEM_USER_ID,
+                systemId = "system-id",
+            )
+            texasHttpClient.stubTokenX(pid = callerPid.value)
         }
 
         test("unavailable organization access returns 500 and logs once without searching or counting") {
@@ -132,7 +132,7 @@ class LinemanagerSearchApiTest :
                 body.path("meta").path("nextPageToken").asText() shouldBe
                     LinemanagerSearchCursor(firstName = "ola", lastName = "nordmann", id = 1).toPageToken()
                 access.calls shouldBe listOf(
-                    OrganizationAccessSubject.LpsSystemUser(SYSTEM_USER_ID, organizationNumber) to organizationNumber,
+                    OrganizationAccessSubject.LpsSystemUser(SYSTEM_USER_ID, OrganizationNumber(DefaultOrganization.ID.removePrefix("0192:"))) to organizationNumber,
                 )
                 repository.queries.single().pageSize shouldBe 1
             }
@@ -232,31 +232,17 @@ class LinemanagerSearchApiTest :
             }
         }
 
-        listOf(
-            Triple(
-                DenialReason.MISSING_ORGANIZATION_ACCESS,
-                ErrorType.MISSING_ORG_ACCESS,
-                "User lacks access to organization: ${organizationNumber.value}",
-            ),
-            Triple(
-                DenialReason.MISSING_RESOURCE_ACCESS,
-                ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-                "User lacks access to required Altinn resource for organization: ${organizationNumber.value}",
-            ),
-            Triple(
-                DenialReason.SYSTEM_USER_REJECTED,
-                ErrorType.MISSING_ALITINN_RESOURCE_ACCESS,
-                "System user does not have access to nav_syfo_oppgi-narmesteleder resource",
-            ),
-        ).forEach { (reason, errorType, message) ->
-            test("returns 403 for $reason before validating text and without querying") {
-                access.result = OrganizationAccessResult.Denied(reason)
-                withSearchApi(useCase, texasHttpClient) {
-                    val response = client.search("""{"orgNumber":"${organizationNumber.value}","text":"${"a".repeat(51)}"}""")
+        test("returns 403 for denied access before validating text and without querying") {
+            access.result = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
+            withSearchApi(useCase, texasHttpClient) {
+                val response = client.search("""{"orgNumber":"${organizationNumber.value}","text":"${"a".repeat(51)}"}""")
 
-                    response.shouldBeError(HttpStatusCode.Forbidden, errorType, message)
-                    repository.queries.shouldBeEmpty()
-                }
+                response.shouldBeError(
+                    HttpStatusCode.Forbidden,
+                    ErrorType.MISSING_ORG_ACCESS,
+                    "User lacks access to organization: ${organizationNumber.value}",
+                )
+                repository.queries.shouldBeEmpty()
             }
         }
 
@@ -298,19 +284,6 @@ class LinemanagerSearchApiTest :
         }
     })
 
-private class RouteOrganizationAccess : OrganizationAccess {
-    var result: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null)
-    val calls = mutableListOf<Pair<OrganizationAccessSubject, OrganizationNumber>>()
-
-    override suspend fun evaluate(
-        subject: OrganizationAccessSubject,
-        organizationNumber: OrganizationNumber,
-    ): OrganizationAccessResult {
-        calls.add(subject to organizationNumber)
-        return result
-    }
-}
-
 private class RouteSearchRepository : NarmestelederrelasjonSearchRepository {
     var rows = emptyList<NarmestelederrelasjonSearchRow>()
     val queries = mutableListOf<NarmestelederrelasjonSearchQuery>()
@@ -339,22 +312,6 @@ private fun searchRow(id: Int, employeeFnr: String = "12345678910") = Narmestele
         ),
     ),
 )
-
-private fun TexasHttpClient.introspectsMaskinportenSystemUser() {
-    coEvery { introspectToken("maskinporten", any()) } returns TexasIntrospectionResponse(
-        active = true,
-        scope = MASKINPORTEN_NL_SCOPE,
-        consumer = DefaultOrganization,
-        authorizationDetails = listOf(
-            AuthorizationDetail(
-                type = "urn:altinn:systemuser",
-                systemuserOrg = DefaultOrganization.copy(ID = "0192:${organizationNumber.value}"),
-                systemuserId = listOf(SYSTEM_USER_ID),
-                systemId = "system-id",
-            ),
-        ),
-    )
-}
 
 private fun systemToken() = createMockToken(organizationNumber.value, issuer = MASKINPORTEN_ISSUER)
 

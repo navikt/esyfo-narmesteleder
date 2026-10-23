@@ -1,8 +1,5 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -16,10 +13,10 @@ import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.observability.withProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
-import org.slf4j.LoggerFactory
 
 class FulfillmentHttpMappingTest :
     FunSpec({
@@ -88,7 +85,7 @@ class FulfillmentHttpMappingTest :
             ),
         )
         cases.forEach { case ->
-            test("maps ${case.result} to the legacy HTTP error") {
+            test("maps ${case.result} to its HTTP error") {
                 val error = shouldThrow<ApiErrorException> { case.result.throwIfRejected() }
                 val response = error.toApiError("/api/v1/linemanager/requirement/id")
                 response.status shouldBe case.status
@@ -113,10 +110,7 @@ class FulfillmentHttpMappingTest :
         }
 
         test("invalid contact mapping emits no second rejection event") {
-            val logger = LoggerFactory.getLogger(FulfillNarmestelederbehovResult::class.java) as Logger
-            val appender = ListAppender<ILoggingEvent>().apply { start() }
-            logger.addAppender(appender)
-            try {
+            withProductionLogs(FulfillNarmestelederbehovResult::class.java) { logs ->
                 val invalid = FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
                     listOf(
                         ManagerContactValidationIssue(ManagerContactField.MOBILE, ManagerContactValidationReason.PHONE_NUMBER_MUST_NOT_BE_BLANK),
@@ -124,10 +118,7 @@ class FulfillmentHttpMappingTest :
                     ),
                 )
                 shouldThrow<ApiErrorException> { invalid.throwIfRejected() }.isAlreadyLogged shouldBe true
-                appender.list.size shouldBe 0
-            } finally {
-                logger.detachAppender(appender)
-                appender.stop()
+                logs.logs.size shouldBe 0
             }
         }
     })

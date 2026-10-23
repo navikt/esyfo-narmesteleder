@@ -6,8 +6,8 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
-import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.DiscardedEmailAddressMetrics
+import no.nav.syfo.narmestelederrelasjon.application.FakeActiveNarmestelederrelasjonRepository
 import no.nav.syfo.narmestelederrelasjon.application.RecordingDiscardedEmailAddressMetrics
 import java.time.Instant
 import java.util.UUID
@@ -23,19 +23,16 @@ class LookupActiveNarmestelederUseCaseTest :
             " first@example.com, , second@example.com ",
             Instant.parse("2026-01-01T00:00:00Z"),
         )
-        class FakeRepository(
-            var rows: List<ActiveNarmestelederrelasjon> = emptyList(),
-        ) : ActiveNarmestelederrelasjonRepository {
-            override suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber) = rows.also {
-                employeeIdent shouldBe employee
-                organizationNumber shouldBe organization
-            }
+        var repository = FakeActiveNarmestelederrelasjonRepository()
+
+        afterTest {
+            repository.lookups.forEach { it shouldBe (employee to organization) }
         }
 
         fun useCase(
             rows: List<ActiveNarmestelederrelasjon>,
             metrics: DiscardedEmailAddressMetrics = DiscardedEmailAddressMetrics {},
-        ) = LookupActiveNarmestelederUseCase(FakeRepository(rows), metrics)
+        ) = LookupActiveNarmestelederUseCase(FakeActiveNarmestelederrelasjonRepository(rows).also { repository = it }, metrics)
 
         test("returns null when no active relation exists") {
             val metrics = RecordingDiscardedEmailAddressMetrics()

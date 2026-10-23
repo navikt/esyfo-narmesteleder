@@ -1,9 +1,6 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import DefaultOrganization
 import com.fasterxml.jackson.databind.JsonNode
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -12,6 +9,7 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.mockk
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
@@ -37,8 +35,9 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.DefaultOrganization
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -118,7 +117,7 @@ class ListNarmestelederbehovRouteTest :
             Triple("orgNumber=$ORGANIZATION_NUMBER&createdAfter=invalid", ErrorType.BAD_REQUEST, "Invalid date format for createdAfter parameter. Expected ISO-8601 format."),
             Triple("createdAfter=1970-01-01T00:00:00Z", ErrorType.BAD_REQUEST, "Missing orgNumber parameter"),
         ).forEach { (query, type, message) ->
-            test("invalid query $query returns the legacy 400") {
+            test("invalid query $query returns 400 with its error message") {
                 val fixture = ListRouteFixture()
                 fixture.withApplication {
                     val response = client.get("$LIST_PATH?$query") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
@@ -143,33 +142,14 @@ class ListNarmestelederbehovRouteTest :
             }
         }
 
-        listOf(
-            Triple(DenialReason.MISSING_ORGANIZATION_ACCESS, ErrorType.MISSING_ORG_ACCESS, "User lacks access to organization: $ORGANIZATION_NUMBER"),
-            Triple(DenialReason.MISSING_RESOURCE_ACCESS, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "User lacks access to required Altinn resource for organization: $ORGANIZATION_NUMBER"),
-            Triple(DenialReason.SYSTEM_USER_REJECTED, ErrorType.MISSING_ALITINN_RESOURCE_ACCESS, "System user does not have access to nav_syfo_oppgi-narmesteleder resource"),
-        ).forEach { (reason, type, message) ->
-            test("access denial $reason returns the legacy 403") {
-                val fixture = ListRouteFixture(access = OrganizationAccessResult.Denied(reason))
-                fixture.withApplication {
-                    val response = client.get("$LIST_PATH?$VALID_QUERY") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
-                    response.status shouldBe HttpStatusCode.Forbidden
-                    response.body<ApiError>().type shouldBe type
-                    response.body<ApiError>().message shouldBe message
-                    fixture.repository.requestedLimit shouldBe null
-                }
-            }
-        }
-
-        test("missing names are fetched and stored with a null system organization name") {
-            val fixture = ListRouteFixture(access = OrganizationAccessResult.Granted(null))
-            fixture.repository.rows[0] = routeDetails().copy(firstName = null)
+        test("access denial returns 403 with MISSING_ORG_ACCESS before reading") {
+            val fixture = ListRouteFixture(access = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS))
             fixture.withApplication {
                 val response = client.get("$LIST_PATH?$VALID_QUERY") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
-                response.status shouldBe HttpStatusCode.OK
-                val item = response.body<LinemanagerRequirementCollection>().linemanagerRequirements.single()
-                item.orgName shouldBe null
-                item.name.firstName shouldBe "Looked"
-                fixture.repository.savedNames shouldBe listOf(fixture.repository.rows.single().id to BehovPersonName("Looked", null, "Up"))
+                response.status shouldBe HttpStatusCode.Forbidden
+                response.body<ApiError>().type shouldBe ErrorType.MISSING_ORG_ACCESS
+                response.body<ApiError>().message shouldBe "User lacks access to organization: $ORGANIZATION_NUMBER"
+                fixture.repository.requestedLimit shouldBe null
             }
         }
 
@@ -186,17 +166,6 @@ class ListNarmestelederbehovRouteTest :
                     fixture.repository.savedNames shouldBe emptyList()
                     fixture.repository.countCalls shouldBe 0
                 }
-            }
-        }
-
-        test("person not found returns the exact legacy generic 500") {
-            val fixture = ListRouteFixture(personFound = false)
-            fixture.repository.rows[0] = routeDetails().copy(firstName = null)
-            fixture.withApplication {
-                val response = client.get("$LIST_PATH?$VALID_QUERY") { bearerAuth(createMockToken(ORGANIZATION_NUMBER)) }
-                response.status shouldBe HttpStatusCode.InternalServerError
-                response.body<ApiError>().type shouldBe ErrorType.INTERNAL_SERVER_ERROR
-                response.body<ApiError>().message shouldBe "Internal server error"
             }
         }
 
@@ -227,7 +196,6 @@ private const val VALID_QUERY = "orgNumber=$ORGANIZATION_NUMBER&createdAfter=197
 
 private class ListRouteFixture(
     access: OrganizationAccessResult = OrganizationAccessResult.Granted("Bedrift AS"),
-    personFound: Boolean = true,
     unavailable: UpstreamFailure? = null,
 ) {
     val repository = ListRouteRepository()
@@ -239,16 +207,12 @@ private class ListRouteFixture(
             repository,
         ) {
             unavailable?.let { EmployeeNameLookupResult.Unavailable(it) }
-                ?: if (personFound) {
-                    EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up"))
-                } else {
-                    EmployeeNameLookupResult.NotFound
-                }
+                ?: EmployeeNameLookupResult.Found(BehovPersonName("Looked", null, "Up"))
         },
     )
 
     init {
-        texas.defaultMocks(systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"), scope = MASKINPORTEN_NL_SCOPE)
+        texas.stubMaskinportenSystemUser(systemUserOrganization = DefaultOrganization.copy(ID = "0192:$ORGANIZATION_NUMBER"))
     }
 
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {

@@ -10,6 +10,7 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.observability.withProductionLogs
@@ -78,13 +79,13 @@ class GetNarmestelederbehovUseCaseTest :
 
         test("system user has no organization name") {
             val fixture = ReadFixture(access = OrganizationAccessResult.Granted(organizationName = null))
-            val result = fixture.execute(
-                subject = OrganizationAccessSubject.LpsSystemUser(
-                    systemUserId = "system",
-                    systemUserOrganizationNumber = OrganizationNumber("910000001"),
-                ),
+            val subject = OrganizationAccessSubject.LpsSystemUser(
+                systemUserId = "system",
+                systemUserOrganizationNumber = OrganizationNumber("999777555"),
             )
+            val result = fixture.execute(subject = subject)
             (result as GetNarmestelederbehovResult.Found).organizationName shouldBe null
+            fixture.organizationAccess.calls shouldBe listOf(subject to requireNotNull(fixture.row).organizationNumber)
         }
 
         test("Unavailable propagates before access without persisting a name") {
@@ -108,6 +109,7 @@ private class ReadFixture(
     unavailable: UpstreamFailure? = null,
 ) {
     val effects = mutableListOf<String>()
+    val organizationAccess = FakeOrganizationAccess(row?.organizationNumber, access, effects)
     var person: BehovPersonName? = null
     val savedNames = mutableListOf<BehovPersonName>()
     private val repository = object : NarmestelederbehovRepository {
@@ -135,7 +137,7 @@ private class ReadFixture(
     }
     private val useCase = GetNarmestelederbehovUseCase(
         repository = repository,
-        organizationAccess = { _, _ -> access.also { effects += "access" } },
+        organizationAccess = organizationAccess,
         employeeName = NarmestelederbehovEmployeeName(
             repository
         ) {

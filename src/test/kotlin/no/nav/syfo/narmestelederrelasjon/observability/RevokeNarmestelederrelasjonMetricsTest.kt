@@ -8,19 +8,21 @@ import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 class RevokeNarmestelederrelasjonMetricsTest :
     FunSpec({
-        test("increments only the legacy outcome tag for successes") {
-            val outcomes = listOf(
-                RevocationInitiator.EMPLOYEE to "revoked_by_employee",
-                RevocationInitiator.LINEMANAGER to "revoked_by_linemanager",
-                RevocationInitiator.PERSONNEL_MANAGER to "revoked_by_personnel_manager",
-                RevocationInitiator.LPS to "revoked_by_lps",
-            )
-            outcomes.forEach { (initiator, tag) ->
+        listOf(
+            RevocationInitiator.EMPLOYEE to "revoked_by_employee",
+            RevocationInitiator.LINEMANAGER to "revoked_by_linemanager",
+            RevocationInitiator.PERSONNEL_MANAGER to "revoked_by_personnel_manager",
+            RevocationInitiator.LPS to "revoked_by_lps",
+        ).forEach { (initiator, tag) ->
+            test("increments the $tag outcome tag for a revocation by $initiator") {
                 val counter = METRICS_REGISTRY.find(LINEMANAGER_REVOKE_BY_ID_TOTAL).tag("outcome", tag).counter()
                 val before = counter?.count() ?: 0.0
                 countLinemanagerRevokeById(RevokeNarmestelederrelasjonResult.Revoked(initiator))
                 METRICS_REGISTRY.find(LINEMANAGER_REVOKE_BY_ID_TOTAL).tag("outcome", tag).counter()?.count() shouldBe before + 1
             }
+        }
+
+        test("increments the already_revoked outcome tag for an already revoked relation") {
             val already = METRICS_REGISTRY.find(LINEMANAGER_REVOKE_BY_ID_TOTAL).tag("outcome", "already_revoked").counter()
             val before = already?.count() ?: 0.0
             countLinemanagerRevokeById(RevokeNarmestelederrelasjonResult.AlreadyRevoked)

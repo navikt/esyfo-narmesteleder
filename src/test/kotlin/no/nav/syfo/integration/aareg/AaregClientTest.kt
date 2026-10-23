@@ -117,8 +117,8 @@ class AaregClientTest :
             )
         }
 
-        test("sends a non-blank UUID call id on both operations when MDC is missing or blank") {
-            listOf(null, "", "   ").forEach { traceId ->
+        listOf("missing" to null, "empty" to "", "blank" to "   ").forEach { (case, traceId) ->
+            test("sends a non-blank UUID call id on both operations when the MDC call id is $case") {
                 withTraceId(traceId) {
                     val callIds = mutableListOf<String?>()
                     val client = aaregClient(aareg = { request ->
@@ -248,13 +248,13 @@ class AaregClientTest :
             }
         }
 
-        test("logs the Aareg failure with upstream status and Ktor cause without the ident canary") {
-            withProductionLogger("aareg-client-diagnostics-test") { logger ->
-                val contract = RuntimeLogContract.forEvents(
-                    aaregDiagnosticTestEvent,
-                    exceptionTypes = setOf("ClientRequestException", "ServerResponseException"),
-                )
-                listOf(HttpStatusCode.NotFound, HttpStatusCode.InternalServerError).forEach { status ->
+        listOf(HttpStatusCode.NotFound, HttpStatusCode.InternalServerError).forEach { status ->
+            test("logs the Aareg failure with upstream status ${status.value} and Ktor cause without the ident canary") {
+                withProductionLogger("aareg-client-diagnostics-test") { logger ->
+                    val contract = RuntimeLogContract.forEvents(
+                        aaregDiagnosticTestEvent,
+                        exceptionTypes = setOf("ClientRequestException", "ServerResponseException"),
+                    )
                     HttpClient(MockEngine { respond("sensitive upstream body $personIdent", status) }).use { responseClient ->
                         val response = responseClient.get("http://aareg/")
                         val original = if (status == HttpStatusCode.NotFound) {

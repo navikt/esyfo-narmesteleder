@@ -21,20 +21,29 @@ import kotlin.time.Duration.Companion.minutes
 
 class KafkaPublishNarmestelederrelasjonRevocationTest :
     FunSpec({
-        test("publishes the legacy message and Kafka source for each initiator") {
-            val producer = RecordingProducer()
-            val adapter = KafkaPublishNarmestelederrelasjonRevocation(producer)
-            val expectedSources = mapOf(
-                RevocationInitiator.EMPLOYEE to NlResponseSource.ARBEIDSTAGER_REVOKE,
-                RevocationInitiator.LINEMANAGER to NlResponseSource.NARMESTELEDER_REVOKE,
-                RevocationInitiator.PERSONNEL_MANAGER to NlResponseSource.PERSONALLEDER_REVOKE,
-                RevocationInitiator.LPS to NlResponseSource.LPS_REVOKE,
-                RevocationInitiator.EMPLOYEE_SENDT_SYKMELDING to NlResponseSource.ARBEIDSTAGER_SYKMELDING_REVOKE,
-                RevocationInitiator.EMPLOYMENT_ENDED to NlResponseSource.ARBEIDSFORHOLD_REVOKE,
-            )
+        val expectedSources = mapOf(
+            RevocationInitiator.EMPLOYEE to NlResponseSource.ARBEIDSTAGER_REVOKE,
+            RevocationInitiator.LINEMANAGER to NlResponseSource.NARMESTELEDER_REVOKE,
+            RevocationInitiator.PERSONNEL_MANAGER to NlResponseSource.PERSONALLEDER_REVOKE,
+            RevocationInitiator.LPS to NlResponseSource.LPS_REVOKE,
+            RevocationInitiator.EMPLOYEE_SENDT_SYKMELDING to NlResponseSource.ARBEIDSTAGER_SYKMELDING_REVOKE,
+            RevocationInitiator.EMPLOYMENT_ENDED to NlResponseSource.ARBEIDSFORHOLD_REVOKE,
+        )
+
+        test("maps every initiator to a Kafka source") {
             expectedSources.keys shouldBe RevocationInitiator.entries.toSet()
+        }
+
+        test("keeps the established source values for employment-ended and sendt sykmelding revocations") {
             NlResponseSource.ARBEIDSFORHOLD_REVOKE.source shouldBe "narmesteleder-arbeidsforhold"
-            expectedSources.forEach { (initiator, source) ->
+            // Same value as the kilde stored for a sendt sykmelding brudd; "esyo" is the established spelling.
+            NlResponseSource.ARBEIDSTAGER_SYKMELDING_REVOKE.source shouldBe "esyo-narmesteleder.arbeidstager.sykmelding.deaktivert"
+        }
+
+        expectedSources.forEach { (initiator, source) ->
+            test("publishes the revocation message with Kafka source $source for $initiator") {
+                val producer = RecordingProducer()
+                val adapter = KafkaPublishNarmestelederrelasjonRevocation(producer)
                 adapter.publish(
                     PublishNarmestelederrelasjonRevocationCommand(
                         PersonalIdentificationNumber("12345678901"),
@@ -47,8 +56,8 @@ class KafkaPublishNarmestelederrelasjonRevocationTest :
                         message.orgnummer == "123456789" &&
                         actualSource == source
                 } shouldBe 1
+                producer.sent.size shouldBe 1
             }
-            producer.sent.size shouldBe expectedSources.size
         }
 
         test("bounds a publish by the producer's max.block.ms and delivery.timeout.ms") {

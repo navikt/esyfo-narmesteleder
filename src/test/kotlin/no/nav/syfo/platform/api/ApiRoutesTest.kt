@@ -11,21 +11,21 @@ import io.ktor.server.testing.testApplication
 
 class ApiRoutesTest :
     FunSpec({
-        test("several modules can add routes to the same API prefix and each route requires a token issuer") {
-            testApplication {
-                application {
-                    installApiPlugins()
-                    routing {
-                        internalApiV1 { get("/first") { call.respondText("first") } }
-                        apiV1 { get("/first") { call.respondText("first") } }
+        listOf(INTERNAL_API_V1_PATH, API_V1_PATH).forEach { prefix ->
+            test("several modules can add routes to $prefix and each route requires a token issuer") {
+                testApplication {
+                    application {
+                        installApiPlugins()
+                        routing {
+                            internalApiV1 { get("/first") { call.respondText("first") } }
+                            apiV1 { get("/first") { call.respondText("first") } }
+                        }
+                        routing {
+                            internalApiV1 { get("/second") { call.respondText("second") } }
+                            apiV1 { get("/second") { call.respondText("second") } }
+                        }
                     }
-                    routing {
-                        internalApiV1 { get("/second") { call.respondText("second") } }
-                        apiV1 { get("/second") { call.respondText("second") } }
-                    }
-                }
 
-                listOf(INTERNAL_API_V1_PATH, API_V1_PATH).forEach { prefix ->
                     client.get("$prefix/first").status shouldBe HttpStatusCode.Unauthorized
                     client.get("$prefix/second").status shouldBe HttpStatusCode.Unauthorized
                 }

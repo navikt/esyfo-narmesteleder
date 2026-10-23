@@ -5,8 +5,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
-import net.datafaker.Faker
 import no.nav.syfo.TestDB
+import no.nav.syfo.faker
 import no.nav.syfo.findBySykmeldingId
 import no.nav.syfo.sykmelding.application.SendtSykmelding
 import java.sql.SQLException
@@ -19,13 +19,13 @@ class ExposedSykmeldingDbTest :
         val db = ExposedSykmeldingDb(TestDB.exposedDatabase)
 
         beforeTest {
-            TestDB.clearSendtSykmeldingData()
+            TestDB.clearAllData()
         }
 
         fun sendtSykmelding(
             sykmeldingId: UUID = UUID.randomUUID(),
-            fnr: String = Faker().numerify("###########"),
-            orgnummer: String = Faker().numerify("#########"),
+            fnr: String = faker.numerify("###########"),
+            orgnummer: String = faker.numerify("#########"),
             fom: LocalDate = LocalDate.of(2025, 1, 1),
             tom: LocalDate = LocalDate.of(2025, 1, 10),
             syketilfelleStartDato: LocalDate? = LocalDate.of(2025, 1, 1),

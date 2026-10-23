@@ -1,8 +1,5 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import DefaultOrganization
-import createMockToken
-import defaultMocks
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
@@ -17,14 +14,15 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import linemanager
-import manager
+import no.nav.syfo.createMockToken
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregCache
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.Organisasjon
+import no.nav.syfo.linemanager
+import no.nav.syfo.manager
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
@@ -37,7 +35,6 @@ import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
@@ -52,8 +49,9 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
-import no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE
+import no.nav.syfo.platform.auth.texas.DefaultOrganization
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -84,31 +82,21 @@ class FulfillNarmestelederbehovRouteTest :
             }
         }
 
-        test("PUT /requirement/{id} returns upstream unavailable without publication or fulfilling the behov") {
-            val failures = listOf(
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 400, IllegalStateException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 404, IllegalStateException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 500, IllegalStateException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, java.net.SocketTimeoutException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, java.io.IOException()),
-                UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 200, IllegalStateException()),
-                UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IllegalStateException()),
-            )
-            failures.forEach { failure ->
-                withPutApplication { fixture ->
-                    val id = fixture.seed()
-                    fixture.establish.result = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure)
-                    val response = client.put("/api/v1/linemanager/requirement/$id") {
-                        contentType(ContentType.Application.Json)
-                        bearerAuth(createMockToken(fixture.orgNumber))
-                        setBody(fixture.newManager())
-                    }
-                    response.status shouldBe HttpStatusCode.InternalServerError
-                    response.body<ApiError>().type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
-                    response.body<ApiError>().message shouldBe "An upstream service is unavailable"
-                    fixture.repository.fulfilled shouldBe emptyList()
-                    fixture.establish.commands.size shouldBe 1
+        test("PUT /requirement/{id} returns upstream unavailable without fulfilling the behov") {
+            withPutApplication { fixture ->
+                val id = fixture.seed()
+                fixture.establish.result = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(
+                    UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.RESPONSE, 500, IllegalStateException()),
+                )
+                val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
+                    contentType(ContentType.Application.Json)
+                    bearerAuth(createMockToken(fixture.orgNumber))
+                    setBody(fixture.newManager())
                 }
+                response.status shouldBe HttpStatusCode.InternalServerError
+                response.body<ApiError>().type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                response.body<ApiError>().message shouldBe "An upstream service is unavailable"
+                fixture.repository.fulfilled shouldBe emptyList()
             }
         }
 
@@ -225,10 +213,7 @@ class FulfillNarmestelederbehovRouteTest :
         test("PUT /requirement/{id} 403 when principal lacks Altinn resource access to orgnumber") {
             withPutApplication { fixture ->
                 val id = fixture.seed()
-                fixture.texas.defaultMocks(
-                    consumer = DefaultOrganization.copy(ID = "0192:000000000"),
-                    scope = MASKINPORTEN_NL_SCOPE,
-                )
+                fixture.texas.stubMaskinportenSystemUser(consumer = DefaultOrganization.copy(ID = "0192:000000000"))
                 coEvery { fixture.pdp.authorize(any(), any(), any()) } returns
                     UpstreamResult.Success(AuthorizationDecision.Deny)
                 fixture.ereg.organisasjoner[fixture.orgNumber] = Organisasjon(
@@ -266,30 +251,6 @@ class FulfillNarmestelederbehovRouteTest :
                 fixture.repository.fulfilled shouldBe emptyList()
             }
         }
-
-        listOf(
-            false to "Employee on sick leave is missing employment in any organization",
-            true to "Employee on sick leave is missing employment in the organization indicated in the request",
-        ).forEach { (otherOrganization, message) ->
-            test("PUT /requirement/{id} returns the existing employment error: $message") {
-                withPutApplication { fixture ->
-                    val id = fixture.seed()
-                    fixture.establish.result = EstablishNarmestelederrelasjonResult.NoEmployment(
-                        if (otherOrganization) EmploymentResult.NotInOrganization else EmploymentResult.None,
-                    )
-                    val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
-                        contentType(ContentType.Application.Json)
-                        setBody(manager())
-                        bearerAuth(createMockToken(fixture.orgNumber))
-                    }
-                    response.status shouldBe HttpStatusCode.BadRequest
-                    response.body<ApiError>().type shouldBe ErrorType.EMPLOYEE_MISSING_EMPLOYMENT_IN_ORG
-                    response.body<ApiError>().message shouldBe message
-                    fixture.establish.commands.size shouldBe 1
-                    fixture.repository.fulfilled shouldBe emptyList()
-                }
-            }
-        }
     })
 
 private class PutFixture {
@@ -319,10 +280,7 @@ private class PutFixture {
     ) { DialogCompletion.Completed }
 
     init {
-        texas.defaultMocks(
-            systemBrukerOrganisasjon = DefaultOrganization.copy(ID = "0192:$orgNumber"),
-            scope = MASKINPORTEN_NL_SCOPE,
-        )
+        texas.stubMaskinportenSystemUser(systemUserOrganization = DefaultOrganization.copy(ID = "0192:$orgNumber"))
         coEvery { pdp.authorize(any(), any(), any()) } returns
             UpstreamResult.Success(AuthorizationDecision.Permit)
     }

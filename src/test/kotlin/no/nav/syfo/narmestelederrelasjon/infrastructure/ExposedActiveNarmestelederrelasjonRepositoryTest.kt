@@ -5,8 +5,6 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -20,15 +18,15 @@ class ExposedActiveNarmestelederrelasjonRepositoryTest :
         val repository = ExposedActiveNarmestelederrelasjonRepository(TestDB.exposedDatabase)
 
         beforeTest {
-            TestDB.clearNarmestelederData()
+            TestDB.clearAllData()
         }
 
         test("findActive returns only active relations for the given employee and organization") {
             val narmestelederId = UUID.fromString("4ffc41ed-75df-4802-9867-b5262783da5d")
-            insertRelation(id = narmestelederId, from = activeFrom)
-            insertRelation(managerIdent = "10987654322", from = activeFrom.minusYears(1), to = activeFrom)
-            insertRelation(managerIdent = "10987654323", organization = "987654321", from = activeFrom)
-            insertRelation(managerIdent = "10987654324", employee = "12345678902", from = activeFrom)
+            insertActiveRelation(id = narmestelederId, from = activeFrom)
+            insertActiveRelation(managerIdent = "10987654322", from = activeFrom.minusYears(1), to = activeFrom)
+            insertActiveRelation(managerIdent = "10987654323", organization = "987654321", from = activeFrom)
+            insertActiveRelation(managerIdent = "10987654324", employee = "12345678902", from = activeFrom)
 
             val result = repository.findActive(employeeIdent, organizationNumber)
 
@@ -40,20 +38,20 @@ class ExposedActiveNarmestelederrelasjonRepositoryTest :
         }
 
         test("findActive orders multiple active relations by newest aktiv_fom first") {
-            insertRelation(managerIdent = "10987654321", from = activeFrom.minusMonths(1))
-            insertRelation(managerIdent = "10987654322", from = activeFrom)
+            insertActiveRelation(managerIdent = "10987654321", from = activeFrom.minusMonths(1))
+            insertActiveRelation(managerIdent = "10987654322", from = activeFrom)
 
             repository.findActive(employeeIdent, organizationNumber).map { it.managerIdent.value } shouldBe
                 listOf("10987654322", "10987654321")
         }
 
         test("findActive orders relations with the same aktiv_fom by id descending") {
-            insertRelation(
+            insertActiveRelation(
                 id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
                 managerIdent = "10987654321",
                 from = activeFrom,
             )
-            insertRelation(
+            insertActiveRelation(
                 id = UUID.fromString("00000000-0000-0000-0000-000000000002"),
                 managerIdent = "10987654322",
                 from = activeFrom,
@@ -68,13 +66,13 @@ class ExposedActiveNarmestelederrelasjonRepositoryTest :
         }
 
         test("findActive returns stored manager email without parsing it") {
-            insertRelation(email = "leder@nav", from = activeFrom)
+            insertActiveRelation(email = "leder@nav", from = activeFrom)
 
             repository.findActive(employeeIdent, organizationNumber).single().managerEmail shouldBe "leder@nav"
         }
     })
 
-private fun insertRelation(
+private fun insertActiveRelation(
     id: UUID = UUID.randomUUID(),
     managerIdent: String = "10987654321",
     email: String = "leder@example.com",
@@ -83,16 +81,14 @@ private fun insertRelation(
     from: OffsetDateTime,
     to: OffsetDateTime? = null,
 ) {
-    transaction(TestDB.exposedDatabase) {
-        NarmestelederTable.insert {
-            it[narmestelederId] = id
-            it[orgnummer] = organization
-            it[sykmeldtFnr] = employee
-            it[narmestelederFnr] = managerIdent
-            it[narmestelederTelefonnummer] = "99887766"
-            it[narmestelederEpost] = email
-            it[aktivFom] = from
-            it[aktivTom] = to
-        }
-    }
+    insertRelation(
+        narmestelederId = id,
+        employeeIdent = employee,
+        managerIdent = managerIdent,
+        organizationNumber = organization,
+        activeFrom = from,
+        activeTo = to,
+        email = email,
+        mobile = "99887766",
+    )
 }

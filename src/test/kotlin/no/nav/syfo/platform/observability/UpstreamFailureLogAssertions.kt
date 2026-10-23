@@ -6,8 +6,10 @@ import io.kotest.matchers.string.shouldNotContain
 import no.nav.esyfo.observability.testkit.RuntimeLogContract
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederrelasjon.application.get.GetNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmestelederrelasjonerUseCase
+import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.narmestelederstatistikk.application.GetNarmestelederstatistikkUseCase
 import no.nav.syfo.platform.api.STATUS_PAGES_LOGGER_NAME
 
@@ -21,8 +23,10 @@ internal fun assertSingleUpstreamFailureLog(
             STATUS_PAGES_LOGGER_NAME,
             GetNarmestelederbehovUseCase::class.java.name,
             ListNarmestelederbehovUseCase::class.java.name,
+            GetNarmestelederrelasjonUseCase::class.java.name,
             RevokeNarmestelederrelasjonUseCase::class.java.name,
             SearchActiveNarmestelederrelasjonerUseCase::class.java.name,
+            SubmitNarmestelederrelasjonUseCase::class.java.name,
             GetNarmestelederstatistikkUseCase::class.java.name,
         ),
     )

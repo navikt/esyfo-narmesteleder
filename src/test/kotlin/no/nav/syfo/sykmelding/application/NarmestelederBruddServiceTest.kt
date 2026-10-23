@@ -6,7 +6,6 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonFromSendtSykmeldingCommand
-import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -31,7 +30,8 @@ class NarmestelederBruddServiceTest :
             stored.kafkaTopic shouldBe SENDT_SYKMELDING_TOPIC
             stored.kafkaPartition shouldBe 1
             stored.kafkaOffset shouldBe 123L
-            stored.kilde shouldBe SENDT_SYKMELDING_BRUDD_KILDE
+            // Same value as the Kafka source of the revocation; "esyo" is the established spelling.
+            stored.kilde shouldBe "esyo-narmesteleder.arbeidstager.sykmelding.deaktivert"
         }
 
         test("does not revoke an already tracked sykmelding") {
@@ -52,10 +52,6 @@ class NarmestelederBruddServiceTest :
             }.isFailure shouldBe true
 
             fixture.repository.inserted.shouldBeEmpty()
-        }
-
-        test("stored kilde matches the Kafka source of the revocation") {
-            SENDT_SYKMELDING_BRUDD_KILDE shouldBe NlResponseSource.ARBEIDSTAGER_SYKMELDING_REVOKE.source
         }
     })
 

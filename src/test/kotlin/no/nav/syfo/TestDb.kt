@@ -97,32 +97,21 @@ class TestDB private constructor() {
             }
         }
 
-        fun clearAllData() = database.connection.use {
-            it.prepareStatement(
-                "DELETE FROM nl_behov;"
-            ).use { ps -> ps.executeUpdate() }
-            it.commit()
-        }
-
-        fun clearSendtSykmeldingData() = database.connection.use {
-            it.prepareStatement(
-                "DELETE FROM sendt_sykmelding;"
-            ).use { ps -> ps.executeUpdate() }
-            it.commit()
-        }
-
-        fun clearNarmestelederData() = database.connection.use {
-            it.prepareStatement(
-                "DELETE FROM narmeste_leder;"
-            ).use { ps -> ps.executeUpdate() }
-            it.commit()
-        }
-
-        fun clearPersonData() = database.connection.use {
-            it.prepareStatement(
-                "DELETE FROM person;"
-            ).use { ps -> ps.executeUpdate() }
-            it.commit()
+        /** Truncates every application table created by Flyway, leaving the migration history intact. */
+        fun clearAllData() = database.connection.use { connection ->
+            val tables = connection.prepareStatement(
+                """
+                SELECT quote_ident(table_name) FROM information_schema.tables
+                WHERE table_schema = current_schema()
+                  AND table_type = 'BASE TABLE'
+                  AND table_name <> 'flyway_schema_history'
+                """.trimIndent(),
+            ).use { statement ->
+                statement.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.getString(1)) } }
+            }
+            check(tables.isNotEmpty()) { "Found no application tables to truncate" }
+            connection.prepareStatement("TRUNCATE TABLE ${tables.joinToString()} CASCADE").use { it.executeUpdate() }
+            connection.commit()
         }
     }
 }

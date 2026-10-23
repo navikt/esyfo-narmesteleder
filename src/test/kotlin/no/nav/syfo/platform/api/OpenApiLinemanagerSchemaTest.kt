@@ -8,7 +8,6 @@ import io.kotest.matchers.shouldNotBe
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.api.model.Manager
 import no.nav.syfo.platform.observability.logger
-import org.yaml.snakeyaml.Yaml
 import kotlin.reflect.full.memberProperties
 import no.nav.syfo.narmestelederbehov.api.Manager as FulfillmentManager
 
@@ -17,15 +16,7 @@ class OpenApiLinemanagerSchemaTest :
         val logger = logger()
 
         test("openapi Linemanager schema matches Linemanager and nested Manager properties") {
-            val yamlText = this::class.java.classLoader
-                .getResource("openapi/documentation.yaml")!!
-                .readText()
-
-            val yaml = Yaml()
-            val root = yaml.load<Map<String, Any>>(yamlText)
-
-            val schemas = root["components"] as Map<*, *>
-            val schemaMap = (schemas["schemas"] as Map<*, *>)
+            val schemaMap = openApiSchemas(PUBLIC_OPENAPI)
 
             val linemanagerSchema = schemaMap["Linemanager"] as Map<*, *>
             val linemanagerProps =
@@ -47,20 +38,15 @@ class OpenApiLinemanagerSchemaTest :
             managerRef shouldBe "#/components/schemas/Manager"
         }
 
-        test("Manager schema exists in OpenAPI documentation and matches domain") {
-            val yamlText = this::class.java.classLoader
-                .getResource("openapi/documentation.yaml")!!
-                .readText()
+        listOf("linemanager" to Manager::class, "fulfillment" to FulfillmentManager::class).forEach { (api, manager) ->
+            test("Manager schema exists in OpenAPI documentation and matches the $api Manager") {
+                val schemas = openApiSchemas(PUBLIC_OPENAPI)
 
-            val root = Yaml().load<Map<String, Any>>(yamlText)
-            val schemas = (root["components"] as Map<*, *>)["schemas"] as Map<*, *>
+                val managerSchema = schemas["Manager"] as Map<*, *>?
+                managerSchema shouldNotBe null
+                val managerProps =
+                    (managerSchema!!["properties"] as Map<*, *>).keys.map { it as String }.toSet()
 
-            val managerSchema = schemas["Manager"] as Map<*, *>?
-            managerSchema shouldNotBe null
-            val managerProps =
-                (managerSchema!!["properties"] as Map<*, *>).keys.map { it as String }.toSet()
-
-            listOf(Manager::class, FulfillmentManager::class).forEach { manager ->
                 managerProps.shouldContainAll(manager.memberProperties.map { it.name }.toSet())
             }
         }

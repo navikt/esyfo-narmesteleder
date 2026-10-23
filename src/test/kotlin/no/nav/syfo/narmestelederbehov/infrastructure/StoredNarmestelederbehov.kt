@@ -1,7 +1,7 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import faker
 import no.nav.syfo.TestDB
+import no.nav.syfo.faker
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import org.jetbrains.exposed.v1.core.ResultRow

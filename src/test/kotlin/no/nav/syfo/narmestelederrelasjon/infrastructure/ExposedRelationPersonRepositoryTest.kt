@@ -8,7 +8,6 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.RegisteredPerson
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.LocalDate
@@ -24,37 +23,27 @@ class ExposedRelationPersonRepositoryTest :
         val second = "10987654321"
 
         beforeTest {
-            TestDB.clearPersonData()
+            TestDB.clearAllData()
         }
 
-        fun insertPerson(fnr: String, status: PersonStatus = PersonStatus.PENDING, created: OffsetDateTime = longAgo) {
-            transaction(TestDB.exposedDatabase) {
-                PersonTable.insert {
-                    it[PersonTable.fnr] = fnr
-                    it[PersonTable.status] = status.name
-                    it[PersonTable.fornavn] = "Old"
-                    it[PersonTable.etternavn] = "Name"
-                    it[PersonTable.created] = created
-                }
-            }
-        }
+        fun insertStoredPerson(fnr: String, status: PersonStatus = PersonStatus.PENDING, created: OffsetDateTime = longAgo) = insertPerson(fnr, status = status.name, firstName = "Old", lastName = "Name", created = created)
 
         fun person(fnr: String): ResultRow = transaction(TestDB.exposedDatabase) {
             PersonTable.selectAll().where { PersonTable.fnr eq fnr }.single()
         }
 
         test("findPending returns the oldest pending persons up to the limit") {
-            insertPerson(first, created = longAgo.plusDays(2))
-            insertPerson(second)
-            insertPerson("11111111111", PersonStatus.ENRICHED, created = longAgo.minusDays(1))
-            insertPerson("22222222222", created = longAgo.plusDays(1))
+            insertStoredPerson(first, created = longAgo.plusDays(2))
+            insertStoredPerson(second)
+            insertStoredPerson("11111111111", PersonStatus.ENRICHED, created = longAgo.minusDays(1))
+            insertStoredPerson("22222222222", created = longAgo.plusDays(1))
 
             repository.findPending(2) shouldBe listOf(PersonalIdentificationNumber(second), PersonalIdentificationNumber("22222222222"))
         }
 
         test("saveEnrichment stores details for enriched persons and only the status for persons not found") {
-            insertPerson(first)
-            insertPerson(second)
+            insertStoredPerson(first)
+            insertStoredPerson(second)
 
             repository.saveEnrichment(
                 enriched = mapOf(PersonalIdentificationNumber(first) to ada),
@@ -75,13 +64,13 @@ class ExposedRelationPersonRepositoryTest :
         }
 
         test("findExisting returns only persons in the projection") {
-            insertPerson(first, status = PersonStatus.NOT_FOUND)
+            insertStoredPerson(first, status = PersonStatus.NOT_FOUND)
 
             repository.findExisting(listOf(PersonalIdentificationNumber(first), PersonalIdentificationNumber(second))) shouldBe listOf(PersonalIdentificationNumber(first))
         }
 
         test("updateRegisteredDetails updates details and timestamp without changing status and returns updated persons") {
-            insertPerson(first, status = PersonStatus.ENRICHED)
+            insertStoredPerson(first, status = PersonStatus.ENRICHED)
             val updatedBefore = person(first)[PersonTable.updated]
 
             val updated = repository.updateRegisteredDetails(mapOf(PersonalIdentificationNumber(first) to ada, PersonalIdentificationNumber(second) to ada))

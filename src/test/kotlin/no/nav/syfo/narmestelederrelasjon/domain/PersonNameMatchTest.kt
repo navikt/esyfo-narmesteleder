@@ -94,82 +94,88 @@ class PersonNameMatchTest :
             )
         }
 
-        test("normalizes Unicode, whitespace, apostrophes, and hyphens for exact matches") {
-            listOf(
-                "  A\u030Astr\u00F6m\u2011O\u2019Connor  " to "Åström-O'Connor",
-                "van\t\nHansen" to "Van Hansen",
-                "Hansen" to "hansen",
-                "Hansen1" to "Hansen1",
-            ).forEach { (submitted, registered) ->
+        listOf(
+            Triple("Unicode, apostrophes, hyphens and surrounding whitespace", "  A\u030Astr\u00F6m\u2011O\u2019Connor  ", "Åström-O'Connor"),
+            Triple("inner whitespace", "van\t\nHansen", "Van Hansen"),
+            Triple("letter case", "Hansen", "hansen"),
+            Triple("digits", "Hansen1", "Hansen1"),
+        ).forEach { (case, submitted, registered) ->
+            test("normalizes $case for exact matches") {
                 personWithNames(RegisteredName(registered)).matchLastName(submitted) shouldBe
                     LastNameMatch.Exact(hasParallelNames = false)
             }
         }
 
-        test("matches only approved orthographic variants, in both directions") {
-            listOf(
-                "Åsen" to "Aasen",
-                "Aasen" to "Åsen",
-                "Strøm" to "Ström",
-                "Ström" to "Strøm",
-                "Sæther" to "Säther",
-                "Säther" to "Sæther",
-                "Sæter" to "Säter",
-                "Säter" to "Sæter",
-                "Fåberg" to "Faaberg",
-                "Faaberg" to "Fåberg",
-                "André" to "Andre",
-                "Andre" to "André",
-            ).forEach { (submitted, registered) ->
+        listOf(
+            "Åsen" to "Aasen",
+            "Aasen" to "Åsen",
+            "Strøm" to "Ström",
+            "Ström" to "Strøm",
+            "Sæther" to "Säther",
+            "Säther" to "Sæther",
+            "Sæter" to "Säter",
+            "Säter" to "Sæter",
+            "Fåberg" to "Faaberg",
+            "Faaberg" to "Fåberg",
+            "André" to "Andre",
+            "Andre" to "André",
+        ).forEach { (submitted, registered) ->
+            test("matches the approved orthographic variant $submitted of $registered") {
                 personWithNames(RegisteredName(registered)).matchLastName(submitted) shouldBe
                     LastNameMatch.OrthographicVariant(hasParallelNames = false)
             }
         }
 
-        test("does not broaden orthographic variants to plain letters or digraphs") {
-            listOf(
-                "Osterud" to "Østerud",
-                "Ost" to "Øst",
-                "Ost" to "Öst",
-                "Aer" to "Ær",
-                "Aer" to "Är",
-                "Ar" to "Ær",
-                "Ar" to "Är",
-                "Ase" to "Åse",
-            ).forEach { (submitted, registered) ->
+        listOf(
+            "Osterud" to "Østerud",
+            "Ost" to "Øst",
+            "Ost" to "Öst",
+            "Aer" to "Ær",
+            "Aer" to "Är",
+            "Ar" to "Ær",
+            "Ar" to "Är",
+            "Ase" to "Åse",
+        ).forEach { (submitted, registered) ->
+            test("does not broaden orthographic variants to match $submitted with $registered") {
                 val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
                 match.shouldBeInstanceOf<LastNameMatch.NoMatch>()
                 match.isAccepted() shouldBe false
             }
         }
 
-        test("rejects unknown characters and names shorter than four Unicode letters for fuzzy matching") {
-            listOf(
-                "O*Connor" to "OConnor",
-                "Hansen1" to "Hansen",
-                "Aas" to "Aar",
-                "Li" to "Lu",
-            ).forEach { (submitted, registered) ->
+        listOf(
+            "O*Connor" to "OConnor",
+            "Hansen1" to "Hansen",
+            "Aas" to "Aar",
+            "Li" to "Lu",
+        ).forEach { (submitted, registered) ->
+            test("rejects $submitted against $registered for fuzzy matching because of unknown characters or fewer than four Unicode letters") {
                 val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
                 match shouldBe LastNameMatch.NoMatch(bestFuzzyScore = null, hasParallelNames = false)
             }
+        }
+
+        test("fuzzy-matches names of known characters with at least four Unicode letters") {
             personWithNames(RegisteredName("Hanson")).matchLastName("Hansen").shouldBeInstanceOf<LastNameMatch.Fuzzy>()
         }
 
-        test("accepts fuzzy matches and rejects clearly different names") {
-            listOf(
-                "Hansen" to "Hanson",
-                "Anderssen" to "Andersen",
-            ).forEach { (submitted, registered) ->
+        listOf(
+            "Hansen" to "Hanson",
+            "Anderssen" to "Andersen",
+        ).forEach { (submitted, registered) ->
+            test("accepts $submitted as a fuzzy match of $registered") {
                 val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
                 match.shouldBeInstanceOf<LastNameMatch.Fuzzy>()
                 match.isAccepted() shouldBe true
             }
-            listOf(
-                "Hansen" to "Haugland",
-                "Hansen" to "Olsen",
-                "Andréssen" to "Andersen",
-            ).forEach { (submitted, registered) ->
+        }
+
+        listOf(
+            "Hansen" to "Haugland",
+            "Hansen" to "Olsen",
+            "Andréssen" to "Andersen",
+        ).forEach { (submitted, registered) ->
+            test("rejects $submitted as clearly different from $registered") {
                 val match = personWithNames(RegisteredName(registered)).matchLastName(submitted)
                 match.shouldBeInstanceOf<LastNameMatch.NoMatch>()
                 match.isAccepted() shouldBe false

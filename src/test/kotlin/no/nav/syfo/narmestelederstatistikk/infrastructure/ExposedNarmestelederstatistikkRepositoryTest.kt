@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.infrastructure.openNarmestelederbehovStatuses
 import no.nav.syfo.narmestelederstatistikk.application.Narmestelederstatistikk
 import org.jetbrains.exposed.v1.core.ColumnType
 import org.jetbrains.exposed.v1.core.Table
@@ -27,11 +28,9 @@ class ExposedNarmestelederstatistikkRepositoryTest :
 
         beforeTest {
             TestDB.clearAllData()
-            TestDB.clearNarmestelederData()
-            TestDB.clearSendtSykmeldingData()
         }
 
-        test("counts unique employees in each legacy statistic category") {
+        test("counts unique employees in each published statistic category") {
             insertBehov("12345678910", BehovStatus.BEHOV_CREATED)
             insertBehov("12345678910", BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED)
             insertBehov("12345678911", BehovStatus.BEHOV_FULFILLED)
@@ -105,12 +104,12 @@ class ExposedNarmestelederstatistikkRepositoryTest :
             repository.countFor(organizationNumber) shouldBe Narmestelederstatistikk(0, 2, 1)
         }
 
-        test("counts only the two open behov statuses") {
+        test("counts only open behov statuses") {
             BehovStatus.entries.forEachIndexed { index, status ->
                 insertBehov("1234567890$index", status)
             }
 
-            repository.countFor(organizationNumber) shouldBe Narmestelederstatistikk(2, 0, 0)
+            repository.countFor(organizationNumber) shouldBe Narmestelederstatistikk(openNarmestelederbehovStatuses.size.toLong(), 0, 0)
         }
     })
 

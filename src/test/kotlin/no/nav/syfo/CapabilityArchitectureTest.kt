@@ -48,11 +48,14 @@ class CapabilityArchitectureTest :
                 classBytes(ForbiddenLayerReferenceFixture::class.java),
             )
 
-            violations shouldContain "io/ktor/server/application/Application"
-            violations shouldContain "org/jetbrains/exposed/v1/core/Table"
-            violations shouldContain "org/apache/kafka/clients/producer/KafkaProducer"
-            violations shouldContain
-                "no/nav/syfo/narmestelederbehov/infrastructure/ExposedNarmestelederbehovReadRepository"
+            with(violations) {
+                shouldContain("io/ktor/server/application/Application")
+                shouldContain("org/jetbrains/exposed/v1/core/Table")
+                shouldContain("org/apache/kafka/clients/producer/KafkaProducer")
+                shouldContain(
+                    "no/nav/syfo/narmestelederbehov/infrastructure/ExposedNarmestelederbehovReadRepository",
+                )
+            }
         }
 
         test("the capability guard distinguishes own and another capability infrastructure") {

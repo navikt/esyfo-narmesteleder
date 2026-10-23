@@ -27,7 +27,9 @@ class CapabilityArchitectureTest :
                 }
             }
 
-            violations.shouldBeEmpty()
+            with(violations) {
+                shouldBeEmpty()
+            }
         }
 
         test("capabilities do not reference another capability infrastructure") {
@@ -39,7 +41,9 @@ class CapabilityArchitectureTest :
                 }
             }
 
-            violations.shouldBeEmpty()
+            with(violations) {
+                shouldBeEmpty()
+            }
         }
 
         test("the layer guard detects framework and infrastructure references") {
@@ -61,17 +65,23 @@ class CapabilityArchitectureTest :
         test("the capability guard distinguishes own and another capability infrastructure") {
             val layout = capabilityLayout()
             val narmestelederbehov = layout.capabilityContaining(FulfillNarmestelederbehovUseCase::class.java)
-
-            forbiddenCapabilityInfrastructure(
+            val ownInfrastructureReferences = forbiddenCapabilityInfrastructure(
                 layout,
                 narmestelederbehov,
                 classBytes(OwnInfrastructureReferenceFixture::class.java),
-            ).shouldBeEmpty()
-            forbiddenCapabilityInfrastructure(
+            )
+            val otherInfrastructureReferences = forbiddenCapabilityInfrastructure(
                 layout,
                 narmestelederbehov,
                 classBytes(OtherInfrastructureReferenceFixture::class.java),
-            ) shouldContain "no/nav/syfo/organisasjonstilgang/infrastructure/AltinnOrganizationAccess"
+            )
+
+            with(ownInfrastructureReferences) {
+                shouldBeEmpty()
+            }
+            with(otherInfrastructureReferences) {
+                shouldContain("no/nav/syfo/organisasjonstilgang/infrastructure/AltinnOrganizationAccess")
+            }
         }
     })
 

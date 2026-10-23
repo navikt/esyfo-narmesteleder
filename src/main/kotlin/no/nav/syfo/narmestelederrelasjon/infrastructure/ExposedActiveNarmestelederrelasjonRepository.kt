@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.ActiveNarmestelederrelasjon
@@ -16,12 +14,11 @@ import org.jetbrains.exposed.v1.jdbc.select
 
 class ExposedActiveNarmestelederrelasjonRepository(
     private val database: Database,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ActiveNarmestelederrelasjonRepository {
     override suspend fun findActive(
         employeeIdent: PersonalIdentificationNumber,
         organizationNumber: OrganizationNumber,
-    ): List<ActiveNarmestelederrelasjon> = database.ioTransaction(dispatcher) {
+    ): List<ActiveNarmestelederrelasjon> = database.ioTransaction {
         NarmestelederTable
             .select(
                 NarmestelederTable.narmestelederFnr,

@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.ClaimedEmploymentCheck
@@ -50,11 +48,10 @@ import kotlin.time.toJavaDuration
  */
 class ExposedEmploymentReconciliationRepository(
     private val database: Database,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : EmploymentReconciliationRepository {
     override suspend fun seedMissing(limit: Int, now: Instant): Int {
         require(limit > 0) { "limit must be greater than zero" }
-        return database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+        return database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             // Each target column is paired with its value so the INSERT and SELECT lists cannot drift apart.
             val values: List<Pair<Column<*>, Expression<*>>> = listOf(
                 EmploymentReconciliationTable.narmestelederId to NarmestelederTable.narmestelederId,
@@ -81,7 +78,7 @@ class ExposedEmploymentReconciliationRepository(
         require(limit > 0) { "limit must be greater than zero" }
         require(lease.isPositive() && lease.isFinite()) { "lease must be positive and finite" }
         val leaseUntil = now.plus(lease.toJavaDuration()).atOffset(ZoneOffset.UTC)
-        return database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+        return database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             val token = UUID.randomUUID()
             val pending = comparisonPending(now)
             val active = NarmestelederTable.aktivTom.isNull()
@@ -149,7 +146,7 @@ class ExposedEmploymentReconciliationRepository(
         outcome: EmploymentCheckOutcome,
         nextCheck: Instant,
         now: Instant,
-    ): Boolean = database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+    ): Boolean = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         EmploymentReconciliationTable.update({
             (EmploymentReconciliationTable.narmestelederId eq claim.narmesteLederId) and
                 (EmploymentReconciliationTable.status eq EmploymentCheckStatus.CLAIMED) and
@@ -172,7 +169,7 @@ class ExposedEmploymentReconciliationRepository(
         } > 0
     }
 
-    override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean = database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+    override suspend fun isClaimStillValid(claim: ClaimedEmploymentCheck, now: Instant): Boolean = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         !EmploymentReconciliationTable.join(
             otherTable = NarmestelederTable,
             joinType = JoinType.INNER,
@@ -217,7 +214,7 @@ class ExposedEmploymentReconciliationRepository(
         firstObservation
     }
 
-    override suspend fun stats(now: Instant): EmploymentCheckStats = database.ioTransaction(dispatcher, transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+    override suspend fun stats(now: Instant): EmploymentCheckStats = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         val shadowCutoff = now.minus(31, ChronoUnit.DAYS).atOffset(ZoneOffset.UTC)
         val wouldRevoke = EmploymentReconciliationTable.lastOutcome eq EmploymentCheckOutcome.WOULD_REVOKE
 

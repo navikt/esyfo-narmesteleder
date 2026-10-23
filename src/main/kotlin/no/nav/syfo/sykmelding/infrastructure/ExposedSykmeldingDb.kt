@@ -1,7 +1,5 @@
 package no.nav.syfo.sykmelding.infrastructure
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.platform.database.ioTransaction
 import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.logEvent
@@ -33,7 +31,6 @@ private val sykmeldingTransactionRolledBack = applicationEvent<Unit>(
 
 class ExposedSykmeldingDb(
     private val database: Database,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : SykmeldingDb {
 
     private object TransactionImpl : SykmeldingTransaction {
@@ -84,7 +81,7 @@ class ExposedSykmeldingDb(
 
     override suspend fun transaction(block: suspend SykmeldingTransaction.() -> Unit) {
         try {
-            database.ioTransaction(dispatcher) {
+            database.ioTransaction {
                 // Preserve the legacy behavior: a failed batch is not retried within the adapter.
                 maxAttempts = 1
                 TransactionImpl.block()

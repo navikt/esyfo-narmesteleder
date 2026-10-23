@@ -1,7 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.application.employee.EmployeeNarmestelederrelasjon
@@ -21,12 +19,11 @@ import java.time.OffsetDateTime
 class ExposedEmployeeNarmestelederrelasjonRepository(
     private val database: Database,
     private val clock: Clock = Clock.systemUTC(),
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : EmployeeNarmestelederrelasjonRepository {
     override suspend fun findActive(
         employeeIdent: PersonalIdentificationNumber,
         organizationNumber: OrganizationNumber?,
-    ): List<EmployeeNarmestelederrelasjon> = database.ioTransaction(dispatcher) {
+    ): List<EmployeeNarmestelederrelasjon> = database.ioTransaction {
         NarmestelederTable
             .join(
                 otherTable = PersonTable,

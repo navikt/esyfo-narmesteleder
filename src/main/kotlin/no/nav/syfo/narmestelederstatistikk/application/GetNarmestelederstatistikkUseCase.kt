@@ -17,6 +17,10 @@ sealed interface GetNarmestelederstatistikkResult {
     data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : GetNarmestelederstatistikkResult
 }
 
+fun interface NarmestelederstatistikkRepository {
+    suspend fun countFor(organizationNumber: OrganizationNumber): Narmestelederstatistikk
+}
+
 class GetNarmestelederstatistikkUseCase(
     private val organizationAccess: OrganizationAccess,
     private val repository: NarmestelederstatistikkRepository,

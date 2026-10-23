@@ -8,6 +8,21 @@ import no.nav.syfo.narmestelederrelasjon.domain.ParsedEmailAddresses
 import java.time.Instant
 import java.util.UUID
 
+data class EmployeeNarmestelederrelasjon(
+    val id: UUID,
+    val organizationNumber: OrganizationNumber,
+    val activeFrom: Instant,
+    val managerFirstName: String?,
+    val managerMiddleName: String?,
+    val managerLastName: String?,
+    val managerEmail: String,
+    val managerMobile: String,
+)
+
+interface EmployeeNarmestelederrelasjonRepository {
+    suspend fun findActive(employeeIdent: PersonalIdentificationNumber, organizationNumber: OrganizationNumber?): List<EmployeeNarmestelederrelasjon>
+}
+
 class ListActiveNarmesteledereForEmployeeUseCase(
     private val repository: EmployeeNarmestelederrelasjonRepository,
     private val discardedEmailAddressMetrics: DiscardedEmailAddressMetrics,

@@ -27,6 +27,11 @@ private val nlRegisterRecordInvalid = applicationEvent<NlRegisterRecordInvalidDe
     ),
 )
 
+fun interface LeesahNarmestelederrelasjonRepository {
+    /** Upserts the relations and inserts missing persons as pending, in one transaction. */
+    fun upsertAll(relasjoner: List<NarmestelederrelasjonUpsert>, persons: List<PersonalIdentificationNumber>)
+}
+
 /**
  * Stores the valid relations from a batch of Leesah records in the local relation register and
  * registers their persons for enrichment. Invalid records are logged and skipped. When enabled, it then

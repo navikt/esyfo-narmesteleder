@@ -9,9 +9,50 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.application.Step
 import no.nav.syfo.platform.application.orStop
 import no.nav.syfo.platform.upstream.UpstreamFailure
+import java.time.Instant
+import java.util.UUID
 
 private const val DEFAULT_PAGE_SIZE = 50
 private const val TEXT_MAX_LENGTH = 50
+
+data class NarmestelederrelasjonSearchQuery(
+    val orgNumber: OrganizationNumber,
+    val managerNationalIdentificationNumber: PersonalIdentificationNumber? = null,
+    val employeeNationalIdentificationNumber: PersonalIdentificationNumber? = null,
+    val nationalIdentificationNumber: PersonalIdentificationNumber? = null,
+    val text: String? = null,
+    val hasActiveSickLeave: Boolean? = null,
+    val pageSize: Int,
+    val cursor: LinemanagerSearchCursor? = null,
+)
+
+data class NarmestelederrelasjonSearchRow(
+    val cursor: LinemanagerSearchCursor,
+    val linemanager: SearchNarmestelederrelasjon,
+)
+
+data class SearchNarmestelederrelasjon(
+    val id: UUID,
+    val orgNumber: OrganizationNumber,
+    val activeFrom: Instant,
+    val employee: SearchPerson,
+    val manager: SearchManager,
+)
+
+data class SearchPerson(val nationalIdentificationNumber: PersonalIdentificationNumber, val name: SearchName?)
+
+data class SearchManager(
+    val nationalIdentificationNumber: PersonalIdentificationNumber,
+    val name: SearchName?,
+    val email: String,
+    val mobile: String,
+)
+
+data class SearchName(val firstName: String, val lastName: String, val middleName: String?)
+
+fun interface NarmestelederrelasjonSearchRepository {
+    suspend fun search(query: NarmestelederrelasjonSearchQuery): List<NarmestelederrelasjonSearchRow>
+}
 
 class SearchActiveNarmestelederrelasjonerUseCase(
     private val organizationAccess: OrganizationAccess,

@@ -61,8 +61,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
     }
 
     private suspend fun publishRevocation(claim: ClaimedEmploymentCheck, now: Instant): Completion {
-        val publishElapsed = Duration.between(claim.claimedAt, now).toKotlinDuration()
-        if (publishElapsed + publisher.maxPublishDuration >= settings.lease - CLAIM_SAFETY_MARGIN) {
+        if (wouldOutlastClaimLease(claim, now)) {
             return Completion.Timeout
         }
         if (!repository.isClaimStillValid(claim, now)) {
@@ -80,6 +79,11 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
             EmploymentCheckOutcome.FAILED
         }
         return Completion.Ready(outcome, clock.instant())
+    }
+
+    private fun wouldOutlastClaimLease(claim: ClaimedEmploymentCheck, now: Instant): Boolean {
+        val publishElapsed = Duration.between(claim.claimedAt, now).toKotlinDuration()
+        return publishElapsed + publisher.maxPublishDuration >= settings.lease - CLAIM_SAFETY_MARGIN
     }
 
     private suspend fun complete(

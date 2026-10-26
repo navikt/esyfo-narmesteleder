@@ -2,10 +2,8 @@ package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
-import kotlinx.coroutines.CancellationException
 import no.nav.syfo.organisasjonstilgang.application.OPPGI_NARMESTELEDER_RESOURCE
 import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
@@ -15,7 +13,9 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.decodeUpstream
 import no.nav.syfo.platform.upstream.getOrElse
+import no.nav.syfo.platform.upstream.requestUpstream
 
 internal val ALTINN_TILGANGER = UpstreamName("arbeidsgiver-altinn-tilganger")
 
@@ -139,31 +139,17 @@ class HttpAltinnTilgangerClient(
     }
 
     private suspend fun postTilganger(oboToken: String): UpstreamResult<AltinnTilgangerResponse> {
-        val response = try {
+        val response = requestUpstream(ALTINN_TILGANGER) {
             httpClient.post("$baseUrl/altinn-tilganger") {
                 bearerAuth(oboToken)
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ResponseException) {
-            return failure(UpstreamFailureStage.RESPONSE, e.response.status.value, e)
-        } catch (e: Exception) {
-            return failure(UpstreamFailureStage.REQUEST, null, e)
-        }
+        }.getOrElse { return UpstreamResult.Failure(it) }
 
-        return try {
-            UpstreamResult.Success(response.body<AltinnTilgangerResponse>())
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            failure(UpstreamFailureStage.RESPONSE, response.status.value, e)
-        }
+        return response.decodeUpstream(ALTINN_TILGANGER) { body<AltinnTilgangerResponse>() }
     }
 }
 
 private val IS_ERROR = UpstreamError("is_error")
-
-private fun failure(stage: UpstreamFailureStage, status: Int?, cause: Throwable) = UpstreamResult.Failure(UpstreamFailure(ALTINN_TILGANGER, stage, status, cause))
 
 // Altinn Tilganger answers a failed Altinn 3 lookup with isError=true, and its route always responds 200
 // (navikt/arbeidsgiver-altinn-tilganger, Application.kt: call.respond(...toResponse()) without a status).

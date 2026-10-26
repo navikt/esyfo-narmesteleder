@@ -3,7 +3,6 @@ package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client
 import com.fasterxml.jackson.annotation.JsonValue
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -28,9 +27,10 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
+import no.nav.syfo.platform.upstream.decodeUpstream
 import no.nav.syfo.platform.upstream.getOrElse
+import no.nav.syfo.platform.upstream.requestUpstream
 import java.util.UUID
-import kotlin.coroutines.cancellation.CancellationException
 
 interface DialogportenClient {
     suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID>
@@ -74,7 +74,7 @@ class HttpDialogportenClient(
                     setBody(dialog)
                 }
         }.getOrElse { return UpstreamResult.Failure(it) }
-        return decode(response) { UUID.fromString(response.body<String>().removeSurrounding("\"")) }
+        return response.decodeUpstream(DIALOGPORTEN) { UUID.fromString(body<String>().removeSurrounding("\"")) }
     }
 
     override suspend fun getDialogById(
@@ -92,7 +92,7 @@ class HttpDialogportenClient(
                     bearerAuth(token)
                 }
         }.getOrElse { return UpstreamResult.Failure(it) }
-        return decode(response) { response.body<ExtendedDialog>() }
+        return response.decodeUpstream(DIALOGPORTEN) { body<ExtendedDialog>() }
     }
 
     data class DialogportenPatch(
@@ -148,27 +148,23 @@ class HttpDialogportenClient(
         }
     }
 
-    private suspend fun request(block: suspend () -> HttpResponse): UpstreamResult<HttpResponse> = try {
-        val response = block()
-        if (response.status.value in 200..299) {
-            UpstreamResult.Success(response)
-        } else {
-            UpstreamResult.Failure(UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, response.status.value, errors = listOf(UpstreamError("unexpected_status"))))
+    private suspend fun request(block: suspend () -> HttpResponse): UpstreamResult<HttpResponse> = when (val result = requestUpstream(DIALOGPORTEN, block)) {
+        is UpstreamResult.Success -> {
+            val response = result.value
+            if (response.status.value in 200..299) {
+                result
+            } else {
+                UpstreamResult.Failure(
+                    UpstreamFailure(
+                        DIALOGPORTEN,
+                        UpstreamFailureStage.RESPONSE,
+                        response.status.value,
+                        errors = listOf(UpstreamError("unexpected_status")),
+                    ),
+                )
+            }
         }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: ResponseException) {
-        UpstreamResult.Failure(UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, e.response.status.value, e))
-    } catch (e: Exception) {
-        UpstreamResult.Failure(UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.REQUEST, null, e))
-    }
-
-    private suspend fun <T> decode(response: HttpResponse, block: suspend () -> T): UpstreamResult<T> = try {
-        UpstreamResult.Success(block())
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        UpstreamResult.Failure(UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, response.status.value, e))
+        is UpstreamResult.Failure -> result
     }
 }
 

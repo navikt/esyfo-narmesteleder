@@ -16,6 +16,8 @@ class OrganizationNumberTest :
             "too short" to "12345678",
             "too long" to "1234567890",
             "letters" to "12345678a",
+            "arabic-indic digit" to "12345678٩",
+            "fullwidth digits" to "１２３４５６７８９",
             "whitespace" to "1234 6789",
             "surrounding whitespace" to " 123456789",
         ).forEach { (case, value) ->

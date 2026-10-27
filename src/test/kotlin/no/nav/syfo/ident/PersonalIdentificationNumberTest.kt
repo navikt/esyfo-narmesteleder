@@ -20,6 +20,8 @@ class PersonalIdentificationNumberTest :
             "too short" to "1234567890",
             "too long" to "123456789012",
             "letters" to "1234567890a",
+            "arabic-indic digit" to "1234567890٩",
+            "fullwidth digits" to "１２３４５６７８９０１",
             "whitespace" to "12345 78901",
             "surrounding whitespace" to " 12345678901",
         ).forEach { (case, value) ->

@@ -11,6 +11,7 @@ value class OrganizationNumber(val value: String) {
     companion object {
         private const val ORGANIZATION_NUMBER_LENGTH = 9
 
-        fun isValid(value: String): Boolean = value.length == ORGANIZATION_NUMBER_LENGTH && value.all(Char::isDigit)
+        // ASCII digits only: Char.isDigit accepts Unicode digits (e.g. Arabic-Indic) that upstream systems reject.
+        fun isValid(value: String): Boolean = value.length == ORGANIZATION_NUMBER_LENGTH && value.all { it in '0'..'9' }
     }
 }

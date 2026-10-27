@@ -56,6 +56,20 @@ class AaregEmploymentLookupTest :
             val client = StubAaregClient(current = { UpstreamResult.Failure(failure) })
             AaregEmploymentLookup(client).findEmployment(personIdent, organizationNumber) shouldBe EmploymentResult.Unavailable(failure)
         }
+
+        test("returns NONE when AAREG does not know the person ident") {
+            val failure = UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, 404, IllegalStateException())
+            val client = StubAaregClient(current = { UpstreamResult.Failure(failure) })
+            AaregEmploymentLookup(client).findEmployment(personIdent, organizationNumber) shouldBe EmploymentResult.None
+        }
+
+        test("returns unavailable for other AAREG client errors") {
+            listOf(400, 403).forEach { status ->
+                val failure = UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, status, IllegalStateException())
+                val client = StubAaregClient(current = { UpstreamResult.Failure(failure) })
+                AaregEmploymentLookup(client).findEmployment(personIdent, organizationNumber) shouldBe EmploymentResult.Unavailable(failure)
+            }
+        }
     })
 
 private fun employmentClient(result: () -> AaregArbeidsforholdOversikt) = StubAaregClient(current = { UpstreamResult.Success(result()) })

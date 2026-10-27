@@ -63,8 +63,8 @@ class AaregEmploymentLookupTest :
             AaregEmploymentLookup(client).findEmployment(personIdent, organizationNumber) shouldBe EmploymentResult.None
         }
 
-        test("returns unavailable for other AAREG client errors") {
-            listOf(400, 403).forEach { status ->
+        listOf(400, 403).forEach { status ->
+            test("returns UNAVAILABLE when AAREG responds with $status") {
                 val failure = UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, status, IllegalStateException())
                 val client = StubAaregClient(current = { UpstreamResult.Failure(failure) })
                 AaregEmploymentLookup(client).findEmployment(personIdent, organizationNumber) shouldBe EmploymentResult.Unavailable(failure)

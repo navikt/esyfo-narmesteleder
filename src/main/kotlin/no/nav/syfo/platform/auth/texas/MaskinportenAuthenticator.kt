@@ -30,7 +30,7 @@ internal suspend fun ApplicationCall.authenticateMaskinporten(
         ?: throw ApiErrorException.UnauthorizedException("No system user id in token claims")
     // The Altinn PDP rejects malformed system user UUIDs with an opaque syntax-error, so reject them here.
     if (!systemUserId.isUuid()) {
-        throw ApiErrorException.UnauthorizedException("Invalid system user id in token claims")
+        throw ApiErrorException.BadRequestException("Invalid system user id in token claims")
     }
 
     authentication.principal(

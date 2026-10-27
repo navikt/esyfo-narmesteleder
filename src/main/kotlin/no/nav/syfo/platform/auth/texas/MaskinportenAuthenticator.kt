@@ -8,6 +8,7 @@ import no.nav.syfo.platform.auth.SystemPrincipal
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.client.getSystemUserId
 import no.nav.syfo.platform.auth.texas.client.getSystemUserOrganization
+import java.util.UUID
 
 internal suspend fun ApplicationCall.authenticateMaskinporten(
     client: TexasHttpClient,
@@ -27,6 +28,10 @@ internal suspend fun ApplicationCall.authenticateMaskinporten(
         ?: throw ApiErrorException.UnauthorizedException("No system user organization number in token claims")
     val systemUserId = introspectionResponse.getSystemUserId()
         ?: throw ApiErrorException.UnauthorizedException("No system user id in token claims")
+    // The Altinn PDP rejects malformed system user UUIDs with an opaque syntax-error, so reject them here.
+    if (!systemUserId.isUuid()) {
+        throw ApiErrorException.BadRequestException("Invalid system user id in token claims")
+    }
 
     authentication.principal(
         SystemPrincipal(
@@ -37,3 +42,5 @@ internal suspend fun ApplicationCall.authenticateMaskinporten(
         ),
     )
 }
+
+private fun String.isUuid(): Boolean = runCatching { UUID.fromString(this) }.isSuccess

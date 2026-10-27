@@ -73,7 +73,7 @@ class LinemanagerStatisticsApiTest :
                         subject.accessToken.value() shouldBe fixture.token()
                     } else {
                         fixture.evaluations.single().first shouldBe
-                            OrganizationAccessSubject.LpsSystemUser("some-user-id", OrganizationNumber(DefaultOrganization.ID.removePrefix("0192:")))
+                            OrganizationAccessSubject.LpsSystemUser("c068399e-8d82-4dfa-937f-92d77ec0881d", OrganizationNumber(DefaultOrganization.ID.removePrefix("0192:")))
                     }
                     requestCount(principalType) shouldBe before + 1
                 }

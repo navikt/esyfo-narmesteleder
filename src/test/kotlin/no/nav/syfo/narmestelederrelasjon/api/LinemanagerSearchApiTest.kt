@@ -55,7 +55,7 @@ import java.time.Instant
 import java.util.UUID
 
 private const val SEARCH_PATH = "$INTERNAL_API_V1_PATH$LINEMANAGER_SEARCH_API_PATH"
-private const val SYSTEM_USER_ID = "system-user-id"
+private const val SYSTEM_USER_ID = "123e4567-e89b-42d3-a456-426614174000"
 private val organizationNumber = OrganizationNumber("123456789")
 private val callerPid = PersonalIdentificationNumber("11223344556")
 private val responseMapper = jacksonObjectMapper()

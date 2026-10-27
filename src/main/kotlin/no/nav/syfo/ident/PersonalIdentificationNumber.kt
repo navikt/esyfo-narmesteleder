@@ -12,6 +12,6 @@ value class PersonalIdentificationNumber(val value: String) {
     companion object {
         private const val PERSONAL_IDENTIFICATION_NUMBER_LENGTH = 11
 
-        fun isValid(value: String): Boolean = value.length == PERSONAL_IDENTIFICATION_NUMBER_LENGTH && value.all(Char::isDigit)
+        fun isValid(value: String): Boolean = value.length == PERSONAL_IDENTIFICATION_NUMBER_LENGTH && value.all { it in '0'..'9' }
     }
 }

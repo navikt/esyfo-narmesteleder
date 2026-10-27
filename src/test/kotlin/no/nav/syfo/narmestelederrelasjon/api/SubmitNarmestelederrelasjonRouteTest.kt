@@ -123,6 +123,16 @@ class SubmitNarmestelederrelasjonRouteTest :
             }
         }
 
+        test("a maskinporten token with a malformed system user id cannot submit") {
+            val fixture = SubmitFixture(access = OrganizationAccess { _, _ -> error("Access must not be checked") })
+            fixture.authorize("maskinporten", systemUserId = "not-a-uuid")
+            fixture.withApplication {
+                val response = client.postSubmission(issuer = "https://test.maskinporten.no")
+                response.status shouldBe HttpStatusCode.Unauthorized
+                response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+            }
+        }
+
         listOf(
             "an unknown body" to """{"name":"Ola Nordmann"}""",
             "a short organization number" to
@@ -206,11 +216,14 @@ private class SubmitFixture(
         provider: String,
         acr: String = "Level4",
         scope: String = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
+        systemUserId: String? = null,
     ) {
         if (provider == "tokenx") {
             texas.stubTokenX(pid = "11223344556", acr = acr)
-        } else {
+        } else if (systemUserId == null) {
             texas.stubMaskinportenSystemUser(scope = scope)
+        } else {
+            texas.stubMaskinportenSystemUser(scope = scope, systemUserId = systemUserId)
         }
     }
 

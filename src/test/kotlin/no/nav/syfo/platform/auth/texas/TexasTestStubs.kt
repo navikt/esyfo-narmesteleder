@@ -36,7 +36,7 @@ fun TexasHttpClient.stubMaskinportenSystemUser(
     consumer: OrganizationId? = DefaultOrganization,
     supplier: OrganizationId? = null,
     scope: String? = MASKINPORTEN_NL_SCOPE,
-    systemUserId: String = "some-user-id",
+    systemUserId: String = "c068399e-8d82-4dfa-937f-92d77ec0881d",
     systemId: String = "some-system-id",
 ) {
     coEvery { introspectToken(MASKINPORTEN, any()) } returns TexasIntrospectionResponse(

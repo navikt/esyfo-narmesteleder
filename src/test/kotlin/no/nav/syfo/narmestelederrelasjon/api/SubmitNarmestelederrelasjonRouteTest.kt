@@ -128,8 +128,8 @@ class SubmitNarmestelederrelasjonRouteTest :
             fixture.authorize("maskinporten", systemUserId = "not-a-uuid")
             fixture.withApplication {
                 val response = client.postSubmission(issuer = "https://test.maskinporten.no")
-                response.status shouldBe HttpStatusCode.Unauthorized
-                response.body<ApiError>().type shouldBe ErrorType.AUTHORIZATION_ERROR
+                response.status shouldBe HttpStatusCode.BadRequest
+                response.body<ApiError>().type shouldBe ErrorType.BAD_REQUEST
             }
         }
 

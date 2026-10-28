@@ -9,6 +9,8 @@ import no.nav.syfo.faker
 import no.nav.syfo.integration.pdl.Navn
 import no.nav.syfo.linemanager
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.KafkaSykmeldingNarmestelederProducer.Companion.SYKEMELDING_NL_TOPIC
+import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS
+import no.nav.syfo.narmestelederrelasjon.observability.COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER
 import no.nav.syfo.platform.kafka.JacksonKafkaSerializer
 import org.apache.kafka.common.serialization.Serializer
 import java.time.OffsetDateTime
@@ -77,6 +79,28 @@ class KafkaSykmeldingNarmestelederProducerTest :
 
                 failure.shouldBeInstanceOf<ExecutionException>().cause shouldBe rejection
             }
+
+            listOf(
+                Triple(NlResponseSource.LPS, COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS, COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER),
+                Triple(NlResponseSource.PERSONALLEDER, COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER, COUNT_FAILED_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS),
+            ).forEach { (source, failedCounter, otherFailedCounter) ->
+                test("failed publish from $source increments only its own failure counter") {
+                    val counters = listOf(
+                        failedCounter,
+                        otherFailedCounter,
+                        COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS,
+                        COUNT_ASSIGN_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER,
+                    )
+                    val before = counters.map { it.count() }
+                    val kafkaProducer = fakeNarmestelederProducer(autoComplete = false)
+
+                    kafkaProducer.rejectAcknowledgement(IllegalStateException("rejected by broker")) {
+                        KafkaSykmeldingNarmestelederProducer(kafkaProducer).sendSykmeldingNLRelasjon(nlResponse(), source)
+                    }
+
+                    counters.zip(before).map { (counter, count) -> counter.count() - count } shouldBe listOf(1.0, 0.0, 0.0, 0.0)
+                }
+            }
         }
         context("sendSykemeldingNLBrudd") {
             test("Calls send on Producer with ProducerRecord containing NlAvbrutt") {
@@ -108,6 +132,23 @@ class KafkaSykmeldingNarmestelederProducerTest :
                 }
 
                 failure.shouldBeInstanceOf<ExecutionException>().cause shouldBe rejection
+            }
+
+            listOf(
+                Triple(NlResponseSource.LPS, COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS, COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER),
+                Triple(NlResponseSource.PERSONALLEDER, COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_PERSONNEL_MANAGER, COUNT_FAILED_REVOKE_LINEMANAGER_FROM_EMPTY_FORM_BY_LPS),
+            ).forEach { (source, failedCounter, otherFailedCounter) ->
+                test("failed publish from $source increments only its own failure counter") {
+                    val before = failedCounter.count() to otherFailedCounter.count()
+                    val kafkaProducer = fakeNarmestelederProducer(autoComplete = false)
+
+                    kafkaProducer.rejectAcknowledgement(IllegalStateException("rejected by broker")) {
+                        KafkaSykmeldingNarmestelederProducer(kafkaProducer).sendSykmldingNLBrudd(nlAvbrutt(), source)
+                    }
+
+                    (failedCounter.count() - before.first) shouldBe 1.0
+                    (otherFailedCounter.count() - before.second) shouldBe 0.0
+                }
             }
         }
     })

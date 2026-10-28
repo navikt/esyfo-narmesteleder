@@ -66,7 +66,12 @@ class HttpAltinnAuthorizationClient(
     private fun indeterminateFailure(result: DecisionResult, status: Int): UpstreamResult.Failure {
         val detail = result.status?.statusCode?.value?.takeIf { it in allowedStatusCodes } ?: "unknown"
         return UpstreamResult.Failure(
-            UpstreamFailure(ALTINN_PDP, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("indeterminate", detail = detail))),
+            UpstreamFailure(
+                ALTINN_PDP,
+                UpstreamFailureStage.RESPONSE,
+                status,
+                errors = listOf(UpstreamError("indeterminate", detail = detail, message = result.status?.statusMessage)),
+            ),
         )
     }
 

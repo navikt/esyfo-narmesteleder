@@ -21,6 +21,9 @@ data class DecisionResult(
 data class DecisionStatus(
     @JsonProperty("StatusCode")
     val statusCode: DecisionStatusCode? = null,
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonProperty("StatusMessage")
+    val statusMessage: String? = null,
 )
 
 @JsonFormat(with = [JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_PROPERTIES])

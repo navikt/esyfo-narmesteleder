@@ -1,4 +1,5 @@
 [versions]
+arrow = "2.3.0"
 avro = "1.12.1"
 commons-text = "1.15.0"
 confluent = "8.1.1"
@@ -32,6 +33,7 @@ handlebars = "4.5.5"
 guava = "33.7.2-jre"
 
 [libraries]
+arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
 apache-avro = { module = "org.apache.avro:avro", version.ref = "avro" }
 apache-avro-tools = { module = "org.apache.avro:avro-tools", version.ref = "avro" }
 commons-text = { module = "org.apache.commons:commons-text", version.ref = "commons-text" }

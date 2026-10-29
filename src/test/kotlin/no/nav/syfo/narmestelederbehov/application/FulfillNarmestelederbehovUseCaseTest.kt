@@ -1,5 +1,8 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
 import ch.qos.logback.classic.Level
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -114,8 +117,8 @@ class FulfillNarmestelederbehovUseCaseTest :
                 access = FakeOrganizationAccess(organizationNumber, OrganizationAccessResult.Unavailable(failure), effects),
                 effects = effects,
             ).execute(command())
-            result shouldBe FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
-            result.shouldBeInstanceOf<FulfillNarmestelederbehovResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
+            result shouldBe FulfillNarmestelederbehovError.UpstreamUnavailable(failure).left()
+            result.shouldBeInstanceOf<Either.Left<FulfillNarmestelederbehovError.UpstreamUnavailable>>().value.failure shouldBeSameInstanceAs failure
             effects shouldBe listOf("load", "access")
             contract.assertValid(capture.records, expectedCount = 0)
         }
@@ -160,7 +163,7 @@ class FulfillNarmestelederbehovUseCaseTest :
             val effects = mutableListOf<String>()
 
             createUseCase(effects = effects).execute(command(email = "private-email-canary", mobile = "+47-99999999")) shouldBe
-                FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
+                FulfillNarmestelederbehovError.InvalidManagerContactDetails(
                     listOf(
                         ManagerContactValidationIssue(
                             ManagerContactField.MOBILE,
@@ -171,7 +174,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                             ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
                         ),
                     ),
-                )
+                ).left()
 
             effects shouldBe emptyList()
             val record = rejectedEvent("INVALID_MANAGER_CONTACT_DETAILS")
@@ -195,12 +198,12 @@ class FulfillNarmestelederbehovUseCaseTest :
                     repository = FakeBehovRepository(behovForFulfillment, effects),
                     access = FakeOrganizationAccess(organizationNumber, accessResult, effects),
                     effects = effects,
-                ).execute(invalidCommand) shouldBe FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
+                ).execute(invalidCommand) shouldBe FulfillNarmestelederbehovError.InvalidManagerContactDetails(
                     listOf(
                         ManagerContactValidationIssue(ManagerContactField.MOBILE, ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS),
                         ManagerContactValidationIssue(ManagerContactField.EMAIL, ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID),
                     ),
-                )
+                ).left()
                 effects shouldBe emptyList()
             }
         }
@@ -208,13 +211,13 @@ class FulfillNarmestelederbehovUseCaseTest :
         listOf(
             Case(
                 outcomeCode = "NOT_FOUND",
-                result = FulfillNarmestelederbehovResult.NotFound,
+                result = FulfillNarmestelederbehovError.NotFound,
                 behovForFulfillment = null,
                 expectedEffects = listOf("load"),
             ),
             Case(
                 outcomeCode = "ACCESS_DENIED",
-                result = FulfillNarmestelederbehovResult.AccessDenied(DenialReason.MISSING_ORGANIZATION_ACCESS, organizationNumber),
+                result = FulfillNarmestelederbehovError.AccessDenied(DenialReason.MISSING_ORGANIZATION_ACCESS, organizationNumber),
                 accessResult = OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS),
                 expectedEffects = listOf("load", "access"),
             ),
@@ -225,7 +228,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                     repository = FakeBehovRepository(case.behovForFulfillment, effects),
                     access = FakeOrganizationAccess(organizationNumber, case.accessResult, effects),
                     effects = effects,
-                ).execute(command()) shouldBe case.result
+                ).execute(command()) shouldBe case.result.left()
 
                 effects shouldBe case.expectedEffects
                 rejectedEvent(case.outcomeCode)
@@ -236,29 +239,29 @@ class FulfillNarmestelederbehovUseCaseTest :
             Triple(
                 "NO_ACTIVE_SYKMELDING",
                 EstablishNarmestelederrelasjonResult.NoActiveSykmelding(organizationNumber),
-                FulfillNarmestelederbehovResult.NoActiveSykmelding(organizationNumber),
+                FulfillNarmestelederbehovError.NoActiveSykmelding(organizationNumber),
             ),
             Triple(
                 "NO_EMPLOYMENT",
                 EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.None),
-                FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.None),
+                FulfillNarmestelederbehovError.NoEmployment(EmploymentResult.None),
             ),
             Triple(
                 "NO_EMPLOYMENT",
                 EstablishNarmestelederrelasjonResult.NoEmployment(EmploymentResult.NotInOrganization),
-                FulfillNarmestelederbehovResult.NoEmployment(EmploymentResult.NotInOrganization),
+                FulfillNarmestelederbehovError.NoEmployment(EmploymentResult.NotInOrganization),
             ),
-            Triple("PERSON_NOT_FOUND", EstablishNarmestelederrelasjonResult.PersonNotFound, FulfillNarmestelederbehovResult.PersonNotFound),
+            Triple("PERSON_NOT_FOUND", EstablishNarmestelederrelasjonResult.PersonNotFound, FulfillNarmestelederbehovError.PersonNotFound),
             Triple(
                 "MANAGER_NAME_MISMATCH",
                 EstablishNarmestelederrelasjonResult.ManagerNameMismatch,
-                FulfillNarmestelederbehovResult.ManagerNameMismatch,
+                FulfillNarmestelederbehovError.ManagerNameMismatch,
             ),
         ).forEach { (outcomeCode, rejection, expected) ->
             test("maps establish rejection $rejection to $outcomeCode without fulfilling or completing dialog") {
                 val effects = mutableListOf<String>()
                 createUseCase(relation = FakeRelationEstablisher(effects, result = rejection), effects = effects)
-                    .execute(command()) shouldBe expected
+                    .execute(command()) shouldBe expected.left()
                 effects shouldBe listOf("load", "access", "establish")
                 rejectedEvent(outcomeCode)
             }
@@ -269,7 +272,7 @@ class FulfillNarmestelederbehovUseCaseTest :
             val failure = UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, IllegalStateException("private-exception-canary"))
             val relation = FakeRelationEstablisher(effects, result = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure))
             createUseCase(relation = relation, effects = effects).execute(command()) shouldBe
-                FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
+                FulfillNarmestelederbehovError.UpstreamUnavailable(failure).left()
             effects shouldBe listOf("load", "access", "establish")
             contract.assertValid(capture.records, expectedCount = 0)
         }
@@ -307,7 +310,7 @@ class FulfillNarmestelederbehovUseCaseTest :
             createUseCase(
                 repository = FakeBehovRepository(behov, effects, markResult = MarkFulfilledResult.Missing),
                 effects = effects,
-            ).execute(command()) shouldBe FulfillNarmestelederbehovResult.BehovMissingAfterPublication
+            ).execute(command()) shouldBe FulfillNarmestelederbehovError.BehovMissingAfterPublication.left()
             effects shouldBe listOf("load", "access", "establish", "fulfilled")
             rejectedEvent("BEHOV_MISSING_AFTER_PUBLICATION")
         }
@@ -420,10 +423,10 @@ internal fun command(
 internal fun fulfilledResult(
     relationSource: RelationSource = RelationSource.LPS,
     dialogCompletion: DialogportenCompletionAttempt = DialogportenCompletionAttempt.Completed,
-) = FulfillNarmestelederbehovResult.Fulfilled(
+) = FulfilledNarmestelederbehov(
     relationSource = relationSource,
     dialogCompletion = dialogCompletion,
-)
+).right()
 
 internal fun createUseCase(
     repository: FakeBehovRepository? = null,
@@ -440,7 +443,7 @@ internal fun createUseCase(
 
 private data class Case(
     val outcomeCode: String,
-    val result: FulfillNarmestelederbehovResult,
+    val result: FulfillNarmestelederbehovError,
     val behovForFulfillment: Narmestelederbehov? = behov,
     val accessResult: OrganizationAccessResult = OrganizationAccessResult.Granted(organizationName = null),
     val expectedEffects: List<String>,

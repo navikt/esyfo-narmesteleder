@@ -60,6 +60,7 @@ class FulfillNarmestelederbehovRouteTest :
             withPutApplication { fixture ->
                 val id = fixture.seed()
                 val submittedManager = fixture.newManager()
+                val fulfilledBefore = fulfilledRequirementCount()
 
                 val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
@@ -74,6 +75,7 @@ class FulfillNarmestelederbehovRouteTest :
                     it.manager.personIdent shouldBe PersonalIdentificationNumber(submittedManager.nationalIdentificationNumber.value)
                 }
                 fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
+                fulfilledRequirementCount() shouldBe fulfilledBefore + 1
             }
         }
 
@@ -233,6 +235,7 @@ class FulfillNarmestelederbehovRouteTest :
             withPutApplication { fixture ->
                 val id = fixture.seed()
                 fixture.establish.result = EstablishNarmestelederrelasjonResult.NoActiveSykmelding(OrganizationNumber(fixture.orgNumber))
+                val fulfilledBefore = fulfilledRequirementCount()
                 val response = client.put("$API_V1_PATH/$NARMESTELEDERBEHOV_PATH/$id") {
                     contentType(ContentType.Application.Json)
                     setBody(manager())
@@ -244,9 +247,12 @@ class FulfillNarmestelederbehovRouteTest :
                     "No active sick leave found for the given organization number: ${fixture.orgNumber}"
                 fixture.establish.commands.size shouldBe 1
                 fixture.repository.fulfilled shouldBe emptyList()
+                fulfilledRequirementCount() shouldBe fulfilledBefore
             }
         }
     })
+
+private fun fulfilledRequirementCount(): Double = COUNT_FULFILL_LINEMANAGER_REQUIREMENT_BY_LPS.count() + COUNT_FULFILL_LINEMANAGER_BY_PERSONNEL_MANAGER.count()
 
 private class PutFixture {
     private val relation = linemanager()

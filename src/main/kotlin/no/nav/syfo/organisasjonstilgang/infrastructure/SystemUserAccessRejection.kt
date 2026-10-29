@@ -10,8 +10,8 @@ internal data class SystemUserAccessRejection(
     val fallbackDecision: AuthorizationDecision?,
 ) {
     init {
-        require(directDecision == AuthorizationDecision.Deny || directDecision == AuthorizationDecision.NotApplicable)
-        require(fallbackDecision == null || fallbackDecision == AuthorizationDecision.Deny || fallbackDecision == AuthorizationDecision.NotApplicable)
+        require(directDecision != AuthorizationDecision.Permit)
+        require(fallbackDecision == null || fallbackDecision != AuthorizationDecision.Permit)
     }
 }
 

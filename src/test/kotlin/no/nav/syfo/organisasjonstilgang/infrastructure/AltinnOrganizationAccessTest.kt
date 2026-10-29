@@ -118,7 +118,7 @@ class AltinnOrganizationAccessTest :
         }
 
         context("LPS system user") {
-            val decisions = AuthorizationDecision.entries.filter { it != AuthorizationDecision.Indeterminate }
+            val decisions = AuthorizationDecision.entries
 
             decisions.forEach { directDecision ->
                 test("direct $directDecision outside the hierarchy never checks a fallback decision") {
@@ -169,7 +169,6 @@ class AltinnOrganizationAccessTest :
                 UpstreamFailure(UpstreamName("altinn-authentication"), UpstreamFailureStage.TOKEN_EXCHANGE, 200, IllegalArgumentException()),
                 UpstreamFailure(UpstreamName("altinn-pdp"), UpstreamFailureStage.REQUEST, null, IllegalStateException()),
                 UpstreamFailure(UpstreamName("altinn-pdp"), UpstreamFailureStage.RESPONSE, 503, IllegalStateException()),
-                UpstreamFailure(UpstreamName("altinn-pdp"), UpstreamFailureStage.RESPONSE, 200, errors = listOf(UpstreamError("indeterminate", detail = "unknown"))),
             ).forEach { failure ->
                 listOf(REQUESTED_ORG, SYSTEM_USER_ORG).forEach { failingOrganization ->
                     test("${failure.upstream} ${failure.stage} ${failure.status} on $failingOrganization returns the original failure without logging a rejection") {

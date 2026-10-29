@@ -55,9 +55,4 @@ class HttpAltinnAuthorizationClient(
     }
 
     private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> = response.decodeUpstream(ALTINN_PDP) { body<AltinnAuthorizationResponse>().response.single() }
-
-    private val allowedStatusCodes = setOf(
-        "urn:oasis:names:tc:xacml:1.0:status:syntax-error",
-        "urn:oasis:names:tc:xacml:1.0:status:processing-error",
-    )
 }

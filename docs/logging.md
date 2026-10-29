@@ -83,8 +83,8 @@ logger.logEvent(dialogportenDialogFailed, details, cause = exception)
   `urn:oasis:names:tc:xacml:1.0:status:syntax-error` og
   `urn:oasis:names:tc:xacml:1.0:status:processing-error`, ellers `unknown`.
   `StatusMessage`, `StatusDetails`, rå provider-svar, tokens, systembruker-ID
-  og organisasjonsnummer logges aldri. Avvisningsloggen inneholder bare
-  normale `Deny`/`NotApplicable`-beslutninger, aldri `Indeterminate`.
+  og organisasjonsnummer logges aldri. Avvisningsloggen inneholder
+  `Deny`-, `NotApplicable`- og `Indeterminate`-beslutninger.
 - For enkeltoppslag i PDL følger feilene kanten som verdier. Feltet
   `upstream_errors` er en liste med `code`, `detail`, `path` og `message` fra
   `UpstreamFailure.errors`. `message` settes bare når upstream dokumenterer at

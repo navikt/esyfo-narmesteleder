@@ -118,7 +118,7 @@ class AltinnOrganizationAccessTest :
         }
 
         context("LPS system user") {
-            val decisions = AuthorizationDecision.entries.filter { it != AuthorizationDecision.Indeterminate }
+            val decisions = AuthorizationDecision.entries
 
             decisions.forEach { directDecision ->
                 test("direct $directDecision outside the hierarchy never checks a fallback decision") {

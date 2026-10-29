@@ -34,10 +34,10 @@ When both completed checks deny access, `AltinnOrganizationAccess` emits one
 | `error_code` | `MISSING_ALTINN_RESOURCE_ACCESS` |
 | `operation` | `validate_system_user_access` |
 | `rejection_reason` | `SYSTEM_USER_ACCESS_NOT_GRANTED` |
-| `pdp_decision` | `Deny` or `NotApplicable` |
-| `pdp_fallback_decision` | `Deny`, `NotApplicable`, or `not_checked` outside the hierarchy |
+| `pdp_decision` | `Deny`, `NotApplicable` or `Indeterminate` |
+| `pdp_fallback_decision` | `Deny`, `NotApplicable`, `Indeterminate`, or `not_checked` outside the hierarchy |
 
-Neither `Permit` nor `Indeterminate` can occur in a rejection. The diagnostic
+`Permit` can never occur in a rejection; `Indeterminate` is logged as a denial. The diagnostic
 fields are not metric labels. Existing `trace_id` is preserved. A fallback
 `Permit` succeeds without a rejection. Completed denials retain HTTP 403 and
 the existing API error type and message; StatusPages does not log them again.

@@ -393,3 +393,34 @@ private read-only projections.
   Employment reconciliation runs on every pod and coordinates work through
   database claims with leases; see
   [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
+
+## Planned change: decommissioning the source Leesah topic
+
+The current data flow depends on team sykmelding publishing relation events on
+`teamsykmelding.syfo-narmesteleder-leesah`. When that topic goes silent and is
+no longer used, the flow changes:
+
+- `LeesahNLKafkaConsumer` and `PersistNarmestelederRegisterFromLeesahConsumer`
+  are removed. Nothing in this repository consumes
+  `team-esyfo.syfo-narmesteleder-leesah` today; it is a produce-only contract
+  for external downstream consumers.
+- Relation establishment and revocation publish events directly to
+  `team-esyfo.syfo-narmesteleder-leesah` instead of commands to
+  `teamsykmelding.syfo-narmesteleder`.
+- A new consumer in this repository consumes
+  `team-esyfo.syfo-narmesteleder-leesah` to keep the local relation register
+  (`narmeste_leder`) up to date and to drive the behov lifecycle: fulfilling
+  open needs when an active relation is observed and requesting new needs for
+  qualifying deactivations.
+
+```mermaid
+flowchart LR
+    http[Establish / revoke requests] --> publish[Publish to team-esyfo.syfo-narmesteleder-leesah]
+    publish --> consumer[New consumer in this repository]
+    consumer --> register[(Local relation register)]
+    consumer --> behov[Fulfil or request needs]
+    publish -.-> downstream[External downstream consumers]
+```
+
+Until that migration happens, the source Leesah consumers and the republishing
+described above remain the only writers of the local relation register.

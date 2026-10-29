@@ -9,9 +9,6 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
 import no.nav.syfo.platform.auth.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
-import no.nav.syfo.platform.upstream.UpstreamError
-import no.nav.syfo.platform.upstream.UpstreamFailure
-import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.decodeUpstream
@@ -44,11 +41,7 @@ class HttpAltinnAuthorizationClient(
         val response = postAuthorize(token, request).getOrElse { return UpstreamResult.Failure(it) }
         val result = readDecisionResult(response).getOrElse { return UpstreamResult.Failure(it) }
 
-        return if (result.decision == AuthorizationDecision.Indeterminate) {
-            indeterminateFailure(result, response.status.value)
-        } else {
-            UpstreamResult.Success(result.decision)
-        }
+        return UpstreamResult.Success(result.decision)
     }
 
     private suspend fun postAuthorize(token: String, request: AltinnAuthorizationRequest): UpstreamResult<HttpResponse> = requestUpstream(ALTINN_PDP) {
@@ -62,18 +55,6 @@ class HttpAltinnAuthorizationClient(
     }
 
     private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> = response.decodeUpstream(ALTINN_PDP) { body<AltinnAuthorizationResponse>().response.single() }
-
-    private fun indeterminateFailure(result: DecisionResult, status: Int): UpstreamResult.Failure {
-        val detail = result.status?.statusCode?.value?.takeIf { it in allowedStatusCodes } ?: "unknown"
-        return UpstreamResult.Failure(
-            UpstreamFailure(
-                ALTINN_PDP,
-                UpstreamFailureStage.RESPONSE,
-                status,
-                errors = listOf(UpstreamError("indeterminate", detail = detail, message = result.status?.statusMessage)),
-            ),
-        )
-    }
 
     private val allowedStatusCodes = setOf(
         "urn:oasis:names:tc:xacml:1.0:status:syntax-error",

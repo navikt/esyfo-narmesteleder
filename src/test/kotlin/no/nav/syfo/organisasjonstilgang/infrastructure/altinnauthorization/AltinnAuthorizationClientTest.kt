@@ -17,7 +17,6 @@ import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
 import no.nav.syfo.platform.auth.texas.altinnTestToken
-import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -99,57 +98,6 @@ class AltinnAuthorizationClientTest :
                     failure.stage shouldBe UpstreamFailureStage.RESPONSE
                     failure.status shouldBe 200
                 }
-            }
-        }
-
-        listOf(
-            "urn:oasis:names:tc:xacml:1.0:status:syntax-error",
-            "urn:oasis:names:tc:xacml:1.0:status:processing-error",
-            "private-status",
-            null,
-        ).forEach { statusCode ->
-            test("Indeterminate with status $statusCode has allowlisted detail, status message and no cause") {
-                upstreamHttpClient(respondWithSystemToken) { request ->
-                    if (request.url.encodedPath.contains("exchange")) {
-                        respondJson("\"${altinnTestToken(3600)}\"")
-                    } else {
-                        respondJson(
-                            """{"Response":[{"Decision":"Indeterminate","Status":{"StatusMessage":"Invalid attribute value","StatusDetails":["private-details"],"StatusCode":{"Value":${statusCode?.let { "\"$it\"" }},"StatusCode":{"Value":"private-nested-code"}}}}]}""",
-                        )
-                    }
-                }.use {
-                    val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
-                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_PDP
-                    failure.stage shouldBe UpstreamFailureStage.RESPONSE
-                    failure.status shouldBe 200
-                    failure.cause shouldBe null
-                    failure.errors shouldBe listOf(
-                        UpstreamError(
-                            "indeterminate",
-                            detail = statusCode?.takeIf { it.startsWith("urn:") } ?: "unknown",
-                            message = "Invalid attribute value",
-                        ),
-                    )
-                }
-            }
-        }
-
-        test("Indeterminate without status message has no error message") {
-            upstreamHttpClient(respondWithSystemToken) { request ->
-                if (request.url.encodedPath.contains("exchange")) {
-                    respondJson("\"${altinnTestToken(3600)}\"")
-                } else {
-                    respondJson(
-                        """{"Response":[{"Decision":"Indeterminate","Status":{"StatusCode":{"Value":"urn:oasis:names:tc:xacml:1.0:status:syntax-error"}}}]}""",
-                    )
-                }
-            }.use {
-                val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
-                    .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                failure.errors shouldBe listOf(
-                    UpstreamError("indeterminate", detail = "urn:oasis:names:tc:xacml:1.0:status:syntax-error", message = null),
-                )
             }
         }
 

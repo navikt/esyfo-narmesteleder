@@ -398,20 +398,26 @@ private read-only projections.
 
 The current data flow depends on team sykmelding publishing relation events on
 `teamsykmelding.syfo-narmesteleder-leesah`. When that topic goes silent and is
-no longer used, the flow changes:
+no longer used:
 
 - `LeesahNLKafkaConsumer` and `PersistNarmestelederRegisterFromLeesahConsumer`
-  are removed. Nothing in this repository consumes
-  `team-esyfo.syfo-narmesteleder-leesah` today; it is a produce-only contract
-  for external downstream consumers.
+  are removed.
 - Relation establishment and revocation publish events directly to
   `team-esyfo.syfo-narmesteleder-leesah` instead of commands to
-  `teamsykmelding.syfo-narmesteleder`.
-- A new consumer in this repository consumes
-  `team-esyfo.syfo-narmesteleder-leesah` to keep the local relation register
-  (`narmeste_leder`) up to date and to drive the behov lifecycle: fulfilling
-  open needs when an active relation is observed and requesting new needs for
-  qualifying deactivations.
+  `teamsykmelding.syfo-narmesteleder`. Nothing in this repository consumes
+  `team-esyfo.syfo-narmesteleder-leesah` today; it is a produce-only contract
+  for external downstream consumers.
+
+How the local relation register (`narmeste_leder`) is updated afterwards is an
+open design decision with two alternatives:
+
+**Alternative A: consume our own topic.** A new consumer in this repository
+reads `team-esyfo.syfo-narmesteleder-leesah` to update the register and drive
+the behov lifecycle (fulfilling open needs on active relations, requesting new
+needs for qualifying deactivations). This preserves today's publish-first
+semantics and keeps the event stream as the single source of ordering, but the
+register lags the publication and lookups can be stale while events are already
+public.
 
 ```mermaid
 flowchart LR
@@ -419,6 +425,22 @@ flowchart LR
     publish --> consumer[New consumer in this repository]
     consumer --> register[(Local relation register)]
     consumer --> behov[Fulfil or request needs]
+    publish -.-> downstream[External downstream consumers]
+```
+
+**Alternative B: write the register synchronously.** The use case writes
+`narmeste_leder` directly and publishes the event for downstream consumers.
+Lookups become immediately consistent and no self-consumption is needed, but
+this changes the publish-first ordering kept by
+[ADR-0002](adr/ADR-0002-organiser-backend-som-en-kapabilitetsbasert-modulaer-monolitt.md):
+a database write that succeeds while publication fails would leave downstream
+consumers without the event unless an outbox or retry mechanism is added.
+
+```mermaid
+flowchart LR
+    http[Establish / revoke requests] --> register[(Local relation register)]
+    register --> behov[Fulfil or request needs]
+    http --> publish[Publish to team-esyfo.syfo-narmesteleder-leesah]
     publish -.-> downstream[External downstream consumers]
 ```
 

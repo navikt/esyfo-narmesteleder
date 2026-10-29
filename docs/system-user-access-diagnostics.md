@@ -14,10 +14,9 @@ fallback or rejection log is produced. The API returns HTTP 500
 counts `get_narmestelederrelasjon_total{outcome="upstream_unavailable"}`.
 Ereg `Success(null)` still gives HTTP 400 `ORGANIZATION_NOT_FOUND`.
 
-PDP `Indeterminate` is an upstream failure, not a denial: `altinn-pdp`,
-`RESPONSE`, status 200, error code `indeterminate`, no cause. Only the known
-XACML syntax-error and processing-error status URIs are retained as detail;
-everything else becomes `unknown`. `StatusMessage` is never retained or logged.
+PDP `Indeterminate` is a denial, not an upstream failure: it is logged as
+`pdp_decision = Indeterminate` in the rejection event and keeps HTTP 403, so
+LPS providers are not met with a 500 for a missing delegation.
 Token exchange failures retain `texas` or `altinn-authentication` as their source
 and use `TOKEN_EXCHANGE`. See ADR-0004 and [logging.md](logging.md).
 Empty, malformed or multiple PDP decisions fail closed rather than granting
@@ -55,9 +54,3 @@ cancellation, trace context and identifier canaries using fakes. It validates
 the packaged v1 contract and local event catalog with `esyfo-logger-testkit`,
 capturing JSON from the NAIS `stdout_json` encoder in `src/main/resources/logback.xml`.
 Schema validation is part of the normal Gradle test; the testkit remains test-only.
-
-Before merge, a human must inspect approved Loki data for existing rejections
-with `operation = validate_system_user_access` and `pdp_decision` or
-`pdp_fallback_decision` equal to `Indeterminate`. This establishes how often the
-change from 403 to 500 affects callers. Automated tests do not prove production
-frequency or resolve [#516](https://github.com/navikt/esyfo-narmesteleder/issues/516).

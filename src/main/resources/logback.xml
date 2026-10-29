@@ -12,6 +12,14 @@
                     </pattern>
                 </encoder>
             </appender>
+            <root level="info">
+                <appender-ref ref="stdout"/>
+            </root>
+        </then>
+        <else>
+            <appender name="stdout_json" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+            </appender>
             <appender name="team-logs" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
                 <destination>team-logs.nais-system:5170</destination>
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
@@ -22,14 +30,6 @@
             <logger name="team-logs-logger" level="INFO" additivity="false">
                 <appender-ref ref="team-logs" />
             </logger>
-            <root level="info">
-                <appender-ref ref="stdout"/>
-            </root>
-        </then>
-        <else>
-            <appender name="stdout_json" class="ch.qos.logback.core.ConsoleAppender">
-                <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-            </appender>
             <root level="info">
                 <appender-ref ref="stdout_json"/>
             </root>

@@ -29,6 +29,7 @@ netty = "4.2.19.Final"
 testLogger = "4.0.0"
 jackson3 = "3.2.4"
 handlebars = "4.5.5"
+guava = "33.7.2-jre"
 
 [libraries]
 apache-avro = { module = "org.apache.avro:avro", version.ref = "avro" }
@@ -83,6 +84,7 @@ netty = { module = "io.netty:netty-bom", version.ref = "netty" }
 jackson3-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson3" }
 jackson3-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson3" }
 handlebars = { module = "com.github.jknack:handlebars", version.ref = "handlebars" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }

@@ -74,6 +74,10 @@ dependencies {
         implementation(libs.handlebars) {
             because("CVE-2026-55760")
         }
+        // Guava comes transitively from jwks-rsa and kafka-schema-registry-client
+        implementation(libs.guava) {
+            because("CVE-2026-102554")
+        }
     }
 }
 kotlin {

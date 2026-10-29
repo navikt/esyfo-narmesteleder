@@ -9,16 +9,11 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
 import no.nav.syfo.platform.auth.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
-import no.nav.syfo.platform.observability.applicationEvent
-import no.nav.syfo.platform.observability.applicationLogger
-import no.nav.syfo.platform.observability.logEvent
-import no.nav.syfo.platform.observability.logger
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.decodeUpstream
 import no.nav.syfo.platform.upstream.getOrElse
 import no.nav.syfo.platform.upstream.requestUpstream
-import org.slf4j.event.Level
 
 internal val ALTINN_PDP = UpstreamName("altinn-pdp")
 
@@ -46,10 +41,6 @@ class HttpAltinnAuthorizationClient(
         val response = postAuthorize(token, request).getOrElse { return UpstreamResult.Failure(it) }
         val result = readDecisionResult(response).getOrElse { return UpstreamResult.Failure(it) }
 
-        if (result.decision == AuthorizationDecision.Indeterminate) {
-            logger.logEvent(altinnPdpAuthorizeIndeterminate, result)
-        }
-
         return UpstreamResult.Success(result.decision)
     }
 
@@ -69,20 +60,4 @@ class HttpAltinnAuthorizationClient(
         "urn:oasis:names:tc:xacml:1.0:status:syntax-error",
         "urn:oasis:names:tc:xacml:1.0:status:processing-error",
     )
-
-    private companion object {
-        val logger = applicationLogger(HttpAltinnAuthorizationClient::class.java)
-    }
 }
-
-private val altinnPdpAuthorizeIndeterminate = applicationEvent<DecisionResult>(
-    name = "altinn_pdp_authorize_indeterminate",
-    level = Level.WARN,
-    message = "indeterminate decision from Altinn PDP",
-    operation = "authorize_altinn_pdp",
-    fields = mapOf(
-        "outcome_code" to { it.decision.name },
-        "status_code" to { it.status?.statusCode?.value },
-        "status_message" to { it.status?.statusMessage },
-    ),
-)

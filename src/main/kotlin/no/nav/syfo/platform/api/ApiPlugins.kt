@@ -20,6 +20,7 @@ import io.ktor.server.response.respond
 import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.logEvent
 import no.nav.syfo.platform.observability.rethrowCancellation
+import no.nav.syfo.platform.upstream.UpstreamFailure
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.util.*
@@ -78,8 +79,13 @@ fun Application.installCallId() {
     }
 }
 
-private fun logException(cause: Throwable, error: ApiError) {
-    if (cause is ApiErrorException && cause.isAlreadyLogged) {
+internal fun logApiError(
+    error: ApiError,
+    upstreamFailure: UpstreamFailure?,
+    cause: Throwable?,
+    alreadyLogged: Boolean,
+) {
+    if (alreadyLogged) {
         return
     }
     when {
@@ -87,20 +93,25 @@ private fun logException(cause: Throwable, error: ApiError) {
             apiRequestFailed,
             RequestFailedDetails(error.status.value),
             cause = cause,
-            upstreamFailure = (cause as? ApiErrorException)?.upstreamFailure,
+            upstreamFailure = upstreamFailure,
         )
+
         error.status.value in 400..499 && error.status != HttpStatusCode.NotFound -> statusPagesLogger.logEvent(
             apiRequestInvalid,
             RequestInvalidDetails(error.status.value, error.type.name),
         )
+
         else -> statusPagesLogger.info("Request rejected with status {}", error.status.value)
     }
 }
 
 fun determineApiError(cause: Throwable, path: String): ApiError = when (cause) {
     is BadRequestException -> cause.toApiError(path)
+
     is NotFoundException -> cause.toApiError(path)
+
     is ApiErrorException -> cause.toApiError(path)
+
     else -> ApiError(
         HttpStatusCode.InternalServerError,
         ErrorType.INTERNAL_SERVER_ERROR,
@@ -114,7 +125,12 @@ fun Application.installStatusPages() {
         exception<Throwable> { call, cause ->
             cause.rethrowCancellation()
             val apiError = determineApiError(cause, call.request.path())
-            logException(cause, apiError)
+            logApiError(
+                apiError,
+                (cause as? ApiErrorException)?.upstreamFailure,
+                cause,
+                (cause as? ApiErrorException)?.isAlreadyLogged == true,
+            )
             call.respond(apiError.status, apiError)
         }
     }

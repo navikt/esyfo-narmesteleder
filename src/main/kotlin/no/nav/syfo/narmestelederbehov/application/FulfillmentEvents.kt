@@ -4,7 +4,7 @@ import no.nav.esyfo.observability.Event
 import no.nav.syfo.platform.observability.applicationEvent
 import org.slf4j.event.Level
 
-internal val fulfillmentCompleted = Event<FulfillNarmestelederbehovResult.Fulfilled>(
+internal val fulfillmentCompleted = Event<FulfilledNarmestelederbehov>(
     name = "narmestelederbehov_fulfillment_completed",
     level = Level.INFO,
     message = "Narmestelederbehov fulfillment completed",
@@ -21,7 +21,7 @@ internal val fulfillmentCompleted = Event<FulfillNarmestelederbehovResult.Fulfil
     ),
 )
 
-internal val fulfillmentRejected = Event<FulfillNarmestelederbehovResult>(
+internal val fulfillmentRejected = Event<FulfillNarmestelederbehovError>(
     name = "narmestelederbehov_fulfillment_rejected",
     level = Level.WARN,
     message = "Narmestelederbehov fulfillment rejected",
@@ -29,24 +29,23 @@ internal val fulfillmentRejected = Event<FulfillNarmestelederbehovResult>(
     fields = mapOf(
         "outcome_code" to {
             when (it) {
-                is FulfillNarmestelederbehovResult.Fulfilled -> error("A fulfilled behov cannot be rejected")
-                is FulfillNarmestelederbehovResult.InvalidManagerContactDetails -> "INVALID_MANAGER_CONTACT_DETAILS"
-                FulfillNarmestelederbehovResult.NotFound -> "NOT_FOUND"
-                FulfillNarmestelederbehovResult.BehovMissingAfterPublication -> "BEHOV_MISSING_AFTER_PUBLICATION"
-                is FulfillNarmestelederbehovResult.AccessDenied -> "ACCESS_DENIED"
-                is FulfillNarmestelederbehovResult.NoActiveSykmelding -> "NO_ACTIVE_SYKMELDING"
-                is FulfillNarmestelederbehovResult.NoEmployment -> "NO_EMPLOYMENT"
-                is FulfillNarmestelederbehovResult.UpstreamUnavailable -> "UPSTREAM_UNAVAILABLE"
-                FulfillNarmestelederbehovResult.PersonNotFound -> "PERSON_NOT_FOUND"
-                FulfillNarmestelederbehovResult.ManagerNameMismatch -> "MANAGER_NAME_MISMATCH"
+                is FulfillNarmestelederbehovError.InvalidManagerContactDetails -> "INVALID_MANAGER_CONTACT_DETAILS"
+                FulfillNarmestelederbehovError.NotFound -> "NOT_FOUND"
+                FulfillNarmestelederbehovError.BehovMissingAfterPublication -> "BEHOV_MISSING_AFTER_PUBLICATION"
+                is FulfillNarmestelederbehovError.AccessDenied -> "ACCESS_DENIED"
+                is FulfillNarmestelederbehovError.NoActiveSykmelding -> "NO_ACTIVE_SYKMELDING"
+                is FulfillNarmestelederbehovError.NoEmployment -> "NO_EMPLOYMENT"
+                is FulfillNarmestelederbehovError.UpstreamUnavailable -> "UPSTREAM_UNAVAILABLE"
+                FulfillNarmestelederbehovError.PersonNotFound -> "PERSON_NOT_FOUND"
+                FulfillNarmestelederbehovError.ManagerNameMismatch -> "MANAGER_NAME_MISMATCH"
             }
         },
         "validation_issues" to {
-            (it as? FulfillNarmestelederbehovResult.InvalidManagerContactDetails)?.issues?.take(20)?.map { issue ->
+            (it as? FulfillNarmestelederbehovError.InvalidManagerContactDetails)?.issues?.take(20)?.map { issue ->
                 mapOf("field" to issue.field.name, "reason" to issue.reason.name)
             }
         },
-        "issue_count" to { (it as? FulfillNarmestelederbehovResult.InvalidManagerContactDetails)?.issues?.size },
+        "issue_count" to { (it as? FulfillNarmestelederbehovError.InvalidManagerContactDetails)?.issues?.size },
     ),
 )
 

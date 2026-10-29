@@ -98,6 +98,8 @@ spec:
         - application: dinesykmeldte-backend
         - application: arbeidsgiver-altinn-tilganger
           namespace: fager
+        - application: logging
+          namespace: nais-system
       external:
         - host: aareg-services.prod-fss-pub.nais.io
         - host: ereg-services.prod-fss-pub.nais.io

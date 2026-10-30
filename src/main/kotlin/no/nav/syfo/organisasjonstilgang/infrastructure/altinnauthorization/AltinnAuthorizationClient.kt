@@ -37,8 +37,7 @@ class HttpAltinnAuthorizationClient(
         resource: String
     ): UpstreamResult<AuthorizationDecision> {
         val request = createAltinnAuthorizationRequest(user, orgNumberSet, resource)
-        val token =
-            altinnTokenProvider.token(PDP_TARGET_SCOPE).getOrElse { return UpstreamResult.Failure(it) }.accessToken
+        val token = altinnTokenProvider.token(PDP_TARGET_SCOPE).getOrElse { return UpstreamResult.Failure(it) }.accessToken
         val response = postAuthorize(token, request).getOrElse { return UpstreamResult.Failure(it) }
         val result = readDecisionResult(response).getOrElse { return UpstreamResult.Failure(it) }
 
@@ -58,5 +57,6 @@ class HttpAltinnAuthorizationClient(
         }
     }
 
-    private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> = response.decodeUpstream(ALTINN_PDP) { body<AltinnAuthorizationResponse>().response.single() }
+    private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> =
+        response.decodeUpstream(ALTINN_PDP) { body<AltinnAuthorizationResponse>().response.single() }
 }

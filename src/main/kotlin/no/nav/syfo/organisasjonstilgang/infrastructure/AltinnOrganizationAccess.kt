@@ -9,13 +9,17 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.PdpAuthorizationNotPermitContext
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.System
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.pdpAuthorizationNotPermit
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.COUNT_HAS_ALTINN3_RESOURCE
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.observability.applicationLogger
+import no.nav.syfo.platform.observability.logEvent
+import no.nav.syfo.platform.observability.teamLogsLogger
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
 
@@ -24,6 +28,9 @@ class AltinnOrganizationAccess(
     private val client: AltinnAuthorizationClient,
     private val eregClient: EregClient,
 ) : OrganizationAccess {
+
+    private val teamLogger = teamLogsLogger()
+
     override suspend fun evaluate(
         subject: OrganizationAccessSubject,
         organizationNumber: OrganizationNumber,
@@ -57,19 +64,24 @@ class AltinnOrganizationAccess(
         subject: OrganizationAccessSubject.LpsSystemUser,
         organizationNumber: OrganizationNumber,
     ): OrganizationAccessResult {
-        val directDecision = decisionFor(subject, organizationNumber).getOrElse { return OrganizationAccessResult.Unavailable(it) }
+        val directDecision =
+            decisionFor(subject, organizationNumber).getOrElse { return OrganizationAccessResult.Unavailable(it) }
         if (directDecision == AuthorizationDecision.Permit) {
             return OrganizationAccessResult.Granted(organizationName = null)
         }
 
-        val organization = eregClient.getOrganisasjon(organizationNumber.value).getOrElse { return OrganizationAccessResult.Unavailable(it) }
+        val organization = eregClient.getOrganisasjon(organizationNumber.value)
+            .getOrElse { return OrganizationAccessResult.Unavailable(it) }
             ?: throw ApiErrorException.BadRequestException(
                 "Unable to look up the organization",
                 type = ErrorType.ORGANIZATION_NOT_FOUND,
             )
         val hierarchy = organization.aggregerOrgnummereFraHierarki()
         val fallbackDecision = if (subject.systemUserOrganizationNumber.value in hierarchy) {
-            decisionFor(subject, subject.systemUserOrganizationNumber).getOrElse { return OrganizationAccessResult.Unavailable(it) }
+            decisionFor(
+                subject,
+                subject.systemUserOrganizationNumber
+            ).getOrElse { return OrganizationAccessResult.Unavailable(it) }
         } else {
             null
         }
@@ -84,9 +96,31 @@ class AltinnOrganizationAccess(
     private suspend fun decisionFor(
         subject: OrganizationAccessSubject.LpsSystemUser,
         organizationNumber: OrganizationNumber,
-    ): UpstreamResult<AuthorizationDecision> = client.authorize(
-        user = System(subject.systemUserId),
-        orgNumberSet = setOf(organizationNumber.value),
-        resource = OPPGI_NARMESTELEDER_RESOURCE,
-    )
+    ): UpstreamResult<AuthorizationDecision> {
+        val result = client.authorize(
+            user = System(subject.systemUserId),
+            orgNumberSet = setOf(organizationNumber.value),
+            resource = OPPGI_NARMESTELEDER_RESOURCE,
+        )
+        val decision = result.getOrElse { return UpstreamResult.Failure(it) }
+
+        return result.also { logNonPermit(decision, subject, organizationNumber) }
+    }
+
+    private fun logNonPermit(
+        decision: AuthorizationDecision,
+        subject: OrganizationAccessSubject.LpsSystemUser,
+        organizationNumber: OrganizationNumber,
+    ) {
+        if (decision != AuthorizationDecision.Permit) {
+            teamLogger.logEvent(
+                pdpAuthorizationNotPermit,
+                PdpAuthorizationNotPermitContext(
+                    subject = subject,
+                    organizationNumber = organizationNumber,
+                    decision = decision,
+                ),
+            )
+        }
+    }
 }

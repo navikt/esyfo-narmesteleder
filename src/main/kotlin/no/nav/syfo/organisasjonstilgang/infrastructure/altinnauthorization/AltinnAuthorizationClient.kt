@@ -57,6 +57,5 @@ class HttpAltinnAuthorizationClient(
         }
     }
 
-    private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> =
-        response.decodeUpstream(ALTINN_PDP) { body<AltinnAuthorizationResponse>().response.single() }
+    private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> = response.decodeUpstream(ALTINN_PDP) { body<AltinnAuthorizationResponse>().response.single() }
 }

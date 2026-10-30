@@ -9,8 +9,6 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
 import no.nav.syfo.platform.auth.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
-import no.nav.syfo.platform.observability.logEvent
-import no.nav.syfo.platform.observability.teamLogsLogger
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.decodeUpstream
@@ -33,8 +31,6 @@ class HttpAltinnAuthorizationClient(
     private val altinnTokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
 ) : AltinnAuthorizationClient {
-    private val teamLogger = teamLogsLogger()
-
     override suspend fun authorize(
         user: User,
         orgNumberSet: Set<String>,
@@ -45,12 +41,13 @@ class HttpAltinnAuthorizationClient(
         val response = postAuthorize(token, request).getOrElse { return UpstreamResult.Failure(it) }
         val result = readDecisionResult(response).getOrElse { return UpstreamResult.Failure(it) }
 
-        sendToTeamLogsWhenNoPermit(result, request)
-
         return UpstreamResult.Success(result.decision)
     }
 
-    private suspend fun postAuthorize(token: String, request: AltinnAuthorizationRequest): UpstreamResult<HttpResponse> = requestUpstream(ALTINN_PDP) {
+    private suspend fun postAuthorize(
+        token: String,
+        request: AltinnAuthorizationRequest
+    ): UpstreamResult<HttpResponse> = requestUpstream(ALTINN_PDP) {
         httpClient.post("$baseUrl/authorization/api/v1/authorize") {
             header("Ocp-Apim-Subscription-Key", subscriptionKey)
             header("Content-Type", "application/json")
@@ -61,10 +58,4 @@ class HttpAltinnAuthorizationClient(
     }
 
     private suspend fun readDecisionResult(response: HttpResponse): UpstreamResult<DecisionResult> = response.decodeUpstream(ALTINN_PDP) { body<AltinnAuthorizationResponse>().response.single() }
-
-    private fun sendToTeamLogsWhenNoPermit(result: DecisionResult, request: AltinnAuthorizationRequest) {
-        if (result.decision != AuthorizationDecision.Permit) {
-            teamLogger.logEvent(pdpAuthorizationNotPermit, PdpAuthorizationNotPermitContext(request, result))
-        }
-    }
 }

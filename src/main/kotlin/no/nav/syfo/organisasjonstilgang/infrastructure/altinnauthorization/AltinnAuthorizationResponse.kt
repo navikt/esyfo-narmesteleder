@@ -32,6 +32,12 @@ data class DecisionStatusCode(
     val value: String? = null,
 )
 
+/**
+ * Authorization decision returned by Altinn PDP.
+ *
+ * Normal either Permit or NotApplicable are returned for typical authorization checks.
+ * Indeterminate: is rarely returned, we typically get it when there is an orgnumber sendt, which is not existing or deleted a long time ago.
+ */
 enum class AuthorizationDecision {
     Permit,
     Indeterminate,

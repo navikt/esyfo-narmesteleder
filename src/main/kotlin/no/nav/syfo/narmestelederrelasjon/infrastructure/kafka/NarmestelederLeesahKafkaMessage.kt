@@ -50,5 +50,6 @@ data class NarmestelederLeesahKafkaMessage(
         aktivTom = aktivTom,
         arbeidsgiverForskutterer = arbeidsgiverForskutterer,
         sourceEmploymentRevocationAt = if (status == LeesahStatus.DEAKTIVERT_ARBEIDSFORHOLD) timestamp.toInstant() else null,
+        status = status?.name
     )
 }

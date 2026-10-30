@@ -50,8 +50,20 @@ class PersistNarmestelederrelasjonerFromLeesahUseCase(
             return emptyList()
         }
 
+        logger.atInfo()
+            .setMessage { "TEMP DEBUG: upserting messages" }
+            .addKeyValue("count", validRecords.size)
+            .log()
+
         val relasjoner = validRecords.map { it.relasjon.toValid() }
         repository.upsertAll(relasjoner, relasjoner.involvedPersons())
+        records.forEach {
+            logger
+                .atInfo()
+                .setMessage { "TEMP DEBUG: status for upserted messages" }
+                .addKeyValue("status", it.relasjon.status)
+                .log()
+        }
         metrics.recordUpserted(relasjoner.size)
 
         // Runs after the upsert has committed. The observation catches its own failures, so it never stops ingestion.

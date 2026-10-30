@@ -20,6 +20,7 @@ data class LeesahNarmestelederrelasjon(
     val arbeidsgiverForskutterer: Boolean?,
     /** When team sykmelding revoked the relation because the employment ended (`DEAKTIVERT_ARBEIDSFORHOLD`); otherwise null. */
     val sourceEmploymentRevocationAt: Instant? = null,
+    val status: String? = null,
 )
 
 data class LeesahNarmestelederrelasjonRecord(

@@ -30,6 +30,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.time.Duration
 import java.util.Properties
 import kotlin.coroutines.cancellation.CancellationException
@@ -215,6 +216,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         val recordsToRepublish = runCatching {
             val deserializedRecords = deserializeRecords(records)
             val validRecords = persistFromLeesah.execute(deserializedRecords.parsedRecords)
+
             val validRecordIds = validRecords.mapTo(mutableSetOf()) {
                 LeesahRecordId(
                     partition = it.partition,

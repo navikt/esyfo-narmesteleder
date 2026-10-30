@@ -16,20 +16,21 @@ data class FulfillNarmestelederbehovCommand(
     val accessSubject: OrganizationAccessSubject,
 )
 
-sealed interface FulfillNarmestelederbehovResult {
-    data class Fulfilled(
-        val relationSource: RelationSource,
-        val dialogCompletion: DialogportenCompletionAttempt,
-    ) : FulfillNarmestelederbehovResult
+data class FulfilledNarmestelederbehov(
+    val relationSource: RelationSource,
+    val dialogCompletion: DialogportenCompletionAttempt,
+)
+
+sealed interface FulfillNarmestelederbehovError {
     data class InvalidManagerContactDetails(
         val issues: List<ManagerContactValidationIssue>,
-    ) : FulfillNarmestelederbehovResult
-    data object NotFound : FulfillNarmestelederbehovResult
-    data object BehovMissingAfterPublication : FulfillNarmestelederbehovResult
-    data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
-    data class NoActiveSykmelding(val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovResult
-    data class NoEmployment(val reason: EmploymentResult.Missing) : FulfillNarmestelederbehovResult
-    data class UpstreamUnavailable(val failure: UpstreamFailure) : FulfillNarmestelederbehovResult
-    data object PersonNotFound : FulfillNarmestelederbehovResult
-    data object ManagerNameMismatch : FulfillNarmestelederbehovResult
+    ) : FulfillNarmestelederbehovError
+    data object NotFound : FulfillNarmestelederbehovError
+    data object BehovMissingAfterPublication : FulfillNarmestelederbehovError
+    data class AccessDenied(val reason: DenialReason, val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovError
+    data class NoActiveSykmelding(val organizationNumber: OrganizationNumber) : FulfillNarmestelederbehovError
+    data class NoEmployment(val reason: EmploymentResult.Missing) : FulfillNarmestelederbehovError
+    data class UpstreamUnavailable(val failure: UpstreamFailure) : FulfillNarmestelederbehovError
+    data object PersonNotFound : FulfillNarmestelederbehovError
+    data object ManagerNameMismatch : FulfillNarmestelederbehovError
 }

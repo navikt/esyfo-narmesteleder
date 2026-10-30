@@ -11,7 +11,6 @@ internal data class PdpAuthorizationNotPermitContext(
     val decision: AuthorizationDecision
 )
 
-// Logged to team logs only: the request contains the user's fnr.
 internal val pdpAuthorizationNotPermit = applicationEvent<PdpAuthorizationNotPermitContext>(
     name = "altinn_pdp_authorization_not_permit",
     level = Level.WARN,

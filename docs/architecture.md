@@ -13,6 +13,8 @@ depending on another area's persistence or transport implementation.
 The decision and trade-offs are recorded in
 [ADR-0002](adr/ADR-0002-organiser-backend-som-en-kapabilitetsbasert-modulaer-monolitt.md).
 Canonical domain terms are defined in [`CONTEXT.md`](../CONTEXT.md).
+Runtime entry points and end-to-end behavior are documented in
+[Data flow](data-flow.md).
 
 ## Target structure
 

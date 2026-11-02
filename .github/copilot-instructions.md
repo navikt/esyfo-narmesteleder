@@ -40,6 +40,9 @@ This is the repository for narmesteleder-api, a service that provides an API for
 
 **Defaults**: Planning/research/drafts → `.local-notes/`. Finalized docs → `docs/`. Task tracking → session state.
 
+When a change makes `docs/data-flow.md` inaccurate, update that document in the
+same change.
+
 ## Repository Instructions
 
 This file documents the repository's conventions, commands, and boundaries. Update it directly when the technology stack, build and test commands, authentication, database, messaging, or operational practices change.

@@ -180,7 +180,9 @@ The database unique constraint prevents concurrent sources from creating more
 than one active need for the same employee and organization. A behov stored
 without a main organization has an error status and no dialog. For a
 `BEHOV_CREATED` behov, failed dialog creation can be retried later by
-`SendDialogTask`.
+`SendDialogTask`. The behov id is the dialog's Dialogporten `idempotentKey`.
+If Dialogporten created the dialog but the dialog state was not stored, a
+retry reuses the existing dialog instead of creating another one.
 
 ### Fulfil a need and establish a relation
 

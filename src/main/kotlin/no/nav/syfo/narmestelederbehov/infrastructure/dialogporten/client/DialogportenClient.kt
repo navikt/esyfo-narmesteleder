@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client
 import com.fasterxml.jackson.annotation.JsonValue
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -33,10 +34,19 @@ import no.nav.syfo.platform.upstream.requestUpstream
 import java.util.UUID
 
 interface DialogportenClient {
-    suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID>
+    suspend fun createDialog(dialog: Dialog): UpstreamResult<DialogCreateResult>
     suspend fun getDialogById(dialogId: UUID): UpstreamResult<ExtendedDialog>
     suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: HttpDialogportenClient.DialogportenPatch) = patchDialog(dialogId, revisionNumber, listOf(patch))
     suspend fun patchDialog(dialogId: UUID, revisionNumber: UUID, patch: List<HttpDialogportenClient.DialogportenPatch>): UpstreamResult<DialogPatchResult>
+}
+
+sealed interface DialogCreateResult {
+    val dialogId: UUID
+
+    data class Created(override val dialogId: UUID) : DialogCreateResult
+
+    /** Dialogporten already has a dialog with the request's idempotent key, for example from an earlier attempt. */
+    data class AlreadyExists(override val dialogId: UUID) : DialogCreateResult
 }
 
 sealed interface DialogPatchResult {
@@ -60,7 +70,7 @@ class HttpDialogportenClient(
 ) : DialogportenClient {
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
 
-    override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> {
+    override suspend fun createDialog(dialog: Dialog): UpstreamResult<DialogCreateResult> {
         val token = when (val result = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)) {
             is UpstreamResult.Success -> result.value.accessToken
             is UpstreamResult.Failure -> return result
@@ -73,8 +83,22 @@ class HttpDialogportenClient(
                     bearerAuth(token)
                     setBody(dialog)
                 }
-        }.getOrElse { return UpstreamResult.Failure(it) }
-        return response.decodeUpstream(DIALOGPORTEN) { UUID.fromString(body<String>().removeSurrounding("\"")) }
+        }.getOrElse { failure ->
+            return existingDialogId(failure, dialog.idempotentKey)
+                ?.let { UpstreamResult.Success(DialogCreateResult.AlreadyExists(it)) }
+                ?: UpstreamResult.Failure(failure)
+        }
+        return response.decodeUpstream(DIALOGPORTEN) { DialogCreateResult.Created(UUID.fromString(body<String>().removeSurrounding("\""))) }
+    }
+
+    /** Reads the existing dialog id from a 409 idempotent key conflict; any other or unreadable failure stays a failure. */
+    private suspend fun existingDialogId(failure: UpstreamFailure, idempotentKey: String?): UUID? {
+        if (failure.status != 409 || idempotentKey == null) return null
+        val response = (failure.cause as? ResponseException)?.response ?: return null
+        val problem = response.decodeUpstream(DIALOGPORTEN) { body<DialogportenProblemDetails>() }.getOrElse { return null }
+        return problem.conflicts
+            .firstOrNull { it.code == IDEMPOTENT_KEY_CONFLICT_CODE && it.idempotentKey == idempotentKey }
+            ?.dialogId
     }
 
     override suspend fun getDialogById(
@@ -166,6 +190,14 @@ class HttpDialogportenClient(
         }
         is UpstreamResult.Failure -> result
     }
+
+    private data class DialogportenProblemDetails(val conflicts: List<DialogportenConflict> = emptyList())
+
+    private data class DialogportenConflict(val code: String? = null, val dialogId: UUID? = null, val idempotentKey: String? = null)
+
+    private companion object {
+        const val IDEMPOTENT_KEY_CONFLICT_CODE = "DP.CFL-00002"
+    }
 }
 
 class FakeDialogportenClient : DialogportenClient {
@@ -173,9 +205,9 @@ class FakeDialogportenClient : DialogportenClient {
         val logger = applicationLogger(FakeDialogportenClient::class.java)
     }
 
-    override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> {
+    override suspend fun createDialog(dialog: Dialog): UpstreamResult<DialogCreateResult> {
         logger.info("Fake call creating dialog")
-        return UpstreamResult.Success(UUID.randomUUID())
+        return UpstreamResult.Success(DialogCreateResult.Created(UUID.randomUUID()))
     }
 
     override suspend fun getDialogById(dialogId: UUID): UpstreamResult<ExtendedDialog> = UpstreamResult.Success(

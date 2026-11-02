@@ -9,6 +9,7 @@ import no.nav.syfo.narmestelederbehov.application.EmployeePerson
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogCreateResult
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.RecordingDialogportenClient
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -55,6 +56,13 @@ class DialogportenNarmestelederbehovDialogCreationTest :
             client.created.single() shouldBe expectedDialog(null)
         }
 
+        test("reuses the id of the dialog Dialogporten already has for the behov") {
+            val client = creatingClient(dialogId, UpstreamResult.Success(DialogCreateResult.AlreadyExists(dialogId)))
+
+            DialogportenNarmestelederbehovDialogCreation(client, factory).create(id, employee, null) shouldBe
+                NarmestelederbehovDialogCreationResult.Created(dialogId)
+        }
+
         test("returns the Dialogporten failure so the caller can log it and leave the behov for retry") {
             val failure = UpstreamFailure(UpstreamName("dialogporten"), UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))
             val client = creatingClient(dialogId, UpstreamResult.Failure(failure))
@@ -66,5 +74,5 @@ class DialogportenNarmestelederbehovDialogCreationTest :
 
 private fun creatingClient(
     dialogId: UUID,
-    result: UpstreamResult<UUID> = UpstreamResult.Success(dialogId),
+    result: UpstreamResult<DialogCreateResult> = UpstreamResult.Success(DialogCreateResult.Created(dialogId)),
 ) = RecordingDialogportenClient(create = { result })

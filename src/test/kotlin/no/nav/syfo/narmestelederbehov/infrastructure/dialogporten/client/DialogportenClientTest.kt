@@ -9,6 +9,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldBeSameInstanceAs
+import io.ktor.client.engine.mock.MockRequestHandleScope
+import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.statement.HttpResponsePipeline
@@ -16,6 +18,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.esyfo.observability.causeChain
@@ -59,6 +62,7 @@ class DialogportenClientTest :
                 title = ContentValue(value = listOf(ContentValueItem("Title"))),
                 summary = ContentValue(value = listOf(ContentValueItem("Summary"))),
             ),
+            idempotentKey = id.toString(),
         )
         val extended = ExtendedDialog(revision, id, dialog.party, dialog.serviceResource, dialog.externalReference, DialogStatus.RequiresAttention, dialog.content)
         val patch = HttpDialogportenClient.DialogportenPatch(
@@ -90,7 +94,9 @@ class DialogportenClientTest :
                     when (operation) {
                         "POST" -> {
                             request.body.contentType shouldBe ContentType.Application.Json
-                            mapper.readValue<Dialog>(request.body.toByteArray()) shouldBe dialog
+                            val body = request.body.toByteArray()
+                            mapper.readValue<Dialog>(body) shouldBe dialog
+                            mapper.readTree(body)["idempotentKey"].asText() shouldBe id.toString()
                             respondJson("\"$id\"", HttpStatusCode.Created)
                         }
                         "GET" -> {
@@ -106,7 +112,7 @@ class DialogportenClientTest :
                     }
                 }.use { http ->
                     invoke(HttpDialogportenClient("https://dialogporten.test", http, provider)) shouldBe when (operation) {
-                        "POST" -> UpstreamResult.Success(id)
+                        "POST" -> UpstreamResult.Success(DialogCreateResult.Created(id))
                         "GET" -> UpstreamResult.Success(extended)
                         else -> UpstreamResult.Success(DialogPatchResult.Patched)
                     }
@@ -213,6 +219,54 @@ class DialogportenClientTest :
                 decoding shouldBe true
             }
         }
+        val existingDialogId = UUID.fromString("00000000-0000-0000-0000-000000000003")
+
+        // Shape of Dialogporten's DP.CFL-00002 problem details (E2E snapshot Should_Return_409_For_Duplicate_Dialog_Id).
+        fun idempotentKeyConflict(code: String = "DP.CFL-00002", dialogId: String = existingDialogId.toString(), idempotentKey: String? = id.toString()) = mapper.writeValueAsString(
+            mapOf(
+                "type" to "https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.10",
+                "title" to "Conflict.",
+                "status" to 409,
+                "errors" to mapOf("IdempotentKey" to listOf("private-body-canary")),
+                "conflicts" to listOf(
+                    mapOf("code" to code, "title" to "Idempotent Key caused a dialog id conflict.", "dialogId" to dialogId) +
+                        listOfNotNull(idempotentKey?.let { "idempotentKey" to it }),
+                ),
+            ),
+        )
+
+        fun MockRequestHandleScope.respondProblem(body: String) = respond(body, HttpStatusCode.Conflict, headersOf(HttpHeaders.ContentType, "application/problem+json"))
+
+        test("POST returns the existing dialog when Dialogporten already has a dialog with the idempotent key") {
+            var attempts = 0
+            upstreamHttpClient(respondWithSystemToken) {
+                attempts++
+                respondProblem(idempotentKeyConflict())
+            }.use { http ->
+                HttpDialogportenClient("https://dialogporten.test", http, provider).createDialog(dialog) shouldBe
+                    UpstreamResult.Success(DialogCreateResult.AlreadyExists(existingDialogId))
+            }
+            attempts shouldBe 1
+        }
+
+        mapOf(
+            "another conflict code" to idempotentKeyConflict(code = "DP.CFL-00000"),
+            "another idempotent key" to idempotentKeyConflict(idempotentKey = "another-key"),
+            "no idempotent key" to idempotentKeyConflict(idempotentKey = null),
+            "an invalid dialog id" to idempotentKeyConflict(dialogId = "private-body-canary"),
+            "no conflicts" to """{"title":"Conflict.","status":409}""",
+        ).forEach { (case, body) ->
+            test("POST keeps a 409 with $case as a failure") {
+                upstreamHttpClient(respondWithSystemToken) { respondProblem(body) }.use { http ->
+                    val failure = HttpDialogportenClient("https://dialogporten.test", http, provider).createDialog(dialog)
+                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
+                    failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                    failure.status shouldBe 409
+                    failure.cause.shouldBeInstanceOf<ResponseException>()
+                }
+            }
+        }
+
         listOf(400, 503, 200).forEach { status ->
             test("diagnostics log status $status and upstream metadata without token response body or exception messages") {
                 withProductionLogger("dialogporten-client-diagnostics-test") { logger ->

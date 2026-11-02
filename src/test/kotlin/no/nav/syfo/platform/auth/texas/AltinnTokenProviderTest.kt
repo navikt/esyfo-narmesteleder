@@ -2,6 +2,7 @@ package no.nav.syfo.platform.auth.texas
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -11,17 +12,13 @@ import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.statement.HttpResponsePipeline
 import io.ktor.http.HttpStatusCode
-import io.mockk.coEvery
-import io.mockk.mockk
 import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.client.TEXAS
 import no.nav.syfo.platform.upstream.UpstreamError
-import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
 import java.io.IOException
@@ -32,24 +29,29 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class AltinnTokenProviderTest :
     FunSpec({
-        test("Texas failure is propagated unchanged and skips Altinn") {
-            val failure = UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 400, errors = listOf(UpstreamError("invalid_grant")))
-            val texas = mockk<TexasHttpClient>()
-            coEvery { texas.maskinportenSystemToken("target") } returns UpstreamResult.Failure(failure)
-            upstreamHttpClient(respondWithSystemToken) { error("Altinn must not be called") }.use {
-                AltinnTokenProvider(texas, it, "https://altinn.test").token("target")
-                    .shouldBeInstanceOf<UpstreamResult.Failure>().failure shouldBeSameInstanceAs failure
+        test("Texas failure is propagated with the Altinn authentication token target and skips Altinn") {
+            upstreamHttpClient(
+                token = { respondJson("""{"error":"invalid_grant"}""", HttpStatusCode.BadRequest) },
+                upstream = { error("Altinn must not be called") },
+            ).use {
+                assertSoftly(AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                    upstream shouldBe TEXAS
+                    stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    tokenTarget shouldBe ALTINN_AUTHENTICATION
+                    status shouldBe 400
+                    errors shouldBe listOf(UpstreamError("invalid_grant"))
+                }
             }
         }
 
-        listOf(400, 503).forEach { status ->
-            test("exchange HTTP $status retains status and token exchange stage") {
-                upstreamHttpClient(respondWithSystemToken) { respondJson("private-response", HttpStatusCode.fromValue(status)) }.use {
-                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
-                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_AUTHENTICATION
-                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                    failure.status shouldBe status
+        listOf(400, 503).forEach { expectedStatus ->
+            test("exchange HTTP $expectedStatus retains status and token exchange stage") {
+                upstreamHttpClient(respondWithSystemToken) { respondJson("private-response", HttpStatusCode.fromValue(expectedStatus)) }.use {
+                    assertSoftly(AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                        upstream shouldBe ALTINN_AUTHENTICATION
+                        stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                        status shouldBe expectedStatus
+                    }
                 }
             }
         }
@@ -57,11 +59,11 @@ class AltinnTokenProviderTest :
         listOf("not-a-jwt", JWT.create().sign(Algorithm.none())).forEachIndexed { index, body ->
             test("invalid token $index including missing expiry is a response failure with status") {
                 upstreamHttpClient(respondWithSystemToken) { respondJson("\"$body\"") }.use {
-                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
-                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_AUTHENTICATION
-                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                    failure.status shouldBe 200
+                    assertSoftly(AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                        upstream shouldBe ALTINN_AUTHENTICATION
+                        stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                        status shouldBe 200
+                    }
                 }
             }
         }
@@ -69,12 +71,12 @@ class AltinnTokenProviderTest :
         listOf<Throwable>(IOException("Unavailable"), HttpRequestTimeoutException("https://altinn.test", 10)).forEach { cause ->
             test("exchange ${cause.javaClass.simpleName} becomes token exchange failure without status") {
                 upstreamHttpClient(respondWithSystemToken) { throw cause }.use {
-                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
-                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_AUTHENTICATION
-                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                    failure.status shouldBe null
-                    failure.cause?.javaClass shouldBe cause.javaClass
+                    assertSoftly(AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                        upstream shouldBe ALTINN_AUTHENTICATION
+                        stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                        status shouldBe null
+                        this.cause?.javaClass shouldBe cause.javaClass
+                    }
                 }
             }
         }

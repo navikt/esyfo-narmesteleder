@@ -35,6 +35,7 @@ internal fun <T> applicationEvent(
     val commonFields: Map<String, (EventContext<T>) -> Any?> = mapOf(
         "upstream" to { it.failure?.upstream ?: upstream },
         "failure_stage" to { it.failure?.failureStage },
+        "token_target" to { it.failure?.tokenTarget },
     )
     val detailFields = fields.mapValues { (_, field) ->
         { context: EventContext<T> -> field(context.details) }

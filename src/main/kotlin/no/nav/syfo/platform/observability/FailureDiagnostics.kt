@@ -26,6 +26,7 @@ internal data class FailureDiagnostics(
     val upstreamStatus: Int?,
     val upstream: String?,
     val failureStage: String?,
+    val tokenTarget: String? = null,
     val stack: Throwable?,
     val sqlState: String?,
     val upstreamErrors: List<UpstreamError> = emptyList(),
@@ -40,6 +41,7 @@ internal fun UpstreamFailure.failureDiagnostics(): FailureDiagnostics = cause?.f
         upstreamStatus = validUpstreamStatus(status),
         upstream = upstream.value,
         failureStage = stage.logValue,
+        tokenTarget = tokenTarget?.value,
         stack = null,
         sqlState = null,
         upstreamErrors = errors,
@@ -87,6 +89,7 @@ internal fun Throwable.failureDiagnostics(upstreamFailure: UpstreamFailure? = nu
         diagnostics.copy(
             upstream = upstreamFailure.upstream.value,
             failureStage = upstreamFailure.stage.logValue,
+            tokenTarget = upstreamFailure.tokenTarget?.value,
             upstreamStatus = validUpstreamStatus(upstreamFailure.status),
             upstreamErrors = upstreamFailure.errors,
         )

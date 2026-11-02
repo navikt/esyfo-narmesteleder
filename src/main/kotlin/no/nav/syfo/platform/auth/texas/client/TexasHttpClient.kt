@@ -34,76 +34,47 @@ class TexasHttpClient(
         )
     }.body<TexasIntrospectionResponse>()
 
-    suspend fun systemToken(identityProvider: String, target: String): TexasResponse = client.post(environment.tokenEndpoint) {
-        contentType(ContentType.Application.Json)
-        setBody(
-            TexasTokenRequest(
-                identityProvider = identityProvider,
-                target = target,
-            )
-        )
-    }.body<TexasResponse>()
+    suspend fun azureAdSystemToken(scope: String, tokenTarget: UpstreamName): UpstreamResult<String> = requestToken(
+        endpoint = environment.tokenEndpoint,
+        tokenTarget = tokenTarget,
+        body = TexasTokenRequest(identityProvider = IDENTITY_PROVIDER_AZUREAD, target = getTarget(scope)),
+    )
 
-    suspend fun azureAdSystemToken(scope: String): UpstreamResult<String> = try {
-        UpstreamResult.Success(systemToken(IDENTITY_PROVIDER_AZUREAD, getTarget(scope)).accessToken)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: ResponseException) {
-        failure(e.response.status.value, e)
-    } catch (e: Exception) {
-        failure(null, e)
-    }
+    suspend fun maskinportenSystemToken(target: String, tokenTarget: UpstreamName): UpstreamResult<String> = requestToken(
+        endpoint = environment.tokenEndpoint,
+        tokenTarget = tokenTarget,
+        body = TexasTokenRequest(identityProvider = IDENTITY_PROVIDER_MASKINPORTEN, target = target),
+    )
 
-    suspend fun exchangeTokenForIsAltinnTilganger(token: String): UpstreamResult<String> = exchangeToken(IDENTITY_PROVIDER_TOKENX, environment.exchangeTargetIsAltinnTilganger, token)
+    suspend fun exchangeToAltinnToken(token: String, tokenTarget: UpstreamName): UpstreamResult<String> = requestToken(
+        endpoint = environment.tokenExchangeEndpoint,
+        tokenTarget = tokenTarget,
+        body = TexasExchangeRequest(
+            identityProvider = IDENTITY_PROVIDER_TOKENX,
+            target = environment.exchangeTargetIsAltinnTilganger,
+            userToken = token,
+        ),
+    )
 
-    suspend fun maskinportenSystemToken(target: String): UpstreamResult<String> {
+    private suspend fun requestToken(endpoint: String, tokenTarget: UpstreamName, body: Any): UpstreamResult<String> {
         val response = try {
-            client.post(environment.tokenEndpoint) {
+            client.post(endpoint) {
                 contentType(ContentType.Application.Json)
-                setBody(TexasTokenRequest(identityProvider = "maskinporten", target = target))
+                setBody(body)
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: ResponseException) {
-            return failure(e.response.status.value, e, listOf(UpstreamError(e.oauthFailureCode().name.lowercase())))
+            return failure(tokenTarget, e.response.status.value, e, listOf(UpstreamError(e.oauthFailureCode().name.lowercase())))
         } catch (e: Exception) {
-            return failure(null, e)
+            return failure(tokenTarget, null, e)
         }
         return try {
             UpstreamResult.Success(response.body<TexasResponse>().accessToken.also { require(it.isNotBlank()) })
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            failure(response.status.value, e)
-        }
-    }
-
-    private suspend fun exchangeToken(identityProvider: String, target: String, token: String): UpstreamResult<String> {
-        val response = try {
-            client.post(environment.tokenExchangeEndpoint) {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    TexasExchangeRequest(
-                        identityProvider = identityProvider,
-                        target = target,
-                        userToken = token
-                    )
-                )
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ResponseException) {
-            return failure(e.response.status.value, e, listOf(UpstreamError(e.oauthFailureCode().name.lowercase())))
-        } catch (e: Exception) {
-            return failure(null, e)
-        }
-
-        return try {
-            UpstreamResult.Success(response.body<TexasResponse>().accessToken)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            failure(response.status.value, e)
+            failure(tokenTarget, response.status.value, e)
         }
     }
 
@@ -111,10 +82,11 @@ class TexasHttpClient(
         fun getTarget(scope: String) = "api://$scope/.default"
         const val IDENTITY_PROVIDER_TOKENX = "tokenx"
         const val IDENTITY_PROVIDER_AZUREAD = "azuread"
+        const val IDENTITY_PROVIDER_MASKINPORTEN = "maskinporten"
     }
 }
 
-private fun failure(status: Int?, cause: Throwable, errors: List<UpstreamError> = emptyList()) = UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, status, cause, errors))
+private fun failure(tokenTarget: UpstreamName, status: Int?, cause: Throwable, errors: List<UpstreamError> = emptyList()) = UpstreamResult.Failure(UpstreamFailure(TEXAS, UpstreamFailureStage.TOKEN_EXCHANGE, status, cause, errors, tokenTarget))
 
 private val oauthMapper = jacksonObjectMapper()
 

@@ -41,7 +41,7 @@ class AltinnTokenProvider(
         if (cached != null && cached.altinnExpiryTime - clock.millis().milliseconds > 300.seconds) {
             return UpstreamResult.Success(cached)
         }
-        val maskinportenToken = texasHttpClient.maskinportenSystemToken(target).getOrElse { return UpstreamResult.Failure(it) }
+        val maskinportenToken = texasHttpClient.maskinportenSystemToken(target, ALTINN_AUTHENTICATION).getOrElse { return UpstreamResult.Failure(it) }
         val response = try {
             httpClient.get("$altinnBaseUrl/authentication/api/v1/exchange/maskinporten") {
                 bearerAuth(maskinportenToken)

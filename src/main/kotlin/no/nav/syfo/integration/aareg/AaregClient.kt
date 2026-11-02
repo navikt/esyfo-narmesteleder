@@ -90,7 +90,7 @@ class HttpAaregClient(
 
     private suspend fun fetchArbeidsforhold(request: ArbeidsforholdoversiktRequest): UpstreamResult<AaregArbeidsforholdOversikt> {
         val callId = MDC.get("trace_id")?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
-        val token = texasHttpClient.azureAdSystemToken(scope).getOrElse { return UpstreamResult.Failure(it) }
+        val token = texasHttpClient.azureAdSystemToken(scope, AAREG).getOrElse { return UpstreamResult.Failure(it) }
         val response = requestUpstream(AAREG) {
             httpClient.post(arbeidsforholdOversiktPath) {
                 bearerAuth(token)

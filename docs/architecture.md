@@ -280,7 +280,9 @@ Contains reusable technical mechanisms without domain rules:
 - `api`: shared HTTP paths, errors, API plugins and path/query parameter
   helpers;
 - `auth`: Ktor authentication and principal construction;
-- `auth/texas`: Texas authentication plugins, token providers and client;
+- `auth/texas`: Texas authentication plugins, token providers and client. The
+  plugins resolve `TexasHttpClient` from Koin when installed, so routes do not
+  pass it along; an explicit `client` in the plugin configuration overrides it;
 - `cache`: generic Valkey cache and configuration;
 - `config`: shared environment-variable lookup;
 - `database`: data source, Flyway and shared transaction infrastructure;
@@ -377,7 +379,8 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
   from outside, such as other modules' contracts and shared clients.
 - Route tests use the `testApiApplication` test helper. It installs the same
   request-handling plugins as production (`installApiPlugins()`: CallId,
-  content negotiation and StatusPages) without Koin.
+  content negotiation and StatusPages) and install Koin with only the
+  `TexasHttpClient` the test provides.
 
 ## Dependency rules
 

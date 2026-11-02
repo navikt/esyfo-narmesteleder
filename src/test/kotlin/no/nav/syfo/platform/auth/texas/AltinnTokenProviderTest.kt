@@ -51,7 +51,8 @@ class AltinnTokenProviderTest :
                         upstream shouldBe ALTINN_AUTHENTICATION
                         stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
                         status shouldBe expectedStatus
-                    }                }
+                    }
+                }
             }
         }
 
@@ -62,7 +63,8 @@ class AltinnTokenProviderTest :
                         upstream shouldBe ALTINN_AUTHENTICATION
                         stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
                         status shouldBe 200
-                    }                }
+                    }
+                }
             }
         }
 
@@ -74,7 +76,8 @@ class AltinnTokenProviderTest :
                         stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
                         status shouldBe null
                         this.cause?.javaClass shouldBe cause.javaClass
-                    }                }
+                    }
+                }
             }
         }
 

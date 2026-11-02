@@ -44,40 +44,37 @@ class AltinnTokenProviderTest :
             }
         }
 
-        listOf(400, 503).forEach { status ->
-            test("exchange HTTP $status retains status and token exchange stage") {
-                upstreamHttpClient(respondWithSystemToken) { respondJson("private-response", HttpStatusCode.fromValue(status)) }.use {
-                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
-                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_AUTHENTICATION
-                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                    failure.status shouldBe status
-                }
+        listOf(400, 503).forEach { expectedStatus ->
+            test("exchange HTTP $expectedStatus retains status and token exchange stage") {
+                upstreamHttpClient(respondWithSystemToken) { respondJson("private-response", HttpStatusCode.fromValue(expectedStatus)) }.use {
+                    assertSoftly(AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                        upstream shouldBe ALTINN_AUTHENTICATION
+                        stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                        status shouldBe expectedStatus
+                    }                }
             }
         }
 
         listOf("not-a-jwt", JWT.create().sign(Algorithm.none())).forEachIndexed { index, body ->
             test("invalid token $index including missing expiry is a response failure with status") {
                 upstreamHttpClient(respondWithSystemToken) { respondJson("\"$body\"") }.use {
-                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
-                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_AUTHENTICATION
-                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                    failure.status shouldBe 200
-                }
+                    assertSoftly(AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                        upstream shouldBe ALTINN_AUTHENTICATION
+                        stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                        status shouldBe 200
+                    }                }
             }
         }
 
         listOf<Throwable>(IOException("Unavailable"), HttpRequestTimeoutException("https://altinn.test", 10)).forEach { cause ->
             test("exchange ${cause.javaClass.simpleName} becomes token exchange failure without status") {
                 upstreamHttpClient(respondWithSystemToken) { throw cause }.use {
-                    val failure = AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target")
-                        .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_AUTHENTICATION
-                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                    failure.status shouldBe null
-                    failure.cause?.javaClass shouldBe cause.javaClass
-                }
+                    assertSoftly(AltinnTokenProvider(texasHttpClient(it), it, "https://altinn.test").token("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                        upstream shouldBe ALTINN_AUTHENTICATION
+                        stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                        status shouldBe null
+                        this.cause?.javaClass shouldBe cause.javaClass
+                    }                }
             }
         }
 

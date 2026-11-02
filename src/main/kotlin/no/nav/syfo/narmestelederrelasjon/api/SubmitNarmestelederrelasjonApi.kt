@@ -22,20 +22,16 @@ import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import java.util.Locale
 
 const val SUBMIT_NARMESTELEDERRELASJON_PATH = "/linemanager"
 
 fun Route.registerSubmitNarmestelederrelasjonApi(
     submit: SubmitNarmestelederrelasjonUseCase,
-    texasHttpClient: TexasHttpClient,
 ) {
     route(SUBMIT_NARMESTELEDERRELASJON_PATH) {
         method(HttpMethod.Post) {
-            install(MaskinportenAndTokenXTokenAuthPlugin) {
-                client = texasHttpClient
-            }
+            install(MaskinportenAndTokenXTokenAuthPlugin)
             handle {
                 val principal = call.getMyPrincipal()
                 val request = call.tryReceive<Linemanager>()

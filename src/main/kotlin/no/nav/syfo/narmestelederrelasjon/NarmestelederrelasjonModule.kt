@@ -17,7 +17,6 @@ import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmeste
 import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.internalApiV1
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 
@@ -30,24 +29,21 @@ fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonSetti
     val listActiveNarmesteledereForEmployee = get<ListActiveNarmesteledereForEmployeeUseCase>()
     val getNarmestelederrelasjon = get<GetNarmestelederrelasjonUseCase>()
     val revokeNarmestelederrelasjon = get<RevokeNarmestelederrelasjonUseCase>()
-    val texasHttpClient = get<TexasHttpClient>()
     routing {
         apiV1 {
-            registerSubmitNarmestelederrelasjonApi(submit = submit, texasHttpClient = texasHttpClient)
-            registerRevokeActiveNarmestelederrelasjonApi(revoke = revoke, texasHttpClient = texasHttpClient)
+            registerSubmitNarmestelederrelasjonApi(submit = submit)
+            registerRevokeActiveNarmestelederrelasjonApi(revoke = revoke)
         }
         internalApiV1 {
             registerLineManagerLookupApi(
                 lookupActiveNarmesteleder = lookupActiveNarmesteleder,
-                texasHttpClient = texasHttpClient,
                 preAuthorizedApps = settings.lineManagerLookupPreAuthorizedApps,
             )
-            registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = searchActiveNarmestelederrelasjoner, texasHttpClient = texasHttpClient)
-            registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = listActiveNarmesteledereForEmployee, texasHttpClient = texasHttpClient)
+            registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = searchActiveNarmestelederrelasjoner)
+            registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = listActiveNarmesteledereForEmployee)
             registerNarmestelederrelasjonApi(
                 getNarmestelederrelasjon = getNarmestelederrelasjon,
                 revokeNarmestelederrelasjon = revokeNarmestelederrelasjon,
-                texasHttpClient = texasHttpClient,
             )
         }
     }

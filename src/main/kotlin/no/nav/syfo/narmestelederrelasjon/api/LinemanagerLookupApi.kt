@@ -16,18 +16,15 @@ import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.texas.AzureAdTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val LINE_MANAGER_LOOKUP_PATH = "/lookup"
 
 fun Route.registerLineManagerLookupApi(
     lookupActiveNarmesteleder: LookupActiveNarmestelederUseCase,
-    texasHttpClient: TexasHttpClient,
     preAuthorizedApps: Set<String>,
 ) {
     route(LINE_MANAGER_LOOKUP_PATH) {
         install(AzureAdTokenAuthPlugin) {
-            client = texasHttpClient
             this.preAuthorizedApps = preAuthorizedApps
         }
 

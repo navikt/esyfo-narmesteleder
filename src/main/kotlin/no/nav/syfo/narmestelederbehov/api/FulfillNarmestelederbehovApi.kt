@@ -14,17 +14,13 @@ import no.nav.syfo.platform.api.getUUIDFromPathVariable
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 fun Route.registerFulfillNarmestelederbehovApi(
     fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,
-    texasHttpClient: TexasHttpClient,
 ) {
     route("$NARMESTELEDERBEHOV_PATH/{id}") {
         method(HttpMethod.Put) {
-            install(MaskinportenAndTokenXTokenAuthPlugin) {
-                client = texasHttpClient
-            }
+            install(MaskinportenAndTokenXTokenAuthPlugin)
             handle {
                 val principal = call.getMyPrincipal()
                 fulfillNarmestelederbehov.execute(

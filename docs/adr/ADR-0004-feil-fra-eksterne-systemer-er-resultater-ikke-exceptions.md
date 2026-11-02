@@ -97,7 +97,7 @@ Mønsteret har seks deler:
   gir et vellykket svar. Feilen gir HTTP 500 `UPSTREAM_SERVICE_UNAVAILABLE`
   både i tilgangssjekken for personalledere og i lista over organisasjoner.
 
-  `TexasHttpClient.exchangeTokenForIsAltinnTilganger` og
+  `TexasHttpClient.exchangeToAltinnToken` og
   `maskinportenSystemToken(target, tokenTarget)` returnerer
   `UpstreamResult<String>`. Feil gir `upstream = texas` og
   `stage = TOKEN_EXCHANGE`, med status når Texas svarte. Ved et HTTP-feilsvar

@@ -46,7 +46,7 @@ class TexasHttpClient(
         body = TexasTokenRequest(identityProvider = IDENTITY_PROVIDER_MASKINPORTEN, target = target),
     )
 
-    suspend fun exchangeTokenForIsAltinnTilganger(token: String, tokenTarget: UpstreamName): UpstreamResult<String> = requestToken(
+    suspend fun exchangeToAltinnToken(token: String, tokenTarget: UpstreamName): UpstreamResult<String> = requestToken(
         endpoint = environment.tokenExchangeEndpoint,
         tokenTarget = tokenTarget,
         body = TexasExchangeRequest(

@@ -132,7 +132,7 @@ class HttpAltinnTilgangerClient(
     override suspend fun fetchAltinnTilganger(
         bruker: UserPrincipal,
     ): UpstreamResult<AltinnTilgangerResponse> {
-        val oboToken = texasClient.exchangeTokenForIsAltinnTilganger(bruker.token, ALTINN_TILGANGER).getOrElse { return UpstreamResult.Failure(it) }
+        val oboToken = texasClient.exchangeToAltinnToken(bruker.token, ALTINN_TILGANGER).getOrElse { return UpstreamResult.Failure(it) }
         val response = postTilganger(oboToken).getOrElse { return UpstreamResult.Failure(it) }
 
         return if (response.isError == true) isErrorFailure() else UpstreamResult.Success(response)

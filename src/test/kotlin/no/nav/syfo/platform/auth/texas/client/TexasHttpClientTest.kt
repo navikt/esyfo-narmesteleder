@@ -108,7 +108,7 @@ class TexasHttpClientTest :
                 },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token", TEST_TOKEN_TARGET) shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
+                texasHttpClient(httpClient).exchangeToAltinnToken("synthetic-user-token", TEST_TOKEN_TARGET) shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
             }
         }
 
@@ -117,7 +117,7 @@ class TexasHttpClientTest :
                 token = { respondJson("""{"error":"invalid_grant","error_description":"synthetic-private-description"}""", HttpStatusCode.BadRequest) },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                assertSoftly(texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                assertSoftly(texasHttpClient(httpClient).exchangeToAltinnToken("synthetic-user-token", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
                     upstream shouldBe TEXAS
                     stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
                     tokenTarget shouldBe TEST_TOKEN_TARGET
@@ -132,7 +132,7 @@ class TexasHttpClientTest :
                 token = { respondJson("""{"invalid":"response"}""") },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                assertSoftly(texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                assertSoftly(texasHttpClient(httpClient).exchangeToAltinnToken("synthetic-user-token", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
                     upstream shouldBe TEXAS
                     stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
                     tokenTarget shouldBe TEST_TOKEN_TARGET
@@ -153,7 +153,7 @@ class TexasHttpClientTest :
                     if (subject.expectedType.type == TexasResponse::class) throw cancelled
                 }
                 shouldThrow<CancellationException> {
-                    texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token", TEST_TOKEN_TARGET)
+                    texasHttpClient(httpClient).exchangeToAltinnToken("synthetic-user-token", TEST_TOKEN_TARGET)
                 } shouldBe cancelled
             }
         }

@@ -22,6 +22,8 @@ data class Dialog(
     override val transmissions: List<Transmission> = emptyList(),
     override val attachments: List<Attachment>? = null,
     override val isApiOnly: Boolean? = true,
+    /** Unique per service owner; Dialogporten rejects a second dialog with the same key (3-36 characters). */
+    val idempotentKey: String? = null,
 ) : DialogContent
 
 data class ExtendedDialog(

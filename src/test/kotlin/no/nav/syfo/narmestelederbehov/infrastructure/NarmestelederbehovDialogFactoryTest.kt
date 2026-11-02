@@ -42,6 +42,7 @@ class NarmestelederbehovDialogFactoryTest :
                 status shouldBe DialogStatus.RequiresAttention
                 party shouldBe "urn:altinn:organization:identifier-no:123456789"
                 externalReference shouldBe id.toString()
+                idempotentKey shouldBe id.toString()
                 isApiOnly shouldBe false
             }
         }

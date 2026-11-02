@@ -12,7 +12,7 @@ import java.util.UUID
  */
 internal class RecordingDialogportenClient(
     private val expectedDialogId: UUID? = null,
-    var create: suspend () -> UpstreamResult<UUID> = { error("Unexpected createDialog") },
+    var create: suspend () -> UpstreamResult<DialogCreateResult> = { error("Unexpected createDialog") },
     var read: suspend () -> UpstreamResult<ExtendedDialog> = { error("Unexpected getDialogById") },
     var patch: suspend () -> UpstreamResult<DialogPatchResult> = { error("Unexpected patchDialog") },
 ) : DialogportenClient {
@@ -21,7 +21,7 @@ internal class RecordingDialogportenClient(
     var patchRevision: UUID? = null
     var patches: List<HttpDialogportenClient.DialogportenPatch>? = null
 
-    override suspend fun createDialog(dialog: Dialog): UpstreamResult<UUID> {
+    override suspend fun createDialog(dialog: Dialog): UpstreamResult<DialogCreateResult> {
         calls += "create"
         created += dialog
         return create()

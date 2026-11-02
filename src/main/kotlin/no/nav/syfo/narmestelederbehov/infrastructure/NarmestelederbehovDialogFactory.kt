@@ -37,6 +37,7 @@ class NarmestelederbehovDialogFactory(
         status = DialogStatus.RequiresAttention,
         party = "urn:altinn:organization:identifier-no:$organizationNumber",
         externalReference = id.toString(),
+        idempotentKey = id.toString(),
         content = Content.create(
             title = title(name, employeeIdent, birthDate),
             summary = summary(name),

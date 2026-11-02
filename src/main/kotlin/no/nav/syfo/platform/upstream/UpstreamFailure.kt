@@ -29,10 +29,12 @@ data class UpstreamFailure(
     val status: Int?,
     val cause: Throwable? = null,
     val errors: List<UpstreamError> = emptyList(),
+    /** The system a failed token request was made for; set only for [UpstreamFailureStage.TOKEN_EXCHANGE]. */
+    val tokenTarget: UpstreamName? = null,
 ) {
     init {
         require(cause != null || errors.isNotEmpty())
     }
 
-    override fun toString(): String = "UpstreamFailure(upstream=$upstream, stage=$stage, status=$status, cause=${cause?.javaClass?.simpleName}, errorCount=${errors.size})"
+    override fun toString(): String = "UpstreamFailure(upstream=$upstream, stage=$stage, status=$status, cause=${cause?.javaClass?.simpleName}, errorCount=${errors.size}, tokenTarget=$tokenTarget)"
 }

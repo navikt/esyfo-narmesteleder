@@ -65,6 +65,10 @@ logger.logEvent(dialogportenDialogFailed, details, cause = exception)
   Ukjente, manglende eller uleselige koder blir `unknown`.
   `error_description`, tokens og svartekst fra Texas eller Altinn Tilganger
   logges aldri.
+  Alle tokenfeil fra Texas (AzureAD, Maskinporten og TokenX) har i tillegg
+  `token_target` med systemet tokenet skulle brukes mot, for eksempel `aareg`,
+  `pdl`, `dinesykmeldte-backend`, `altinn-authentication` eller
+  `arbeidsgiver-altinn-tilganger`. `upstream` er fortsatt `texas`.
 - Systembrukerløpet sender feil fra Texas, Altinn-vekslingen, PDP og Ereg videre
   uendret som `Unavailable`. Første feil stopper sjekken uten fallback eller
   `api_request_rejected`; HTTP-kanten logger én `api_request_failed` og svarer

@@ -193,15 +193,18 @@ directory or a PDL mirror. PDL remains the source of the details.
 The target module owns:
 
 - the `person` table, its schema and all writes;
-- an idempotent registration contract for missing persons;
-- asynchronous enrichment of names and birth dates, including status,
-  attempts and backoff;
+- an idempotent registration contract for missing persons, storing name and
+  birth date when the writer already has them;
+- asynchronous enrichment of persons registered without details, including
+  status, attempts and backoff;
 - PDL `NAVN_V1` updates for registered persons;
 - bounded deletion of unreferenced person rows.
 
-Registration and enrichment are separate operations. Registration guarantees
-a row, not a usable name; see [Person registration](#person-registration-proposed)
-for the atomicity requirement. Enrichment runs independently of Dialogporten.
+Registration and enrichment are separate operations. A writer that already
+holds validated PDL details registers the person with them; otherwise
+registration guarantees a `PENDING` row, not a usable name. See
+[Person registration](#person-registration-proposed) for both paths and the
+atomicity requirement. Enrichment runs independently of Dialogporten.
 `narmestelederbehov` interprets the enrichment outcome and owns its own state
 transitions. Only `SendDialogTask` creates behov dialogs, after a usable name
 is available. `person` never writes behov or relation state.
@@ -644,20 +647,41 @@ system. The use case owns and tests the order between those effects.
 ### Person registration (proposed)
 
 For #602, adding a person reference to a relation or behov and registering a
-missing person as `PENDING` must commit in one PostgreSQL transaction.
-This includes sykmelding-triggered behov. Database failures roll back all
-local writes in that transaction and propagate to the caller; normal
-registration does not rely on separate commits followed by best-effort repair.
-Repeated registration leaves existing details and enrichment state untouched.
-An idempotent replay must still ensure registration when the relation or
-behov already exists.
+missing person must commit in one PostgreSQL transaction. Database failures
+roll back all local writes in that transaction and propagate to the caller;
+normal registration does not rely on separate commits followed by best-effort
+repair.
+
+The primary path registers the person with details. A writer that has already
+looked up the person in PDL, as API establishment and fulfillment do for
+validation, stores name and birth date as `ENRICHED` in the same transaction
+as the reference. The PDL lookup happens before the transaction, never inside
+it. The stored details must come from a fresh PDL lookup in the same request,
+not from the cache: `NAVN_V1` only updates registered persons, so a name
+change between a cached lookup and registration would never be corrected.
+Today's `PersonLookup` reads through the Valkey cache and returns names only,
+so establishment needs a fresh lookup that also carries the birth date. Once
+the service receives all narmesteleder requests directly instead of through
+team sykmelding's Kafka flow, this is the normal path for new relations.
+
+Only a writer without the details registers a `PENDING` person for
+asynchronous enrichment. After the takeover, that is in practice a behov from
+a sendt sykmelding whose employee is not yet registered. Until then it also
+covers relations from team sykmelding's Leesah flow, and it covers backfill.
+The sendt sykmelding consumer does not call PDL to avoid `PENDING`: it stays
+independent of PDL, and asynchronous enrichment remains the single fallback.
+
+Registration stores details only when the person row is missing. Existing
+details and enrichment state stay untouched, because enrichment and `NAVN_V1`
+own changes to stored details. An idempotent replay must still ensure
+registration when the relation or behov already exists.
 
 The writing repository coordinates the local transaction through a
 `person`-owned application contract, not direct writes to another module's
 table. The implementation must prove shared commit and rollback without
 exposing Exposed/JDBC types in the application contract or opening an
-independently committed registration transaction. Registration calls neither
-PDL nor Dialogporten. This does not extend the transaction to external
+independently committed registration transaction. Registration itself calls
+neither PDL nor Dialogporten. This does not extend the transaction to external
 effects or change the existing relation publication order.
 
 ## Narmestelederbehov transitions

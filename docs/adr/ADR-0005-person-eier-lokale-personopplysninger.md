@@ -15,8 +15,10 @@ personregister eller et speil av PDL. PDL er fortsatt kilden til opplysningene.
 `person` eier:
 
 - tabellen `person`, skjemaet og alle skriv til den;
-- idempotent registrering av personer som mangler lokalt;
-- asynkron beriking av navn og fødselsdato, med status, forsøk og backoff;
+- idempotent registrering av personer som mangler lokalt, med navn og
+  fødselsdato når skrivestien allerede har dem;
+- asynkron beriking av personer som er registrert uten opplysninger, med
+  status, forsøk og backoff;
 - behandling av PDLs `NAVN_V1`-hendelser for registrerte personer;
 - sletting av personrader som ikke lenger er referert.
 
@@ -25,18 +27,37 @@ personregister eller et speil av PDL. PDL er fortsatt kilden til opplysningene.
 bryte dem. PDL-klienten blir i `integration/pdl`, og
 `PersonalIdentificationNumber` blir i `ident`.
 
-### Registrering er atomisk; beriking er asynkron
+### Personen registreres atomisk, helst med opplysninger
 
 Når en modul lagrer en ny personreferanse i en relasjon eller et behov, skal
-den registrere personen som `PENDING` dersom personen mangler. Referansen og
+den registrere personen dersom personen mangler. Referansen og
 personregistreringen skal committes i samme PostgreSQL-transaksjon. Dette
-gjelder også behov utløst av sykmeldinger og begge personrollene når en
-ansatt eller nærmeste leder refereres.
+gjelder begge personrollene når en ansatt eller nærmeste leder refereres.
+
+Hovedregelen er å registrere personen med opplysninger. Når skrivestien
+allerede har slått opp personen i PDL, slik etablering og oppfylling via API
+gjør for å validere, lagres navn og fødselsdato som `ENRICHED` i samme
+transaksjon som referansen. PDL-oppslaget skjer før transaksjonen, aldri inne
+i den. Opplysningene som lagres, skal komme fra et ferskt PDL-oppslag i samme
+forespørsel, ikke fra cache. `NAVN_V1` oppdaterer bare registrerte personer,
+så en navneendring mellom et cachet oppslag og registreringen ville aldri blitt
+rettet. Når tjenesten tar imot alle forespørsler om nærmeste leder selv, i
+stedet for via team sykmeldings Kafka-flyt, er dette den vanlige veien for nye
+relasjoner.
+
+Bare når skrivestien mangler opplysningene, registreres personen som `PENDING`
+og berikes asynkront. Etter overgangen gjelder dette i praksis behov fra en
+sendt sykmelding der den sykmeldte ikke er registrert fra før. Fram til
+overgangen gjelder det også relasjoner fra team sykmeldings Leesah-flyt, og
+backfill av historiske personer bruker samme vei. Konsumenten av sendte
+sykmeldinger slår ikke opp i PDL for å unngå `PENDING`. Den skal ikke være
+avhengig av PDL, og asynkron beriking er eneste reservevei.
 
 Registreringen går gjennom en smal application-kontrakt som eies av `person`.
-Den lar eksisterende opplysninger og berikingsstatus være uendret. Ved
-gjentatt behandling skal registreringen sikres selv om behovet eller
-relasjonen allerede finnes.
+Den lagrer opplysninger bare når personraden mangler. Eksisterende
+opplysninger og berikingsstatus endres ikke, fordi beriking og `NAVN_V1` eier
+endringer i lagrede opplysninger. Ved gjentatt behandling skal registreringen
+sikres selv om behovet eller relasjonen allerede finnes.
 
 En databasefeil ruller tilbake hele den lokale transaksjonen og sendes videre
 til kalleren. Normal registrering skal ikke bygge på separate commits med
@@ -44,15 +65,15 @@ etterfølgende reparasjon. Felles commit og rollback må bevises i
 implementeringen uten å eksponere Exposed/JDBC i application-kontrakten eller
 la andre moduler skrive direkte til `person`.
 
-Registreringen kaller ikke PDL eller Dialogporten. Beriking skjer etter commit
-og kan forsøkes på nytt uavhengig av Dialogporten. Et behov kan vente i
-`BEHOV_CREATED` til personen har et brukbart navn. `person` eier
-berikingsutfallet; `narmestelederbehov` avgjør hvordan utfallet påvirker
-behovet og om en dialog kan opprettes.
+Selve registreringen kaller ikke PDL eller Dialogporten. Asynkron beriking
+skjer etter commit og kan forsøkes på nytt uavhengig av Dialogporten. Et behov
+som venter på beriking, kan bli stående i `BEHOV_CREATED` til personen har et
+brukbart navn. `person` eier berikingsutfallet; `narmestelederbehov` avgjør
+hvordan utfallet påvirker behovet og om en dialog kan opprettes.
 
 Atomisiteten gjelder de lokale databaseskrivene, ikke Kafka-publisering eller
-andre eksterne effekter. Eksisterende synkron PDL-validering ved etablering av
-relasjoner endres ikke av denne beslutningen.
+andre eksterne effekter. Den synkrone PDL-valideringen ved etablering av
+relasjoner beholdes, og registreringen gjenbruker opplysningene fra den.
 
 ### Konsumentene leser, men eier ikke persondata
 
@@ -91,8 +112,13 @@ trenger opplysningene en eier som ikke forutsetter at en relasjon finnes.
 
 Leesah-lagringen skriver allerede relasjoner og manglende personrader i samme
 transaksjon. Flytting av eierskapet skal bevare denne garantien, ikke skape et
-nytt vindu med referanser uten personrader. Regelen gjelder uansett inngang;
-den avhenger ikke av når overgangen bort fra team sykmeldings Kafka-flyt skjer.
+nytt vindu med referanser uten personrader. Atomisk registrering gjelder
+uansett inngang og avhenger ikke av når overgangen bort fra team sykmeldings
+Kafka-flyt skjer.
+
+Tjenesten skal snart ta imot alle forespørsler om nærmeste leder selv. Da har
+skrivestien for nye relasjoner allerede validerte opplysninger fra PDL, og
+asynkron beriking trengs bare der skrivestien mangler dem.
 
 ## Alternativer vurdert
 
@@ -108,6 +134,17 @@ Det gjør det enklere å isolere repository-transaksjonene, men et krasj mellom
 commitene kan etterlate en referanse uten personrad. Vi velger atomisk
 registrering for normale skriv og bruker backfill for historiske hull.
 
+### Registrere alle personer som `PENDING`
+
+Det gir én registreringsvei, men kaster opplysninger skrivestien allerede har
+validert. Den vanlige veien får da et unødvendig vindu uten navn. Vi bruker
+`PENDING` bare når skrivestien mangler opplysningene.
+
+### Slå opp i PDL fra konsumenten av sendte sykmeldinger
+
+Det ville gjort `PENDING` sjeldnere, men gjør konsumenten avhengig av PDL og
+gir to reserveveier i stedet for én. Behov fra sykmeldinger kan vente på navn.
+
 ### Dele en skrivbar tabell eller et repository
 
 Det gjør felles transaksjoner enkle, men sprer skrivereglene og eierskapet på
@@ -118,8 +155,12 @@ lesedefinisjoner beholder en bevisst skjemakobling for oppslag og joins.
 
 - Kodeavhengigheten går fra behovs- og relasjonsmodulen til `person`, aldri
   tilbake. Løsningen er fortsatt én applikasjon med én database.
-- Registrering garanterer en personrad, ikke ferdig beriking. Dialogsending
-  må tåle venting og feil uten å opprette dialoger uten navn.
+- Registrering med opplysninger gir et brukbart navn i samme commit som
+  referansen. `PENDING`-registrering garanterer bare en personrad, så
+  dialogsending må tåle venting og feil uten å opprette dialoger uten navn.
+- Etablering må hente personene ferskt fra PDL, med fødselsdato i tillegg til
+  navn. Det gir opptil to flere PDL-kall per etablering enn dagens cachede
+  oppslag.
 - Nye skriv må oppfylle registreringsgarantien før opprydding aktiveres.
   Implementeringen må bevise rollback, idempotent registrering og sikker sletting
   ved samtidige referanseskriv.

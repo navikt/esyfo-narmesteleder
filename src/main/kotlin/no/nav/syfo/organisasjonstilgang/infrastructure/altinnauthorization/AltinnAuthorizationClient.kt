@@ -7,8 +7,8 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
-import no.nav.syfo.platform.auth.texas.AltinnTokenProvider.Companion.PDP_TARGET_SCOPE
+import no.nav.syfo.platform.auth.texas.AltinnTokenSource
+import no.nav.syfo.platform.auth.texas.TexasAltinnTokenFetcher.Companion.PDP_TARGET_SCOPE
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.decodeUpstream
@@ -28,7 +28,7 @@ interface AltinnAuthorizationClient {
 class HttpAltinnAuthorizationClient(
     private val baseUrl: String,
     private val httpClient: HttpClient,
-    private val altinnTokenProvider: AltinnTokenProvider,
+    private val altinnTokenProvider: AltinnTokenSource,
     private val subscriptionKey: String,
 ) : AltinnAuthorizationClient {
     override suspend fun authorize(

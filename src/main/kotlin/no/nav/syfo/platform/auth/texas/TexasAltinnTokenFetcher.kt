@@ -6,41 +6,23 @@ import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
-import java.time.Clock
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 internal val ALTINN_AUTHENTICATION = UpstreamName("altinn-authentication")
 
-class AltinnTokenProvider(
+class TexasAltinnTokenFetcher(
     private val texasHttpClient: TexasHttpClient,
     private val httpClient: HttpClient,
     private val altinnBaseUrl: String,
-    private val clock: Clock = Clock.systemUTC(),
-) {
-    private val tokens: MutableMap<String, AltinnToken> = mutableMapOf()
-    private val mutex = Mutex()
-
-    data class AltinnToken(
-        val accessToken: String,
-        val altinnExpiryTime: Duration,
-    )
-
-    suspend fun token(target: String): UpstreamResult<AltinnToken> = mutex.withLock {
-        val cached = tokens[target]
-        if (cached != null && cached.altinnExpiryTime - clock.millis().milliseconds > 300.seconds) {
-            return UpstreamResult.Success(cached)
-        }
+) : AltinnTokenSource {
+    override suspend fun token(target: String): UpstreamResult<AltinnToken> {
         val maskinportenToken = texasHttpClient.maskinportenSystemToken(target, ALTINN_AUTHENTICATION).getOrElse { return UpstreamResult.Failure(it) }
         val response = try {
             httpClient.get("$altinnBaseUrl/authentication/api/v1/exchange/maskinporten") {
@@ -57,12 +39,11 @@ class AltinnTokenProvider(
             val accessToken = response.bodyAsText().removeSurrounding("\"")
             val expiry = requireNotNull(JWT.decode(accessToken).expiresAt) { "Altinn token is missing expiry" }
             val token = AltinnToken(accessToken, expiry.time.milliseconds)
-            tokens[target] = token
-            UpstreamResult.Success(token)
+            return UpstreamResult.Success(token)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            failure(response.status.value, e)
+            return failure(response.status.value, e)
         }
     }
 

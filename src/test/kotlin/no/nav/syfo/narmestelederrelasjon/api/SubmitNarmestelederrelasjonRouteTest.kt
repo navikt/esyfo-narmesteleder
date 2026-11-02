@@ -233,9 +233,10 @@ private class SubmitFixture(
 
     fun withApplication(test: suspend ApplicationTestBuilder.() -> Unit) {
         testRouteApplication(
+            texasHttpClient = texas,
             routes = {
                 apiV1 {
-                    registerSubmitNarmestelederrelasjonApi(SubmitNarmestelederrelasjonUseCase(access) { relationResult }, texas)
+                    registerSubmitNarmestelederrelasjonApi(SubmitNarmestelederrelasjonUseCase(access) { relationResult })
                 }
             },
         ) {

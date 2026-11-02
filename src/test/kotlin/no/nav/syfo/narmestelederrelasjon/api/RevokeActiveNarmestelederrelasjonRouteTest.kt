@@ -224,9 +224,10 @@ private class RevokeRouteFixture(
 
     fun withApplication(test: suspend ApplicationTestBuilder.() -> Unit) {
         testRouteApplication(
+            texasHttpClient = texas,
             routes = {
                 apiV1 {
-                    registerRevokeActiveNarmestelederrelasjonApi(useCase, texas)
+                    registerRevokeActiveNarmestelederrelasjonApi(useCase)
                 }
             },
         ) {

@@ -195,7 +195,7 @@ private fun withEmployeeApi(
     useCase: ListActiveNarmesteledereForEmployeeUseCase,
     texasHttpClient: TexasHttpClient,
     test: suspend ApplicationTestBuilder.() -> Unit,
-) = testRouteApplication(routes = { internalApiV1 { registerEmployeeLinemanagerApi(useCase, texasHttpClient) } }, block = test)
+) = testRouteApplication(texasHttpClient = texasHttpClient, routes = { internalApiV1 { registerEmployeeLinemanagerApi(useCase) } }, block = test)
 
 private fun requestCount(filtered: String): Double = METRICS_REGISTRY
     .find(EMPLOYEE_LINEMANAGER_TOTAL)

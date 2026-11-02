@@ -24,7 +24,6 @@ class ListNarmestelederbehovAltinnFailureLoggingTest :
                     upstream.organizationAccess,
                     NarmestelederbehovEmployeeName(mockk()) { error("Name lookup must not be called") },
                 ),
-                upstream.authClient,
             )
         }
     })

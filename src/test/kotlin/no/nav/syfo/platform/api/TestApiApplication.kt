@@ -8,26 +8,40 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
+import io.ktor.server.application.install
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import org.koin.dsl.module
+import org.koin.ktor.plugin.Koin
 
 /**
- * Starts the same request-handling plugins as production, without Koin, so route tests
- * only provide their routes and test doubles.
+ * Starts the same request-handling plugins as production, with Koin holding only the given
+ * [texasHttpClient], so route tests only provide their routes and test doubles.
  */
 fun testApiApplication(
-    routes: Routing.() -> Unit,
-    block: suspend ApplicationTestBuilder.() -> Unit,
-) = startTestApplication(Application::installApiPlugins, routes, block)
-
-/** Like [testApiApplication], but without the call-id plugin: only content negotiation and status pages. */
-fun testRouteApplication(
+    texasHttpClient: TexasHttpClient,
     routes: Routing.() -> Unit,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = startTestApplication(
     plugins = {
+        install(Koin) { modules(module { single { texasHttpClient } }) }
+        installApiPlugins()
+    },
+    routes = routes,
+    block = block,
+)
+
+/** Like [testApiApplication], but without the call-id plugin: only content negotiation and status pages. */
+fun testRouteApplication(
+    texasHttpClient: TexasHttpClient,
+    routes: Routing.() -> Unit,
+    block: suspend ApplicationTestBuilder.() -> Unit,
+) = startTestApplication(
+    plugins = {
+        install(Koin) { modules(module { single { texasHttpClient } }) }
         installContentNegotiation()
         installStatusPages()
     },

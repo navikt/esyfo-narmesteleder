@@ -151,6 +151,7 @@ private fun withAccessibleOrganizationsApp(
     texasHttpClient: TexasHttpClient,
     assertions: suspend ApplicationTestBuilder.() -> Unit,
 ) = testRouteApplication(
-    routes = { apiV1 { registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(lookup), texasHttpClient) } },
+    texasHttpClient = texasHttpClient,
+    routes = { apiV1 { registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(lookup)) } },
     block = assertions,
 )

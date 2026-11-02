@@ -124,11 +124,11 @@ private fun withLookupApi(
     test: suspend ApplicationTestBuilder.() -> Unit,
 ) {
     testRouteApplication(
+        texasHttpClient = texasHttpClient,
         routes = {
             internalApiV1 {
                 registerLineManagerLookupApi(
                     lookupActiveNarmesteleder = lookupActiveNarmesteleder,
-                    texasHttpClient = texasHttpClient,
                     preAuthorizedApps = setOf(CALLING_APP),
                 )
             }

@@ -9,11 +9,13 @@ private val VALID_ISSUERS = listOf(JwtIssuer.MASKINPORTEN, JwtIssuer.TOKEN_X)
 const val MASKINPORTEN_NL_SCOPE = "nav:syfo/narmesteleder/lps"
 private val logger = logger("no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin")
 
+private const val PLUGIN_NAME = "MaskinportenAndTokenXTokenAuthPlugin"
+
 val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
-    name = "MaskinportenAndTokenXTokenAuthPlugin",
+    name = PLUGIN_NAME,
     createConfiguration = ::TexasAuthPluginConfiguration,
 ) {
-    val client = pluginConfig.client.requireConfigured("MaskinportenAndTokenXTokenAuthPlugin")
+    val client = application.resolveTexasHttpClient(pluginConfig.client, PLUGIN_NAME)
 
     onCall { call ->
         val (issuer, bearerToken) = call.requireIssuedBearerToken(VALID_ISSUERS)
@@ -26,5 +28,5 @@ val MaskinportenAndTokenXTokenAuthPlugin = createRouteScopedPlugin(
             else -> throw ApiErrorException.UnauthorizedException("Unsupported token issuer")
         }
     }
-    logger.info("TexasMaskinportenAuthPlugin installed")
+    logger.info("$PLUGIN_NAME installed")
 }

@@ -86,10 +86,11 @@ private fun TexasHttpClient.callProtectedRoute(issuer: String = TOKEN_X_ISSUER):
     val texas = this
     lateinit var response: HttpResponse
     testRouteApplication(
+        texasHttpClient = texas,
         routes = {
             internalApiV1 {
                 route(PROTECTED_PATH) {
-                    install(TokenXTokenAuthPlugin) { client = texas }
+                    install(TokenXTokenAuthPlugin)
                     get { call.respondText(call.getMyPrincipal().ident) }
                 }
             }

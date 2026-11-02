@@ -32,7 +32,9 @@ import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.platform.api.JSON_PATCH_CONTENT_TYPE
-import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
+import no.nav.syfo.platform.auth.texas.AltinnToken
+import no.nav.syfo.platform.auth.texas.AltinnTokenSource
+import no.nav.syfo.platform.auth.texas.TexasAltinnTokenFetcher
 import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.captureProductionLogs
 import no.nav.syfo.platform.observability.logEvent
@@ -70,10 +72,10 @@ class DialogportenClientTest :
             HttpDialogportenClient.DialogportenPatch.PATH.STATUS,
             DialogStatus.Completed.name,
         )
-        val provider = mockk<AltinnTokenProvider>()
+        val provider = mockk<AltinnTokenSource>()
         beforeTest {
-            coEvery { provider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE) } returns
-                UpstreamResult.Success(AltinnTokenProvider.AltinnToken("synthetic-token", Duration.ZERO))
+            coEvery { provider.token(TexasAltinnTokenFetcher.DIALOGPORTEN_TARGET_SCOPE) } returns
+                UpstreamResult.Success(AltinnToken("synthetic-token", Duration.ZERO))
         }
 
         val operations: Map<String, suspend (HttpDialogportenClient) -> UpstreamResult<*>> = mapOf(

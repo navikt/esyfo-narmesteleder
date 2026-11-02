@@ -1,5 +1,6 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -15,7 +16,8 @@ import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
-import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
+import no.nav.syfo.platform.auth.texas.AltinnTokenSource
+import no.nav.syfo.platform.auth.texas.TexasAltinnTokenFetcher
 import no.nav.syfo.platform.auth.texas.altinnTestToken
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -51,9 +53,11 @@ class AltinnAuthorizationClientTest :
                 }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_PDP
-                    failure.stage shouldBe UpstreamFailureStage.RESPONSE
-                    failure.status shouldBe status
+                    assertSoftly(failure) {
+                        upstream shouldBe ALTINN_PDP
+                        stage shouldBe UpstreamFailureStage.RESPONSE
+                        this.status shouldBe status
+                    }
                 }
             }
         }
@@ -69,10 +73,12 @@ class AltinnAuthorizationClientTest :
                 }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_PDP
-                    failure.stage shouldBe UpstreamFailureStage.REQUEST
-                    failure.status shouldBe null
-                    failure.cause?.javaClass shouldBe cause.javaClass
+                    assertSoftly(failure) {
+                        upstream shouldBe ALTINN_PDP
+                        stage shouldBe UpstreamFailureStage.REQUEST
+                        status shouldBe null
+                        this.cause?.javaClass shouldBe cause.javaClass
+                    }
                 }
             }
         }
@@ -94,9 +100,11 @@ class AltinnAuthorizationClientTest :
                 }.use {
                     val failure = client(it).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe ALTINN_PDP
-                    failure.stage shouldBe UpstreamFailureStage.RESPONSE
-                    failure.status shouldBe 200
+                    assertSoftly(failure) {
+                        upstream shouldBe ALTINN_PDP
+                        stage shouldBe UpstreamFailureStage.RESPONSE
+                        status shouldBe 200
+                    }
                 }
             }
         }
@@ -104,7 +112,7 @@ class AltinnAuthorizationClientTest :
         listOf("texas", "altinn-authentication").forEach { upstream ->
             test("$upstream token failure is propagated unchanged without PDP request") {
                 val failure = UpstreamFailure(UpstreamName(upstream), UpstreamFailureStage.TOKEN_EXCHANGE, 503, IOException())
-                val provider = mockk<AltinnTokenProvider>()
+                val provider = mockk<AltinnTokenSource>()
                 coEvery { provider.token(any()) } returns UpstreamResult.Failure(failure)
                 upstreamHttpClient(respondWithSystemToken) { error("PDP must not be called") }.use {
                     client(it, provider).authorize(System("synthetic-system-user"), setOf("910000001"), "resource")
@@ -147,7 +155,7 @@ class AltinnAuthorizationClientTest :
         }
     })
 
-private fun client(httpClient: HttpClient, provider: AltinnTokenProvider = AltinnTokenProvider(texasHttpClient(httpClient), httpClient, "https://altinn.test")) = HttpAltinnAuthorizationClient(
+private fun client(httpClient: HttpClient, provider: AltinnTokenSource = TexasAltinnTokenFetcher(texasHttpClient(httpClient), httpClient, "https://altinn.test")) = HttpAltinnAuthorizationClient(
     "https://altinn.test",
     httpClient,
     provider,

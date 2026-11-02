@@ -13,7 +13,7 @@ avgjør utfallet og logger én gang.
 
 Beslutningen gjelder Aareg, Dinesykmeldte, Ereg, PDL, Altinn Tilganger,
 Altinn Authorization, Dialogporten, token-vekslingen hos Altinn
-(`AltinnTokenProvider`) og token-steget mot Texas. Feil i databasen, ved
+(`TexasAltinnTokenFetcher`) og token-steget mot Texas. Feil i databasen, ved
 Kafka-publisering og programmeringsfeil er fortsatt exceptions.
 
 Mønsteret har seks deler:
@@ -107,7 +107,7 @@ Mønsteret har seks deler:
   Verken `error_description` eller svartekst følger med i `errors`.
   OAuth-koden logges i `upstream_errors`; målsystemet logges ikke (#707).
 
-  `AltinnTokenProvider.token(target)` sender Texas-feil videre uendret.
+  `TexasAltinnTokenFetcher.token(target)` sender Texas-feil videre uendret.
   Feil i vekslingen, inkludert ugyldig JWT eller manglende `exp`, gir
   `upstream = altinn-authentication`, `stage = TOKEN_EXCHANGE` og status når
   Altinn svarte. Cachen er per target og brukes bare med mer enn 300 sekunder

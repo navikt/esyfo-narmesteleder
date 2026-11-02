@@ -21,7 +21,8 @@ import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.platform.api.JSON_PATCH_CONTENT_TYPE
-import no.nav.syfo.platform.auth.texas.AltinnTokenProvider
+import no.nav.syfo.platform.auth.texas.AltinnTokenSource
+import no.nav.syfo.platform.auth.texas.TexasAltinnTokenFetcher
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -66,12 +67,12 @@ internal fun dialogportenRevisionConflictFailure() = UpstreamFailure(
 class HttpDialogportenClient(
     baseUrl: String,
     private val httpClient: HttpClient,
-    private val altinnTokenProvider: AltinnTokenProvider,
+    private val altinnTokenProvider: AltinnTokenSource,
 ) : DialogportenClient {
     private val dialogportenUrl = "$baseUrl/dialogporten/api/v1/serviceowner/dialogs"
 
     override suspend fun createDialog(dialog: Dialog): UpstreamResult<DialogCreateResult> {
-        val token = when (val result = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)) {
+        val token = when (val result = altinnTokenProvider.token(TexasAltinnTokenFetcher.DIALOGPORTEN_TARGET_SCOPE)) {
             is UpstreamResult.Success -> result.value.accessToken
             is UpstreamResult.Failure -> return result
         }
@@ -104,7 +105,7 @@ class HttpDialogportenClient(
     override suspend fun getDialogById(
         dialogId: UUID
     ): UpstreamResult<ExtendedDialog> {
-        val token = when (val result = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)) {
+        val token = when (val result = altinnTokenProvider.token(TexasAltinnTokenFetcher.DIALOGPORTEN_TARGET_SCOPE)) {
             is UpstreamResult.Success -> result.value.accessToken
             is UpstreamResult.Failure -> return result
         }
@@ -147,7 +148,7 @@ class HttpDialogportenClient(
         revisionNumber: UUID,
         patch: List<DialogportenPatch>
     ): UpstreamResult<DialogPatchResult> {
-        val token = when (val result = altinnTokenProvider.token(AltinnTokenProvider.DIALOGPORTEN_TARGET_SCOPE)) {
+        val token = when (val result = altinnTokenProvider.token(TexasAltinnTokenFetcher.DIALOGPORTEN_TARGET_SCOPE)) {
             is UpstreamResult.Success -> result.value.accessToken
             is UpstreamResult.Failure -> return result
         }

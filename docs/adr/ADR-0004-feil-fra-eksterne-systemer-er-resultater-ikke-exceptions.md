@@ -98,7 +98,7 @@ Mønsteret har seks deler:
   både i tilgangssjekken for personalledere og i lista over organisasjoner.
 
   `TexasHttpClient.exchangeTokenForIsAltinnTilganger` og
-  `maskinportenSystemToken(target)` returnerer
+  `maskinportenSystemToken(target, tokenTarget)` returnerer
   `UpstreamResult<String>`. Feil gir `upstream = texas` og
   `stage = TOKEN_EXCHANGE`, med status når Texas svarte. Ved et HTTP-feilsvar
   følger OAuth-feltet `error` med som `UpstreamError(code = ...)`, begrenset
@@ -177,7 +177,7 @@ Mønsteret har seks deler:
 #642 viste at de delte klientene håndterer feil ulikt. Noen pakker bare inn
 4xx, andre bare `ResponseException`, og PDL pakket ikke inn tokenfeil. PDL
 returnerer nå `UpstreamResult` for både enkelt- og bolkoppslag og henter token
-med `azureAdSystemToken(scope)` i hvert kall. Når feilen er en exception,
+med `azureAdSystemToken(scope, tokenTarget)` i hvert kall. Når feilen er en exception,
 er det `catch`-blokker langt unna som avgjør hva API-et
 svarer. Ved 5xx, timeout eller IO-feil svarer API-et derfor 500
 `INTERNAL_SERVER_ERROR` i stedet for `UPSTREAM_SERVICE_UNAVAILABLE`. Adapteren

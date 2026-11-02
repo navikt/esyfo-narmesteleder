@@ -86,7 +86,7 @@ class HttpPdlClient(
     }
 
     private suspend inline fun <reified T> postQuery(request: Any): UpstreamResult<T> {
-        val token = texasHttpClient.azureAdSystemToken(scope).getOrElse { return UpstreamResult.Failure(it) }
+        val token = texasHttpClient.azureAdSystemToken(scope, PDL).getOrElse { return UpstreamResult.Failure(it) }
 
         val response = requestUpstream(PDL) {
             httpClient.post(pdlBaseUrl) {

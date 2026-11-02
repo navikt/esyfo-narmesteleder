@@ -9,8 +9,9 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.upstream.UpstreamName
+import no.nav.syfo.platform.upstream.UpstreamResult
 import org.slf4j.LoggerFactory
-import kotlin.coroutines.cancellation.CancellationException
 
 private data class GetIsActiveSykmeldingRequest(
     val sykmeldtFnr: String,
@@ -20,6 +21,8 @@ private data class GetIsActiveSykmeldingRequest(
 interface DinesykmeldteClient {
     suspend fun getIsActiveSykmelding(fnr: String, orgnummer: String): Boolean
 }
+
+internal val DINESYKMELDTE = UpstreamName("dinesykmeldte-backend")
 
 class DinesykmeldteClientException(message: String, cause: Exception) : RuntimeException(message, cause)
 
@@ -44,17 +47,11 @@ class HttpDinesykmeldteClient(
         }
     }
 
-    private suspend fun getSystemToken(): String = try {
-        texasHttpClient.systemToken(
-            TexasHttpClient.IDENTITY_PROVIDER_AZUREAD,
-            TexasHttpClient.getTarget(scope)
-        ).accessToken
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        throw DinesykmeldteClientException(
+    private suspend fun getSystemToken(): String = when (val result = texasHttpClient.azureAdSystemToken(scope, DINESYKMELDTE)) {
+        is UpstreamResult.Success -> result.value
+        is UpstreamResult.Failure -> throw DinesykmeldteClientException(
             "An error occurred when acquiring system token from ${TexasHttpClient.IDENTITY_PROVIDER_AZUREAD}",
-            e
+            result.failure.cause as? Exception ?: IllegalStateException("Token exchange failed"),
         )
     }
 

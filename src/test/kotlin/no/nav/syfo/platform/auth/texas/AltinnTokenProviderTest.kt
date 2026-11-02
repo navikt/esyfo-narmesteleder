@@ -35,7 +35,7 @@ class AltinnTokenProviderTest :
         test("Texas failure is propagated unchanged and skips Altinn") {
             val failure = UpstreamFailure(UpstreamName("texas"), UpstreamFailureStage.TOKEN_EXCHANGE, 400, errors = listOf(UpstreamError("invalid_grant")))
             val texas = mockk<TexasHttpClient>()
-            coEvery { texas.maskinportenSystemToken("target") } returns UpstreamResult.Failure(failure)
+            coEvery { texas.maskinportenSystemToken("target", ALTINN_AUTHENTICATION) } returns UpstreamResult.Failure(failure)
             upstreamHttpClient(respondWithSystemToken) { error("Altinn must not be called") }.use {
                 AltinnTokenProvider(texas, it, "https://altinn.test").token("target")
                     .shouldBeInstanceOf<UpstreamResult.Failure>().failure shouldBeSameInstanceAs failure

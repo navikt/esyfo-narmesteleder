@@ -1,6 +1,7 @@
 package no.nav.syfo.platform.auth.texas.client
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -16,6 +17,7 @@ import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
@@ -33,7 +35,7 @@ class TexasHttpClientTest :
                 },
                 upstream = { error("Unexpected upstream request") },
             ).use {
-                texasHttpClient(it).maskinportenSystemToken("altinn:authorization/authorize") shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
+                texasHttpClient(it).maskinportenSystemToken("altinn:authorization/authorize", TEST_TOKEN_TARGET) shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
             }
         }
 
@@ -43,37 +45,43 @@ class TexasHttpClientTest :
                     token = { respondJson("""{"error":"$code","error_description":"private-description"}""", HttpStatusCode.BadRequest) },
                     upstream = { error("Unexpected upstream request") },
                 ).use {
-                    val failure = texasHttpClient(it).maskinportenSystemToken("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe TEXAS
-                    failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                    failure.status shouldBe 400
-                    failure.errors shouldBe listOf(UpstreamError(expected))
+                    assertSoftly(texasHttpClient(it).maskinportenSystemToken("target", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                        upstream shouldBe TEXAS
+                        stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                        tokenTarget shouldBe TEST_TOKEN_TARGET
+                        status shouldBe 400
+                        errors shouldBe listOf(UpstreamError(expected))
+                    }
                 }
             }
         }
 
         test("Maskinporten malformed success retains response status") {
             upstreamHttpClient({ respondJson("""{"invalid":"response"}""") }, { error("Unexpected upstream request") }).use {
-                val failure = texasHttpClient(it).maskinportenSystemToken("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                failure.upstream shouldBe TEXAS
-                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                failure.status shouldBe 200
+                assertSoftly(texasHttpClient(it).maskinportenSystemToken("target", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                    upstream shouldBe TEXAS
+                    stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    tokenTarget shouldBe TEST_TOKEN_TARGET
+                    status shouldBe 200
+                }
             }
         }
 
         test("Maskinporten IO failure has no response status") {
             upstreamHttpClient({ throw IOException("Unavailable") }, { error("Unexpected upstream request") }).use {
-                val failure = texasHttpClient(it).maskinportenSystemToken("target").shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                failure.upstream shouldBe TEXAS
-                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                failure.status shouldBe null
+                assertSoftly(texasHttpClient(it).maskinportenSystemToken("target", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                    upstream shouldBe TEXAS
+                    stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    tokenTarget shouldBe TEST_TOKEN_TARGET
+                    status shouldBe null
+                }
             }
         }
 
         test("Maskinporten request cancellation is rethrown") {
             val cancelled = CancellationException("Cancelled")
             upstreamHttpClient({ throw cancelled }, { error("Unexpected upstream request") }).use {
-                shouldThrow<CancellationException> { texasHttpClient(it).maskinportenSystemToken("target") } shouldBe cancelled
+                shouldThrow<CancellationException> { texasHttpClient(it).maskinportenSystemToken("target", TEST_TOKEN_TARGET) } shouldBe cancelled
             }
         }
 
@@ -83,7 +91,7 @@ class TexasHttpClientTest :
                 it.responsePipeline.intercept(HttpResponsePipeline.Receive) {
                     if (subject.expectedType.type == TexasResponse::class) throw cancelled
                 }
-                shouldThrow<CancellationException> { texasHttpClient(it).maskinportenSystemToken("target") } shouldBe cancelled
+                shouldThrow<CancellationException> { texasHttpClient(it).maskinportenSystemToken("target", TEST_TOKEN_TARGET) } shouldBe cancelled
             }
         }
 
@@ -100,7 +108,7 @@ class TexasHttpClientTest :
                 },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token") shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
+                texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token", TEST_TOKEN_TARGET) shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
             }
         }
 
@@ -109,12 +117,13 @@ class TexasHttpClientTest :
                 token = { respondJson("""{"error":"invalid_grant","error_description":"synthetic-private-description"}""", HttpStatusCode.BadRequest) },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                val failure = texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token")
-                    .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                failure.upstream shouldBe TEXAS
-                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                failure.status shouldBe 400
-                failure.errors shouldBe listOf(UpstreamError("invalid_grant"))
+                assertSoftly(texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                    upstream shouldBe TEXAS
+                    stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    tokenTarget shouldBe TEST_TOKEN_TARGET
+                    status shouldBe 400
+                    errors shouldBe listOf(UpstreamError("invalid_grant"))
+                }
             }
         }
 
@@ -123,13 +132,14 @@ class TexasHttpClientTest :
                 token = { respondJson("""{"invalid":"response"}""") },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                val failure = texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token")
-                    .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                failure.upstream shouldBe TEXAS
-                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                failure.status shouldBe 200
-                failure.errors shouldBe emptyList()
-                failure.cause?.javaClass?.simpleName shouldBe "JsonConvertException"
+                assertSoftly(texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                    upstream shouldBe TEXAS
+                    stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    tokenTarget shouldBe TEST_TOKEN_TARGET
+                    status shouldBe 200
+                    errors shouldBe emptyList()
+                    cause?.javaClass?.simpleName shouldBe "JsonConvertException"
+                }
             }
         }
 
@@ -143,7 +153,7 @@ class TexasHttpClientTest :
                     if (subject.expectedType.type == TexasResponse::class) throw cancelled
                 }
                 shouldThrow<CancellationException> {
-                    texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token")
+                    texasHttpClient(httpClient).exchangeTokenForIsAltinnTilganger("synthetic-user-token", TEST_TOKEN_TARGET)
                 } shouldBe cancelled
             }
         }
@@ -158,7 +168,7 @@ class TexasHttpClientTest :
                 },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                texasHttpClient(httpClient).azureAdSystemToken("scope") shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
+                texasHttpClient(httpClient).azureAdSystemToken("scope", TEST_TOKEN_TARGET) shouldBe UpstreamResult.Success(TEST_SYSTEM_TOKEN)
             }
         }
 
@@ -167,10 +177,12 @@ class TexasHttpClientTest :
                 token = { respondJson("", HttpStatusCode.ServiceUnavailable) },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                val failure = texasHttpClient(httpClient).azureAdSystemToken("scope").shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                failure.upstream shouldBe TEXAS
-                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                failure.status shouldBe 503
+                assertSoftly(texasHttpClient(httpClient).azureAdSystemToken("scope", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                    upstream shouldBe TEXAS
+                    stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    tokenTarget shouldBe TEST_TOKEN_TARGET
+                    status shouldBe 503
+                }
             }
         }
 
@@ -180,23 +192,27 @@ class TexasHttpClientTest :
                 token = { throw cause },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                val failure = texasHttpClient(httpClient).azureAdSystemToken("scope").shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                failure.upstream shouldBe TEXAS
-                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                failure.status shouldBe null
-                failure.cause shouldBe cause
+                assertSoftly(texasHttpClient(httpClient).azureAdSystemToken("scope", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                    upstream shouldBe TEXAS
+                    stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    tokenTarget shouldBe TEST_TOKEN_TARGET
+                    status shouldBe null
+                    cause shouldBe cause
+                }
             }
         }
 
-        test("azureAdSystemToken returns a Texas token exchange failure without status for invalid bodies") {
+        test("azureAdSystemToken returns a Texas token exchange failure with the response status for invalid bodies") {
             upstreamHttpClient(
                 token = { respondJson("""{"invalid":"response"}""") },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                val failure = texasHttpClient(httpClient).azureAdSystemToken("scope").shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                failure.upstream shouldBe TEXAS
-                failure.stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
-                failure.status shouldBe null
+                assertSoftly(texasHttpClient(httpClient).azureAdSystemToken("scope", TEST_TOKEN_TARGET).shouldBeInstanceOf<UpstreamResult.Failure>().failure) {
+                    upstream shouldBe TEXAS
+                    stage shouldBe UpstreamFailureStage.TOKEN_EXCHANGE
+                    tokenTarget shouldBe TEST_TOKEN_TARGET
+                    status shouldBe 200
+                }
             }
         }
 
@@ -206,7 +222,9 @@ class TexasHttpClientTest :
                 token = { throw cause },
                 upstream = { error("Unexpected upstream request") },
             ).use { httpClient ->
-                shouldThrow<CancellationException> { texasHttpClient(httpClient).azureAdSystemToken("scope") } shouldBe cause
+                shouldThrow<CancellationException> { texasHttpClient(httpClient).azureAdSystemToken("scope", TEST_TOKEN_TARGET) } shouldBe cause
             }
         }
     })
+
+private val TEST_TOKEN_TARGET = UpstreamName("aareg")

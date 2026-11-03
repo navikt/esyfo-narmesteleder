@@ -24,7 +24,6 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val LINEMANAGER_SEARCH_API_PATH = "/linemanager/search"
 
@@ -33,12 +32,9 @@ private val strictLinemanagerSearchRequestMapper = jacksonObjectMapper()
 
 fun Route.registerLinemanagerSearchApi(
     searchActiveNarmestelederrelasjoner: SearchActiveNarmestelederrelasjonerUseCase,
-    texasHttpClient: TexasHttpClient,
 ) {
     route(LINEMANAGER_SEARCH_API_PATH) {
-        install(MaskinportenAndTokenXTokenAuthPlugin) {
-            client = texasHttpClient
-        }
+        install(MaskinportenAndTokenXTokenAuthPlugin)
 
         post {
             val principal = call.getMyPrincipal()

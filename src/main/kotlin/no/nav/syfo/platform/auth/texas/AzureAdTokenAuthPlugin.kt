@@ -18,11 +18,13 @@ data class AzureAdPreAuthorizedApp(
     val clientId: String,
 )
 
+private const val PLUGIN_NAME = "AzureAdTokenAuthPlugin"
+
 val AzureAdTokenAuthPlugin = createRouteScopedPlugin(
-    name = "AzureAdTokenAuthPlugin",
+    name = PLUGIN_NAME,
     createConfiguration = ::AzureAdTokenAuthPluginConfiguration,
 ) {
-    val client = pluginConfig.client.requireConfigured("AzureAdTokenAuthPlugin")
+    val client = application.resolveTexasHttpClient(pluginConfig.client, PLUGIN_NAME)
     val preAuthorizedApps = pluginConfig.preAuthorizedApps
         .ifEmpty { error("AzureAdTokenAuthPlugin installed without pre-authorized apps") }
 

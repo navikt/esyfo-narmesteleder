@@ -17,18 +17,14 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val LINEMANAGER_STATISTICS_API_PATH = "/linemanager/statistics"
 
 fun Route.registerLinemanagerStatisticsApi(
     getNarmestelederstatistikk: GetNarmestelederstatistikkUseCase,
-    texasHttpClient: TexasHttpClient,
 ) {
     route(LINEMANAGER_STATISTICS_API_PATH) {
-        install(MaskinportenAndTokenXTokenAuthPlugin) {
-            client = texasHttpClient
-        }
+        install(MaskinportenAndTokenXTokenAuthPlugin)
 
         get {
             val organizationNumber = call.requiredOrganizationNumberQueryParameter("orgNumber")

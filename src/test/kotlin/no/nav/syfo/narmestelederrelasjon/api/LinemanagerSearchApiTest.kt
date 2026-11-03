@@ -342,4 +342,4 @@ private fun withSearchApi(
     useCase: SearchActiveNarmestelederrelasjonerUseCase,
     texasHttpClient: TexasHttpClient,
     test: suspend ApplicationTestBuilder.() -> Unit,
-) = testRouteApplication(routes = { internalApiV1 { registerLinemanagerSearchApi(useCase, texasHttpClient) } }, block = test)
+) = testRouteApplication(texasHttpClient = texasHttpClient, routes = { internalApiV1 { registerLinemanagerSearchApi(useCase) } }, block = test)

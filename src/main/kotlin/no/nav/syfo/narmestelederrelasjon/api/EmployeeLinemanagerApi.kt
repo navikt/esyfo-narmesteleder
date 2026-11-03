@@ -16,7 +16,6 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.TokenXTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val EMPLOYEE_LINEMANAGER_API_PATH = "/employee/linemanager"
 
@@ -24,12 +23,9 @@ private const val ORG_NUMBER_QUERY_PARAMETER = "orgNumber"
 
 fun Route.registerEmployeeLinemanagerApi(
     listActiveNarmesteledereForEmployee: ListActiveNarmesteledereForEmployeeUseCase,
-    texasHttpClient: TexasHttpClient,
 ) {
     route(EMPLOYEE_LINEMANAGER_API_PATH) {
-        install(TokenXTokenAuthPlugin) {
-            client = texasHttpClient
-        }
+        install(TokenXTokenAuthPlugin)
 
         get {
             val principal = call.getMyPrincipal()

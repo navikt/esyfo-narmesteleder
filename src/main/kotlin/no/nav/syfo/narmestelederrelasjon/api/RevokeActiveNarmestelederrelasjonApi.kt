@@ -19,19 +19,15 @@ import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val REVOKE_ACTIVE_NARMESTELEDERRELASJON_PATH = "/linemanager/revoke"
 
 fun Route.registerRevokeActiveNarmestelederrelasjonApi(
     revoke: RevokeActiveNarmestelederrelasjonUseCase,
-    texasHttpClient: TexasHttpClient,
 ) {
     route(REVOKE_ACTIVE_NARMESTELEDERRELASJON_PATH) {
         method(HttpMethod.Post) {
-            install(MaskinportenAndTokenXTokenAuthPlugin) {
-                client = texasHttpClient
-            }
+            install(MaskinportenAndTokenXTokenAuthPlugin)
             handle {
                 val principal = call.getMyPrincipal()
                 val request = call.tryReceive<LinemanagerRevoke>()

@@ -169,7 +169,8 @@ private class StatisticsApiFixture(
 
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {
         testApiApplication(
-            routes = { internalApiV1 { registerLinemanagerStatisticsApi(useCase, texas) } },
+            texasHttpClient = texas,
+            routes = { internalApiV1 { registerLinemanagerStatisticsApi(useCase) } },
             block = block,
         )
     }

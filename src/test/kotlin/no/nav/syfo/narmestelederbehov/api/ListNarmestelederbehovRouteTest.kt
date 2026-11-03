@@ -210,7 +210,7 @@ private class ListRouteFixture(
     }
 
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {
-        testRouteApplication(routes = { apiV1 { registerListNarmestelederbehovApi(useCase, texas) } }) {
+        testRouteApplication(texasHttpClient = texas, routes = { apiV1 { registerListNarmestelederbehovApi(useCase) } }) {
             client = createJsonClient()
             block()
         }

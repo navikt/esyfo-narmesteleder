@@ -315,7 +315,7 @@ private class FakePutBehovRepository : FulfillNarmestelederbehovRepository {
 
 private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture) -> Unit) {
     val fixture = PutFixture()
-    testRouteApplication(routes = { apiV1 { registerFulfillNarmestelederbehovApi(fixture.useCase, fixture.texas) } }) {
+    testRouteApplication(texasHttpClient = fixture.texas, routes = { apiV1 { registerFulfillNarmestelederbehovApi(fixture.useCase) } }) {
         client = createJsonClient()
         block(fixture)
     }

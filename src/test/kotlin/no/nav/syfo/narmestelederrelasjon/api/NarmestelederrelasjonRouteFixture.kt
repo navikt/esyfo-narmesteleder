@@ -65,7 +65,8 @@ internal class NarmestelederrelasjonRouteFixture {
     )
 
     fun withTestApplication(test: suspend ApplicationTestBuilder.() -> Unit) = testRouteApplication(
-        routes = { internalApiV1 { registerNarmestelederrelasjonApi(getNarmestelederrelasjon, revokeNarmestelederrelasjon, texasHttpClient) } },
+        texasHttpClient = texasHttpClient,
+        routes = { internalApiV1 { registerNarmestelederrelasjonApi(getNarmestelederrelasjon, revokeNarmestelederrelasjon) } },
         block = test,
     )
 

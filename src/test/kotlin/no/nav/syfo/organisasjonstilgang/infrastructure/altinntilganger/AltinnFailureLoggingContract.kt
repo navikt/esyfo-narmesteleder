@@ -129,7 +129,7 @@ internal fun FunSpec.altinnFailureLoggingContract(
                                 organizationAccess = AltinnOrganizationAccess(service, FakeAltinnAuthorizationClient(), FakeEregClient()),
                                 authClient = mockk<TexasHttpClient>().also { it.stubTokenX(pid = IDENT) },
                             )
-                            testRouteApplication(routes = { apiV1 { routes(upstream) } }) {
+                            testRouteApplication(texasHttpClient = upstream.authClient, routes = { apiV1 { routes(upstream) } }) {
                                 val response = client.get("$API_V1_PATH$path") { bearerAuth(userToken) }
                                 response.status shouldBe HttpStatusCode.InternalServerError
                                 val body = jacksonObjectMapper().readTree(response.bodyAsText())

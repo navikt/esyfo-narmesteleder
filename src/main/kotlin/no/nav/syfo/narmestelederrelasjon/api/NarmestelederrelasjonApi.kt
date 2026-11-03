@@ -28,7 +28,6 @@ import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.Principal
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.observability.logger
 import java.util.UUID
 
@@ -40,14 +39,11 @@ const val NARMESTELEDERRELASJON_API_PATH = "$INTERNAL_API_V1_PATH$NARMESTELEDERR
 fun Route.registerNarmestelederrelasjonApi(
     getNarmestelederrelasjon: GetNarmestelederrelasjonUseCase,
     revokeNarmestelederrelasjon: RevokeNarmestelederrelasjonUseCase,
-    texasHttpClient: TexasHttpClient,
 ) {
     route(NARMESTELEDERRELASJON_RELATIVE_PATH) {
         // Ktor shares the {id} node with GET; authentication must be installed on the DELETE method node.
         method(HttpMethod.Delete) {
-            install(MaskinportenAndTokenXTokenAuthPlugin) {
-                client = texasHttpClient
-            }
+            install(MaskinportenAndTokenXTokenAuthPlugin)
             handle {
                 val principal = call.getMyPrincipal()
                 val id = call.getUUIDFromPathVariable(name = "id")
@@ -73,9 +69,7 @@ fun Route.registerNarmestelederrelasjonApi(
             }
         }
         method(HttpMethod.Get) {
-            install(MaskinportenAndTokenXTokenAuthPlugin) {
-                client = texasHttpClient
-            }
+            install(MaskinportenAndTokenXTokenAuthPlugin)
 
             handle {
                 call.response.header(HttpHeaders.CacheControl, "no-store")

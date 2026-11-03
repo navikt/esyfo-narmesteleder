@@ -11,6 +11,6 @@ class AccessibleOrganizationsAltinnFailureLoggingTest :
             path = "/access/organizations",
             capabilityLoggers = listOf(ListAccessibleOrganizationsUseCase::class.java.name),
         ) { upstream ->
-            registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(upstream.tilganger), upstream.authClient)
+            registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(upstream.tilganger))
         }
     })

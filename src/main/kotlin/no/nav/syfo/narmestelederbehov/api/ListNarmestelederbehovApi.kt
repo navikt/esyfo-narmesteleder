@@ -9,7 +9,6 @@ import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
-import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
 const val NARMESTELEDERBEHOV_PATH = "/linemanager/requirement"
 
@@ -18,13 +17,10 @@ fun narmestelederbehovApiUrl(publicIngressUrl: String): String = "$publicIngress
 
 fun Route.registerListNarmestelederbehovApi(
     listNarmestelederbehov: ListNarmestelederbehovUseCase,
-    texasHttpClient: TexasHttpClient,
 ) {
     route(NARMESTELEDERBEHOV_PATH) {
         method(HttpMethod.Get) {
-            install(MaskinportenAndTokenXTokenAuthPlugin) {
-                client = texasHttpClient
-            }
+            install(MaskinportenAndTokenXTokenAuthPlugin)
             handle {
                 val query = call.toListNarmestelederbehovQuery()
                 val response = listNarmestelederbehov.execute(query)

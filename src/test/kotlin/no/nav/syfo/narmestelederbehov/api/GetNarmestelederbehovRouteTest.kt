@@ -149,7 +149,8 @@ private class GetFixture(
 
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {
         testRouteApplication(
-            routes = { apiV1 { registerGetNarmestelederbehovApi(getNarmestelederbehov = useCase, texasHttpClient = texas) } },
+            texasHttpClient = texas,
+            routes = { apiV1 { registerGetNarmestelederbehovApi(getNarmestelederbehov = useCase) } },
         ) {
             client = createJsonClient()
             block()

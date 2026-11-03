@@ -8,11 +8,13 @@ import no.nav.syfo.platform.observability.logger
 private val VALID_ISSUERS = listOf(JwtIssuer.TOKEN_X)
 private val logger = logger("no.nav.syfo.platform.auth.texas.TokenXTokenAuthPlugin")
 
+private const val PLUGIN_NAME = "TokenXTokenAuthPlugin"
+
 val TokenXTokenAuthPlugin = createRouteScopedPlugin(
-    name = "TokenXTokenAuthPlugin",
+    name = PLUGIN_NAME,
     createConfiguration = ::TexasAuthPluginConfiguration,
 ) {
-    val client = pluginConfig.client.requireConfigured("TokenXTokenAuthPlugin")
+    val client = application.resolveTexasHttpClient(pluginConfig.client, PLUGIN_NAME)
 
     onCall { call ->
         val (issuer, bearerToken) = call.requireIssuedBearerToken(VALID_ISSUERS)
@@ -23,5 +25,5 @@ val TokenXTokenAuthPlugin = createRouteScopedPlugin(
             else -> throw ApiErrorException.UnauthorizedException("Unsupported token issuer")
         }
     }
-    logger.info("TexasTokenXAuthPlugin installed")
+    logger.info("$PLUGIN_NAME installed")
 }

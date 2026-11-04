@@ -3,9 +3,8 @@ package no.nav.syfo.platform.api
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationModulesLoaded
 import io.ktor.server.application.pluginOrNull
-import io.ktor.server.auth.AuthenticateProvidersKey
-import io.ktor.server.auth.AuthenticationRouteSelector
 import io.ktor.server.auth.AuthenticationStrategy
+import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RouteSelector
 import io.ktor.server.routing.RouteSelectorEvaluation
@@ -15,11 +14,20 @@ import io.ktor.server.routing.application
 import io.ktor.server.routing.getAllRoutes
 import io.ktor.server.routing.route
 import io.ktor.util.AttributeKey
-import io.ktor.utils.io.InternalAPI
 
 fun Route.apiV1(build: Route.() -> Unit): Route = authenticatedApiRoute(API_V1_PATH, build)
 
 fun Route.internalApiV1(build: Route.() -> Unit): Route = authenticatedApiRoute(INTERNAL_API_V1_PATH, build)
+
+/**
+ * Requires a principal from one of [providers] and marks the route for the startup guard.
+ * Use this instead of Ktor's `authenticate`, which the guard rejects.
+ */
+internal fun Route.authenticateRequired(vararg providers: String, build: Route.() -> Unit): Route = authenticate(
+    *providers,
+    strategy = AuthenticationStrategy.FirstSuccessful,
+    build = build,
+).apply { attributes.put(REQUIRED_AUTHENTICATION, Unit) }
 
 /** Marks routes that are intentionally reachable without authentication, such as probes and API documentation. */
 fun Route.publicRoutes(build: Route.() -> Unit): Route = createChild(PublicRouteSelector).apply(build)
@@ -37,6 +45,7 @@ private object PublicRouteSelector : RouteSelector() {
     override fun toString(): String = "(public)"
 }
 
+private val REQUIRED_AUTHENTICATION = AttributeKey<Unit>("RequiredAuthentication")
 private val AUTHENTICATED_API_ROUTE = AttributeKey<Unit>("AuthenticatedApiRoute")
 private val AUTHENTICATION_GUARD_INSTALLED = AttributeKey<Unit>("RouteAuthenticationGuardInstalled")
 
@@ -60,6 +69,5 @@ private fun Application.requireAuthenticatedRoutes() {
 private fun List<Route>.isPublic(): Boolean = any { it.selector === PublicRouteSelector } &&
     none { it.attributes.contains(AUTHENTICATED_API_ROUTE) }
 
-@OptIn(InternalAPI::class)
-private fun List<Route>.requireAuthentication(): Boolean = any { it.selector is AuthenticationRouteSelector } &&
-    none { it.attributes.getOrNull(AuthenticateProvidersKey)?.strategy == AuthenticationStrategy.Optional }
+// Ktor merges nested authenticate blocks, so an optional block inside a required one stays required (pinned by ApiRoutesTest).
+private fun List<Route>.requireAuthentication(): Boolean = any { it.attributes.contains(REQUIRED_AUTHENTICATION) }

@@ -10,11 +10,10 @@ import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.AuthenticationConfig
 import io.ktor.server.auth.AuthenticationContext
 import io.ktor.server.auth.AuthenticationFailedCause
-import io.ktor.server.auth.AuthenticationStrategy
-import io.ktor.server.auth.authenticate
 import io.ktor.server.request.authorization
 import io.ktor.server.routing.Route
 import no.nav.syfo.platform.api.ApiErrorException
+import no.nav.syfo.platform.api.authenticateRequired
 import no.nav.syfo.platform.auth.JwtIssuer
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import org.koin.ktor.ext.getKoin
@@ -44,16 +43,15 @@ internal fun Application.installTexasAuthentication(
     }
 }
 
-fun Route.authenticateTokenX(build: Route.() -> Unit): Route = authenticate(TOKEN_X_AUTH_PROVIDER, build = build)
+fun Route.authenticateTokenX(build: Route.() -> Unit): Route = authenticateRequired(TOKEN_X_AUTH_PROVIDER, build = build)
 
-fun Route.authenticateMaskinportenOrTokenX(build: Route.() -> Unit): Route = authenticate(
+fun Route.authenticateMaskinportenOrTokenX(build: Route.() -> Unit): Route = authenticateRequired(
     MASKINPORTEN_AUTH_PROVIDER,
     TOKEN_X_AUTH_PROVIDER,
-    strategy = AuthenticationStrategy.FirstSuccessful,
     build = build,
 )
 
-fun Route.authenticateAzureAd(build: Route.() -> Unit): Route = authenticate(AZURE_AD_AUTH_PROVIDER, build = build)
+fun Route.authenticateAzureAd(build: Route.() -> Unit): Route = authenticateRequired(AZURE_AD_AUTH_PROVIDER, build = build)
 
 private fun AuthenticationConfig.texasTokenX(client: TexasHttpClient) {
     provider(TOKEN_X_AUTH_PROVIDER) {

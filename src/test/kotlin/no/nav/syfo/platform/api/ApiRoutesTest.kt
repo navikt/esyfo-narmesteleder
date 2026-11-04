@@ -10,8 +10,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
+import io.ktor.server.auth.AuthenticationFailedCause
 import io.ktor.server.auth.UserIdPrincipal
 import io.ktor.server.auth.authenticate
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
@@ -28,8 +30,8 @@ class ApiRoutesTest :
                 testApplication {
                     application {
                         installTestAuthentication()
-                        routing { prefixRoute { authenticate(TEST_PROVIDER) { get("/first") { call.respondText("first") } } } }
-                        routing { prefixRoute { authenticate(TEST_PROVIDER) { get("/second") { call.respondText("second") } } } }
+                        routing { prefixRoute { authenticateRequired(TEST_PROVIDER) { get("/first") { call.respondText("first") } } } }
+                        routing { prefixRoute { authenticateRequired(TEST_PROVIDER) { get("/second") { call.respondText("second") } } } }
                     }
 
                     client.get("$prefix/first").bodyAsText() shouldBe "first"
@@ -42,7 +44,7 @@ class ApiRoutesTest :
                     testApplication {
                         application {
                             installTestAuthentication()
-                            routing { prefixRoute { authenticate(TEST_PROVIDER) { get("/protected") { call.respondText("ok") } } } }
+                            routing { prefixRoute { authenticateRequired(TEST_PROVIDER) { get("/protected") { call.respondText("ok") } } } }
                             routing { prefixRoute { get("/open") { call.respondText("open") } } }
                         }
                         startApplication()
@@ -66,26 +68,45 @@ class ApiRoutesTest :
                 exception.message shouldContain "/public"
             }
 
-            test("startup fails when a route under $prefix has optional authentication") {
-                val exception = shouldThrow<IllegalStateException> {
-                    testApplication {
-                        application {
-                            installTestAuthentication()
-                            routing {
-                                prefixRoute {
-                                    authenticate(TEST_PROVIDER) {
-                                        authenticate(TEST_PROVIDER, optional = true) {
-                                            get("/optional") { call.respondText("optional") }
+            listOf(false, true).forEach { optional ->
+                test("startup fails when a route under $prefix uses Ktor authenticate directly with optional=$optional") {
+                    val exception = shouldThrow<IllegalStateException> {
+                        testApplication {
+                            application {
+                                installTestAuthentication()
+                                routing {
+                                    prefixRoute {
+                                        authenticate(TEST_PROVIDER, optional = optional) {
+                                            get("/raw") { call.respondText("raw") }
                                         }
                                     }
                                 }
                             }
+                            startApplication()
                         }
-                        startApplication()
                     }
-                }
 
-                exception.message shouldContain "/optional"
+                    exception.message shouldContain "/raw"
+                }
+            }
+
+            test("optional authentication nested under required authentication under $prefix still rejects anonymous calls") {
+                testApplication {
+                    application {
+                        installTestAuthentication()
+                        routing {
+                            prefixRoute {
+                                authenticateRequired(REJECTING_PROVIDER) {
+                                    authenticate(REJECTING_PROVIDER, optional = true) {
+                                        get("/nested") { call.respondText("nested") }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    client.get("$prefix/nested").status shouldBe HttpStatusCode.Unauthorized
+                }
             }
         }
 
@@ -124,7 +145,7 @@ class ApiRoutesTest :
                 application {
                     installTestAuthentication()
                     requireAuthenticatedRoutesOnStartup()
-                    routing { authenticate(TEST_PROVIDER) { get("/other") { call.respondText("other") } } }
+                    routing { authenticateRequired(TEST_PROVIDER) { get("/other") { call.respondText("other") } } }
                 }
 
                 client.get("/other").status shouldBe HttpStatusCode.OK
@@ -133,11 +154,20 @@ class ApiRoutesTest :
     })
 
 private const val TEST_PROVIDER = "test"
+private const val REJECTING_PROVIDER = "rejecting"
 
 private fun Application.installTestAuthentication() {
     install(Authentication) {
         provider(TEST_PROVIDER) {
             authenticate { context -> context.principal(UserIdPrincipal("test")) }
+        }
+        provider(REJECTING_PROVIDER) {
+            authenticate { context ->
+                context.challenge(REJECTING_PROVIDER, AuthenticationFailedCause.NoCredentials) { challenge, call ->
+                    call.respond(HttpStatusCode.Unauthorized)
+                    challenge.complete()
+                }
+            }
         }
     }
 }

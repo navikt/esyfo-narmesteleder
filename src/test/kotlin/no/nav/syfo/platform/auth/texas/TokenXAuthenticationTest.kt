@@ -24,9 +24,11 @@ import java.io.IOException
 
 private const val PROTECTED_PATH = "/tokenx-protected"
 private const val TOKEN_X_ISSUER = "https://tokenx.example.com"
+private const val MASKINPORTEN_ISSUER = "https://test.maskinporten.no"
+private const val AZURE_AD_ISSUER = "https://login.microsoftonline.com/tenant/v2.0"
 private const val PID = "11223344556"
 
-class TokenXTokenAuthPluginTest :
+class TokenXAuthenticationTest :
     FunSpec({
         test("authenticates a Level4 TokenX token with pid as the user principal") {
             val texas = mockk<TexasHttpClient>()
@@ -65,6 +67,37 @@ class TokenXTokenAuthPluginTest :
             texas.callProtectedRoute().status shouldBe HttpStatusCode.Forbidden
         }
 
+        test("preserves TokenX 403 when the first authentication provider does not match the issuer") {
+            val texas = mockk<TexasHttpClient>()
+            texas.stubTokenX(pid = PID, acr = "Level3")
+
+            texas.callProtectedRoute(useEitherProvider = true).status shouldBe HttpStatusCode.Forbidden
+        }
+
+        test("authenticates a Maskinporten token with the first provider") {
+            val texas = mockk<TexasHttpClient>()
+            texas.stubMaskinportenSystemUser()
+
+            texas.callProtectedRoute(MASKINPORTEN_ISSUER, useEitherProvider = true).status shouldBe HttpStatusCode.OK
+        }
+
+        test("authenticates a TokenX token with the second provider") {
+            val texas = mockk<TexasHttpClient>()
+            texas.stubTokenX(pid = PID)
+
+            val response = texas.callProtectedRoute(useEitherProvider = true)
+
+            response.status shouldBe HttpStatusCode.OK
+            response.bodyAsText() shouldBe PID
+        }
+
+        test("responds 401 without introspection for an Azure AD token on the dual-provider route") {
+            val texas = mockk<TexasHttpClient>()
+
+            texas.callProtectedRoute(AZURE_AD_ISSUER, useEitherProvider = true).status shouldBe HttpStatusCode.Unauthorized
+            coVerify(exactly = 0) { texas.introspectToken(any(), any()) }
+        }
+
         test("responds 401 when TokenX has no pid") {
             val texas = mockk<TexasHttpClient>()
             texas.stubTokenX(pid = null)
@@ -72,7 +105,15 @@ class TokenXTokenAuthPluginTest :
             texas.callProtectedRoute().status shouldBe HttpStatusCode.Unauthorized
         }
 
-        listOf("https://test.maskinporten.no", "https://login.microsoftonline.com/tenant/v2.0").forEach { issuer ->
+        test("responds with the API error body when no bearer token is provided") {
+            val texas = mockk<TexasHttpClient>()
+            val response = texas.callProtectedRoute(issuer = null)
+
+            response.status shouldBe HttpStatusCode.Unauthorized
+            jacksonObjectMapper().readTree(response.bodyAsText()).path("message").asText() shouldBe "Invalid token"
+        }
+
+        listOf(MASKINPORTEN_ISSUER, AZURE_AD_ISSUER).forEach { issuer ->
             test("responds 401 for $issuer without introspection") {
                 val texas = mockk<TexasHttpClient>()
 
@@ -82,7 +123,10 @@ class TokenXTokenAuthPluginTest :
         }
     })
 
-private fun TexasHttpClient.callProtectedRoute(issuer: String = TOKEN_X_ISSUER): HttpResponse {
+private fun TexasHttpClient.callProtectedRoute(
+    issuer: String? = TOKEN_X_ISSUER,
+    useEitherProvider: Boolean = false,
+): HttpResponse {
     val texas = this
     lateinit var response: HttpResponse
     testRouteApplication(
@@ -90,14 +134,21 @@ private fun TexasHttpClient.callProtectedRoute(issuer: String = TOKEN_X_ISSUER):
         routes = {
             internalApiV1 {
                 route(PROTECTED_PATH) {
-                    install(TokenXTokenAuthPlugin)
-                    get { call.respondText(call.getMyPrincipal().ident) }
+                    if (useEitherProvider) {
+                        authenticateMaskinportenOrTokenX {
+                            get { call.respondText(call.getMyPrincipal().ident) }
+                        }
+                    } else {
+                        authenticateTokenX {
+                            get { call.respondText(call.getMyPrincipal().ident) }
+                        }
+                    }
                 }
             }
         },
     ) {
         response = client.get("$INTERNAL_API_V1_PATH$PROTECTED_PATH") {
-            bearerAuth(createMockToken(PID, issuer = issuer))
+            issuer?.let { bearerAuth(createMockToken(PID, issuer = it)) }
         }
         response.bodyAsText()
     }

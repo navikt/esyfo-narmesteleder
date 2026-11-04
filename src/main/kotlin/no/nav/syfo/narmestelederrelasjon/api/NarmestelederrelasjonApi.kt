@@ -27,7 +27,7 @@ import no.nav.syfo.platform.api.getUUIDFromPathVariable
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.Principal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.observability.logger
 import java.util.UUID
 
@@ -41,63 +41,63 @@ fun Route.registerNarmestelederrelasjonApi(
     revokeNarmestelederrelasjon: RevokeNarmestelederrelasjonUseCase,
 ) {
     route(NARMESTELEDERRELASJON_RELATIVE_PATH) {
-        // Ktor shares the {id} node with GET; authentication must be installed on the DELETE method node.
         method(HttpMethod.Delete) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
-            handle {
-                val principal = call.getMyPrincipal()
-                val id = call.getUUIDFromPathVariable(name = "id")
-                val result = revokeNarmestelederrelasjon.execute(id, principal.toOrganizationAccessSubject())
-                countLinemanagerRevokeById(result)
-                when (result) {
-                    is RevokeNarmestelederrelasjonResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
+            authenticateMaskinportenOrTokenX {
+                handle {
+                    val principal = call.getMyPrincipal()
+                    val id = call.getUUIDFromPathVariable(name = "id")
+                    val result = revokeNarmestelederrelasjon.execute(id, principal.toOrganizationAccessSubject())
+                    countLinemanagerRevokeById(result)
+                    when (result) {
+                        is RevokeNarmestelederrelasjonResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
 
-                    is RevokeNarmestelederrelasjonResult.Revoked -> call.respond(HttpStatusCode.Accepted)
+                        is RevokeNarmestelederrelasjonResult.Revoked -> call.respond(HttpStatusCode.Accepted)
 
-                    RevokeNarmestelederrelasjonResult.AlreadyRevoked -> {
-                        logger.info("Revoke request for an already revoked linemanager relation. {}", call.revokeContext(principal))
-                        call.respond(HttpStatusCode.Accepted)
-                    }
-
-                    is RevokeNarmestelederrelasjonResult.NotFound -> {
-                        if (result.reason == RevokeNarmestelederrelasjonResult.Reason.RELATION_NOT_FOUND) {
-                            logger.info("Revoke request for unknown linemanager relation. {}", call.revokeContext(principal))
+                        RevokeNarmestelederrelasjonResult.AlreadyRevoked -> {
+                            logger.info("Revoke request for an already revoked linemanager relation. {}", call.revokeContext(principal))
+                            call.respond(HttpStatusCode.Accepted)
                         }
-                        throw result.toRevokeNotFoundException()
+
+                        is RevokeNarmestelederrelasjonResult.NotFound -> {
+                            if (result.reason == RevokeNarmestelederrelasjonResult.Reason.RELATION_NOT_FOUND) {
+                                logger.info("Revoke request for unknown linemanager relation. {}", call.revokeContext(principal))
+                            }
+                            throw result.toRevokeNotFoundException()
+                        }
                     }
                 }
             }
         }
         method(HttpMethod.Get) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
-
-            handle {
-                call.response.header(HttpHeaders.CacheControl, "no-store")
-                val id = call.parameters["id"]?.toUuidOrNull()
-                if (id == null) {
-                    countGetNarmestelederrelasjon(
-                        GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.INVALID_ID),
-                    )
-                    throw notFoundException()
-                }
-
-                val result = getNarmestelederrelasjon.execute(
-                    id = id,
-                    accessSubject = call.getMyPrincipal().toOrganizationAccessSubject(),
-                )
-                countGetNarmestelederrelasjon(result)
-
-                when (result) {
-                    is GetNarmestelederrelasjonResult.Found ->
-                        call.respond(
-                            HttpStatusCode.OK,
-                            result.relation.toResponse(result.organizationName),
+            authenticateMaskinportenOrTokenX {
+                handle {
+                    call.response.header(HttpHeaders.CacheControl, "no-store")
+                    val id = call.parameters["id"]?.toUuidOrNull()
+                    if (id == null) {
+                        countGetNarmestelederrelasjon(
+                            GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.INVALID_ID),
                         )
+                        throw notFoundException()
+                    }
 
-                    is GetNarmestelederrelasjonResult.NotFound -> throw notFoundException()
+                    val result = getNarmestelederrelasjon.execute(
+                        id = id,
+                        accessSubject = call.getMyPrincipal().toOrganizationAccessSubject(),
+                    )
+                    countGetNarmestelederrelasjon(result)
 
-                    is GetNarmestelederrelasjonResult.UpstreamUnavailable ->
-                        throw result.failure.toUpstreamUnavailableException()
+                    when (result) {
+                        is GetNarmestelederrelasjonResult.Found ->
+                            call.respond(
+                                HttpStatusCode.OK,
+                                result.relation.toResponse(result.organizationName),
+                            )
+
+                        is GetNarmestelederrelasjonResult.NotFound -> throw notFoundException()
+
+                        is GetNarmestelederrelasjonResult.UpstreamUnavailable ->
+                            throw result.failure.toUpstreamUnavailableException()
+                    }
                 }
             }
         }

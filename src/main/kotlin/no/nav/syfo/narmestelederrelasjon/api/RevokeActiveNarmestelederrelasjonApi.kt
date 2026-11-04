@@ -18,7 +18,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 
 const val REVOKE_ACTIVE_NARMESTELEDERRELASJON_PATH = "/linemanager/revoke"
 
@@ -27,20 +27,21 @@ fun Route.registerRevokeActiveNarmestelederrelasjonApi(
 ) {
     route(REVOKE_ACTIVE_NARMESTELEDERRELASJON_PATH) {
         method(HttpMethod.Post) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
-            handle {
-                val principal = call.getMyPrincipal()
-                val request = call.tryReceive<LinemanagerRevoke>()
-                val result = revoke.execute(
-                    RevokeActiveNarmestelederrelasjonCommand(
-                        accessSubject = principal.toOrganizationAccessSubject(),
-                        employeeIdent = request.employeeIdentificationNumber,
-                        organizationNumber = request.orgNumber,
-                        employeeLastName = request.lastName,
-                    ),
-                )
-                countRevokeActiveNarmestelederrelasjon(result)
-                call.respond(result.toHttpStatusOrThrow())
+            authenticateMaskinportenOrTokenX {
+                handle {
+                    val principal = call.getMyPrincipal()
+                    val request = call.tryReceive<LinemanagerRevoke>()
+                    val result = revoke.execute(
+                        RevokeActiveNarmestelederrelasjonCommand(
+                            accessSubject = principal.toOrganizationAccessSubject(),
+                            employeeIdent = request.employeeIdentificationNumber,
+                            organizationNumber = request.orgNumber,
+                            employeeLastName = request.lastName,
+                        ),
+                    )
+                    countRevokeActiveNarmestelederrelasjon(result)
+                    call.respond(result.toHttpStatusOrThrow())
+                }
             }
         }
     }

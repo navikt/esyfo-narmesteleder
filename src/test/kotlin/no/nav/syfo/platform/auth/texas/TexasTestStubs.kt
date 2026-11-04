@@ -56,7 +56,7 @@ fun TexasHttpClient.stubMaskinportenSystemUser(
 }
 
 /** Texas accepts an Azure AD token from the calling application [azp]. */
-fun TexasHttpClient.stubAzureAd(azp: String) {
+fun TexasHttpClient.stubAzureAd(azp: String?) {
     coEvery { introspectToken(AZURE_AD, any()) } returns TexasIntrospectionResponse(active = true, azp = azp)
 }
 

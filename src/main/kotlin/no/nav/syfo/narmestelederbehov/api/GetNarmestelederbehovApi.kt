@@ -13,7 +13,7 @@ import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.getUUIDFromPathVariable
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 
 const val GET_NARMESTELEDERBEHOV_PATH = "/linemanager/requirement/{id}"
 
@@ -22,23 +22,24 @@ fun Route.registerGetNarmestelederbehovApi(
 ) {
     route(GET_NARMESTELEDERBEHOV_PATH) {
         method(HttpMethod.Get) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
-            handle {
-                val id = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id"))
-                val subject = call.getMyPrincipal().toOrganizationAccessSubject()
-                val response = try {
-                    getNarmestelederbehov.execute(id = id, subject = subject).toLinemanagerRequirementRead()
-                } catch (e: ApiErrorException) {
-                    throw e
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    throw ApiErrorException.InternalServerErrorException(
-                        errorMessage = "Something went wrong while fetching LinemanagerRequirement",
-                        cause = e,
-                    )
+            authenticateMaskinportenOrTokenX {
+                handle {
+                    val id = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id"))
+                    val subject = call.getMyPrincipal().toOrganizationAccessSubject()
+                    val response = try {
+                        getNarmestelederbehov.execute(id = id, subject = subject).toLinemanagerRequirementRead()
+                    } catch (e: ApiErrorException) {
+                        throw e
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        throw ApiErrorException.InternalServerErrorException(
+                            errorMessage = "Something went wrong while fetching LinemanagerRequirement",
+                            cause = e,
+                        )
+                    }
+                    call.respond(HttpStatusCode.OK, response)
                 }
-                call.respond(HttpStatusCode.OK, response)
             }
         }
     }

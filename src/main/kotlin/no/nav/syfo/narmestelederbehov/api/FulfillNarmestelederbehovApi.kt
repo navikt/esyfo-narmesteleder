@@ -13,25 +13,26 @@ import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.getUUIDFromPathVariable
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 
 fun Route.registerFulfillNarmestelederbehovApi(
     fulfillNarmestelederbehov: FulfillNarmestelederbehovUseCase,
 ) {
     route("$NARMESTELEDERBEHOV_PATH/{id}") {
         method(HttpMethod.Put) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
-            handle {
-                val principal = call.getMyPrincipal()
-                fulfillNarmestelederbehov.execute(
-                    FulfillNarmestelederbehovCommand(
-                        behovId = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id")),
-                        manager = call.tryReceive<Manager>().toManagerContactInput(),
-                        accessSubject = principal.toOrganizationAccessSubject(),
-                    ),
-                ).throwIfRejected()
-                principal.countFulfilledRequirement()
-                call.respond(HttpStatusCode.Accepted)
+            authenticateMaskinportenOrTokenX {
+                handle {
+                    val principal = call.getMyPrincipal()
+                    fulfillNarmestelederbehov.execute(
+                        FulfillNarmestelederbehovCommand(
+                            behovId = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id")),
+                            manager = call.tryReceive<Manager>().toManagerContactInput(),
+                            accessSubject = principal.toOrganizationAccessSubject(),
+                        ),
+                    ).throwIfRejected()
+                    principal.countFulfilledRequirement()
+                    call.respond(HttpStatusCode.Accepted)
+                }
             }
         }
     }

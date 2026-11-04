@@ -16,7 +16,7 @@ import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 
 const val LINEMANAGER_STATISTICS_API_PATH = "/linemanager/statistics"
 
@@ -24,20 +24,20 @@ fun Route.registerLinemanagerStatisticsApi(
     getNarmestelederstatistikk: GetNarmestelederstatistikkUseCase,
 ) {
     route(LINEMANAGER_STATISTICS_API_PATH) {
-        install(MaskinportenAndTokenXTokenAuthPlugin)
+        authenticateMaskinportenOrTokenX {
+            get {
+                val organizationNumber = call.requiredOrganizationNumberQueryParameter("orgNumber")
+                val principal = call.getMyPrincipal()
+                when (val result = getNarmestelederstatistikk.execute(organizationNumber, principal.toOrganizationAccessSubject())) {
+                    is GetNarmestelederstatistikkResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
 
-        get {
-            val organizationNumber = call.requiredOrganizationNumberQueryParameter("orgNumber")
-            val principal = call.getMyPrincipal()
-            when (val result = getNarmestelederstatistikk.execute(organizationNumber, principal.toOrganizationAccessSubject())) {
-                is GetNarmestelederstatistikkResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
+                    is GetNarmestelederstatistikkResult.Found -> {
+                        countLinemanagerStatistics(principal)
+                        call.respond(HttpStatusCode.OK, result.statistikk.toResponse())
+                    }
 
-                is GetNarmestelederstatistikkResult.Found -> {
-                    countLinemanagerStatistics(principal)
-                    call.respond(HttpStatusCode.OK, result.statistikk.toResponse())
+                    is GetNarmestelederstatistikkResult.AccessDenied -> throw result.reason.toForbiddenException(result.organizationNumber)
                 }
-
-                is GetNarmestelederstatistikkResult.AccessDenied -> throw result.reason.toForbiddenException(result.organizationNumber)
             }
         }
     }

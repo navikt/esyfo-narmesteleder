@@ -13,7 +13,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 
 const val ACCESSIBLE_ORGANIZATIONS_API_PATH = "/access/organizations"
 
@@ -31,23 +31,23 @@ fun Route.registerAccessibleOrganizationsApi(
     listAccessibleOrganizations: ListAccessibleOrganizationsUseCase,
 ) {
     route(ACCESSIBLE_ORGANIZATIONS_API_PATH) {
-        install(MaskinportenAndTokenXTokenAuthPlugin)
+        authenticateMaskinportenOrTokenX {
+            get {
+                val principal = call.getMyPrincipal()
+                if (principal !is UserPrincipal) {
+                    throw ApiErrorException.ForbiddenException(
+                        errorMessage = "Only user principals can access accessible organizations endpoint",
+                        type = ErrorType.AUTHORIZATION_ERROR,
+                    )
+                }
+                when (val result = listAccessibleOrganizations.execute(principal.toPersonnelManager())) {
+                    is ListAccessibleOrganizationsResult.Listed -> call.respond(
+                        HttpStatusCode.OK,
+                        AccessibleOrganizationsResponse(organizations = result.organizations.map { it.toResponse() }),
+                    )
 
-        get {
-            val principal = call.getMyPrincipal()
-            if (principal !is UserPrincipal) {
-                throw ApiErrorException.ForbiddenException(
-                    errorMessage = "Only user principals can access accessible organizations endpoint",
-                    type = ErrorType.AUTHORIZATION_ERROR,
-                )
-            }
-            when (val result = listAccessibleOrganizations.execute(principal.toPersonnelManager())) {
-                is ListAccessibleOrganizationsResult.Listed -> call.respond(
-                    HttpStatusCode.OK,
-                    AccessibleOrganizationsResponse(organizations = result.organizations.map { it.toResponse() }),
-                )
-
-                is ListAccessibleOrganizationsResult.Unavailable -> throw result.failure.toUpstreamUnavailableException()
+                    is ListAccessibleOrganizationsResult.Unavailable -> throw result.failure.toUpstreamUnavailableException()
+                }
             }
         }
     }

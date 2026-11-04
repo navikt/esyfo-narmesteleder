@@ -2,7 +2,6 @@ package no.nav.syfo.platform.auth.texas
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.auth.authentication
 import io.ktor.server.response.respondNullable
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.auth.JwtIssuer
@@ -40,7 +39,7 @@ private fun ApplicationCall.logRejection(reason: TokenRejectionReason, acr: Stri
 internal suspend fun ApplicationCall.authenticateTokenX(
     client: TexasHttpClient,
     bearerToken: String,
-) {
+): UserPrincipal? {
     val issuer = JwtIssuer.TOKEN_X.value
         ?: throw ApiErrorException.UnauthorizedException("Missing TokenX issuer value")
     val introspectionResponse = introspectActiveToken(client, issuer, bearerToken)
@@ -48,14 +47,14 @@ internal suspend fun ApplicationCall.authenticateTokenX(
     if (!introspectionResponse.acr.equals("Level4", ignoreCase = true)) {
         logRejection(TokenRejectionReason.LEVEL_INSUFFICIENT, introspectionResponse.acr.logAcr())
         respondNullable(HttpStatusCode.Forbidden)
-        return
+        return null
     }
 
     if (introspectionResponse.pid == null) {
         logRejection(TokenRejectionReason.PERSON_CLAIM_MISSING)
         respondNullable(HttpStatusCode.Unauthorized)
-        return
+        return null
     }
 
-    authentication.principal(UserPrincipal(introspectionResponse.pid, bearerToken))
+    return UserPrincipal(introspectionResponse.pid, bearerToken)
 }

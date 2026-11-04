@@ -21,7 +21,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import java.util.Locale
 
 const val SUBMIT_NARMESTELEDERRELASJON_PATH = "/linemanager"
@@ -31,26 +31,27 @@ fun Route.registerSubmitNarmestelederrelasjonApi(
 ) {
     route(SUBMIT_NARMESTELEDERRELASJON_PATH) {
         method(HttpMethod.Post) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
-            handle {
-                val principal = call.getMyPrincipal()
-                val request = call.tryReceive<Linemanager>()
-                val result = submit.execute(
-                    SubmitNarmestelederrelasjonCommand(
-                        employeeIdent = request.employeeIdentificationNumber,
-                        employeeLastName = request.lastName,
-                        organizationNumber = request.orgNumber,
-                        manager = ManagerContactInput(
-                            personIdent = request.manager.nationalIdentificationNumber,
-                            lastName = request.manager.lastName,
-                            email = request.manager.email,
-                            mobile = request.manager.mobile,
+            authenticateMaskinportenOrTokenX {
+                handle {
+                    val principal = call.getMyPrincipal()
+                    val request = call.tryReceive<Linemanager>()
+                    val result = submit.execute(
+                        SubmitNarmestelederrelasjonCommand(
+                            employeeIdent = request.employeeIdentificationNumber,
+                            employeeLastName = request.lastName,
+                            organizationNumber = request.orgNumber,
+                            manager = ManagerContactInput(
+                                personIdent = request.manager.nationalIdentificationNumber,
+                                lastName = request.manager.lastName,
+                                email = request.manager.email,
+                                mobile = request.manager.mobile,
+                            ),
+                            accessSubject = principal.toOrganizationAccessSubject(),
                         ),
-                        accessSubject = principal.toOrganizationAccessSubject(),
-                    ),
-                )
-                countSubmittedNarmestelederrelasjon(result.throwIfRejected().source)
-                call.respond(HttpStatusCode.Accepted)
+                    )
+                    countSubmittedNarmestelederrelasjon(result.throwIfRejected().source)
+                    call.respond(HttpStatusCode.Accepted)
+                }
             }
         }
     }

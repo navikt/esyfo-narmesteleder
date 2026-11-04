@@ -33,7 +33,6 @@ class NarmestelederrelasjonModuleTest :
             val settings = NarmestelederrelasjonSettings(
                 employmentCheckObserveSourceEnabled = false,
                 employmentCheckRevokeEnabled = false,
-                lineManagerLookupPreAuthorizedApps = setOf("syfo-budstikka"),
             )
             val externalDependencies = module {
                 single { ApplicationState() }
@@ -51,7 +50,7 @@ class NarmestelederrelasjonModuleTest :
 
             testApplication {
                 application {
-                    platformModule(listOf(externalDependencies))
+                    platformModule(listOf(externalDependencies), setOf("test-caller"))
                     narmestelederrelasjonModule(settings)
                 }
 

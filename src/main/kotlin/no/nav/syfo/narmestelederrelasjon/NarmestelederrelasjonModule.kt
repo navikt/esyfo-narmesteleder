@@ -37,7 +37,6 @@ fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonSetti
         internalApiV1 {
             registerLineManagerLookupApi(
                 lookupActiveNarmesteleder = lookupActiveNarmesteleder,
-                preAuthorizedApps = settings.lineManagerLookupPreAuthorizedApps,
             )
             registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = searchActiveNarmestelederrelasjoner)
             registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = listActiveNarmesteledereForEmployee)

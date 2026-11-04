@@ -129,10 +129,10 @@ private fun withLookupApi(
             internalApiV1 {
                 registerLineManagerLookupApi(
                     lookupActiveNarmesteleder = lookupActiveNarmesteleder,
-                    preAuthorizedApps = setOf(CALLING_APP),
                 )
             }
         },
+        azurePreAuthorizedApps = setOf(CALLING_APP),
     ) {
         client = createJsonClient()
         test()

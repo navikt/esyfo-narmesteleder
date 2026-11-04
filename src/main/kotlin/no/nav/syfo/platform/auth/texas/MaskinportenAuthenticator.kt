@@ -1,7 +1,6 @@
 package no.nav.syfo.platform.auth.texas
 
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.auth.authentication
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.auth.JwtIssuer
 import no.nav.syfo.platform.auth.SystemPrincipal
@@ -10,10 +9,12 @@ import no.nav.syfo.platform.auth.texas.client.getSystemUserId
 import no.nav.syfo.platform.auth.texas.client.getSystemUserOrganization
 import java.util.UUID
 
+const val MASKINPORTEN_NL_SCOPE = "nav:syfo/narmesteleder/lps"
+
 internal suspend fun ApplicationCall.authenticateMaskinporten(
     client: TexasHttpClient,
     bearerToken: String,
-) {
+): SystemPrincipal {
     val issuer = JwtIssuer.MASKINPORTEN.value
         ?: throw ApiErrorException.UnauthorizedException("Missing Maskinporten issuer value")
     val introspectionResponse = introspectActiveToken(client, issuer, bearerToken)
@@ -33,13 +34,11 @@ internal suspend fun ApplicationCall.authenticateMaskinporten(
         throw ApiErrorException.BadRequestException("Invalid system user id in token claims")
     }
 
-    authentication.principal(
-        SystemPrincipal(
-            ident = systemUserOrganization,
-            token = bearerToken,
-            systemOwner = introspectionResponse.consumer.ID,
-            systemUserId = systemUserId,
-        ),
+    return SystemPrincipal(
+        ident = systemUserOrganization,
+        token = bearerToken,
+        systemOwner = introspectionResponse.consumer.ID,
+        systemUserId = systemUserId,
     )
 }
 

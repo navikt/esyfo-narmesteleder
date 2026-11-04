@@ -15,7 +15,7 @@ import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.TokenXTokenAuthPlugin
+import no.nav.syfo.platform.auth.texas.authenticateTokenX
 
 const val EMPLOYEE_LINEMANAGER_API_PATH = "/employee/linemanager"
 
@@ -25,26 +25,26 @@ fun Route.registerEmployeeLinemanagerApi(
     listActiveNarmesteledereForEmployee: ListActiveNarmesteledereForEmployeeUseCase,
 ) {
     route(EMPLOYEE_LINEMANAGER_API_PATH) {
-        install(TokenXTokenAuthPlugin)
-
-        get {
-            val principal = call.getMyPrincipal()
-            if (principal !is UserPrincipal) {
-                throw ApiErrorException.ForbiddenException(
-                    errorMessage = "Forbidden",
-                    type = ErrorType.AUTHORIZATION_ERROR,
-                )
-            }
-            // The employee identity is derived solely from the authenticated TokenX user's `pid`.
-            // Altinn validation is not required because callers can retrieve only their own relationships.
-            val employee = runCatching { PersonalIdentificationNumber(principal.ident) }
-                .getOrElse {
-                    throw ApiErrorException.UnauthorizedException("Invalid token subject")
+        authenticateTokenX {
+            get {
+                val principal = call.getMyPrincipal()
+                if (principal !is UserPrincipal) {
+                    throw ApiErrorException.ForbiddenException(
+                        errorMessage = "Forbidden",
+                        type = ErrorType.AUTHORIZATION_ERROR,
+                    )
                 }
-            val orgNumber = call.getOptionalOrganizationNumberQueryParameter()
-            val narmesteledere = listActiveNarmesteledereForEmployee.execute(employee, orgNumber)
-            countEmployeeLinemanager(filtered = orgNumber != null)
-            call.respond(HttpStatusCode.OK, narmesteledere.toResponse())
+                // The employee identity is derived solely from the authenticated TokenX user's `pid`.
+                // Altinn validation is not required because callers can retrieve only their own relationships.
+                val employee = runCatching { PersonalIdentificationNumber(principal.ident) }
+                    .getOrElse {
+                        throw ApiErrorException.UnauthorizedException("Invalid token subject")
+                    }
+                val orgNumber = call.getOptionalOrganizationNumberQueryParameter()
+                val narmesteledere = listActiveNarmesteledereForEmployee.execute(employee, orgNumber)
+                countEmployeeLinemanager(filtered = orgNumber != null)
+                call.respond(HttpStatusCode.OK, narmesteledere.toResponse())
+            }
         }
     }
 }

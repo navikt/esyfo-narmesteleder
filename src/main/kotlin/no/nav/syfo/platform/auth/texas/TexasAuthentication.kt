@@ -83,26 +83,19 @@ private fun AuthenticationConfig.texasAzureAd(
     provider(AZURE_AD_AUTH_PROVIDER) {
         authenticate { context ->
             context.authenticateForIssuer(JwtIssuer.AZURE_AD, AZURE_AD_AUTH_PROVIDER) { token ->
-                val introspectionResponse = context.call.introspectActiveToken(
-                    client,
-                    TokenRejectionProvider.AZURE_AD,
-                    TexasHttpClient.IDENTITY_PROVIDER_AZUREAD,
-                    token,
-                )
-                val clientId = introspectionResponse.azp
-                if (clientId == null || clientId !in preAuthorizedApps) {
-                    context.call.recordTokenRejection(
-                        TokenRejectionProvider.AZURE_AD,
-                        TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED,
-                    )
-                    throw ApiErrorException.ForbiddenException("Application is not authorized")
-                }
-                context.principal(AzureAdPrincipal(clientId))
+                context.principal(context.call.authenticateAzureAd(client, preAuthorizedApps, token))
             }
         }
     }
 }
 
+/**
+ * Hands the bearer token to [authenticate] only when its *unverified* issuer matches this provider.
+ * The unverified issuer only selects the provider; Texas introspection with the provider's identity
+ * provider verifies the token. Otherwise registers a 401 challenge, which Ktor runs only when no
+ * provider set a principal. The `isHandled` check avoids a second response when another provider
+ * has already responded (e.g. TokenX 403 for insufficient level).
+ */
 private suspend fun AuthenticationContext.authenticateForIssuer(
     expectedIssuer: JwtIssuer,
     providerName: String,
@@ -139,8 +132,6 @@ private fun unverifiedJwtIssuer(token: String): JwtIssuer? {
     }
     return JwtIssuer.fromIssuerString(issuer)
 }
-
-private data class AzureAdPrincipal(val clientId: String)
 
 private fun Application.resolveTexasHttpClient(): TexasHttpClient = pluginOrNull(KoinPlugin)?.let { getKoin().getOrNull<TexasHttpClient>() }
     ?: error("Texas authentication installed without TexasHttpClient")

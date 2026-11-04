@@ -8,11 +8,18 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.test.runTest
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
+import no.nav.syfo.narmestelederbehov.application.DialogExpiry
+import no.nav.syfo.narmestelederbehov.application.DialogScanFlow
+import no.nav.syfo.narmestelederbehov.application.DialogScanPosition
+import no.nav.syfo.narmestelederbehov.application.DialogScanProgress
+import no.nav.syfo.narmestelederbehov.application.ExpirableNarmestelederbehovDialog
+import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovDialogsUseCase
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
@@ -24,7 +31,9 @@ import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 
 class ExposedNarmestelederbehovRepositoriesTest :
@@ -48,7 +57,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
                 insertNarmestelederbehov(behovStatus = status, created = now.minusSeconds(600))
             }
 
-            lifecycleRepository.findPendingDialogs(cutoff, 100) shouldBe listOf(oldest, newer).map { row ->
+            lifecycleRepository.findPendingDialogs(null, cutoff, 100) shouldBe listOf(oldest, newer).map { row ->
                 PendingNarmestelederbehovDialog(
                     id = NarmestelederbehovId(row.id),
                     employee = Employee(PersonalIdentificationNumber(row.sykmeldtFnr), OrganizationNumber(row.orgnummer)),
@@ -67,11 +76,11 @@ class ExposedNarmestelederbehovRepositoriesTest :
                 insertNarmestelederbehov(created = cutoff.minusSeconds(seconds.toLong()))
             }
 
-            lifecycleRepository.findPendingDialogs(cutoff, 100).map { it.id.value } shouldBe rows.reversed().take(100).map { it.id }
+            lifecycleRepository.findPendingDialogs(null, cutoff, 100).map { it.id.value } shouldBe rows.reversed().take(100).map { it.id }
         }
 
         test("returns no pending dialogs when the table is empty") {
-            lifecycleRepository.findPendingDialogs(cutoff, 100) shouldBe emptyList()
+            lifecycleRepository.findPendingDialogs(null, cutoff, 100) shouldBe emptyList()
         }
 
         test("fulfilled query requires a dialog and strict age cutoff, orders oldest first and leaves rows unchanged") {
@@ -89,10 +98,13 @@ class ExposedNarmestelederbehovRepositoriesTest :
             (excluded + oldest + newer).forEach { findStoredNarmestelederbehov(it.id) shouldBe it }
         }
 
-        test("expiry query selects only unmarked expired and error dialogs with no age filter, oldest first") {
-            val recent = insertNarmestelederbehov(behovStatus = BehovStatus.ERROR, dialogId = UUID.randomUUID(), created = now)
+        test("expiry query selects only unmarked expired and error dialogs up to the high-water mark, oldest first") {
+            val newest = insertNarmestelederbehov(behovStatus = BehovStatus.ERROR, dialogId = UUID.randomUUID(), created = now.minusSeconds(1))
             val oldest = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID(), created = now.minusSeconds(300))
-            val excluded = listOf(BehovStatus.BEHOV_EXPIRED, BehovStatus.ERROR).flatMap { status ->
+            val excluded = listOf(
+                // Created at the high-water mark itself: not part of this cycle.
+                insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID(), created = now),
+            ) + listOf(BehovStatus.BEHOV_EXPIRED, BehovStatus.ERROR).flatMap { status ->
                 listOf(
                     insertNarmestelederbehov(behovStatus = status, dialogId = UUID.randomUUID(), expiredInDialogporten = now, created = now.minusSeconds(600)),
                     insertNarmestelederbehov(behovStatus = status, created = now.minusSeconds(600)),
@@ -101,8 +113,8 @@ class ExposedNarmestelederbehovRepositoriesTest :
                 insertNarmestelederbehov(behovStatus = status, dialogId = UUID.randomUUID(), created = now.minusSeconds(600))
             }
 
-            lifecycleRepository.findDialogsToExpire() shouldBe listOf(oldest, recent).map { it.dialogReference() }
-            (excluded + oldest + recent).forEach { findStoredNarmestelederbehov(it.id) shouldBe it }
+            lifecycleRepository.findDialogsToExpire(null, now, 100) shouldBe listOf(oldest, newest).map { it.expirableEntry() }
+            (excluded + oldest + newest).forEach { findStoredNarmestelederbehov(it.id) shouldBe it }
         }
 
         listOf(BehovStatus.BEHOV_FULFILLED, BehovStatus.BEHOV_EXPIRED).forEach { status ->
@@ -114,10 +126,98 @@ class ExposedNarmestelederbehovRepositoriesTest :
                 val result = if (status == BehovStatus.BEHOV_FULFILLED) {
                     fulfillmentRepository.findFulfilledDialogs(cutoff)
                 } else {
-                    lifecycleRepository.findDialogsToExpire()
+                    lifecycleRepository.findDialogsToExpire(null, cutoff, 100)
                 }
 
-                result shouldBe rows.reversed().take(100).map { it.dialogReference() }
+                result shouldBe rows.reversed().take(100).map { if (status == BehovStatus.BEHOV_FULFILLED) it.dialogReference() else it.expirableEntry() }
+            }
+        }
+
+        test("more than 100 pending dialogs with equal created values cross batch boundaries in id order") {
+            val sameCreated = now.minusSeconds(600)
+            // Insert with descending ids so the order comes from the keyset, not from insertion order.
+            (205 downTo 1).forEach { n -> insertNarmestelederbehov(id = UUID(0, n.toLong()), created = sameCreated) }
+            val expected = (1..205).map { UUID(0, it.toLong()) }
+
+            val firstPage = lifecycleRepository.findPendingDialogs(null, cutoff, 100)
+            val secondPage = lifecycleRepository.findPendingDialogs(DialogScanPosition(created = sameCreated, id = firstPage.last().id), cutoff, 100)
+            val thirdPage = lifecycleRepository.findPendingDialogs(DialogScanPosition(created = sameCreated, id = secondPage.last().id), cutoff, 100)
+
+            (firstPage + secondPage + thirdPage).map { it.id.value } shouldBe expected
+            lifecycleRepository.findPendingDialogs(DialogScanPosition(created = sameCreated, id = NarmestelederbehovId(expected.last())), cutoff, 100) shouldBe emptyList()
+        }
+
+        test("dialogs to expire with equal created values are paged in id order and stop at the high-water mark") {
+            val sameCreated = now.minusSeconds(600)
+            (3 downTo 1).forEach { n -> insertNarmestelederbehov(id = UUID(0, n.toLong()), behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID(), created = sameCreated) }
+            val tooNew = insertNarmestelederbehov(id = UUID(0, 4), behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID(), created = now)
+
+            val firstPage = lifecycleRepository.findDialogsToExpire(null, now, 2)
+            firstPage.map { it.id.value } shouldBe listOf(UUID(0, 1), UUID(0, 2))
+            lifecycleRepository.findDialogsToExpire(DialogScanPosition(created = sameCreated, id = NarmestelederbehovId(UUID(0, 2))), now, 2).map { it.id.value } shouldBe listOf(UUID(0, 3))
+            lifecycleRepository.findDialogsToExpire(DialogScanPosition(created = sameCreated, id = NarmestelederbehovId(UUID(0, 3))), now, 2) shouldBe emptyList()
+            findStoredNarmestelederbehov(tooNew.id) shouldBe tooNew
+        }
+
+        test("a behov committed behind the scan position is skipped until the position is cleared") {
+            val atPosition = insertNarmestelederbehov(id = UUID(0, 2), created = now.minusSeconds(600))
+            // Inserted after the scan reached the position but created earlier, like a late commit.
+            val behind = insertNarmestelederbehov(id = UUID(0, 1), created = now.minusSeconds(900))
+            val position = DialogScanPosition(created = atPosition.created, id = NarmestelederbehovId(atPosition.id))
+
+            lifecycleRepository.findPendingDialogs(position, cutoff, 100) shouldBe emptyList()
+            lifecycleRepository.findPendingDialogs(null, cutoff, 100).map { it.id.value } shouldBe listOf(behind.id, atPosition.id)
+        }
+
+        test("a fresh expiry use case resumes from PostgreSQL progress after a capped run") {
+            runTest {
+                val count = 1001
+                val created = now.minusSeconds(600)
+                val dialogIds = (1..count).map { UUID(1, it.toLong()) }
+                dialogIds.forEachIndexed { index, dialogId ->
+                    insertNarmestelederbehov(
+                        id = UUID(0, index.toLong() + 1),
+                        behovStatus = BehovStatus.BEHOV_EXPIRED,
+                        dialogId = dialogId,
+                        created = created,
+                    )
+                }
+                val progressRepository = ExposedDialogScanProgressRepository(TestDB.exposedDatabase)
+                val firstProcessCalls = mutableListOf<UUID>()
+                val firstProcess = ExpireNarmestelederbehovDialogsUseCase(
+                    repository = lifecycleRepository,
+                    progressRepository = progressRepository,
+                    dialog = { dialogId, _ ->
+                        firstProcessCalls += dialogId
+                        DialogExpiry.Expired
+                    },
+                    clock = Clock.fixed(now, ZoneOffset.UTC),
+                )
+
+                firstProcess.execute()
+
+                firstProcessCalls shouldBe dialogIds.take(1000)
+                progressRepository.find(DialogScanFlow.EXPIRE) shouldBe DialogScanProgress(
+                    position = DialogScanPosition(created, NarmestelederbehovId(UUID(0, 1000))),
+                    highWaterMark = now,
+                )
+
+                val restartedProcessCalls = mutableListOf<UUID>()
+                val restartedProcess = ExpireNarmestelederbehovDialogsUseCase(
+                    repository = lifecycleRepository,
+                    progressRepository = progressRepository,
+                    dialog = { dialogId, _ ->
+                        restartedProcessCalls += dialogId
+                        DialogExpiry.Expired
+                    },
+                    clock = Clock.fixed(now.plusSeconds(60), ZoneOffset.UTC),
+                )
+
+                restartedProcess.execute()
+
+                restartedProcessCalls shouldBe dialogIds.drop(1000)
+                progressRepository.find(DialogScanFlow.EXPIRE).shouldBeNull()
+                lifecycleRepository.findDialogsToExpire(null, now.plusSeconds(60), 100) shouldBe emptyList()
             }
         }
 
@@ -131,7 +231,7 @@ class ExposedNarmestelederbehovRepositoriesTest :
                 avbruttNarmestelederId = UUID.randomUUID(),
                 created = now.minusSeconds(300),
             )
-            val other = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID())
+            val other = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID(), created = now.minusSeconds(300))
             val expirationTime = now.plusSeconds(600)
 
             lifecycleRepository.markDialogExpired(NarmestelederbehovId(row.id), expirationTime)
@@ -140,14 +240,14 @@ class ExposedNarmestelederbehovRepositoriesTest :
             stored shouldBe row.copy(expiredInDialogporten = expirationTime, updated = stored.updated)
             stored.updated.isAfter(row.updated) shouldBe true
             findStoredNarmestelederbehov(other.id) shouldBe other
-            lifecycleRepository.findDialogsToExpire() shouldBe listOf(other.dialogReference())
+            lifecycleRepository.findDialogsToExpire(null, now, 100) shouldBe listOf(other.expirableEntry())
         }
 
         test("queries return empty lists when no dialogs exist and marking a missing row is harmless") {
             fulfillmentRepository.findFulfilledDialogs(cutoff) shouldBe emptyList()
-            lifecycleRepository.findDialogsToExpire() shouldBe emptyList()
+            lifecycleRepository.findDialogsToExpire(null, now, 100) shouldBe emptyList()
             lifecycleRepository.markDialogExpired(NarmestelederbehovId(UUID.randomUUID()), now)
-            lifecycleRepository.findDialogsToExpire() shouldBe emptyList()
+            lifecycleRepository.findDialogsToExpire(null, now, 100) shouldBe emptyList()
         }
 
         test("reads every response field without changing the row") {
@@ -387,3 +487,5 @@ class ExposedNarmestelederbehovRepositoriesTest :
     })
 
 private fun StoredNarmestelederbehov.dialogReference() = NarmestelederbehovDialogReference(NarmestelederbehovId(id), requireNotNull(dialogId))
+
+private fun StoredNarmestelederbehov.expirableEntry() = ExpirableNarmestelederbehovDialog(NarmestelederbehovId(id), requireNotNull(dialogId), created)

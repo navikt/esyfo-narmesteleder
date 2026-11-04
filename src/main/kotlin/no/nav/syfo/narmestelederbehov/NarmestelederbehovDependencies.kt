@@ -7,6 +7,7 @@ import no.nav.syfo.narmestelederbehov.application.CompleteFulfilledNarmesteleder
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.DialogScanProgressRepository
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.application.EmployerMainOrganizationLookup
@@ -37,6 +38,7 @@ import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbe
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedDialogScanProgressRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovFulfillmentRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovLifecycleRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovReadRepository
@@ -75,6 +77,7 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
         ExpireNarmestelederbehovRepository::class,
         ExpireNarmestelederbehovDialogsRepository::class,
     )
+    single<DialogScanProgressRepository> { ExposedDialogScanProgressRepository(get()) }
     single<NarmestelederbehovDialogExpiry> { DialogportenNarmestelederbehovDialogExpiry(get()) }
     single {
         CompleteFulfilledNarmestelederbehovDialogsUseCase(
@@ -83,7 +86,7 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
             clock = get(),
         )
     }
-    single { ExpireNarmestelederbehovDialogsUseCase(repository = get(), dialog = get(), clock = get()) }
+    single { ExpireNarmestelederbehovDialogsUseCase(repository = get(), progressRepository = get(), dialog = get(), clock = get()) }
     single {
         UpdateDialogTask(
             completeFulfilledDialogs = get(),
@@ -94,6 +97,7 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
     single {
         SendPendingNarmestelederbehovDialogsUseCase(
             repository = get(),
+            progressRepository = get(),
             personLookup = get(),
             dialog = get(),
             clock = get(),

@@ -41,3 +41,16 @@ internal val dialogCreatedForClosedBehov = applicationEvent(
     message = "Behov left BEHOV_CREATED while its dialog was created; the behov was not updated",
     fields = dialogEventFields,
 )
+
+internal val dialogScanRunFinished = applicationEvent<DialogScanSummary>(
+    name = "dialog_scan_run_finished",
+    level = Level.INFO,
+    message = "Dialog scan run finished",
+    fields = mapOf(
+        "flow" to { it.flow.name },
+        "batches" to { it.batches },
+        "attempted" to { it.attempted },
+        "failed" to { it.failed },
+        "capped" to { it.capped },
+    ),
+)

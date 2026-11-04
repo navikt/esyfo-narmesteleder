@@ -15,6 +15,7 @@ import no.nav.syfo.platform.observability.ProductionLogs
 class ExpireNarmestelederbehovDialogsUseCaseTest :
     FunSpec({
         val logs = extension(ProductionLogs(ExpireNarmestelederbehovDialogsUseCase::class.java, Level.WARN))
+        val scanLogs = extension(ProductionLogs(BoundedDialogScan::class.java, Level.INFO))
         val mapper = jacksonObjectMapper()
 
         test("an empty batch has no dialog calls or marks") {
@@ -29,7 +30,7 @@ class ExpireNarmestelederbehovDialogsUseCaseTest :
 
         test("expires and marks each behov with now plus ten minutes in query order") {
             runTest {
-                val batch = listOf(dialogReference(), dialogReference(2))
+                val batch = listOf(expirableDialog(), expirableDialog(2))
                 val fixture = ExpireDialogsFixture(batch)
 
                 fixture.useCase.execute()
@@ -43,8 +44,8 @@ class ExpireNarmestelederbehovDialogsUseCaseTest :
         listOf("unavailable", "expire exception", "mark exception").forEach { failureAt ->
             test("$failureAt logs EXPIRE safely, leaves the failed behov unmarked and continues") {
                 runTest {
-                    val first = dialogReference()
-                    val second = dialogReference(2)
+                    val first = expirableDialog()
+                    val second = expirableDialog(2)
                     val fixture = ExpireDialogsFixture(listOf(first, second))
                     fixture.expire = { id ->
                         when {
@@ -85,32 +86,46 @@ class ExpireNarmestelederbehovDialogsUseCaseTest :
         listOf(99, 100, 101, 200).forEach { count ->
             test("refetches after full batches for $count behov and stops on a smaller batch") {
                 runTest {
-                    val remaining = (1..count).map { dialogReference(it) }.toMutableList()
-                    val expected = remaining.toList()
-                    val fixture = ExpireDialogsFixture()
-                    fixture.repository.findExpired = { remaining.take(100).also { remaining.subList(0, it.size).clear() } }
+                    val batch = (1..count).map { expirableDialog(it) }
+                    val fixture = ExpireDialogsFixture(batch)
 
                     fixture.useCase.execute()
 
-                    fixture.calls.map { it.first } shouldBe expected.map { it.dialogId }
-                    fixture.repository.expired.map { it.first } shouldBe expected.map { it.id }
+                    fixture.calls.map { it.first } shouldBe batch.map { it.dialogId }
+                    fixture.repository.expired.map { it.first } shouldBe batch.map { it.id }
                     fixture.repository.expiryQueries shouldBe count / 100 + 1
-                    testScheduler.currentTime shouldBe (count / 100 + 1) * 100L
+                    testScheduler.currentTime shouldBe (count / 100) * 100L
                 }
             }
         }
 
-        test("persistent full batches stop at exactly 1000 batches and retain the inter-batch delay") {
+        test("caps a run at 1,000 failing behov, continues at behov 1,001 and retries from the oldest in the next cycle") {
             runTest {
-                val batch = (1..100).map { dialogReference(it) }
-                val fixture = ExpireDialogsFixture(batch)
-                // Deliberately keep returning a full batch, even after successful marks.
-                fixture.useCase.execute()
+                val fixture = ExpireDialogsFixture((1..1001).map { expirableDialog(it) })
+                fixture.expire = { DialogExpiry.Unavailable(updateFailure()) }
 
-                fixture.repository.expiryQueries shouldBe 1000
-                fixture.calls.size shouldBe 100_000
-                fixture.repository.expired.size shouldBe 100_000
-                testScheduler.currentTime shouldBe 100_000L
+                scanLogs.capture().use { capture ->
+                    fixture.useCase.execute()
+                    // Nine pauses between ten batches.
+                    testScheduler.currentTime shouldBe 900L
+                    fixture.progress.state shouldBe mapOf(
+                        DialogScanFlow.EXPIRE to DialogScanProgress(expirableDialog(1000).position, highWaterMark = UPDATE_NOW),
+                    )
+
+                    fixture.useCase.execute()
+                    fixture.progress.state shouldBe emptyMap()
+
+                    // Dialogporten is available again when the next cycle starts.
+                    fixture.expire = { DialogExpiry.Expired }
+                    fixture.useCase.execute()
+
+                    capture.scanSummaries() shouldBe listOf(
+                        DialogScanSummary(DialogScanFlow.EXPIRE, batches = 10, attempted = 1000, failed = 1000, capped = true),
+                        DialogScanSummary(DialogScanFlow.EXPIRE, batches = 1, attempted = 1, failed = 1, capped = false),
+                        DialogScanSummary(DialogScanFlow.EXPIRE, batches = 10, attempted = 1000, failed = 0, capped = true),
+                    )
+                }
+                fixture.calls.map { it.first } shouldBe ((1..1001) + (1..1000)).map { expirableDialog(it).dialogId }
             }
         }
 
@@ -118,9 +133,9 @@ class ExpireNarmestelederbehovDialogsUseCaseTest :
             test("cancellation at $step is rethrown without logging or processing the next behov") {
                 runTest {
                     val cancellation = CancellationException("cancel test")
-                    val fixture = ExpireDialogsFixture(listOf(dialogReference(), dialogReference(2)))
+                    val fixture = ExpireDialogsFixture(listOf(expirableDialog(), expirableDialog(2)))
                     when (step) {
-                        "fetch" -> fixture.repository.findExpired = { throw cancellation }
+                        "fetch" -> fixture.repository.findExpired = { _, _, _ -> throw cancellation }
                         "expire" -> fixture.expire = { throw cancellation }
                         "mark" -> fixture.repository.markExpired = { throw cancellation }
                     }

@@ -25,6 +25,7 @@ import java.util.UUID
 class SendPendingNarmestelederbehovDialogsUseCaseTest :
     FunSpec({
         val logs = extension(ProductionLogs(SendPendingNarmestelederbehovDialogsUseCase::class.java, Level.WARN))
+        val scanLogs = extension(ProductionLogs(BoundedDialogScan::class.java, Level.INFO))
         val mapper = jacksonObjectMapper()
 
         test("no pending behov means no person lookup, dialog creation or marking") {
@@ -151,22 +152,30 @@ class SendPendingNarmestelederbehovDialogsUseCaseTest :
             }
         }
 
-        test("preserves legacy refetch of the same failed behov after a full batch until cancellation") {
-            val batch = (1..100).map { pendingDialog(it) }
-            val fixture = SendDialogsFixture(batch)
+        test("caps a run at 1,000 failing behov, continues at behov 1,001 and retries from the oldest in the next cycle") {
+            val fixture = SendDialogsFixture((1..1001).map { pendingDialog(it) })
             fixture.create = { NarmestelederbehovDialogCreationResult.Unavailable(sendFailure("dialogporten", UpstreamFailureStage.RESPONSE, 503)) }
-            fixture.fetch = { query ->
-                if (query == 3) throw CancellationException("stop test")
-                batch
-            }
 
-            logs.capture().use {
-                shouldThrow<CancellationException> { fixture.useCase.execute() }
-            }
+            scanLogs.capture().use { capture ->
+                fixture.useCase.execute()
+                fixture.progress.state shouldBe mapOf(
+                    DialogScanFlow.SEND to DialogScanProgress(pendingDialog(1000).position, highWaterMark = SEND_NOW.minusSeconds(10)),
+                )
 
-            fixture.dialogs.map { it.first } shouldBe (batch + batch).map { it.id }
-            fixture.marked shouldBe emptyList()
-            fixture.queries.size shouldBe 3
+                fixture.useCase.execute()
+                fixture.progress.state shouldBe emptyMap()
+
+                // Dialogporten is available again when the next cycle starts.
+                fixture.create = { NarmestelederbehovDialogCreationResult.Created(SEND_DIALOG_ID) }
+                fixture.useCase.execute()
+
+                capture.scanSummaries() shouldBe listOf(
+                    DialogScanSummary(DialogScanFlow.SEND, batches = 10, attempted = 1000, failed = 1000, capped = true),
+                    DialogScanSummary(DialogScanFlow.SEND, batches = 1, attempted = 1, failed = 1, capped = false),
+                    DialogScanSummary(DialogScanFlow.SEND, batches = 10, attempted = 1000, failed = 0, capped = true),
+                )
+            }
+            fixture.dialogs.map { it.first } shouldBe ((1..1001) + (1..1000)).map { pendingDialog(it).id }
         }
 
         test("unexpected person exceptions enrich without a name and do not stop the batch") {
@@ -215,7 +224,7 @@ class SendPendingNarmestelederbehovDialogsUseCaseTest :
                 val cancellation = CancellationException("cancel test")
                 val fixture = SendDialogsFixture(listOf(pendingDialog(), pendingDialog(2)))
                 when (step) {
-                    "fetch" -> fixture.fetch = { throw cancellation }
+                    "fetch" -> fixture.fetch = { _, _, _ -> throw cancellation }
                     "person" -> fixture.lookup = { throw cancellation }
                     "create" -> fixture.create = { throw cancellation }
                     "mark" -> fixture.mark = { throw cancellation }
@@ -252,6 +261,7 @@ private fun sendFailure(upstream: String, stage: UpstreamFailureStage, status: I
 
 internal class SendDialogsFixture(batch: List<PendingNarmestelederbehovDialog>) {
     private val pending = batch.toMutableList()
+    val progress = RecordingDialogScanProgressRepository()
     val queries = mutableListOf<Pair<Instant, Int>>()
     val effects = mutableListOf<String>()
     val dialogs = mutableListOf<Triple<NarmestelederbehovId, Employee, EmployeePerson?>>()
@@ -260,11 +270,12 @@ internal class SendDialogsFixture(batch: List<PendingNarmestelederbehovDialog>) 
     var create: suspend (NarmestelederbehovId) -> NarmestelederbehovDialogCreationResult = { NarmestelederbehovDialogCreationResult.Created(SEND_DIALOG_ID) }
     var markResult: MarkDialogCreatedResult = MarkDialogCreatedResult.Marked
     var mark: suspend () -> MarkDialogCreatedResult = { markResult }
-    var fetch: suspend (Int) -> List<PendingNarmestelederbehovDialog> = { pending.take(100) }
+    var fetch: DialogScanFetch<PendingNarmestelederbehovDialog> =
+        { after, highWaterMark, limit -> scanPage(pending, after, highWaterMark, limit) }
     private val repository = object : SendPendingNarmestelederbehovDialogsRepository {
-        override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> {
-            queries += createdBefore to limit
-            return fetch(queries.size)
+        override suspend fun findPendingDialogs(after: DialogScanPosition?, highWaterMark: Instant, limit: Int): List<PendingNarmestelederbehovDialog> {
+            queries += highWaterMark to limit
+            return fetch(after, highWaterMark, limit)
         }
 
         override suspend fun markDialogCreated(id: NarmestelederbehovId, dialogId: UUID, name: BehovPersonName?): MarkDialogCreatedResult {
@@ -277,6 +288,7 @@ internal class SendDialogsFixture(batch: List<PendingNarmestelederbehovDialog>) 
     }
     val useCase = SendPendingNarmestelederbehovDialogsUseCase(
         repository = repository,
+        progressRepository = progress,
         personLookup = {
             effects += "person"
             lookup()

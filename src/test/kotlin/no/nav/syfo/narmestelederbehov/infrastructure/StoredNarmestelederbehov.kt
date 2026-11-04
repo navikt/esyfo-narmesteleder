@@ -33,6 +33,7 @@ internal data class StoredNarmestelederbehov(
 )
 
 internal fun insertNarmestelederbehov(
+    id: UUID = UUID.randomUUID(),
     sykmeldtFnr: String = faker.numerify("###########"),
     orgnummer: String = faker.numerify("#########"),
     hovedenhetOrgnummer: String = faker.numerify("#########"),
@@ -47,7 +48,6 @@ internal fun insertNarmestelederbehov(
     created: Instant = Instant.now(),
     expiredInDialogporten: Instant? = null,
 ): StoredNarmestelederbehov = transaction(TestDB.exposedDatabase) {
-    val id = UUID.randomUUID()
     val createdAt = OffsetDateTime.ofInstant(created, ZoneOffset.UTC)
     NarmestelederbehovTable.insert {
         it[NarmestelederbehovTable.id] = id

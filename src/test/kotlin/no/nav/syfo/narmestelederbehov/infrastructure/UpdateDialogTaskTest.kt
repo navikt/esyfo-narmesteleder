@@ -33,7 +33,7 @@ class UpdateDialogTaskTest :
                     calls += "complete"
                     emptyList()
                 }
-                expire.repository.findExpired = {
+                expire.repository.findExpired = { _, _, _ ->
                     calls += "expire"
                     emptyList()
                 }

@@ -9,8 +9,11 @@ import java.time.Instant
 import java.util.UUID
 
 interface SendPendingNarmestelederbehovDialogsRepository {
-    /** BEHOV_CREATED strictly older than [createdBefore], oldest first. */
-    suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog>
+    /**
+     * BEHOV_CREATED behov created strictly before [highWaterMark] and after [after] in (created, id)
+     * order, oldest first, up to [limit].
+     */
+    suspend fun findPendingDialogs(after: DialogScanPosition?, highWaterMark: Instant, limit: Int): List<PendingNarmestelederbehovDialog>
 
     /** Saves the dialog and employee name only while the behov is BEHOV_CREATED. */
     suspend fun markDialogCreated(
@@ -22,35 +25,46 @@ interface SendPendingNarmestelederbehovDialogsRepository {
 
 class SendPendingNarmestelederbehovDialogsUseCase(
     private val repository: SendPendingNarmestelederbehovDialogsRepository,
+    progressRepository: DialogScanProgressRepository,
     private val personLookup: EmployeePersonLookup,
     private val dialog: NarmestelederbehovDialogCreation,
     private val clock: Clock,
 ) {
+    private val scan = BoundedDialogScan(
+        flow = DialogScanFlow.SEND,
+        progressRepository = progressRepository,
+        batchSize = BATCH_SIZE,
+        maxBatches = MAX_BATCHES,
+    )
+
     suspend fun execute() {
-        var batchNum = 0
-        do {
-            val batch = repository.findPendingDialogs(clock.instant().minusSeconds(10), BATCH_SIZE)
-            logger.info("Batch: ${++batchNum}: Found ${batch.size} behov to send to dialogporten. First created at ${batch.firstOrNull()?.created ?: "N/A"}")
-            for (behov in batch) {
-                send(behov)
-            }
-            // Preserve legacy refetching, including failed behov, until #711 is addressed.
-        } while (batch.size >= BATCH_SIZE)
+        // A new cycle covers the behov that are already old enough; younger behov wait for the next cycle.
+        scan.runOnce(
+            newCycleHighWaterMark = clock.instant().minusSeconds(ELIGIBILITY_AGE_SECONDS),
+            fetch = repository::findPendingDialogs,
+            attempt = ::send,
+        )
     }
 
-    private suspend fun send(behov: PendingNarmestelederbehovDialog) {
+    private suspend fun send(behov: PendingNarmestelederbehovDialog): DialogAttemptOutcome {
         val details = DialogEventDetails(behov.id.value, behov.dialogId)
-        try {
+        return try {
             val person = findPerson(behov, details)
             when (val created = dialog.create(behov.id, behov.employee, person)) {
-                is NarmestelederbehovDialogCreationResult.Created -> markDialogCreated(behov, created.dialogId, person)
-                is NarmestelederbehovDialogCreationResult.Unavailable ->
+                is NarmestelederbehovDialogCreationResult.Created -> {
+                    markDialogCreated(behov, created.dialogId, person)
+                    DialogAttemptOutcome.SUCCEEDED
+                }
+                is NarmestelederbehovDialogCreationResult.Unavailable -> {
                     logger.logEvent(dialogportenDialogFailed, details.copy(action = DialogAction.CREATE), upstreamFailure = created.failure)
+                    DialogAttemptOutcome.FAILED
+                }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logger.logEvent(dialogportenDialogFailed, details.copy(action = DialogAction.CREATE), cause = e)
+            DialogAttemptOutcome.FAILED
         }
     }
 
@@ -79,6 +93,8 @@ class SendPendingNarmestelederbehovDialogsUseCase(
 
     private companion object {
         const val BATCH_SIZE = 100
+        const val MAX_BATCHES = 10
+        const val ELIGIBILITY_AGE_SECONDS: Long = 10
         val logger = applicationLogger(SendPendingNarmestelederbehovDialogsUseCase::class.java)
     }
 }

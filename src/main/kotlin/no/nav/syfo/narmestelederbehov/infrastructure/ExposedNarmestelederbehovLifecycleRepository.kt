@@ -5,10 +5,11 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovRepository
+import no.nav.syfo.narmestelederbehov.application.DialogScanPosition
+import no.nav.syfo.narmestelederbehov.application.ExpirableNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovDialogsRepository
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogReference
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.PendingNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.SendPendingNarmestelederbehovDialogsRepository
@@ -17,16 +18,22 @@ import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.database.ioTransaction
 import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.andIfNotNull
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
@@ -43,41 +50,72 @@ class ExposedNarmestelederbehovLifecycleRepository(
     ExpireNarmestelederbehovDialogsRepository {
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
 
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> = database.ioTransaction {
+    override suspend fun findPendingDialogs(after: DialogScanPosition?, highWaterMark: Instant, limit: Int): List<PendingNarmestelederbehovDialog> = database.ioTransaction {
         NarmestelederbehovTable.select(
             NarmestelederbehovTable.id,
             NarmestelederbehovTable.sykmeldtFnr,
             NarmestelederbehovTable.orgnummer,
             NarmestelederbehovTable.created,
             NarmestelederbehovTable.dialogId,
-        ).where {
-            (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED) and
-                (NarmestelederbehovTable.created less createdBefore.atOffset(ZoneOffset.UTC))
-        }.orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-            .limit(limit)
-            .map { row ->
-                PendingNarmestelederbehovDialog(
-                    id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
-                    employee = Employee(
-                        PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]),
-                        OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
-                    ),
-                    created = row[NarmestelederbehovTable.created].toInstant(),
-                    dialogId = row[NarmestelederbehovTable.dialogId],
+        ).scanPage(
+            eligible = NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED,
+            after = after,
+            highWaterMark = highWaterMark,
+            limit = limit,
+        ).map { row ->
+            PendingNarmestelederbehovDialog(
+                id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
+                employee = Employee(
+                    PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]),
+                    OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
+                ),
+                created = row[NarmestelederbehovTable.created].toInstant(),
+                dialogId = row[NarmestelederbehovTable.dialogId],
+            )
+        }
+    }
+
+    override suspend fun findDialogsToExpire(after: DialogScanPosition?, highWaterMark: Instant, limit: Int): List<ExpirableNarmestelederbehovDialog> = database.ioTransaction {
+        NarmestelederbehovTable.select(NarmestelederbehovTable.id, NarmestelederbehovTable.dialogId, NarmestelederbehovTable.created)
+            .scanPage(
+                eligible = (NarmestelederbehovTable.behovStatus inList listOf(BehovStatus.BEHOV_EXPIRED, BehovStatus.ERROR)) and
+                    NarmestelederbehovTable.expiredInDialogporten.isNull() and
+                    NarmestelederbehovTable.dialogId.isNotNull(),
+                after = after,
+                highWaterMark = highWaterMark,
+                limit = limit,
+            )
+            .map {
+                ExpirableNarmestelederbehovDialog(
+                    id = NarmestelederbehovId(it[NarmestelederbehovTable.id]),
+                    dialogId = requireNotNull(it[NarmestelederbehovTable.dialogId]),
+                    created = it[NarmestelederbehovTable.created].toInstant(),
                 )
             }
     }
 
-    override suspend fun findDialogsToExpire(): List<NarmestelederbehovDialogReference> = database.ioTransaction {
-        NarmestelederbehovTable.select(NarmestelederbehovTable.id, NarmestelederbehovTable.dialogId)
-            .where {
-                (NarmestelederbehovTable.behovStatus inList listOf(BehovStatus.BEHOV_EXPIRED, BehovStatus.ERROR)) and
-                    NarmestelederbehovTable.expiredInDialogporten.isNull() and
-                    NarmestelederbehovTable.dialogId.isNotNull()
-            }
-            .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-            .limit(100)
-            .map { NarmestelederbehovDialogReference(NarmestelederbehovId(it[NarmestelederbehovTable.id]), requireNotNull(it[NarmestelederbehovTable.dialogId])) }
+    /**
+     * Narrows the query to one page of a scan cycle: the first [limit] behov matching [eligible] that were
+     * created before [highWaterMark] and come strictly after [after] in (created, id) order.
+     */
+    private fun Query.scanPage(eligible: Op<Boolean>, after: DialogScanPosition?, highWaterMark: Instant, limit: Int): Query {
+        val beforeHighWaterMark = NarmestelederbehovTable.created less highWaterMark.atOffset(ZoneOffset.UTC)
+        return where((eligible and beforeHighWaterMark) andIfNotNull keysetAfter(after))
+            .orderBy(NarmestelederbehovTable.created to SortOrder.ASC, NarmestelederbehovTable.id to SortOrder.ASC)
+            .limit(limit)
+    }
+
+    /** Keyset predicate that continues strictly after [after] in (created, id) order; null means from the start. */
+    private fun keysetAfter(after: DialogScanPosition?): Op<Boolean>? = if (after == null) {
+        null
+    } else {
+        val afterCreated = after.created.atOffset(ZoneOffset.UTC)
+        // Implied by the OR below; repeated as a plain range so PostgreSQL can use it as an index bound on created.
+        (NarmestelederbehovTable.created greaterEq afterCreated) and
+            (
+                (NarmestelederbehovTable.created greater afterCreated) or
+                    ((NarmestelederbehovTable.created eq afterCreated) and (NarmestelederbehovTable.id greater after.id.value))
+                )
     }
 
     override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) {

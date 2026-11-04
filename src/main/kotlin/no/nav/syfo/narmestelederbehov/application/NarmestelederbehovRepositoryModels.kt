@@ -10,12 +10,19 @@ import java.util.UUID
 
 data class NarmestelederbehovDialogReference(val id: NarmestelederbehovId, val dialogId: UUID)
 
+/** A behov with a dialog that still needs an expiry marker. */
+data class ExpirableNarmestelederbehovDialog(
+    override val id: NarmestelederbehovId,
+    val dialogId: UUID,
+    override val created: Instant,
+) : DialogScanEntry
+
 data class PendingNarmestelederbehovDialog(
-    val id: NarmestelederbehovId,
+    override val id: NarmestelederbehovId,
     val employee: Employee,
-    val created: Instant,
+    override val created: Instant,
     val dialogId: UUID?,
-)
+) : DialogScanEntry
 
 data class NewNarmestelederbehov(
     val employee: Employee,

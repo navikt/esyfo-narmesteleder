@@ -18,6 +18,11 @@ Runtime entry points and end-to-end behavior are documented in
 
 ## Target structure
 
+The `person` module is a proposed addition under
+[ADR-0005](adr/ADR-0005-person-eier-lokale-personopplysninger.md), implemented
+incrementally through #602. Its responsibilities still live in
+`narmestelederrelasjon` until those implementation slices land.
+
 ```text
 no.nav.syfo
 ├── bootstrap
@@ -54,10 +59,14 @@ no.nav.syfo
 │   ├── api
 │   ├── application               # shared ports; employee, employmentcheck,
 │   │                             # establish, get, leesah, lookup,
-│   │                             # relationperson, revoke, search, submit
+│   │                             # revoke, search, submit
 │   ├── domain
 │   ├── infrastructure
 │   └── observability
+├── person                        # proposed; ADR-0005 / #602
+│   ├── application
+│   ├── domain
+│   └── infrastructure
 ├── narmestelederstatistikk
 │   ├── api
 │   ├── application
@@ -119,6 +128,11 @@ ADR-0004: an already completed dialog counts as success, a revision conflict
 is re-read once, and a failed completion or status update leaves the behov
 fulfilled so the scheduled job can retry.
 
+The target for #602 is to register referenced people through `person` and
+read their names locally without PDL calls or writes on behov read paths.
+The behov module retains ownership of behov statuses and dialog creation;
+see [`person` (proposed)](#person-proposed).
+
 ### `narmestelederrelasjon`
 
 Owns established and revoked narmesteleder relations:
@@ -159,11 +173,55 @@ Owns established and revoked narmesteleder relations:
 - own the local relation register;
 - provide lookup and search, including the `HasActiveNarmestelederrelasjon`
   contract for checking active relations in the local register;
-- maintain the relation-owned `RelationPerson` projection.
+- maintain the relation-owned `RelationPerson` projection until its ownership
+  moves to `person` through #602.
 
 `RelationPerson` is the code-level name for person details needed by relation
 lookup and search. It is a local, incomplete projection and not an
-authoritative person registry. The existing `person` table remains unchanged.
+authoritative person registry. Its persistence, enrichment and PDL name-update
+handling currently live in `narmestelederrelasjon`. The proposed extraction
+below does not change relation validation, including its synchronous PDL
+checks, or the current publish-before-Leesah-persistence flow.
+
+### `person` (proposed)
+
+[ADR-0005](adr/ADR-0005-person-eier-lokale-personopplysninger.md) proposes a
+module for local details of people referenced by a narmestelederbehov or
+narmestelederrelasjon, as employees or managers. It is not a general person
+directory or a PDL mirror. PDL remains the source of the details.
+
+The target module owns:
+
+- the `person` table, its schema and all writes;
+- an idempotent registration contract for missing persons, storing name and
+  birth date when the writer already has them;
+- asynchronous enrichment of persons registered without details, including
+  status, attempts and backoff;
+- PDL `NAVN_V1` updates for registered persons;
+- bounded deletion of unreferenced person rows.
+
+Registration and enrichment are separate operations. A writer that already
+holds validated PDL details registers the person with them; otherwise
+registration guarantees a `PENDING` row, not a usable name. See
+[Person registration](#person-registration-proposed) for both paths and the
+atomicity requirement. Enrichment runs independently of Dialogporten.
+`narmestelederbehov` interprets the enrichment outcome and owns its own state
+transitions. Only `SendDialogTask` creates behov dialogs, after a usable name
+is available. `person` never writes behov or relation state.
+
+Consumers may join person details through their own private, read-only table
+definitions rather than importing `person` tables or repositories. This keeps
+write ownership in `person` while retaining an explicit schema dependency.
+The shared PDL client remains in `integration/pdl`, and official identifiers
+remain in `ident`.
+
+A person row is eligible for deletion only when neither `narmeste_leder` nor
+`nl_behov` references the person in either role. Closed or expired behov and
+inactive relations still retain the person. The cleanup adapter uses its own
+read-only definitions of these reference tables, without a code dependency
+back to their owners. Cleanup must coordinate with concurrent registration
+and reference writes; a detached candidate list is not sufficient. It never
+deletes behov or relations or defines their retention periods.
 
 ### `sykmelding`
 
@@ -384,6 +442,9 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
 
 ## Dependency rules
 
+The arrows to `person` are target dependencies from proposed ADR-0005, not
+implemented dependencies yet.
+
 ```text
 sykmelding -> narmestelederbehov -> narmestelederrelasjon
      └──────────────────────────> narmestelederrelasjon
@@ -391,6 +452,9 @@ sykmelding -> narmestelederbehov -> narmestelederrelasjon
 narmestelederbehov -> organisasjonstilgang
 narmestelederrelasjon -> organisasjonstilgang
 narmestelederstatistikk -> organisasjonstilgang
+
+narmestelederbehov -> person
+narmestelederrelasjon -> person
 
 business modules -> ident value types
 business infrastructure -> focused platform mechanisms
@@ -583,6 +647,46 @@ imply a schema, query-semantics or transaction change.
 A database transaction does not include Kafka, Dialogporten or another remote
 system. The use case owns and tests the order between those effects.
 
+### Person registration (proposed)
+
+For #602, adding a person reference to a relation or behov and registering a
+missing person must commit in one PostgreSQL transaction. Database failures
+roll back all local writes in that transaction and propagate to the caller;
+normal registration does not rely on separate commits followed by best-effort
+repair.
+
+The primary path registers the person with details. A writer that has already
+looked up the person in PDL, as API establishment and fulfillment do for
+validation, stores name and birth date as `ENRICHED` in the same transaction
+as the reference. The PDL lookup happens before the transaction, never inside
+it. The stored details must come from a fresh PDL lookup in the same request,
+not from the cache: `NAVN_V1` only updates registered persons, so a name
+change between a cached lookup and registration would never be corrected.
+Today's `PersonLookup` reads through the Valkey cache and returns names only,
+so establishment needs a fresh lookup that also carries the birth date. Once
+the service receives all narmesteleder requests directly instead of through
+team sykmelding's Kafka flow, this is the normal path for new relations.
+
+Only a writer without the details registers a `PENDING` person for
+asynchronous enrichment. After the takeover, that is in practice a behov from
+a sendt sykmelding whose employee is not yet registered. Until then it also
+covers relations from team sykmelding's Leesah flow, and it covers backfill.
+The sendt sykmelding consumer does not call PDL to avoid `PENDING`: it stays
+independent of PDL, and asynchronous enrichment remains the single fallback.
+
+Registration stores details only when the person row is missing. Existing
+details and enrichment state stay untouched, because enrichment and `NAVN_V1`
+own changes to stored details. An idempotent replay must still ensure
+registration when the relation or behov already exists.
+
+The writing repository coordinates the local transaction through a
+`person`-owned application contract, not direct writes to another module's
+table. The implementation must prove shared commit and rollback without
+exposing Exposed/JDBC types in the application contract or opening an
+independently committed registration transaction. Registration itself calls
+neither PDL nor Dialogporten. This does not extend the transaction to external
+effects or change the existing relation publication order.
+
 ## Narmestelederbehov transitions
 
 A small domain object or transition function owns valid status changes. It
@@ -641,9 +745,9 @@ root packages. Do not add large exception lists.
 ## Migration approach
 
 The migration from the legacy `narmesteleder` package is complete (#625). All
-business code lives in the modules above, and shared mechanisms live in
-`platform`. The notes below record where the migrated flows ended up and which
-changes remain separate.
+current business code lives in the implemented modules above, and shared
+mechanisms live in `platform`. The notes below record where the migrated flows
+ended up and which changes remain separate.
 
 `GET /api/v1/access/organizations` now lives in `organisasjonstilgang` as `ListAccessibleOrganizationsUseCase`.
 
@@ -682,3 +786,23 @@ pull requests:
 - JDBC/Exposed DAO migration to Exposed DSL;
 - splitting requirement and Dialogporten state in the database;
 - separate Gradle modules or new deployable services.
+
+### Person ownership (#602, proposed)
+
+ADR-0005 and this guide describe the target, not a completed extraction.
+Introduce the ownership change in small slices, preserving relation reads
+while moving person persistence, registration, enrichment and PDL name
+updates. Existing input transports are not a prerequisite for the new
+registration invariant; it applies to every path that adds a person reference.
+
+Establish atomic registration on new writes before backfilling missing people
+for existing readable behov, including closed behov. Backfill registers them
+as `PENDING` without overwriting existing persons. Keep the legacy `nl_behov`
+name as a read-only fallback until previously readable behov have usable
+names in `person`; an empty pending queue alone does not prove that coverage.
+
+Move behov reads and dialog creation to local person details before removing
+the fallback and legacy name writes. Drop the name columns in a later Flyway
+migration only after no running reader or writer uses them. Enable orphan
+cleanup only once all reference writers and the cleanup path satisfy the
+registration and concurrency guarantees.

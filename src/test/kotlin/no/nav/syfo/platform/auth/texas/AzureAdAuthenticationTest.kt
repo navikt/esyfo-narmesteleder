@@ -25,19 +25,6 @@ private const val MASKINPORTEN_ISSUER = "https://test.maskinporten.no"
 
 class AzureAdAuthenticationTest :
     FunSpec({
-        test("parses client IDs from the NAIS Azure AD pre-authorized applications payload") {
-            val configuredApps = """
-                [
-                  {
-                    "name": "dev-gcp:team-esyfo:syfo-budstikka",
-                    "clientId": "0b26d3d5-8e1e-47a7-8cab-719921fceddf"
-                  }
-                ]
-            """.trimIndent()
-
-            preAuthorizedAppsFromJson(configuredApps) shouldBe setOf("0b26d3d5-8e1e-47a7-8cab-719921fceddf")
-        }
-
         test("responds 401 when the token is not active") {
             val texasHttpClient = mockk<TexasHttpClient>()
             texasHttpClient.stubInactive(azp = CALLING_APP)

@@ -1,5 +1,7 @@
 package no.nav.syfo.platform.auth.texas
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import no.nav.syfo.platform.config.getEnvVar
 
 data class TexasEnvironment(
@@ -27,3 +29,13 @@ data class TexasEnvironment(
         )
     }
 }
+
+internal fun preAuthorizedAppsFromJson(configuredApps: String): Set<String> = jacksonObjectMapper()
+    .readValue<List<AzureAdPreAuthorizedApp>>(configuredApps)
+    .map(AzureAdPreAuthorizedApp::clientId)
+    .toSet()
+
+private data class AzureAdPreAuthorizedApp(
+    val name: String,
+    val clientId: String,
+)

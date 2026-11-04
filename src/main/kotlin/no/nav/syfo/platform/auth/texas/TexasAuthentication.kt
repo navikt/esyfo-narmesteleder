@@ -2,6 +2,7 @@ package no.nav.syfo.platform.auth.texas
 
 import com.auth0.jwt.JWT
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.application.isHandled
 import io.ktor.server.application.pluginOrNull
@@ -11,6 +12,7 @@ import io.ktor.server.auth.AuthenticationContext
 import io.ktor.server.auth.AuthenticationFailedCause
 import io.ktor.server.auth.AuthenticationStrategy
 import io.ktor.server.auth.authenticate
+import io.ktor.server.request.authorization
 import io.ktor.server.routing.Route
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.auth.JwtIssuer
@@ -144,3 +146,9 @@ private data class AzureAdPrincipal(val clientId: String)
 
 private fun Application.resolveTexasHttpClient(): TexasHttpClient = pluginOrNull(KoinPlugin)?.let { getKoin().getOrNull<TexasHttpClient>() }
     ?: error("Texas authentication installed without TexasHttpClient")
+
+private fun ApplicationCall.bearerToken(): String? = request
+    .authorization()
+    ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
+    ?.removePrefix("Bearer ")
+    ?.removePrefix("bearer ")

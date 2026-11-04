@@ -1,6 +1,7 @@
 package no.nav.syfo.platform.auth.texas
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
@@ -39,8 +40,10 @@ class TokenXAuthenticationTest :
 
             val response = texas.callProtectedRoute()
 
-            response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldBe PID
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.OK
+                response.bodyAsText() shouldBe PID
+            }
         }
 
         test("responds 401 for an inactive TokenX token") {
@@ -57,10 +60,12 @@ class TokenXAuthenticationTest :
 
             val response = texas.callProtectedRoute()
 
-            response.status shouldBe HttpStatusCode.InternalServerError
             val body = response.bodyAsText()
-            jacksonObjectMapper().readTree(body).path("message").asText() shouldBe "Internal Server Error"
-            body shouldNotContain failureMessage
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.InternalServerError
+                jacksonObjectMapper().readTree(body).path("message").asText() shouldBe "Internal Server Error"
+                body shouldNotContain failureMessage
+            }
         }
 
         test("responds 403 below Level4") {
@@ -70,9 +75,11 @@ class TokenXAuthenticationTest :
 
             val response = texas.callProtectedRoute()
 
-            response.status shouldBe HttpStatusCode.Forbidden
-            jacksonObjectMapper().readTree(response.bodyAsText()).path("type").asText() shouldBe ErrorType.AUTHENTICATION_ERROR.name
-            tokenRejections(TokenRejectionProvider.TOKEN_X, TokenRejectionReason.LEVEL_INSUFFICIENT) shouldBe before + 1
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.Forbidden
+                jacksonObjectMapper().readTree(response.bodyAsText()).path("type").asText() shouldBe ErrorType.AUTHENTICATION_ERROR.name
+                tokenRejections(TokenRejectionProvider.TOKEN_X, TokenRejectionReason.LEVEL_INSUFFICIENT) shouldBe before + 1
+            }
         }
 
         test("preserves TokenX 403 when the first authentication provider does not match the issuer") {
@@ -99,8 +106,12 @@ class TokenXAuthenticationTest :
                 stub(texas)
                 val before = tokenRejections(TokenRejectionProvider.MASKINPORTEN, reason)
 
-                texas.callProtectedRoute(MASKINPORTEN_ISSUER, useEitherProvider = true).status.value shouldBeIn listOf(400, 401)
-                tokenRejections(TokenRejectionProvider.MASKINPORTEN, reason) shouldBe before + 1
+                val response = texas.callProtectedRoute(MASKINPORTEN_ISSUER, useEitherProvider = true)
+
+                assertSoftly {
+                    response.status.value shouldBeIn listOf(400, 401)
+                    tokenRejections(TokenRejectionProvider.MASKINPORTEN, reason) shouldBe before + 1
+                }
                 coVerify(exactly = 0) { texas.introspectToken(requireNotNull(JwtIssuer.TOKEN_X.value), any()) }
             }
         }
@@ -111,8 +122,10 @@ class TokenXAuthenticationTest :
 
             val response = texas.callProtectedRoute(useEitherProvider = true)
 
-            response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldBe PID
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.OK
+                response.bodyAsText() shouldBe PID
+            }
         }
 
         test("responds 401 without introspection for an Azure AD token on the dual-provider route") {
@@ -128,16 +141,20 @@ class TokenXAuthenticationTest :
 
             val response = texas.callProtectedRoute()
 
-            response.status shouldBe HttpStatusCode.Unauthorized
-            jacksonObjectMapper().readTree(response.bodyAsText()).path("type").asText() shouldBe ErrorType.AUTHORIZATION_ERROR.name
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.Unauthorized
+                jacksonObjectMapper().readTree(response.bodyAsText()).path("type").asText() shouldBe ErrorType.AUTHORIZATION_ERROR.name
+            }
         }
 
         test("responds with the API error body when no bearer token is provided") {
             val texas = mockk<TexasHttpClient>()
             val response = texas.callProtectedRoute(issuer = null)
 
-            response.status shouldBe HttpStatusCode.Unauthorized
-            jacksonObjectMapper().readTree(response.bodyAsText()).path("message").asText() shouldBe "Invalid token"
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.Unauthorized
+                jacksonObjectMapper().readTree(response.bodyAsText()).path("message").asText() shouldBe "Invalid token"
+            }
         }
 
         listOf(MASKINPORTEN_ISSUER, AZURE_AD_ISSUER).forEach { issuer ->

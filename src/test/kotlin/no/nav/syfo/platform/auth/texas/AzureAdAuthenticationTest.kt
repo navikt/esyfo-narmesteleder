@@ -1,6 +1,7 @@
 package no.nav.syfo.platform.auth.texas
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.bearerAuth
@@ -32,8 +33,10 @@ class AzureAdAuthenticationTest :
 
             val response = callProtectedRoute(texasHttpClient)
 
-            response.status shouldBe HttpStatusCode.Unauthorized
-            tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.TOKEN_INACTIVE) shouldBe before + 1
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.Unauthorized
+                tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.TOKEN_INACTIVE) shouldBe before + 1
+            }
         }
 
         test("responds 500 with INTERNAL_SERVER_ERROR when Texas introspection fails") {
@@ -42,8 +45,10 @@ class AzureAdAuthenticationTest :
 
             val response = callProtectedRoute(texasHttpClient)
 
-            response.status shouldBe HttpStatusCode.InternalServerError
-            response.errorType() shouldBe ErrorType.INTERNAL_SERVER_ERROR.name
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.InternalServerError
+                response.errorType() shouldBe ErrorType.INTERNAL_SERVER_ERROR.name
+            }
         }
 
         test("responds 403 when the Azure AD application is not pre-authorized") {
@@ -51,8 +56,12 @@ class AzureAdAuthenticationTest :
             texasHttpClient.stubAzureAd(azp = "unapproved-caller")
             val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED)
 
-            callProtectedRoute(texasHttpClient).status shouldBe HttpStatusCode.Forbidden
-            tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED) shouldBe before + 1
+            val response = callProtectedRoute(texasHttpClient)
+
+            assertSoftly {
+                response.status shouldBe HttpStatusCode.Forbidden
+                tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED) shouldBe before + 1
+            }
         }
 
         test("responds 403 when the Azure AD token has no azp") {

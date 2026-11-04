@@ -1,5 +1,6 @@
 package no.nav.syfo.platform.api
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -34,8 +35,13 @@ class ApiRoutesTest :
                         routing { prefixRoute { authenticateRequired(TEST_PROVIDER) { get("/second") { call.respondText("second") } } } }
                     }
 
-                    client.get("$prefix/first").bodyAsText() shouldBe "first"
-                    client.get("$prefix/second").status shouldBe HttpStatusCode.OK
+                    val first = client.get("$prefix/first").bodyAsText()
+                    val second = client.get("$prefix/second").status
+
+                    assertSoftly {
+                        first shouldBe "first"
+                        second shouldBe HttpStatusCode.OK
+                    }
                 }
             }
 

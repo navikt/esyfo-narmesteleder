@@ -554,6 +554,11 @@ Ktor/Texas authentication only validates credentials and constructs the
 caller principal. It must not hide PDP, Ereg, database or other business calls
 inside a Ktor authorization plugin.
 
+Every rejected token logs a `token_rejected` event with the provider as
+`upstream` and a `reason`, and increments
+`syfo-narmesteleder_token_rejected_total{provider,reason}`. Texas introspection
+failures are server errors, not rejections.
+
 Identifier types validate only their representation. They do not call
 databases or external services.
 

@@ -2,6 +2,7 @@ package no.nav.syfo.platform.auth.texas
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.bearerAuth
@@ -18,6 +19,7 @@ import no.nav.syfo.createMockToken
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.JwtIssuer
 import no.nav.syfo.platform.auth.getMyPrincipal
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import java.io.IOException
@@ -63,8 +65,10 @@ class TokenXAuthenticationTest :
         test("responds 403 below Level4") {
             val texas = mockk<TexasHttpClient>()
             texas.stubTokenX(pid = PID, acr = "Level3")
+            val before = tokenRejections(TokenRejectionProvider.TOKEN_X, TokenRejectionReason.LEVEL_INSUFFICIENT)
 
             texas.callProtectedRoute().status shouldBe HttpStatusCode.Forbidden
+            tokenRejections(TokenRejectionProvider.TOKEN_X, TokenRejectionReason.LEVEL_INSUFFICIENT) shouldBe before + 1
         }
 
         test("preserves TokenX 403 when the first authentication provider does not match the issuer") {
@@ -79,6 +83,22 @@ class TokenXAuthenticationTest :
             texas.stubMaskinportenSystemUser()
 
             texas.callProtectedRoute(MASKINPORTEN_ISSUER, useEitherProvider = true).status shouldBe HttpStatusCode.OK
+        }
+
+        listOf(
+            TokenRejectionReason.CONSUMER_MISSING to { texas: TexasHttpClient -> texas.stubMaskinportenSystemUser(consumer = null) },
+            TokenRejectionReason.SCOPE_INVALID to { texas: TexasHttpClient -> texas.stubMaskinportenSystemUser(scope = "other:scope") },
+            TokenRejectionReason.SYSTEM_USER_ID_INVALID to { texas: TexasHttpClient -> texas.stubMaskinportenSystemUser(systemUserId = "not-a-uuid") },
+        ).forEach { (reason, stub) ->
+            test("records a Maskinporten rejection for $reason without falling back to TokenX") {
+                val texas = mockk<TexasHttpClient>()
+                stub(texas)
+                val before = tokenRejections(TokenRejectionProvider.MASKINPORTEN, reason)
+
+                texas.callProtectedRoute(MASKINPORTEN_ISSUER, useEitherProvider = true).status.value shouldBeIn listOf(400, 401)
+                tokenRejections(TokenRejectionProvider.MASKINPORTEN, reason) shouldBe before + 1
+                coVerify(exactly = 0) { texas.introspectToken(requireNotNull(JwtIssuer.TOKEN_X.value), any()) }
+            }
         }
 
         test("authenticates a TokenX token with the second provider") {

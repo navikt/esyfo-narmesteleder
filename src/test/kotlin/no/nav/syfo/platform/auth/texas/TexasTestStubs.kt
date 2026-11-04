@@ -6,6 +6,7 @@ import no.nav.syfo.platform.auth.texas.client.AuthorizationDetail
 import no.nav.syfo.platform.auth.texas.client.OrganizationId
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.client.TexasIntrospectionResponse
+import no.nav.syfo.platform.observability.METRICS_REGISTRY
 
 val DefaultOrganization = OrganizationId(
     ID = "0192:999777555",
@@ -70,3 +71,9 @@ fun TexasHttpClient.stubInactive(provider: String? = null, azp: String? = null) 
 fun TexasHttpClient.stubIntrospectionFailure(throwable: Throwable, provider: String? = null) {
     coEvery { introspectToken(if (provider == null) any() else eq(provider), any()) } throws throwable
 }
+
+internal fun tokenRejections(provider: TokenRejectionProvider, reason: TokenRejectionReason): Double = METRICS_REGISTRY
+    .find(TOKEN_REJECTED_TOTAL)
+    .tag("provider", provider.providerName)
+    .tag("reason", reason.name.lowercase())
+    .counter()?.count() ?: 0.0

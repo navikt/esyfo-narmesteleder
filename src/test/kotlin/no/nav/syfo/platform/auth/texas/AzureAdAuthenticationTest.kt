@@ -41,10 +41,12 @@ class AzureAdAuthenticationTest :
         test("responds 401 when the token is not active") {
             val texasHttpClient = mockk<TexasHttpClient>()
             texasHttpClient.stubInactive(azp = CALLING_APP)
+            val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.TOKEN_INACTIVE)
 
             val response = callProtectedRoute(texasHttpClient)
 
             response.status shouldBe HttpStatusCode.Unauthorized
+            tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.TOKEN_INACTIVE) shouldBe before + 1
         }
 
         test("responds 500 with INTERNAL_SERVER_ERROR when Texas introspection fails") {
@@ -60,8 +62,10 @@ class AzureAdAuthenticationTest :
         test("responds 403 when the Azure AD application is not pre-authorized") {
             val texasHttpClient = mockk<TexasHttpClient>()
             texasHttpClient.stubAzureAd(azp = "unapproved-caller")
+            val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED)
 
             callProtectedRoute(texasHttpClient).status shouldBe HttpStatusCode.Forbidden
+            tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED) shouldBe before + 1
         }
 
         test("responds 403 when the Azure AD token has no azp") {

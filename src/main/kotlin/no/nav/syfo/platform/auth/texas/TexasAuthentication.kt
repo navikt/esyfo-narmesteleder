@@ -83,13 +83,18 @@ private fun AuthenticationConfig.texasAzureAd(
     provider(AZURE_AD_AUTH_PROVIDER) {
         authenticate { context ->
             context.authenticateForIssuer(JwtIssuer.AZURE_AD, AZURE_AD_AUTH_PROVIDER) { token ->
-                val introspectionResponse = introspectActiveToken(
+                val introspectionResponse = context.call.introspectActiveToken(
                     client,
+                    TokenRejectionProvider.AZURE_AD,
                     TexasHttpClient.IDENTITY_PROVIDER_AZUREAD,
                     token,
                 )
                 val clientId = introspectionResponse.azp
                 if (clientId == null || clientId !in preAuthorizedApps) {
+                    context.call.recordTokenRejection(
+                        TokenRejectionProvider.AZURE_AD,
+                        TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED,
+                    )
                     throw ApiErrorException.ForbiddenException("Application is not authorized")
                 }
                 context.principal(AzureAdPrincipal(clientId))

@@ -3,13 +3,16 @@ package no.nav.syfo.platform.api
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationModulesLoaded
 import io.ktor.server.application.pluginOrNull
+import io.ktor.server.auth.AuthenticateProvidersKey
 import io.ktor.server.auth.AuthenticationRouteSelector
+import io.ktor.server.auth.AuthenticationStrategy
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingRoot
 import io.ktor.server.routing.application
 import io.ktor.server.routing.getAllRoutes
 import io.ktor.server.routing.route
 import io.ktor.util.AttributeKey
+import io.ktor.utils.io.InternalAPI
 
 fun Route.apiV1(build: Route.() -> Unit): Route = authenticatedApiRoute(API_V1_PATH, build)
 
@@ -31,13 +34,17 @@ private fun Application.requireAuthenticatedApiRoutesOnStartup() {
     monitor.subscribe(ApplicationModulesLoaded) { it.requireAuthenticatedApiRoutes() }
 }
 
+// The guard cannot see skipWhen predicates on providers; do not configure skipWhen for Texas providers.
 private fun Application.requireAuthenticatedApiRoutes() {
     val unauthenticated = pluginOrNull(RoutingRoot)?.getAllRoutes().orEmpty().filter { endpoint ->
         val ancestors = generateSequence<Route>(endpoint) { it.parent }.toList()
-        ancestors.any { it.attributes.contains(AUTHENTICATED_API_ROUTE) } &&
-            ancestors.none { it.selector is AuthenticationRouteSelector }
+        ancestors.any { it.attributes.contains(AUTHENTICATED_API_ROUTE) } && !ancestors.requireAuthentication()
     }
     check(unauthenticated.isEmpty()) {
-        "Routes under $API_V1_PATH and $INTERNAL_API_V1_PATH must be authenticated: ${unauthenticated.joinToString()}"
+        "Routes under $API_V1_PATH and $INTERNAL_API_V1_PATH must require authentication: ${unauthenticated.joinToString()}"
     }
 }
+
+@OptIn(InternalAPI::class)
+private fun List<Route>.requireAuthentication(): Boolean = any { it.selector is AuthenticationRouteSelector } &&
+    none { it.attributes.getOrNull(AuthenticateProvidersKey)?.strategy == AuthenticationStrategy.Optional }

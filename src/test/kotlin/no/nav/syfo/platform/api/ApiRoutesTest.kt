@@ -51,6 +51,28 @@ class ApiRoutesTest :
 
                 exception.message shouldContain "$prefix/open"
             }
+
+            test("startup fails when a route under $prefix has optional authentication") {
+                val exception = shouldThrow<IllegalStateException> {
+                    testApplication {
+                        application {
+                            installTestAuthentication()
+                            routing {
+                                prefixRoute {
+                                    authenticate(TEST_PROVIDER) {
+                                        authenticate(TEST_PROVIDER, optional = true) {
+                                            get("/optional") { call.respondText("optional") }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        startApplication()
+                    }
+                }
+
+                exception.message shouldContain "/optional"
+            }
         }
     })
 

@@ -431,8 +431,9 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
   else resolving capability definitions run after all capability modules.
 - Capability modules add routes under `apiV1 { }` or `internalApiV1 { }` from
   `platform.api`. Every endpoint under these prefixes must be inside an
-  `authenticate` block; startup fails when one is not. The check does not
-  detect `authenticate(optional = true)`, so do not use it there. Endpoints
+  `authenticate` block that requires a principal; startup fails when one is
+  not, including for `authenticate(optional = true)`. The check cannot see
+  provider `skipWhen` predicates, so do not configure them. Endpoints
   use the Texas `Authentication` providers installed once by `platformModule`:
   TokenX, Maskinporten, and Azure AD. Routes accepting either a user or system
   token use Ktor's `FirstSuccessful` strategy. Provider exceptions continue to

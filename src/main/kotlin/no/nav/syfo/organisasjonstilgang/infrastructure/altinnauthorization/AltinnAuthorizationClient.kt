@@ -7,8 +7,8 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import no.nav.syfo.platform.auth.texas.AltinnTokenSource
-import no.nav.syfo.platform.auth.texas.TexasAltinnTokenFetcher.Companion.PDP_TARGET_SCOPE
+import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
+import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher.Companion.PDP_TARGET_SCOPE
 import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.decodeUpstream

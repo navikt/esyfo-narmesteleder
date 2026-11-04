@@ -1,4 +1,4 @@
-package no.nav.syfo.platform.auth.texas
+package no.nav.syfo.platform.auth.texas.altinn
 
 import no.nav.syfo.platform.upstream.UpstreamResult
 import kotlin.time.Duration

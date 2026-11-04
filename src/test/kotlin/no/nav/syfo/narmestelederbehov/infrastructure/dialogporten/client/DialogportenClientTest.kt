@@ -32,9 +32,9 @@ import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.Dialog
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogStatus
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.ExtendedDialog
 import no.nav.syfo.platform.api.JSON_PATCH_CONTENT_TYPE
-import no.nav.syfo.platform.auth.texas.AltinnToken
-import no.nav.syfo.platform.auth.texas.AltinnTokenSource
-import no.nav.syfo.platform.auth.texas.TexasAltinnTokenFetcher
+import no.nav.syfo.platform.auth.texas.altinn.AltinnToken
+import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
+import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
 import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.captureProductionLogs
 import no.nav.syfo.platform.observability.logEvent

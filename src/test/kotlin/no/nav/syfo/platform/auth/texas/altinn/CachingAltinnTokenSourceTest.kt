@@ -1,4 +1,4 @@
-package no.nav.syfo.platform.auth.texas
+package no.nav.syfo.platform.auth.texas.altinn
 
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow

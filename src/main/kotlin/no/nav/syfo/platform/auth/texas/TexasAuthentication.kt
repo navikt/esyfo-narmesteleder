@@ -4,7 +4,6 @@ import com.auth0.jwt.JWT
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
-import io.ktor.server.application.isHandled
 import io.ktor.server.application.pluginOrNull
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.AuthenticationConfig
@@ -57,10 +56,7 @@ private fun AuthenticationConfig.texasTokenX(client: TexasHttpClient) {
     provider(TOKEN_X_AUTH_PROVIDER) {
         authenticate { context ->
             context.authenticateForIssuer(JwtIssuer.TOKEN_X, TOKEN_X_AUTH_PROVIDER) { token ->
-                val principal = context.call.authenticateTokenX(client, token)
-                if (principal != null) {
-                    context.principal(principal)
-                }
+                context.principal(context.call.authenticateTokenX(client, token))
             }
         }
     }
@@ -93,8 +89,7 @@ private fun AuthenticationConfig.texasAzureAd(
  * Hands the bearer token to [authenticate] only when its *unverified* issuer matches this provider.
  * The unverified issuer only selects the provider; Texas introspection with the provider's identity
  * provider verifies the token. Otherwise registers a 401 challenge, which Ktor runs only when no
- * provider set a principal. The `isHandled` check avoids a second response when another provider
- * has already responded (e.g. TokenX 403 for insufficient level).
+ * provider set a principal. Providers reject a matching token by throwing [ApiErrorException].
  */
 private suspend fun AuthenticationContext.authenticateForIssuer(
     expectedIssuer: JwtIssuer,
@@ -111,9 +106,7 @@ private suspend fun AuthenticationContext.authenticateForIssuer(
                 AuthenticationFailedCause.InvalidCredentials
             },
         ) { _, _ ->
-            if (!call.isHandled) {
-                throw ApiErrorException.UnauthorizedException("Invalid token")
-            }
+            throw ApiErrorException.UnauthorizedException("Invalid token")
         }
         return
     }

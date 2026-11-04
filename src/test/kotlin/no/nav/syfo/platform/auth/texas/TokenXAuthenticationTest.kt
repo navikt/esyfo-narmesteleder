@@ -16,6 +16,7 @@ import io.ktor.server.routing.route
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.createMockToken
+import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
@@ -67,7 +68,10 @@ class TokenXAuthenticationTest :
             texas.stubTokenX(pid = PID, acr = "Level3")
             val before = tokenRejections(TokenRejectionProvider.TOKEN_X, TokenRejectionReason.LEVEL_INSUFFICIENT)
 
-            texas.callProtectedRoute().status shouldBe HttpStatusCode.Forbidden
+            val response = texas.callProtectedRoute()
+
+            response.status shouldBe HttpStatusCode.Forbidden
+            jacksonObjectMapper().readTree(response.bodyAsText()).path("type").asText() shouldBe ErrorType.AUTHENTICATION_ERROR.name
             tokenRejections(TokenRejectionProvider.TOKEN_X, TokenRejectionReason.LEVEL_INSUFFICIENT) shouldBe before + 1
         }
 
@@ -122,7 +126,10 @@ class TokenXAuthenticationTest :
             val texas = mockk<TexasHttpClient>()
             texas.stubTokenX(pid = null)
 
-            texas.callProtectedRoute().status shouldBe HttpStatusCode.Unauthorized
+            val response = texas.callProtectedRoute()
+
+            response.status shouldBe HttpStatusCode.Unauthorized
+            jacksonObjectMapper().readTree(response.bodyAsText()).path("type").asText() shouldBe ErrorType.AUTHORIZATION_ERROR.name
         }
 
         test("responds with the API error body when no bearer token is provided") {

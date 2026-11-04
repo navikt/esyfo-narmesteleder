@@ -16,9 +16,9 @@ import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
-import no.nav.syfo.platform.auth.texas.AltinnTokenSource
-import no.nav.syfo.platform.auth.texas.TexasAltinnTokenFetcher
-import no.nav.syfo.platform.auth.texas.altinnTestToken
+import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
+import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
+import no.nav.syfo.platform.auth.texas.altinn.altinnTestToken
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName

@@ -22,10 +22,10 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpA
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
-import no.nav.syfo.platform.auth.texas.AltinnTokenSource
-import no.nav.syfo.platform.auth.texas.CachingAltinnTokenSource
-import no.nav.syfo.platform.auth.texas.TexasAltinnTokenFetcher
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
+import no.nav.syfo.platform.auth.texas.altinn.CachingAltinnTokenSource
+import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.http.httpClientDefault
 import org.koin.core.module.Module

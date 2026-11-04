@@ -1,4 +1,4 @@
-package no.nav.syfo.platform.auth.texas
+package no.nav.syfo.platform.auth.texas.altinn
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

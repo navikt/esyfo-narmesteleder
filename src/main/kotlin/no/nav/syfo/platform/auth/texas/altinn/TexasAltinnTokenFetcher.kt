@@ -1,4 +1,4 @@
-package no.nav.syfo.platform.auth.texas
+package no.nav.syfo.platform.auth.texas.altinn
 
 import com.auth0.jwt.JWT
 import io.ktor.client.HttpClient

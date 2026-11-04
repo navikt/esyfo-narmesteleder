@@ -1,7 +1,9 @@
 package no.nav.syfo.platform.api
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -33,6 +35,21 @@ class ApiRoutesTest :
                     client.get("$prefix/first").bodyAsText() shouldBe "first"
                     client.get("$prefix/second").status shouldBe HttpStatusCode.OK
                 }
+            }
+
+            test("startup fails when a route under $prefix is not authenticated") {
+                val exception = shouldThrow<IllegalStateException> {
+                    testApplication {
+                        application {
+                            installTestAuthentication()
+                            routing { prefixRoute { authenticate(TEST_PROVIDER) { get("/protected") { call.respondText("ok") } } } }
+                            routing { prefixRoute { get("/open") { call.respondText("open") } } }
+                        }
+                        startApplication()
+                    }
+                }
+
+                exception.message shouldContain "$prefix/open"
             }
         }
     })

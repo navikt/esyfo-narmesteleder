@@ -7,6 +7,8 @@ import io.ktor.server.response.respondRedirect
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.syfo.platform.api.installApiPlugins
+import no.nav.syfo.platform.api.publicRoutes
+import no.nav.syfo.platform.api.requireAuthenticatedRoutesOnStartup
 import no.nav.syfo.platform.auth.texas.installTexasAuthentication
 import no.nav.syfo.platform.observability.registerMetricApi
 import no.nav.syfo.platform.observability.registerPodApi
@@ -18,18 +20,22 @@ fun Application.platformModule(koinModules: List<Module>, azurePreAuthorizedApps
     installTexasAuthentication(azurePreAuthorizedApps)
     installApiPlugins()
 
+    requireAuthenticatedRoutesOnStartup()
+
     routing {
-        registerPodApi(applicationState = get(), database = get())
-        registerMetricApi()
-        staticResources("/openapi", "openapi")
-        swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
-        swaggerUI(path = "internal/swagger", swaggerFile = "openapi/internal-documentation.yaml")
-        swaggerUI(
-            path = "internal/linemanager-search/swagger",
-            swaggerFile = "openapi/internal-linemanager-search.yaml",
-        )
-        get("/") {
-            call.respondRedirect("/swagger")
+        publicRoutes {
+            registerPodApi(applicationState = get(), database = get())
+            registerMetricApi()
+            staticResources("/openapi", "openapi")
+            swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
+            swaggerUI(path = "internal/swagger", swaggerFile = "openapi/internal-documentation.yaml")
+            swaggerUI(
+                path = "internal/linemanager-search/swagger",
+                swaggerFile = "openapi/internal-linemanager-search.yaml",
+            )
+            get("/") {
+                call.respondRedirect("/swagger")
+            }
         }
     }
 }

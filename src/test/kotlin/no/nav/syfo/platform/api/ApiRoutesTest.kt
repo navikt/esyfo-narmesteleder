@@ -52,6 +52,20 @@ class ApiRoutesTest :
                 exception.message shouldContain "$prefix/open"
             }
 
+            test("startup fails when public routes are declared under $prefix") {
+                val exception = shouldThrow<IllegalStateException> {
+                    testApplication {
+                        application {
+                            installTestAuthentication()
+                            routing { prefixRoute { publicRoutes { get("/public") { call.respondText("public") } } } }
+                        }
+                        startApplication()
+                    }
+                }
+
+                exception.message shouldContain "/public"
+            }
+
             test("startup fails when a route under $prefix has optional authentication") {
                 val exception = shouldThrow<IllegalStateException> {
                     testApplication {
@@ -72,6 +86,48 @@ class ApiRoutesTest :
                 }
 
                 exception.message shouldContain "/optional"
+            }
+        }
+
+        test("public routes outside the API prefixes are reachable without authentication") {
+            testApplication {
+                application {
+                    installTestAuthentication()
+                    requireAuthenticatedRoutesOnStartup()
+                    routing { publicRoutes { get("/internal/is_alive") { call.respondText("alive") } } }
+                }
+
+                client.get("/internal/is_alive").bodyAsText() shouldBe "alive"
+            }
+        }
+
+        test("startup fails when a route outside the API prefixes is neither authenticated nor public") {
+            val exception = shouldThrow<IllegalStateException> {
+                testApplication {
+                    application {
+                        installTestAuthentication()
+                        requireAuthenticatedRoutesOnStartup()
+                        routing {
+                            publicRoutes { get("/internal/is_alive") { call.respondText("alive") } }
+                            get("/internal/undeclared") { call.respondText("open") }
+                        }
+                    }
+                    startApplication()
+                }
+            }
+
+            exception.message shouldContain "/internal/undeclared"
+        }
+
+        test("authenticated routes outside the API prefixes are allowed") {
+            testApplication {
+                application {
+                    installTestAuthentication()
+                    requireAuthenticatedRoutesOnStartup()
+                    routing { authenticate(TEST_PROVIDER) { get("/other") { call.respondText("other") } } }
+                }
+
+                client.get("/other").status shouldBe HttpStatusCode.OK
             }
         }
     })

@@ -4,9 +4,16 @@ import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 
+internal enum class DialogDispatchStatus {
+    READY,
+    CLAIMED,
+    IDLE,
+    PARKED,
+}
+
 internal object DialogDispatchTable : Table("nl_dialog_dispatch") {
     val behovId = javaUUID("behov_id")
-    val status = text("status")
+    val status = enumerationByName<DialogDispatchStatus>("status", 16)
     val revision = long("revision")
     val availableAt = timestampWithTimeZone("available_at")
     val claimToken = javaUUID("claim_token").nullable()

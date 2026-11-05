@@ -12,6 +12,7 @@ import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.database.ioTransaction
+import org.jetbrains.exposed.v1.core.LiteralOp
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -20,7 +21,6 @@ import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
-import org.jetbrains.exposed.v1.core.stringLiteral
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
@@ -57,8 +57,8 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
             val row = DialogDispatchTable.selectAll().where {
                 // Fixed literals keep the partial index usable with generic prepared plans.
                 (
-                    (DialogDispatchTable.status eq stringLiteral("READY")) or
-                        (DialogDispatchTable.status eq stringLiteral("CLAIMED"))
+                    (DialogDispatchTable.status eq LiteralOp(DialogDispatchTable.status.columnType, DialogDispatchStatus.READY)) or
+                        (DialogDispatchTable.status eq LiteralOp(DialogDispatchTable.status.columnType, DialogDispatchStatus.CLAIMED))
                     ) and
                     (DialogDispatchTable.availableAt lessEq now.atOffset(UTC))
             }.orderBy(DialogDispatchTable.availableAt to SortOrder.ASC, DialogDispatchTable.behovId to SortOrder.ASC)
@@ -73,7 +73,7 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
                 row[DialogDispatchTable.attempts],
             )
             DialogDispatchTable.update({ DialogDispatchTable.behovId eq claim.id.value }) {
-                it[status] = "CLAIMED"
+                it[status] = DialogDispatchStatus.CLAIMED
                 it[claimToken] = claim.token
                 it[availableAt] = claim.leaseUntil.atOffset(UTC)
             }
@@ -165,10 +165,10 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
         DialogDispatchTable.update({ owns(claim, now) }) {
             it[claimToken] = null
             it[status] = when {
-                changed -> "READY"
-                result is DialogDispatchResult.Done -> "IDLE"
-                result is DialogDispatchResult.Parked -> "PARKED"
-                else -> "READY"
+                changed -> DialogDispatchStatus.READY
+                result is DialogDispatchResult.Done -> DialogDispatchStatus.IDLE
+                result is DialogDispatchResult.Parked -> DialogDispatchStatus.PARKED
+                else -> DialogDispatchStatus.READY
             }
             it[availableAt] = if (!changed && result is DialogDispatchResult.Retry) result.nextAttempt.atOffset(UTC) else now.atOffset(UTC)
             it[attempts] = if (changed || result == DialogDispatchResult.Done) 0 else claim.attempts + 1
@@ -187,6 +187,6 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
 
     private fun owns(claim: DialogClaim, now: Instant): Op<Boolean> = (DialogDispatchTable.behovId eq claim.id.value) and
         (DialogDispatchTable.claimToken eq claim.token) and
-        (DialogDispatchTable.status eq "CLAIMED") and
+        (DialogDispatchTable.status eq DialogDispatchStatus.CLAIMED) and
         (DialogDispatchTable.availableAt greater now.atOffset(UTC))
 }

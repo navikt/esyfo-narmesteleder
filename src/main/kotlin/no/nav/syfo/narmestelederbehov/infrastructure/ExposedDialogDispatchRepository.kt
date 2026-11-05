@@ -23,6 +23,7 @@ import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.stringLiteral
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
@@ -125,14 +126,16 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
         }) {
             it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
         }
+        scheduleDialogDispatch(claim.id.value)
     }
 
     override suspend fun saveCompleted(claim: DialogClaim, now: Instant): Boolean = mutateBehov(claim, now) {
-        NarmestelederbehovTable.update({
+        val updated = NarmestelederbehovTable.update({
             (NarmestelederbehovTable.id eq claim.id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_FULFILLED)
         }) {
             it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
         }
+        if (updated == 1) scheduleDialogDispatch(claim.id.value)
     }
 
     override suspend fun saveExpired(claim: DialogClaim, expiry: Instant, now: Instant): Boolean = mutateBehov(claim, now) {
@@ -144,8 +147,8 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
         }
     }
 
-    // Domain writers lock behov before the scheduling trigger locks control; use the same order.
-    private suspend fun mutateBehov(claim: DialogClaim, now: Instant, mutation: () -> Unit): Boolean = database.ioTransaction(
+    // Domain writers lock behov before dispatch state; use the same order.
+    private suspend fun mutateBehov(claim: DialogClaim, now: Instant, mutation: JdbcTransaction.() -> Unit): Boolean = database.ioTransaction(
         transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
     ) {
         NarmestelederbehovTable.selectAll().where { NarmestelederbehovTable.id eq claim.id.value }.forUpdate().single()

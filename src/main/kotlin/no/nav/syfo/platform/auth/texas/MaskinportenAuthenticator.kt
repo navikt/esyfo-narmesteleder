@@ -9,7 +9,7 @@ import no.nav.syfo.platform.auth.texas.client.getSystemUserId
 import no.nav.syfo.platform.auth.texas.client.getSystemUserOrganization
 import java.util.UUID
 
-const val MASKINPORTEN_NL_SCOPE = "nav:syfo/narmesteleder/lps"
+const val LPS_NL_SCOPE = "nav:syfo/narmesteleder/lps"
 
 internal suspend fun ApplicationCall.authenticateMaskinporten(
     client: TexasHttpClient,
@@ -22,7 +22,7 @@ internal suspend fun ApplicationCall.authenticateMaskinporten(
     if (introspectionResponse.consumer == null) {
         rejectMaskinporten(TokenRejectionReason.CONSUMER_MISSING, ApiErrorException.UnauthorizedException("No consumer in token claims"))
     }
-    if (introspectionResponse.scope != MASKINPORTEN_NL_SCOPE) {
+    if (introspectionResponse.scope != LPS_NL_SCOPE) {
         rejectMaskinporten(TokenRejectionReason.SCOPE_INVALID, ApiErrorException.UnauthorizedException("Invalid scope from maskinporten"))
     }
     val systemUserOrganization = introspectionResponse.getSystemUserOrganization()

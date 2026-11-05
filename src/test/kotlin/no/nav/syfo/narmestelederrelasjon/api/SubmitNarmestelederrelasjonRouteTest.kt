@@ -215,7 +215,7 @@ private class SubmitFixture(
     fun authorize(
         provider: String,
         acr: String = "Level4",
-        scope: String = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
+        scope: String = no.nav.syfo.platform.auth.texas.LPS_NL_SCOPE,
         systemUserId: String? = null,
     ) {
         if (provider == "tokenx") {

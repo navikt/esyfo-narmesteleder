@@ -32,14 +32,18 @@ import org.koin.core.module.Module
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
 
-internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironment, isLocalEnv: Boolean) = module {
+internal fun httpClientsModule(
+    settings: HttpClientsSettings,
+    texas: TexasEnvironment,
+    isLocalEnv: Boolean,
+) = module {
     single { httpClientDefault() }
     single { TexasHttpClient(client = get(), environment = texas) }
     single<AltinnTokenSource> {
         CachingAltinnTokenSource(
             delegate = TexasAltinnTokenFetcher(
                 texasHttpClient = get(),
-                altinnBaseUrl = clients.altinn3BaseUrl,
+                altinnBaseUrl = settings.altinnApiSettings.baseUrl,
                 httpClient = get(),
             ),
         )
@@ -50,9 +54,9 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         local = { FakeAaregClient() },
         remote = {
             HttpAaregClient(
-                aaregBaseUrl = clients.aaregBaseUrl,
+                aaregBaseUrl = settings.aaregSettings.baseUrl,
                 texasHttpClient = get(),
-                scope = clients.aaregScope,
+                scope = settings.aaregSettings.scope,
             )
         },
     )
@@ -62,9 +66,9 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         remote = {
             HttpDinesykmeldteClient(
                 texasHttpClient = get(),
-                scope = clients.dinesykmeldteScope,
+                scope = settings.dinesykmeldteSettings.scope,
                 httpClient = get(),
-                dinesykmeldteBaseUrl = clients.dinesykmeldteBaseUrl,
+                dinesykmeldteBaseUrl = settings.dinesykmeldteSettings.baseUrl,
             )
         },
     )
@@ -74,9 +78,9 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         remote = {
             HttpPdlClient(
                 httpClient = get(),
-                pdlBaseUrl = clients.pdlBaseUrl,
+                pdlBaseUrl = settings.pdlSettings.baseUrl,
                 texasHttpClient = get(),
-                scope = clients.pdlScope,
+                scope = settings.pdlSettings.scope,
             )
         },
     )
@@ -87,7 +91,7 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
             HttpAltinnTilgangerClient(
                 texasClient = get(),
                 httpClient = get(),
-                baseUrl = clients.altinnTilgangerBaseUrl,
+                baseUrl = settings.altinnAccessSettings.baseUrl,
             )
         },
     )
@@ -97,14 +101,14 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         remote = {
             HttpDialogportenClient(
                 httpClient = get(),
-                baseUrl = clients.altinn3BaseUrl,
+                baseUrl = settings.dialogportenSettings.baseUrl,
                 altinnTokenProvider = get(),
             )
         },
     )
     single<EregClient> {
         CachedEregClient(
-            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = clients.eregBaseUrl),
+            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = settings.eregSettings.baseUrl),
             cache = get(),
         )
     }
@@ -114,8 +118,8 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         remote = {
             HttpAltinnAuthorizationClient(
                 httpClient = get(),
-                baseUrl = clients.altinn3BaseUrl,
-                subscriptionKey = clients.pdpSubscriptionKey,
+                baseUrl = settings.altinnApiSettings.baseUrl,
+                subscriptionKey = settings.altinnAuthorizationSettings.subscriptionKey,
                 altinnTokenProvider = get(),
             )
         },

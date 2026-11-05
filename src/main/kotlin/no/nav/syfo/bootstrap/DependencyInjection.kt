@@ -19,7 +19,20 @@ fun Application.configureDependencies(koinModules: List<Module>) {
 internal fun applicationModules(environment: Environment, isLocalEnv: Boolean): List<Module> = listOf(
     coreModule(),
     databaseModule(environment.database),
-    httpClientsModule(environment.clientProperties, environment.texas, isLocalEnv),
+    httpClientsModule(
+        settings = HttpClientsSettings(
+            aaregSettings = environment.aaregSettings,
+            altinnApiSettings = environment.altinnApiSettings,
+            altinnAuthorizationSettings = environment.altinnAuthorizationSettings,
+            altinnAccessSettings = environment.altinnAccessSettings,
+            dinesykmeldteSettings = environment.dinesykmeldteSettings,
+            dialogportenSettings = environment.dialogportenSettings,
+            eregSettings = environment.eregSettings,
+            pdlSettings = environment.pdlSettings,
+        ),
+        texas = environment.texas,
+        isLocalEnv = isLocalEnv,
+    ),
     cacheModule(environment.valkeyEnvironment),
     kafkaProducersModule(environment.kafka),
     leaderElectionModule(environment.otherProperties, isLocalEnv),

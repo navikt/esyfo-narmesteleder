@@ -19,9 +19,24 @@ WITH candidates AS (
 ), fulfilled AS (
     UPDATE nl_behov b SET behov_status = 'BEHOV_FULFILLED'
     FROM candidates c WHERE b.id = c.id
-    RETURNING b.id
+    RETURNING b.id, b.dialog_id, b.created
+), scheduled AS (
+    INSERT INTO nl_dialog_dispatch (behov_id, available_at)
+    SELECT f.id, GREATEST(clock_timestamp(), f.created + interval '10 seconds')
+    FROM fulfilled f
+    WHERE f.dialog_id IS NOT NULL
+       OR EXISTS (SELECT 1 FROM nl_dialog_dispatch WHERE behov_id = f.id)
+    ON CONFLICT (behov_id) DO UPDATE SET
+        revision = nl_dialog_dispatch.revision + 1,
+        status = CASE WHEN nl_dialog_dispatch.status = 'CLAIMED' THEN 'CLAIMED' ELSE 'READY' END,
+        available_at = CASE WHEN nl_dialog_dispatch.status = 'CLAIMED'
+                            THEN nl_dialog_dispatch.available_at ELSE clock_timestamp() END,
+        pending_since = COALESCE(nl_dialog_dispatch.pending_since, clock_timestamp()),
+        attempts = 0,
+        last_failure = NULL
+    RETURNING behov_id
 )
-SELECT count(*) AS fulfilled FROM fulfilled;
+SELECT (SELECT count(*) FROM fulfilled) AS fulfilled, count(*) AS scheduled FROM scheduled;
 COMMIT;
 
 BEGIN;

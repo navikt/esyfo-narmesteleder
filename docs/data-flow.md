@@ -218,8 +218,11 @@ sequenceDiagram
 
 Publishing happens before the need is marked fulfilled. A failure stops later
 effects. Dialogporten completion is eventual and never runs in the request
-path. A database trigger schedules work for domain changes in the writer's
-transaction, including Leesah fulfillment and the leader-only behov expiry job.
+path. Repository writers explicitly call `scheduleDialogDispatch` for relevant
+domain changes in their existing transaction, including creation, API/Leesah
+fulfillment and the leader-only behov expiry job. The cutover cleanup SQL also
+updates the need and schedules dispatch in one transaction; no scheduling
+trigger is installed. Manual domain changes must schedule their work explicitly.
 One control row per behov coordinates the full dialog lifecycle. Token and
 revision guards prevent stale database completion from erasing newer work;
 remote effects remain at-least-once.

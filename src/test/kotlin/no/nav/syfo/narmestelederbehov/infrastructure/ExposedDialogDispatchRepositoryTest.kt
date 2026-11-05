@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -11,6 +12,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.TestDB
+import no.nav.syfo.ident.OrganizationNumber
+import no.nav.syfo.ident.PersonalIdentificationNumber
+import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchResult
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchSettings
@@ -19,7 +23,10 @@ import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDial
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
+import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
+import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DIALOGPORTEN
 import no.nav.syfo.narmestelederrelasjon.infrastructure.insertRelation
@@ -28,9 +35,11 @@ import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.io.File
+import java.sql.SQLException
 import java.time.Clock
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -44,6 +53,48 @@ class ExposedDialogDispatchRepositoryTest :
         val repository = ExposedDialogDispatchRepository(TestDB.exposedDatabase)
         val now = Instant.parse("2030-01-01T10:00:00Z")
         beforeTest { TestDB.clearAllData() }
+
+        fun newBehov(status: BehovStatus = BehovStatus.BEHOV_CREATED) = NewNarmestelederbehov(
+            employee = Employee(PersonalIdentificationNumber("12345678901"), OrganizationNumber("123456789")),
+            mainOrganizationNumber = "123456789",
+            manager = null,
+            reason = BehovReason.DEAKTIVERT_NY_LEDER,
+            status = status,
+            revokedRelationId = null,
+        )
+
+        test("repository creation delays dispatch ten seconds and a duplicate does not wake acknowledged work") {
+            val lifecycle = ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase)
+            val created = lifecycle.create(newBehov()).shouldBeInstanceOf<CreateBehovResult.Created>()
+            val stored = requireNotNull(findStoredNarmestelederbehov(created.id.value))
+            repository.claim(stored.created.plusSeconds(9), 60.seconds).shouldBeNull()
+            val claim = requireNotNull(repository.claim(stored.created.plusSeconds(10), 60.seconds))
+            claim.id shouldBe created.id
+            repository.finish(claim, DialogDispatchResult.Done, stored.created.plusSeconds(10)) shouldBe true
+
+            lifecycle.create(newBehov()) shouldBe CreateBehovResult.AlreadyExists
+            lifecycle.create(newBehov(BehovStatus.HOVEDENHET_NOT_FOUND)).shouldBeInstanceOf<CreateBehovResult.Created>()
+            repository.claim(now, 60.seconds).shouldBeNull()
+        }
+
+        test("a dispatch persistence failure rolls back repository creation") {
+            transaction(TestDB.exposedDatabase) {
+                exec("ALTER TABLE nl_dialog_dispatch ADD CONSTRAINT test_reject_dispatch CHECK (false)")
+            }
+            try {
+                shouldThrow<SQLException> {
+                    ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase).create(newBehov())
+                }
+                transaction(TestDB.exposedDatabase) {
+                    NarmestelederbehovTable.selectAll().count() shouldBe 0
+                    DialogDispatchTable.selectAll().count() shouldBe 0
+                }
+            } finally {
+                transaction(TestDB.exposedDatabase) {
+                    exec("ALTER TABLE nl_dialog_dispatch DROP CONSTRAINT test_reject_dispatch")
+                }
+            }
+        }
 
         test("committed behov changes enqueue once and concurrent workers claim different rows") {
             val first = insertNarmestelederbehov(created = now.minusSeconds(30))
@@ -212,14 +263,27 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
+        test("repeated fulfillment does not supersede a claim for an unchanged behov") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val fulfillment = ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase)
+            fulfillment.markFulfilled(NarmestelederbehovId(row.id))
+            val claim = requireNotNull(repository.claim(now, 60.seconds))
+            fulfillment.markFulfilled(NarmestelederbehovId(row.id))
+            repository.finish(claim, DialogDispatchResult.Done, now) shouldBe true
+            repository.claim(now, 60.seconds).shouldBeNull()
+        }
+
         test("rollback removes scheduled work and closed legacy rows without dialogs stay excluded") {
             val row = insertNarmestelederbehov(created = now.minusSeconds(30), behovStatus = BehovStatus.HOVEDENHET_NOT_FOUND)
             transaction(TestDB.exposedDatabase) {
                 NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq row.id }) {
                     it[behovStatus] = BehovStatus.BEHOV_CREATED
                 }
+                scheduleDialogDispatch(row.id)
+                DialogDispatchTable.selectAll().count() shouldBe 1
                 rollback()
             }
+            findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.HOVEDENHET_NOT_FOUND
             repository.claim(now, 60.seconds).shouldBeNull()
             ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
             // A closed legacy row without a dialog does not get automatic CREATE recovery.
@@ -263,6 +327,9 @@ class ExposedDialogDispatchRepositoryTest :
             insertRelation(employeeIdent = future.sykmeldtFnr, organizationNumber = future.orgnummer, activeFrom = OffsetDateTime.now().plusDays(1))
             insertRelation(employeeIdent = otherOrg.sykmeldtFnr, organizationNumber = "999999999")
             transaction(TestDB.exposedDatabase) { DialogDispatchTable.deleteAll() }
+            transaction(TestDB.exposedDatabase) { scheduleDialogDispatch(matching.id) }
+            val acknowledged = requireNotNull(repository.claim(now, 60.seconds))
+            repository.finish(acknowledged, DialogDispatchResult.Done, now) shouldBe true
             val duringCutover = insertNarmestelederbehov()
             val sql = File("docs/operations/dialog-dispatch.sql").readText()
             repeat(2) {

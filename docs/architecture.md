@@ -121,9 +121,10 @@ repositories, ports, domain rules, Kafka models or Kafka producers directly.
 Fulfillment orders its effects: contact validation, then need lookup, then
 access check, then relation establishment, and finally publication before
 persistence. An unexpected failure stops the later effects. After publication,
-`markFulfilled` uses one status-only `UPDATE ... RETURNING`; a missing row is
-the existing 404 response. A database trigger schedules reconciliation in the
-same transaction, and the response does not wait for Dialogporten.
+`markFulfilled` locks the need, updates its status if changed, and explicitly
+calls `scheduleDialogDispatch` in the same repository transaction. A missing
+row is the existing 404 response; repeated fulfillment does not schedule an
+unchanged state. The response does not wait for Dialogporten.
 The claim worker recovers any tracked uncertain CREATE before completing the
 dialog. Completion follows ADR-0004: an already completed dialog counts as
 success and a revision conflict is re-read once. Failures leave the behov

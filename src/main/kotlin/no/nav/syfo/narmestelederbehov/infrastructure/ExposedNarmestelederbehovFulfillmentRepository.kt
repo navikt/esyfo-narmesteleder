@@ -13,7 +13,7 @@ import no.nav.syfo.platform.database.ioTransaction
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.updateReturning
+import org.jetbrains.exposed.v1.jdbc.update
 
 class ExposedNarmestelederbehovFulfillmentRepository(
     private val database: Database,
@@ -42,12 +42,15 @@ class ExposedNarmestelederbehovFulfillmentRepository(
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
 
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = database.ioTransaction {
-        NarmestelederbehovTable.updateReturning(
-            returning = listOf(NarmestelederbehovTable.dialogId),
-            where = { NarmestelederbehovTable.id eq id.value },
-        ) {
-            it[behovStatus] = BehovStatus.BEHOV_FULFILLED
-        }.singleOrNull()?.let { MarkFulfilledResult.Marked(id, it[NarmestelederbehovTable.dialogId]) }
-            ?: MarkFulfilledResult.Missing
+        val row = NarmestelederbehovTable.select(NarmestelederbehovTable.behovStatus, NarmestelederbehovTable.dialogId)
+            .where { NarmestelederbehovTable.id eq id.value }.forUpdate().singleOrNull()
+            ?: return@ioTransaction MarkFulfilledResult.Missing
+        if (row[NarmestelederbehovTable.behovStatus] != BehovStatus.BEHOV_FULFILLED) {
+            NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {
+                it[behovStatus] = BehovStatus.BEHOV_FULFILLED
+            }
+            scheduleDialogDispatch(id.value)
+        }
+        MarkFulfilledResult.Marked(id, row[NarmestelederbehovTable.dialogId])
     }
 }

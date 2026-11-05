@@ -19,7 +19,7 @@ import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.updateReturning
 import java.time.LocalDate
 
 class ExposedNarmestelederbehovLifecycleRepository(
@@ -39,7 +39,11 @@ class ExposedNarmestelederbehovLifecycleRepository(
             it[behovStatus] = behov.status
             it[avbruttNarmestelederId] = behov.revokedRelationId
         }.singleOrNull()
-            ?.let { CreateBehovResult.Created(NarmestelederbehovId(it[NarmestelederbehovTable.id])) }
+            ?.let {
+                val id = it[NarmestelederbehovTable.id]
+                scheduleDialogDispatch(id)
+                CreateBehovResult.Created(NarmestelederbehovId(id))
+            }
             ?: CreateBehovResult.AlreadyExists
     }
 
@@ -65,12 +69,17 @@ class ExposedNarmestelederbehovLifecycleRepository(
         if (ids.isEmpty()) {
             0
         } else {
-            NarmestelederbehovTable.update({
-                (NarmestelederbehovTable.id inList ids) and
-                    (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
-            }) {
+            val expired = NarmestelederbehovTable.updateReturning(
+                returning = listOf(NarmestelederbehovTable.id),
+                where = {
+                    (NarmestelederbehovTable.id inList ids) and
+                        (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
+                },
+            ) {
                 it[behovStatus] = BehovStatus.BEHOV_EXPIRED
-            }
+            }.map { it[NarmestelederbehovTable.id] }
+            expired.forEach { scheduleDialogDispatch(it) }
+            expired.size
         }
     }
 }

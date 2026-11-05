@@ -12,7 +12,8 @@ claim worker on every pod. Do not enable it while an old binary can deliver.
 ## Cutover
 
 1. Deploy the new binary with dispatch disabled. All behov changes
-   schedule work through the database trigger, in the writer's transaction.
+   that affect dialog state explicitly call `scheduleDialogDispatch` in the
+   repository writer's existing transaction; V33 contains no scheduling trigger.
    Wait until every pod uses the new binary and all old requests/jobs have
    drained. The old flag alone does not stop old inline delivery.
 2. Verify the relation projection consumer is running and has caught up to
@@ -89,14 +90,16 @@ WHERE behov_id = ? AND status = 'PARKED' AND claim_token IS NULL;
 Expect exactly one affected row. Preserve `create_started`, intended expiry,
 the original pending timestamp and the stable behov/idempotency identity.
 Observe reconciliation before replaying another group. A concurrent new
-domain revision independently wakes parked work through the trigger.
+domain revision independently wakes parked work through the repository's
+transactional scheduling call.
 
 ## Rollback
 
 Disable new workers on every pod and wait for them to stop, outstanding calls
 to drain and the last 60-second lease plus safety margin to expire. Restore
-old processing only after no new worker can resume. Retain the additive table,
-trigger and V33 migration: old writers still schedule state for a later retry.
+old processing only after no new worker can resume. Retain the additive table
+and V33 migration. Older binaries do not schedule dispatch work explicitly;
+repeat cleanup and seeding before enabling the new workers again.
 Do not roll schema history back or delete claims to force concurrent work.
 Repeat the non-overlapping cutover when returning to the new binary.
 
@@ -121,7 +124,9 @@ Local plan checks used PostgreSQL 18.4, one million synthetic behov/control
 rows and 50,000 synthetic relations. Sparse due work, a 10,000-row due backlog
 and a locked first row used the partial due index (approximately 0.03–0.07 ms).
 The active-only queue aggregate used an index-only scan (approximately 0.9 ms);
-500-row cleanup and seeding batches took approximately 60 ms and 116 ms.
+500-row cleanup and seeding batches took approximately 60 ms and 116 ms with
+the earlier trigger-based scheduler. The explicit cleanup scheduling is covered
+by database tests; those earlier timings do not establish its performance.
 Fixed queue-status literals preserve the partial-index plan with generic
 prepared statements; parameterizing these constants had caused a full scan.
 These local timings are query-plan evidence, not production capacity or

@@ -69,7 +69,7 @@ This file is maintained locally in this repository; it is not generated or synch
 - Follow existing code patterns in the repository
 
 ## Dialogporten operations
-- Dialog delivery is worker-only. Behov changes schedule dispatch through a transactional database trigger.
+- Dialog delivery is worker-only. Repository writers explicitly call `scheduleDialogDispatch` for relevant behov changes in the same transaction; do not rely on database triggers.
 - `DIALOG_DISPATCH_ENABLED` controls an all-pod claim/lease worker; it is disabled in dev/prod until controlled cutover.
 - Follow `docs/operations/dialog-dispatch.md` for backfill, alerts, replay and non-overlapping rollback.
 - Run `sh scripts/check-dialog-alerts.sh` (Docker and Ruby) after changing the Prometheus rules.

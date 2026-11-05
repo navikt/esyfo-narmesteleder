@@ -1,5 +1,6 @@
 package no.nav.syfo.bootstrap
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.server.application.ServerReady
@@ -71,8 +72,12 @@ class ConfigureDialogDispatchTest :
                 withTimeout(5.seconds) { entered.await() }
             }
             withTimeout(5.seconds) { cancelled.await() }
-            repository.stats().pending shouldBe 1
-            requireNotNull(repository.claim(now.plusSeconds(61), 60.seconds)).attempts shouldBe 0
+            val pending = repository.stats().pending
+            val reclaimed = requireNotNull(repository.claim(now.plusSeconds(61), 60.seconds))
+            assertSoftly {
+                pending shouldBe 1
+                reclaimed.attempts shouldBe 0
+            }
         }
 
         test("a disabled worker needs no processing dependencies and does not start at server readiness") {

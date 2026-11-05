@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.api
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
@@ -64,14 +65,17 @@ class FulfillNarmestelederbehovRouteTest :
                     setBody(submittedManager)
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
-                response.status shouldBe HttpStatusCode.Accepted
-                fixture.establish.commands.size shouldBe 1
-                fixture.establish.commands.single().let {
-                    it.employeeIdent shouldBe PersonalIdentificationNumber(fixture.employeeIdent)
-                    it.organizationNumber shouldBe OrganizationNumber(fixture.orgNumber)
-                    it.manager.personIdent shouldBe PersonalIdentificationNumber(submittedManager.nationalIdentificationNumber.value)
+                val established = fixture.establish.commands.single()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.Accepted
+                    fixture.establish.commands.size shouldBe 1
+                    established.let {
+                        it.employeeIdent shouldBe PersonalIdentificationNumber(fixture.employeeIdent)
+                        it.organizationNumber shouldBe OrganizationNumber(fixture.orgNumber)
+                        it.manager.personIdent shouldBe PersonalIdentificationNumber(submittedManager.nationalIdentificationNumber.value)
+                    }
+                    fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
                 }
-                fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
             }
         }
 
@@ -86,10 +90,13 @@ class FulfillNarmestelederbehovRouteTest :
                     bearerAuth(createMockToken(fixture.orgNumber))
                     setBody(fixture.newManager())
                 }
-                response.status shouldBe HttpStatusCode.InternalServerError
-                response.body<ApiError>().type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
-                response.body<ApiError>().message shouldBe "An upstream service is unavailable"
-                fixture.repository.fulfilled shouldBe emptyList()
+                val error = response.body<ApiError>()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.InternalServerError
+                    error.type shouldBe ErrorType.UPSTREAM_SERVICE_UNAVAILABLE
+                    error.message shouldBe "An upstream service is unavailable"
+                    fixture.repository.fulfilled shouldBe emptyList()
+                }
             }
         }
 
@@ -106,13 +113,16 @@ class FulfillNarmestelederbehovRouteTest :
                     setBody(submittedManager)
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
-                response.status shouldBe HttpStatusCode.Accepted
-                fixture.establish.commands.size shouldBe 1
-                fixture.establish.commands.single().manager.let {
-                    it.mobile.value shouldBe "+4790000000"
-                    it.email.value shouldBe "leder+ø@eksempelø.no;annen@domene.no"
+                val established = fixture.establish.commands.single()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.Accepted
+                    fixture.establish.commands.size shouldBe 1
+                    established.manager.let {
+                        it.mobile.value shouldBe "+4790000000"
+                        it.email.value shouldBe "leder+ø@eksempelø.no;annen@domene.no"
+                    }
+                    fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
                 }
-                fixture.repository.fulfilled shouldBe listOf(NarmestelederbehovId(id))
             }
         }
 
@@ -129,16 +139,18 @@ class FulfillNarmestelederbehovRouteTest :
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
                 val error = response.body<ApiError>()
-                response.status shouldBe HttpStatusCode.BadRequest
-                error.type shouldBe ErrorType.INVALID_FORMAT
-                error.message shouldBe
-                    "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign; " +
-                    "email: EmailAddress must not contain whitespace"
-                error.message shouldNotContain "90-00-00-00"
-                error.message shouldNotContain "invalid @example.com"
-                error.message shouldNotContain "gyldig@example.com"
-                fixture.establish.commands shouldBe emptyList()
-                fixture.repository.fulfilled shouldBe emptyList()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    error.type shouldBe ErrorType.INVALID_FORMAT
+                    error.message shouldBe
+                        "Invalid manager contact details: mobile: PhoneNumber must contain only digits, with an optional leading plus sign; " +
+                        "email: EmailAddress must not contain whitespace"
+                    error.message shouldNotContain "90-00-00-00"
+                    error.message shouldNotContain "invalid @example.com"
+                    error.message shouldNotContain "gyldig@example.com"
+                    fixture.establish.commands shouldBe emptyList()
+                    fixture.repository.fulfilled shouldBe emptyList()
+                }
             }
         }
 
@@ -149,10 +161,13 @@ class FulfillNarmestelederbehovRouteTest :
                     setBody(manager())
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
-                response.status shouldBe HttpStatusCode.NotFound
-                response.body<ApiError>().type shouldBe ErrorType.NOT_FOUND
-                response.body<ApiError>().message shouldBe "A LinemanagerRequirement was not found"
-                fixture.establish.commands shouldBe emptyList()
+                val error = response.body<ApiError>()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.NotFound
+                    error.type shouldBe ErrorType.NOT_FOUND
+                    error.message shouldBe "A LinemanagerRequirement was not found"
+                    fixture.establish.commands shouldBe emptyList()
+                }
             }
         }
 
@@ -164,9 +179,12 @@ class FulfillNarmestelederbehovRouteTest :
                     setBody("""{ "foo": "bar" }""")
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
-                response.status shouldBe HttpStatusCode.BadRequest
-                response.body<ApiError>().type shouldBe ErrorType.INVALID_FORMAT
-                fixture.establish.commands shouldBe emptyList()
+                val error = response.body<ApiError>()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    error.type shouldBe ErrorType.INVALID_FORMAT
+                    fixture.establish.commands shouldBe emptyList()
+                }
             }
         }
 
@@ -178,12 +196,15 @@ class FulfillNarmestelederbehovRouteTest :
                     setBody("""{"nationalIdentificationNumber":"1234567890","lastName":"Manager","mobile":"+4790000000","email":"manager@example.test"}""")
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
-                response.status shouldBe HttpStatusCode.BadRequest
-                response.body<ApiError>().let {
-                    it.type shouldBe ErrorType.INVALID_FORMAT
-                    it.message shouldBe "PersonalIdentificationNumber must be exactly 11 digits"
+                val error = response.body<ApiError>()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    error.let {
+                        it.type shouldBe ErrorType.INVALID_FORMAT
+                        it.message shouldBe "PersonalIdentificationNumber must be exactly 11 digits"
+                    }
+                    fixture.establish.commands shouldBe emptyList()
                 }
-                fixture.establish.commands shouldBe emptyList()
             }
         }
 
@@ -197,9 +218,12 @@ class FulfillNarmestelederbehovRouteTest :
                     setBody(manager())
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
-                response.status shouldBe HttpStatusCode.BadRequest
-                response.body<ApiError>().type shouldBe ErrorType.ORGANIZATION_NOT_FOUND
-                fixture.establish.commands shouldBe emptyList()
+                val error = response.body<ApiError>()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    error.type shouldBe ErrorType.ORGANIZATION_NOT_FOUND
+                    fixture.establish.commands shouldBe emptyList()
+                }
             }
         }
 
@@ -218,12 +242,15 @@ class FulfillNarmestelederbehovRouteTest :
                     setBody(manager())
                     bearerAuth(createMockToken("000000000"))
                 }
-                response.status shouldBe HttpStatusCode.Forbidden
-                response.body<ApiError>().type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
-                response.body<ApiError>().message shouldBe
-                    "System user does not have access to nav_syfo_oppgi-narmesteleder resource"
-                fixture.establish.commands shouldBe emptyList()
-                fixture.repository.fulfilled shouldBe emptyList()
+                val error = response.body<ApiError>()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.Forbidden
+                    error.type shouldBe ErrorType.MISSING_ALITINN_RESOURCE_ACCESS
+                    error.message shouldBe
+                        "System user does not have access to nav_syfo_oppgi-narmesteleder resource"
+                    fixture.establish.commands shouldBe emptyList()
+                    fixture.repository.fulfilled shouldBe emptyList()
+                }
             }
         }
 
@@ -236,12 +263,15 @@ class FulfillNarmestelederbehovRouteTest :
                     setBody(manager())
                     bearerAuth(createMockToken(fixture.orgNumber))
                 }
-                response.status shouldBe HttpStatusCode.BadRequest
-                response.body<ApiError>().type shouldBe ErrorType.NO_ACTIVE_SICK_LEAVE
-                response.body<ApiError>().message shouldBe
-                    "No active sick leave found for the given organization number: ${fixture.orgNumber}"
-                fixture.establish.commands.size shouldBe 1
-                fixture.repository.fulfilled shouldBe emptyList()
+                val error = response.body<ApiError>()
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    error.type shouldBe ErrorType.NO_ACTIVE_SICK_LEAVE
+                    error.message shouldBe
+                        "No active sick leave found for the given organization number: ${fixture.orgNumber}"
+                    fixture.establish.commands.size shouldBe 1
+                    fixture.repository.fulfilled shouldBe emptyList()
+                }
             }
         }
     })

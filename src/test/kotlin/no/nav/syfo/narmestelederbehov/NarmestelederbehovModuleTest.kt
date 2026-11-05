@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -66,12 +67,14 @@ class NarmestelederbehovModuleTest :
                     val publicResponse = client.request("$API_V1_PATH$path") {
                         method = httpMethod
                     }
-                    publicResponse.status shouldBe HttpStatusCode.Unauthorized
-                    publicResponse.headers[NAV_CALL_ID_HEADER] shouldNotBe null
-
-                    client.request("$INTERNAL_API_V1_PATH$path") {
+                    val internalResponse = client.request("$INTERNAL_API_V1_PATH$path") {
                         method = httpMethod
-                    }.status shouldBe HttpStatusCode.NotFound
+                    }
+                    assertSoftly {
+                        publicResponse.status shouldBe HttpStatusCode.Unauthorized
+                        publicResponse.headers[NAV_CALL_ID_HEADER] shouldNotBe null
+                        internalResponse.status shouldBe HttpStatusCode.NotFound
+                    }
                 }
             }
         }

@@ -2,6 +2,7 @@ package no.nav.syfo.narmestelederbehov.application
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeIn
@@ -59,26 +60,32 @@ class FulfillNarmestelederbehovUseCaseTest :
                 expectedCount = 1,
             )
             return mapper.readTree(capture.records.single { mapper.readTree(it).path("event_type").asText() == name }).also {
-                it["level"].asText() shouldBe level
-                it["operation"].asText() shouldBe "fulfill_narmestelederbehov"
-                it["logger_name"].asText() shouldBe FulfillNarmestelederbehovUseCase::class.java.name
+                assertSoftly {
+                    it["level"].asText() shouldBe level
+                    it["operation"].asText() shouldBe "fulfill_narmestelederbehov"
+                    it["logger_name"].asText() shouldBe FulfillNarmestelederbehovUseCase::class.java.name
+                }
             }
         }
 
         fun checkCompletedEvent(relationSource: String, dialogCompletion: String, recordCount: Int = 1) {
             val record = outcomeEvent("narmestelederbehov_fulfillment_completed", "INFO")
-            record["relation_source"].asText() shouldBe relationSource
-            record["dialogporten_completion"].asText() shouldBe dialogCompletion
-            record.has("outcome_code") shouldBe false
-            capture.records.size shouldBe recordCount
+            assertSoftly {
+                record["relation_source"].asText() shouldBe relationSource
+                record["dialogporten_completion"].asText() shouldBe dialogCompletion
+                record.has("outcome_code") shouldBe false
+                capture.records.size shouldBe recordCount
+            }
         }
 
         fun rejectedEvent(outcomeCode: String): JsonNode = outcomeEvent("narmestelederbehov_fulfillment_rejected", "WARN").also {
-            it["outcome_code"].asText() shouldBe outcomeCode
-            it.has("relation_source") shouldBe false
-            it.has("dialogporten_completion") shouldBe false
-            if (outcomeCode != "INVALID_MANAGER_CONTACT_DETAILS") it.has("validation_issues") shouldBe false
-            capture.records.size shouldBe 1
+            assertSoftly {
+                it["outcome_code"].asText() shouldBe outcomeCode
+                it.has("relation_source") shouldBe false
+                it.has("dialogporten_completion") shouldBe false
+                if (outcomeCode != "INVALID_MANAGER_CONTACT_DETAILS") it.has("validation_issues") shouldBe false
+                capture.records.size shouldBe 1
+            }
         }
 
         beforeTest {
@@ -86,11 +93,13 @@ class FulfillNarmestelederbehovUseCaseTest :
         }
         afterTest {
             capture.use { capture ->
-                capture.records.forEach { line ->
-                    privacyCanaries.forEach { line shouldNotContain it }
-                    val record = mapper.readTree(line)
-                    record.has("behov_id") shouldBe false
-                    line shouldNotContain behovId.value.toString()
+                assertSoftly {
+                    capture.records.forEach { line ->
+                        privacyCanaries.forEach { line shouldNotContain it }
+                        val record = mapper.readTree(line)
+                        record.has("behov_id") shouldBe false
+                        line shouldNotContain behovId.value.toString()
+                    }
                 }
             }
         }
@@ -102,9 +111,12 @@ class FulfillNarmestelederbehovUseCaseTest :
                 access = FakeOrganizationAccess(organizationNumber, OrganizationAccessResult.Unavailable(failure), effects),
                 effects = effects,
             ).execute(command())
-            result shouldBe FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
-            result.shouldBeInstanceOf<FulfillNarmestelederbehovResult.UpstreamUnavailable>().failure shouldBeSameInstanceAs failure
-            effects shouldBe listOf("load", "access")
+            val unavailable = result.shouldBeInstanceOf<FulfillNarmestelederbehovResult.UpstreamUnavailable>()
+            assertSoftly {
+                result shouldBe FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
+                unavailable.failure shouldBeSameInstanceAs failure
+                effects shouldBe listOf("load", "access")
+            }
             contract.assertValid(capture.records, expectedCount = 0)
         }
 
@@ -112,61 +124,71 @@ class FulfillNarmestelederbehovUseCaseTest :
             val effects = mutableListOf<String>()
             val relation = FakeRelationEstablisher(effects)
 
-            createUseCase(relation = relation, effects = effects).execute(command()) shouldBe fulfilledResult()
+            val result = createUseCase(relation = relation, effects = effects).execute(command())
 
-            effects shouldBe listOf(
-                "load",
-                "access",
-                "establish",
-                "fulfilled",
-            )
-            requireNotNull(relation.command).manager.let {
-                it.email.value shouldBe "manager@example.test"
-                it.mobile.value shouldBe "+4799999999"
-                it.personIdent shouldBe managerIdent
+            val established = requireNotNull(relation.command)
+            assertSoftly {
+                result shouldBe fulfilledResult()
+                effects shouldBe listOf(
+                    "load",
+                    "access",
+                    "establish",
+                    "fulfilled",
+                )
+                established.manager.let {
+                    it.email.value shouldBe "manager@example.test"
+                    it.mobile.value shouldBe "+4799999999"
+                    it.personIdent shouldBe managerIdent
+                }
+                established.employeeIdent shouldBe employeeIdent
+                established.organizationNumber shouldBe organizationNumber
+                established.source shouldBe RelationSource.LPS
             }
-            requireNotNull(relation.command).employeeIdent shouldBe employeeIdent
-            requireNotNull(relation.command).organizationNumber shouldBe organizationNumber
-            requireNotNull(relation.command).source shouldBe RelationSource.LPS
             checkCompletedEvent("LPS", "PENDING")
         }
 
         test("derives personnel manager relation source") {
             val relation = FakeRelationEstablisher()
 
-            createUseCase(relation = relation).execute(command(accessSubject = personnelManager)) shouldBe fulfilledResult(
-                relationSource = RelationSource.PERSONNEL_MANAGER,
-            )
-
-            requireNotNull(relation.command).source shouldBe RelationSource.PERSONNEL_MANAGER
+            val result = createUseCase(relation = relation).execute(command(accessSubject = personnelManager))
+            val established = requireNotNull(relation.command)
+            assertSoftly {
+                result shouldBe fulfilledResult(relationSource = RelationSource.PERSONNEL_MANAGER)
+                established.source shouldBe RelationSource.PERSONNEL_MANAGER
+            }
             checkCompletedEvent("PERSONNEL_MANAGER", "PENDING")
         }
 
         test("returns combined invalid contact issues without loading the behov and logs only bounded issues") {
             val effects = mutableListOf<String>()
 
-            createUseCase(effects = effects).execute(command(email = "private-email-canary", mobile = "+47-99999999")) shouldBe
-                FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
-                    listOf(
-                        ManagerContactValidationIssue(
-                            ManagerContactField.MOBILE,
-                            ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+            val result = createUseCase(effects = effects).execute(command(email = "private-email-canary", mobile = "+47-99999999"))
+            assertSoftly {
+                result shouldBe
+                    FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
+                        listOf(
+                            ManagerContactValidationIssue(
+                                ManagerContactField.MOBILE,
+                                ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS,
+                            ),
+                            ManagerContactValidationIssue(
+                                ManagerContactField.EMAIL,
+                                ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
+                            ),
                         ),
-                        ManagerContactValidationIssue(
-                            ManagerContactField.EMAIL,
-                            ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID,
-                        ),
-                    ),
-                )
+                    )
 
-            effects shouldBe emptyList()
+                effects shouldBe emptyList()
+            }
             val record = rejectedEvent("INVALID_MANAGER_CONTACT_DETAILS")
             val issues = record["validation_issues"]
-            issues.size() shouldBe record["issue_count"].asInt()
-            issues.forEach { issue ->
-                issue.size() shouldBe 2
-                issue["field"].asText() shouldBeIn setOf("MOBILE", "EMAIL")
-                issue["reason"].asText() shouldMatch Regex("[A-Z_]+")
+            assertSoftly {
+                issues.size() shouldBe record["issue_count"].asInt()
+                issues.forEach { issue ->
+                    issue.size() shouldBe 2
+                    issue["field"].asText() shouldBeIn setOf("MOBILE", "EMAIL")
+                    issue["reason"].asText() shouldMatch Regex("[A-Z_]+")
+                }
             }
         }
 
@@ -177,17 +199,20 @@ class FulfillNarmestelederbehovUseCaseTest :
             test("invalid contact takes precedence over $case") {
                 val effects = mutableListOf<String>()
                 val invalidCommand = command(email = "invalid", mobile = "+47-99999999")
-                createUseCase(
+                val result = createUseCase(
                     repository = FakeBehovRepository(behovForFulfillment, effects),
                     access = FakeOrganizationAccess(organizationNumber, accessResult, effects),
                     effects = effects,
-                ).execute(invalidCommand) shouldBe FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
-                    listOf(
-                        ManagerContactValidationIssue(ManagerContactField.MOBILE, ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS),
-                        ManagerContactValidationIssue(ManagerContactField.EMAIL, ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID),
-                    ),
-                )
-                effects shouldBe emptyList()
+                ).execute(invalidCommand)
+                assertSoftly {
+                    result shouldBe FulfillNarmestelederbehovResult.InvalidManagerContactDetails(
+                        listOf(
+                            ManagerContactValidationIssue(ManagerContactField.MOBILE, ManagerContactValidationReason.PHONE_NUMBER_MUST_CONTAIN_ONLY_DIGITS),
+                            ManagerContactValidationIssue(ManagerContactField.EMAIL, ManagerContactValidationReason.EMAIL_ADDRESS_MUST_BE_VALID),
+                        ),
+                    )
+                    effects shouldBe emptyList()
+                }
             }
         }
 
@@ -207,13 +232,15 @@ class FulfillNarmestelederbehovUseCaseTest :
         ).forEach { case ->
             test("returns ${case.outcomeCode} before later effects and logs one bounded rejection") {
                 val effects = mutableListOf<String>()
-                createUseCase(
+                val result = createUseCase(
                     repository = FakeBehovRepository(case.behovForFulfillment, effects),
                     access = FakeOrganizationAccess(organizationNumber, case.accessResult, effects),
                     effects = effects,
-                ).execute(command()) shouldBe case.result
-
-                effects shouldBe case.expectedEffects
+                ).execute(command())
+                assertSoftly {
+                    result shouldBe case.result
+                    effects shouldBe case.expectedEffects
+                }
                 rejectedEvent(case.outcomeCode)
             }
         }
@@ -243,9 +270,12 @@ class FulfillNarmestelederbehovUseCaseTest :
         ).forEach { (outcomeCode, rejection, expected) ->
             test("maps establish rejection $rejection to $outcomeCode without fulfilling or completing dialog") {
                 val effects = mutableListOf<String>()
-                createUseCase(relation = FakeRelationEstablisher(effects, result = rejection), effects = effects)
-                    .execute(command()) shouldBe expected
-                effects shouldBe listOf("load", "access", "establish")
+                val result = createUseCase(relation = FakeRelationEstablisher(effects, result = rejection), effects = effects)
+                    .execute(command())
+                assertSoftly {
+                    result shouldBe expected
+                    effects shouldBe listOf("load", "access", "establish")
+                }
                 rejectedEvent(outcomeCode)
             }
         }
@@ -254,29 +284,37 @@ class FulfillNarmestelederbehovUseCaseTest :
             val effects = mutableListOf<String>()
             val failure = UpstreamFailure(UpstreamName("aareg"), UpstreamFailureStage.REQUEST, null, IllegalStateException("private-exception-canary"))
             val relation = FakeRelationEstablisher(effects, result = EstablishNarmestelederrelasjonResult.UpstreamUnavailable(failure))
-            createUseCase(relation = relation, effects = effects).execute(command()) shouldBe
-                FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
-            effects shouldBe listOf("load", "access", "establish")
+            val result = createUseCase(relation = relation, effects = effects).execute(command())
+            assertSoftly {
+                result shouldBe FulfillNarmestelederbehovResult.UpstreamUnavailable(failure)
+                effects shouldBe listOf("load", "access", "establish")
+            }
             contract.assertValid(capture.records, expectedCount = 0)
         }
 
         test("returns a distinct missing result after publication without dialog completion") {
             val effects = mutableListOf<String>()
-            createUseCase(
+            val result = createUseCase(
                 repository = FakeBehovRepository(behov, effects, markResult = MarkFulfilledResult.Missing),
                 effects = effects,
-            ).execute(command()) shouldBe FulfillNarmestelederbehovResult.BehovMissingAfterPublication
-            effects shouldBe listOf("load", "access", "establish", "fulfilled")
+            ).execute(command())
+            assertSoftly {
+                result shouldBe FulfillNarmestelederbehovResult.BehovMissingAfterPublication
+                effects shouldBe listOf("load", "access", "establish", "fulfilled")
+            }
             rejectedEvent("BEHOV_MISSING_AFTER_PUBLICATION")
         }
 
         test("skips dialog and status update when no dialog id was returned") {
             val effects = mutableListOf<String>()
-            createUseCase(
+            val result = createUseCase(
                 repository = FakeBehovRepository(behov, effects, markResult = MarkFulfilledResult.Marked(behovId, null)),
                 effects = effects,
-            ).execute(command()) shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.NotApplicable)
-            effects.takeLast(2) shouldBe listOf("establish", "fulfilled")
+            ).execute(command())
+            assertSoftly {
+                result shouldBe fulfilledResult(dialogCompletion = DialogportenCompletionAttempt.NotApplicable)
+                effects.takeLast(2) shouldBe listOf("establish", "fulfilled")
+            }
             checkCompletedEvent("LPS", "NOT_APPLICABLE")
         }
 
@@ -291,7 +329,7 @@ class FulfillNarmestelederbehovUseCaseTest :
                         effects = effects,
                     )
 
-                    shouldThrow<Exception> { useCase.execute(command()) } shouldBe failure
+                    val thrown = shouldThrow<Exception> { useCase.execute(command()) }
 
                     val allEffects = listOf(
                         "load",
@@ -300,8 +338,11 @@ class FulfillNarmestelederbehovUseCaseTest :
                         "fulfilled",
                         "dialog",
                     )
-                    effects shouldBe allEffects.take(allEffects.indexOf(failingEffect) + 1)
-                    capture.records shouldBe emptyList()
+                    assertSoftly {
+                        thrown shouldBe failure
+                        effects shouldBe allEffects.take(allEffects.indexOf(failingEffect) + 1)
+                        capture.records shouldBe emptyList()
+                    }
                 }
             }
         }

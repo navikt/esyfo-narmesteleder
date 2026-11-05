@@ -1,5 +1,6 @@
 package no.nav.syfo.sykmelding.application
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
@@ -75,20 +76,24 @@ class SendtSykmeldingOverviewFlowTest :
 
             handler.handleOverviewSykmelding(employee, organization)
 
-            relationSearchRepository.search(activeSickLeaveQuery)
-                .map { it.linemanager.employee.nationalIdentificationNumber } shouldBe listOf(employee)
-            openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50) shouldBe emptyList()
-            openBehovRepository.countOpen(organization, Instant.now().minusSeconds(3600)) shouldBe 0L
-            queuedEmployee() shouldBe null
+            assertSoftly {
+                relationSearchRepository.search(activeSickLeaveQuery)
+                    .map { it.linemanager.employee.nationalIdentificationNumber } shouldBe listOf(employee)
+                openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50) shouldBe emptyList()
+                openBehovRepository.countOpen(organization, Instant.now().minusSeconds(3600)) shouldBe 0L
+                queuedEmployee() shouldBe null
+            }
         }
 
         test("sendt sykmelding without an active relation shows the employee in Mangler nærmeste leder") {
             handler.handleOverviewSykmelding(employee, organization)
 
-            openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
-                .map { it.employeeIdent } shouldBe listOf(employee)
-            relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
-            queuedEmployee() shouldBe employee
+            assertSoftly {
+                openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
+                    .map { it.employeeIdent } shouldBe listOf(employee)
+                relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
+                queuedEmployee() shouldBe employee
+            }
         }
 
         test("an active relation in another organization does not prevent creating behov") {
@@ -96,10 +101,12 @@ class SendtSykmeldingOverviewFlowTest :
 
             handler.handleOverviewSykmelding(employee, organization)
 
-            openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
-                .map { it.employeeIdent } shouldBe listOf(employee)
-            relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
-            queuedEmployee() shouldBe employee
+            assertSoftly {
+                openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
+                    .map { it.employeeIdent } shouldBe listOf(employee)
+                relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
+                queuedEmployee() shouldBe employee
+            }
         }
 
         test("a revoked relation in the same organization does not prevent creating behov") {
@@ -107,10 +114,12 @@ class SendtSykmeldingOverviewFlowTest :
 
             handler.handleOverviewSykmelding(employee, organization)
 
-            openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
-                .map { it.employeeIdent } shouldBe listOf(employee)
-            relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
-            queuedEmployee() shouldBe employee
+            assertSoftly {
+                openBehovRepository.findOpen(organization, Instant.now().minusSeconds(3600), 50)
+                    .map { it.employeeIdent } shouldBe listOf(employee)
+                relationSearchRepository.search(activeSickLeaveQuery) shouldBe emptyList()
+                queuedEmployee() shouldBe employee
+            }
         }
     })
 

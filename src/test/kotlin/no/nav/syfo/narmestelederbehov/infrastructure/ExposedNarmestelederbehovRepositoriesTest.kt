@@ -45,20 +45,22 @@ class ExposedNarmestelederbehovRepositoriesTest :
             )
             val id = NarmestelederbehovId(row.id)
             val result = requireNotNull(readRepository.findDetails(id))
-            result.id shouldBe id
-            result.employeeIdent shouldBe PersonalIdentificationNumber(row.sykmeldtFnr)
-            result.organizationNumber shouldBe OrganizationNumber(row.orgnummer)
-            result.mainOrganizationNumber shouldBe row.hovedenhetOrgnummer
-            result.managerIdent.shouldBeNull()
-            result.firstName shouldBe "First"
-            result.middleName shouldBe "Middle"
-            result.lastName shouldBe "Last"
-            result.created shouldBe row.created
-            result.updated shouldBe row.updated
-            result.status shouldBe row.behovStatus
-            result.reason shouldBe row.behovReason
-            readRepository.findDetails(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
-            findStoredNarmestelederbehov(row.id) shouldBe row
+            assertSoftly {
+                result.id shouldBe id
+                result.employeeIdent shouldBe PersonalIdentificationNumber(row.sykmeldtFnr)
+                result.organizationNumber shouldBe OrganizationNumber(row.orgnummer)
+                result.mainOrganizationNumber shouldBe row.hovedenhetOrgnummer
+                result.managerIdent.shouldBeNull()
+                result.firstName shouldBe "First"
+                result.middleName shouldBe "Middle"
+                result.lastName shouldBe "Last"
+                result.created shouldBe row.created
+                result.updated shouldBe row.updated
+                result.status shouldBe row.behovStatus
+                result.reason shouldBe row.behovReason
+                readRepository.findDetails(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
+                findStoredNarmestelederbehov(row.id) shouldBe row
+            }
         }
 
         test("saves only the employee name columns") {
@@ -82,11 +84,13 @@ class ExposedNarmestelederbehovRepositoriesTest :
             val row = insertNarmestelederbehov()
             val id = NarmestelederbehovId(row.id)
 
-            fulfillmentRepository.findForFulfillment(id) shouldBe Narmestelederbehov(
-                id,
-                Employee(PersonalIdentificationNumber(row.sykmeldtFnr), OrganizationNumber(row.orgnummer)),
-            )
-            fulfillmentRepository.findForFulfillment(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
+            assertSoftly {
+                fulfillmentRepository.findForFulfillment(id) shouldBe Narmestelederbehov(
+                    id,
+                    Employee(PersonalIdentificationNumber(row.sykmeldtFnr), OrganizationNumber(row.orgnummer)),
+                )
+                fulfillmentRepository.findForFulfillment(NarmestelederbehovId(UUID.randomUUID())).shouldBeNull()
+            }
         }
 
         test("marks a behov with dialog id without overwriting unrelated fields") {
@@ -101,9 +105,10 @@ class ExposedNarmestelederbehovRepositoriesTest :
             )
             val id = NarmestelederbehovId(before.id)
 
-            fulfillmentRepository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, dialogId)
+            val result = fulfillmentRepository.markFulfilled(id)
 
             assertSoftly(requireNotNull(findStoredNarmestelederbehov(before.id))) {
+                result shouldBe MarkFulfilledResult.Marked(id, dialogId)
                 behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
                 copy(behovStatus = before.behovStatus, updated = before.updated) shouldBe before
             }
@@ -112,8 +117,12 @@ class ExposedNarmestelederbehovRepositoriesTest :
         test("marks a behov with no dialog and returns Missing for an absent row") {
             val id = NarmestelederbehovId(insertNarmestelederbehov().id)
 
-            fulfillmentRepository.markFulfilled(id) shouldBe MarkFulfilledResult.Marked(id, null)
-            fulfillmentRepository.markFulfilled(NarmestelederbehovId(UUID.randomUUID())) shouldBe MarkFulfilledResult.Missing
+            val marked = fulfillmentRepository.markFulfilled(id)
+            val missing = fulfillmentRepository.markFulfilled(NarmestelederbehovId(UUID.randomUUID()))
+            assertSoftly {
+                marked shouldBe MarkFulfilledResult.Marked(id, null)
+                missing shouldBe MarkFulfilledResult.Missing
+            }
         }
 
         // An employee can have at most one open behov per organization (uq_nl_behov_active_employee_org).
@@ -174,9 +183,11 @@ class ExposedNarmestelederbehovRepositoriesTest :
         test("reports AlreadyExists without storing when the employee has an open behov in the organization") {
             val existing = lifecycleRepository.create(newBehov).shouldBeInstanceOf<CreateBehovResult.Created>()
 
-            lifecycleRepository.create(newBehov.copy(status = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION)) shouldBe CreateBehovResult.AlreadyExists
-
-            lifecycleRepository.findOpenFor(newBehov.employee) shouldBe listOf(existing.id)
+            val duplicate = lifecycleRepository.create(newBehov.copy(status = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION))
+            assertSoftly {
+                duplicate shouldBe CreateBehovResult.AlreadyExists
+                lifecycleRepository.findOpenFor(newBehov.employee) shouldBe listOf(existing.id)
+            }
         }
 
         test("stores exactly one open behov when concurrent creates race") {
@@ -184,9 +195,11 @@ class ExposedNarmestelederbehovRepositoriesTest :
                 (1..2).map { async { lifecycleRepository.create(newBehov) } }.awaitAll()
             }
 
-            results.count { it is CreateBehovResult.Created } shouldBe 1
-            results.count { it == CreateBehovResult.AlreadyExists } shouldBe 1
-            lifecycleRepository.findOpenFor(newBehov.employee).size shouldBe 1
+            assertSoftly {
+                results.count { it is CreateBehovResult.Created } shouldBe 1
+                results.count { it == CreateBehovResult.AlreadyExists } shouldBe 1
+                lifecycleRepository.findOpenFor(newBehov.employee).size shouldBe 1
+            }
         }
 
         test("creates a behov alongside closed and error behov for the same employee and organization") {

@@ -1,5 +1,6 @@
 package no.nav.syfo.bootstrap
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -34,9 +35,11 @@ class ConfigureBackgroundTasksTest :
             val tasks = RecordingTasks()
 
             tasks.promote(OtherEnvironmentProperties.createForLocal().withTaskDefaults()) {
-                tasks.relationPersons.findPendingLimits.size shouldBe 1
-                tasks.expiry.calls.map { it.first } shouldBe listOf(LocalDate.parse("2026-03-01"))
-                tasks.retention.requests.map { it.first } shouldBe listOf(LocalDate.parse("2025-03-17"))
+                assertSoftly {
+                    tasks.relationPersons.findPendingLimits.size shouldBe 1
+                    tasks.expiry.calls.map { it.first } shouldBe listOf(LocalDate.parse("2026-03-01"))
+                    tasks.retention.requests.map { it.first } shouldBe listOf(LocalDate.parse("2025-03-17"))
+                }
             }
         }
 
@@ -46,8 +49,10 @@ class ConfigureBackgroundTasksTest :
                 .copy(isDialogportenBackgroundTaskEnabled = false)
 
             tasks.promote(properties) {
-                tasks.expiry.calls.size shouldBe 1
-                tasks.retention.requests.size shouldBe 1
+                assertSoftly {
+                    tasks.expiry.calls.size shouldBe 1
+                    tasks.retention.requests.size shouldBe 1
+                }
             }
 
             tasks.relationPersons.findPendingLimits.shouldBeEmpty()
@@ -59,13 +64,17 @@ class ConfigureBackgroundTasksTest :
                 .copy(personEnrichmentTaskEnabled = false, maintenanceTaskEnabled = false)
 
             tasks.promote(properties) {
+                assertSoftly {
+                    tasks.expiry.calls.shouldBeEmpty()
+                    tasks.retention.requests.shouldBeEmpty()
+                }
+            }
+
+            assertSoftly {
+                tasks.relationPersons.findPendingLimits.shouldBeEmpty()
                 tasks.expiry.calls.shouldBeEmpty()
                 tasks.retention.requests.shouldBeEmpty()
             }
-
-            tasks.relationPersons.findPendingLimits.shouldBeEmpty()
-            tasks.expiry.calls.shouldBeEmpty()
-            tasks.retention.requests.shouldBeEmpty()
         }
     })
 

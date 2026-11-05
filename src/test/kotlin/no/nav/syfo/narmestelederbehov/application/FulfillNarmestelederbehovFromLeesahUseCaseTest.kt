@@ -1,6 +1,7 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import ch.qos.logback.classic.Level
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -69,10 +70,12 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
             withProductionLogs(FulfillNarmestelederbehovFromLeesahUseCase::class.java, Level.INFO) { logs ->
                 useCase(effects, repository).execute(EMPLOYEE)
 
-                effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "fulfilled:$WITHOUT_DIALOG", "metric")
                 val events = logs.logs.map { it.fields }
-                events.filter { it["event_type"] == "narmestelederbehov_fulfilled_from_leesah" }
-                    .map { it["dialogporten_completion"] } shouldBe listOf("PENDING", "NOT_APPLICABLE")
+                assertSoftly {
+                    effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "fulfilled:$WITHOUT_DIALOG", "metric")
+                    events.filter { it["event_type"] == "narmestelederbehov_fulfilled_from_leesah" }
+                        .map { it["dialogporten_completion"] } shouldBe listOf("PENDING", "NOT_APPLICABLE")
+                }
             }
         }
 
@@ -92,11 +95,14 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
                 val effects = mutableListOf<String>()
                 val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), fulfillFailure = failure)
                 withProductionLogs(FulfillNarmestelederbehovFromLeesahUseCase::class.java, Level.INFO) { logs ->
-                    shouldThrow<Exception> {
+                    val thrown = shouldThrow<Exception> {
                         useCase(effects, repository).execute(EMPLOYEE)
-                    } shouldBe failure
-                    effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG")
-                    logs.logs shouldBe emptyList()
+                    }
+                    assertSoftly {
+                        thrown shouldBe failure
+                        effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG")
+                        logs.logs shouldBe emptyList()
+                    }
                 }
             }
         }

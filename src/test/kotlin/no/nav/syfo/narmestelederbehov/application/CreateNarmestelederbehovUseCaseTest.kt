@@ -1,6 +1,7 @@
 package no.nav.syfo.narmestelederbehov.application
 
 import ch.qos.logback.classic.Level
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
@@ -75,7 +76,7 @@ class CreateNarmestelederbehovUseCaseTest :
 
         test("stores a behov with the main organization without performing dialog delivery") {
             with(Fixture()) {
-                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Created(createdId)
+                val result = useCase.execute(leesahCommand())
 
                 val expected = NewNarmestelederbehov(
                     employee = employee,
@@ -85,31 +86,40 @@ class CreateNarmestelederbehovUseCaseTest :
                     status = BehovStatus.BEHOV_CREATED,
                     revokedRelationId = relationId,
                 )
-                created shouldBe listOf(expected)
-                effects shouldBe listOf(
-                    "find-open",
-                    "active-sykmelding",
-                    "main-organization",
-                    "create",
-                )
+                assertSoftly {
+                    result shouldBe CreateNarmestelederbehovResult.Created(createdId)
+                    created shouldBe listOf(expected)
+                    effects shouldBe listOf(
+                        "find-open",
+                        "active-sykmelding",
+                        "main-organization",
+                        "create",
+                    )
+                }
             }
         }
 
         test("uses the main organization reported on the sykmelding without asking Aareg or Dinesykmeldte") {
             with(Fixture()) {
-                useCase.execute(sykmeldingCommand("111222333")) shouldBe CreateNarmestelederbehovResult.Created(createdId)
+                val result = useCase.execute(sykmeldingCommand("111222333"))
 
-                created.single().mainOrganizationNumber shouldBe "111222333"
-                created.single().status shouldBe BehovStatus.BEHOV_CREATED
-                effects shouldBe listOf("find-open", "create")
+                val stored = created.single()
+                assertSoftly {
+                    result shouldBe CreateNarmestelederbehovResult.Created(createdId)
+                    stored.mainOrganizationNumber shouldBe "111222333"
+                    stored.status shouldBe BehovStatus.BEHOV_CREATED
+                    effects shouldBe listOf("find-open", "create")
+                }
             }
         }
 
         test("does nothing when persistence is disabled") {
             with(Fixture(persistenceEnabled = false)) {
-                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.Disabled
-
-                effects shouldBe emptyList()
+                val result = useCase.execute(leesahCommand())
+                assertSoftly {
+                    result shouldBe CreateNarmestelederbehovResult.Disabled
+                    effects shouldBe emptyList()
+                }
             }
         }
 
@@ -117,41 +127,51 @@ class CreateNarmestelederbehovUseCaseTest :
             with(Fixture(openBehov = listOf(createdId))) {
                 val logs = captureLogs { useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists }
 
-                effects shouldBe listOf("find-open", "metric:already-exists")
-                logs.map { it.message } shouldBe listOf("Not inserting narmestelederbehov since one already for employee and org")
+                assertSoftly {
+                    effects shouldBe listOf("find-open", "metric:already-exists")
+                    logs.map { it.message } shouldBe listOf("Not inserting narmestelederbehov since one already for employee and org")
+                }
             }
         }
 
         test("skips with a metric when the employee has no active sykmelding") {
             with(Fixture(hasActiveSykmelding = false)) {
-                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.NoActiveSykmelding
-
-                effects shouldBe listOf("find-open", "active-sykmelding", "metric:no-active-sykmelding")
+                val result = useCase.execute(leesahCommand())
+                assertSoftly {
+                    result shouldBe CreateNarmestelederbehovResult.NoActiveSykmelding
+                    effects shouldBe listOf("find-open", "active-sykmelding", "metric:no-active-sykmelding")
+                }
             }
         }
 
         test("does not ask Dinesykmeldte when the sykmelding is known to be active") {
             with(Fixture(hasActiveSykmelding = false)) {
-                useCase.execute(leesahCommand(sykmeldingKnownActive = true)) shouldBe CreateNarmestelederbehovResult.Created(createdId)
-
-                effects shouldBe listOf("find-open", "main-organization", "create")
+                val result = useCase.execute(leesahCommand(sykmeldingKnownActive = true))
+                assertSoftly {
+                    result shouldBe CreateNarmestelederbehovResult.Created(createdId)
+                    effects shouldBe listOf("find-open", "main-organization", "create")
+                }
             }
         }
 
         test("stores nothing when Aareg is unavailable") {
             val failure = UpstreamFailure(AAREG, UpstreamFailureStage.RESPONSE, 503, IllegalStateException())
             with(Fixture(mainOrganizationResult = MainOrganizationResult.Unavailable(failure))) {
-                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.UpstreamUnavailable(failure)
-
-                effects shouldBe listOf("find-open", "active-sykmelding", "main-organization")
+                val result = useCase.execute(leesahCommand())
+                assertSoftly {
+                    result shouldBe CreateNarmestelederbehovResult.UpstreamUnavailable(failure)
+                    effects shouldBe listOf("find-open", "active-sykmelding", "main-organization")
+                }
             }
         }
 
         test("skips with a metric and no dialog when storing conflicts with an open behov") {
             with(Fixture(createResult = CreateBehovResult.AlreadyExists)) {
-                useCase.execute(leesahCommand()) shouldBe CreateNarmestelederbehovResult.AlreadyExists
-
-                effects shouldBe listOf("find-open", "active-sykmelding", "main-organization", "create", "metric:already-exists")
+                val result = useCase.execute(leesahCommand())
+                assertSoftly {
+                    result shouldBe CreateNarmestelederbehovResult.AlreadyExists
+                    effects shouldBe listOf("find-open", "active-sykmelding", "main-organization", "create", "metric:already-exists")
+                }
             }
         }
 
@@ -193,14 +213,17 @@ class CreateNarmestelederbehovUseCaseTest :
                 with(Fixture(mainOrganizationResult = case.mainOrganizationResult)) {
                     val logs = captureLogs { useCase.execute(case.command) shouldBe CreateNarmestelederbehovResult.Created(createdId) }
 
-                    created.single().status shouldBe case.status
-                    created.single().mainOrganizationNumber shouldBe "UNKNOWN"
-                    metrics.recorded shouldBe listOfNotNull(case.metric)
+                    val stored = created.single()
                     val record = logs.single { it.level == Level.WARN }
                     val event = record.fields
-                    event["event_type"] shouldBe "narmestelederbehov_stored_degraded"
-                    event["reason"] shouldBe case.reason
-                    record.serialized shouldNotContain employee.personIdent.value
+                    assertSoftly {
+                        stored.status shouldBe case.status
+                        stored.mainOrganizationNumber shouldBe "UNKNOWN"
+                        metrics.recorded shouldBe listOfNotNull(case.metric)
+                        event["event_type"] shouldBe "narmestelederbehov_stored_degraded"
+                        event["reason"] shouldBe case.reason
+                        record.serialized shouldNotContain employee.personIdent.value
+                    }
                 }
             }
         }
@@ -215,9 +238,11 @@ class CreateNarmestelederbehovUseCaseTest :
             }
 
             val events = logs.filter { it.level == Level.WARN }.map { it.fields }
-            events.map { it["behov_source"] } shouldBe listOf(NARMESTELEDER_LEESAH_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME)
-            events.map { it["narmesteleder_id"] } shouldBe listOf(relationId.toString(), null, null)
-            events.map { it["sykmelding_id"] } shouldBe listOf(null, sykmeldingId.toString(), null)
+            assertSoftly {
+                events.map { it["behov_source"] } shouldBe listOf(NARMESTELEDER_LEESAH_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME, SENDT_SYKMELDING_SOURCE_NAME)
+                events.map { it["narmesteleder_id"] } shouldBe listOf(relationId.toString(), null, null)
+                events.map { it["sykmelding_id"] } shouldBe listOf(null, sykmeldingId.toString(), null)
+            }
         }
     })
 

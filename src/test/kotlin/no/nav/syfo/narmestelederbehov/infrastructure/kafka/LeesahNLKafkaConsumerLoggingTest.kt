@@ -1,6 +1,7 @@
 package no.nav.syfo.narmestelederbehov.infrastructure.kafka
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -40,11 +41,13 @@ class LeesahNLKafkaConsumerLoggingTest :
 
             val event = logs.logs.single()
             val fields = event.fields
-            fields["event_type"] shouldBe "kafka_consumer_failed"
-            fields["consumer"] shouldBe "NL_LEESAH"
-            fields["partition"] shouldBe 3
-            fields["offset"] shouldBe 42
-            event.serialized.contains("private-canary") shouldBe false
+            assertSoftly {
+                fields["event_type"] shouldBe "kafka_consumer_failed"
+                fields["consumer"] shouldBe "NL_LEESAH"
+                fields["partition"] shouldBe 3
+                fields["offset"] shouldBe 42
+                event.serialized.contains("private-canary") shouldBe false
+            }
         }
 
         test("record processing failures name the unavailable upstream reported by the use case") {
@@ -61,9 +64,11 @@ class LeesahNLKafkaConsumerLoggingTest :
             consumer.logConsumerFailure(LeesahRecordProcessingException(3, 42, aaregUnavailable))
 
             val fields = logs.logs.single().fields
-            fields["event_type"] shouldBe "kafka_consumer_failed"
-            fields["upstream"] shouldBe "aareg"
-            fields["failure_stage"] shouldBe "request"
+            assertSoftly {
+                fields["event_type"] shouldBe "kafka_consumer_failed"
+                fields["upstream"] shouldBe "aareg"
+                fields["failure_stage"] shouldBe "request"
+            }
         }
 
         test("fatal errors are rethrown unchanged even when committing processing errors") {

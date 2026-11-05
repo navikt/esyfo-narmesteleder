@@ -42,6 +42,7 @@ import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.DefaultOrganization
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.auth.texas.stubTokenX
@@ -342,4 +343,4 @@ private fun withSearchApi(
     useCase: SearchActiveNarmestelederrelasjonerUseCase,
     texasHttpClient: TexasHttpClient,
     test: suspend ApplicationTestBuilder.() -> Unit,
-) = testRouteApplication(texasHttpClient = texasHttpClient, routes = { internalApiV1 { registerLinemanagerSearchApi(useCase) } }, block = test)
+) = testRouteApplication(texasHttpClient = texasHttpClient, routes = { internalApiV1 { authenticateMaskinportenOrTokenX { registerLinemanagerSearchApi(useCase) } } }, block = test)

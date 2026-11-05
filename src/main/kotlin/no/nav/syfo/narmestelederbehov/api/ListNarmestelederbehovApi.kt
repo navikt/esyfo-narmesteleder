@@ -8,7 +8,6 @@ import io.ktor.server.routing.method
 import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.platform.api.API_V1_PATH
-import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 
 const val NARMESTELEDERBEHOV_PATH = "/linemanager/requirement"
 
@@ -20,13 +19,11 @@ fun Route.registerListNarmestelederbehovApi(
 ) {
     route(NARMESTELEDERBEHOV_PATH) {
         method(HttpMethod.Get) {
-            authenticateMaskinportenOrTokenX {
-                handle {
-                    val query = call.toListNarmestelederbehovQuery()
-                    val response = listNarmestelederbehov.execute(query)
-                        .toLinemanagerRequirementCollection(query.pageSize)
-                    call.respond(HttpStatusCode.OK, response)
-                }
+            handle {
+                val query = call.toListNarmestelederbehovQuery()
+                val response = listNarmestelederbehov.execute(query)
+                    .toLinemanagerRequirementCollection(query.pageSize)
+                call.respond(HttpStatusCode.OK, response)
             }
         }
     }

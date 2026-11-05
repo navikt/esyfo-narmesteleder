@@ -41,6 +41,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.auth.texas.stubTokenX
@@ -227,7 +228,7 @@ private class RevokeRouteFixture(
             texasHttpClient = texas,
             routes = {
                 apiV1 {
-                    registerRevokeActiveNarmestelederrelasjonApi(useCase)
+                    authenticateMaskinportenOrTokenX { registerRevokeActiveNarmestelederrelasjonApi(useCase) }
                 }
             },
         ) {

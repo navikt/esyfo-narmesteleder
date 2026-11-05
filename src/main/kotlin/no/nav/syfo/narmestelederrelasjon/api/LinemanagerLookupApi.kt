@@ -15,7 +15,6 @@ import no.nav.syfo.narmestelederrelasjon.observability.COUNT_LOOKUP_NARMESTELEDE
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.tryReceive
-import no.nav.syfo.platform.auth.texas.authenticateAzureAd
 
 const val LINE_MANAGER_LOOKUP_PATH = "/lookup"
 
@@ -23,33 +22,31 @@ fun Route.registerLineManagerLookupApi(
     lookupActiveNarmesteleder: LookupActiveNarmestelederUseCase,
 ) {
     route(LINE_MANAGER_LOOKUP_PATH) {
-        authenticateAzureAd {
-            post {
-                val request = call.tryReceive<LinemanagerLookupRequest>()
-                val organizationValue = request.organizationNumber
-                    ?: throw ApiErrorException.BadRequestException("Missing organizationNumber in request body")
-                val organizationNumber = runCatching { OrganizationNumber(organizationValue) }.getOrElse {
-                    throw ApiErrorException.BadRequestException(
-                        "Invalid organizationNumber in request body",
-                        type = ErrorType.INVALID_FORMAT,
-                    )
-                }
-                val employeeValue = request.employeeNationalIdentificationNumber
-                    ?: throw ApiErrorException.BadRequestException("Missing employeeNationalIdentificationNumber in request body")
-                val employeeNationalIdentificationNumber = runCatching { PersonalIdentificationNumber(employeeValue) }.getOrElse {
-                    throw ApiErrorException.BadRequestException(
-                        "Invalid employeeNationalIdentificationNumber in request body",
-                        type = ErrorType.INVALID_FORMAT,
-                    )
-                }
-                val activeNarmesteleder = lookupActiveNarmesteleder.execute(
-                    employeeNationalIdentificationNumber,
-                    organizationNumber,
+        post {
+            val request = call.tryReceive<LinemanagerLookupRequest>()
+            val organizationValue = request.organizationNumber
+                ?: throw ApiErrorException.BadRequestException("Missing organizationNumber in request body")
+            val organizationNumber = runCatching { OrganizationNumber(organizationValue) }.getOrElse {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid organizationNumber in request body",
+                    type = ErrorType.INVALID_FORMAT,
                 )
-
-                COUNT_LOOKUP_NARMESTELEDER.increment()
-                call.respond(HttpStatusCode.OK, LinemanagerLookupResponse(activeNarmesteleder?.toResponse()))
             }
+            val employeeValue = request.employeeNationalIdentificationNumber
+                ?: throw ApiErrorException.BadRequestException("Missing employeeNationalIdentificationNumber in request body")
+            val employeeNationalIdentificationNumber = runCatching { PersonalIdentificationNumber(employeeValue) }.getOrElse {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid employeeNationalIdentificationNumber in request body",
+                    type = ErrorType.INVALID_FORMAT,
+                )
+            }
+            val activeNarmesteleder = lookupActiveNarmesteleder.execute(
+                employeeNationalIdentificationNumber,
+                organizationNumber,
+            )
+
+            COUNT_LOOKUP_NARMESTELEDER.increment()
+            call.respond(HttpStatusCode.OK, LinemanagerLookupResponse(activeNarmesteleder?.toResponse()))
         }
     }
 }

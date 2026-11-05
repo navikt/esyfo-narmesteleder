@@ -23,7 +23,6 @@ import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 
 const val LINEMANAGER_SEARCH_API_PATH = "/linemanager/search"
 
@@ -34,30 +33,28 @@ fun Route.registerLinemanagerSearchApi(
     searchActiveNarmestelederrelasjoner: SearchActiveNarmestelederrelasjonerUseCase,
 ) {
     route(LINEMANAGER_SEARCH_API_PATH) {
-        authenticateMaskinportenOrTokenX {
-            post {
-                val principal = call.getMyPrincipal()
-                val command = call.receiveLinemanagerSearchRequest().toCommand()
-                val result = searchActiveNarmestelederrelasjoner.execute(
-                    subject = principal.toOrganizationAccessSubject(),
-                    command = command,
-                )
-                val collection = when (result) {
-                    is SearchActiveNarmestelederrelasjonerResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
+        post {
+            val principal = call.getMyPrincipal()
+            val command = call.receiveLinemanagerSearchRequest().toCommand()
+            val result = searchActiveNarmestelederrelasjoner.execute(
+                subject = principal.toOrganizationAccessSubject(),
+                command = command,
+            )
+            val collection = when (result) {
+                is SearchActiveNarmestelederrelasjonerResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
 
-                    is SearchActiveNarmestelederrelasjonerResult.AccessDenied -> throw result.reason.toForbiddenException(command.orgNumber)
+                is SearchActiveNarmestelederrelasjonerResult.AccessDenied -> throw result.reason.toForbiddenException(command.orgNumber)
 
-                    SearchActiveNarmestelederrelasjonerResult.InvalidText ->
-                        throw ApiErrorException.BadRequestException("text must be at most 50 characters")
+                SearchActiveNarmestelederrelasjonerResult.InvalidText ->
+                    throw ApiErrorException.BadRequestException("text must be at most 50 characters")
 
-                    SearchActiveNarmestelederrelasjonerResult.InvalidPageToken ->
-                        throw ApiErrorException.BadRequestException("Invalid pageToken", type = ErrorType.INVALID_FORMAT)
+                SearchActiveNarmestelederrelasjonerResult.InvalidPageToken ->
+                    throw ApiErrorException.BadRequestException("Invalid pageToken", type = ErrorType.INVALID_FORMAT)
 
-                    is SearchActiveNarmestelederrelasjonerResult.Success -> result.toResponse()
-                }
-                countLinemanagerSearch(principal)
-                call.respond(HttpStatusCode.OK, collection)
+                is SearchActiveNarmestelederrelasjonerResult.Success -> result.toResponse()
             }
+            countLinemanagerSearch(principal)
+            call.respond(HttpStatusCode.OK, collection)
         }
     }
 }

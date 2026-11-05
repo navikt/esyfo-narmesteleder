@@ -22,6 +22,7 @@ import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.api.API_V1_PATH
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.auth.texas.stubTokenX
@@ -152,6 +153,6 @@ private fun withAccessibleOrganizationsApp(
     assertions: suspend ApplicationTestBuilder.() -> Unit,
 ) = testRouteApplication(
     texasHttpClient = texasHttpClient,
-    routes = { apiV1 { registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(lookup)) } },
+    routes = { apiV1 { authenticateMaskinportenOrTokenX { registerAccessibleOrganizationsApi(ListAccessibleOrganizationsUseCase(lookup)) } } },
     block = assertions,
 )

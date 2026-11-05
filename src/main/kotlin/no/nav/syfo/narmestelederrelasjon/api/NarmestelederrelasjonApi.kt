@@ -27,7 +27,6 @@ import no.nav.syfo.platform.api.getUUIDFromPathVariable
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.Principal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.observability.logger
 import java.util.UUID
 
@@ -42,62 +41,58 @@ fun Route.registerNarmestelederrelasjonApi(
 ) {
     route(NARMESTELEDERRELASJON_RELATIVE_PATH) {
         method(HttpMethod.Delete) {
-            authenticateMaskinportenOrTokenX {
-                handle {
-                    val principal = call.getMyPrincipal()
-                    val id = call.getUUIDFromPathVariable(name = "id")
-                    val result = revokeNarmestelederrelasjon.execute(id, principal.toOrganizationAccessSubject())
-                    countLinemanagerRevokeById(result)
-                    when (result) {
-                        is RevokeNarmestelederrelasjonResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
+            handle {
+                val principal = call.getMyPrincipal()
+                val id = call.getUUIDFromPathVariable(name = "id")
+                val result = revokeNarmestelederrelasjon.execute(id, principal.toOrganizationAccessSubject())
+                countLinemanagerRevokeById(result)
+                when (result) {
+                    is RevokeNarmestelederrelasjonResult.UpstreamUnavailable -> throw result.failure.toUpstreamUnavailableException()
 
-                        is RevokeNarmestelederrelasjonResult.Revoked -> call.respond(HttpStatusCode.Accepted)
+                    is RevokeNarmestelederrelasjonResult.Revoked -> call.respond(HttpStatusCode.Accepted)
 
-                        RevokeNarmestelederrelasjonResult.AlreadyRevoked -> {
-                            logger.info("Revoke request for an already revoked linemanager relation. {}", call.revokeContext(principal))
-                            call.respond(HttpStatusCode.Accepted)
+                    RevokeNarmestelederrelasjonResult.AlreadyRevoked -> {
+                        logger.info("Revoke request for an already revoked linemanager relation. {}", call.revokeContext(principal))
+                        call.respond(HttpStatusCode.Accepted)
+                    }
+
+                    is RevokeNarmestelederrelasjonResult.NotFound -> {
+                        if (result.reason == RevokeNarmestelederrelasjonResult.Reason.RELATION_NOT_FOUND) {
+                            logger.info("Revoke request for unknown linemanager relation. {}", call.revokeContext(principal))
                         }
-
-                        is RevokeNarmestelederrelasjonResult.NotFound -> {
-                            if (result.reason == RevokeNarmestelederrelasjonResult.Reason.RELATION_NOT_FOUND) {
-                                logger.info("Revoke request for unknown linemanager relation. {}", call.revokeContext(principal))
-                            }
-                            throw result.toRevokeNotFoundException()
-                        }
+                        throw result.toRevokeNotFoundException()
                     }
                 }
             }
         }
         method(HttpMethod.Get) {
-            authenticateMaskinportenOrTokenX {
-                handle {
-                    call.response.header(HttpHeaders.CacheControl, "no-store")
-                    val id = call.parameters["id"]?.toUuidOrNull()
-                    if (id == null) {
-                        countGetNarmestelederrelasjon(
-                            GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.INVALID_ID),
-                        )
-                        throw notFoundException()
-                    }
-
-                    val result = getNarmestelederrelasjon.execute(
-                        id = id,
-                        accessSubject = call.getMyPrincipal().toOrganizationAccessSubject(),
+            handle {
+                call.response.header(HttpHeaders.CacheControl, "no-store")
+                val id = call.parameters["id"]?.toUuidOrNull()
+                if (id == null) {
+                    countGetNarmestelederrelasjon(
+                        GetNarmestelederrelasjonResult.NotFound(GetNarmestelederrelasjonResult.NotFoundReason.INVALID_ID),
                     )
-                    countGetNarmestelederrelasjon(result)
+                    throw notFoundException()
+                }
 
-                    when (result) {
-                        is GetNarmestelederrelasjonResult.Found ->
-                            call.respond(
-                                HttpStatusCode.OK,
-                                result.relation.toResponse(result.organizationName),
-                            )
+                val result = getNarmestelederrelasjon.execute(
+                    id = id,
+                    accessSubject = call.getMyPrincipal().toOrganizationAccessSubject(),
+                )
+                countGetNarmestelederrelasjon(result)
 
-                        is GetNarmestelederrelasjonResult.NotFound -> throw notFoundException()
+                when (result) {
+                    is GetNarmestelederrelasjonResult.Found ->
+                        call.respond(
+                            HttpStatusCode.OK,
+                            result.relation.toResponse(result.organizationName),
+                        )
 
-                        is GetNarmestelederrelasjonResult.UpstreamUnavailable ->
-                            throw result.failure.toUpstreamUnavailableException()
-                    }
+                    is GetNarmestelederrelasjonResult.NotFound -> throw notFoundException()
+
+                    is GetNarmestelederrelasjonResult.UpstreamUnavailable ->
+                        throw result.failure.toUpstreamUnavailableException()
                 }
             }
         }

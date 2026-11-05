@@ -433,7 +433,9 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
   `platform.api`. Routes are denied by default: every endpoint must be inside
   `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or
   `authenticateAzureAd`, or inside `publicRoutes { }`; startup fails
-  otherwise, including for Ktor's `authenticate` used directly. Ktor merges
+  otherwise, including for Ktor's `authenticate` used directly. The module
+  wraps its `registerXApi` calls in the helper, so route functions do not
+  choose their own provider; route tests wrap them the same way. Ktor merges
   nested `authenticate` blocks, so an optional block inside a Texas helper
   still requires a principal. Only `platformModule` declares public
   routes (probes, metrics, OpenAPI and Swagger UI), and `publicRoutes` has no

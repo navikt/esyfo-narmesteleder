@@ -28,6 +28,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.authenticateAzureAd
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubAzureAd
 import java.time.Instant
@@ -127,9 +128,11 @@ private fun withLookupApi(
         texasHttpClient = texasHttpClient,
         routes = {
             internalApiV1 {
-                registerLineManagerLookupApi(
-                    lookupActiveNarmesteleder = lookupActiveNarmesteleder,
-                )
+                authenticateAzureAd {
+                    registerLineManagerLookupApi(
+                        lookupActiveNarmesteleder = lookupActiveNarmesteleder,
+                    )
+                }
             }
         },
         azurePreAuthorizedApps = setOf(CALLING_APP),

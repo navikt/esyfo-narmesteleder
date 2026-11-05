@@ -9,13 +9,13 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import no.nav.syfo.TestDB
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchResult
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchSettings
 import no.nav.syfo.narmestelederbehov.application.DialogExpiryObservation
-import no.nav.syfo.narmestelederbehov.application.DialogReconciliationResult
-import no.nav.syfo.narmestelederbehov.application.DialogReconciliationSettings
+import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
-import no.nav.syfo.narmestelederbehov.application.ReconcileNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DIALOGPORTEN
@@ -32,9 +32,9 @@ import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-class ExposedDialogReconciliationRepositoryTest :
+class ExposedDialogDispatchRepositoryTest :
     FunSpec({
-        val repository = ExposedDialogReconciliationRepository(TestDB.exposedDatabase)
+        val repository = ExposedDialogDispatchRepository(TestDB.exposedDatabase)
         val now = Instant.parse("2030-01-01T10:00:00Z")
         beforeTest { TestDB.clearAllData() }
 
@@ -57,14 +57,14 @@ class ExposedDialogReconciliationRepositoryTest :
             repository.saveCreated(old, UUID.randomUUID(), null, now.plusSeconds(62)) shouldBe false
             repository.saveCompleted(old, now.plusSeconds(62)) shouldBe false
             repository.saveExpired(old, now, now.plusSeconds(62)) shouldBe false
-            repository.finish(old, DialogReconciliationResult.Done, now.plusSeconds(62)) shouldBe false
-            repository.load(replacement, now.plusSeconds(62)).shouldBeInstanceOf<no.nav.syfo.narmestelederbehov.application.DialogReconciliationState>()
+            repository.finish(old, DialogDispatchResult.Done, now.plusSeconds(62)) shouldBe false
+            repository.load(replacement, now.plusSeconds(62)).shouldBeInstanceOf<no.nav.syfo.narmestelederbehov.application.DialogDispatchState>()
         }
 
         listOf(
-            DialogReconciliationResult.Done,
-            DialogReconciliationResult.Retry(now.plusSeconds(600), "upstream"),
-            DialogReconciliationResult.Parked("invalid_request"),
+            DialogDispatchResult.Done,
+            DialogDispatchResult.Retry(now.plusSeconds(600), "upstream"),
+            DialogDispatchResult.Parked("invalid_request"),
         ).forEach { oldResult ->
             test("a domain change during a claim survives $oldResult of the older revision") {
                 val row = insertNarmestelederbehov(created = now.minusSeconds(30))
@@ -79,7 +79,7 @@ class ExposedDialogReconciliationRepositoryTest :
         test("a closed behov without a started CREATE is acknowledged without external delivery") {
             val row = insertNarmestelederbehov(created = now.minusSeconds(30))
             ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
-            ReconcileNarmestelederbehovDialogUseCase(
+            DispatchNarmestelederbehovDialogUseCase(
                 repository = repository,
                 creation = { _, _, _ -> error("must not create a closed unattempted behov") },
                 completion = { error("must not complete") },
@@ -98,7 +98,7 @@ class ExposedDialogReconciliationRepositoryTest :
             val second = insertNarmestelederbehov(created = now.minusSeconds(20))
             val calls = mutableListOf<UUID>()
             val dialogId = UUID.randomUUID()
-            ReconcileNarmestelederbehovDialogUseCase(
+            DispatchNarmestelederbehovDialogUseCase(
                 repository = repository,
                 creation = { id, _, _ ->
                     calls += id.value
@@ -111,7 +111,7 @@ class ExposedDialogReconciliationRepositoryTest :
                 personLookup = { EmployeePersonLookupResult.NotFound },
                 clock = Clock.fixed(now, ZoneOffset.UTC),
                 metrics = {},
-                settings = DialogReconciliationSettings(attemptBudget = 200.milliseconds, runBudget = 3.seconds),
+                settings = DialogDispatchSettings(attemptBudget = 200.milliseconds, runBudget = 3.seconds),
             ).execute()
             calls shouldBe listOf(first.id, second.id)
             findStoredNarmestelederbehov(second.id)?.dialogId shouldBe dialogId
@@ -124,7 +124,7 @@ class ExposedDialogReconciliationRepositoryTest :
             val row = insertNarmestelederbehov(created = now.minusSeconds(30))
             val dialogId = UUID.randomUUID()
             val completed = mutableListOf<UUID>()
-            val worker = ReconcileNarmestelederbehovDialogUseCase(
+            val worker = DispatchNarmestelederbehovDialogUseCase(
                 repository = repository,
                 creation = NarmestelederbehovDialogCreation { _, _, _ ->
                     ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
@@ -155,8 +155,8 @@ class ExposedDialogReconciliationRepositoryTest :
             )
             val claim = requireNotNull(repository.claim(now, 60.seconds))
             repository.prepareExpiry(claim, target, now) shouldBe true
-            repository.finish(claim, DialogReconciliationResult.Retry(now, "timeout"), now) shouldBe true
-            ReconcileNarmestelederbehovDialogUseCase(
+            repository.finish(claim, DialogDispatchResult.Retry(now, "timeout"), now) shouldBe true
+            DispatchNarmestelederbehovDialogUseCase(
                 repository = repository,
                 creation = { _, _, _ -> error("must not create") },
                 completion = { error("must not complete") },
@@ -165,7 +165,7 @@ class ExposedDialogReconciliationRepositoryTest :
                 personLookup = { error("must not look up a person") },
                 clock = Clock.fixed(now, ZoneOffset.UTC),
                 metrics = {},
-                settings = DialogReconciliationSettings(maxAttemptsPerRun = 1),
+                settings = DialogDispatchSettings(maxAttemptsPerRun = 1),
             ).execute()
             findStoredNarmestelederbehov(row.id)?.expiredInDialogporten shouldBe target
         }
@@ -180,9 +180,9 @@ class ExposedDialogReconciliationRepositoryTest :
                 )
                 val claim = requireNotNull(repository.claim(now, 60.seconds))
                 repository.prepareExpiry(claim, now.plusSeconds(secondsUntilExpiry), now) shouldBe true
-                repository.finish(claim, DialogReconciliationResult.Retry(now, "timeout"), now) shouldBe true
+                repository.finish(claim, DialogDispatchResult.Retry(now, "timeout"), now) shouldBe true
                 val targets = mutableListOf<Instant>()
-                val worker = ReconcileNarmestelederbehovDialogUseCase(
+                val worker = DispatchNarmestelederbehovDialogUseCase(
                     repository = repository,
                     creation = { _, _, _ -> error("must not create") },
                     completion = { error("must not complete") },
@@ -196,7 +196,7 @@ class ExposedDialogReconciliationRepositoryTest :
                     personLookup = { error("must not look up a person") },
                     clock = clock,
                     metrics = {},
-                    settings = DialogReconciliationSettings(maxAttemptsPerRun = 1),
+                    settings = DialogDispatchSettings(maxAttemptsPerRun = 1),
                 )
                 worker.execute()
                 targets shouldBe listOf(Instant.parse("2030-01-01T10:10:00Z"))
@@ -227,7 +227,7 @@ class ExposedDialogReconciliationRepositoryTest :
             val ids = mutableListOf<NarmestelederbehovId>()
             val dialogId = UUID.randomUUID()
             val later = now.plusSeconds(61)
-            ReconcileNarmestelederbehovDialogUseCase(
+            DispatchNarmestelederbehovDialogUseCase(
                 repository = repository,
                 creation = { id, _, _ ->
                     ids.add(id)
@@ -249,7 +249,7 @@ class ExposedDialogReconciliationRepositoryTest :
                 insertNarmestelederbehov(created = now.minusSeconds(30))
                 val outcomes = mutableListOf<String>()
                 var calls = 0
-                ReconcileNarmestelederbehovDialogUseCase(
+                DispatchNarmestelederbehovDialogUseCase(
                     repository = repository,
                     creation = { _, _, _ ->
                         calls++

@@ -4,7 +4,7 @@ import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 
-internal object DialogReconciliationTable : Table("nl_dialog_reconciliation") {
+internal object DialogDispatchTable : Table("nl_dialog_dispatch") {
     val behovId = javaUUID("behov_id")
     val status = text("status")
     val revision = long("revision")

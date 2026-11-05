@@ -1,10 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.method
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
 import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentResult
@@ -29,27 +28,25 @@ fun Route.registerSubmitNarmestelederrelasjonApi(
     submit: SubmitNarmestelederrelasjonUseCase,
 ) {
     route(SUBMIT_NARMESTELEDERRELASJON_PATH) {
-        method(HttpMethod.Post) {
-            handle {
-                val principal = call.getMyPrincipal()
-                val request = call.tryReceive<Linemanager>()
-                val result = submit.execute(
-                    SubmitNarmestelederrelasjonCommand(
-                        employeeIdent = request.employeeIdentificationNumber,
-                        employeeLastName = request.lastName,
-                        organizationNumber = request.orgNumber,
-                        manager = ManagerContactInput(
-                            personIdent = request.manager.nationalIdentificationNumber,
-                            lastName = request.manager.lastName,
-                            email = request.manager.email,
-                            mobile = request.manager.mobile,
-                        ),
-                        accessSubject = principal.toOrganizationAccessSubject(),
+        post {
+            val principal = call.getMyPrincipal()
+            val request = call.tryReceive<Linemanager>()
+            val result = submit.execute(
+                SubmitNarmestelederrelasjonCommand(
+                    employeeIdent = request.employeeIdentificationNumber,
+                    employeeLastName = request.lastName,
+                    organizationNumber = request.orgNumber,
+                    manager = ManagerContactInput(
+                        personIdent = request.manager.nationalIdentificationNumber,
+                        lastName = request.manager.lastName,
+                        email = request.manager.email,
+                        mobile = request.manager.mobile,
                     ),
-                )
-                countSubmittedNarmestelederrelasjon(result.throwIfRejected().source)
-                call.respond(HttpStatusCode.Accepted)
-            }
+                    accessSubject = principal.toOrganizationAccessSubject(),
+                ),
+            )
+            countSubmittedNarmestelederrelasjon(result.throwIfRejected().source)
+            call.respond(HttpStatusCode.Accepted)
         }
     }
 }

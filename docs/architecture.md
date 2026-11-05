@@ -396,24 +396,28 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(environment.narmestelederrelasjonSettings())
-    narmestelederbehovModule(environment.narmestelederbehovSettings())
+    narmestelederrelasjonModule(environment.narmestelederrelasjonSettings)
+    narmestelederbehovModule(environment.narmestelederbehovSettings)
     narmestelederstatistikkModule()
     sykmeldingModule()
-    configureKafkaConsumers(environment)
+    configureKafkaConsumers(
+        kafkaSettings = environment.kafka,
+        narmestelederrelasjonKafkaSettings = environment.narmestelederrelasjonKafkaSettings,
+        sykmeldingKafkaSettings = environment.sykmeldingKafkaSettings,
+    )
     configureBackgroundTasks(
         dialogportenTaskSettings = environment.dialogportenTaskSettings,
         maintenanceTaskSettings = environment.maintenanceTaskSettings,
         personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
     )
-    configureEmploymentChecks(environment.otherProperties)
+    configureEmploymentChecks(environment.narmestelederrelasjonSettings)
 }
 ```
 
-- `NaisEnvironment` and `LocalEnvironment` assemble typed integration,
-  background-task, expiry, and leader-election settings. Bootstrap passes these
-  settings only to their owners. Kafka consumer and capability configuration
-  still use `OtherEnvironmentProperties`.
+- `NaisEnvironment` and `LocalEnvironment` assemble owner-specific settings for
+  capabilities, integrations, Kafka consumers, and platform services. Bootstrap
+  passes each module only the settings it needs; configuration stays out of
+  domain and use-case code.
 - `platformModule` installs Koin once with the shared Koin modules
   (`applicationModules`), CallId, content negotiation, StatusPages, pod and
   metric endpoints, OpenAPI and Swagger. A capability module never installs

@@ -1,36 +1,28 @@
 package no.nav.syfo.bootstrap
 
 import no.nav.syfo.integration.aareg.AaregClient
-import no.nav.syfo.integration.aareg.AaregSettings
 import no.nav.syfo.integration.aareg.FakeAaregClient
 import no.nav.syfo.integration.aareg.HttpAaregClient
 import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
-import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteSettings
 import no.nav.syfo.integration.dinesykmeldte.FakeDinesykmeldteClient
 import no.nav.syfo.integration.dinesykmeldte.HttpDinesykmeldteClient
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregClient
-import no.nav.syfo.integration.ereg.EregSettings
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.HttpEregClient
 import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.integration.pdl.HttpPdlClient
 import no.nav.syfo.integration.pdl.PdlClient
-import no.nav.syfo.integration.pdl.PdlSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.FakeDialogportenClient
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.FakeAltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpAltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
-import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.CachingAltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
@@ -41,14 +33,7 @@ import org.koin.core.scope.Scope
 import org.koin.dsl.module
 
 internal fun httpClientsModule(
-    aaregSettings: AaregSettings,
-    altinnApiSettings: AltinnApiSettings,
-    altinnAuthorizationSettings: AltinnAuthorizationSettings,
-    altinnAccessSettings: AltinnAccessSettings,
-    dinesykmeldteSettings: DinesykmeldteSettings,
-    dialogportenSettings: DialogportenSettings,
-    eregSettings: EregSettings,
-    pdlSettings: PdlSettings,
+    settings: HttpClientsSettings,
     texas: TexasEnvironment,
     isLocalEnv: Boolean,
 ) = module {
@@ -58,7 +43,7 @@ internal fun httpClientsModule(
         CachingAltinnTokenSource(
             delegate = TexasAltinnTokenFetcher(
                 texasHttpClient = get(),
-                altinnBaseUrl = altinnApiSettings.baseUrl,
+                altinnBaseUrl = settings.altinnApiSettings.baseUrl,
                 httpClient = get(),
             ),
         )
@@ -69,9 +54,9 @@ internal fun httpClientsModule(
         local = { FakeAaregClient() },
         remote = {
             HttpAaregClient(
-                aaregBaseUrl = aaregSettings.baseUrl,
+                aaregBaseUrl = settings.aaregSettings.baseUrl,
                 texasHttpClient = get(),
-                scope = aaregSettings.scope,
+                scope = settings.aaregSettings.scope,
             )
         },
     )
@@ -81,9 +66,9 @@ internal fun httpClientsModule(
         remote = {
             HttpDinesykmeldteClient(
                 texasHttpClient = get(),
-                scope = dinesykmeldteSettings.scope,
+                scope = settings.dinesykmeldteSettings.scope,
                 httpClient = get(),
-                dinesykmeldteBaseUrl = dinesykmeldteSettings.baseUrl,
+                dinesykmeldteBaseUrl = settings.dinesykmeldteSettings.baseUrl,
             )
         },
     )
@@ -93,9 +78,9 @@ internal fun httpClientsModule(
         remote = {
             HttpPdlClient(
                 httpClient = get(),
-                pdlBaseUrl = pdlSettings.baseUrl,
+                pdlBaseUrl = settings.pdlSettings.baseUrl,
                 texasHttpClient = get(),
-                scope = pdlSettings.scope,
+                scope = settings.pdlSettings.scope,
             )
         },
     )
@@ -106,7 +91,7 @@ internal fun httpClientsModule(
             HttpAltinnTilgangerClient(
                 texasClient = get(),
                 httpClient = get(),
-                baseUrl = altinnAccessSettings.baseUrl,
+                baseUrl = settings.altinnAccessSettings.baseUrl,
             )
         },
     )
@@ -116,14 +101,14 @@ internal fun httpClientsModule(
         remote = {
             HttpDialogportenClient(
                 httpClient = get(),
-                baseUrl = dialogportenSettings.baseUrl,
+                baseUrl = settings.dialogportenSettings.baseUrl,
                 altinnTokenProvider = get(),
             )
         },
     )
     single<EregClient> {
         CachedEregClient(
-            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = eregSettings.baseUrl),
+            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = settings.eregSettings.baseUrl),
             cache = get(),
         )
     }
@@ -133,8 +118,8 @@ internal fun httpClientsModule(
         remote = {
             HttpAltinnAuthorizationClient(
                 httpClient = get(),
-                baseUrl = altinnApiSettings.baseUrl,
-                subscriptionKey = altinnAuthorizationSettings.subscriptionKey,
+                baseUrl = settings.altinnApiSettings.baseUrl,
+                subscriptionKey = settings.altinnAuthorizationSettings.subscriptionKey,
                 altinnTokenProvider = get(),
             )
         },

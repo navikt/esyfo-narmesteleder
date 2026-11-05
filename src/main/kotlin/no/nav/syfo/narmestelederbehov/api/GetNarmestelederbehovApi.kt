@@ -1,10 +1,9 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.method
+import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
@@ -20,24 +19,22 @@ fun Route.registerGetNarmestelederbehovApi(
     getNarmestelederbehov: GetNarmestelederbehovUseCase,
 ) {
     route(GET_NARMESTELEDERBEHOV_PATH) {
-        method(HttpMethod.Get) {
-            handle {
-                val id = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id"))
-                val subject = call.getMyPrincipal().toOrganizationAccessSubject()
-                val response = try {
-                    getNarmestelederbehov.execute(id = id, subject = subject).toLinemanagerRequirementRead()
-                } catch (e: ApiErrorException) {
-                    throw e
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    throw ApiErrorException.InternalServerErrorException(
-                        errorMessage = "Something went wrong while fetching LinemanagerRequirement",
-                        cause = e,
-                    )
-                }
-                call.respond(HttpStatusCode.OK, response)
+        get {
+            val id = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id"))
+            val subject = call.getMyPrincipal().toOrganizationAccessSubject()
+            val response = try {
+                getNarmestelederbehov.execute(id = id, subject = subject).toLinemanagerRequirementRead()
+            } catch (e: ApiErrorException) {
+                throw e
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                throw ApiErrorException.InternalServerErrorException(
+                    errorMessage = "Something went wrong while fetching LinemanagerRequirement",
+                    cause = e,
+                )
             }
+            call.respond(HttpStatusCode.OK, response)
         }
     }
 }

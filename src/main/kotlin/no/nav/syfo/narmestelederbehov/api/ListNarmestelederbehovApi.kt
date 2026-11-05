@@ -1,10 +1,9 @@
 package no.nav.syfo.narmestelederbehov.api
 
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.method
+import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.platform.api.API_V1_PATH
@@ -18,13 +17,11 @@ fun Route.registerListNarmestelederbehovApi(
     listNarmestelederbehov: ListNarmestelederbehovUseCase,
 ) {
     route(NARMESTELEDERBEHOV_PATH) {
-        method(HttpMethod.Get) {
-            handle {
-                val query = call.toListNarmestelederbehovQuery()
-                val response = listNarmestelederbehov.execute(query)
-                    .toLinemanagerRequirementCollection(query.pageSize)
-                call.respond(HttpStatusCode.OK, response)
-            }
+        get {
+            val query = call.toListNarmestelederbehovQuery()
+            val response = listNarmestelederbehov.execute(query)
+                .toLinemanagerRequirementCollection(query.pageSize)
+            call.respond(HttpStatusCode.OK, response)
         }
     }
 }

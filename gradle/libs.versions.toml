@@ -28,7 +28,7 @@ exposed-version = "1.6.0"
 netty = "4.2.19.Final"
 testLogger = "4.0.0"
 jackson3 = "3.2.4"
-handlebars = "4.5.7"
+handlebars = "4.5.8"
 guava = "33.7.2-jre"
 
 [libraries]

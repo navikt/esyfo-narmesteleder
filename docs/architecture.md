@@ -345,7 +345,17 @@ Contains reusable technical mechanisms without domain rules:
 - `database`: data source, Flyway and shared transaction infrastructure;
 - `http`: shared HTTP client construction;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics,
-  including `LeaderControlledKafkaConsumer`;
+  including `LeaderControlledKafkaConsumer` and `ConsumerRunner`. The runner
+  handles batches, commits the next offset per partition only after a batch
+  succeeds, recreates consumers with exponential backoff for transient errors,
+  and stops on authentication, authorization or configuration failures. Topic,
+  group, feature-toggle and leader-election choices remain with the caller.
+  `ConsumerRunner` is ported from syfo-budstikka: it owns its coroutine scope,
+  separates `start`, `stop`, `join` and bounded `close`, resets backoff after a
+  healthy lifecycle and records an internal heartbeat on every poll. Its typed
+  events retain this service's exception redaction; processed-message and restart
+  counters are additional instrumentation. The heartbeat is not connected to
+  health probes;
 - `observability`: metrics, health and common structured logging mechanisms;
 - `scheduling`: reusable scheduling mechanics. New scheduled work runs on
   all pods in a background loop and shares the work through database claims with a
@@ -797,8 +807,9 @@ ended up and which changes remain separate.
 
 `sykmelding` follows the module structure (`application`, `infrastructure` and
 `retention`) and registers its dependencies through `sykmeldingDependencies()`
-in its Ktor module. Its persistence adapters use Exposed DSL, and its
-consumers still have to move to a shared consumer runner (#623).
+in its Ktor module. Its persistence adapters use Exposed DSL. The new
+`SykmeldingsregisterKafkaConsumer` uses the shared runner; its existing
+business consumers still have to move to it (#623).
 
 The fulfillment migration is complete (#525, #541): the PUT route delegates to
 `FulfillNarmestelederbehovUseCase` through capability-owned adapters and Koin

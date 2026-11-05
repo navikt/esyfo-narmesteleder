@@ -57,6 +57,7 @@ This file is maintained locally in this repository; it is not generated or synch
 - **Build**: Gradle (Kotlin DSL)
 - **Database**: PostgreSQL
 - **Messaging**: Apache Kafka
+- **Kafka runner**: New consumers use the syfo-budstikka `ConsumerRunner` lifecycle in `platform/kafka`, including internal poll heartbeat and coroutine MDC propagation.
 - **Testing**: Kotest, MockK
 - **Auth**: Les NAIS-manifestene i prosjektet for å finne hvilke auth-mekanismer som er konfigurert (mulige: Azure AD, TokenX, ID-porten, Maskinporten)
 

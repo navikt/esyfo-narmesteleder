@@ -112,9 +112,15 @@ Operational health, metrics, OpenAPI and Swagger endpoints belong to
 | ------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `teamsykmelding.syfo-sendt-sykmelding`     | `SendtSykmeldingKafkaConsumer`                   | Handles the employee's `riktigNarmesteLeder` answer. It creates a need when no answer exists, or publishes a relation revocation when the answer is `NEI`.                              |
 | `teamsykmelding.syfo-sendt-sykmelding`     | `PersistSendtSykmeldingConsumer`                 | Normalizes, deduplicates and persists sendt sykmelding records used by searches, statistics, expiry and retention. Leader-controlled and feature-flagged.                               |
+| `teamsykmelding.syfo-sendt-sykmelding`     | `SykmeldingsregisterKafkaConsumer`               | No-op batch consumer using group `esyfo-narmesteleder-sykmeldingsregister-consumer` and `earliest` offsets. Runs on every pod only when `CONSUME_SYKMELDINGSREGISTER` is enabled; disabled by default and in dev/prod. It does not parse, persist or log message payloads. |
 | `teamsykmelding.syfo-narmesteleder-leesah` | `LeesahNLKafkaConsumer` | Requests a need for qualifying employee-, manager-, personnel-manager- or LPS-triggered deactivations, and fulfils open needs when an active relation is observed. |
 | `teamsykmelding.syfo-narmesteleder-leesah` | `PersistNarmestelederRegisterFromLeesahConsumer` | Validates and stores the local relation register, registers persons for enrichment and republishes valid records to the team-esyfo Leesah topic. Leader-controlled and feature-flagged. |
 | `pdl.leesah-v1`                            | `PdlLeesahConsumer`                              | Refreshes names in the relation-person projection after relevant PDL name events. Leader-controlled and feature-flagged.                                                                |
+
+The sykmeldingsregister consumer uses syfo-budstikka's runner lifecycle and an
+internal poll heartbeat. The heartbeat is not wired into health probes; activation
+and probe integration remain separate work. Shutdown requests a stop and waits up
+to five seconds for the polling loop, logging a warning if it has not finished.
 
 ### Background work
 

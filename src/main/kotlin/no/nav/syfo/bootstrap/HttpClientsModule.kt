@@ -1,28 +1,36 @@
 package no.nav.syfo.bootstrap
 
 import no.nav.syfo.integration.aareg.AaregClient
+import no.nav.syfo.integration.aareg.AaregSettings
 import no.nav.syfo.integration.aareg.FakeAaregClient
 import no.nav.syfo.integration.aareg.HttpAaregClient
 import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
+import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteSettings
 import no.nav.syfo.integration.dinesykmeldte.FakeDinesykmeldteClient
 import no.nav.syfo.integration.dinesykmeldte.HttpDinesykmeldteClient
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.integration.ereg.EregClient
+import no.nav.syfo.integration.ereg.EregSettings
 import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.HttpEregClient
 import no.nav.syfo.integration.pdl.FakePdlClient
 import no.nav.syfo.integration.pdl.HttpPdlClient
 import no.nav.syfo.integration.pdl.PdlClient
+import no.nav.syfo.integration.pdl.PdlSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.FakeDialogportenClient
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.FakeAltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpAltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.auth.texas.altinn.Altinn3Settings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.CachingAltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
@@ -32,14 +40,25 @@ import org.koin.core.module.Module
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
 
-internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironment, isLocalEnv: Boolean) = module {
+internal fun httpClientsModule(
+    aaregSettings: AaregSettings,
+    altinn3Settings: Altinn3Settings,
+    altinnAuthorizationSettings: AltinnAuthorizationSettings,
+    altinnTilgangerSettings: AltinnTilgangerSettings,
+    dinesykmeldteSettings: DinesykmeldteSettings,
+    dialogportenSettings: DialogportenSettings,
+    eregSettings: EregSettings,
+    pdlSettings: PdlSettings,
+    texas: TexasEnvironment,
+    isLocalEnv: Boolean,
+) = module {
     single { httpClientDefault() }
     single { TexasHttpClient(client = get(), environment = texas) }
     single<AltinnTokenSource> {
         CachingAltinnTokenSource(
             delegate = TexasAltinnTokenFetcher(
                 texasHttpClient = get(),
-                altinnBaseUrl = clients.altinn3BaseUrl,
+                altinnBaseUrl = altinn3Settings.baseUrl,
                 httpClient = get(),
             ),
         )
@@ -50,9 +69,9 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         local = { FakeAaregClient() },
         remote = {
             HttpAaregClient(
-                aaregBaseUrl = clients.aaregBaseUrl,
+                aaregBaseUrl = aaregSettings.baseUrl,
                 texasHttpClient = get(),
-                scope = clients.aaregScope,
+                scope = aaregSettings.scope,
             )
         },
     )
@@ -62,9 +81,9 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         remote = {
             HttpDinesykmeldteClient(
                 texasHttpClient = get(),
-                scope = clients.dinesykmeldteScope,
+                scope = dinesykmeldteSettings.scope,
                 httpClient = get(),
-                dinesykmeldteBaseUrl = clients.dinesykmeldteBaseUrl,
+                dinesykmeldteBaseUrl = dinesykmeldteSettings.baseUrl,
             )
         },
     )
@@ -74,9 +93,9 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         remote = {
             HttpPdlClient(
                 httpClient = get(),
-                pdlBaseUrl = clients.pdlBaseUrl,
+                pdlBaseUrl = pdlSettings.baseUrl,
                 texasHttpClient = get(),
-                scope = clients.pdlScope,
+                scope = pdlSettings.scope,
             )
         },
     )
@@ -87,7 +106,7 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
             HttpAltinnTilgangerClient(
                 texasClient = get(),
                 httpClient = get(),
-                baseUrl = clients.altinnTilgangerBaseUrl,
+                baseUrl = altinnTilgangerSettings.baseUrl,
             )
         },
     )
@@ -97,14 +116,14 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         remote = {
             HttpDialogportenClient(
                 httpClient = get(),
-                baseUrl = clients.altinn3BaseUrl,
+                baseUrl = dialogportenSettings.baseUrl,
                 altinnTokenProvider = get(),
             )
         },
     )
     single<EregClient> {
         CachedEregClient(
-            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = clients.eregBaseUrl),
+            delegate = if (isLocalEnv) FakeEregClient() else HttpEregClient(eregBaseUrl = eregSettings.baseUrl),
             cache = get(),
         )
     }
@@ -114,8 +133,8 @@ internal fun httpClientsModule(clients: ClientProperties, texas: TexasEnvironmen
         remote = {
             HttpAltinnAuthorizationClient(
                 httpClient = get(),
-                baseUrl = clients.altinn3BaseUrl,
-                subscriptionKey = clients.pdpSubscriptionKey,
+                baseUrl = altinn3Settings.baseUrl,
+                subscriptionKey = altinnAuthorizationSettings.subscriptionKey,
                 altinnTokenProvider = get(),
             )
         },

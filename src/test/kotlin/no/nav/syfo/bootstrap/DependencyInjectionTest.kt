@@ -43,14 +43,24 @@ class DependencyInjectionTest :
     })
 
 // NaisEnvironment() reads required NAIS variables, so supply every part explicitly.
-private fun naisEnvironmentWithoutEnvVars() = NaisEnvironment(
-    database = DatabaseEnvironment.createForLocal(),
-    texas = TexasEnvironment.createForLocal(),
-    valkeyEnvironment = ValkeyEnvironment.createForLocal(),
-    kafka = KafkaEnvironment.createForLocal(),
-    clientProperties = ClientProperties.createForLocal(),
-    otherProperties = OtherEnvironmentProperties.createForLocal(),
-)
+private fun naisEnvironmentWithoutEnvVars(): NaisEnvironment {
+    val localEnvironment = LocalEnvironment()
+    return NaisEnvironment(
+        database = DatabaseEnvironment.createForLocal(),
+        texas = TexasEnvironment.createForLocal(),
+        valkeyEnvironment = ValkeyEnvironment.createForLocal(),
+        kafka = KafkaEnvironment.createForLocal(),
+        aaregSettings = localEnvironment.aaregSettings,
+        altinn3Settings = localEnvironment.altinn3Settings,
+        altinnAuthorizationSettings = localEnvironment.altinnAuthorizationSettings,
+        altinnTilgangerSettings = localEnvironment.altinnTilgangerSettings,
+        dinesykmeldteSettings = localEnvironment.dinesykmeldteSettings,
+        dialogportenSettings = localEnvironment.dialogportenSettings,
+        eregSettings = localEnvironment.eregSettings,
+        pdlSettings = localEnvironment.pdlSettings,
+        otherProperties = OtherEnvironmentProperties.createForLocal(),
+    )
+}
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
 private fun capabilityDependencies(environment: Environment) = listOf(

@@ -99,6 +99,7 @@ data class NaisEnvironment(
     ),
     override val sykmeldingKafkaSettings: SykmeldingKafkaSettings = SykmeldingKafkaSettings(
         persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
+        consumeSykmeldingsregister = getEnvVar("CONSUME_SYKMELDINGSREGISTER", "false").toBoolean(),
     ),
     override val dialogportenTaskSettings: DialogportenTaskSettings = DialogportenTaskSettings(
         enabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),

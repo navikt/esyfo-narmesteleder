@@ -8,7 +8,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedDialogReconciliationRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedDialogDispatchRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovLifecycleRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovReadRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
@@ -30,7 +30,7 @@ class SendtSykmeldingOverviewFlowTest :
     FunSpec({
         val employee = PersonalIdentificationNumber("12345678901")
         val organization = OrganizationNumber("123456789")
-        val reconciliation = ExposedDialogReconciliationRepository(TestDB.exposedDatabase)
+        val reconciliation = ExposedDialogDispatchRepository(TestDB.exposedDatabase)
         suspend fun queuedEmployee(): PersonalIdentificationNumber? {
             val now = Instant.now().plusSeconds(20)
             val claim = reconciliation.claim(now, 60.seconds) ?: return null

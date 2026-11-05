@@ -69,9 +69,9 @@ This file is maintained locally in this repository; it is not generated or synch
 - Follow existing code patterns in the repository
 
 ## Dialogporten operations
-- Dialog delivery is worker-only. Behov changes schedule reconciliation through a transactional database trigger.
-- `DIALOG_RECONCILIATION_ENABLED` controls an all-pod claim/lease worker; it is disabled in dev/prod until controlled cutover.
-- Follow `docs/operations/dialog-reconciliation.md` for backfill, alerts, replay and non-overlapping rollback.
+- Dialog delivery is worker-only. Behov changes schedule dispatch through a transactional database trigger.
+- `DIALOG_DISPATCH_ENABLED` controls an all-pod claim/lease worker; it is disabled in dev/prod until controlled cutover.
+- Follow `docs/operations/dialog-dispatch.md` for backfill, alerts, replay and non-overlapping rollback.
 - Run `sh scripts/check-dialog-alerts.sh` (Docker and Ruby) after changing the Prometheus rules.
 
 ## Boundaries

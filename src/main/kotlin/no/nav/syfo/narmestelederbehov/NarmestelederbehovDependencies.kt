@@ -5,10 +5,11 @@ import no.nav.syfo.narmestelederbehov.application.ActiveSykmeldingLookup
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchMetrics
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchRepository
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchSettings
 import no.nav.syfo.narmestelederbehov.application.DialogExpiryInspection
-import no.nav.syfo.narmestelederbehov.application.DialogReconciliationMetrics
-import no.nav.syfo.narmestelederbehov.application.DialogReconciliationRepository
-import no.nav.syfo.narmestelederbehov.application.DialogReconciliationSettings
+import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.application.EmployerMainOrganizationLookup
@@ -30,17 +31,16 @@ import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreati
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeName
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovEmployeeNameRepository
-import no.nav.syfo.narmestelederbehov.application.ReconcileNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.AaregEmployerMainOrganizationLookup
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenNarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.infrastructure.DinesykmeldteActiveSykmeldingLookup
-import no.nav.syfo.narmestelederbehov.infrastructure.ExposedDialogReconciliationRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.ExposedDialogDispatchRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovFulfillmentRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovLifecycleRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovReadRepository
-import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerDialogReconciliationMetrics
+import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerDialogDispatchMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerLeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerNarmestelederbehovCreationMetrics
 import no.nav.syfo.narmestelederbehov.infrastructure.NarmestelederbehovDialogFactory
@@ -71,11 +71,11 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
         CreateNarmestelederbehovRepository::class,
         ExpireNarmestelederbehovRepository::class,
     )
-    single<DialogReconciliationRepository> { ExposedDialogReconciliationRepository(get()) }
-    single { DialogReconciliationSettings() }
-    single { MicrometerDialogReconciliationMetrics(get()) } binds arrayOf(DialogReconciliationMetrics::class)
+    single<DialogDispatchRepository> { ExposedDialogDispatchRepository(get()) }
+    single { DialogDispatchSettings() }
+    single { MicrometerDialogDispatchMetrics(get()) } binds arrayOf(DialogDispatchMetrics::class)
     single {
-        ReconcileNarmestelederbehovDialogUseCase(
+        DispatchNarmestelederbehovDialogUseCase(
             repository = get(),
             creation = get(),
             completion = get(),

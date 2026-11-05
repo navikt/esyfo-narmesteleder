@@ -28,7 +28,7 @@ BEGIN;
 WITH candidates AS (
     SELECT b.id, b.behov_status, b.dialog_id
     FROM nl_behov b
-    LEFT JOIN nl_dialog_reconciliation q ON q.behov_id = b.id
+    LEFT JOIN nl_dialog_dispatch q ON q.behov_id = b.id
     WHERE (q.behov_id IS NULL
            OR (b.behov_status = 'BEHOV_CREATED' AND b.dialog_id IS NULL AND NOT q.create_started))
       AND (
@@ -41,10 +41,10 @@ WITH candidates AS (
     LIMIT 500
     FOR UPDATE OF b SKIP LOCKED
 ), seeded AS (
-    INSERT INTO nl_dialog_reconciliation (behov_id, create_started)
+    INSERT INTO nl_dialog_dispatch (behov_id, create_started)
     SELECT id, behov_status = 'BEHOV_CREATED' AND dialog_id IS NULL FROM candidates
     ON CONFLICT (behov_id) DO UPDATE SET create_started = true
-    WHERE NOT nl_dialog_reconciliation.create_started AND EXCLUDED.create_started
+    WHERE NOT nl_dialog_dispatch.create_started AND EXCLUDED.create_started
     RETURNING behov_id
 )
 SELECT count(*) AS seeded FROM seeded;

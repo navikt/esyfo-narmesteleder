@@ -11,7 +11,7 @@ import io.mockk.mockk
 import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
-import no.nav.syfo.narmestelederbehov.application.ReconcileNarmestelederbehovDialogUseCase
+import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -59,7 +59,7 @@ class NarmestelederbehovModuleTest :
                     application {
                         platformModule(listOf(externalDependencies))
                         narmestelederbehovModule(settings)
-                        get<ReconcileNarmestelederbehovDialogUseCase>() shouldNotBe null
+                        get<DispatchNarmestelederbehovDialogUseCase>() shouldNotBe null
                     }
 
                     // Missing tokens are rejected before clients or repositories are used.

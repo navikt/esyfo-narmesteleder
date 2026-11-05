@@ -33,7 +33,7 @@ jobs:
       app: esyfo-narmesteleder
       java-version: "25"
   deploy-dialog-alerts:
-    if: github.ref_name == 'main' && vars.DIALOG_RECONCILIATION_ALERTS_ENABLED == 'true'
+    if: github.ref_name == 'main' && vars.DIALOG_DISPATCH_ALERTS_ENABLED == 'true'
     needs: [jar-app, check-dialog-alerts]
     runs-on: ubuntu-latest
     permissions:

@@ -120,14 +120,14 @@ Operational health, metrics, OpenAPI and Swagger endpoints belong to
 
 | Execution                              | Entry point                    | Processing                                                                                                                                            |
 | -------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Every pod, database claims with leases | `dialog-reconciliation` loop | `ReconcileNarmestelederbehovDialogUseCase` creates, completes or expires dialogs according to the latest behov state. |
+| Every pod, database claims with leases | `dialog-dispatch` loop | `DispatchNarmestelederbehovDialogUseCase` creates, completes or expires dialogs according to the latest behov state. |
 | Elected leader                         | `ExpireNarmestelederbehovTask` | `ExpireNarmestelederbehovUseCase` expires needs after the configured sykmelding-based cutoff.                                                         |
 | Elected leader                         | `PersonEnrichmentTask`         | `EnrichPendingRelationPersonsUseCase` resolves missing person names through PDL.                                                                      |
 | Elected leader                         | `DeleteOldSykmeldingerTask`    | `DeleteOldSykmeldinger` removes sendt sykmelding records according to the retention policy.                                                           |
 | Every pod, database claims with leases | `employment-check-seed` loop   | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates reconciliation work for active relations.                                                  |
 | Every pod, database claims with leases | `employment-check` loop        | `CheckNarmestelederrelasjonEmploymentUseCase` checks employment through Aareg and optionally publishes revocations.                                   |
 
-All background work is feature-flagged. `DIALOG_RECONCILIATION_ENABLED` controls
+All background work is feature-flagged. `DIALOG_DISPATCH_ENABLED` controls
 the all-pod dialog worker and is initially disabled for a controlled cutover.
 `PersonEnrichmentTask` still requires both `DIALOGPORTEN_TASK_ENABLED` and
 `PERSON_ENRICHMENT_TASK_ENABLED`. `BEHOV_MAINTENANCE_TASK_ENABLED` controls behov expiry and
@@ -149,7 +149,7 @@ sequenceDiagram
     participant Upstream as Dinesykmeldte / PDL
     participant DB as PostgreSQL
     participant Dialog as Dialogporten
-    participant Worker as Dialog reconciliation worker
+    participant Worker as Dialog dispatch worker
 
     Kafka-->>Consumer: Sendt sykmelding without riktigNarmesteLeder answer
     Consumer->>Sykmelding: handleNarmestelederbehov
@@ -195,7 +195,7 @@ sequenceDiagram
     participant Command as teamsykmelding.syfo-narmesteleder
     participant DB as PostgreSQL
     participant Dialog as Dialogporten
-    participant Worker as Dialog reconciliation worker
+    participant Worker as Dialog dispatch worker
 
     Caller->>API: PUT requirement/{id}
     API->>Behov: Fulfil command
@@ -228,7 +228,7 @@ The worker persists CREATE uncertainty before sending, and recovers late or
 unknown outcomes before closing a dialog. Expiry uses a persisted intent and
 reads upstream state before changing it on retry. Confirmed request-validation
 failures are parked; transient and ambiguous outcomes remain retryable.
-See the [cutover and recovery runbook](operations/dialog-reconciliation.md)
+See the [cutover and recovery runbook](operations/dialog-dispatch.md)
 for migration cleanup, legacy ambiguity, alerts and controlled replay.
 
 ### Direct relation submission

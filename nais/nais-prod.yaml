@@ -145,7 +145,7 @@ spec:
       value: "true"
     - name: DIALOGPORTEN_TASK_ENABLED
       value: "true"
-    - name: DIALOG_RECONCILIATION_ENABLED
+    - name: DIALOG_DISPATCH_ENABLED
       value: "false"
     - name: PERSIST_SENDT_SYKMELDING
       value: "true"

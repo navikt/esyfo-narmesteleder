@@ -1,16 +1,16 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: esyfo-narmesteleder-dialog-reconciliation
+  name: esyfo-narmesteleder-dialog-dispatch
   namespace: team-esyfo
   labels:
     team: team-esyfo
 spec:
   groups:
-    - name: esyfo-narmesteleder-dialog-reconciliation
+    - name: esyfo-narmesteleder-dialog-dispatch
       rules:
-        - alert: DialogReconciliationParked
-          expr: max(syfo_narmesteleder_dialog_reconciliation_parked{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 0
+        - alert: DialogDispatchParked
+          expr: max(syfo_narmesteleder_dialog_dispatch_parked{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 0
           for: 5m
           labels:
             namespace: team-esyfo
@@ -19,10 +19,10 @@ spec:
             summary: Dialogporten-oppdateringer krever manuell oppfølging
             consequence: Behov kan ha en dialog som ikke samsvarer med gjeldende tilstand.
             action: Undersøk valideringsfeilen og korriger årsaken før kontrollert replay.
-            runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-reconciliation.md
-        - alert: DialogReconciliationOverdue
+            runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
+        - alert: DialogDispatchOverdue
           expr: |
-            time() - min(syfo_narmesteleder_dialog_reconciliation_oldest_pending_timestamp_seconds{namespace="team-esyfo", app="esyfo-narmesteleder"} > 0) > 300
+            time() - min(syfo_narmesteleder_dialog_dispatch_oldest_pending_timestamp_seconds{namespace="team-esyfo", app="esyfo-narmesteleder"} > 0) > 300
           for: 5m
           labels:
             namespace: team-esyfo
@@ -31,12 +31,12 @@ spec:
             summary: Dialogporten-oppdateringer har blitt forsinket
             consequence: Arbeidsgiver kan se utdaterte eller manglende dialoger.
             action: Kontroller kø, worker, databasetilgang og Dialogporten før replay.
-            runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-reconciliation.md
-        - alert: DialogReconciliationWorkerStalled
+            runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
+        - alert: DialogDispatchWorkerStalled
           expr: |
-            (time() - max(syfo_narmesteleder_dialog_reconciliation_observed_timestamp_seconds{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 90)
+            (time() - max(syfo_narmesteleder_dialog_dispatch_observed_timestamp_seconds{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 90)
             and
-            (max(syfo_narmesteleder_dialog_reconciliation_enabled{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 0)
+            (max(syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 0)
           for: 5m
           labels:
             namespace: team-esyfo
@@ -45,9 +45,9 @@ spec:
             summary: Dialogporten-worker oppdaterer ikke status
             consequence: Dialogarbeid kan ha stoppet selv om API-et svarer.
             action: Kontroller worker-logg og databasetilgang. Ikke start gammel prosessering parallelt.
-            runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-reconciliation.md
-        - alert: DialogReconciliationTelemetryMissing
-          expr: absent_over_time(syfo_narmesteleder_dialog_reconciliation_enabled{namespace="team-esyfo", app="esyfo-narmesteleder"}[5m])
+            runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
+        - alert: DialogDispatchTelemetryMissing
+          expr: absent_over_time(syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo", app="esyfo-narmesteleder"}[5m])
           for: 1m
           labels:
             namespace: team-esyfo
@@ -56,4 +56,4 @@ spec:
             summary: Telemetri for Dialogporten-worker mangler
             consequence: Vi kan ikke bekrefte at dialogarbeidet blir behandlet.
             action: Kontroller podder, Prometheus-skraping og worker-konfigurasjon.
-            runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-reconciliation.md
+            runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md

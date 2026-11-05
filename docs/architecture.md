@@ -107,7 +107,7 @@ narmesteleder:
 - fulfill the employee's open needs when Leesah reports an active
   narmesteleder (`aktivTom` is empty), saving the status before completing
   the Dialogporten dialog;
-- own `nl_behov` and durable Dialogporten reconciliation in `nl_dialog_reconciliation`;
+- own `nl_behov` and durable Dialogporten dispatch state in `nl_dialog_dispatch`;
 - consume Leesah in `infrastructure.kafka` and create needs from the events;
 - coordinate Dialogporten state and retry behavior.
 

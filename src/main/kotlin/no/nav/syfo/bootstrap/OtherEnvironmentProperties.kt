@@ -20,7 +20,7 @@ data class OtherEnvironmentProperties(
     val employmentCheckEnabled: Boolean,
     val employmentCheckObserveSourceEnabled: Boolean,
     val employmentCheckRevokeEnabled: Boolean = false,
-    val dialogReconciliationEnabled: Boolean = false,
+    val dialogDispatchEnabled: Boolean = false,
 ) {
     init {
         require(!(employmentCheckRevokeEnabled && employmentCheckObserveSourceEnabled)) {
@@ -50,7 +50,7 @@ data class OtherEnvironmentProperties(
             employmentCheckEnabled = getEnvVar("EMPLOYMENT_CHECK_ENABLED", "false").toBoolean(),
             employmentCheckObserveSourceEnabled = getEnvVar("EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED", "false").toBoolean(),
             employmentCheckRevokeEnabled = getEnvVar("EMPLOYMENT_CHECK_REVOKE_ENABLED", "false").toBoolean(),
-            dialogReconciliationEnabled = getEnvVar("DIALOG_RECONCILIATION_ENABLED", "false").toBoolean(),
+            dialogDispatchEnabled = getEnvVar("DIALOG_DISPATCH_ENABLED", "false").toBoolean(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
@@ -71,7 +71,7 @@ data class OtherEnvironmentProperties(
             employmentCheckEnabled = false,
             employmentCheckObserveSourceEnabled = false,
             employmentCheckRevokeEnabled = false,
-            dialogReconciliationEnabled = true,
+            dialogDispatchEnabled = true,
         )
     }
 }

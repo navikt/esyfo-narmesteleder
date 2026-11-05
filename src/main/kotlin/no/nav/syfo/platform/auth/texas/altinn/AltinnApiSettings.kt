@@ -1,5 +1,5 @@
 package no.nav.syfo.platform.auth.texas.altinn
 
-data class AltinnSettings(
+data class AltinnApiSettings(
     val baseUrl: String,
 )

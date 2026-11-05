@@ -51,7 +51,7 @@ private fun naisEnvironmentWithoutEnvVars(): NaisEnvironment {
         valkeyEnvironment = ValkeyEnvironment.createForLocal(),
         kafka = KafkaEnvironment.createForLocal(),
         aaregSettings = localEnvironment.aaregSettings,
-        altinnSettings = localEnvironment.altinnSettings,
+        altinnApiSettings = localEnvironment.altinnApiSettings,
         altinnAuthorizationSettings = localEnvironment.altinnAuthorizationSettings,
         altinnAccessSettings = localEnvironment.altinnAccessSettings,
         dinesykmeldteSettings = localEnvironment.dinesykmeldteSettings,

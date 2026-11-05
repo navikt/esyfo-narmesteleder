@@ -30,7 +30,7 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTil
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
-import no.nav.syfo.platform.auth.texas.altinn.AltinnSettings
+import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.CachingAltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
@@ -42,7 +42,7 @@ import org.koin.dsl.module
 
 internal fun httpClientsModule(
     aaregSettings: AaregSettings,
-    altinnSettings: AltinnSettings,
+    altinnApiSettings: AltinnApiSettings,
     altinnAuthorizationSettings: AltinnAuthorizationSettings,
     altinnAccessSettings: AltinnAccessSettings,
     dinesykmeldteSettings: DinesykmeldteSettings,
@@ -58,7 +58,7 @@ internal fun httpClientsModule(
         CachingAltinnTokenSource(
             delegate = TexasAltinnTokenFetcher(
                 texasHttpClient = get(),
-                altinnBaseUrl = altinnSettings.baseUrl,
+                altinnBaseUrl = altinnApiSettings.baseUrl,
                 httpClient = get(),
             ),
         )
@@ -133,7 +133,7 @@ internal fun httpClientsModule(
         remote = {
             HttpAltinnAuthorizationClient(
                 httpClient = get(),
-                baseUrl = altinnSettings.baseUrl,
+                baseUrl = altinnApiSettings.baseUrl,
                 subscriptionKey = altinnAuthorizationSettings.subscriptionKey,
                 altinnTokenProvider = get(),
             )

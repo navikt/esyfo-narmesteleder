@@ -17,15 +17,19 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(environment.narmestelederrelasjonSettings())
-    narmestelederbehovModule(environment.narmestelederbehovSettings())
+    narmestelederrelasjonModule(environment.narmestelederrelasjonEmploymentSettings)
+    narmestelederbehovModule(environment.narmestelederbehovSettings)
     narmestelederstatistikkModule()
     sykmeldingModule()
-    configureKafkaConsumers(environment)
+    configureKafkaConsumers(
+        kafkaSettings = environment.kafka,
+        narmestelederrelasjonKafkaSettings = environment.narmestelederrelasjonKafkaSettings,
+        sykmeldingKafkaSettings = environment.sykmeldingKafkaSettings,
+    )
     configureBackgroundTasks(
         dialogportenTaskSettings = environment.dialogportenTaskSettings,
         maintenanceTaskSettings = environment.maintenanceTaskSettings,
         personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
     )
-    configureEmploymentChecks(environment.otherProperties)
+    configureEmploymentChecks(environment.narmestelederrelasjonEmploymentSettings)
 }

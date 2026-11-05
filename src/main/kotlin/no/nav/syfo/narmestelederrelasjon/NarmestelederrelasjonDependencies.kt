@@ -69,7 +69,7 @@ import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 private val LOOKUP_DISCARDED_EMAIL_ADDRESS_METRICS = named("lookupDiscardedEmailAddressMetrics")
 private val EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_METRICS = named("employeeLinemanagerDiscardedEmailAddressMetrics")
 
-fun narmestelederrelasjonDependencies(settings: NarmestelederrelasjonSettings) = module {
+fun narmestelederrelasjonDependencies(settings: NarmestelederrelasjonEmploymentSettings) = module {
     single<PublishNarmestelederrelasjon> { KafkaPublishNarmestelederrelasjon(get()) }
     single<PublishNarmestelederrelasjonRevocation> { KafkaPublishNarmestelederrelasjonRevocation(get()) }
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }

@@ -30,7 +30,8 @@ import java.sql.Connection
 class NarmestelederrelasjonModuleTest :
     FunSpec({
         test("registers its dependencies and mounts relasjon routes on their own API prefixes") {
-            val settings = NarmestelederrelasjonSettings(
+            val settings = NarmestelederrelasjonEmploymentSettings(
+                employmentCheckEnabled = false,
                 employmentCheckObserveSourceEnabled = false,
                 employmentCheckRevokeEnabled = false,
             )

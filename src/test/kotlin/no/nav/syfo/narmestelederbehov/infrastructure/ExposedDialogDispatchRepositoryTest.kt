@@ -359,14 +359,17 @@ class ExposedDialogDispatchRepositoryTest :
                     connection.commit()
                 }
             }
-            findStoredNarmestelederbehov(matching.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
-            listOf(revoked, future, otherOrg).forEach {
-                findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
-            }
             val claimed = buildList { repeat(6) { repository.claim(now, 60.seconds)?.let { add(it) } } }
-            claimed.map { it.id.value }.toSet() shouldBe setOf(matching.id, revoked.id, future.id, otherOrg.id, duringCutover.id)
-            requireNotNull(repository.load(claimed.single { it.id.value == duringCutover.id }, now)).createStarted shouldBe true
-            claimed.any { it.id.value == closed.id } shouldBe false
+            val cutoverState = requireNotNull(repository.load(claimed.single { it.id.value == duringCutover.id }, now))
+            assertSoftly {
+                findStoredNarmestelederbehov(matching.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                listOf(revoked, future, otherOrg).forEach {
+                    findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+                }
+                claimed.map { it.id.value }.toSet() shouldBe setOf(matching.id, revoked.id, future.id, otherOrg.id, duringCutover.id)
+                cutoverState.createStarted shouldBe true
+                claimed.any { it.id.value == closed.id } shouldBe false
+            }
         }
 
         listOf(400, 422, 403, 404, 503).forEach { status ->
@@ -392,14 +395,16 @@ class ExposedDialogDispatchRepositoryTest :
                         clock = clock,
                         metrics = metrics,
                     ).execute()
-                    calls shouldBe 1
-                    repository.claim(now, 60.seconds).shouldBeNull()
                     metrics.refresh()
                     val parked = status in listOf(400, 422)
                     val scrape = registry.scrape()
-                    scrape shouldContain "syfo_narmesteleder_dialog_dispatch_parked ${if (parked) "1.0" else "0.0"}"
-                    scrape shouldContain "syfo_narmesteleder_dialog_dispatch_pending ${if (parked) "0.0" else "1.0"}"
-                    scrape shouldContain """syfo_narmesteleder_dialog_dispatch_attempts_total{outcome="${if (parked) "parked" else "retry"}"} 1.0"""
+                    assertSoftly {
+                        calls shouldBe 1
+                        repository.claim(now, 60.seconds).shouldBeNull()
+                        scrape shouldContain "syfo_narmesteleder_dialog_dispatch_parked ${if (parked) "1.0" else "0.0"}"
+                        scrape shouldContain "syfo_narmesteleder_dialog_dispatch_pending ${if (parked) "0.0" else "1.0"}"
+                        scrape shouldContain """syfo_narmesteleder_dialog_dispatch_attempts_total{outcome="${if (parked) "parked" else "retry"}"} 1.0"""
+                    }
                 } finally {
                     registry.close()
                 }

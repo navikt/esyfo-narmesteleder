@@ -33,8 +33,12 @@ internal fun applicationModules(environment: Environment, isLocalEnv: Boolean): 
     ),
     cacheModule(environment.valkeyEnvironment),
     kafkaProducersModule(environment.kafka),
-    leaderElectionModule(environment.otherProperties, isLocalEnv),
-    tasksModule(environment.otherProperties),
+    leaderElectionModule(environment.leaderElectionSettings, isLocalEnv),
+    tasksModule(
+        narmestelederbehovExpirySettings = environment.narmestelederbehovExpirySettings,
+        maintenanceTaskSettings = environment.maintenanceTaskSettings,
+        personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
+    ),
 )
 
 private fun coreModule() = module {

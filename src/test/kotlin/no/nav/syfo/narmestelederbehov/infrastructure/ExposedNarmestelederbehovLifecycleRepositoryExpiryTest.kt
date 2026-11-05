@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
@@ -42,12 +43,14 @@ class ExposedNarmestelederbehovLifecycleRepositoryExpiryTest :
 
             repository.expireBehov(cutoff, limit = 500) shouldBe openStatuses.size
 
-            byStatus.forEach { (status, id) ->
-                val expected = if (status in openStatuses) BehovStatus.BEHOV_EXPIRED else status
-                storedStatus(id) shouldBe expected
-            }
-            listOf(tomAtCutoff, otherOrganization, withoutSykmelding).forEach {
-                storedStatus(it.id) shouldBe BehovStatus.BEHOV_CREATED
+            assertSoftly {
+                byStatus.forEach { (status, id) ->
+                    val expected = if (status in openStatuses) BehovStatus.BEHOV_EXPIRED else status
+                    storedStatus(id) shouldBe expected
+                }
+                listOf(tomAtCutoff, otherOrganization, withoutSykmelding).forEach {
+                    storedStatus(it.id) shouldBe BehovStatus.BEHOV_CREATED
+                }
             }
             repository.expireBehov(cutoff, limit = 500) shouldBe 0
         }

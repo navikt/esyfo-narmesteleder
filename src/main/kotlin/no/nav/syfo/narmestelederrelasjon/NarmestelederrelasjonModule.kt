@@ -23,7 +23,7 @@ import no.nav.syfo.platform.auth.texas.authenticateTokenX
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 
-fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonSettings) {
+fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonEmploymentSettings) {
     koinModules(narmestelederrelasjonDependencies(settings))
     val submit = get<SubmitNarmestelederrelasjonUseCase>()
     val revoke = get<RevokeActiveNarmestelederrelasjonUseCase>()

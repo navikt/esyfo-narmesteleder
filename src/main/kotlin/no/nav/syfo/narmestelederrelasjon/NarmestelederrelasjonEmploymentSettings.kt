@@ -1,6 +1,6 @@
 package no.nav.syfo.narmestelederrelasjon
 
-data class NarmestelederrelasjonSettings(
+data class NarmestelederrelasjonEmploymentSettings(
     val employmentCheckEnabled: Boolean,
     val employmentCheckObserveSourceEnabled: Boolean,
     val employmentCheckRevokeEnabled: Boolean,

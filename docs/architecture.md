@@ -378,7 +378,7 @@ Owns application assembly:
 
 Business classes do not depend on Koin or bootstrap. Capabilities never see
 the bootstrap `Environment`. Bootstrap maps it to capability-owned settings such
-as `NarmestelederbehovSettings` and `NarmestelederrelasjonSettings` and passes
+as `NarmestelederbehovSettings` and `NarmestelederrelasjonEmploymentSettings` and passes
 them as parameters to the capability module, which hands them on to its
 `<capability>Dependencies(settings)`; settings are not registered in Koin.
 Single feature flags are passed directly to consumers. `BootstrapBoundaryTest` fails if a
@@ -396,7 +396,7 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(environment.narmestelederrelasjonSettings)
+    narmestelederrelasjonModule(environment.narmestelederrelasjonEmploymentSettings)
     narmestelederbehovModule(environment.narmestelederbehovSettings)
     narmestelederstatistikkModule()
     sykmeldingModule()
@@ -410,7 +410,7 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
         maintenanceTaskSettings = environment.maintenanceTaskSettings,
         personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
     )
-    configureEmploymentChecks(environment.narmestelederrelasjonSettings)
+    configureEmploymentChecks(environment.narmestelederrelasjonEmploymentSettings)
 }
 ```
 

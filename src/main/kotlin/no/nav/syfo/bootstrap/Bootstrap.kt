@@ -17,7 +17,7 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(environment.narmestelederrelasjonSettings)
+    narmestelederrelasjonModule(environment.narmestelederrelasjonEmploymentSettings)
     narmestelederbehovModule(environment.narmestelederbehovSettings)
     narmestelederstatistikkModule()
     sykmeldingModule()
@@ -31,5 +31,5 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
         maintenanceTaskSettings = environment.maintenanceTaskSettings,
         personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
     )
-    configureEmploymentChecks(environment.narmestelederrelasjonSettings)
+    configureEmploymentChecks(environment.narmestelederrelasjonEmploymentSettings)
 }

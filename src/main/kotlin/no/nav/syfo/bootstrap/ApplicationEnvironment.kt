@@ -8,7 +8,7 @@ import no.nav.syfo.narmestelederbehov.NarmestelederbehovSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenTaskSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenSettings
-import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonSettings
+import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonEmploymentSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationSettings
@@ -40,7 +40,7 @@ interface Environment {
     val pdlSettings: PdlSettings
     val narmestelederbehovSettings: NarmestelederbehovSettings
     val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings
-    val narmestelederrelasjonSettings: NarmestelederrelasjonSettings
+    val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings
     val narmestelederrelasjonKafkaSettings: NarmestelederrelasjonKafkaSettings
     val sykmeldingKafkaSettings: SykmeldingKafkaSettings
     val dialogportenTaskSettings: DialogportenTaskSettings
@@ -90,7 +90,7 @@ data class NaisEnvironment(
     override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = NarmestelederbehovExpirySettings(
         daysAfterTom = getEnvVar("DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS", "16").toLong(),
     ),
-    override val narmestelederrelasjonSettings: NarmestelederrelasjonSettings = NarmestelederrelasjonSettings(
+    override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = NarmestelederrelasjonEmploymentSettings(
         employmentCheckEnabled = getEnvVar("EMPLOYMENT_CHECK_ENABLED", "false").toBoolean(),
         employmentCheckObserveSourceEnabled = getEnvVar("EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED", "false").toBoolean(),
         employmentCheckRevokeEnabled = getEnvVar("EMPLOYMENT_CHECK_REVOKE_ENABLED", "false").toBoolean(),
@@ -164,7 +164,7 @@ data class LocalEnvironment(
     override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = NarmestelederbehovExpirySettings(
         daysAfterTom = 0,
     ),
-    override val narmestelederrelasjonSettings: NarmestelederrelasjonSettings = NarmestelederrelasjonSettings(
+    override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = NarmestelederrelasjonEmploymentSettings(
         employmentCheckEnabled = false,
         employmentCheckObserveSourceEnabled = false,
         employmentCheckRevokeEnabled = false,

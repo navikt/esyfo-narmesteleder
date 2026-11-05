@@ -58,20 +58,23 @@ private fun naisEnvironmentWithoutEnvVars(): NaisEnvironment {
         dialogportenSettings = localEnvironment.dialogportenSettings,
         eregSettings = localEnvironment.eregSettings,
         pdlSettings = localEnvironment.pdlSettings,
+        narmestelederbehovSettings = localEnvironment.narmestelederbehovSettings,
         narmestelederbehovExpirySettings = localEnvironment.narmestelederbehovExpirySettings,
+        narmestelederrelasjonSettings = localEnvironment.narmestelederrelasjonSettings,
+        narmestelederrelasjonKafkaSettings = localEnvironment.narmestelederrelasjonKafkaSettings,
+        sykmeldingKafkaSettings = localEnvironment.sykmeldingKafkaSettings,
         dialogportenTaskSettings = localEnvironment.dialogportenTaskSettings,
         maintenanceTaskSettings = localEnvironment.maintenanceTaskSettings,
         personEnrichmentTaskSettings = localEnvironment.personEnrichmentTaskSettings,
         leaderElectionSettings = localEnvironment.leaderElectionSettings,
-        otherProperties = OtherEnvironmentProperties.createForLocal(),
     )
 }
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
 private fun capabilityDependencies(environment: Environment) = listOf(
     organisasjonstilgangDependencies(),
-    narmestelederrelasjonDependencies(environment.narmestelederrelasjonSettings()),
-    narmestelederbehovDependencies(environment.narmestelederbehovSettings()),
+    narmestelederrelasjonDependencies(environment.narmestelederrelasjonSettings),
+    narmestelederbehovDependencies(environment.narmestelederbehovSettings),
     narmestelederstatistikkDependencies(),
     sykmeldingDependencies(),
 )

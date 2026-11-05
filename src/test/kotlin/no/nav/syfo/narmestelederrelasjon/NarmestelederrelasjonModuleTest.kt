@@ -31,6 +31,7 @@ class NarmestelederrelasjonModuleTest :
     FunSpec({
         test("registers its dependencies and mounts relasjon routes on their own API prefixes") {
             val settings = NarmestelederrelasjonSettings(
+                employmentCheckEnabled = false,
                 employmentCheckObserveSourceEnabled = false,
                 employmentCheckRevokeEnabled = false,
             )

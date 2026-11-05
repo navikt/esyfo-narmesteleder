@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -34,12 +35,14 @@ class DialogportenNarmestelederbehovDialogExpiryTest :
                 DialogportenNarmestelederbehovDialogExpiry(client).inspect(EXPIRY_DIALOG_ID) shouldBe DialogExpiryObservation.Found(EXPIRATION_TIME)
                 DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME) shouldBe DialogExpiry.Expired
 
-                client.calls shouldBe listOf("get", "get", "patch")
-                client.patchRevision shouldBe EXPIRY_REVISION
-                client.patches shouldBe listOf(
-                    DialogportenPatch(OPERATION.REPLACE, PATH.STATUS, DialogStatus.Completed.name),
-                    DialogportenPatch(OPERATION.ADD, PATH.EXPIRES_AT, EXPIRATION_TIME.toString()),
-                )
+                assertSoftly {
+                    client.calls shouldBe listOf("get", "get", "patch")
+                    client.patchRevision shouldBe EXPIRY_REVISION
+                    client.patches shouldBe listOf(
+                        DialogportenPatch(OPERATION.REPLACE, PATH.STATUS, DialogStatus.Completed.name),
+                        DialogportenPatch(OPERATION.ADD, PATH.EXPIRES_AT, EXPIRATION_TIME.toString()),
+                    )
+                }
             }
         }
 

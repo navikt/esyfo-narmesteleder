@@ -3,6 +3,7 @@ package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.inspectors.forAtLeastOne
@@ -100,16 +101,20 @@ class DialogportenClientTest :
                 var attempts = 0
                 upstreamHttpClient(respondWithSystemToken) { request ->
                     attempts++
-                    request.method shouldBe HttpMethod.parse(operation)
-                    request.url.encodedPath shouldBe "/dialogporten/api/v1/serviceowner/dialogs" + if (operation == "POST") "" else "/$id"
-                    request.headers[HttpHeaders.Authorization] shouldBe "Bearer synthetic-token"
-                    request.headers[HttpHeaders.Accept] shouldBe ContentType.Application.Json.toString()
+                    assertSoftly {
+                        request.method shouldBe HttpMethod.parse(operation)
+                        request.url.encodedPath shouldBe "/dialogporten/api/v1/serviceowner/dialogs" + if (operation == "POST") "" else "/$id"
+                        request.headers[HttpHeaders.Authorization] shouldBe "Bearer synthetic-token"
+                        request.headers[HttpHeaders.Accept] shouldBe ContentType.Application.Json.toString()
+                    }
                     when (operation) {
                         "POST" -> {
                             request.body.contentType shouldBe ContentType.Application.Json
                             val body = request.body.toByteArray()
-                            mapper.readValue<Dialog>(body) shouldBe dialog
-                            mapper.readTree(body)["idempotentKey"].asText() shouldBe id.toString()
+                            assertSoftly {
+                                mapper.readValue<Dialog>(body) shouldBe dialog
+                                mapper.readTree(body)["idempotentKey"].asText() shouldBe id.toString()
+                            }
                             respondJson("\"$id\"", HttpStatusCode.Created)
                         }
                         "GET" -> {
@@ -117,9 +122,11 @@ class DialogportenClientTest :
                             respondJson(mapper.writeValueAsString(extended))
                         }
                         else -> {
-                            request.headers[HttpHeaders.IfMatch] shouldBe revision.toString()
-                            request.body.contentType shouldBe JSON_PATCH_CONTENT_TYPE
-                            mapper.readTree(request.body.toByteArray()) shouldBe mapper.readTree("""[{"operation":"Replace","path":"/status","value":"Completed"}]""")
+                            assertSoftly {
+                                request.headers[HttpHeaders.IfMatch] shouldBe revision.toString()
+                                request.body.contentType shouldBe JSON_PATCH_CONTENT_TYPE
+                                mapper.readTree(request.body.toByteArray()) shouldBe mapper.readTree("""[{"operation":"Replace","path":"/status","value":"Completed"}]""")
+                            }
                             respondJson("", HttpStatusCode.NoContent)
                         }
                     }
@@ -155,10 +162,12 @@ class DialogportenClientTest :
                             result shouldBe UpstreamResult.Success(DialogPatchResult.RevisionConflict)
                         } else {
                             val failure = result.shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                            failure.upstream shouldBe UpstreamName("dialogporten")
-                            failure.stage shouldBe UpstreamFailureStage.RESPONSE
-                            failure.status shouldBe status
-                            failure.cause.shouldBeInstanceOf<ResponseException>()
+                            assertSoftly {
+                                failure.upstream shouldBe UpstreamName("dialogporten")
+                                failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                                failure.status shouldBe status
+                                failure.cause.shouldBeInstanceOf<ResponseException>()
+                            }
                         }
                     }
                     attempts shouldBe if (status >= 500) 3 else 1
@@ -174,10 +183,13 @@ class DialogportenClientTest :
                     }.use { http ->
                         val failure = invoke(HttpDialogportenClient("https://dialogporten.test", http, provider))
                             .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                        failure.upstream shouldBe UpstreamName("dialogporten")
-                        failure.stage shouldBe UpstreamFailureStage.REQUEST
-                        failure.status shouldBe null
-                        requireNotNull(failure.cause).causeChain().forAtLeastOne { it shouldBeSameInstanceAs original }
+                        val causes = requireNotNull(failure.cause).causeChain()
+                        assertSoftly {
+                            failure.upstream shouldBe UpstreamName("dialogporten")
+                            failure.stage shouldBe UpstreamFailureStage.REQUEST
+                            failure.status shouldBe null
+                            causes.forAtLeastOne { it shouldBeSameInstanceAs original }
+                        }
                     }
                     attempts shouldBe 3
                 }
@@ -209,9 +221,11 @@ class DialogportenClientTest :
                 upstreamHttpClient(respondWithSystemToken) { respondJson("\"invalid-body-canary\"", HttpStatusCode.Created) }.use { http ->
                     val failure = operations.getValue(operation)(HttpDialogportenClient("https://dialogporten.test", http, provider))
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.upstream shouldBe UpstreamName("dialogporten")
-                    failure.stage shouldBe UpstreamFailureStage.RESPONSE
-                    failure.status shouldBe 201
+                    assertSoftly {
+                        failure.upstream shouldBe UpstreamName("dialogporten")
+                        failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                        failure.status shouldBe 201
+                    }
                 }
             }
 
@@ -273,9 +287,11 @@ class DialogportenClientTest :
                 upstreamHttpClient(respondWithSystemToken) { respondProblem(body) }.use { http ->
                     val failure = HttpDialogportenClient("https://dialogporten.test", http, provider).createDialog(dialog)
                         .shouldBeInstanceOf<UpstreamResult.Failure>().failure
-                    failure.stage shouldBe UpstreamFailureStage.RESPONSE
-                    failure.status shouldBe 409
-                    failure.cause.shouldBeInstanceOf<ResponseException>()
+                    assertSoftly {
+                        failure.stage shouldBe UpstreamFailureStage.RESPONSE
+                        failure.status shouldBe 409
+                        failure.cause.shouldBeInstanceOf<ResponseException>()
+                    }
                 }
             }
         }
@@ -291,12 +307,14 @@ class DialogportenClientTest :
                             logger.logEvent(event, Unit, upstreamFailure = failure)
                             val output = capture.records.single()
                             val record = mapper.readTree(output)
-                            record["upstream"].asText() shouldBe "dialogporten"
-                            record["failure_stage"].asText() shouldBe "response"
-                            record["upstream_status"].asInt() shouldBe status
-                            output shouldNotContain "private-body-canary"
-                            output shouldNotContain "synthetic-token"
-                            output shouldNotContain dialog.party
+                            assertSoftly {
+                                record["upstream"].asText() shouldBe "dialogporten"
+                                record["failure_stage"].asText() shouldBe "response"
+                                record["upstream_status"].asInt() shouldBe status
+                                output shouldNotContain "private-body-canary"
+                                output shouldNotContain "synthetic-token"
+                                output shouldNotContain dialog.party
+                            }
                         }
                     }
                 }

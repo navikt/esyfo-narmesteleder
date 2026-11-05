@@ -75,6 +75,7 @@ testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "
 testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers-postgres" }
 logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstashEncoder" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines-test" }
+kotlinx-coroutines-slf4j = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-slf4j", version.ref = "coroutines-test" }
 valkey-java = { module = "io.valkey:valkey-java", version.ref = "valkey-version" }
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed-version" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed-version" }

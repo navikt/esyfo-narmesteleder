@@ -1,31 +1,52 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
+import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.Coalesce
+import org.jetbrains.exposed.v1.core.CustomFunction
+import org.jetbrains.exposed.v1.core.LiteralOp
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.plus
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZoneLiteral
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
-import java.sql.Connection
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.upsert
 import java.util.UUID
 
 /** Call after a relevant behov change, using the writer's existing transaction and row lock. */
 internal fun JdbcTransaction.scheduleDialogDispatch(behovId: UUID) {
-    (connection.connection as Connection).prepareStatement(
-        """
-        INSERT INTO nl_dialog_dispatch (behov_id, available_at)
-        SELECT b.id, GREATEST(clock_timestamp(), b.created + interval '10 seconds')
-        FROM nl_behov b
-        WHERE b.id = ?
-          AND (b.behov_status = 'BEHOV_CREATED'
-               OR b.dialog_id IS NOT NULL
-               OR EXISTS (SELECT 1 FROM nl_dialog_dispatch WHERE behov_id = b.id))
-        ON CONFLICT (behov_id) DO UPDATE SET
-            revision = nl_dialog_dispatch.revision + 1,
-            status = CASE WHEN nl_dialog_dispatch.status = 'CLAIMED' THEN 'CLAIMED' ELSE 'READY' END,
-            available_at = CASE WHEN nl_dialog_dispatch.status = 'CLAIMED'
-                                THEN nl_dialog_dispatch.available_at ELSE clock_timestamp() END,
-            pending_since = COALESCE(nl_dialog_dispatch.pending_since, clock_timestamp()),
-            attempts = 0,
-            last_failure = NULL
-        """.trimIndent(),
-    ).use {
-        it.setObject(1, behovId)
-        it.executeUpdate()
+    val behov = NarmestelederbehovTable
+        .select(NarmestelederbehovTable.behovStatus, NarmestelederbehovTable.dialogId, NarmestelederbehovTable.created)
+        .where { NarmestelederbehovTable.id eq behovId }
+        .singleOrNull() ?: return
+    with(DialogDispatchTable) {
+        if (behov[NarmestelederbehovTable.behovStatus] != BehovStatus.BEHOV_CREATED &&
+            behov[NarmestelederbehovTable.dialogId] == null &&
+            select(this.behovId).where { this.behovId eq behovId }.empty()
+        ) {
+            return
+        }
+        val now = CustomFunction("clock_timestamp", availableAt.columnType)
+        upsert(
+            this.behovId,
+            onUpdate = {
+                it[revision] = revision + 1
+                it[status] = Case()
+                    .When(status eq DialogDispatchStatus.CLAIMED, LiteralOp(status.columnType, DialogDispatchStatus.CLAIMED))
+                    .Else(LiteralOp(status.columnType, DialogDispatchStatus.READY))
+                it[availableAt] = Case().When(status eq DialogDispatchStatus.CLAIMED, availableAt).Else(now)
+                it[pendingSince] = Coalesce(pendingSince, now)
+                it[attempts] = 0
+                it[lastFailure] = null
+            },
+        ) {
+            it[this.behovId] = behovId
+            it[availableAt] = CustomFunction(
+                "GREATEST",
+                availableAt.columnType,
+                now,
+                timestampWithTimeZoneLiteral(behov[NarmestelederbehovTable.created].plusSeconds(10)),
+            )
+        }
     }
 }

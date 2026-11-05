@@ -24,4 +24,5 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     configureKafkaConsumers(environment)
     configureBackgroundTasks(environment.otherProperties)
     configureEmploymentChecks(environment.otherProperties)
+    configureDialogReconciliation(environment.otherProperties)
 }

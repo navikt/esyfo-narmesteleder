@@ -10,15 +10,11 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.observability.withProductionLogs
-import no.nav.syfo.platform.upstream.UpstreamError
-import no.nav.syfo.platform.upstream.UpstreamFailure
-import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import no.nav.syfo.platform.upstream.UpstreamName
 import java.util.UUID
 
 class FulfillNarmestelederbehovFromLeesahUseCaseTest :
     FunSpec({
-        test("fulfills every open behov and saves the status before completing its dialog") {
+        test("fulfills every open behov without performing dialog delivery") {
             val effects = mutableListOf<String>()
             val repository = LeesahBehovRepository(
                 effects,
@@ -32,8 +28,6 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
                 "find",
                 "fulfilled:$WITH_DIALOG",
                 "metric",
-                "dialog",
-                "dialog-status:$WITH_DIALOG",
                 "fulfilled:$WITHOUT_DIALOG",
                 "metric",
             )
@@ -64,7 +58,7 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
             effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG")
         }
 
-        test("keeps the behov fulfilled and continues when Dialogporten fails") {
+        test("logs pending completion for known dialogs without claiming delivery succeeded") {
             val effects = mutableListOf<String>()
             val repository = LeesahBehovRepository(
                 effects,
@@ -73,18 +67,12 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
             )
 
             withProductionLogs(FulfillNarmestelederbehovFromLeesahUseCase::class.java, Level.INFO) { logs ->
-                val failure = UpstreamFailure(UpstreamName("altinn-authentication"), UpstreamFailureStage.TOKEN_EXCHANGE, 503, errors = listOf(UpstreamError("server_error")))
-                useCase(effects, repository, completion = DialogCompletion.Unavailable(failure)).execute(EMPLOYEE)
+                useCase(effects, repository).execute(EMPLOYEE)
 
-                effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "dialog", "fulfilled:$WITHOUT_DIALOG", "metric")
+                effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "fulfilled:$WITHOUT_DIALOG", "metric")
                 val events = logs.logs.map { it.fields }
-                val failed = events.single { it["event_type"] == "narmestelederbehov_dialogporten_completion_failed" }
-                failed["upstream"] shouldBe "altinn-authentication"
-                failed["failure_stage"] shouldBe "token_exchange"
-                failed["upstream_status"] shouldBe 503
-                failed["behov_id"] shouldBe WITH_DIALOG.value.toString()
                 events.filter { it["event_type"] == "narmestelederbehov_fulfilled_from_leesah" }
-                    .map { it["dialogporten_completion"] } shouldBe listOf("FAILED", "NOT_APPLICABLE")
+                    .map { it["dialogporten_completion"] } shouldBe listOf("PENDING", "NOT_APPLICABLE")
             }
         }
 
@@ -100,14 +88,14 @@ class FulfillNarmestelederbehovFromLeesahUseCaseTest :
         }
 
         listOf(IllegalStateException("unexpected"), CancellationException("stopping")).forEach { failure ->
-            test("propagates ${failure.javaClass.simpleName} from Dialogporten without business logging") {
+            test("propagates ${failure.javaClass.simpleName} from persistence without business logging") {
                 val effects = mutableListOf<String>()
-                val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), dialogIds = mapOf(WITH_DIALOG to DIALOG_ID))
+                val repository = LeesahBehovRepository(effects, openBehov = listOf(WITH_DIALOG), fulfillFailure = failure)
                 withProductionLogs(FulfillNarmestelederbehovFromLeesahUseCase::class.java, Level.INFO) { logs ->
                     shouldThrow<Exception> {
-                        useCase(effects, repository, dialogFailure = failure).execute(EMPLOYEE)
+                        useCase(effects, repository).execute(EMPLOYEE)
                     } shouldBe failure
-                    effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG", "metric", "dialog")
+                    effects shouldBe listOf("find", "fulfilled:$WITH_DIALOG")
                     logs.logs shouldBe emptyList()
                 }
             }
@@ -139,20 +127,12 @@ private class LeesahBehovRepository(
         fulfillFailure?.let { throw it }
         return if (id in missing) MarkFulfilledResult.Missing else MarkFulfilledResult.Marked(id, dialogIds[id])
     }
-
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult {
-        effects += "dialog-status:$id"
-        return MarkDialogCompletedResult.Marked
-    }
 }
 
 private fun useCase(
     effects: MutableList<String>,
     repository: FulfillNarmestelederbehovFromLeesahRepository,
-    dialogFailure: Throwable? = null,
-    completion: DialogCompletion = DialogCompletion.Completed,
 ) = FulfillNarmestelederbehovFromLeesahUseCase(
     behovRepository = repository,
     metrics = { effects += "metric" },
-    dialog = FakeDialog(effects, dialogFailure, completion),
 )

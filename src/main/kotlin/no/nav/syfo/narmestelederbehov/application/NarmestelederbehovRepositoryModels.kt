@@ -5,24 +5,7 @@ import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import java.time.Instant
 import java.util.UUID
-
-data class NarmestelederbehovDialogReference(val id: NarmestelederbehovId, val dialogId: UUID)
-
-/** A behov with a dialog that still needs an expiry marker. */
-data class ExpirableNarmestelederbehovDialog(
-    override val id: NarmestelederbehovId,
-    val dialogId: UUID,
-    override val created: Instant,
-) : DialogScanEntry
-
-data class PendingNarmestelederbehovDialog(
-    override val id: NarmestelederbehovId,
-    val employee: Employee,
-    override val created: Instant,
-    val dialogId: UUID?,
-) : DialogScanEntry
 
 data class NewNarmestelederbehov(
     val employee: Employee,
@@ -41,18 +24,4 @@ sealed interface CreateBehovResult {
 sealed interface MarkFulfilledResult {
     data class Marked(val id: NarmestelederbehovId, val dialogId: UUID?) : MarkFulfilledResult
     data object Missing : MarkFulfilledResult
-}
-
-sealed interface MarkDialogCompletedResult {
-    data object Marked : MarkDialogCompletedResult
-
-    /** The behov is missing or another writer changed its status; nothing is overwritten. */
-    data object NotFulfilled : MarkDialogCompletedResult
-}
-
-sealed interface MarkDialogCreatedResult {
-    data object Marked : MarkDialogCreatedResult
-
-    /** The behov is missing or has left BEHOV_CREATED; nothing is overwritten. */
-    data object NotCreated : MarkDialogCreatedResult
 }

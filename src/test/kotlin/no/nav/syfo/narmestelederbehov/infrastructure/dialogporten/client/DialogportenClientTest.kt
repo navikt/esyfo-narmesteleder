@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client
 
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.kotest.assertions.throwables.shouldThrow
@@ -45,13 +46,14 @@ import no.nav.syfo.platform.upstream.UpstreamResult
 import org.slf4j.event.Level
 import java.io.IOException
 import java.net.SocketTimeoutException
+import java.time.Instant
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 
 class DialogportenClientTest :
     FunSpec({
-        val mapper = jacksonObjectMapper()
+        val mapper = jacksonObjectMapper().findAndRegisterModules().disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
         val id = UUID.fromString("00000000-0000-0000-0000-000000000001")
         val revision = UUID.fromString("00000000-0000-0000-0000-000000000002")
         val dialog = Dialog(
@@ -64,7 +66,16 @@ class DialogportenClientTest :
             ),
             idempotentKey = id.toString(),
         )
-        val extended = ExtendedDialog(revision, id, dialog.party, dialog.serviceResource, dialog.externalReference, DialogStatus.RequiresAttention, dialog.content)
+        val extended = ExtendedDialog(
+            revision,
+            id,
+            dialog.party,
+            dialog.serviceResource,
+            dialog.externalReference,
+            DialogStatus.RequiresAttention,
+            dialog.content,
+            expiresAt = Instant.parse("2026-10-01T10:10:00Z"),
+        )
         val patch = HttpDialogportenClient.DialogportenPatch(
             HttpDialogportenClient.DialogportenPatch.OPERATION.REPLACE,
             HttpDialogportenClient.DialogportenPatch.PATH.STATUS,

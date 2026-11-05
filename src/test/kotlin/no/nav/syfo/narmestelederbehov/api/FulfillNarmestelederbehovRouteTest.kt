@@ -23,10 +23,8 @@ import no.nav.syfo.integration.ereg.FakeEregClient
 import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.linemanager
 import no.nav.syfo.manager
-import no.nav.syfo.narmestelederbehov.application.DialogCompletion
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCase
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
@@ -272,7 +270,7 @@ private class PutFixture {
         repository,
         organizationAccess,
         establish,
-    ) { DialogCompletion.Completed }
+    )
 
     init {
         texas.stubMaskinportenSystemUser(systemUserOrganization = DefaultOrganization.copy(ID = "0192:$orgNumber"))
@@ -309,8 +307,6 @@ private class FakePutBehovRepository : FulfillNarmestelederbehovRepository {
         fulfilled += id
         return MarkFulfilledResult.Marked(id, null)
     }
-
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId) = MarkDialogCompletedResult.Marked
 }
 
 private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture) -> Unit) {

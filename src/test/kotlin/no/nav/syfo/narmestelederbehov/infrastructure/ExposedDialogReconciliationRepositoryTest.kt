@@ -1,0 +1,320 @@
+package no.nav.syfo.narmestelederbehov.infrastructure
+
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import no.nav.syfo.TestDB
+import no.nav.syfo.narmestelederbehov.application.DialogCompletion
+import no.nav.syfo.narmestelederbehov.application.DialogExpiryObservation
+import no.nav.syfo.narmestelederbehov.application.DialogReconciliationResult
+import no.nav.syfo.narmestelederbehov.application.DialogReconciliationSettings
+import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
+import no.nav.syfo.narmestelederbehov.application.ReconcileNarmestelederbehovDialogUseCase
+import no.nav.syfo.narmestelederbehov.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DIALOGPORTEN
+import no.nav.syfo.narmestelederrelasjon.infrastructure.insertRelation
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import java.io.File
+import java.time.Clock
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
+class ExposedDialogReconciliationRepositoryTest :
+    FunSpec({
+        val repository = ExposedDialogReconciliationRepository(TestDB.exposedDatabase)
+        val now = Instant.parse("2030-01-01T10:00:00Z")
+        beforeTest { TestDB.clearAllData() }
+
+        test("committed behov changes enqueue once and concurrent workers claim different rows") {
+            val first = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val second = insertNarmestelederbehov(created = now.minusSeconds(20))
+            val claims = coroutineScope {
+                listOf(async { repository.claim(now, 60.seconds) }, async { repository.claim(now, 60.seconds) })
+                    .map { requireNotNull(it.await()) }
+            }
+            claims.map { it.id.value }.toSet() shouldBe setOf(first.id, second.id)
+            repository.claim(now, 60.seconds).shouldBeNull()
+        }
+
+        test("an expired lease is reclaimed and an old token cannot acknowledge or start creation") {
+            insertNarmestelederbehov(created = now.minusSeconds(30))
+            val old = requireNotNull(repository.claim(now, 60.seconds))
+            val replacement = requireNotNull(repository.claim(now.plusSeconds(61), 60.seconds))
+            repository.beginCreation(old, now.plusSeconds(62)) shouldBe false
+            repository.saveCreated(old, UUID.randomUUID(), null, now.plusSeconds(62)) shouldBe false
+            repository.saveCompleted(old, now.plusSeconds(62)) shouldBe false
+            repository.saveExpired(old, now, now.plusSeconds(62)) shouldBe false
+            repository.finish(old, DialogReconciliationResult.Done, now.plusSeconds(62)) shouldBe false
+            repository.load(replacement, now.plusSeconds(62)).shouldBeInstanceOf<no.nav.syfo.narmestelederbehov.application.DialogReconciliationState>()
+        }
+
+        listOf(
+            DialogReconciliationResult.Done,
+            DialogReconciliationResult.Retry(now.plusSeconds(600), "upstream"),
+            DialogReconciliationResult.Parked("invalid_request"),
+        ).forEach { oldResult ->
+            test("a domain change during a claim survives $oldResult of the older revision") {
+                val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+                val claim = requireNotNull(repository.claim(now, 60.seconds))
+                ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
+                repository.finish(claim, oldResult, now.plusSeconds(1)) shouldBe true
+                val newer = requireNotNull(repository.claim(now.plusSeconds(2), 60.seconds))
+                requireNotNull(repository.load(newer, now.plusSeconds(2))).status shouldBe BehovStatus.BEHOV_FULFILLED
+            }
+        }
+
+        test("a closed behov without a started CREATE is acknowledged without external delivery") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+            ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
+            ReconcileNarmestelederbehovDialogUseCase(
+                repository = repository,
+                creation = { _, _, _ -> error("must not create a closed unattempted behov") },
+                completion = { error("must not complete") },
+                expiry = { _, _ -> error("must not expire") },
+                inspection = { error("must not inspect") },
+                personLookup = { error("must not look up a person") },
+                clock = Clock.fixed(now, ZoneOffset.UTC),
+                metrics = {},
+            ).execute()
+            repository.stats().pending shouldBe 0
+            findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+        }
+
+        test("a timed-out creation retains uncertainty and backs off without starving another due behov") {
+            val first = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val second = insertNarmestelederbehov(created = now.minusSeconds(20))
+            val calls = mutableListOf<UUID>()
+            val dialogId = UUID.randomUUID()
+            ReconcileNarmestelederbehovDialogUseCase(
+                repository = repository,
+                creation = { id, _, _ ->
+                    calls += id.value
+                    if (id.value == first.id) awaitCancellation()
+                    NarmestelederbehovDialogCreationResult.Created(dialogId)
+                },
+                completion = { error("must not complete") },
+                expiry = { _, _ -> error("must not expire") },
+                inspection = { error("must not inspect") },
+                personLookup = { EmployeePersonLookupResult.NotFound },
+                clock = Clock.fixed(now, ZoneOffset.UTC),
+                metrics = {},
+                settings = DialogReconciliationSettings(attemptBudget = 200.milliseconds, runBudget = 3.seconds),
+            ).execute()
+            calls shouldBe listOf(first.id, second.id)
+            findStoredNarmestelederbehov(second.id)?.dialogId shouldBe dialogId
+            val timedOut = requireNotNull(repository.claim(now.plusSeconds(6), 60.seconds))
+            timedOut.id.value shouldBe first.id
+            requireNotNull(repository.load(timedOut, now.plusSeconds(6))).createStarted shouldBe true
+        }
+
+        test("a late CREATE is saved after fulfillment and the next revision completes the recovered dialog") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val dialogId = UUID.randomUUID()
+            val completed = mutableListOf<UUID>()
+            val worker = ReconcileNarmestelederbehovDialogUseCase(
+                repository = repository,
+                creation = NarmestelederbehovDialogCreation { _, _, _ ->
+                    ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
+                    NarmestelederbehovDialogCreationResult.Created(dialogId)
+                },
+                completion = { id ->
+                    completed.add(id)
+                    DialogCompletion.Completed
+                },
+                expiry = { _, _ -> error("must not expire a fulfilled dialog") },
+                inspection = { error("must not inspect expiry") },
+                personLookup = { EmployeePersonLookupResult.NotFound },
+                clock = Clock.fixed(now, ZoneOffset.UTC),
+                metrics = {},
+            )
+            worker.execute()
+            completed shouldBe listOf(dialogId)
+            findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+            repository.claim(now, 60.seconds).shouldBeNull()
+        }
+
+        test("a persisted expiry that passed is recognized without postponing it") {
+            val target = now.minusSeconds(60)
+            val row = insertNarmestelederbehov(
+                created = now.minusSeconds(300),
+                behovStatus = BehovStatus.BEHOV_EXPIRED,
+                dialogId = UUID.randomUUID(),
+            )
+            val claim = requireNotNull(repository.claim(now, 60.seconds))
+            repository.prepareExpiry(claim, target, now) shouldBe true
+            repository.finish(claim, DialogReconciliationResult.Retry(now, "timeout"), now) shouldBe true
+            ReconcileNarmestelederbehovDialogUseCase(
+                repository = repository,
+                creation = { _, _, _ -> error("must not create") },
+                completion = { error("must not complete") },
+                expiry = { _, _ -> error("must not postpone an applied expiry") },
+                inspection = { DialogExpiryObservation.Found(target) },
+                personLookup = { error("must not look up a person") },
+                clock = Clock.fixed(now, ZoneOffset.UTC),
+                metrics = {},
+                settings = DialogReconciliationSettings(maxAttemptsPerRun = 1),
+            ).execute()
+            findStoredNarmestelederbehov(row.id)?.expiredInDialogporten shouldBe target
+        }
+
+        listOf(-60L, 1L).forEach { secondsUntilExpiry ->
+            test("an unapplied expiry $secondsUntilExpiry seconds from now gets a stable valid intent") {
+                val clock = Clock.fixed(now.plusNanos(123456789), ZoneOffset.UTC)
+                val row = insertNarmestelederbehov(
+                    created = now.minusSeconds(300),
+                    behovStatus = BehovStatus.BEHOV_EXPIRED,
+                    dialogId = UUID.randomUUID(),
+                )
+                val claim = requireNotNull(repository.claim(now, 60.seconds))
+                repository.prepareExpiry(claim, now.plusSeconds(secondsUntilExpiry), now) shouldBe true
+                repository.finish(claim, DialogReconciliationResult.Retry(now, "timeout"), now) shouldBe true
+                val targets = mutableListOf<Instant>()
+                val worker = ReconcileNarmestelederbehovDialogUseCase(
+                    repository = repository,
+                    creation = { _, _, _ -> error("must not create") },
+                    completion = { error("must not complete") },
+                    expiry = { _, target ->
+                        targets += target
+                        no.nav.syfo.narmestelederbehov.application.DialogExpiry.Unavailable(
+                            UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, 503),
+                        )
+                    },
+                    inspection = { DialogExpiryObservation.Found(null) },
+                    personLookup = { error("must not look up a person") },
+                    clock = clock,
+                    metrics = {},
+                    settings = DialogReconciliationSettings(maxAttemptsPerRun = 1),
+                )
+                worker.execute()
+                targets shouldBe listOf(Instant.parse("2030-01-01T10:10:00Z"))
+                val retry = requireNotNull(repository.claim(now.plusSeconds(11), 60.seconds))
+                requireNotNull(repository.load(retry, now.plusSeconds(11))).intendedExpiry shouldBe targets.single()
+            }
+        }
+
+        test("rollback removes scheduled work and a committed fulfillment remains scheduled") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30), behovStatus = BehovStatus.HOVEDENHET_NOT_FOUND)
+            transaction(TestDB.exposedDatabase) {
+                NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq row.id }) {
+                    it[behovStatus] = BehovStatus.BEHOV_CREATED
+                }
+                rollback()
+            }
+            repository.claim(now, 60.seconds).shouldBeNull()
+            ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
+            // A closed legacy row without a dialog does not get automatic CREATE recovery.
+            repository.claim(now, 60.seconds).shouldBeNull()
+        }
+
+        test("an uncertain CREATE is recovered with the same behov identity after closure") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val first = requireNotNull(repository.claim(now, 60.seconds))
+            repository.beginCreation(first, now) shouldBe true
+            ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
+            val ids = mutableListOf<NarmestelederbehovId>()
+            val dialogId = UUID.randomUUID()
+            val later = now.plusSeconds(61)
+            ReconcileNarmestelederbehovDialogUseCase(
+                repository = repository,
+                creation = { id, _, _ ->
+                    ids.add(id)
+                    NarmestelederbehovDialogCreationResult.Created(dialogId)
+                },
+                completion = { DialogCompletion.Completed },
+                expiry = { _, _ -> error("must not expire") },
+                inspection = { error("must not inspect") },
+                personLookup = { EmployeePersonLookupResult.NotFound },
+                clock = Clock.fixed(later, ZoneOffset.UTC),
+                metrics = {},
+            ).execute()
+            ids shouldBe listOf(NarmestelederbehovId(row.id))
+            findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+        }
+
+        test("migration cleanup is repeatable and excludes revoked, future and other-organization relations") {
+            val matching = insertNarmestelederbehov(sykmeldtFnr = "12345678901", orgnummer = "123456789", dialogId = UUID.randomUUID())
+            val revokedId = UUID.randomUUID()
+            val revoked = insertNarmestelederbehov(sykmeldtFnr = "12345678902", orgnummer = "123456789", avbruttNarmestelederId = revokedId)
+            val future = insertNarmestelederbehov(sykmeldtFnr = "12345678903", orgnummer = "123456789")
+            val otherOrg = insertNarmestelederbehov(sykmeldtFnr = "12345678904", orgnummer = "123456789")
+            val closed = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED)
+            insertRelation(employeeIdent = matching.sykmeldtFnr, organizationNumber = matching.orgnummer)
+            insertRelation(narmestelederId = revokedId, employeeIdent = revoked.sykmeldtFnr, organizationNumber = revoked.orgnummer)
+            insertRelation(employeeIdent = future.sykmeldtFnr, organizationNumber = future.orgnummer, activeFrom = OffsetDateTime.now().plusDays(1))
+            insertRelation(employeeIdent = otherOrg.sykmeldtFnr, organizationNumber = "999999999")
+            transaction(TestDB.exposedDatabase) { DialogReconciliationTable.deleteAll() }
+            val duringCutover = insertNarmestelederbehov()
+            val sql = File("docs/operations/dialog-reconciliation.sql").readText()
+            repeat(2) {
+                TestDB.database.connection.use { connection ->
+                    connection.createStatement().use { it.execute(sql) }
+                    connection.commit()
+                }
+            }
+            findStoredNarmestelederbehov(matching.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+            listOf(revoked, future, otherOrg).forEach {
+                findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+            }
+            val claimed = buildList { repeat(6) { repository.claim(now, 60.seconds)?.let { add(it) } } }
+            claimed.map { it.id.value }.toSet() shouldBe setOf(matching.id, revoked.id, future.id, otherOrg.id, duringCutover.id)
+            requireNotNull(repository.load(claimed.single { it.id.value == duringCutover.id }, now)).createStarted shouldBe true
+            claimed.any { it.id.value == closed.id } shouldBe false
+        }
+
+        listOf(400, 422, 403, 404, 503).forEach { status ->
+            test("status $status is classified without a tight retry loop and exports observable queue state") {
+                insertNarmestelederbehov(created = now.minusSeconds(30))
+                val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+                try {
+                    val clock = Clock.fixed(now, ZoneOffset.UTC)
+                    val metrics = MicrometerDialogReconciliationMetrics(repository, registry, clock)
+                    var calls = 0
+                    ReconcileNarmestelederbehovDialogUseCase(
+                        repository = repository,
+                        creation = { _, _, _ ->
+                            calls++
+                            NarmestelederbehovDialogCreationResult.Unavailable(
+                                UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("failure"))),
+                            )
+                        },
+                        completion = { error("must not complete") },
+                        expiry = { _, _ -> error("must not expire") },
+                        inspection = { error("must not inspect") },
+                        personLookup = { EmployeePersonLookupResult.NotFound },
+                        clock = clock,
+                        metrics = metrics,
+                    ).execute()
+                    calls shouldBe 1
+                    repository.claim(now, 60.seconds).shouldBeNull()
+                    metrics.refresh()
+                    val parked = status in listOf(400, 422)
+                    val scrape = registry.scrape()
+                    scrape shouldContain "syfo_narmesteleder_dialog_reconciliation_parked ${if (parked) "1.0" else "0.0"}"
+                    scrape shouldContain "syfo_narmesteleder_dialog_reconciliation_pending ${if (parked) "0.0" else "1.0"}"
+                    scrape shouldContain """syfo_narmesteleder_dialog_reconciliation_attempts_total{outcome="${if (parked) "parked" else "retry"}"} 1.0"""
+                } finally {
+                    registry.close()
+                }
+            }
+        }
+    })

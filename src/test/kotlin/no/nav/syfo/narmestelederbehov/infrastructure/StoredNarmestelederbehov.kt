@@ -66,6 +66,7 @@ internal fun insertNarmestelederbehov(
         it[NarmestelederbehovTable.avbruttNarmestelederId] = avbruttNarmestelederId
         it[NarmestelederbehovTable.expiredInDialogporten] = expiredInDialogporten?.atOffset(ZoneOffset.UTC)
     }
+    scheduleDialogDispatch(id)
     requireNotNull(selectStoredNarmestelederbehov(id))
 }
 

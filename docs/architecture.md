@@ -401,11 +401,19 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     narmestelederstatistikkModule()
     sykmeldingModule()
     configureKafkaConsumers(environment)
-    configureBackgroundTasks(environment.otherProperties)
+    configureBackgroundTasks(
+        dialogportenTaskSettings = environment.dialogportenTaskSettings,
+        maintenanceTaskSettings = environment.maintenanceTaskSettings,
+        personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
+    )
     configureEmploymentChecks(environment.otherProperties)
 }
 ```
 
+- `NaisEnvironment` and `LocalEnvironment` assemble typed integration,
+  background-task, expiry, and leader-election settings. Bootstrap passes these
+  settings only to their owners. Kafka consumer and capability configuration
+  still use `OtherEnvironmentProperties`.
 - `platformModule` installs Koin once with the shared Koin modules
   (`applicationModules`), configures Texas `Authentication` providers, installs
   CallId, content negotiation and StatusPages, and registers pod and metric

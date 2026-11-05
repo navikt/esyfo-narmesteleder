@@ -58,6 +58,11 @@ private fun naisEnvironmentWithoutEnvVars(): NaisEnvironment {
         dialogportenSettings = localEnvironment.dialogportenSettings,
         eregSettings = localEnvironment.eregSettings,
         pdlSettings = localEnvironment.pdlSettings,
+        narmestelederbehovExpirySettings = localEnvironment.narmestelederbehovExpirySettings,
+        dialogportenTaskSettings = localEnvironment.dialogportenTaskSettings,
+        maintenanceTaskSettings = localEnvironment.maintenanceTaskSettings,
+        personEnrichmentTaskSettings = localEnvironment.personEnrichmentTaskSettings,
+        leaderElectionSettings = localEnvironment.leaderElectionSettings,
         otherProperties = OtherEnvironmentProperties.createForLocal(),
     )
 }

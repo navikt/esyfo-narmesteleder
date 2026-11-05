@@ -22,6 +22,10 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     narmestelederstatistikkModule()
     sykmeldingModule()
     configureKafkaConsumers(environment)
-    configureBackgroundTasks(environment.otherProperties)
+    configureBackgroundTasks(
+        dialogportenTaskSettings = environment.dialogportenTaskSettings,
+        maintenanceTaskSettings = environment.maintenanceTaskSettings,
+        personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
+    )
     configureEmploymentChecks(environment.otherProperties)
 }

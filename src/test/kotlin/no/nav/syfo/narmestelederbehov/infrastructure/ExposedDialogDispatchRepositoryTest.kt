@@ -147,8 +147,10 @@ class ExposedDialogDispatchRepositoryTest :
                 clock = Clock.fixed(now, ZoneOffset.UTC),
                 metrics = {},
             ).execute()
-            repository.stats().pending shouldBe 0
-            findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+            assertSoftly {
+                repository.stats().pending shouldBe 0
+                findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+            }
         }
 
         test("a timed-out creation retains uncertainty and backs off without starving another due behov") {
@@ -171,11 +173,14 @@ class ExposedDialogDispatchRepositoryTest :
                 metrics = {},
                 settings = DialogDispatchSettings(attemptBudget = 200.milliseconds, runBudget = 3.seconds),
             ).execute()
-            calls shouldBe listOf(first.id, second.id)
-            findStoredNarmestelederbehov(second.id)?.dialogId shouldBe dialogId
             val timedOut = requireNotNull(repository.claim(now.plusSeconds(6), 60.seconds))
-            timedOut.id.value shouldBe first.id
-            requireNotNull(repository.load(timedOut, now.plusSeconds(6))).createStarted shouldBe true
+            val state = requireNotNull(repository.load(timedOut, now.plusSeconds(6)))
+            assertSoftly {
+                calls shouldBe listOf(first.id, second.id)
+                findStoredNarmestelederbehov(second.id)?.dialogId shouldBe dialogId
+                timedOut.id.value shouldBe first.id
+                state.createStarted shouldBe true
+            }
         }
 
         test("a late CREATE is saved after fulfillment and the next revision completes the recovered dialog") {
@@ -199,9 +204,11 @@ class ExposedDialogDispatchRepositoryTest :
                 metrics = {},
             )
             worker.execute()
-            completed shouldBe listOf(dialogId)
-            findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-            repository.claim(now, 60.seconds).shouldBeNull()
+            assertSoftly {
+                completed shouldBe listOf(dialogId)
+                findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                repository.claim(now, 60.seconds).shouldBeNull()
+            }
         }
 
         test("a persisted expiry that passed is recognized without postponing it") {
@@ -257,9 +264,12 @@ class ExposedDialogDispatchRepositoryTest :
                     settings = DialogDispatchSettings(maxAttemptsPerRun = 1),
                 )
                 worker.execute()
-                targets shouldBe listOf(Instant.parse("2030-01-01T10:10:00Z"))
                 val retry = requireNotNull(repository.claim(now.plusSeconds(11), 60.seconds))
-                requireNotNull(repository.load(retry, now.plusSeconds(11))).intendedExpiry shouldBe targets.single()
+                val state = requireNotNull(repository.load(retry, now.plusSeconds(11)))
+                assertSoftly {
+                    targets shouldBe listOf(Instant.parse("2030-01-01T10:10:00Z"))
+                    state.intendedExpiry shouldBe Instant.parse("2030-01-01T10:10:00Z")
+                }
             }
         }
 
@@ -313,8 +323,10 @@ class ExposedDialogDispatchRepositoryTest :
                 clock = Clock.fixed(later, ZoneOffset.UTC),
                 metrics = {},
             ).execute()
-            ids shouldBe listOf(NarmestelederbehovId(row.id))
-            findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+            assertSoftly {
+                ids shouldBe listOf(NarmestelederbehovId(row.id))
+                findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+            }
         }
 
         listOf(400, 422, 403, 404, 503).forEach { status ->

@@ -21,7 +21,6 @@ import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
-import org.jetbrains.exposed.v1.jdbc.updateReturning
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -53,13 +52,16 @@ class ExposedNarmestelederbehovFulfillmentRepository(
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
 
     override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = database.ioTransaction {
-        NarmestelederbehovTable.updateReturning(
-            returning = listOf(NarmestelederbehovTable.dialogId),
-            where = { NarmestelederbehovTable.id eq id.value },
-        ) {
-            it[behovStatus] = BehovStatus.BEHOV_FULFILLED
-        }.singleOrNull()?.let { MarkFulfilledResult.Marked(id, it[NarmestelederbehovTable.dialogId]) }
-            ?: MarkFulfilledResult.Missing
+        val row = NarmestelederbehovTable.select(NarmestelederbehovTable.behovStatus, NarmestelederbehovTable.dialogId)
+            .where { NarmestelederbehovTable.id eq id.value }.forUpdate().singleOrNull()
+            ?: return@ioTransaction MarkFulfilledResult.Missing
+        if (row[NarmestelederbehovTable.behovStatus] != BehovStatus.BEHOV_FULFILLED) {
+            NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {
+                it[behovStatus] = BehovStatus.BEHOV_FULFILLED
+            }
+            scheduleDialogDispatch(id.value)
+        }
+        MarkFulfilledResult.Marked(id, row[NarmestelederbehovTable.dialogId])
     }
 
     override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = database.ioTransaction {
@@ -68,7 +70,12 @@ class ExposedNarmestelederbehovFulfillmentRepository(
         }) {
             it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
         }
-        if (updated == 1) MarkDialogCompletedResult.Marked else MarkDialogCompletedResult.NotFulfilled
+        if (updated == 1) {
+            scheduleDialogDispatch(id.value)
+            MarkDialogCompletedResult.Marked
+        } else {
+            MarkDialogCompletedResult.NotFulfilled
+        }
     }
 
     override suspend fun findFulfilledDialogs(createdBefore: Instant): List<NarmestelederbehovDialogReference> = database.ioTransaction {

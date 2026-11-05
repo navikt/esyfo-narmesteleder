@@ -30,6 +30,7 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.updateReturning
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -102,7 +103,12 @@ class ExposedNarmestelederbehovLifecycleRepository(
             it[mellomnavn] = name?.middleName
             it[etternavn] = name?.lastName
         }
-        if (updated == 1) MarkDialogCreatedResult.Marked else MarkDialogCreatedResult.NotCreated
+        if (updated == 1) {
+            scheduleDialogDispatch(id.value)
+            MarkDialogCreatedResult.Marked
+        } else {
+            MarkDialogCreatedResult.NotCreated
+        }
     }
 
     // The partial unique index on open behov is the only unique constraint besides the generated id, so an ignored insert means an open behov already exists.
@@ -116,7 +122,11 @@ class ExposedNarmestelederbehovLifecycleRepository(
             it[behovStatus] = behov.status
             it[avbruttNarmestelederId] = behov.revokedRelationId
         }.singleOrNull()
-            ?.let { CreateBehovResult.Created(NarmestelederbehovId(it[NarmestelederbehovTable.id])) }
+            ?.let {
+                val id = it[NarmestelederbehovTable.id]
+                scheduleDialogDispatch(id)
+                CreateBehovResult.Created(NarmestelederbehovId(id))
+            }
             ?: CreateBehovResult.AlreadyExists
     }
 
@@ -142,12 +152,17 @@ class ExposedNarmestelederbehovLifecycleRepository(
         if (ids.isEmpty()) {
             0
         } else {
-            NarmestelederbehovTable.update({
-                (NarmestelederbehovTable.id inList ids) and
-                    (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
-            }) {
+            val expired = NarmestelederbehovTable.updateReturning(
+                returning = listOf(NarmestelederbehovTable.id),
+                where = {
+                    (NarmestelederbehovTable.id inList ids) and
+                        (NarmestelederbehovTable.behovStatus inList openNarmestelederbehovStatuses)
+                },
+            ) {
                 it[behovStatus] = BehovStatus.BEHOV_EXPIRED
-            }
+            }.map { it[NarmestelederbehovTable.id] }
+            expired.forEach { scheduleDialogDispatch(it) }
+            expired.size
         }
     }
 }

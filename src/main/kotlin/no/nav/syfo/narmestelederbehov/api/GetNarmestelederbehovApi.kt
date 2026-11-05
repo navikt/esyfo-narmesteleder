@@ -13,7 +13,6 @@ import no.nav.syfo.organisasjonstilgang.api.toOrganizationAccessSubject
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.getUUIDFromPathVariable
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
 
 const val GET_NARMESTELEDERBEHOV_PATH = "/linemanager/requirement/{id}"
 
@@ -22,7 +21,6 @@ fun Route.registerGetNarmestelederbehovApi(
 ) {
     route(GET_NARMESTELEDERBEHOV_PATH) {
         method(HttpMethod.Get) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
             handle {
                 val id = NarmestelederbehovId(call.getUUIDFromPathVariable(name = "id"))
                 val subject = call.getMyPrincipal().toOrganizationAccessSubject()

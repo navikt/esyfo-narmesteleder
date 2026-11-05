@@ -14,5 +14,4 @@ internal fun Environment.narmestelederbehovSettings() = NarmestelederbehovSettin
 internal fun Environment.narmestelederrelasjonSettings() = NarmestelederrelasjonSettings(
     employmentCheckObserveSourceEnabled = otherProperties.employmentCheckObserveSourceEnabled,
     employmentCheckRevokeEnabled = otherProperties.employmentCheckRevokeEnabled,
-    lineManagerLookupPreAuthorizedApps = texas.azurePreAuthorizedApps,
 )

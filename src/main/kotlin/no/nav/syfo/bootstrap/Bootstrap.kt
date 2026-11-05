@@ -12,7 +12,7 @@ import org.koin.ktor.ext.get
 /** Reads the environment once, assembles the Koin graph and starts every capability. */
 fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
     val environment = loadEnvironment(isLocal)
-    platformModule(applicationModules(environment, isLocal))
+    platformModule(applicationModules(environment, isLocal), environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())

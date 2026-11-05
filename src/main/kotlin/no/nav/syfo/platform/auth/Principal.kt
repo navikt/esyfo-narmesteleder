@@ -1,7 +1,8 @@
 package no.nav.syfo.platform.auth
 
-import io.ktor.server.auth.authentication
+import io.ktor.server.auth.principal
 import io.ktor.server.routing.RoutingCall
+import no.nav.syfo.platform.api.ApiErrorException
 
 sealed class Principal {
     abstract val ident: String
@@ -21,16 +22,6 @@ data class SystemPrincipal(
     fun getSystemUserOrgNumber(): String = maskinportenIdToOrgnumber(ident)
 }
 
-fun RoutingCall.getMyPrincipal(): Principal = when (attributes[TOKEN_ISSUER]) {
-    JwtIssuer.MASKINPORTEN -> {
-        authentication.principal<SystemPrincipal>() ?: throw UnauthorizedException()
-    }
-
-    JwtIssuer.TOKEN_X -> {
-        authentication.principal<UserPrincipal>() ?: throw UnauthorizedException()
-    }
-
-    else -> throw UnauthorizedException()
-}
+fun RoutingCall.getMyPrincipal(): Principal = principal<Principal>() ?: throw ApiErrorException.UnauthorizedException()
 
 private fun maskinportenIdToOrgnumber(id: String): String = id.split(":")[1].trim()

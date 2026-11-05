@@ -27,7 +27,6 @@ import no.nav.syfo.platform.api.getUUIDFromPathVariable
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.Principal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
 import no.nav.syfo.platform.observability.logger
 import java.util.UUID
 
@@ -41,9 +40,7 @@ fun Route.registerNarmestelederrelasjonApi(
     revokeNarmestelederrelasjon: RevokeNarmestelederrelasjonUseCase,
 ) {
     route(NARMESTELEDERRELASJON_RELATIVE_PATH) {
-        // Ktor shares the {id} node with GET; authentication must be installed on the DELETE method node.
         method(HttpMethod.Delete) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
             handle {
                 val principal = call.getMyPrincipal()
                 val id = call.getUUIDFromPathVariable(name = "id")
@@ -69,8 +66,6 @@ fun Route.registerNarmestelederrelasjonApi(
             }
         }
         method(HttpMethod.Get) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
-
             handle {
                 call.response.header(HttpHeaders.CacheControl, "no-store")
                 val id = call.parameters["id"]?.toUuidOrNull()

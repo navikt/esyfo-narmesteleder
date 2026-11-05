@@ -14,6 +14,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import no.nav.syfo.platform.auth.texas.installTexasAuthentication
 import org.koin.dsl.module
 import org.koin.ktor.plugin.Koin
 
@@ -24,10 +25,12 @@ import org.koin.ktor.plugin.Koin
 fun testApiApplication(
     texasHttpClient: TexasHttpClient,
     routes: Routing.() -> Unit,
+    azurePreAuthorizedApps: Set<String> = setOf("test-caller"),
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = startTestApplication(
     plugins = {
         install(Koin) { modules(module { single { texasHttpClient } }) }
+        installTexasAuthentication(texasHttpClient, azurePreAuthorizedApps)
         installApiPlugins()
     },
     routes = routes,
@@ -38,10 +41,12 @@ fun testApiApplication(
 fun testRouteApplication(
     texasHttpClient: TexasHttpClient,
     routes: Routing.() -> Unit,
+    azurePreAuthorizedApps: Set<String> = setOf("test-caller"),
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = startTestApplication(
     plugins = {
         install(Koin) { modules(module { single { texasHttpClient } }) }
+        installTexasAuthentication(texasHttpClient, azurePreAuthorizedApps)
         installContentNegotiation()
         installStatusPages()
     },

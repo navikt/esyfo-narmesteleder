@@ -338,9 +338,9 @@ Contains reusable technical mechanisms without domain rules:
 - `api`: shared HTTP paths, errors, API plugins and path/query parameter
   helpers;
 - `auth`: Ktor authentication and principal construction;
-- `auth/texas`: Texas authentication plugins, token providers and client. The
-  plugins resolve `TexasHttpClient` from Koin when installed, so routes do not
-  pass it along; an explicit `client` in the plugin configuration overrides it;
+- `auth/texas`: Texas-backed Ktor `Authentication` providers, token providers
+  and client. `platformModule` installs the providers once and resolves
+  `TexasHttpClient` from Koin, so routes only select a named provider;
 - `cache`: generic Valkey cache and configuration;
 - `config`: shared environment-variable lookup;
 - `database`: data source, Flyway and shared transaction infrastructure;
@@ -407,9 +407,9 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
 ```
 
 - `platformModule` installs Koin once with the shared Koin modules
-  (`applicationModules`), CallId, content negotiation, StatusPages, pod and
-  metric endpoints, OpenAPI and Swagger. A capability module never installs
-  Koin.
+  (`applicationModules`), configures Texas `Authentication` providers, installs
+  CallId, content negotiation and StatusPages, and registers pod and metric
+  endpoints, OpenAPI and Swagger. A capability module never installs Koin.
 - Each capability has an `Application.<capability>Module()` in
   `<Capability>Module.kt` that owns its dependencies, routes, Kafka consumers
   and lifecycle. It registers its Koin definitions with
@@ -430,15 +430,31 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
   behov, and sykmelding after behov and relasjon. Consumers, tasks and anything
   else resolving capability definitions run after all capability modules.
 - Capability modules add routes under `apiV1 { }` or `internalApiV1 { }` from
-  `platform.api`. These helpers install `AddTokenIssuerPlugin` once per prefix,
-  so several modules can share the same prefix.
+  `platform.api`. Routes are denied by default: every endpoint must be inside
+  `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or
+  `authenticateAzureAd`, or inside `publicRoutes { }`; startup fails
+  otherwise, including for Ktor's `authenticate` used directly. The module
+  wraps its `registerXApi` calls in the helper, so route functions do not
+  choose their own provider; route tests wrap them the same way. Ktor merges
+  nested `authenticate` blocks, so an optional block inside a Texas helper
+  still requires a principal. Only `platformModule` declares public
+  routes (probes, metrics, OpenAPI and Swagger UI), and `publicRoutes` has no
+  effect under the API prefixes. The check cannot see provider `skipWhen`
+  predicates, so do not configure them. Endpoints
+  use the Texas `Authentication` providers installed once by `platformModule`:
+  TokenX, Maskinporten, and Azure AD. Routes accepting either a user or system
+  token use Ktor's `FirstSuccessful` strategy. Provider exceptions continue to
+  `StatusPages`, and handlers read the authenticated domain principal through
+  `getMyPrincipal()`.
 - A capability module can start alone with the platform module in
   `testApplication`; the test registers only the dependencies the module gets
   from outside, such as other modules' contracts and shared clients.
-- Route tests use the `testApiApplication` test helper. It installs the same
-  request-handling plugins as production (`installApiPlugins()`: CallId,
-  content negotiation and StatusPages) and install Koin with only the
-  `TexasHttpClient` the test provides.
+- Route tests use the `testApiApplication` or `testRouteApplication` helpers.
+  They install the same Texas auth providers as production, backed by the
+  provided `TexasHttpClient`, and Koin with that test client. `testApiApplication`
+  also installs the production request-handling plugins (CallId, content
+  negotiation and StatusPages); `testRouteApplication` installs them without
+  CallId.
 
 ## Dependency rules
 
@@ -544,6 +560,11 @@ Separate three concerns:
 Ktor/Texas authentication only validates credentials and constructs the
 caller principal. It must not hide PDP, Ereg, database or other business calls
 inside a Ktor authorization plugin.
+
+Every rejected token logs a `token_rejected` event with the provider as
+`upstream` and a `reason`, and increments
+`syfo-narmesteleder_token_rejected_total{provider,reason}`. Texas introspection
+failures are server errors, not rejections.
 
 Identifier types validate only their representation. They do not call
 databases or external services.

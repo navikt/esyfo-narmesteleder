@@ -15,19 +15,13 @@ import no.nav.syfo.narmestelederrelasjon.observability.COUNT_LOOKUP_NARMESTELEDE
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.tryReceive
-import no.nav.syfo.platform.auth.texas.AzureAdTokenAuthPlugin
 
 const val LINE_MANAGER_LOOKUP_PATH = "/lookup"
 
 fun Route.registerLineManagerLookupApi(
     lookupActiveNarmesteleder: LookupActiveNarmestelederUseCase,
-    preAuthorizedApps: Set<String>,
 ) {
     route(LINE_MANAGER_LOOKUP_PATH) {
-        install(AzureAdTokenAuthPlugin) {
-            this.preAuthorizedApps = preAuthorizedApps
-        }
-
         post {
             val request = call.tryReceive<LinemanagerLookupRequest>()
             val organizationValue = request.organizationNumber

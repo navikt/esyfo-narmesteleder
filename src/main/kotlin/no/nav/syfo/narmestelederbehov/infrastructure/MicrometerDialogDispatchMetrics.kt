@@ -3,27 +3,27 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
-import no.nav.syfo.narmestelederbehov.application.DialogReconciliationMetrics
-import no.nav.syfo.narmestelederbehov.application.DialogReconciliationRepository
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchMetrics
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchRepository
 import no.nav.syfo.platform.observability.METRICS_NS
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import java.time.Clock
 import java.util.concurrent.atomic.AtomicReference
 
-class MicrometerDialogReconciliationMetrics(
-    private val repository: DialogReconciliationRepository,
+class MicrometerDialogDispatchMetrics(
+    private val repository: DialogDispatchRepository,
     registry: MeterRegistry = METRICS_REGISTRY,
     private val clock: Clock = Clock.systemUTC(),
-) : DialogReconciliationMetrics {
+) : DialogDispatchMetrics {
     private val values = listOf("pending", "parked", "oldest_pending_timestamp_seconds", "observed_timestamp_seconds", "enabled")
         .associateWith { AtomicReference(0.0) }
     private val outcomes = listOf("done", "retry", "parked").associateWith {
-        Counter.builder("${METRICS_NS}_dialog_reconciliation_attempts_total").tag("outcome", it).register(registry)
+        Counter.builder("${METRICS_NS}_dialog_dispatch_attempts_total").tag("outcome", it).register(registry)
     }
 
     init {
         values.forEach { (name, value) ->
-            Gauge.builder("${METRICS_NS}_dialog_reconciliation_$name", value) { it.get() }.register(registry)
+            Gauge.builder("${METRICS_NS}_dialog_dispatch_$name", value) { it.get() }.register(registry)
         }
     }
 

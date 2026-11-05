@@ -1,26 +1,26 @@
-# Dialogporten reconciliation: cutover and recovery
+# Dialogporten dispatch: cutover and recovery
 
-This is preparation for the final worker-only cutover. The reconciliation
-engine and metrics are not wired into startup yet; inline and leader-only
+This is preparation for the final worker-only cutover. The dispatcher
+and metrics are not wired into startup yet; inline and leader-only
 delivery still run. Do not execute backfill/replay or deploy these alerts
 until the cutover binary is deployed. The procedures below describe that
 binary, which also adds the gated alert-deployment job.
 
 The worker is disabled in dev/prod until a controlled cutover.
 `DIALOGPORTEN_TASK_ENABLED` no longer starts dialog delivery; it retains its
-existing person-enrichment gating. `DIALOG_RECONCILIATION_ENABLED` starts the
+existing person-enrichment gating. `DIALOG_DISPATCH_ENABLED` starts the
 claim worker on every pod. Do not enable it while an old binary can deliver.
 
 ## Cutover
 
-1. Deploy the new binary with reconciliation disabled. All behov changes
+1. Deploy the new binary with dispatch disabled. All behov changes
    schedule work through the database trigger, in the writer's transaction.
    Wait until every pod uses the new binary and all old requests/jobs have
    drained. The old flag alone does not stop old inline delivery.
 2. Verify the relation projection consumer is running and has caught up to
    the source topic's captured end offsets in every partition. Record that
    evidence and ensure no older binary can resume processing.
-3. Run the cleanup transaction in `dialog-reconciliation.sql` in bounded
+3. Run the cleanup transaction in `dialog-dispatch.sql` in bounded
    batches until zero rows change. Then run its seeding transaction until
    zero rows change. Repeat the final cleanup/seed pass while writers
    remain active. Do not equate fulfillment with confirmed dialog completion.
@@ -38,11 +38,11 @@ claim worker on every pod. Do not enable it while an old binary can deliver.
    monitoring. There is no automatic CREATE replay for unidentified closed
    historical dialogs.
 5. Verify `team-esyfo`'s Slack destination in Nais Console. Enable repository
-   variable `DIALOG_RECONCILIATION_ALERTS_ENABLED=true` to deploy the checked-in
+   variable `DIALOG_DISPATCH_ALERTS_ENABLED=true` to deploy the checked-in
    rules through CI, in both environments. Rule tests must pass before this.
    Confirm the rules are loaded in Nais Console/Alertmanager before enabling
    delivery. Sending a test notification requires separate approval.
-6. In dev, enable `DIALOG_RECONCILIATION_ENABLED`, verify outcomes and lease
+6. In dev, enable `DIALOG_DISPATCH_ENABLED`, verify outcomes and lease
    recovery, and measure latency/downstream load. Enable prod only after
    those checks, including service-owner GET read-back after an applied expiry
    has passed. A 404/410 must remain retryable, not inferred as success.
@@ -82,7 +82,7 @@ Replace the bound UUID through a prepared statement; inspect the target first.
 No new HTTP admin endpoint is introduced.
 
 ```sql
-UPDATE nl_dialog_reconciliation
+UPDATE nl_dialog_dispatch
 SET status = 'READY', revision = revision + 1,
     available_at = clock_timestamp(), attempts = 0, last_failure = NULL
 WHERE behov_id = ? AND status = 'PARKED' AND claim_token IS NULL;

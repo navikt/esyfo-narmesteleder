@@ -9,7 +9,6 @@ import kotlinx.coroutines.CoroutineScope
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -90,9 +89,6 @@ private fun unusedFulfillBehovFromLeesah() = FulfillNarmestelederbehovFromLeesah
         override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("Unexpected open behov lookup")
 
         override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("Unexpected fulfillment")
-
-        override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("Unexpected dialog status")
     },
     metrics = { error("Unexpected fulfillment metric") },
-    dialog = { error("Unexpected dialog completion") },
 )

@@ -145,8 +145,8 @@ spec:
       value: "true"
     - name: DIALOGPORTEN_TASK_ENABLED
       value: "true"
-    - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
-      value: "10m"
+    - name: DIALOG_RECONCILIATION_ENABLED
+      value: "false"
     - name: PERSIST_SENDT_SYKMELDING
       value: "true"
     - name: MAINTENANCE_TASK_DELAY

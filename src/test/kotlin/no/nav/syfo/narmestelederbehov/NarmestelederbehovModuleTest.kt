@@ -11,7 +11,7 @@ import io.mockk.mockk
 import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
-import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
+import no.nav.syfo.narmestelederbehov.application.ReconcileNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -28,7 +28,6 @@ import java.sql.Connection
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.time.Duration.Companion.minutes
 
 class NarmestelederbehovModuleTest :
     FunSpec({
@@ -43,7 +42,6 @@ class NarmestelederbehovModuleTest :
                     persistLeesahNlBehov = false,
                     publicIngressUrl = "https://api.example.invalid",
                     frontendBaseUrl = "https://frontend.example.invalid",
-                    dialogUpdatePollingInterval = 7.minutes,
                 )
                 val externalDependencies = module {
                     single { ApplicationState() }
@@ -61,7 +59,7 @@ class NarmestelederbehovModuleTest :
                     application {
                         platformModule(listOf(externalDependencies))
                         narmestelederbehovModule(settings)
-                        get<UpdateDialogTask>() shouldNotBe null
+                        get<ReconcileNarmestelederbehovDialogUseCase>() shouldNotBe null
                     }
 
                     // Missing tokens are rejected before clients or repositories are used.

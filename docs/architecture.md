@@ -107,7 +107,7 @@ narmesteleder:
 - fulfill the employee's open needs when Leesah reports an active
   narmesteleder (`aktivTom` is empty), saving the status before completing
   the Dialogporten dialog;
-- own `nl_behov`;
+- own `nl_behov` and durable Dialogporten reconciliation in `nl_dialog_reconciliation`;
 - consume Leesah in `infrastructure.kafka` and create needs from the events;
 - coordinate Dialogporten state and retry behavior.
 
@@ -120,13 +120,14 @@ repositories, ports, domain rules, Kafka models or Kafka producers directly.
 
 Fulfillment orders its effects: contact validation, then need lookup, then
 access check, then relation establishment, and finally publication before
-persistence before Dialogporten completion. An unexpected failure stops the
-later effects. After publication, `markFulfilled` uses one status-only
-`UPDATE ... RETURNING` to obtain the dialog ID; a missing row is the existing
-404 response, and a null dialog ID skips completion. Dialog completion follows
-ADR-0004: an already completed dialog counts as success, a revision conflict
-is re-read once, and a failed completion or status update leaves the behov
-fulfilled so the scheduled job can retry.
+persistence. An unexpected failure stops the later effects. After publication,
+`markFulfilled` uses one status-only `UPDATE ... RETURNING`; a missing row is
+the existing 404 response. A database trigger schedules reconciliation in the
+same transaction, and the response does not wait for Dialogporten.
+The claim worker recovers any tracked uncertain CREATE before completing the
+dialog. Completion follows ADR-0004: an already completed dialog counts as
+success and a revision conflict is re-read once. Failures leave the behov
+fulfilled, with reconciliation retried or parked for correction.
 
 The target for #602 is to register referenced people through `person` and
 read their names locally without PDL calls or writes on behov read paths.
@@ -206,8 +207,9 @@ registration guarantees a `PENDING` row, not a usable name. See
 [Person registration](#person-registration-proposed) for both paths and the
 atomicity requirement. Enrichment runs independently of Dialogporten.
 `narmestelederbehov` interprets the enrichment outcome and owns its own state
-transitions. Only `SendDialogTask` creates behov dialogs, after a usable name
-is available. `person` never writes behov or relation state.
+transitions. In this target, the claim-based Dialogporten worker creates behov
+dialogs only after a usable name is available. `person` never writes behov
+or relation state.
 
 Consumers may join person details through their own private, read-only table
 definitions rather than importing `person` tables or repositories. This keeps

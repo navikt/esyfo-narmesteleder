@@ -1,11 +1,5 @@
 # Dialogporten reconciliation: cutover and recovery
 
-This is preparation for the final worker-only cutover. The reconciliation
-engine and metrics are not wired into startup yet; inline and leader-only
-delivery still run. Do not execute backfill/replay or deploy these alerts
-until the cutover binary is deployed. The procedures below describe that
-binary, which also adds the gated alert-deployment job.
-
 The worker is disabled in dev/prod until a controlled cutover.
 `DIALOGPORTEN_TASK_ENABLED` no longer starts dialog delivery; it retains its
 existing person-enrichment gating. `DIALOG_RECONCILIATION_ENABLED` starts the

@@ -3,7 +3,10 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
@@ -19,14 +22,18 @@ import no.nav.syfo.narmestelederbehov.application.ReconcileNarmestelederbehovDia
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DIALOGPORTEN
+import no.nav.syfo.narmestelederrelasjon.infrastructure.insertRelation
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import java.io.File
 import java.time.Clock
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
@@ -244,32 +251,70 @@ class ExposedDialogReconciliationRepositoryTest :
             findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
         }
 
+        test("migration cleanup is repeatable and excludes revoked, future and other-organization relations") {
+            val matching = insertNarmestelederbehov(sykmeldtFnr = "12345678901", orgnummer = "123456789", dialogId = UUID.randomUUID())
+            val revokedId = UUID.randomUUID()
+            val revoked = insertNarmestelederbehov(sykmeldtFnr = "12345678902", orgnummer = "123456789", avbruttNarmestelederId = revokedId)
+            val future = insertNarmestelederbehov(sykmeldtFnr = "12345678903", orgnummer = "123456789")
+            val otherOrg = insertNarmestelederbehov(sykmeldtFnr = "12345678904", orgnummer = "123456789")
+            val closed = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED)
+            insertRelation(employeeIdent = matching.sykmeldtFnr, organizationNumber = matching.orgnummer)
+            insertRelation(narmestelederId = revokedId, employeeIdent = revoked.sykmeldtFnr, organizationNumber = revoked.orgnummer)
+            insertRelation(employeeIdent = future.sykmeldtFnr, organizationNumber = future.orgnummer, activeFrom = OffsetDateTime.now().plusDays(1))
+            insertRelation(employeeIdent = otherOrg.sykmeldtFnr, organizationNumber = "999999999")
+            transaction(TestDB.exposedDatabase) { DialogReconciliationTable.deleteAll() }
+            val duringCutover = insertNarmestelederbehov()
+            val sql = File("docs/operations/dialog-reconciliation.sql").readText()
+            repeat(2) {
+                TestDB.database.connection.use { connection ->
+                    connection.createStatement().use { it.execute(sql) }
+                    connection.commit()
+                }
+            }
+            findStoredNarmestelederbehov(matching.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+            listOf(revoked, future, otherOrg).forEach {
+                findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+            }
+            val claimed = buildList { repeat(6) { repository.claim(now, 60.seconds)?.let { add(it) } } }
+            claimed.map { it.id.value }.toSet() shouldBe setOf(matching.id, revoked.id, future.id, otherOrg.id, duringCutover.id)
+            requireNotNull(repository.load(claimed.single { it.id.value == duringCutover.id }, now)).createStarted shouldBe true
+            claimed.any { it.id.value == closed.id } shouldBe false
+        }
+
         listOf(400, 422, 403, 404, 503).forEach { status ->
-            test("status $status is classified without a tight retry loop") {
+            test("status $status is classified without a tight retry loop and exports observable queue state") {
                 insertNarmestelederbehov(created = now.minusSeconds(30))
-                val outcomes = mutableListOf<String>()
-                var calls = 0
-                ReconcileNarmestelederbehovDialogUseCase(
-                    repository = repository,
-                    creation = { _, _, _ ->
-                        calls++
-                        NarmestelederbehovDialogCreationResult.Unavailable(
-                            UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("failure"))),
-                        )
-                    },
-                    completion = { error("must not complete") },
-                    expiry = { _, _ -> error("must not expire") },
-                    inspection = { error("must not inspect") },
-                    personLookup = { EmployeePersonLookupResult.NotFound },
-                    clock = Clock.fixed(now, ZoneOffset.UTC),
-                    metrics = { outcomes += it },
-                ).execute()
-                calls shouldBe 1
-                repository.claim(now, 60.seconds).shouldBeNull()
-                val parked = status in listOf(400, 422)
-                repository.stats().parked shouldBe if (parked) 1L else 0L
-                repository.stats().pending shouldBe if (parked) 0L else 1L
-                outcomes shouldBe listOf(if (parked) "parked" else "retry")
+                val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+                try {
+                    val clock = Clock.fixed(now, ZoneOffset.UTC)
+                    val metrics = MicrometerDialogReconciliationMetrics(repository, registry, clock)
+                    var calls = 0
+                    ReconcileNarmestelederbehovDialogUseCase(
+                        repository = repository,
+                        creation = { _, _, _ ->
+                            calls++
+                            NarmestelederbehovDialogCreationResult.Unavailable(
+                                UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("failure"))),
+                            )
+                        },
+                        completion = { error("must not complete") },
+                        expiry = { _, _ -> error("must not expire") },
+                        inspection = { error("must not inspect") },
+                        personLookup = { EmployeePersonLookupResult.NotFound },
+                        clock = clock,
+                        metrics = metrics,
+                    ).execute()
+                    calls shouldBe 1
+                    repository.claim(now, 60.seconds).shouldBeNull()
+                    metrics.refresh()
+                    val parked = status in listOf(400, 422)
+                    val scrape = registry.scrape()
+                    scrape shouldContain "syfo_narmesteleder_dialog_reconciliation_parked ${if (parked) "1.0" else "0.0"}"
+                    scrape shouldContain "syfo_narmesteleder_dialog_reconciliation_pending ${if (parked) "0.0" else "1.0"}"
+                    scrape shouldContain """syfo_narmesteleder_dialog_reconciliation_attempts_total{outcome="${if (parked) "parked" else "retry"}"} 1.0"""
+                } finally {
+                    registry.close()
+                }
             }
         }
     })

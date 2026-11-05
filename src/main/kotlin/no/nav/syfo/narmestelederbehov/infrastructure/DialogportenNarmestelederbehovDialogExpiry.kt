@@ -1,6 +1,8 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
 import no.nav.syfo.narmestelederbehov.application.DialogExpiry
+import no.nav.syfo.narmestelederbehov.application.DialogExpiryInspection
+import no.nav.syfo.narmestelederbehov.application.DialogExpiryObservation
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogExpiry
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogPatchResult
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
@@ -13,7 +15,14 @@ import no.nav.syfo.platform.upstream.getOrElse
 import java.time.Instant
 import java.util.UUID
 
-class DialogportenNarmestelederbehovDialogExpiry(private val client: DialogportenClient) : NarmestelederbehovDialogExpiry {
+class DialogportenNarmestelederbehovDialogExpiry(private val client: DialogportenClient) :
+    NarmestelederbehovDialogExpiry,
+    DialogExpiryInspection {
+    override suspend fun inspect(dialogId: UUID): DialogExpiryObservation {
+        val existing = client.getDialogById(dialogId).getOrElse { return DialogExpiryObservation.Unavailable(it) }
+        return DialogExpiryObservation.Found(existing.expiresAt)
+    }
+
     override suspend fun expire(dialogId: UUID, expirationTime: Instant): DialogExpiry {
         val existing = client.getDialogById(dialogId).getOrElse { return DialogExpiry.Unavailable(it) }
         val patched = client.patchDialog(

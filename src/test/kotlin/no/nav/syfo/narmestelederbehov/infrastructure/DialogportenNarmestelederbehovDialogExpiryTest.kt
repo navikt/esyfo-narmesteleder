@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CancellationException
 import no.nav.syfo.narmestelederbehov.application.DialogExpiry
+import no.nav.syfo.narmestelederbehov.application.DialogExpiryObservation
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogPatchResult
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient.DialogportenPatch
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient.DialogportenPatch.OPERATION
@@ -30,9 +31,10 @@ class DialogportenNarmestelederbehovDialogExpiryTest :
             test("fetches revision and patches completed status plus expiresAt even when status is $status") {
                 val client = expiryClient(status)
 
+                DialogportenNarmestelederbehovDialogExpiry(client).inspect(EXPIRY_DIALOG_ID) shouldBe DialogExpiryObservation.Found(EXPIRATION_TIME)
                 DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME) shouldBe DialogExpiry.Expired
 
-                client.calls shouldBe listOf("get", "patch")
+                client.calls shouldBe listOf("get", "get", "patch")
                 client.patchRevision shouldBe EXPIRY_REVISION
                 client.patches shouldBe listOf(
                     DialogportenPatch(OPERATION.REPLACE, PATH.STATUS, DialogStatus.Completed.name),
@@ -93,6 +95,7 @@ private fun expiryClient(status: DialogStatus = DialogStatus.RequiresAttention) 
                     title = ContentValue(value = listOf(ContentValueItem("Title"))),
                     summary = ContentValue(value = listOf(ContentValueItem("Summary"))),
                 ),
+                expiresAt = EXPIRATION_TIME,
             ),
         )
     },

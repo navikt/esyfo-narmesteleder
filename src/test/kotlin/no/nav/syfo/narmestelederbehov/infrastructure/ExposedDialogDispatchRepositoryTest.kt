@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -64,8 +65,10 @@ class ExposedDialogDispatchRepositoryTest :
                     ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase).create(newBehov())
                 }
                 transaction(TestDB.exposedDatabase) {
-                    NarmestelederbehovTable.selectAll().count() shouldBe 0
-                    DialogDispatchTable.selectAll().count() shouldBe 0
+                    assertSoftly {
+                        NarmestelederbehovTable.selectAll().count() shouldBe 0
+                        DialogDispatchTable.selectAll().count() shouldBe 0
+                    }
                 }
             } finally {
                 transaction(TestDB.exposedDatabase) {
@@ -81,20 +84,24 @@ class ExposedDialogDispatchRepositoryTest :
                 listOf(async { repository.claim(now, 60.seconds) }, async { repository.claim(now, 60.seconds) })
                     .map { requireNotNull(it.await()) }
             }
-            claims.map { it.id.value }.toSet() shouldBe setOf(first.id, second.id)
-            repository.claim(now, 60.seconds).shouldBeNull()
+            assertSoftly {
+                claims.map { it.id.value }.toSet() shouldBe setOf(first.id, second.id)
+                repository.claim(now, 60.seconds).shouldBeNull()
+            }
         }
 
         test("an expired lease is reclaimed and an old token cannot acknowledge or start creation") {
             insertNarmestelederbehov(created = now.minusSeconds(30))
             val old = requireNotNull(repository.claim(now, 60.seconds))
             val replacement = requireNotNull(repository.claim(now.plusSeconds(61), 60.seconds))
-            repository.beginCreation(old, now.plusSeconds(62)) shouldBe false
-            repository.saveCreated(old, UUID.randomUUID(), null, now.plusSeconds(62)) shouldBe false
-            repository.saveCompleted(old, now.plusSeconds(62)) shouldBe false
-            repository.saveExpired(old, now, now.plusSeconds(62)) shouldBe false
-            repository.finish(old, DialogDispatchResult.Done, now.plusSeconds(62)) shouldBe false
-            repository.load(replacement, now.plusSeconds(62)).shouldBeInstanceOf<no.nav.syfo.narmestelederbehov.application.DialogDispatchState>()
+            assertSoftly {
+                repository.beginCreation(old, now.plusSeconds(62)) shouldBe false
+                repository.saveCreated(old, UUID.randomUUID(), null, now.plusSeconds(62)) shouldBe false
+                repository.saveCompleted(old, now.plusSeconds(62)) shouldBe false
+                repository.saveExpired(old, now, now.plusSeconds(62)) shouldBe false
+                repository.finish(old, DialogDispatchResult.Done, now.plusSeconds(62)) shouldBe false
+                repository.load(replacement, now.plusSeconds(62)).shouldBeInstanceOf<no.nav.syfo.narmestelederbehov.application.DialogDispatchState>()
+            }
         }
 
         listOf(
@@ -132,8 +139,10 @@ class ExposedDialogDispatchRepositoryTest :
                 DialogDispatchTable.selectAll().count() shouldBe 1
                 rollback()
             }
-            findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.HOVEDENHET_NOT_FOUND
-            repository.claim(now, 60.seconds).shouldBeNull()
+            assertSoftly {
+                findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.HOVEDENHET_NOT_FOUND
+                repository.claim(now, 60.seconds).shouldBeNull()
+            }
             ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
             // A closed legacy row without a dialog does not get automatic CREATE recovery.
             repository.claim(now, 60.seconds).shouldBeNull()

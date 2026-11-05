@@ -25,12 +25,12 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Altin
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.FakeAltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpAltinnAuthorizationClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
-import no.nav.syfo.platform.auth.texas.altinn.Altinn3Settings
+import no.nav.syfo.platform.auth.texas.altinn.AltinnSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.CachingAltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
@@ -42,9 +42,9 @@ import org.koin.dsl.module
 
 internal fun httpClientsModule(
     aaregSettings: AaregSettings,
-    altinn3Settings: Altinn3Settings,
+    altinnSettings: AltinnSettings,
     altinnAuthorizationSettings: AltinnAuthorizationSettings,
-    altinnTilgangerSettings: AltinnTilgangerSettings,
+    altinnAccessSettings: AltinnAccessSettings,
     dinesykmeldteSettings: DinesykmeldteSettings,
     dialogportenSettings: DialogportenSettings,
     eregSettings: EregSettings,
@@ -58,7 +58,7 @@ internal fun httpClientsModule(
         CachingAltinnTokenSource(
             delegate = TexasAltinnTokenFetcher(
                 texasHttpClient = get(),
-                altinnBaseUrl = altinn3Settings.baseUrl,
+                altinnBaseUrl = altinnSettings.baseUrl,
                 httpClient = get(),
             ),
         )
@@ -106,7 +106,7 @@ internal fun httpClientsModule(
             HttpAltinnTilgangerClient(
                 texasClient = get(),
                 httpClient = get(),
-                baseUrl = altinnTilgangerSettings.baseUrl,
+                baseUrl = altinnAccessSettings.baseUrl,
             )
         },
     )
@@ -133,7 +133,7 @@ internal fun httpClientsModule(
         remote = {
             HttpAltinnAuthorizationClient(
                 httpClient = get(),
-                baseUrl = altinn3Settings.baseUrl,
+                baseUrl = altinnSettings.baseUrl,
                 subscriptionKey = altinnAuthorizationSettings.subscriptionKey,
                 altinnTokenProvider = get(),
             )

@@ -21,9 +21,9 @@ internal fun applicationModules(environment: Environment, isLocalEnv: Boolean): 
     databaseModule(environment.database),
     httpClientsModule(
         aaregSettings = environment.aaregSettings,
-        altinn3Settings = environment.altinn3Settings,
+        altinnSettings = environment.altinnSettings,
         altinnAuthorizationSettings = environment.altinnAuthorizationSettings,
-        altinnTilgangerSettings = environment.altinnTilgangerSettings,
+        altinnAccessSettings = environment.altinnAccessSettings,
         dinesykmeldteSettings = environment.dinesykmeldteSettings,
         dialogportenSettings = environment.dialogportenSettings,
         eregSettings = environment.eregSettings,

@@ -1,5 +1,5 @@
 package no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger
 
-data class AltinnTilgangerSettings(
+data class AltinnAccessSettings(
     val baseUrl: String,
 )

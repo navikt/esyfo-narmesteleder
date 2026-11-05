@@ -6,9 +6,9 @@ import no.nav.syfo.integration.ereg.EregSettings
 import no.nav.syfo.integration.pdl.PdlSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationSettings
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerSettings
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
-import no.nav.syfo.platform.auth.texas.altinn.Altinn3Settings
+import no.nav.syfo.platform.auth.texas.altinn.AltinnSettings
 import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.config.getEnvVar
 import no.nav.syfo.platform.database.DatabaseEnvironment
@@ -20,9 +20,9 @@ interface Environment {
     val valkeyEnvironment: ValkeyEnvironment
     val kafka: KafkaEnvironment
     val aaregSettings: AaregSettings
-    val altinn3Settings: Altinn3Settings
+    val altinnSettings: AltinnSettings
     val altinnAuthorizationSettings: AltinnAuthorizationSettings
-    val altinnTilgangerSettings: AltinnTilgangerSettings
+    val altinnAccessSettings: AltinnAccessSettings
     val dinesykmeldteSettings: DinesykmeldteSettings
     val dialogportenSettings: DialogportenSettings
     val eregSettings: EregSettings
@@ -39,13 +39,13 @@ data class NaisEnvironment(
         baseUrl = getEnvVar("AAREG_BASE_URL"),
         scope = getEnvVar("AAREG_SCOPE"),
     ),
-    override val altinn3Settings: Altinn3Settings = Altinn3Settings(
+    override val altinnSettings: AltinnSettings = AltinnSettings(
         baseUrl = getEnvVar("ALTINN_3_BASE_URL"),
     ),
     override val altinnAuthorizationSettings: AltinnAuthorizationSettings = AltinnAuthorizationSettings(
         subscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY"),
     ),
-    override val altinnTilgangerSettings: AltinnTilgangerSettings = AltinnTilgangerSettings(
+    override val altinnAccessSettings: AltinnAccessSettings = AltinnAccessSettings(
         baseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
     ),
     override val dinesykmeldteSettings: DinesykmeldteSettings = DinesykmeldteSettings(
@@ -53,7 +53,7 @@ data class NaisEnvironment(
         scope = getEnvVar("DINESYMELDTE_SCOPE"),
     ),
     override val dialogportenSettings: DialogportenSettings = DialogportenSettings(
-        baseUrl = altinn3Settings.baseUrl,
+        baseUrl = altinnSettings.baseUrl,
     ),
     override val eregSettings: EregSettings = EregSettings(
         baseUrl = getEnvVar("EREG_BASE_URL"),
@@ -78,13 +78,13 @@ data class LocalEnvironment(
         baseUrl = "",
         scope = "aareg",
     ),
-    override val altinn3Settings: Altinn3Settings = Altinn3Settings(
+    override val altinnSettings: AltinnSettings = AltinnSettings(
         baseUrl = "http://localhost:8080/dialogporten",
     ),
     override val altinnAuthorizationSettings: AltinnAuthorizationSettings = AltinnAuthorizationSettings(
         subscriptionKey = "secret-key",
     ),
-    override val altinnTilgangerSettings: AltinnTilgangerSettings = AltinnTilgangerSettings(
+    override val altinnAccessSettings: AltinnAccessSettings = AltinnAccessSettings(
         baseUrl = "https://altinn-tilganger-api.dev.intern.nav.no",
     ),
     override val dinesykmeldteSettings: DinesykmeldteSettings = DinesykmeldteSettings(
@@ -92,7 +92,7 @@ data class LocalEnvironment(
         scope = "",
     ),
     override val dialogportenSettings: DialogportenSettings = DialogportenSettings(
-        baseUrl = altinn3Settings.baseUrl,
+        baseUrl = altinnSettings.baseUrl,
     ),
     override val eregSettings: EregSettings = EregSettings(
         baseUrl = "https://ereg-test.intern.nav.no",

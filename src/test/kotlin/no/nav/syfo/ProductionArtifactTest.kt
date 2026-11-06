@@ -1,5 +1,6 @@
 package no.nav.syfo
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
@@ -13,17 +14,20 @@ class ProductionArtifactTest :
         test("production classes contain no fake clients or local fixture loading") {
             val classes = filesIn(Path.of(productionClass.protectionDomain.codeSource.location.toURI()))
 
-            classes shouldContain "no/nav/syfo/ApplicationKt.class"
-            classes.filter { Path.of(it).name.startsWith("Fake") || it.startsWith("no/nav/syfo/platform/local/") }
-                .shouldBeEmpty()
+            assertSoftly(classes) {
+                shouldContain("no/nav/syfo/ApplicationKt.class")
+                filter { Path.of(it).name.startsWith("Fake") || it.startsWith("no/nav/syfo/platform/local/") }.shouldBeEmpty()
+            }
         }
 
         test("production resources contain no fake client fixtures") {
             val anchor = Path.of(requireNotNull(productionClass.getResource("/$PRODUCTION_RESOURCE")).toURI())
             val resources = filesIn(generateSequence(anchor) { it.parent }.drop(PRODUCTION_RESOURCE.split('/').size).first())
 
-            resources shouldContain PRODUCTION_RESOURCE
-            resources.filter { it.startsWith("fake-clients/") }.shouldBeEmpty()
+            assertSoftly(resources) {
+                shouldContain(PRODUCTION_RESOURCE)
+                filter { it.startsWith("fake-clients/") }.shouldBeEmpty()
+            }
         }
     })
 

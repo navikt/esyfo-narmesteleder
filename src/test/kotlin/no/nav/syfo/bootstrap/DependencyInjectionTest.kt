@@ -1,5 +1,6 @@
 package no.nav.syfo.bootstrap
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -68,29 +69,29 @@ class DependencyInjectionTest :
         }
 
         test("production registers the real external clients") {
-            externalClientTypes(applicationModules(naisEnvironmentWithoutEnvVars(), isLocalEnv = false)) shouldBe mapOf(
-                AaregClient::class to HttpAaregClient::class,
-                DinesykmeldteClient::class to HttpDinesykmeldteClient::class,
-                PdlClient::class to HttpPdlClient::class,
-                AltinnTilgangerClient::class to HttpAltinnTilgangerClient::class,
-                DialogportenClient::class to HttpDialogportenClient::class,
-                EregClient::class to HttpEregClient::class,
-                AltinnAuthorizationClient::class to HttpAltinnAuthorizationClient::class,
-            )
+            assertSoftly(externalClientTypes(applicationModules(naisEnvironmentWithoutEnvVars(), isLocalEnv = false))) {
+                get(AaregClient::class) shouldBe HttpAaregClient::class
+                get(DinesykmeldteClient::class) shouldBe HttpDinesykmeldteClient::class
+                get(PdlClient::class) shouldBe HttpPdlClient::class
+                get(AltinnTilgangerClient::class) shouldBe HttpAltinnTilgangerClient::class
+                get(DialogportenClient::class) shouldBe HttpDialogportenClient::class
+                get(EregClient::class) shouldBe HttpEregClient::class
+                get(AltinnAuthorizationClient::class) shouldBe HttpAltinnAuthorizationClient::class
+            }
         }
 
         test("local runs register the fake external clients") {
             val modules = applicationModules(LocalEnvironment(), isLocalEnv = true, localExternalClientsModule())
 
-            externalClientTypes(modules) shouldBe mapOf(
-                AaregClient::class to FakeAaregClient::class,
-                DinesykmeldteClient::class to FakeDinesykmeldteClient::class,
-                PdlClient::class to FakePdlClient::class,
-                AltinnTilgangerClient::class to FakeAltinnTilgangerClient::class,
-                DialogportenClient::class to FakeDialogportenClient::class,
-                EregClient::class to FakeEregClient::class,
-                AltinnAuthorizationClient::class to FakeAltinnAuthorizationClient::class,
-            )
+            assertSoftly(externalClientTypes(modules)) {
+                get(AaregClient::class) shouldBe FakeAaregClient::class
+                get(DinesykmeldteClient::class) shouldBe FakeDinesykmeldteClient::class
+                get(PdlClient::class) shouldBe FakePdlClient::class
+                get(AltinnTilgangerClient::class) shouldBe FakeAltinnTilgangerClient::class
+                get(DialogportenClient::class) shouldBe FakeDialogportenClient::class
+                get(EregClient::class) shouldBe FakeEregClient::class
+                get(AltinnAuthorizationClient::class) shouldBe FakeAltinnAuthorizationClient::class
+            }
         }
     })
 

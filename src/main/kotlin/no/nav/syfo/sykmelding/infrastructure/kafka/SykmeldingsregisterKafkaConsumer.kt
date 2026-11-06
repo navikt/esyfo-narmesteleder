@@ -1,11 +1,9 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
-import io.micrometer.core.instrument.MeterRegistry
 import no.nav.syfo.platform.kafka.ConsumerRunner
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.KafkaListener
 import no.nav.syfo.platform.kafka.consumerProperties
-import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -14,14 +12,12 @@ import java.util.Properties
 
 class SykmeldingsregisterKafkaConsumer(
     consumerFactory: () -> Consumer<String, String?>,
-    meterRegistry: MeterRegistry = METRICS_REGISTRY,
 ) : KafkaListener {
     private val runner = ConsumerRunner(
         consumerFactory = consumerFactory,
         topics = listOf(SENDT_SYKMELDING_TOPIC),
         handler = {},
         coroutineName = "sykmeldingsregister",
-        meterRegistry = meterRegistry,
     )
 
     override fun listen() = runner.start()

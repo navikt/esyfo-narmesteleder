@@ -1,7 +1,5 @@
 package no.nav.syfo.platform.kafka
 
-import io.micrometer.core.instrument.Counter
-import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -15,8 +13,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import no.nav.esyfo.observability.causeChain
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.observability.Heartbeat
-import no.nav.syfo.platform.observability.METRICS_NS
-import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -60,21 +56,12 @@ class ConsumerRunner<K, V>(
     private val healthyResetThreshold: Duration = 5.minutes,
     private val isFatal: (Throwable) -> Boolean = ::isFatalByDefault,
     private val heartbeat: Heartbeat = Heartbeat(),
-    meterRegistry: MeterRegistry = METRICS_REGISTRY,
 ) : AutoCloseable {
     private val logger = applicationLogger(ConsumerRunner::class.java)
     private val running = AtomicBoolean(false)
     private var scope: CoroutineScope? = null
     private var job: Job? = null
     private val pollTimeoutJava: java.time.Duration = java.time.Duration.ofMillis(pollTimeout.inWholeMilliseconds)
-    private val processedMessages = Counter.builder(PROCESSED_MESSAGES_METRIC)
-        .description("Counts messages successfully handled and committed by Kafka consumers")
-        .tag("consumer", coroutineName)
-        .register(meterRegistry)
-    private val restarts = Counter.builder(RESTARTS_METRIC)
-        .description("Counts transient Kafka consumer restarts")
-        .tag("consumer", coroutineName)
-        .register(meterRegistry)
 
     @Volatile
     private var activeConsumer: Consumer<K, V>? = null
@@ -174,7 +161,6 @@ class ConsumerRunner<K, V>(
                             ),
                         )
                     }
-                    restarts.increment()
                     logger.logEvent(
                         KafkaConsumerLogEvents.restart,
                         BackoffContext(backoffMillis),
@@ -230,12 +216,9 @@ class ConsumerRunner<K, V>(
         // or fails. A dropped async commit would widen replay on rebalance/crash; the
         // per-batch commit limits the synchronous cost to one commit per batch.
         consumer.commitSync(nextOffsets)
-        processedMessages.increment(batch.size.toDouble())
     }
 
     companion object {
-        const val PROCESSED_MESSAGES_METRIC = "${METRICS_NS}_kafka_consumer_processed_messages"
-        const val RESTARTS_METRIC = "${METRICS_NS}_kafka_consumer_restarts"
         private const val BACKOFF_STEP_MILLIS = 200L
         private const val CLOSE_TIMEOUT_SECONDS = 5L
         private const val MAX_CAUSE_DEPTH = 10

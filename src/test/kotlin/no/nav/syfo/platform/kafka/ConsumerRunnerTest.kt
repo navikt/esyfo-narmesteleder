@@ -7,7 +7,6 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.longs.shouldBeExactly
 import io.kotest.matchers.longs.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.shouldBe
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.observability.Heartbeat
 import no.nav.syfo.platform.observability.withProductionLogs
@@ -100,11 +99,10 @@ class ConsumerRunnerTest :
             }
         }
 
-        test("restarts after a temporary poll failure and records the restart") {
+        test("restarts after a temporary poll failure") {
             val partition = TopicPartition(TOPIC, 0)
             val consumers = mutableListOf<RecordingMockConsumer>()
             val handled = CountDownLatch(1)
-            val registry = SimpleMeterRegistry()
             val runner = runner(
                 consumerFactory = {
                     if (consumers.isEmpty()) {
@@ -117,7 +115,6 @@ class ConsumerRunnerTest :
                     }
                 },
                 handler = { handled.countDown() },
-                registry = registry,
                 initialBackoff = 1.milliseconds,
                 maxBackoff = 1.milliseconds,
             )
@@ -129,7 +126,6 @@ class ConsumerRunnerTest :
             assertSoftly {
                 consumers.size shouldBe 2
                 consumers.all { it.closed() } shouldBe true
-                registry.counter(ConsumerRunner.RESTARTS_METRIC, "consumer", CONSUMER_NAME).count() shouldBe 1.0
             }
         }
 
@@ -169,7 +165,6 @@ class ConsumerRunnerTest :
                 initialBackoff = 1.milliseconds,
                 maxBackoff = 4.milliseconds,
                 healthyResetThreshold = 1.seconds,
-                meterRegistry = SimpleMeterRegistry(),
             )
             withProductionLogs(ConsumerRunner::class.java, Level.WARN) { logs ->
                 runner.start()
@@ -195,7 +190,6 @@ class ConsumerRunnerTest :
                 },
                 topics = listOf(TOPIC),
                 handler = {},
-                meterRegistry = SimpleMeterRegistry(),
             )
             runner.start { reported = it }
             try {
@@ -221,7 +215,6 @@ class ConsumerRunnerTest :
                 topics = listOf(TOPIC),
                 handler = {},
                 heartbeat = heartbeat,
-                meterRegistry = SimpleMeterRegistry(),
             )
             runner.start()
             try {
@@ -241,24 +234,22 @@ class ConsumerRunnerTest :
                 KafkaException("wrapper-canary", ConfigException("configuration-canary")),
             ).forEach { failure ->
                 val fatalReported = CountDownLatch(1)
-                val registry = SimpleMeterRegistry()
                 val consumer = FatalPollConsumer(failure)
                 val runner = runner(
                     consumerFactory = { consumer },
                     handler = {},
-                    registry = registry,
                     initialBackoff = 1.milliseconds,
                     maxBackoff = 1.milliseconds,
                 )
 
-                withProductionLogs(ConsumerRunner::class.java, Level.ERROR) { logs ->
+                withProductionLogs(ConsumerRunner::class.java, Level.WARN) { logs ->
                     runner.start { fatalReported.countDown() }
                     fatalReported.awaitOrFail()
                     runner.close()
 
                     assertSoftly {
                         consumer.closed() shouldBe true
-                        registry.counter(ConsumerRunner.RESTARTS_METRIC, "consumer", CONSUMER_NAME).count() shouldBe 0.0
+                        logs.logs.none { it.fields["event_type"] == "kafka_consumer_restarted" } shouldBe true
                         logs.logs.single { it.fields["event_type"] == "kafka_consumer_crashed" }.fields.let { fields ->
                             fields["level"] shouldBe "ERROR"
                             fields["consumer"] shouldBe CONSUMER_NAME
@@ -369,10 +360,8 @@ class ConsumerRunnerTest :
             val payload = "payload-canary"
             val committed = CountDownLatch(1)
             val consumer = RecordingMockConsumer(committed)
-            val registry = SimpleMeterRegistry()
             val sykmeldingsregisterConsumer = SykmeldingsregisterKafkaConsumer(
                 consumerFactory = { consumer },
-                meterRegistry = registry,
             )
             consumer.scheduleBatch(ConsumerRecord(SENDT_SYKMELDING_TOPIC, 0, 0L, "key", payload))
 
@@ -392,7 +381,6 @@ class ConsumerRunnerTest :
             }
 
             assertSoftly {
-                registry.counter(ConsumerRunner.PROCESSED_MESSAGES_METRIC, "consumer", "sykmeldingsregister").count() shouldBe 1.0
                 consumer.committedOffsets[partition]?.offset() shouldBe 1L
             }
         }
@@ -417,7 +405,6 @@ private fun RecordingMockConsumer.scheduleBatch(vararg records: ConsumerRecord<S
 private fun runner(
     consumerFactory: () -> RecordingMockConsumer,
     handler: BatchMessageHandler<String, String?>,
-    registry: SimpleMeterRegistry = SimpleMeterRegistry(),
     initialBackoff: kotlin.time.Duration = 10.milliseconds,
     maxBackoff: kotlin.time.Duration = 100.milliseconds,
 ) = ConsumerRunner(
@@ -427,7 +414,6 @@ private fun runner(
     coroutineName = CONSUMER_NAME,
     initialBackoff = initialBackoff,
     maxBackoff = maxBackoff,
-    meterRegistry = registry,
 )
 
 private fun CountDownLatch.awaitOrFail() {

@@ -41,7 +41,7 @@ private fun coreModule() = module {
     single { Clock.systemDefaultZone() }
 }
 
-private fun Environment.httpClientsSettings() = HttpClientsSettings(
+internal fun Environment.httpClientsSettings() = HttpClientsSettings(
     aaregSettings = aaregSettings,
     altinnApiSettings = altinnApiSettings,
     altinnAuthorizationSettings = altinnAuthorizationSettings,

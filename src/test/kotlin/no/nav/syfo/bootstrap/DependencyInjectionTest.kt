@@ -1,35 +1,15 @@
 package no.nav.syfo.bootstrap
 
-import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.inspectors.forAll
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.string.shouldNotStartWith
+import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.engine.HttpClientEngine
-import no.nav.syfo.integration.aareg.AaregClient
-import no.nav.syfo.integration.aareg.FakeAaregClient
-import no.nav.syfo.integration.aareg.HttpAaregClient
-import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteClient
-import no.nav.syfo.integration.dinesykmeldte.FakeDinesykmeldteClient
-import no.nav.syfo.integration.dinesykmeldte.HttpDinesykmeldteClient
 import no.nav.syfo.integration.ereg.CachedEregClient
-import no.nav.syfo.integration.ereg.EregClient
-import no.nav.syfo.integration.ereg.FakeEregClient
-import no.nav.syfo.integration.ereg.HttpEregClient
-import no.nav.syfo.integration.pdl.FakePdlClient
-import no.nav.syfo.integration.pdl.HttpPdlClient
-import no.nav.syfo.integration.pdl.PdlClient
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.FakeDialogportenClient
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.HttpDialogportenClient
 import no.nav.syfo.narmestelederbehov.narmestelederbehovDependencies
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonDependencies
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.FakeAltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpAltinnAuthorizationClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
-import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.cache.ValkeyEnvironment
@@ -37,6 +17,7 @@ import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.sykmelding.sykmeldingDependencies
 import org.apache.kafka.clients.producer.Producer
+import org.koin.core.annotation.KoinInternalApi
 import org.koin.core.module.Module
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -68,29 +49,25 @@ class DependencyInjectionTest :
             }
         }
 
-        test("production registers the real external clients") {
-            assertSoftly(externalClientTypes(applicationModules(naisEnvironmentWithoutEnvVars(), isLocalEnv = false))) {
-                get(AaregClient::class) shouldBe HttpAaregClient::class
-                get(DinesykmeldteClient::class) shouldBe HttpDinesykmeldteClient::class
-                get(PdlClient::class) shouldBe HttpPdlClient::class
-                get(AltinnTilgangerClient::class) shouldBe HttpAltinnTilgangerClient::class
-                get(DialogportenClient::class) shouldBe HttpDialogportenClient::class
-                get(EregClient::class) shouldBe HttpEregClient::class
-                get(AltinnAuthorizationClient::class) shouldBe HttpAltinnAuthorizationClient::class
+        test("local runs replace every external client with a fake") {
+            val localTypes = localExternalClientsModule().definedTypes()
+
+            localTypes shouldBe externalClientsModule(LocalEnvironment().httpClientsSettings()).definedTypes()
+        }
+
+        test("production registers only real external clients") {
+            val production = naisEnvironmentWithoutEnvVars()
+
+            externalClientImplementations(applicationModules(production, isLocalEnv = false)).forAll {
+                it.simpleName shouldNotStartWith "Fake"
             }
         }
 
-        test("local runs register the fake external clients") {
-            val modules = applicationModules(LocalEnvironment(), isLocalEnv = true, localExternalClientsModule())
+        test("local runs register only fake external clients") {
+            val local = LocalEnvironment()
 
-            assertSoftly(externalClientTypes(modules)) {
-                get(AaregClient::class) shouldBe FakeAaregClient::class
-                get(DinesykmeldteClient::class) shouldBe FakeDinesykmeldteClient::class
-                get(PdlClient::class) shouldBe FakePdlClient::class
-                get(AltinnTilgangerClient::class) shouldBe FakeAltinnTilgangerClient::class
-                get(DialogportenClient::class) shouldBe FakeDialogportenClient::class
-                get(EregClient::class) shouldBe FakeEregClient::class
-                get(AltinnAuthorizationClient::class) shouldBe FakeAltinnAuthorizationClient::class
+            externalClientImplementations(applicationModules(local, isLocalEnv = true, localExternalClientsModule())).forAll {
+                it.simpleName shouldStartWith "Fake"
             }
         }
     })
@@ -134,27 +111,25 @@ private fun capabilityDependencies(environment: Environment) = listOf(
     sykmeldingDependencies(),
 )
 
-// The Ereg client is resolved through its cache, so report the wrapped client it delegates to.
-private fun externalClientTypes(modules: List<Module>): Map<KClass<*>, KClass<*>> {
+// Every type the real external clients module defines, so newly added clients are checked automatically.
+private fun externalClientImplementations(modules: List<Module>): List<KClass<*>> {
+    val clientTypes = externalClientsModule(LocalEnvironment().httpClientsSettings()).definedTypes()
     val application = koinApplication(createEagerInstances = false) { modules(modules) }
     try {
-        val koin = application.koin
-        val ereg = koin.get<EregClient>().shouldBeInstanceOf<CachedEregClient>()
-        return mapOf(
-            AaregClient::class to koin.get<AaregClient>()::class,
-            DinesykmeldteClient::class to koin.get<DinesykmeldteClient>()::class,
-            PdlClient::class to koin.get<PdlClient>()::class,
-            AltinnTilgangerClient::class to koin.get<AltinnTilgangerClient>()::class,
-            DialogportenClient::class to koin.get<DialogportenClient>()::class,
-            EregClient::class to ereg.delegateClass(),
-            AltinnAuthorizationClient::class to koin.get<AltinnAuthorizationClient>()::class,
-        )
+        return clientTypes.map { type -> application.koin.get<Any>(type).unwrapCache()::class }
     } finally {
         application.close()
     }
 }
 
-private fun CachedEregClient.delegateClass(): KClass<*> = CachedEregClient::class.java.getDeclaredField("delegate").apply { isAccessible = true }.get(this)::class
+@OptIn(KoinInternalApi::class)
+private fun Module.definedTypes(): Set<KClass<*>> = mappings.values.map { it.beanDefinition.primaryType }.toSet()
+
+// Caching decorators wrap the real or fake client, so report the client they delegate to.
+private fun Any.unwrapCache(): Any = when (this) {
+    is CachedEregClient -> CachedEregClient::class.java.getDeclaredField("delegate").apply { isAccessible = true }.get(this)
+    else -> this
+}
 
 // Values passed from bootstrap configuration or created by third-party constructors inside the definitions.
 private val valuesNotRegisteredInKoin = listOf(

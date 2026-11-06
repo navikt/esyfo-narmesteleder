@@ -46,8 +46,6 @@ class Database(
             config.password,
         )
 
-//        cleanDisabled(false)
-//        load().clean()
         val flyway = load()
         flyway.migrate().migrationsExecuted
     }

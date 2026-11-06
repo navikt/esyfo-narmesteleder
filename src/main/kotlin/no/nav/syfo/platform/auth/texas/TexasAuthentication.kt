@@ -22,23 +22,20 @@ const val TOKEN_X_AUTH_PROVIDER = "tokenx"
 const val MASKINPORTEN_AUTH_PROVIDER = "maskinporten"
 const val AZURE_AD_AUTH_PROVIDER = "azure-ad"
 
-fun Application.installTexasAuthentication(azurePreAuthorizedApps: Set<String>) {
-    val texasHttpClient = resolveTexasHttpClient()
-    installTexasAuthentication(texasHttpClient, azurePreAuthorizedApps)
+enum class AzureRole(val value: String) {
+    LINEMANAGER_LOOKUP("linemanager-lookup"),
 }
 
-internal fun Application.installTexasAuthentication(
-    texasHttpClient: TexasHttpClient,
-    azurePreAuthorizedApps: Set<String>,
-) {
-    require(azurePreAuthorizedApps.isNotEmpty()) {
-        "Texas Azure AD authentication installed without pre-authorized apps"
-    }
+fun Application.installTexasAuthentication() {
+    val texasHttpClient = resolveTexasHttpClient()
+    installTexasAuthentication(texasHttpClient)
+}
 
+internal fun Application.installTexasAuthentication(texasHttpClient: TexasHttpClient) {
     install(Authentication) {
         texasTokenX(texasHttpClient)
         texasMaskinporten(texasHttpClient)
-        texasAzureAd(texasHttpClient, azurePreAuthorizedApps)
+        AzureRole.entries.forEach { role -> texasAzureAd(texasHttpClient, role) }
     }
 }
 
@@ -50,7 +47,10 @@ fun Route.authenticateMaskinportenOrTokenX(build: Route.() -> Unit): Route = aut
     build = build,
 )
 
-fun Route.authenticateAzureAd(build: Route.() -> Unit): Route = authenticateRequired(AZURE_AD_AUTH_PROVIDER, build = build)
+fun Route.authenticateAzureAd(role: AzureRole, build: Route.() -> Unit): Route = authenticateRequired(
+    role.azureAdProviderName(),
+    build = build,
+)
 
 private fun AuthenticationConfig.texasTokenX(client: TexasHttpClient) {
     provider(TOKEN_X_AUTH_PROVIDER) {
@@ -72,14 +72,12 @@ private fun AuthenticationConfig.texasMaskinporten(client: TexasHttpClient) {
     }
 }
 
-private fun AuthenticationConfig.texasAzureAd(
-    client: TexasHttpClient,
-    preAuthorizedApps: Set<String>,
-) {
-    provider(AZURE_AD_AUTH_PROVIDER) {
+private fun AuthenticationConfig.texasAzureAd(client: TexasHttpClient, role: AzureRole) {
+    val providerName = role.azureAdProviderName()
+    provider(providerName) {
         authenticate { context ->
-            context.authenticateForIssuer(JwtIssuer.AZURE_AD, AZURE_AD_AUTH_PROVIDER) { token ->
-                context.principal(context.call.authenticateAzureAd(client, preAuthorizedApps, token))
+            context.authenticateForIssuer(JwtIssuer.AZURE_AD, providerName) { token ->
+                context.principal(context.call.authenticateAzureAd(client, role, token))
             }
         }
     }
@@ -134,3 +132,5 @@ private fun ApplicationCall.bearerToken(): String? = request
     ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
     ?.removePrefix("Bearer ")
     ?.removePrefix("bearer ")
+
+private fun AzureRole.azureAdProviderName(): String = "$AZURE_AD_AUTH_PROVIDER:$value"

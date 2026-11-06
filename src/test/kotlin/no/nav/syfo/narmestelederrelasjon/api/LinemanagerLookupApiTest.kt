@@ -28,6 +28,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.AzureRole
 import no.nav.syfo.platform.auth.texas.authenticateAzureAd
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubAzureAd
@@ -48,7 +49,7 @@ class LinemanagerLookupApiTest :
 
         beforeTest {
             repository.reset()
-            texasHttpClient.stubAzureAd(CALLING_APP)
+            texasHttpClient.stubAzureAd(CALLING_APP, roles = listOf(AzureRole.LINEMANAGER_LOOKUP.value))
         }
 
         test("returns the active line manager with split email addresses") {
@@ -102,8 +103,8 @@ class LinemanagerLookupApiTest :
             }
         }
 
-        test("rejects applications outside the pre-authorized allowlist") {
-            texasHttpClient.stubAzureAd("other-app-id")
+        test("rejects requests without the line manager lookup role") {
+            texasHttpClient.stubAzureAd(CALLING_APP)
 
             withLookupApi(lookupActiveNarmesteleder, texasHttpClient) {
                 val response = client.postLookup(LinemanagerLookupRequest(employeeIdent.value, organizationNumber.value))
@@ -128,14 +129,13 @@ private fun withLookupApi(
         texasHttpClient = texasHttpClient,
         routes = {
             internalApiV1 {
-                authenticateAzureAd {
+                authenticateAzureAd(AzureRole.LINEMANAGER_LOOKUP) {
                     registerLineManagerLookupApi(
                         lookupActiveNarmesteleder = lookupActiveNarmesteleder,
                     )
                 }
             }
         },
-        azurePreAuthorizedApps = setOf(CALLING_APP),
     ) {
         client = createJsonClient()
         test()

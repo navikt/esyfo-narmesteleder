@@ -393,7 +393,7 @@ capability:
 
 ```kotlin
 fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Module> = applicationModules(settings)) {
-    platformModule(koinModules, settings.texas.azurePreAuthorizedApps)
+    platformModule(koinModules)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
@@ -457,7 +457,8 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
 - Capability modules add routes under `apiV1 { }` or `internalApiV1 { }` from
   `platform.api`. Routes are denied by default: every endpoint must be inside
   `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or
-  `authenticateAzureAd`, or inside `publicRoutes { }`; startup fails
+  `authenticateAzureAd(AzureRole.LINEMANAGER_LOOKUP)`, or inside
+  `publicRoutes { }`; startup fails
   otherwise, including for Ktor's `authenticate` used directly. The module
   wraps its `registerXApi` calls in the helper, so route functions do not
   choose their own provider; route tests wrap them the same way. Ktor merges
@@ -467,7 +468,9 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
   effect under the API prefixes. The check cannot see provider `skipWhen`
   predicates, so do not configure them. Endpoints
   use the Texas `Authentication` providers installed once by `platformModule`:
-  TokenX, Maskinporten, and Azure AD. Routes accepting either a user or system
+  TokenX, Maskinporten, and Azure AD. Azure AD routes use a separate provider
+  per required role; the line manager lookup requires the `linemanager-lookup`
+  role. Routes accepting either a user or system
   token use Ktor's `FirstSuccessful` strategy. Provider exceptions continue to
   `StatusPages`, and handlers read the authenticated domain principal through
   `getMyPrincipal()`.

@@ -1,5 +1,6 @@
 package no.nav.syfo.platform.auth.texas
 
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
@@ -15,9 +16,13 @@ import io.ktor.server.routing.route
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.createMockToken
+import no.nav.syfo.integration.respondJson
+import no.nav.syfo.integration.texasHttpClient
+import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
+import java.io.File
 
 private const val CALLING_APP = "calling-app"
 private const val AZURE_AD_ISSUER = "https://login.microsoftonline.com/tenant/v2.0"
@@ -51,24 +56,42 @@ class AzureAdAuthenticationTest :
             }
         }
 
-        test("responds 403 when the Azure AD application is not pre-authorized") {
+        test("responds 200 when the Azure AD token has the required role regardless of azp") {
             val texasHttpClient = mockk<TexasHttpClient>()
-            texasHttpClient.stubAzureAd(azp = "unapproved-caller")
-            val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED)
+            texasHttpClient.stubAzureAd(azp = "unapproved-caller", roles = listOf("linemanager-lookup"))
+
+            val response = callProtectedRoute(texasHttpClient)
+
+            response.status shouldBe HttpStatusCode.OK
+        }
+
+        test("authorizes the claims configured for the local Azure mock") {
+            val config = jacksonObjectMapper().readTree(File("docker-compose/authserver/mount/config.json"))
+            val azure = config.path("tokenCallbacks").single { it.path("issuerId").asText() == "azuread" }
+            val mapping = azure.path("requestMappings").single { it.path("match").asText() == "api://esyfo-narmesteleder/.default" }
+            val claims = mapping.path("claims").deepCopy<ObjectNode>().put("active", true)
+            // The mock server serializes a single audience as a string in its JWT.
+            claims.put("aud", claims.path("aud").single().asText())
+
+            upstreamHttpClient(
+                token = { error("Unexpected token request") },
+                upstream = { respondJson(claims.toString()) },
+            ).use { httpClient ->
+                callProtectedRoute(texasHttpClient(httpClient)).status shouldBe HttpStatusCode.OK
+            }
+        }
+
+        test("responds 403 when the Azure AD token does not have the required role") {
+            val texasHttpClient = mockk<TexasHttpClient>()
+            texasHttpClient.stubAzureAd(azp = CALLING_APP)
+            val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED)
 
             val response = callProtectedRoute(texasHttpClient)
 
             assertSoftly {
                 response.status shouldBe HttpStatusCode.Forbidden
-                tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED) shouldBe before + 1
+                tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED) shouldBe before + 1
             }
-        }
-
-        test("responds 403 when the Azure AD token has no azp") {
-            val texasHttpClient = mockk<TexasHttpClient>()
-            texasHttpClient.stubAzureAd(azp = null)
-
-            callProtectedRoute(texasHttpClient).status shouldBe HttpStatusCode.Forbidden
         }
 
         mapOf(
@@ -96,7 +119,7 @@ private fun callProtectedRoute(
         texasHttpClient = texasHttpClient,
         routes = {
             route("/protected") {
-                authenticateAzureAd {
+                authenticateAzureAd(AzureRole.LINEMANAGER_LOOKUP) {
                     get { call.respond(HttpStatusCode.OK) }
                 }
             }
@@ -107,7 +130,6 @@ private fun callProtectedRoute(
             }
             response.bodyAsText()
         },
-        azurePreAuthorizedApps = setOf(CALLING_APP),
     )
     return response
 }

@@ -362,8 +362,10 @@ flowchart LR
    organization-scoped data.
 2. Employee-facing relation lookup uses the authenticated employee identity
    and does not use employer organization access.
-3. Pre-authorized internal machine lookup uses Azure AD client authorization
-   and reads the relation register directly.
+3. Internal machine lookup uses an Entra ID client-credentials token with the
+   `linemanager-lookup` role. Texas-backed route authentication requires that
+   role before reading the relation register; Nais grants it only to the
+   configured inbound applications.
 
 The behov GET endpoints are not currently read-only. When an employee name is
 missing, they resolve it through PDL and persist it in `nl_behov`. The list

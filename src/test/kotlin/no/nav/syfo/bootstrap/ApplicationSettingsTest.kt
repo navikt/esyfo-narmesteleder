@@ -1,6 +1,7 @@
 package no.nav.syfo.bootstrap
 
 import io.kotest.assertions.assertSoftly
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -27,8 +28,14 @@ class ApplicationSettingsTest :
             failure.message shouldBe "Invalid configuration: pdl.baseUrl is missing"
         }
 
+        test("startup does not require or parse the Azure AD pre-authorized applications list") {
+            assertSoftly {
+                shouldNotThrowAny { settingsFrom(requiredEnvironment) }
+                shouldNotThrowAny { settingsFrom(requiredEnvironment + ("AZURE_APP_PRE_AUTHORIZED_APPS" to "invalid")) }
+            }
+        }
+
         listOf(
-            Triple("AZURE_APP_PRE_AUTHORIZED_APPS", "secret-client-list", "texas.azurePreAuthorizedApps is not a valid JSON list of applications"),
             Triple("DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS", "sixteen", "narmestelederbehov.expiry.daysAfterTom is not a whole number"),
             Triple("DIALOGPORTEN_UPDATE_POLLING_DELAY", "soon", "narmestelederbehov.dialogporten.updatePollingInterval is not a valid duration"),
         ).forEach { (variable, value, problem) ->
@@ -114,7 +121,6 @@ private val requiredEnvironment = mapOf(
     "NAIS_TOKEN_INTROSPECTION_ENDPOINT" to "http://texas.example/introspect",
     "NAIS_TOKEN_ENDPOINT" to "http://texas.example/token",
     "NAIS_TOKEN_EXCHANGE_ENDPOINT" to "http://texas.example/exchange",
-    "AZURE_APP_PRE_AUTHORIZED_APPS" to """[{"name": "test-cluster:team:app", "clientId": "client-id"}]""",
     "NARMESTELEDER_DB_HOST" to "db.example",
     "NARMESTELEDER_DB_PORT" to "5432",
     "NARMESTELEDER_DB_DATABASE" to "narmesteleder",

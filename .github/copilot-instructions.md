@@ -22,7 +22,7 @@ This is the repository for narmesteleder-api, a service that provides an API for
 ## Platform & Auth
 - **Platform**: NAIS (Kubernetes on GCP)
 - **Auth**: Azure AD (internal users), TokenX (on-behalf-of token exchange), ID-porten (citizens), Maskinporten (machine-to-machine)
-- Incoming TokenX, Azure AD and Maskinporten authentication uses Texas-backed Ktor `Authentication` providers installed in `platformModule`; protected routes select providers with `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or `authenticateAzureAd` (not Ktor's `authenticate` directly) and retain their existing use-case authorization checks. Routes are denied by default: startup fails unless every endpoint requires authentication or is declared in `publicRoutes { }`.
+- Incoming TokenX, Azure AD and Maskinporten authentication uses Texas-backed Ktor `Authentication` providers installed in `platformModule`; protected routes select providers with `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or `authenticateAzureAd(role)` (not Ktor's `authenticate` directly) and retain their existing use-case authorization checks. Azure AD routes require a custom role granted through the matching Nais inbound permission. Routes are denied by default: startup fails unless every endpoint requires authentication or is declared in `publicRoutes { }`.
 - **Observability**: Prometheus metrics, Grafana Loki logs, Tempo tracing (OpenTelemetry)
 
 ## Conventions

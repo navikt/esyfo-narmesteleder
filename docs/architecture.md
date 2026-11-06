@@ -753,8 +753,8 @@ decision.
 Bootstrap reads configuration once at startup into small typed settings.
 Adapters and tasks receive only the settings they need.
 
-- Application behaviour settings, feature flags, the database, Valkey, Texas
-  and external system URLs, scopes and keys live in `src/main/resources/application.conf`. Each key has a default or is
+- Application behaviour settings, feature flags, the database, Valkey, Kafka,
+  Texas and external system URLs, scopes and keys live in `src/main/resources/application.conf`. Each key has a default or is
   required, and an optional `${?VAR}` line lets the environment variable of the
   same name override it. Environment variables take precedence over defaults.
   The NAIS manifests keep the existing variable names.
@@ -762,8 +762,8 @@ Adapters and tasks receive only the settings they need.
   reports every missing or invalid value in one startup error, without the
   values. Flags keep the lenient parsing where only a case-insensitive `true`
   enables them.
-- Kafka is still read directly from environment variables.
-- TLS for the database and Valkey is controlled by explicit flags that are on
+- TLS for the database, Valkey and Kafka, and the Kafka schema registry
+  credentials, are controlled by explicit flags that are on
   in `application.conf` and off only in `application-local.conf`. When TLS is
   on, every certificate setting is required, so a missing value stops startup
   instead of falling back to plaintext.

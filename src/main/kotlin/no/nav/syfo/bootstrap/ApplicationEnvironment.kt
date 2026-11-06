@@ -50,7 +50,7 @@ data class NaisEnvironment(
     override val database: DatabaseEnvironment = settings.database,
     override val texas: TexasEnvironment = settings.texas,
     override val valkeyEnvironment: ValkeyEnvironment = settings.valkey,
-    override val kafka: KafkaEnvironment = KafkaEnvironment.createFromEnvVars(),
+    override val kafka: KafkaEnvironment = settings.kafka,
     override val aaregSettings: AaregSettings = settings.aaregSettings,
     override val altinnApiSettings: AltinnApiSettings = settings.altinnApiSettings,
     override val altinnAuthorizationSettings: AltinnAuthorizationSettings = settings.altinnAuthorizationSettings,

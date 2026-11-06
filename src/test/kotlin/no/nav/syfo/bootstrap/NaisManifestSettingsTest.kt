@@ -25,6 +25,7 @@ class NaisManifestSettingsTest :
             assertSoftly(settingsFromManifest("nais/nais-prod.yaml")) {
                 maintenanceTaskSettings.interval shouldBe 1.hours
                 texas.azurePreAuthorizedApps.shouldNotBeEmpty()
+                kafka.shouldConsumeTopics shouldBe true
             }
         }
     })
@@ -35,7 +36,7 @@ private fun settingsFromManifest(path: String): ApplicationSettings = Applicatio
 
 /**
  * The variables NAIS gives the pod: the manifest's `env`, its `envFrom` secrets, the cluster name and those injected by
- * `leaderElection: true`, the Texas annotation, `gcp.sqlInstances` and `valkey`. Injected values are synthetic.
+ * `leaderElection: true`, the Texas annotation, `gcp.sqlInstances`, `valkey` and `kafka`. Injected values are synthetic.
  */
 @Suppress("UNCHECKED_CAST")
 private fun manifestEnvironment(path: String): Map<String, String> {
@@ -49,6 +50,7 @@ private fun manifestEnvironment(path: String): Map<String, String> {
     val databasePrefixes = (gcp["sqlInstances"] as List<Map<String, Any?>>? ?: emptyList())
         .flatMap { it["databases"] as List<Map<String, Any?>> }
         .mapNotNull { it["envVarPrefix"]?.toString() }
+    val kafka = if (spec["kafka"] != null) kafkaVariables else emptyMap()
     val valkeyInstances = (spec["valkey"] as List<Map<String, Any?>>? ?: emptyList()).map { it.getValue("instance").toString() }
     val env = (spec["env"] as List<Map<String, Any?>>).associate { it.getValue("name").toString() to it["value"].toString() }
     val leaderElection = if (spec["leaderElection"] == true) {
@@ -58,8 +60,18 @@ private fun manifestEnvironment(path: String): Map<String, String> {
     }
     val secrets = (spec["envFrom"] as List<Map<String, Any?>>).flatMap { secretVariables.getValue(it.getValue("secret").toString()) }
     return env + leaderElection + texas + secrets.associateWith { "synthetic-secret" } + ("NAIS_CLUSTER_NAME" to "test-cluster") +
-        databasePrefixes.flatMap(::databaseVariables) + valkeyInstances.flatMap(::valkeyVariables)
+        databasePrefixes.flatMap(::databaseVariables) + valkeyInstances.flatMap(::valkeyVariables) + kafka
 }
+
+private val kafkaVariables = listOf(
+    "KAFKA_BROKERS",
+    "KAFKA_SCHEMA_REGISTRY",
+    "KAFKA_SCHEMA_REGISTRY_USER",
+    "KAFKA_SCHEMA_REGISTRY_PASSWORD",
+    "KAFKA_TRUSTSTORE_PATH",
+    "KAFKA_KEYSTORE_PATH",
+    "KAFKA_CREDSTORE_PASSWORD",
+).associateWith { "synthetic" }
 
 private fun databaseVariables(prefix: String) = listOf("HOST", "DATABASE", "USERNAME", "PASSWORD", "SSLCERT", "SSLKEY_PK8", "SSLROOTCERT", "SSLMODE").map { "${prefix}_$it" to "synthetic" } +
     ("${prefix}_PORT" to "5432")

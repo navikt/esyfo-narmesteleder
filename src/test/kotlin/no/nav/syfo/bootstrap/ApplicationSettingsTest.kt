@@ -24,6 +24,9 @@ import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.platform.config.localApplicationConfig
 import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.database.DatabaseSsl
+import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.KafkaSchemaRegistryEnv
+import no.nav.syfo.platform.kafka.KafkaSslEnv
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 import kotlin.time.Duration.Companion.hours
@@ -50,6 +53,13 @@ class ApplicationSettingsTest :
                     username = "valkey-user",
                     password = "valkey-password",
                     ssl = true,
+                ),
+                kafka = KafkaEnvironment(
+                    brokerUrl = "kafka.example:9093",
+                    schemaRegistry = KafkaSchemaRegistryEnv("https://registry.example", "registry-user", "registry-password"),
+                    sslConfig = KafkaSslEnv("/kafka/truststore.jks", "/kafka/keystore.p12", "credstore-password"),
+                    commitOnAllErrors = false,
+                    shouldConsumeTopics = true,
                 ),
                 texas = TexasEnvironment(
                     tokenIntrospectionEndpoint = "http://texas.example/introspect",
@@ -153,6 +163,14 @@ class ApplicationSettingsTest :
                 "valkey.port is missing, " +
                 "valkey.username is missing, " +
                 "valkey.password is missing, " +
+                "kafka.brokers is missing, " +
+                "kafka.schemaRegistry.url is missing, " +
+                "kafka.schemaRegistry.username is missing, " +
+                "kafka.schemaRegistry.password is missing, " +
+                "kafka.ssl.truststorePath is missing, " +
+                "kafka.ssl.keystorePath is missing, " +
+                "kafka.ssl.credstorePassword is missing, " +
+                "kafka.consumeTopics is missing, " +
                 "texas.tokenIntrospectionEndpoint is missing, " +
                 "texas.tokenEndpoint is missing, " +
                 "texas.tokenExchangeEndpoint is missing, " +
@@ -196,7 +214,7 @@ class ApplicationSettingsTest :
             }
         }
 
-        test("the database connects with the NAIS certificates and keeps the passwords out of logs") {
+        test("the database and Kafka connect with the NAIS certificates and keep the passwords out of logs") {
             val settings = settingsFrom(requiredEnvironment)
 
             assertSoftly {
@@ -204,15 +222,19 @@ class ApplicationSettingsTest :
                     "?ssl=on&sslrootcert=/certs/root.pem&sslcert=/certs/cert.pem&sslmode=verify-ca&sslkey=/certs/key.pk8"
                 settings.toString() shouldNotContain "db-password"
                 settings.toString() shouldNotContain "valkey-password"
+                settings.toString() shouldNotContain "registry-password"
+                settings.toString() shouldNotContain "credstore-password"
             }
         }
 
-        test("local config connects to the database and Valkey without TLS") {
+        test("local config connects to the database, Valkey and Kafka without TLS or credentials") {
             val settings = ApplicationSettings.from(localApplicationConfig())
 
             assertSoftly {
                 settings.database.jdbcUrl() shouldBe "jdbc:postgresql://localhost:5432/esyfo-narmesteleder_dev"
                 settings.valkey.ssl shouldBe false
+                settings.kafka.sslConfig shouldBe null
+                settings.kafka.schemaRegistry shouldBe KafkaSchemaRegistryEnv("http://localhost:8081", username = null, password = null)
             }
         }
 
@@ -262,6 +284,14 @@ private val requiredEnvironment = mapOf(
     "VALKEY_PORT_FELLES_CACHE" to "26379",
     "VALKEY_USERNAME_FELLES_CACHE" to "valkey-user",
     "VALKEY_PASSWORD_FELLES_CACHE" to "valkey-password",
+    "KAFKA_BROKERS" to "kafka.example:9093",
+    "CONSUME_KAFKA_TOPICS" to "true",
+    "KAFKA_SCHEMA_REGISTRY" to "https://registry.example",
+    "KAFKA_SCHEMA_REGISTRY_USER" to "registry-user",
+    "KAFKA_SCHEMA_REGISTRY_PASSWORD" to "registry-password",
+    "KAFKA_TRUSTSTORE_PATH" to "/kafka/truststore.jks",
+    "KAFKA_KEYSTORE_PATH" to "/kafka/keystore.p12",
+    "KAFKA_CREDSTORE_PASSWORD" to "credstore-password",
 )
 
 private fun settingsFrom(environment: Map<String, String>) = ApplicationSettings.from(applicationConfigWithEnvironment(environment))

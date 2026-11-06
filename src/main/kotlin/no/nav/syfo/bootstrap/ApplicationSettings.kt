@@ -22,6 +22,9 @@ import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.config.ConfigReader
 import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.database.DatabaseSsl
+import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.KafkaSchemaRegistryEnv
+import no.nav.syfo.platform.kafka.KafkaSslEnv
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 
@@ -29,6 +32,7 @@ import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 data class ApplicationSettings(
     val database: DatabaseEnvironment,
     val valkey: ValkeyEnvironment,
+    val kafka: KafkaEnvironment,
     val texas: TexasEnvironment,
     val aaregSettings: AaregSettings,
     val altinnApiSettings: AltinnApiSettings,
@@ -75,6 +79,21 @@ data class ApplicationSettings(
                     username = string("valkey.username"),
                     password = string("valkey.password"),
                     ssl = flag("valkey.ssl"),
+                ),
+                kafka = KafkaEnvironment(
+                    brokerUrl = string("kafka.brokers"),
+                    schemaRegistry = schemaRegistry(),
+                    sslConfig = if (flag("kafka.ssl.enabled")) {
+                        KafkaSslEnv(
+                            truststoreLocation = string("kafka.ssl.truststorePath"),
+                            keystoreLocation = string("kafka.ssl.keystorePath"),
+                            credstorePassword = string("kafka.ssl.credstorePassword"),
+                        )
+                    } else {
+                        null
+                    },
+                    commitOnAllErrors = flag("kafka.commitOnAllErrors"),
+                    shouldConsumeTopics = flag("kafka.consumeTopics"),
                 ),
                 texas = TexasEnvironment(
                     tokenIntrospectionEndpoint = string("texas.tokenIntrospectionEndpoint"),
@@ -136,5 +155,14 @@ data class ApplicationSettings(
                 ),
             )
         }
+    }
+}
+
+private fun ConfigReader.schemaRegistry(): KafkaSchemaRegistryEnv {
+    val url = string("kafka.schemaRegistry.url")
+    return if (flag("kafka.schemaRegistry.authEnabled")) {
+        KafkaSchemaRegistryEnv(url, string("kafka.schemaRegistry.username"), string("kafka.schemaRegistry.password"))
+    } else {
+        KafkaSchemaRegistryEnv(url, username = null, password = null)
     }
 }

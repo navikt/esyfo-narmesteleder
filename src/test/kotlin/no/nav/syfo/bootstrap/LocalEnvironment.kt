@@ -19,7 +19,6 @@ import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.config.localApplicationConfig
 import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.kafka.KafkaEnvironment
-import no.nav.syfo.platform.kafka.createForLocal
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 
@@ -29,7 +28,7 @@ data class LocalEnvironment(
     override val database: DatabaseEnvironment = settings.database,
     override val texas: TexasEnvironment = settings.texas,
     override val valkeyEnvironment: ValkeyEnvironment = settings.valkey,
-    override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal(),
+    override val kafka: KafkaEnvironment = settings.kafka,
     override val aaregSettings: AaregSettings = settings.aaregSettings,
     override val altinnApiSettings: AltinnApiSettings = settings.altinnApiSettings,
     override val altinnAuthorizationSettings: AltinnAuthorizationSettings = settings.altinnAuthorizationSettings,

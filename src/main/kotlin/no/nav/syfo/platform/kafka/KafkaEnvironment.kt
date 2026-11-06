@@ -1,40 +1,26 @@
 package no.nav.syfo.platform.kafka
 
-import no.nav.syfo.platform.config.getEnvVar
-
 data class KafkaEnvironment(
     val brokerUrl: String,
     val schemaRegistry: KafkaSchemaRegistryEnv,
+    /** Null only for local runs, where the broker has no TLS. */
     val sslConfig: KafkaSslEnv?,
-    val commitOnAllErrors: Boolean = false,
+    val commitOnAllErrors: Boolean,
     val shouldConsumeTopics: Boolean,
-) {
-    companion object {
-        fun createFromEnvVars(): KafkaEnvironment = KafkaEnvironment(
-            brokerUrl = getEnvVar("KAFKA_BROKERS"),
-            schemaRegistry = KafkaSchemaRegistryEnv(
-                url = getEnvVar("KAFKA_SCHEMA_REGISTRY"),
-                username = getEnvVar("KAFKA_SCHEMA_REGISTRY_USER"),
-                password = getEnvVar("KAFKA_SCHEMA_REGISTRY_PASSWORD"),
-            ),
-            sslConfig = KafkaSslEnv(
-                truststoreLocation = getEnvVar("KAFKA_TRUSTSTORE_PATH"),
-                keystoreLocation = getEnvVar("KAFKA_KEYSTORE_PATH"),
-                credstorePassword = getEnvVar("KAFKA_CREDSTORE_PASSWORD"),
-            ),
-            shouldConsumeTopics = getEnvVar("CONSUME_KAFKA_TOPICS").toBoolean()
-        )
-    }
-}
+)
 
 data class KafkaSslEnv(
     val truststoreLocation: String,
     val keystoreLocation: String,
     val credstorePassword: String,
-)
+) {
+    override fun toString() = "KafkaSslEnv(truststoreLocation=$truststoreLocation, keystoreLocation=$keystoreLocation, credstorePassword=[REDACTED])"
+}
 
 data class KafkaSchemaRegistryEnv(
     val url: String,
     val username: String?,
     val password: String?,
-)
+) {
+    override fun toString() = "KafkaSchemaRegistryEnv(url=$url, username=$username, password=${password?.let { "[REDACTED]" }})"
+}

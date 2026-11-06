@@ -14,8 +14,6 @@ import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
-import no.nav.syfo.platform.kafka.KafkaEnvironment
-import no.nav.syfo.platform.kafka.createForLocal
 import no.nav.syfo.sykmelding.sykmeldingDependencies
 import org.apache.kafka.clients.producer.Producer
 import org.koin.core.annotation.KoinInternalApi
@@ -80,7 +78,6 @@ private fun localApplicationModules() = applicationModules(
 // NaisEnvironment reads infrastructure from env vars, so supply local values and synthetic required settings.
 private fun naisEnvironmentWithoutEnvVars() = NaisEnvironment(
     settings = ApplicationSettings.from(applicationConfigWithEnvironment(requiredNaisVariables)),
-    kafka = KafkaEnvironment.createForLocal(),
 )
 
 private val requiredNaisVariables = mapOf(
@@ -117,6 +114,14 @@ private val requiredNaisVariables = mapOf(
     "VALKEY_PORT_FELLES_CACHE" to "26379",
     "VALKEY_USERNAME_FELLES_CACHE" to "valkey-user",
     "VALKEY_PASSWORD_FELLES_CACHE" to "valkey-password",
+    "KAFKA_BROKERS" to "kafka.example:9093",
+    "CONSUME_KAFKA_TOPICS" to "true",
+    "KAFKA_SCHEMA_REGISTRY" to "https://registry.example",
+    "KAFKA_SCHEMA_REGISTRY_USER" to "registry-user",
+    "KAFKA_SCHEMA_REGISTRY_PASSWORD" to "registry-password",
+    "KAFKA_TRUSTSTORE_PATH" to "/kafka/truststore.jks",
+    "KAFKA_KEYSTORE_PATH" to "/kafka/keystore.p12",
+    "KAFKA_CREDSTORE_PASSWORD" to "credstore-password",
 )
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.

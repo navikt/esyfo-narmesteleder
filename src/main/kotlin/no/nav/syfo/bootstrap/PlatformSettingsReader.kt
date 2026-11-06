@@ -59,7 +59,7 @@ internal fun ConfigReader.texasSettings() = TexasSettings(
     tokenIntrospectionEndpoint = string("texas.tokenIntrospectionEndpoint"),
     tokenEndpoint = string("texas.tokenEndpoint"),
     tokenExchangeEndpoint = string("texas.tokenExchangeEndpoint"),
-    exchangeTargetIsAltinnTilganger = altinnTilgangerExchangeTarget(string("nais.clusterName")),
+    exchangeTargetIsAltinnTilganger = altinnTilgangerExchangeTarget(string("texas.altinnTilgangerCluster")),
     azurePreAuthorizedApps = parsed("texas.azurePreAuthorizedApps", "is not a valid JSON list of applications", emptySet()) {
         preAuthorizedAppsFromJsonOrNull(it)
     },

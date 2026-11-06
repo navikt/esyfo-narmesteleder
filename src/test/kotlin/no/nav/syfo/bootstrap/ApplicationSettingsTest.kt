@@ -181,7 +181,7 @@ class ApplicationSettingsTest :
                 "texas.tokenIntrospectionEndpoint is missing, " +
                 "texas.tokenEndpoint is missing, " +
                 "texas.tokenExchangeEndpoint is missing, " +
-                "nais.clusterName is missing, " +
+                "texas.altinnTilgangerCluster is missing, " +
                 "texas.azurePreAuthorizedApps is missing, " +
                 "altinn.baseUrl is missing, " +
                 "leaderElection.path is missing, " +
@@ -195,9 +195,9 @@ class ApplicationSettingsTest :
                 "pdl.scope is missing, " +
                 "altinn.authorization.subscriptionKey is missing, " +
                 "altinn.tilganger.baseUrl is missing, " +
-                "narmestelederbehov.dialogportenTask.enabled is missing, " +
-                "narmestelederbehov.publicIngressUrl is missing, " +
-                "narmestelederbehov.frontendBaseUrl is missing"
+                "narmestelederbehov.dialogporten.tasksEnabled is missing, " +
+                "narmestelederbehov.dialogporten.publicIngressUrl is missing, " +
+                "narmestelederbehov.dialogporten.frontendBaseUrl is missing"
         }
 
         test("startup reports invalid values without the values") {
@@ -215,7 +215,7 @@ class ApplicationSettingsTest :
                 this shouldBe "Invalid configuration: " +
                     "texas.azurePreAuthorizedApps is not a valid JSON list of applications, " +
                     "narmestelederbehov.expiry.daysAfterTom is not a whole number, " +
-                    "narmestelederbehov.dialogUpdatePollingInterval is not a valid duration"
+                    "narmestelederbehov.dialogporten.updatePollingInterval is not a valid duration"
                 this shouldNotContain "soon"
                 this shouldNotContain "sixteen"
                 this shouldNotContain "secret-client-list"

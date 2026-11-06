@@ -7,13 +7,13 @@ import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSe
 import no.nav.syfo.platform.config.ConfigReader
 
 internal fun ConfigReader.narmestelederbehovSettings() = NarmestelederbehovSettings(
-    creation = NarmestelederbehovCreationSettings(persistenceEnabled = flag("narmestelederbehov.persistLeesahNlBehov")),
+    creation = NarmestelederbehovCreationSettings(persistenceEnabled = flag("narmestelederbehov.creation.persistLeesahNlBehov")),
     expiry = NarmestelederbehovExpirySettings(daysAfterTom = long("narmestelederbehov.expiry.daysAfterTom")),
     dialogporten = DialogportenSettings(
         baseUrl = string("altinn.baseUrl"),
-        tasksEnabled = flag("narmestelederbehov.dialogportenTask.enabled"),
-        publicIngressUrl = string("narmestelederbehov.publicIngressUrl"),
-        frontendBaseUrl = string("narmestelederbehov.frontendBaseUrl"),
-        updatePollingInterval = duration("narmestelederbehov.dialogUpdatePollingInterval"),
+        tasksEnabled = flag("narmestelederbehov.dialogporten.tasksEnabled"),
+        publicIngressUrl = string("narmestelederbehov.dialogporten.publicIngressUrl"),
+        frontendBaseUrl = string("narmestelederbehov.dialogporten.frontendBaseUrl"),
+        updatePollingInterval = duration("narmestelederbehov.dialogporten.updatePollingInterval"),
     ),
 )

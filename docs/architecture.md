@@ -341,8 +341,8 @@ Contains reusable technical mechanisms without domain rules:
   and client. `platformModule` installs the providers once and resolves
   `TexasHttpClient` from Koin, so routes only select a named provider;
 - `cache`: generic Valkey cache and configuration;
-- `config`: HOCON loading and the `ConfigReader` that collects every missing
-  or invalid setting;
+- `config`: HOCON loading and typed readers that fail on a missing or invalid
+  setting;
 - `database`: data source, Flyway and shared transaction infrastructure;
 - `http`: shared HTTP client construction;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics,
@@ -421,7 +421,7 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
   `IntegrationSettings` for the shared clients, and one aggregate per capability
   (`OrganisasjonstilgangSettings`, `NarmestelederbehovSettings`,
   `NarmestelederrelasjonSettings`, `SykmeldingKafkaSettings`). Each group is read
-  by its own `ConfigReader` extension in a `*SettingsReader.kt` file in
+  by its own `ApplicationConfig` extension in a `*SettingsReader.kt` file in
   bootstrap, so capabilities never depend on the config library. `runLocal` and tests
   build it from `application-local.conf` with `localApplicationSettings()` in
   the test sources. `runLocal` also replaces the external clients and leader
@@ -764,8 +764,8 @@ Adapters and tasks receive only the settings they need.
   same name override it. Environment variables take precedence over defaults.
   The NAIS manifests keep the existing variable names.
 - `ApplicationSettings` maps the HOCON config to capability-owned settings and
-  reports every missing or invalid value in one startup error, without the
-  values. Flags keep the lenient parsing where only a case-insensitive `true`
+  stops startup on the first missing or invalid value, naming the key but not
+  the value. Flags keep the lenient parsing where only a case-insensitive `true`
   enables them.
 - TLS for the database, Valkey and Kafka, and the Kafka schema registry
   credentials, are controlled by explicit flags that are on

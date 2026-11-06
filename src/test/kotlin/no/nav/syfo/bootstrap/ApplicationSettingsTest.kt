@@ -4,9 +4,7 @@ import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
-import io.kotest.matchers.string.shouldStartWith
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 
 class ApplicationSettingsTest :
@@ -18,37 +16,24 @@ class ApplicationSettingsTest :
             }
         }
 
-        test("startup reports every missing required setting in one error") {
-            val failure = shouldThrow<IllegalStateException> { settingsFrom(emptyMap()) }
+        test("startup names the missing setting") {
+            val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment - "PDL_BASE_URL") }
 
-            assertSoftly(failure.message.orEmpty()) {
-                this shouldStartWith "Invalid configuration: "
-                this shouldContain "database.password is missing"
-                this shouldContain "texas.tokenEndpoint is missing"
-                this shouldContain "pdl.baseUrl is missing"
-                this shouldContain "narmestelederbehov.dialogporten.publicIngressUrl is missing"
-            }
+            failure.message shouldBe "Invalid configuration: pdl.baseUrl is missing"
         }
 
-        test("startup reports invalid values without the values") {
-            val failure = shouldThrow<IllegalStateException> {
-                settingsFrom(
-                    requiredEnvironment + mapOf(
-                        "DIALOGPORTEN_UPDATE_POLLING_DELAY" to "soon",
-                        "DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS" to "sixteen",
-                        "AZURE_APP_PRE_AUTHORIZED_APPS" to "secret-client-list",
-                    ),
-                )
-            }
+        listOf(
+            Triple("AZURE_APP_PRE_AUTHORIZED_APPS", "secret-client-list", "texas.azurePreAuthorizedApps is not a valid JSON list of applications"),
+            Triple("DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS", "sixteen", "narmestelederbehov.expiry.daysAfterTom is not a whole number"),
+            Triple("DIALOGPORTEN_UPDATE_POLLING_DELAY", "soon", "narmestelederbehov.dialogporten.updatePollingInterval is not a valid duration"),
+        ).forEach { (variable, value, problem) ->
+            test("startup reports an invalid $variable without the value") {
+                val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment + (variable to value)) }
 
-            assertSoftly(failure.message.orEmpty()) {
-                this shouldBe "Invalid configuration: " +
-                    "texas.azurePreAuthorizedApps is not a valid JSON list of applications, " +
-                    "narmestelederbehov.expiry.daysAfterTom is not a whole number, " +
-                    "narmestelederbehov.dialogporten.updatePollingInterval is not a valid duration"
-                this shouldNotContain "soon"
-                this shouldNotContain "sixteen"
-                this shouldNotContain "secret-client-list"
+                assertSoftly(failure.message.orEmpty()) {
+                    this shouldBe "Invalid configuration: $problem"
+                    this shouldNotContain value
+                }
             }
         }
 

@@ -8,7 +8,6 @@ import no.nav.syfo.organisasjonstilgang.OrganisasjonstilgangSettings
 import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.cache.ValkeySettings
-import no.nav.syfo.platform.config.ConfigReader
 import no.nav.syfo.platform.database.DatabaseSettings
 import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
@@ -30,7 +29,7 @@ data class ApplicationSettings(
     val sykmelding: SykmeldingKafkaSettings,
 ) {
     companion object {
-        fun from(config: ApplicationConfig): ApplicationSettings = ConfigReader.read(config) {
+        fun from(config: ApplicationConfig): ApplicationSettings = with(config) {
             ApplicationSettings(
                 database = databaseSettings(),
                 valkey = valkeySettings(),

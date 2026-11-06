@@ -1,8 +1,9 @@
 package no.nav.syfo.bootstrap
 
-import no.nav.syfo.platform.config.ConfigReader
+import io.ktor.server.config.ApplicationConfig
+import no.nav.syfo.platform.config.flag
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 
-internal fun ConfigReader.sykmeldingSettings() = SykmeldingKafkaSettings(
+internal fun ApplicationConfig.sykmeldingSettings() = SykmeldingKafkaSettings(
     persistSendtSykmelding = flag("sykmelding.persistSendtSykmelding"),
 )

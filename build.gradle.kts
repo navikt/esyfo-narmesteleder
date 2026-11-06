@@ -134,6 +134,7 @@ tasks {
         description = "Runs the application locally with fake external clients from the test sources."
         classpath = sourceSets.test.get().runtimeClasspath
         mainClass.set("no.nav.syfo.LocalApplicationKt")
+        systemProperty("logback.configurationFile", "logback-local.xml")
     }
 
     register("printVersion") {

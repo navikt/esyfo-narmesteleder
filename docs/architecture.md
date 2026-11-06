@@ -390,8 +390,8 @@ starts the platform module and then one Ktor module per
 capability:
 
 ```kotlin
-fun Application.bootstrap(environment: Environment, externalClients: Module? = null, leaderElection: Module? = null) {
-    platformModule(applicationModules(environment, externalClients, leaderElection), environment.texas.azurePreAuthorizedApps)
+fun Application.bootstrap(environment: Environment, koinModules: List<Module> = applicationModules(environment)) {
+    platformModule(koinModules, environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())

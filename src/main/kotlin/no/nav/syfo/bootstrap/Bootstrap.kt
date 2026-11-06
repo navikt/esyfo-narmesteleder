@@ -11,11 +11,10 @@ import org.koin.core.module.Module
 import org.koin.ktor.ext.get
 
 /**
- * Assembles the Koin graph from [environment] and starts every capability.
- * [externalClients] and [leaderElection] replace the real modules when given.
+ * Assembles the Koin graph from [koinModules] and starts every capability with settings from [environment].
  */
-fun Application.bootstrap(environment: Environment, externalClients: Module? = null, leaderElection: Module? = null) {
-    platformModule(applicationModules(environment, externalClients, leaderElection), environment.texas.azurePreAuthorizedApps)
+fun Application.bootstrap(environment: Environment, koinModules: List<Module> = applicationModules(environment)) {
+    platformModule(koinModules, environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())

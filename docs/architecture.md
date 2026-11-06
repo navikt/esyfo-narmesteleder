@@ -753,8 +753,8 @@ decision.
 Bootstrap reads configuration once at startup into small typed settings.
 Adapters and tasks receive only the settings they need.
 
-- Application behaviour settings, feature flags and external system URLs,
-  scopes and keys live in `src/main/resources/application.conf`. Each key has a default or is
+- Application behaviour settings, feature flags, Texas and external system
+  URLs, scopes and keys live in `src/main/resources/application.conf`. Each key has a default or is
   required, and an optional `${?VAR}` line lets the environment variable of the
   same name override it. Environment variables take precedence over defaults.
   The NAIS manifests keep the existing variable names.
@@ -762,12 +762,13 @@ Adapters and tasks receive only the settings they need.
   reports every missing or invalid value in one startup error, without the
   values. Flags keep the lenient parsing where only a case-insensitive `true`
   enables them.
-- Database, Kafka, Valkey and Texas are still read directly from environment
+- Database, Kafka and Valkey are still read directly from environment
   variables.
 - Local runs and tests read `application-local.conf` from the test resources,
   layered over `application.conf`, and ignore environment variables.
   `NaisManifestSettingsTest` checks that the dev and prod manifests resolve,
-  with synthetic values for the secrets they load with `envFrom`.
+  with synthetic values for the secrets they load with `envFrom` and the
+  variables NAIS injects.
 
 Each business capability provides its own Koin registration module. Focused
 platform modules register shared technical mechanisms. Root bootstrap only

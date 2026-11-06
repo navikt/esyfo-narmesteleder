@@ -33,7 +33,8 @@ class ConfigReader private constructor(private val config: ApplicationConfig) {
 
     fun long(path: String): Long = parsed(path, "is not a whole number", 0L) { it.toLongOrNull() }
 
-    private fun <T : Any> parsed(path: String, problem: String, placeholder: T, parse: (String) -> T?): T {
+    /** Reports [problem] when [parse] returns null. The [placeholder] stands in until [read] fails. */
+    fun <T : Any> parsed(path: String, problem: String, placeholder: T, parse: (String) -> T?): T {
         val value = config.propertyOrNull(path)?.getString() ?: return invalid(path, "is missing", placeholder)
         return parse(value) ?: invalid(path, problem, placeholder)
     }

@@ -15,7 +15,6 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Altin
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
-import no.nav.syfo.platform.auth.texas.createForLocal
 import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.cache.createForLocal
 import no.nav.syfo.platform.config.localApplicationConfig
@@ -30,7 +29,7 @@ import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 data class LocalEnvironment(
     private val settings: ApplicationSettings = ApplicationSettings.from(localApplicationConfig()),
     override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
-    override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),
+    override val texas: TexasEnvironment = settings.texas,
     override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createForLocal(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal(),
     override val aaregSettings: AaregSettings = settings.aaregSettings,

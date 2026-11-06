@@ -48,7 +48,7 @@ interface Environment {
 data class NaisEnvironment(
     private val settings: ApplicationSettings,
     override val database: DatabaseEnvironment = DatabaseEnvironment.createFromEnvVars(),
-    override val texas: TexasEnvironment = TexasEnvironment.createFromEnvVars(),
+    override val texas: TexasEnvironment = settings.texas,
     override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createFromEnvVars(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createFromEnvVars(),
     override val aaregSettings: AaregSettings = settings.aaregSettings,

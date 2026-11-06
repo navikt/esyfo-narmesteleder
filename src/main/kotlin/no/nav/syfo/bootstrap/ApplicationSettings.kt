@@ -14,13 +14,17 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSett
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
+import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
+import no.nav.syfo.platform.auth.texas.altinnTilgangerExchangeTarget
+import no.nav.syfo.platform.auth.texas.preAuthorizedAppsFromJsonOrNull
 import no.nav.syfo.platform.config.ConfigReader
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 
 /** Application settings read from `application.conf`. */
 data class ApplicationSettings(
+    val texas: TexasEnvironment,
     val aaregSettings: AaregSettings,
     val altinnApiSettings: AltinnApiSettings,
     val altinnAuthorizationSettings: AltinnAuthorizationSettings,
@@ -43,6 +47,15 @@ data class ApplicationSettings(
         fun from(config: ApplicationConfig): ApplicationSettings = ConfigReader.read(config) {
             val altinnBaseUrl = string("altinn.baseUrl")
             ApplicationSettings(
+                texas = TexasEnvironment(
+                    tokenIntrospectionEndpoint = string("texas.tokenIntrospectionEndpoint"),
+                    tokenEndpoint = string("texas.tokenEndpoint"),
+                    tokenExchangeEndpoint = string("texas.tokenExchangeEndpoint"),
+                    exchangeTargetIsAltinnTilganger = altinnTilgangerExchangeTarget(string("nais.clusterName")),
+                    azurePreAuthorizedApps = parsed("texas.azurePreAuthorizedApps", "is not a valid JSON list of applications", emptySet()) {
+                        preAuthorizedAppsFromJsonOrNull(it)
+                    },
+                ),
                 aaregSettings = AaregSettings(baseUrl = string("aareg.baseUrl"), scope = string("aareg.scope")),
                 altinnApiSettings = AltinnApiSettings(baseUrl = altinnBaseUrl),
                 altinnAuthorizationSettings = AltinnAuthorizationSettings(

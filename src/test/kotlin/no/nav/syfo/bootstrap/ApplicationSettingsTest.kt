@@ -17,6 +17,7 @@ import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonEmploymentSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
+import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
@@ -31,6 +32,13 @@ class ApplicationSettingsTest :
             val settings = settingsFrom(requiredEnvironment)
 
             settings shouldBe ApplicationSettings(
+                texas = TexasEnvironment(
+                    tokenIntrospectionEndpoint = "http://texas.example/introspect",
+                    tokenEndpoint = "http://texas.example/token",
+                    tokenExchangeEndpoint = "http://texas.example/exchange",
+                    exchangeTargetIsAltinnTilganger = "test-cluster:fager:arbeidsgiver-altinn-tilganger",
+                    azurePreAuthorizedApps = setOf("client-id"),
+                ),
                 aaregSettings = AaregSettings(baseUrl = "https://aareg.example", scope = "aareg-scope"),
                 altinnApiSettings = AltinnApiSettings(baseUrl = "https://altinn.example"),
                 altinnAuthorizationSettings = settings.altinnAuthorizationSettings,
@@ -113,6 +121,11 @@ class ApplicationSettingsTest :
 
             failure.message shouldBe "Invalid configuration: " +
                 "altinn.baseUrl is missing, " +
+                "texas.tokenIntrospectionEndpoint is missing, " +
+                "texas.tokenEndpoint is missing, " +
+                "texas.tokenExchangeEndpoint is missing, " +
+                "nais.clusterName is missing, " +
+                "texas.azurePreAuthorizedApps is missing, " +
                 "aareg.baseUrl is missing, " +
                 "aareg.scope is missing, " +
                 "altinn.authorization.subscriptionKey is missing, " +
@@ -129,22 +142,25 @@ class ApplicationSettingsTest :
                 "leaderElection.sseUrl is missing"
         }
 
-        test("startup reports invalid durations and numbers without their values") {
+        test("startup reports invalid values without the values") {
             val failure = shouldThrow<IllegalStateException> {
                 settingsFrom(
                     requiredEnvironment + mapOf(
                         "DIALOGPORTEN_UPDATE_POLLING_DELAY" to "soon",
                         "DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS" to "sixteen",
+                        "AZURE_APP_PRE_AUTHORIZED_APPS" to "secret-client-list",
                     ),
                 )
             }
 
             assertSoftly(failure.message.orEmpty()) {
                 this shouldBe "Invalid configuration: " +
+                    "texas.azurePreAuthorizedApps is not a valid JSON list of applications, " +
                     "narmestelederbehov.dialogUpdatePollingInterval is not a valid duration, " +
                     "narmestelederbehov.expiry.daysAfterTom is not a whole number"
                 this shouldNotContain "soon"
                 this shouldNotContain "sixteen"
+                this shouldNotContain "secret-client-list"
             }
         }
 
@@ -176,6 +192,11 @@ private val requiredEnvironment = mapOf(
     "EREG_BASE_URL" to "https://ereg.example",
     "PDL_BASE_URL" to "https://pdl.example",
     "PDL_SCOPE" to "pdl-scope",
+    "NAIS_CLUSTER_NAME" to "test-cluster",
+    "NAIS_TOKEN_INTROSPECTION_ENDPOINT" to "http://texas.example/introspect",
+    "NAIS_TOKEN_ENDPOINT" to "http://texas.example/token",
+    "NAIS_TOKEN_EXCHANGE_ENDPOINT" to "http://texas.example/exchange",
+    "AZURE_APP_PRE_AUTHORIZED_APPS" to """[{"name": "test-cluster:team:app", "clientId": "client-id"}]""",
 )
 
 private fun settingsFrom(environment: Map<String, String>) = ApplicationSettings.from(applicationConfigWithEnvironment(environment))

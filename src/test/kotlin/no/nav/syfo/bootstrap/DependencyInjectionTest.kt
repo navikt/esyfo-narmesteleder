@@ -12,7 +12,6 @@ import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonDependencies
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
-import no.nav.syfo.platform.auth.texas.createForLocal
 import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.cache.createForLocal
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
@@ -85,7 +84,6 @@ private fun localApplicationModules() = applicationModules(
 private fun naisEnvironmentWithoutEnvVars() = NaisEnvironment(
     settings = ApplicationSettings.from(applicationConfigWithEnvironment(requiredNaisVariables)),
     database = DatabaseEnvironment.createForLocal(),
-    texas = TexasEnvironment.createForLocal(),
     valkeyEnvironment = ValkeyEnvironment.createForLocal(),
     kafka = KafkaEnvironment.createForLocal(),
 )
@@ -106,6 +104,11 @@ private val requiredNaisVariables = mapOf(
     "EREG_BASE_URL" to "https://ereg.example",
     "PDL_BASE_URL" to "https://pdl.example",
     "PDL_SCOPE" to "pdl-scope",
+    "NAIS_CLUSTER_NAME" to "test-cluster",
+    "NAIS_TOKEN_INTROSPECTION_ENDPOINT" to "http://texas.example/introspect",
+    "NAIS_TOKEN_ENDPOINT" to "http://texas.example/token",
+    "NAIS_TOKEN_EXCHANGE_ENDPOINT" to "http://texas.example/exchange",
+    "AZURE_APP_PRE_AUTHORIZED_APPS" to """[{"name": "test-cluster:team:app", "clientId": "client-id"}]""",
 )
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.

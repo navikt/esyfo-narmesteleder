@@ -11,9 +11,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import no.nav.syfo.platform.auth.texas.createForLocal
+import no.nav.syfo.platform.auth.texas.localTexasEnvironment
 import no.nav.syfo.platform.http.httpClientDefault
 
 internal const val TEST_SYSTEM_TOKEN = "system-token"
@@ -48,4 +47,4 @@ internal fun MockRequestHandleScope.respondJson(content: String, status: HttpSta
     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
 )
 
-private val texasEnvironment = TexasEnvironment.createForLocal()
+private val texasEnvironment = localTexasEnvironment()

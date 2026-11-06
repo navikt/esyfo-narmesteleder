@@ -40,9 +40,6 @@ logger.logEvent(dialogportenDialogFailed, details, cause = exception)
   TechnicalFailure stack stay in the app.
 - Kafka consumers share the events in `platform/kafka/KafkaEvents.kt` and
   log them through `KafkaEventLogger`, which adds a bounded `consumer` field.
-  `ConsumerRunner` logs its own lifecycle events from
-  `KafkaConsumerLogEvents.kt`; `consumer` comes from its MDC. Both set
-  `upstream=kafka` unless the cause carries an `UpstreamFailure`.
 - Code already using `applicationLogger` keeps using it.
 
 ## Who logs

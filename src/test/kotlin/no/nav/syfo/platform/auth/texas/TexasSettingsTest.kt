@@ -3,7 +3,7 @@ package no.nav.syfo.platform.auth.texas
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
-class TexasEnvironmentTest :
+class TexasSettingsTest :
     FunSpec({
         test("parses client IDs from the NAIS Azure AD pre-authorized applications payload") {
             val configuredApps = """

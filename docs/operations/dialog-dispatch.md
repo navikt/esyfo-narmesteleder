@@ -83,7 +83,7 @@ Replace the bound UUID through a prepared statement; inspect the target first.
 No new HTTP admin endpoint is introduced.
 
 ```sql
-UPDATE nl_dialog_dispatch
+UPDATE dialog_dispatch
 SET status = 'READY', revision = revision + 1,
     available_at = clock_timestamp(), attempts = 0, last_failure = NULL
 WHERE behov_id = ? AND status = 'PARKED' AND claim_token IS NULL;

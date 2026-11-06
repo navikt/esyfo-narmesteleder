@@ -8,7 +8,6 @@ import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.observability.EventContext
 import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.logEvent
-import no.nav.syfo.platform.upstream.UpstreamFailure
 import org.slf4j.Logger
 import org.slf4j.event.Level
 
@@ -61,13 +60,10 @@ internal class KafkaEventLogger(private val logger: ApplicationLogger, private v
             errorCode = errorCode,
         ),
         cause = cause,
-        upstreamFailure = cause?.reportedUpstreamFailure(),
+        // Use cases report upstream failures as a field rather than in the cause chain.
+        upstreamFailure = cause?.causeChain()?.firstNotNullOfOrNull { (it as? ApiErrorException)?.upstreamFailure },
     )
 }
-
-// Use cases report upstream failures as a field rather than in the cause chain.
-internal fun Throwable.reportedUpstreamFailure(): UpstreamFailure? = causeChain()
-    .firstNotNullOfOrNull { (it as? ApiErrorException)?.upstreamFailure }
 
 private val kafkaFields: Map<String, (KafkaEventDetails) -> Any?> = mapOf(
     "consumer" to { it.consumer.name },

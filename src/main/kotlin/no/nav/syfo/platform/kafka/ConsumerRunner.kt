@@ -12,11 +12,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withTimeoutOrNull
+import no.nav.esyfo.observability.causeChain
+import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.observability.Heartbeat
 import no.nav.syfo.platform.observability.METRICS_NS
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
+import no.nav.syfo.platform.upstream.UpstreamFailure
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
@@ -249,3 +252,7 @@ class ConsumerRunner<K, V>(
             }
     }
 }
+
+// Use cases report upstream failures as a field rather than in the cause chain.
+private fun Throwable.reportedUpstreamFailure(): UpstreamFailure? = causeChain()
+    .firstNotNullOfOrNull { (it as? ApiErrorException)?.upstreamFailure }

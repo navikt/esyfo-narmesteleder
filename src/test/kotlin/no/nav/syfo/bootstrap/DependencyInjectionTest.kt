@@ -13,10 +13,7 @@ import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.cache.ValkeyEnvironment
-import no.nav.syfo.platform.cache.createForLocal
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
-import no.nav.syfo.platform.database.DatabaseEnvironment
-import no.nav.syfo.platform.database.createForLocal
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.createForLocal
 import no.nav.syfo.sykmelding.sykmeldingDependencies
@@ -83,8 +80,6 @@ private fun localApplicationModules() = applicationModules(
 // NaisEnvironment reads infrastructure from env vars, so supply local values and synthetic required settings.
 private fun naisEnvironmentWithoutEnvVars() = NaisEnvironment(
     settings = ApplicationSettings.from(applicationConfigWithEnvironment(requiredNaisVariables)),
-    database = DatabaseEnvironment.createForLocal(),
-    valkeyEnvironment = ValkeyEnvironment.createForLocal(),
     kafka = KafkaEnvironment.createForLocal(),
 )
 
@@ -109,6 +104,19 @@ private val requiredNaisVariables = mapOf(
     "NAIS_TOKEN_ENDPOINT" to "http://texas.example/token",
     "NAIS_TOKEN_EXCHANGE_ENDPOINT" to "http://texas.example/exchange",
     "AZURE_APP_PRE_AUTHORIZED_APPS" to """[{"name": "test-cluster:team:app", "clientId": "client-id"}]""",
+    "NARMESTELEDER_DB_HOST" to "db.example",
+    "NARMESTELEDER_DB_PORT" to "5432",
+    "NARMESTELEDER_DB_DATABASE" to "narmesteleder",
+    "NARMESTELEDER_DB_USERNAME" to "db-user",
+    "NARMESTELEDER_DB_PASSWORD" to "db-password",
+    "NARMESTELEDER_DB_SSLCERT" to "/certs/cert.pem",
+    "NARMESTELEDER_DB_SSLKEY_PK8" to "/certs/key.pk8",
+    "NARMESTELEDER_DB_SSLROOTCERT" to "/certs/root.pem",
+    "NARMESTELEDER_DB_SSLMODE" to "verify-ca",
+    "VALKEY_HOST_FELLES_CACHE" to "valkey.example",
+    "VALKEY_PORT_FELLES_CACHE" to "26379",
+    "VALKEY_USERNAME_FELLES_CACHE" to "valkey-user",
+    "VALKEY_PASSWORD_FELLES_CACHE" to "valkey-password",
 )
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.

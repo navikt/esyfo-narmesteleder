@@ -19,7 +19,11 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.Narmestelederrelas
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
+import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
+import no.nav.syfo.platform.config.localApplicationConfig
+import no.nav.syfo.platform.database.DatabaseEnvironment
+import no.nav.syfo.platform.database.DatabaseSsl
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 import kotlin.time.Duration.Companion.hours
@@ -32,6 +36,21 @@ class ApplicationSettingsTest :
             val settings = settingsFrom(requiredEnvironment)
 
             settings shouldBe ApplicationSettings(
+                database = DatabaseEnvironment(
+                    host = "db.example",
+                    port = "5432",
+                    name = "narmesteleder",
+                    username = "db-user",
+                    password = "db-password",
+                    ssl = DatabaseSsl(cert = "/certs/cert.pem", key = "/certs/key.pk8", rootCert = "/certs/root.pem", mode = "verify-ca"),
+                ),
+                valkey = ValkeyEnvironment(
+                    host = "valkey.example",
+                    port = 26379,
+                    username = "valkey-user",
+                    password = "valkey-password",
+                    ssl = true,
+                ),
                 texas = TexasEnvironment(
                     tokenIntrospectionEndpoint = "http://texas.example/introspect",
                     tokenEndpoint = "http://texas.example/token",
@@ -121,6 +140,19 @@ class ApplicationSettingsTest :
 
             failure.message shouldBe "Invalid configuration: " +
                 "altinn.baseUrl is missing, " +
+                "database.host is missing, " +
+                "database.port is missing, " +
+                "database.name is missing, " +
+                "database.username is missing, " +
+                "database.password is missing, " +
+                "database.ssl.cert is missing, " +
+                "database.ssl.key is missing, " +
+                "database.ssl.rootCert is missing, " +
+                "database.ssl.mode is missing, " +
+                "valkey.host is missing, " +
+                "valkey.port is missing, " +
+                "valkey.username is missing, " +
+                "valkey.password is missing, " +
                 "texas.tokenIntrospectionEndpoint is missing, " +
                 "texas.tokenEndpoint is missing, " +
                 "texas.tokenExchangeEndpoint is missing, " +
@@ -164,6 +196,26 @@ class ApplicationSettingsTest :
             }
         }
 
+        test("the database connects with the NAIS certificates and keeps the passwords out of logs") {
+            val settings = settingsFrom(requiredEnvironment)
+
+            assertSoftly {
+                settings.database.jdbcUrl() shouldBe "jdbc:postgresql://db.example:5432/narmesteleder" +
+                    "?ssl=on&sslrootcert=/certs/root.pem&sslcert=/certs/cert.pem&sslmode=verify-ca&sslkey=/certs/key.pk8"
+                settings.toString() shouldNotContain "db-password"
+                settings.toString() shouldNotContain "valkey-password"
+            }
+        }
+
+        test("local config connects to the database and Valkey without TLS") {
+            val settings = ApplicationSettings.from(localApplicationConfig())
+
+            assertSoftly {
+                settings.database.jdbcUrl() shouldBe "jdbc:postgresql://localhost:5432/esyfo-narmesteleder_dev"
+                settings.valkey.ssl shouldBe false
+            }
+        }
+
         test("startup still rejects simultaneous employment revocation and source observation") {
             shouldThrow<IllegalArgumentException> {
                 settingsFrom(
@@ -197,6 +249,19 @@ private val requiredEnvironment = mapOf(
     "NAIS_TOKEN_ENDPOINT" to "http://texas.example/token",
     "NAIS_TOKEN_EXCHANGE_ENDPOINT" to "http://texas.example/exchange",
     "AZURE_APP_PRE_AUTHORIZED_APPS" to """[{"name": "test-cluster:team:app", "clientId": "client-id"}]""",
+    "NARMESTELEDER_DB_HOST" to "db.example",
+    "NARMESTELEDER_DB_PORT" to "5432",
+    "NARMESTELEDER_DB_DATABASE" to "narmesteleder",
+    "NARMESTELEDER_DB_USERNAME" to "db-user",
+    "NARMESTELEDER_DB_PASSWORD" to "db-password",
+    "NARMESTELEDER_DB_SSLCERT" to "/certs/cert.pem",
+    "NARMESTELEDER_DB_SSLKEY_PK8" to "/certs/key.pk8",
+    "NARMESTELEDER_DB_SSLROOTCERT" to "/certs/root.pem",
+    "NARMESTELEDER_DB_SSLMODE" to "verify-ca",
+    "VALKEY_HOST_FELLES_CACHE" to "valkey.example",
+    "VALKEY_PORT_FELLES_CACHE" to "26379",
+    "VALKEY_USERNAME_FELLES_CACHE" to "valkey-user",
+    "VALKEY_PASSWORD_FELLES_CACHE" to "valkey-password",
 )
 
 private fun settingsFrom(environment: Map<String, String>) = ApplicationSettings.from(applicationConfigWithEnvironment(environment))

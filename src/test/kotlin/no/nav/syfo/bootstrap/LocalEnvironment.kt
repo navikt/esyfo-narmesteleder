@@ -16,10 +16,8 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAcc
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.cache.ValkeyEnvironment
-import no.nav.syfo.platform.cache.createForLocal
 import no.nav.syfo.platform.config.localApplicationConfig
 import no.nav.syfo.platform.database.DatabaseEnvironment
-import no.nav.syfo.platform.database.createForLocal
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.createForLocal
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
@@ -28,9 +26,9 @@ import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 /** Settings for local runs and tests. Production always uses [NaisEnvironment]. */
 data class LocalEnvironment(
     private val settings: ApplicationSettings = ApplicationSettings.from(localApplicationConfig()),
-    override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
+    override val database: DatabaseEnvironment = settings.database,
     override val texas: TexasEnvironment = settings.texas,
-    override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createForLocal(),
+    override val valkeyEnvironment: ValkeyEnvironment = settings.valkey,
     override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal(),
     override val aaregSettings: AaregSettings = settings.aaregSettings,
     override val altinnApiSettings: AltinnApiSettings = settings.altinnApiSettings,

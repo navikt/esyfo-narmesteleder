@@ -18,12 +18,17 @@ import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.auth.texas.altinnTilgangerExchangeTarget
 import no.nav.syfo.platform.auth.texas.preAuthorizedAppsFromJsonOrNull
+import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.config.ConfigReader
+import no.nav.syfo.platform.database.DatabaseEnvironment
+import no.nav.syfo.platform.database.DatabaseSsl
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 
 /** Application settings read from `application.conf`. */
 data class ApplicationSettings(
+    val database: DatabaseEnvironment,
+    val valkey: ValkeyEnvironment,
     val texas: TexasEnvironment,
     val aaregSettings: AaregSettings,
     val altinnApiSettings: AltinnApiSettings,
@@ -47,6 +52,30 @@ data class ApplicationSettings(
         fun from(config: ApplicationConfig): ApplicationSettings = ConfigReader.read(config) {
             val altinnBaseUrl = string("altinn.baseUrl")
             ApplicationSettings(
+                database = DatabaseEnvironment(
+                    host = string("database.host"),
+                    port = string("database.port"),
+                    name = string("database.name"),
+                    username = string("database.username"),
+                    password = string("database.password"),
+                    ssl = if (flag("database.ssl.enabled")) {
+                        DatabaseSsl(
+                            cert = string("database.ssl.cert"),
+                            key = string("database.ssl.key"),
+                            rootCert = string("database.ssl.rootCert"),
+                            mode = string("database.ssl.mode"),
+                        )
+                    } else {
+                        null
+                    },
+                ),
+                valkey = ValkeyEnvironment(
+                    host = string("valkey.host"),
+                    port = int("valkey.port"),
+                    username = string("valkey.username"),
+                    password = string("valkey.password"),
+                    ssl = flag("valkey.ssl"),
+                ),
                 texas = TexasEnvironment(
                     tokenIntrospectionEndpoint = string("texas.tokenIntrospectionEndpoint"),
                     tokenEndpoint = string("texas.tokenEndpoint"),

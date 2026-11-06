@@ -1,9 +1,4 @@
-
 package no.nav.syfo.platform.database
-
-import no.nav.syfo.platform.config.getEnvVar
-
-const val NAIS_DATABASE_ENV_PREFIX = "NARMESTELEDER_DB"
 
 data class DatabaseEnvironment(
     val host: String,
@@ -11,33 +6,22 @@ data class DatabaseEnvironment(
     val name: String,
     val username: String,
     val password: String,
-    val sslcert: String?,
-    val sslkey: String,
-    val sslrootcert: String,
-    val sslmode: String,
+    /** Null only for local runs, where Postgres has no TLS. */
+    val ssl: DatabaseSsl?,
 ) {
     fun jdbcUrl(): String {
-        val sslsuffix = if (sslcert == null) {
-            ""
-        } else {
-            "?ssl=on&sslrootcert=$sslrootcert&sslcert=$sslcert&sslmode=$sslmode&sslkey=$sslkey"
-        }
-
-        val url = "jdbc:postgresql://$host:$port/$name$sslsuffix"
-        return url
+        val sslSuffix = ssl?.run { "?ssl=on&sslrootcert=$rootCert&sslcert=$cert&sslmode=$mode&sslkey=$key" }.orEmpty()
+        return "jdbc:postgresql://$host:$port/$name$sslSuffix"
     }
 
-    companion object {
-        fun createFromEnvVars() = DatabaseEnvironment(
-            host = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_HOST"),
-            port = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_PORT"),
-            name = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_DATABASE"),
-            username = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_USERNAME"),
-            password = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_PASSWORD"),
-            sslcert = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLCERT"),
-            sslkey = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLKEY_PK8"),
-            sslrootcert = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLROOTCERT"),
-            sslmode = getEnvVar("${NAIS_DATABASE_ENV_PREFIX}_SSLMODE"),
-        )
-    }
+    override fun toString() = "DatabaseEnvironment(host=$host, port=$port, name=$name, username=$username, " +
+        "password=[REDACTED], ssl=$ssl)"
 }
+
+/** Paths to the certificate files NAIS mounts for Cloud SQL, and the SSL mode. */
+data class DatabaseSsl(
+    val cert: String,
+    val key: String,
+    val rootCert: String,
+    val mode: String,
+)

@@ -35,7 +35,7 @@ private fun settingsFromManifest(path: String): ApplicationSettings = Applicatio
 
 /**
  * The variables NAIS gives the pod: the manifest's `env`, its `envFrom` secrets, the cluster name and those injected by
- * `leaderElection: true` and the Texas annotation. Injected values are synthetic.
+ * `leaderElection: true`, the Texas annotation, `gcp.sqlInstances` and `valkey`. Injected values are synthetic.
  */
 @Suppress("UNCHECKED_CAST")
 private fun manifestEnvironment(path: String): Map<String, String> {
@@ -45,6 +45,11 @@ private fun manifestEnvironment(path: String): Map<String, String> {
     val annotations = metadata["annotations"] as Map<String, Any?>? ?: emptyMap()
     val spec = manifest.getValue("spec") as Map<String, Any?>
     val texas = if (annotations["texas.nais.io/enabled"] == "true") texasVariables else emptyMap()
+    val gcp = spec["gcp"] as Map<String, Any?>? ?: emptyMap()
+    val databasePrefixes = (gcp["sqlInstances"] as List<Map<String, Any?>>? ?: emptyList())
+        .flatMap { it["databases"] as List<Map<String, Any?>> }
+        .mapNotNull { it["envVarPrefix"]?.toString() }
+    val valkeyInstances = (spec["valkey"] as List<Map<String, Any?>>? ?: emptyList()).map { it.getValue("instance").toString() }
     val env = (spec["env"] as List<Map<String, Any?>>).associate { it.getValue("name").toString() to it["value"].toString() }
     val leaderElection = if (spec["leaderElection"] == true) {
         mapOf("ELECTOR_PATH" to "elector-path", "ELECTOR_SSE_URL" to "http://elector.example/sse")
@@ -52,7 +57,16 @@ private fun manifestEnvironment(path: String): Map<String, String> {
         emptyMap()
     }
     val secrets = (spec["envFrom"] as List<Map<String, Any?>>).flatMap { secretVariables.getValue(it.getValue("secret").toString()) }
-    return env + leaderElection + texas + secrets.associateWith { "synthetic-secret" } + ("NAIS_CLUSTER_NAME" to "test-cluster")
+    return env + leaderElection + texas + secrets.associateWith { "synthetic-secret" } + ("NAIS_CLUSTER_NAME" to "test-cluster") +
+        databasePrefixes.flatMap(::databaseVariables) + valkeyInstances.flatMap(::valkeyVariables)
+}
+
+private fun databaseVariables(prefix: String) = listOf("HOST", "DATABASE", "USERNAME", "PASSWORD", "SSLCERT", "SSLKEY_PK8", "SSLROOTCERT", "SSLMODE").map { "${prefix}_$it" to "synthetic" } +
+    ("${prefix}_PORT" to "5432")
+
+private fun valkeyVariables(instance: String): List<Pair<String, String>> {
+    val suffix = instance.uppercase().replace('-', '_')
+    return listOf("HOST", "USERNAME", "PASSWORD").map { "VALKEY_${it}_$suffix" to "synthetic" } + ("VALKEY_PORT_$suffix" to "26379")
 }
 
 private val texasVariables = listOf("NAIS_TOKEN_INTROSPECTION_ENDPOINT", "NAIS_TOKEN_ENDPOINT", "NAIS_TOKEN_EXCHANGE_ENDPOINT")

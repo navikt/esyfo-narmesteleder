@@ -19,19 +19,19 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(settings.narmestelederrelasjonEmploymentSettings)
-    narmestelederbehovModule(settings.narmestelederbehovSettings)
+    narmestelederrelasjonModule(settings.narmestelederrelasjon.employmentCheck)
+    narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()
     sykmeldingModule()
     configureKafkaConsumers(
         kafkaSettings = settings.kafka,
-        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjonKafkaSettings,
-        sykmeldingKafkaSettings = settings.sykmeldingKafkaSettings,
+        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjon.kafka,
+        sykmeldingKafkaSettings = settings.sykmelding,
     )
     configureBackgroundTasks(
-        dialogportenTaskSettings = settings.dialogportenTaskSettings,
-        maintenanceTaskSettings = settings.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = settings.personEnrichmentTaskSettings,
+        dialogportenSettings = settings.narmestelederbehov.dialogporten,
+        maintenanceTaskSettings = settings.maintenanceTask,
+        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
     )
-    configureEmploymentChecks(settings.narmestelederrelasjonEmploymentSettings)
+    configureEmploymentChecks(settings.narmestelederrelasjon.employmentCheck)
 }

@@ -125,8 +125,8 @@ private val requiredNaisVariables = mapOf(
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
 private fun capabilityDependencies(settings: ApplicationSettings) = listOf(
     organisasjonstilgangDependencies(),
-    narmestelederrelasjonDependencies(settings.narmestelederrelasjonEmploymentSettings),
-    narmestelederbehovDependencies(settings.narmestelederbehovSettings),
+    narmestelederrelasjonDependencies(settings.narmestelederrelasjon.employmentCheck),
+    narmestelederbehovDependencies(settings.narmestelederbehov),
     narmestelederstatistikkDependencies(),
     sykmeldingDependencies(),
 )
@@ -134,8 +134,8 @@ private fun capabilityDependencies(settings: ApplicationSettings) = listOf(
 // Read from the real modules, so newly added clients are checked automatically.
 private fun replaceableTypes(): Set<KClass<*>> {
     val settings = localApplicationSettings()
-    return externalClientsModule(settings.httpClientsSettings()).definedTypes() +
-        leaderElectionModule(settings.leaderElectionSettings).definedTypes()
+    return externalClientsModule(settings).definedTypes() +
+        leaderElectionModule(settings.leaderElection).definedTypes()
 }
 
 private fun replaceableImplementations(modules: List<Module>): List<KClass<*>> {

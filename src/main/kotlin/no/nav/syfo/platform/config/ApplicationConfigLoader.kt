@@ -22,7 +22,7 @@ fun parseConfigResources(vararg resources: String): Config = resources
  * Error messages name the config path, never the value, because values may be sensitive.
  */
 class ConfigReader private constructor(private val config: ApplicationConfig) {
-    private val errors = mutableListOf<String>()
+    private val errors = mutableSetOf<String>()
 
     fun string(path: String): String = config.propertyOrNull(path)?.getString() ?: invalid(path, "is missing", "")
 

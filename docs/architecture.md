@@ -398,35 +398,39 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(settings.narmestelederrelasjonEmploymentSettings)
-    narmestelederbehovModule(settings.narmestelederbehovSettings)
+    narmestelederrelasjonModule(settings.narmestelederrelasjon.employmentCheck)
+    narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()
     sykmeldingModule()
     configureKafkaConsumers(
         kafkaSettings = settings.kafka,
-        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjonKafkaSettings,
-        sykmeldingKafkaSettings = settings.sykmeldingKafkaSettings,
+        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjon.kafka,
+        sykmeldingKafkaSettings = settings.sykmelding,
     )
     configureBackgroundTasks(
-        dialogportenTaskSettings = settings.dialogportenTaskSettings,
-        maintenanceTaskSettings = settings.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = settings.personEnrichmentTaskSettings,
+        dialogportenSettings = settings.narmestelederbehov.dialogporten,
+        maintenanceTaskSettings = settings.maintenanceTask,
+        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
     )
-    configureEmploymentChecks(settings.narmestelederrelasjonEmploymentSettings)
+    configureEmploymentChecks(settings.narmestelederrelasjon.employmentCheck)
 }
 ```
 
-- `ApplicationSettings` holds owner-specific settings for capabilities,
-  integrations, Kafka consumers, and platform services. `runLocal` and tests
+- `ApplicationSettings` groups settings per owner: platform services
+  (database, Valkey, Kafka, Texas, Altinn API, leader election, maintenance),
+  `IntegrationSettings` for the shared clients, and one aggregate per capability
+  (`OrganisasjonstilgangSettings`, `NarmestelederbehovSettings`,
+  `NarmestelederrelasjonSettings`, `SykmeldingKafkaSettings`). Each group is read
+  by its own `ConfigReader` extension in a `*SettingsReader.kt` file in
+  bootstrap, so capabilities never depend on the config library. `runLocal` and tests
   build it from `application-local.conf` with `localApplicationSettings()` in
   the test sources. `runLocal` also replaces the external clients and leader
   election with fakes, so production code has no local branches. Bootstrap
   passes each module only the settings it needs; configuration stays out of
   domain and use-case code.
-- `applicationModules` constructs `HttpClientsSettings` in `DependencyInjection`
-  to group the HTTP client module's inputs. This bootstrap-only grouping contains
-  owner-specific settings, including `AltinnApiSettings` and `AltinnAccessSettings`;
-  individual clients still receive only their own values.
+- `externalClientsModule` receives `ApplicationSettings` and hands each
+  external client only its own group, such as `IntegrationSettings.aareg` or
+  `OrganisasjonstilgangSettings.altinnTilganger`.
 - `platformModule` installs Koin once with the shared Koin modules
   (`applicationModules`), configures Texas `Authentication` providers, installs
   CallId, content negotiation and StatusPages, and registers pod and metric

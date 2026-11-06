@@ -5,17 +5,20 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import no.nav.syfo.integration.IntegrationSettings
 import no.nav.syfo.integration.aareg.AaregSettings
 import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteSettings
 import no.nav.syfo.integration.ereg.EregSettings
 import no.nav.syfo.integration.pdl.PdlSettings
 import no.nav.syfo.narmestelederbehov.NarmestelederbehovSettings
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
-import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenTaskSettings
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenSettings
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonEmploymentSettings
+import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
+import no.nav.syfo.organisasjonstilgang.OrganisasjonstilgangSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
 import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
@@ -68,40 +71,45 @@ class ApplicationSettingsTest :
                     exchangeTargetIsAltinnTilganger = "test-cluster:fager:arbeidsgiver-altinn-tilganger",
                     azurePreAuthorizedApps = setOf("client-id"),
                 ),
-                aaregSettings = AaregSettings(baseUrl = "https://aareg.example", scope = "aareg-scope"),
-                altinnApiSettings = AltinnApiSettings(baseUrl = "https://altinn.example"),
-                altinnAuthorizationSettings = settings.altinnAuthorizationSettings,
-                altinnAccessSettings = AltinnAccessSettings(baseUrl = "https://altinn-tilganger.example"),
-                dinesykmeldteSettings = DinesykmeldteSettings(baseUrl = "https://dinesykmeldte.example", scope = "dinesykmeldte-scope"),
-                dialogportenSettings = DialogportenSettings(baseUrl = "https://altinn.example"),
-                eregSettings = EregSettings(baseUrl = "https://ereg.example"),
-                pdlSettings = PdlSettings(baseUrl = "https://pdl.example", scope = "pdl-scope"),
-                narmestelederbehovSettings = NarmestelederbehovSettings(
-                    persistLeesahNlBehov = true,
-                    publicIngressUrl = "https://ingress.example",
-                    frontendBaseUrl = "https://frontend.example",
-                    dialogUpdatePollingInterval = 5.minutes,
-                ),
-                narmestelederbehovExpirySettings = NarmestelederbehovExpirySettings(daysAfterTom = 16),
-                narmestelederrelasjonEmploymentSettings = NarmestelederrelasjonEmploymentSettings(
-                    employmentCheckEnabled = false,
-                    employmentCheckObserveSourceEnabled = false,
-                    employmentCheckRevokeEnabled = false,
-                ),
-                narmestelederrelasjonKafkaSettings = NarmestelederrelasjonKafkaSettings(
-                    persistRegister = false,
-                    pdlConsumerEnabled = false,
-                ),
-                sykmeldingKafkaSettings = SykmeldingKafkaSettings(persistSendtSykmelding = false),
-                dialogportenTaskSettings = DialogportenTaskSettings(enabled = true),
-                maintenanceTaskSettings = MaintenanceTaskSettings(enabled = false, interval = 24.hours),
-                personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = false, pollingInterval = 5.minutes),
-                leaderElectionSettings = LeaderElectionSettings(
+                altinnApi = AltinnApiSettings(baseUrl = "https://altinn.example"),
+                leaderElection = LeaderElectionSettings(
                     electorPath = "elector-path",
                     electorSseUrl = "http://elector.example/sse",
                 ),
+                maintenanceTask = MaintenanceTaskSettings(enabled = false, interval = 24.hours),
+                integrations = IntegrationSettings(
+                    aareg = AaregSettings(baseUrl = "https://aareg.example", scope = "aareg-scope"),
+                    dinesykmeldte = DinesykmeldteSettings(baseUrl = "https://dinesykmeldte.example", scope = "dinesykmeldte-scope"),
+                    ereg = EregSettings(baseUrl = "https://ereg.example"),
+                    pdl = PdlSettings(baseUrl = "https://pdl.example", scope = "pdl-scope"),
+                ),
+                organisasjonstilgang = OrganisasjonstilgangSettings(
+                    altinnAuthorization = settings.organisasjonstilgang.altinnAuthorization,
+                    altinnTilganger = AltinnAccessSettings(baseUrl = "https://altinn-tilganger.example"),
+                ),
+                narmestelederbehov = NarmestelederbehovSettings(
+                    creation = NarmestelederbehovCreationSettings(persistenceEnabled = true),
+                    expiry = NarmestelederbehovExpirySettings(daysAfterTom = 16),
+                    dialogporten = DialogportenSettings(
+                        baseUrl = "https://altinn.example",
+                        tasksEnabled = true,
+                        publicIngressUrl = "https://ingress.example",
+                        frontendBaseUrl = "https://frontend.example",
+                        updatePollingInterval = 5.minutes,
+                    ),
+                ),
+                narmestelederrelasjon = NarmestelederrelasjonSettings(
+                    employmentCheck = NarmestelederrelasjonEmploymentSettings(
+                        employmentCheckEnabled = false,
+                        employmentCheckObserveSourceEnabled = false,
+                        employmentCheckRevokeEnabled = false,
+                    ),
+                    kafka = NarmestelederrelasjonKafkaSettings(persistRegister = false, pdlConsumerEnabled = false),
+                    personEnrichmentTask = PersonEnrichmentTaskSettings(enabled = false, pollingInterval = 5.minutes),
+                ),
+                sykmelding = SykmeldingKafkaSettings(persistSendtSykmelding = false),
             )
-            settings.altinnAuthorizationSettings.subscriptionKey shouldBe "subscription-key"
+            settings.organisasjonstilgang.altinnAuthorization.subscriptionKey shouldBe "subscription-key"
         }
 
         test("environment variables override every default in application.conf") {
@@ -121,16 +129,16 @@ class ApplicationSettingsTest :
             )
 
             assertSoftly(settingsFrom(environment)) {
-                narmestelederbehovSettings.persistLeesahNlBehov shouldBe false
-                narmestelederbehovSettings.dialogUpdatePollingInterval shouldBe 10.minutes
-                narmestelederbehovExpirySettings.daysAfterTom shouldBe 3
-                narmestelederrelasjonEmploymentSettings.employmentCheckEnabled shouldBe true
-                narmestelederrelasjonEmploymentSettings.employmentCheckObserveSourceEnabled shouldBe true
-                narmestelederrelasjonKafkaSettings.persistRegister shouldBe true
-                narmestelederrelasjonKafkaSettings.pdlConsumerEnabled shouldBe true
-                sykmeldingKafkaSettings.persistSendtSykmelding shouldBe true
-                maintenanceTaskSettings shouldBe MaintenanceTaskSettings(enabled = true, interval = 1.hours)
-                personEnrichmentTaskSettings shouldBe PersonEnrichmentTaskSettings(enabled = true, pollingInterval = 30.seconds)
+                narmestelederbehov.creation.persistenceEnabled shouldBe false
+                narmestelederbehov.dialogporten.updatePollingInterval shouldBe 10.minutes
+                narmestelederbehov.expiry.daysAfterTom shouldBe 3
+                narmestelederrelasjon.employmentCheck.employmentCheckEnabled shouldBe true
+                narmestelederrelasjon.employmentCheck.employmentCheckObserveSourceEnabled shouldBe true
+                narmestelederrelasjon.kafka.persistRegister shouldBe true
+                narmestelederrelasjon.kafka.pdlConsumerEnabled shouldBe true
+                sykmelding.persistSendtSykmelding shouldBe true
+                maintenanceTask shouldBe MaintenanceTaskSettings(enabled = true, interval = 1.hours)
+                narmestelederrelasjon.personEnrichmentTask shouldBe PersonEnrichmentTaskSettings(enabled = true, pollingInterval = 30.seconds)
             }
         }
 
@@ -140,8 +148,8 @@ class ApplicationSettingsTest :
             )
 
             assertSoftly(settings) {
-                narmestelederrelasjonEmploymentSettings.employmentCheckEnabled shouldBe true
-                sykmeldingKafkaSettings.persistSendtSykmelding shouldBe false
+                narmestelederrelasjon.employmentCheck.employmentCheckEnabled shouldBe true
+                sykmelding.persistSendtSykmelding shouldBe false
             }
         }
 
@@ -149,7 +157,6 @@ class ApplicationSettingsTest :
             val failure = shouldThrow<IllegalStateException> { settingsFrom(emptyMap()) }
 
             failure.message shouldBe "Invalid configuration: " +
-                "altinn.baseUrl is missing, " +
                 "database.host is missing, " +
                 "database.port is missing, " +
                 "database.name is missing, " +
@@ -176,20 +183,21 @@ class ApplicationSettingsTest :
                 "texas.tokenExchangeEndpoint is missing, " +
                 "nais.clusterName is missing, " +
                 "texas.azurePreAuthorizedApps is missing, " +
+                "altinn.baseUrl is missing, " +
+                "leaderElection.path is missing, " +
+                "leaderElection.sseUrl is missing, " +
                 "aareg.baseUrl is missing, " +
                 "aareg.scope is missing, " +
-                "altinn.authorization.subscriptionKey is missing, " +
-                "altinn.tilganger.baseUrl is missing, " +
                 "dinesykmeldte.baseUrl is missing, " +
                 "dinesykmeldte.scope is missing, " +
                 "ereg.baseUrl is missing, " +
                 "pdl.baseUrl is missing, " +
                 "pdl.scope is missing, " +
-                "narmestelederbehov.publicIngressUrl is missing, " +
-                "narmestelederbehov.frontendBaseUrl is missing, " +
+                "altinn.authorization.subscriptionKey is missing, " +
+                "altinn.tilganger.baseUrl is missing, " +
                 "narmestelederbehov.dialogportenTask.enabled is missing, " +
-                "leaderElection.path is missing, " +
-                "leaderElection.sseUrl is missing"
+                "narmestelederbehov.publicIngressUrl is missing, " +
+                "narmestelederbehov.frontendBaseUrl is missing"
         }
 
         test("startup reports invalid values without the values") {
@@ -206,8 +214,8 @@ class ApplicationSettingsTest :
             assertSoftly(failure.message.orEmpty()) {
                 this shouldBe "Invalid configuration: " +
                     "texas.azurePreAuthorizedApps is not a valid JSON list of applications, " +
-                    "narmestelederbehov.dialogUpdatePollingInterval is not a valid duration, " +
-                    "narmestelederbehov.expiry.daysAfterTom is not a whole number"
+                    "narmestelederbehov.expiry.daysAfterTom is not a whole number, " +
+                    "narmestelederbehov.dialogUpdatePollingInterval is not a valid duration"
                 this shouldNotContain "soon"
                 this shouldNotContain "sixteen"
                 this shouldNotContain "secret-client-list"

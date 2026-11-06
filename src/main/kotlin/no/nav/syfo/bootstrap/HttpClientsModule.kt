@@ -16,6 +16,7 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpA
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
 import no.nav.syfo.platform.auth.texas.TexasSettings
+import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.CachingAltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
@@ -24,8 +25,8 @@ import no.nav.syfo.platform.http.httpClientDefault
 import org.koin.dsl.module
 
 internal fun httpClientsModule(
-    settings: HttpClientsSettings,
     texas: TexasSettings,
+    altinnApi: AltinnApiSettings,
 ) = module {
     single { httpClientDefault() }
     single { TexasHttpClient(client = get(), environment = texas) }
@@ -33,7 +34,7 @@ internal fun httpClientsModule(
         CachingAltinnTokenSource(
             delegate = TexasAltinnTokenFetcher(
                 texasHttpClient = get(),
-                altinnBaseUrl = settings.altinnApiSettings.baseUrl,
+                altinnBaseUrl = altinnApi.baseUrl,
                 httpClient = get(),
             ),
         )
@@ -41,55 +42,55 @@ internal fun httpClientsModule(
 }
 
 /** Registers the clients for external systems. */
-internal fun externalClientsModule(settings: HttpClientsSettings) = module {
+internal fun externalClientsModule(settings: ApplicationSettings) = module {
     single<AaregClient> {
         HttpAaregClient(
-            aaregBaseUrl = settings.aaregSettings.baseUrl,
+            aaregBaseUrl = settings.integrations.aareg.baseUrl,
             texasHttpClient = get(),
-            scope = settings.aaregSettings.scope,
+            scope = settings.integrations.aareg.scope,
         )
     }
     single<DinesykmeldteClient> {
         HttpDinesykmeldteClient(
             texasHttpClient = get(),
-            scope = settings.dinesykmeldteSettings.scope,
+            scope = settings.integrations.dinesykmeldte.scope,
             httpClient = get(),
-            dinesykmeldteBaseUrl = settings.dinesykmeldteSettings.baseUrl,
+            dinesykmeldteBaseUrl = settings.integrations.dinesykmeldte.baseUrl,
         )
     }
     single<PdlClient> {
         HttpPdlClient(
             httpClient = get(),
-            pdlBaseUrl = settings.pdlSettings.baseUrl,
+            pdlBaseUrl = settings.integrations.pdl.baseUrl,
             texasHttpClient = get(),
-            scope = settings.pdlSettings.scope,
+            scope = settings.integrations.pdl.scope,
         )
     }
     single<AltinnTilgangerClient> {
         HttpAltinnTilgangerClient(
             texasClient = get(),
             httpClient = get(),
-            baseUrl = settings.altinnAccessSettings.baseUrl,
+            baseUrl = settings.organisasjonstilgang.altinnTilganger.baseUrl,
         )
     }
     single<DialogportenClient> {
         HttpDialogportenClient(
             httpClient = get(),
-            baseUrl = settings.dialogportenSettings.baseUrl,
+            baseUrl = settings.narmestelederbehov.dialogporten.baseUrl,
             altinnTokenProvider = get(),
         )
     }
     single<EregClient> {
         CachedEregClient(
-            delegate = HttpEregClient(eregBaseUrl = settings.eregSettings.baseUrl),
+            delegate = HttpEregClient(eregBaseUrl = settings.integrations.ereg.baseUrl),
             cache = get(),
         )
     }
     single<AltinnAuthorizationClient> {
         HttpAltinnAuthorizationClient(
             httpClient = get(),
-            baseUrl = settings.altinnApiSettings.baseUrl,
-            subscriptionKey = settings.altinnAuthorizationSettings.subscriptionKey,
+            baseUrl = settings.altinnApi.baseUrl,
+            subscriptionKey = settings.organisasjonstilgang.altinnAuthorization.subscriptionKey,
             altinnTokenProvider = get(),
         )
     }

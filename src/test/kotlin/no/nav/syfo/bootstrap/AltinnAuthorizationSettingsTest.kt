@@ -10,6 +10,6 @@ class AltinnAuthorizationSettingsTest :
             val subscriptionKey = "test-subscription-key"
             val settings = AltinnAuthorizationSettings(subscriptionKey)
             settings.toString() shouldNotContain subscriptionKey
-            localApplicationSettings().copy(altinnAuthorizationSettings = settings).toString() shouldNotContain subscriptionKey
+            localApplicationSettings().let { it.copy(organisasjonstilgang = it.organisasjonstilgang.copy(altinnAuthorization = settings)) }.toString() shouldNotContain subscriptionKey
         }
     })

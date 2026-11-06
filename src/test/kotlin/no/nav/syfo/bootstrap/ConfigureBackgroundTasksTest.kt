@@ -13,9 +13,9 @@ import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCas
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.application.RecordingExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.SendDialogsFixture
-import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenTaskSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.EnrichPendingRelationPersonsUseCase
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.FakeBulkPersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.InMemoryRelationPersonRepository
@@ -33,6 +33,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 private val clock = Clock.fixed(Instant.parse("2026-03-17T10:00:00Z"), ZoneOffset.UTC)
@@ -43,7 +44,7 @@ class ConfigureBackgroundTasksTest :
             val tasks = RecordingTasks()
 
             tasks.promote(
-                dialogportenTaskSettings = DialogportenTaskSettings(enabled = true),
+                dialogportenTasksEnabled = true,
                 maintenanceTaskSettings = MaintenanceTaskSettings(enabled = true, interval = 1.hours),
                 personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = true, pollingInterval = 1.hours),
             ) {
@@ -60,7 +61,7 @@ class ConfigureBackgroundTasksTest :
             val tasks = RecordingTasks()
 
             tasks.promote(
-                dialogportenTaskSettings = DialogportenTaskSettings(enabled = false),
+                dialogportenTasksEnabled = false,
                 maintenanceTaskSettings = MaintenanceTaskSettings(enabled = true, interval = 1.hours),
                 personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = true, pollingInterval = 1.hours),
             ) {
@@ -77,7 +78,7 @@ class ConfigureBackgroundTasksTest :
             val tasks = RecordingTasks()
 
             tasks.promote(
-                dialogportenTaskSettings = DialogportenTaskSettings(enabled = true),
+                dialogportenTasksEnabled = true,
                 maintenanceTaskSettings = MaintenanceTaskSettings(enabled = false, interval = 1.hours),
                 personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = false, pollingInterval = 1.hours),
             ) {
@@ -108,7 +109,7 @@ private class RecordingTasks {
     }
 
     fun promote(
-        dialogportenTaskSettings: DialogportenTaskSettings,
+        dialogportenTasksEnabled: Boolean,
         maintenanceTaskSettings: MaintenanceTaskSettings,
         personEnrichmentTaskSettings: PersonEnrichmentTaskSettings,
         startedTasksHaveRun: () -> Unit,
@@ -124,7 +125,17 @@ private class RecordingTasks {
                     ),
                 )
             }
-            configureBackgroundTasks(dialogportenTaskSettings, maintenanceTaskSettings, personEnrichmentTaskSettings)
+            configureBackgroundTasks(
+                dialogportenSettings = DialogportenSettings(
+                    baseUrl = "https://altinn.example.invalid",
+                    tasksEnabled = dialogportenTasksEnabled,
+                    publicIngressUrl = "https://api.example.invalid",
+                    frontendBaseUrl = "https://frontend.example.invalid",
+                    updatePollingInterval = 5.minutes,
+                ),
+                maintenanceTaskSettings = maintenanceTaskSettings,
+                personEnrichmentTaskSettings = personEnrichmentTaskSettings,
+            )
             monitor.raise(LeaderChangeEvent, LeaderChange.Promoted)
         }
         startApplication()

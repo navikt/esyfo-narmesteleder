@@ -24,15 +24,15 @@ internal fun applicationModules(
 ): List<Module> = listOf(
     coreModule(),
     databaseModule(settings.database),
-    httpClientsModule(settings = settings.httpClientsSettings(), texas = settings.texas),
-    externalClients ?: externalClientsModule(settings.httpClientsSettings()),
+    httpClientsModule(texas = settings.texas, altinnApi = settings.altinnApi),
+    externalClients ?: externalClientsModule(settings),
     cacheModule(settings.valkey),
     kafkaProducersModule(settings.kafka),
-    leaderElection ?: leaderElectionModule(settings.leaderElectionSettings),
+    leaderElection ?: leaderElectionModule(settings.leaderElection),
     tasksModule(
-        narmestelederbehovExpirySettings = settings.narmestelederbehovExpirySettings,
-        maintenanceTaskSettings = settings.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = settings.personEnrichmentTaskSettings,
+        narmestelederbehovExpirySettings = settings.narmestelederbehov.expiry,
+        maintenanceTaskSettings = settings.maintenanceTask,
+        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
     ),
 )
 
@@ -40,14 +40,3 @@ private fun coreModule() = module {
     single { ApplicationState() }
     single { Clock.systemDefaultZone() }
 }
-
-internal fun ApplicationSettings.httpClientsSettings() = HttpClientsSettings(
-    aaregSettings = aaregSettings,
-    altinnApiSettings = altinnApiSettings,
-    altinnAuthorizationSettings = altinnAuthorizationSettings,
-    altinnAccessSettings = altinnAccessSettings,
-    dinesykmeldteSettings = dinesykmeldteSettings,
-    dialogportenSettings = dialogportenSettings,
-    eregSettings = eregSettings,
-    pdlSettings = pdlSettings,
-)

@@ -14,16 +14,16 @@ class NaisManifestSettingsTest :
     FunSpec({
         test("the dev manifest provides every required setting and valid values") {
             assertSoftly(settingsFromManifest("nais/nais-dev.yaml")) {
-                narmestelederbehovSettings.dialogUpdatePollingInterval shouldBe 10.minutes
-                maintenanceTaskSettings.interval shouldBe 10.minutes
-                narmestelederrelasjonEmploymentSettings.employmentCheckRevokeEnabled shouldBe true
+                narmestelederbehov.dialogporten.updatePollingInterval shouldBe 10.minutes
+                maintenanceTask.interval shouldBe 10.minutes
+                narmestelederrelasjon.employmentCheck.employmentCheckRevokeEnabled shouldBe true
                 texas.azurePreAuthorizedApps.shouldNotBeEmpty()
             }
         }
 
         test("the prod manifest provides every required setting and valid values") {
             assertSoftly(settingsFromManifest("nais/nais-prod.yaml")) {
-                maintenanceTaskSettings.interval shouldBe 1.hours
+                maintenanceTask.interval shouldBe 1.hours
                 texas.azurePreAuthorizedApps.shouldNotBeEmpty()
                 kafka.shouldConsumeTopics shouldBe true
             }

@@ -7,12 +7,16 @@ import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkModule
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
 import no.nav.syfo.platform.observability.bindJvmAndProcessMetrics
 import no.nav.syfo.sykmelding.sykmeldingModule
+import org.koin.core.module.Module
 import org.koin.ktor.ext.get
 
-/** Reads the environment once, assembles the Koin graph and starts every capability. */
-fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
+/**
+ * Reads the environment once, assembles the Koin graph and starts every capability.
+ * Production always uses the real external clients; only local runs pass [externalClients] with fakes.
+ */
+fun Application.bootstrap(isLocal: Boolean = isLocalEnv(), externalClients: Module? = null) {
     val environment = loadEnvironment(isLocal)
-    platformModule(applicationModules(environment, isLocal), environment.texas.azurePreAuthorizedApps)
+    platformModule(applicationModules(environment, isLocal, externalClients), environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())

@@ -7,6 +7,12 @@ import io.ktor.server.netty.Netty
 import no.nav.syfo.bootstrap.bootstrap
 
 fun main() {
+    startServer(Application::module)
+}
+
+fun Application.module() = bootstrap()
+
+internal fun startServer(module: Application.() -> Unit) {
     val server = embeddedServer(
         Netty,
         configure = {
@@ -17,10 +23,8 @@ fun main() {
             workerGroupSize = 8
             callGroupSize = 16
         },
-        module = Application::module
+        module = module,
     )
 
     server.start(true)
 }
-
-fun Application.module() = bootstrap()

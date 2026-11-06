@@ -36,7 +36,6 @@ no.nav.syfo
 │   ├── database
 │   ├── http
 │   ├── kafka
-│   ├── local
 │   ├── observability
 │   ├── scheduling
 │   └── upstream
@@ -347,7 +346,6 @@ Contains reusable technical mechanisms without domain rules:
 - `http`: shared HTTP client construction;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics,
   including `LeaderControlledKafkaConsumer`;
-- `local`: JSON fixture loading for local adapters;
 - `observability`: metrics, health and common structured logging mechanisms;
 - `scheduling`: reusable scheduling mechanics. New scheduled work runs on
   all pods in a background loop and shares the work through database claims with a
@@ -371,7 +369,10 @@ Contains reusable technical mechanisms without domain rules:
 Owns application assembly:
 
 - parse environment variables into small typed settings;
-- select production or local adapters;
+- register the real clients for external systems. Production never selects
+  fakes; local runs and tests pass fakes from the test sources through the
+  `externalClients` parameter (`localExternalClientsModule()`, started with
+  `./gradlew runLocal`);
 - combine Koin modules;
 - start Ktor, Kafka consumers and scheduled work;
 - aggregate routes and operational endpoints.
@@ -389,9 +390,9 @@ environment once, starts the platform module and then one Ktor module per
 capability:
 
 ```kotlin
-fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
+fun Application.bootstrap(isLocal: Boolean = isLocalEnv(), externalClients: Module? = null) {
     val environment = loadEnvironment(isLocal)
-    platformModule(applicationModules(environment, isLocal))
+    platformModule(applicationModules(environment, isLocal, externalClients), environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())

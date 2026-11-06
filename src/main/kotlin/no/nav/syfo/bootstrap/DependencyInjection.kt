@@ -16,23 +16,16 @@ fun Application.configureDependencies(koinModules: List<Module>) {
     }
 }
 
-internal fun applicationModules(environment: Environment, isLocalEnv: Boolean): List<Module> = listOf(
+/** Uses the real external clients unless local runs or tests pass [externalClients] with fakes from the test sources. */
+internal fun applicationModules(
+    environment: Environment,
+    isLocalEnv: Boolean,
+    externalClients: Module? = null,
+): List<Module> = listOf(
     coreModule(),
     databaseModule(environment.database),
-    httpClientsModule(
-        settings = HttpClientsSettings(
-            aaregSettings = environment.aaregSettings,
-            altinnApiSettings = environment.altinnApiSettings,
-            altinnAuthorizationSettings = environment.altinnAuthorizationSettings,
-            altinnAccessSettings = environment.altinnAccessSettings,
-            dinesykmeldteSettings = environment.dinesykmeldteSettings,
-            dialogportenSettings = environment.dialogportenSettings,
-            eregSettings = environment.eregSettings,
-            pdlSettings = environment.pdlSettings,
-        ),
-        texas = environment.texas,
-        isLocalEnv = isLocalEnv,
-    ),
+    httpClientsModule(settings = environment.httpClientsSettings(), texas = environment.texas),
+    externalClients ?: externalClientsModule(environment.httpClientsSettings()),
     cacheModule(environment.valkeyEnvironment),
     kafkaProducersModule(environment.kafka),
     leaderElectionModule(environment.leaderElectionSettings, isLocalEnv),
@@ -47,3 +40,14 @@ private fun coreModule() = module {
     single { ApplicationState() }
     single { Clock.systemDefaultZone() }
 }
+
+private fun Environment.httpClientsSettings() = HttpClientsSettings(
+    aaregSettings = aaregSettings,
+    altinnApiSettings = altinnApiSettings,
+    altinnAuthorizationSettings = altinnAuthorizationSettings,
+    altinnAccessSettings = altinnAccessSettings,
+    dinesykmeldteSettings = dinesykmeldteSettings,
+    dialogportenSettings = dialogportenSettings,
+    eregSettings = eregSettings,
+    pdlSettings = pdlSettings,
+)

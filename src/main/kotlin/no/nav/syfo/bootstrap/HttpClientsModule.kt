@@ -15,7 +15,7 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.Altin
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.HttpAltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.HttpAltinnTilgangerClient
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.CachingAltinnTokenSource
 import no.nav.syfo.platform.auth.texas.altinn.TexasAltinnTokenFetcher
@@ -25,7 +25,7 @@ import org.koin.dsl.module
 
 internal fun httpClientsModule(
     settings: HttpClientsSettings,
-    texas: TexasEnvironment,
+    texas: TexasSettings,
 ) = module {
     single { httpClientDefault() }
     single { TexasHttpClient(client = get(), environment = texas) }

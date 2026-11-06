@@ -28,7 +28,7 @@ private val PRODUCER_DELIVERY_TIMEOUT: Duration = 120.seconds
 /** Upper bound for `send(...).get()`: blocking for metadata and buffer space, then delivery including retries. */
 val PRODUCER_MAX_SEND_DURATION: Duration = PRODUCER_MAX_BLOCK + PRODUCER_DELIVERY_TIMEOUT
 
-fun commonProperties(env: KafkaEnvironment): Properties {
+fun commonProperties(env: KafkaSettings): Properties {
     val sslConfig = env.sslConfig
 
     return HashMap<String, String>().apply {
@@ -51,7 +51,7 @@ fun commonProperties(env: KafkaEnvironment): Properties {
 }
 
 fun producerProperties(
-    env: KafkaEnvironment,
+    env: KafkaSettings,
     valueSerializer: KClass<out Serializer<out Any>>,
     keySerializer: KClass<out Serializer<out Any>> = StringSerializer::class
 ): Properties {
@@ -68,7 +68,7 @@ fun producerProperties(
 
 fun consumerProperties(
     groupId: String,
-    env: KafkaEnvironment,
+    env: KafkaSettings,
     valueDeserializer: KClass<out Deserializer<out Any>>,
     keyDeserializer: KClass<out Deserializer<out Any>> = StringDeserializer::class
 ): Properties {
@@ -86,7 +86,7 @@ fun consumerProperties(
 
 fun avroConsumerProperties(
     groupId: String,
-    env: KafkaEnvironment,
+    env: KafkaSettings,
 ): Properties {
     val consumerProperties = commonProperties(env)
     val schemaRegistryEnv = env.schemaRegistry

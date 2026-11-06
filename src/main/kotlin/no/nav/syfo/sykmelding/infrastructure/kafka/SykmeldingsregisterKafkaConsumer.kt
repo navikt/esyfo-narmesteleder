@@ -1,8 +1,8 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
 import no.nav.syfo.platform.kafka.ConsumerRunner
-import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.KafkaListener
+import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.kafka.consumerProperties
 import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
 import org.apache.kafka.clients.consumer.Consumer
@@ -27,7 +27,7 @@ class SykmeldingsregisterKafkaConsumer(
     companion object {
         const val GROUP_ID = "esyfo-narmesteleder-sykmeldingsregister-consumer"
 
-        fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = consumerProperties(
+        fun kafkaConsumerProperties(env: KafkaSettings): Properties = consumerProperties(
             env = env,
             valueDeserializer = StringDeserializer::class,
             groupId = GROUP_ID,

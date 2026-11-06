@@ -11,8 +11,8 @@ import no.nav.syfo.narmestelederbehov.narmestelederbehovDependencies
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonDependencies
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
-import no.nav.syfo.platform.cache.ValkeyEnvironment
+import no.nav.syfo.platform.auth.texas.TexasSettings
+import no.nav.syfo.platform.cache.ValkeySettings
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.sykmelding.sykmeldingDependencies
 import org.apache.kafka.clients.producer.Producer
@@ -160,8 +160,8 @@ private fun Any.unwrapCache(): Any = when (this) {
 private val valuesNotRegisteredInKoin = listOf(
     Boolean::class,
     Duration::class,
-    TexasEnvironment::class,
-    ValkeyEnvironment::class,
+    TexasSettings::class,
+    ValkeySettings::class,
     HttpClientEngine::class,
     Producer::class,
 )

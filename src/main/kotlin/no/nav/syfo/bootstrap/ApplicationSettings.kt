@@ -14,26 +14,26 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSett
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.auth.texas.altinnTilgangerExchangeTarget
 import no.nav.syfo.platform.auth.texas.preAuthorizedAppsFromJsonOrNull
-import no.nav.syfo.platform.cache.ValkeyEnvironment
+import no.nav.syfo.platform.cache.ValkeySettings
 import no.nav.syfo.platform.config.ConfigReader
-import no.nav.syfo.platform.database.DatabaseEnvironment
+import no.nav.syfo.platform.database.DatabaseSettings
 import no.nav.syfo.platform.database.DatabaseSsl
-import no.nav.syfo.platform.kafka.KafkaEnvironment
-import no.nav.syfo.platform.kafka.KafkaSchemaRegistryEnv
-import no.nav.syfo.platform.kafka.KafkaSslEnv
+import no.nav.syfo.platform.kafka.KafkaSchemaRegistrySettings
+import no.nav.syfo.platform.kafka.KafkaSettings
+import no.nav.syfo.platform.kafka.KafkaSslSettings
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 
 /** Application settings read from `application.conf`. */
 data class ApplicationSettings(
-    val database: DatabaseEnvironment,
-    val valkey: ValkeyEnvironment,
-    val kafka: KafkaEnvironment,
-    val texas: TexasEnvironment,
+    val database: DatabaseSettings,
+    val valkey: ValkeySettings,
+    val kafka: KafkaSettings,
+    val texas: TexasSettings,
     val aaregSettings: AaregSettings,
     val altinnApiSettings: AltinnApiSettings,
     val altinnAuthorizationSettings: AltinnAuthorizationSettings,
@@ -56,7 +56,7 @@ data class ApplicationSettings(
         fun from(config: ApplicationConfig): ApplicationSettings = ConfigReader.read(config) {
             val altinnBaseUrl = string("altinn.baseUrl")
             ApplicationSettings(
-                database = DatabaseEnvironment(
+                database = DatabaseSettings(
                     host = string("database.host"),
                     port = string("database.port"),
                     name = string("database.name"),
@@ -73,18 +73,18 @@ data class ApplicationSettings(
                         null
                     },
                 ),
-                valkey = ValkeyEnvironment(
+                valkey = ValkeySettings(
                     host = string("valkey.host"),
                     port = int("valkey.port"),
                     username = string("valkey.username"),
                     password = string("valkey.password"),
                     ssl = flag("valkey.ssl"),
                 ),
-                kafka = KafkaEnvironment(
+                kafka = KafkaSettings(
                     brokerUrl = string("kafka.brokers"),
                     schemaRegistry = schemaRegistry(),
                     sslConfig = if (flag("kafka.ssl.enabled")) {
-                        KafkaSslEnv(
+                        KafkaSslSettings(
                             truststoreLocation = string("kafka.ssl.truststorePath"),
                             keystoreLocation = string("kafka.ssl.keystorePath"),
                             credstorePassword = string("kafka.ssl.credstorePassword"),
@@ -95,7 +95,7 @@ data class ApplicationSettings(
                     commitOnAllErrors = flag("kafka.commitOnAllErrors"),
                     shouldConsumeTopics = flag("kafka.consumeTopics"),
                 ),
-                texas = TexasEnvironment(
+                texas = TexasSettings(
                     tokenIntrospectionEndpoint = string("texas.tokenIntrospectionEndpoint"),
                     tokenEndpoint = string("texas.tokenEndpoint"),
                     tokenExchangeEndpoint = string("texas.tokenExchangeEndpoint"),
@@ -158,11 +158,11 @@ data class ApplicationSettings(
     }
 }
 
-private fun ConfigReader.schemaRegistry(): KafkaSchemaRegistryEnv {
+private fun ConfigReader.schemaRegistry(): KafkaSchemaRegistrySettings {
     val url = string("kafka.schemaRegistry.url")
     return if (flag("kafka.schemaRegistry.authEnabled")) {
-        KafkaSchemaRegistryEnv(url, string("kafka.schemaRegistry.username"), string("kafka.schemaRegistry.password"))
+        KafkaSchemaRegistrySettings(url, string("kafka.schemaRegistry.username"), string("kafka.schemaRegistry.password"))
     } else {
-        KafkaSchemaRegistryEnv(url, username = null, password = null)
+        KafkaSchemaRegistrySettings(url, username = null, password = null)
     }
 }

@@ -17,16 +17,16 @@ import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonEmploymentSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
-import no.nav.syfo.platform.cache.ValkeyEnvironment
+import no.nav.syfo.platform.cache.ValkeySettings
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.platform.config.localApplicationConfig
-import no.nav.syfo.platform.database.DatabaseEnvironment
+import no.nav.syfo.platform.database.DatabaseSettings
 import no.nav.syfo.platform.database.DatabaseSsl
-import no.nav.syfo.platform.kafka.KafkaEnvironment
-import no.nav.syfo.platform.kafka.KafkaSchemaRegistryEnv
-import no.nav.syfo.platform.kafka.KafkaSslEnv
+import no.nav.syfo.platform.kafka.KafkaSchemaRegistrySettings
+import no.nav.syfo.platform.kafka.KafkaSettings
+import no.nav.syfo.platform.kafka.KafkaSslSettings
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 import kotlin.time.Duration.Companion.hours
@@ -39,7 +39,7 @@ class ApplicationSettingsTest :
             val settings = settingsFrom(requiredEnvironment)
 
             settings shouldBe ApplicationSettings(
-                database = DatabaseEnvironment(
+                database = DatabaseSettings(
                     host = "db.example",
                     port = "5432",
                     name = "narmesteleder",
@@ -47,21 +47,21 @@ class ApplicationSettingsTest :
                     password = "db-password",
                     ssl = DatabaseSsl(cert = "/certs/cert.pem", key = "/certs/key.pk8", rootCert = "/certs/root.pem", mode = "verify-ca"),
                 ),
-                valkey = ValkeyEnvironment(
+                valkey = ValkeySettings(
                     host = "valkey.example",
                     port = 26379,
                     username = "valkey-user",
                     password = "valkey-password",
                     ssl = true,
                 ),
-                kafka = KafkaEnvironment(
+                kafka = KafkaSettings(
                     brokerUrl = "kafka.example:9093",
-                    schemaRegistry = KafkaSchemaRegistryEnv("https://registry.example", "registry-user", "registry-password"),
-                    sslConfig = KafkaSslEnv("/kafka/truststore.jks", "/kafka/keystore.p12", "credstore-password"),
+                    schemaRegistry = KafkaSchemaRegistrySettings("https://registry.example", "registry-user", "registry-password"),
+                    sslConfig = KafkaSslSettings("/kafka/truststore.jks", "/kafka/keystore.p12", "credstore-password"),
                     commitOnAllErrors = false,
                     shouldConsumeTopics = true,
                 ),
-                texas = TexasEnvironment(
+                texas = TexasSettings(
                     tokenIntrospectionEndpoint = "http://texas.example/introspect",
                     tokenEndpoint = "http://texas.example/token",
                     tokenExchangeEndpoint = "http://texas.example/exchange",
@@ -234,7 +234,7 @@ class ApplicationSettingsTest :
                 settings.database.jdbcUrl() shouldBe "jdbc:postgresql://localhost:5432/esyfo-narmesteleder_dev"
                 settings.valkey.ssl shouldBe false
                 settings.kafka.sslConfig shouldBe null
-                settings.kafka.schemaRegistry shouldBe KafkaSchemaRegistryEnv("http://localhost:8081", username = null, password = null)
+                settings.kafka.schemaRegistry shouldBe KafkaSchemaRegistrySettings("http://localhost:8081", username = null, password = null)
             }
         }
 

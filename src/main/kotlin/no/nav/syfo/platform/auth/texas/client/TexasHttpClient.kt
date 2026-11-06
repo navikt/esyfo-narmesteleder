@@ -9,7 +9,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -21,7 +21,7 @@ internal val TEXAS = UpstreamName("texas")
 
 class TexasHttpClient(
     val client: HttpClient,
-    val environment: TexasEnvironment
+    val environment: TexasSettings
 ) {
 
     suspend fun introspectToken(identityProvider: String, token: String): TexasIntrospectionResponse = client.post(environment.tokenIntrospectionEndpoint) {

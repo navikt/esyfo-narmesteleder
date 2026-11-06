@@ -25,7 +25,7 @@ private val cacheAccessFailed = applicationEvent<CacheAction>(
 )
 
 class ValkeyCache(
-    valkeyEnvironment: ValkeyEnvironment,
+    valkeyEnvironment: ValkeySettings,
 ) {
 
     private val logger = logger()

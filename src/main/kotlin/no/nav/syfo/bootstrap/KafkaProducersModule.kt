@@ -4,13 +4,13 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.KafkaSykmeldingNar
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederLeesahProducer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.platform.kafka.JacksonKafkaSerializer
-import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.kafka.producerProperties
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.koin.dsl.module
 
-internal fun kafkaProducersModule(kafka: KafkaEnvironment) = module {
+internal fun kafkaProducersModule(kafka: KafkaSettings) = module {
     single<SykmeldingNarmestelederProducer> {
         KafkaSykmeldingNarmestelederProducer(
             KafkaProducer(

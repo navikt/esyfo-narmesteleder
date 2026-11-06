@@ -1,6 +1,6 @@
 package no.nav.syfo.platform.database
 
-data class DatabaseEnvironment(
+data class DatabaseSettings(
     val host: String,
     val port: String,
     val name: String,
@@ -14,7 +14,7 @@ data class DatabaseEnvironment(
         return "jdbc:postgresql://$host:$port/$name$sslSuffix"
     }
 
-    override fun toString() = "DatabaseEnvironment(host=$host, port=$port, name=$name, username=$username, " +
+    override fun toString() = "DatabaseSettings(host=$host, port=$port, name=$name, username=$username, " +
         "password=[REDACTED], ssl=$ssl)"
 }
 

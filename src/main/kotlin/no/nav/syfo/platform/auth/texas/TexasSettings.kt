@@ -3,7 +3,7 @@ package no.nav.syfo.platform.auth.texas
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 
-data class TexasEnvironment(
+data class TexasSettings(
     val tokenIntrospectionEndpoint: String,
     val tokenEndpoint: String,
     val tokenExchangeEndpoint: String,

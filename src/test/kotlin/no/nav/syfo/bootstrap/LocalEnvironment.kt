@@ -80,7 +80,6 @@ data class LocalEnvironment(
     ),
     override val sykmeldingKafkaSettings: SykmeldingKafkaSettings = SykmeldingKafkaSettings(
         persistSendtSykmelding = true,
-        consumeSykmeldingsregister = false,
     ),
     override val dialogportenTaskSettings: DialogportenTaskSettings = DialogportenTaskSettings(
         enabled = true,

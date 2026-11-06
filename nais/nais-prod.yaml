@@ -149,8 +149,6 @@ spec:
       value: "10m"
     - name: PERSIST_SENDT_SYKMELDING
       value: "true"
-    - name: CONSUME_SYKMELDINGSREGISTER
-      value: "false"
     - name: MAINTENANCE_TASK_DELAY
       value: "1h"
     - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS

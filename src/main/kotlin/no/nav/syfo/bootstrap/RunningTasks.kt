@@ -28,7 +28,6 @@ import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.infrastructure.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.infrastructure.kafka.SendtSykmeldingKafkaConsumer
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
-import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterKafkaConsumer
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
@@ -100,20 +99,6 @@ internal fun Application.configureKafkaConsumers(
         scope = this,
         enabled = sykmeldingKafkaSettings.persistSendtSykmelding,
     )
-    val sykmeldingsregisterKafkaConsumer = if (sykmeldingKafkaSettings.consumeSykmeldingsregister) {
-        SykmeldingsregisterKafkaConsumer(
-            consumerFactory = {
-                KafkaConsumer(
-                    SykmeldingsregisterKafkaConsumer.kafkaConsumerProperties(kafkaSettings),
-                    StringDeserializer(),
-                    StringDeserializer(),
-                )
-            },
-        )
-    } else {
-        logger.info("Sykmeldingsregister consumer is disabled, skipping configuration")
-        null
-    }
     val leesahNarmestelederReplayConsumer = PersistNarmestelederRegisterFromLeesahConsumer(
         persistFromLeesah = persistNarmestelederrelasjonerFromLeesah,
         narmestelederLeesahProducer = narmestelederLeesahProducer,
@@ -178,7 +163,6 @@ internal fun Application.configureKafkaConsumers(
         }
         leesahConsumer.listen()
         sendtSykmeldingConsumer.listen()
-        sykmeldingsregisterKafkaConsumer?.listen()
         monitor.subscribe(ApplicationStopPreparing) {
             runBlocking {
                 leaderControlledConsumersJob.cancelAndJoin()
@@ -188,7 +172,6 @@ internal fun Application.configureKafkaConsumers(
                 }
                 sendtSykmeldingConsumer.stop()
                 leesahConsumer.stop()
-                sykmeldingsregisterKafkaConsumer?.stop()
             }
         }
     }

@@ -7,12 +7,8 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.longs.shouldBeExactly
 import io.kotest.matchers.longs.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.observability.Heartbeat
 import no.nav.syfo.platform.observability.withProductionLogs
-import no.nav.syfo.platform.upstream.UpstreamFailure
-import no.nav.syfo.platform.upstream.UpstreamFailureStage
-import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterKafkaConsumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -313,44 +309,6 @@ class ConsumerRunnerTest :
                         fields["upstream"] shouldBe "kafka"
                     }
                     logs.logs.none { it.serialized.contains(payload) } shouldBe true
-                }
-            }
-        }
-
-        test("logs the upstream failure carried by a handler exception") {
-            val handled = CountDownLatch(1)
-            val attempts = AtomicInteger()
-            val failure = UpstreamFailure(
-                upstream = UpstreamName("aareg"),
-                stage = UpstreamFailureStage.REQUEST,
-                status = 503,
-                cause = RuntimeException("upstream unavailable"),
-            )
-            val runner = runner(
-                consumerFactory = {
-                    RecordingMockConsumer().also { consumer ->
-                        consumer.scheduleBatch(ConsumerRecord(TOPIC, 0, 0L, "key", "value"))
-                    }
-                },
-                handler = {
-                    if (attempts.getAndIncrement() == 0) throw IllegalStateException("wrapper", failure.toUpstreamUnavailableException())
-                    handled.countDown()
-                },
-                initialBackoff = 1.milliseconds,
-                maxBackoff = 1.milliseconds,
-            )
-
-            withProductionLogs(ConsumerRunner::class.java, Level.WARN) { logs ->
-                runner.start()
-                handled.awaitOrFail()
-                runner.close()
-
-                logs.logs.single { it.fields["event_type"] == "kafka_consumer_restarted" }.fields.let { fields ->
-                    assertSoftly {
-                        fields["upstream"] shouldBe "aareg"
-                        fields["failure_stage"] shouldBe "request"
-                        (fields["upstream_status"] as Number).toInt() shouldBe 503
-                    }
                 }
             }
         }

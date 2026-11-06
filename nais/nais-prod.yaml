@@ -123,8 +123,6 @@ spec:
       value: https://aareg-services.prod-fss-pub.nais.io
     - name: AAREG_SCOPE
       value: prod-fss.arbeidsforhold.aareg-services-nais
-    - name: DIALOGPORTEN_SCOPE
-      value: digdir:dialogporten.serviceprovider
     - name: ALTINN_3_BASE_URL
       value: https://platform.altinn.no
     - name: DINESYMELDTE_BASEURL

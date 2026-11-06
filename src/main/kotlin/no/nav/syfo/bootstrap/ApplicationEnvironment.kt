@@ -22,8 +22,6 @@ import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 interface Environment {
     val database: DatabaseEnvironment
@@ -116,79 +114,5 @@ data class NaisEnvironment(
     override val leaderElectionSettings: LeaderElectionSettings = LeaderElectionSettings(
         electorPath = getEnvVar("ELECTOR_PATH"),
         electorSseUrl = getEnvVar("ELECTOR_SSE_URL"),
-    ),
-) : Environment
-
-fun isLocalEnv(): Boolean = getEnvVar("NAIS_CLUSTER_NAME", "local") == "local"
-
-fun loadEnvironment(isLocal: Boolean): Environment = if (isLocal) LocalEnvironment() else NaisEnvironment()
-
-data class LocalEnvironment(
-    override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
-    override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),
-    override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createForLocal(),
-    override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal(),
-    override val aaregSettings: AaregSettings = AaregSettings(
-        baseUrl = "",
-        scope = "aareg",
-    ),
-    override val altinnApiSettings: AltinnApiSettings = AltinnApiSettings(
-        baseUrl = "http://localhost:8080/dialogporten",
-    ),
-    override val altinnAuthorizationSettings: AltinnAuthorizationSettings = AltinnAuthorizationSettings(
-        subscriptionKey = "secret-key",
-    ),
-    override val altinnAccessSettings: AltinnAccessSettings = AltinnAccessSettings(
-        baseUrl = "https://altinn-tilganger-api.dev.intern.nav.no",
-    ),
-    override val dinesykmeldteSettings: DinesykmeldteSettings = DinesykmeldteSettings(
-        baseUrl = "",
-        scope = "",
-    ),
-    override val dialogportenSettings: DialogportenSettings = DialogportenSettings(
-        baseUrl = altinnApiSettings.baseUrl,
-    ),
-    override val eregSettings: EregSettings = EregSettings(
-        baseUrl = "https://ereg-test.intern.nav.no",
-    ),
-    override val pdlSettings: PdlSettings = PdlSettings(
-        baseUrl = "https://pdl-api.dev.intern.nav.no",
-        scope = "pdl",
-    ),
-    override val narmestelederbehovSettings: NarmestelederbehovSettings = NarmestelederbehovSettings(
-        persistLeesahNlBehov = true,
-        publicIngressUrl = "http://localhost:8080",
-        frontendBaseUrl = "http://localhost:3000",
-        dialogUpdatePollingInterval = 30.seconds,
-    ),
-    override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = NarmestelederbehovExpirySettings(
-        daysAfterTom = 0,
-    ),
-    override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = NarmestelederrelasjonEmploymentSettings(
-        employmentCheckEnabled = false,
-        employmentCheckObserveSourceEnabled = false,
-        employmentCheckRevokeEnabled = false,
-    ),
-    override val narmestelederrelasjonKafkaSettings: NarmestelederrelasjonKafkaSettings = NarmestelederrelasjonKafkaSettings(
-        persistRegister = true,
-        pdlConsumerEnabled = true,
-    ),
-    override val sykmeldingKafkaSettings: SykmeldingKafkaSettings = SykmeldingKafkaSettings(
-        persistSendtSykmelding = true,
-    ),
-    override val dialogportenTaskSettings: DialogportenTaskSettings = DialogportenTaskSettings(
-        enabled = true,
-    ),
-    override val maintenanceTaskSettings: MaintenanceTaskSettings = MaintenanceTaskSettings(
-        enabled = true,
-        interval = 1.minutes,
-    ),
-    override val personEnrichmentTaskSettings: PersonEnrichmentTaskSettings = PersonEnrichmentTaskSettings(
-        enabled = true,
-        pollingInterval = 1.minutes,
-    ),
-    override val leaderElectionSettings: LeaderElectionSettings = LeaderElectionSettings(
-        electorPath = "esyfo-narmesteleder",
-        electorSseUrl = "not.applicable",
     ),
 ) : Environment

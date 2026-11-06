@@ -385,13 +385,12 @@ them as parameters to the capability module, which hands them on to its
 Single feature flags are passed directly to consumers. `BootstrapBoundaryTest` fails if a
 business module references `bootstrap`.
 
-`Application.module()` delegates to `Application.bootstrap()`, which reads the
-environment once, starts the platform module and then one Ktor module per
+`Application.module()` delegates to `Application.bootstrap(NaisEnvironment())`, which
+starts the platform module and then one Ktor module per
 capability:
 
 ```kotlin
-fun Application.bootstrap(isLocal: Boolean = isLocalEnv(), externalClients: Module? = null) {
-    val environment = loadEnvironment(isLocal)
+fun Application.bootstrap(environment: Environment, isLocal: Boolean = false, externalClients: Module? = null) {
     platformModule(applicationModules(environment, isLocal, externalClients), environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
@@ -415,8 +414,10 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv(), externalClients: Modu
 }
 ```
 
-- `NaisEnvironment` and `LocalEnvironment` assemble owner-specific settings for
-  capabilities, integrations, Kafka consumers, and platform services. Bootstrap
+- `NaisEnvironment` assembles owner-specific settings for capabilities,
+  integrations, Kafka consumers, and platform services. `LocalEnvironment` and the
+  `createForLocal()` factories live in the test sources and are used only by
+  `runLocal` and tests. Bootstrap
   passes each module only the settings it needs; configuration stays out of
   domain and use-case code.
 - `applicationModules` constructs `HttpClientsSettings` in `DependencyInjection`

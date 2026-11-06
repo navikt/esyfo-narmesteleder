@@ -12,9 +12,13 @@ import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonDependencies
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
+import no.nav.syfo.platform.auth.texas.createForLocal
 import no.nav.syfo.platform.cache.ValkeyEnvironment
+import no.nav.syfo.platform.cache.createForLocal
 import no.nav.syfo.platform.database.DatabaseEnvironment
+import no.nav.syfo.platform.database.createForLocal
 import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.createForLocal
 import no.nav.syfo.sykmelding.sykmeldingDependencies
 import org.apache.kafka.clients.producer.Producer
 import org.koin.core.annotation.KoinInternalApi

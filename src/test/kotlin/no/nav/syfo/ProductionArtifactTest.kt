@@ -11,12 +11,12 @@ import kotlin.io.path.name
 
 class ProductionArtifactTest :
     FunSpec({
-        test("production classes contain no fake clients or local fixture loading") {
+        test("production classes contain no fake clients or local setup") {
             val classes = filesIn(Path.of(productionClass.protectionDomain.codeSource.location.toURI()))
 
             assertSoftly(classes) {
                 shouldContain("no/nav/syfo/ApplicationKt.class")
-                filter { Path.of(it).name.startsWith("Fake") || it.startsWith("no/nav/syfo/platform/local/") }.shouldBeEmpty()
+                filter { isFakeOrLocal(it) }.shouldBeEmpty()
             }
         }
 
@@ -39,3 +39,6 @@ private const val PRODUCTION_RESOURCE = "openapi/documentation.yaml"
 private fun filesIn(root: Path): List<String> = Files.walk(root).use { files ->
     files.filter(Files::isRegularFile).map { root.relativize(it).invariantSeparatorsPathString }.toList()
 }
+
+private fun isFakeOrLocal(classFile: String): Boolean = Path.of(classFile).name.let { it.startsWith("Fake") || it.startsWith("Local") } ||
+    classFile.startsWith("no/nav/syfo/platform/local/")

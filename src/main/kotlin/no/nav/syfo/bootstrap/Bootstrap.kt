@@ -11,11 +11,10 @@ import org.koin.core.module.Module
 import org.koin.ktor.ext.get
 
 /**
- * Reads the environment once, assembles the Koin graph and starts every capability.
- * Production always uses the real external clients; only local runs pass [externalClients] with fakes.
+ * Assembles the Koin graph from [environment] and starts every capability.
+ * Production passes [NaisEnvironment] and the real external clients; only local runs pass [externalClients] with fakes.
  */
-fun Application.bootstrap(isLocal: Boolean = isLocalEnv(), externalClients: Module? = null) {
-    val environment = loadEnvironment(isLocal)
+fun Application.bootstrap(environment: Environment, isLocal: Boolean = false, externalClients: Module? = null) {
     platformModule(applicationModules(environment, isLocal, externalClients), environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())

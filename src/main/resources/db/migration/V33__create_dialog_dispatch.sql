@@ -1,4 +1,4 @@
-CREATE TABLE nl_dialog_dispatch (
+CREATE TABLE dialog_dispatch (
     behov_id UUID PRIMARY KEY REFERENCES nl_behov(id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'READY' CHECK (status IN ('READY', 'CLAIMED', 'IDLE', 'PARKED')),
     revision BIGINT NOT NULL DEFAULT 1 CHECK (revision > 0),
@@ -13,8 +13,8 @@ CREATE TABLE nl_dialog_dispatch (
     CHECK (last_failure IS NULL OR last_failure IN ('invalid_request', 'upstream', 'timeout', 'unexpected'))
 );
 
-CREATE INDEX nl_dialog_dispatch_due_idx ON nl_dialog_dispatch (available_at, behov_id)
+CREATE INDEX dialog_dispatch_due_idx ON dialog_dispatch (available_at, behov_id)
     WHERE status IN ('READY', 'CLAIMED');
 
-CREATE INDEX nl_dialog_dispatch_observable_idx ON nl_dialog_dispatch (status, pending_since)
+CREATE INDEX dialog_dispatch_observable_idx ON dialog_dispatch (status, pending_since)
     WHERE status IN ('READY', 'CLAIMED', 'PARKED');

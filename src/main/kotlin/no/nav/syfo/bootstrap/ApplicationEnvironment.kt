@@ -21,7 +21,6 @@ import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
-import kotlin.time.Duration
 
 interface Environment {
     val database: DatabaseEnvironment
@@ -48,6 +47,7 @@ interface Environment {
 }
 
 data class NaisEnvironment(
+    private val settings: ApplicationSettings,
     override val database: DatabaseEnvironment = DatabaseEnvironment.createFromEnvVars(),
     override val texas: TexasEnvironment = TexasEnvironment.createFromEnvVars(),
     override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createFromEnvVars(),
@@ -79,40 +79,13 @@ data class NaisEnvironment(
         baseUrl = getEnvVar("PDL_BASE_URL"),
         scope = getEnvVar("PDL_SCOPE"),
     ),
-    override val narmestelederbehovSettings: NarmestelederbehovSettings = NarmestelederbehovSettings(
-        persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
-        publicIngressUrl = getEnvVar("PUBLIC_INGRESS_URL"),
-        frontendBaseUrl = getEnvVar("FRONTEND_BASE_URL"),
-        dialogUpdatePollingInterval = Duration.parse(getEnvVar("DIALOGPORTEN_UPDATE_POLLING_DELAY", "5m")),
-    ),
-    override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = NarmestelederbehovExpirySettings(
-        daysAfterTom = getEnvVar("DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS", "16").toLong(),
-    ),
-    override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = NarmestelederrelasjonEmploymentSettings(
-        employmentCheckEnabled = getEnvVar("EMPLOYMENT_CHECK_ENABLED", "false").toBoolean(),
-        employmentCheckObserveSourceEnabled = getEnvVar("EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED", "false").toBoolean(),
-        employmentCheckRevokeEnabled = getEnvVar("EMPLOYMENT_CHECK_REVOKE_ENABLED", "false").toBoolean(),
-    ),
-    override val narmestelederrelasjonKafkaSettings: NarmestelederrelasjonKafkaSettings = NarmestelederrelasjonKafkaSettings(
-        persistRegister = getEnvVar("PERSIST_NARMESTELEDER_REGISTER", "false").toBoolean(),
-        pdlConsumerEnabled = getEnvVar("PDL_LEESAH_CONSUMER_ENABLED", "false").toBoolean(),
-    ),
-    override val sykmeldingKafkaSettings: SykmeldingKafkaSettings = SykmeldingKafkaSettings(
-        persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
-    ),
-    override val dialogportenTaskSettings: DialogportenTaskSettings = DialogportenTaskSettings(
-        enabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
-    ),
-    override val maintenanceTaskSettings: MaintenanceTaskSettings = MaintenanceTaskSettings(
-        enabled = getEnvVar("BEHOV_MAINTENANCE_TASK_ENABLED", "false").toBoolean(),
-        interval = Duration.parse(getEnvVar("MAINTENANCE_TASK_DELAY", "24h")),
-    ),
-    override val personEnrichmentTaskSettings: PersonEnrichmentTaskSettings = PersonEnrichmentTaskSettings(
-        enabled = getEnvVar("PERSON_ENRICHMENT_TASK_ENABLED", "false").toBoolean(),
-        pollingInterval = Duration.parse(getEnvVar("PERSON_ENRICHMENT_TASK_DELAY", "5m")),
-    ),
-    override val leaderElectionSettings: LeaderElectionSettings = LeaderElectionSettings(
-        electorPath = getEnvVar("ELECTOR_PATH"),
-        electorSseUrl = getEnvVar("ELECTOR_SSE_URL"),
-    ),
+    override val narmestelederbehovSettings: NarmestelederbehovSettings = settings.narmestelederbehovSettings,
+    override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = settings.narmestelederbehovExpirySettings,
+    override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = settings.narmestelederrelasjonEmploymentSettings,
+    override val narmestelederrelasjonKafkaSettings: NarmestelederrelasjonKafkaSettings = settings.narmestelederrelasjonKafkaSettings,
+    override val sykmeldingKafkaSettings: SykmeldingKafkaSettings = settings.sykmeldingKafkaSettings,
+    override val dialogportenTaskSettings: DialogportenTaskSettings = settings.dialogportenTaskSettings,
+    override val maintenanceTaskSettings: MaintenanceTaskSettings = settings.maintenanceTaskSettings,
+    override val personEnrichmentTaskSettings: PersonEnrichmentTaskSettings = settings.personEnrichmentTaskSettings,
+    override val leaderElectionSettings: LeaderElectionSettings = settings.leaderElectionSettings,
 ) : Environment

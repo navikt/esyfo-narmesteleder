@@ -368,7 +368,7 @@ Contains reusable technical mechanisms without domain rules:
 
 Owns application assembly:
 
-- parse environment variables into small typed settings;
+- read `application.conf` and environment variables once into small typed settings;
 - register the real clients for external systems. Production never selects
   fakes; local runs and tests pass fakes from the test sources through the
   `externalClients` parameter (`localExternalClientsModule()`, started with
@@ -385,7 +385,8 @@ them as parameters to the capability module, which hands them on to its
 Single feature flags are passed directly to consumers. `BootstrapBoundaryTest` fails if a
 business module references `bootstrap`.
 
-`Application.module()` delegates to `Application.bootstrap(NaisEnvironment())`, which
+`main()` reads `application.conf` into `ApplicationSettings` and starts
+`Application.bootstrap(NaisEnvironment(settings))`, which
 starts the platform module and then one Ktor module per
 capability:
 
@@ -749,9 +750,23 @@ decision.
 
 ## Configuration and dependency injection
 
-Bootstrap parses environment variables once into small typed settings.
-Adapters and tasks receive only the settings they need. Existing environment
-variable names and defaults remain compatible.
+Bootstrap reads configuration once at startup into small typed settings.
+Adapters and tasks receive only the settings they need.
+
+- Application behaviour settings and feature flags live in
+  `src/main/resources/application.conf`. Each key has a default or is
+  required, and an optional `${?VAR}` line lets the environment variable of the
+  same name override it. Environment variables take precedence over defaults.
+  The NAIS manifests keep the existing variable names.
+- `ApplicationSettings` maps the HOCON config to capability-owned settings and
+  reports every missing or invalid value in one startup error, without the
+  values. Flags keep the lenient parsing where only a case-insensitive `true`
+  enables them.
+- Infrastructure and secrets (database, Kafka, Valkey, Texas and external
+  system URLs and scopes) are still read directly from environment variables.
+- Local runs and tests read `application-local.conf` from the test resources,
+  layered over `application.conf`, and ignore environment variables.
+  `NaisManifestSettingsTest` checks that the dev and prod manifests resolve.
 
 Each business capability provides its own Koin registration module. Focused
 platform modules register shared technical mechanisms. Root bootstrap only

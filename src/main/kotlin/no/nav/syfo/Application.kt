@@ -4,14 +4,15 @@ import io.ktor.server.application.Application
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import no.nav.syfo.bootstrap.ApplicationSettings
 import no.nav.syfo.bootstrap.NaisEnvironment
 import no.nav.syfo.bootstrap.bootstrap
+import no.nav.syfo.platform.config.loadApplicationConfig
 
 fun main() {
-    startServer(Application::module)
+    val settings = ApplicationSettings.from(loadApplicationConfig())
+    startServer { bootstrap(NaisEnvironment(settings)) }
 }
-
-fun Application.module() = bootstrap(NaisEnvironment())
 
 internal fun startServer(module: Application.() -> Unit) {
     val server = embeddedServer(

@@ -18,17 +18,17 @@ import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.auth.texas.createForLocal
 import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.cache.createForLocal
+import no.nav.syfo.platform.config.localApplicationConfig
 import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.database.createForLocal
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.createForLocal
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 /** Settings for local runs and tests. Production always uses [NaisEnvironment]. */
 data class LocalEnvironment(
+    private val settings: ApplicationSettings = ApplicationSettings.from(localApplicationConfig()),
     override val database: DatabaseEnvironment = DatabaseEnvironment.createForLocal(),
     override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),
     override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createForLocal(),
@@ -60,40 +60,13 @@ data class LocalEnvironment(
         baseUrl = "https://pdl-api.dev.intern.nav.no",
         scope = "pdl",
     ),
-    override val narmestelederbehovSettings: NarmestelederbehovSettings = NarmestelederbehovSettings(
-        persistLeesahNlBehov = true,
-        publicIngressUrl = "http://localhost:8080",
-        frontendBaseUrl = "http://localhost:3000",
-        dialogUpdatePollingInterval = 30.seconds,
-    ),
-    override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = NarmestelederbehovExpirySettings(
-        daysAfterTom = 0,
-    ),
-    override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = NarmestelederrelasjonEmploymentSettings(
-        employmentCheckEnabled = false,
-        employmentCheckObserveSourceEnabled = false,
-        employmentCheckRevokeEnabled = false,
-    ),
-    override val narmestelederrelasjonKafkaSettings: NarmestelederrelasjonKafkaSettings = NarmestelederrelasjonKafkaSettings(
-        persistRegister = true,
-        pdlConsumerEnabled = true,
-    ),
-    override val sykmeldingKafkaSettings: SykmeldingKafkaSettings = SykmeldingKafkaSettings(
-        persistSendtSykmelding = true,
-    ),
-    override val dialogportenTaskSettings: DialogportenTaskSettings = DialogportenTaskSettings(
-        enabled = true,
-    ),
-    override val maintenanceTaskSettings: MaintenanceTaskSettings = MaintenanceTaskSettings(
-        enabled = true,
-        interval = 1.minutes,
-    ),
-    override val personEnrichmentTaskSettings: PersonEnrichmentTaskSettings = PersonEnrichmentTaskSettings(
-        enabled = true,
-        pollingInterval = 1.minutes,
-    ),
-    override val leaderElectionSettings: LeaderElectionSettings = LeaderElectionSettings(
-        electorPath = "esyfo-narmesteleder",
-        electorSseUrl = "not.applicable",
-    ),
+    override val narmestelederbehovSettings: NarmestelederbehovSettings = settings.narmestelederbehovSettings,
+    override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = settings.narmestelederbehovExpirySettings,
+    override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = settings.narmestelederrelasjonEmploymentSettings,
+    override val narmestelederrelasjonKafkaSettings: NarmestelederrelasjonKafkaSettings = settings.narmestelederrelasjonKafkaSettings,
+    override val sykmeldingKafkaSettings: SykmeldingKafkaSettings = settings.sykmeldingKafkaSettings,
+    override val dialogportenTaskSettings: DialogportenTaskSettings = settings.dialogportenTaskSettings,
+    override val maintenanceTaskSettings: MaintenanceTaskSettings = settings.maintenanceTaskSettings,
+    override val personEnrichmentTaskSettings: PersonEnrichmentTaskSettings = settings.personEnrichmentTaskSettings,
+    override val leaderElectionSettings: LeaderElectionSettings = settings.leaderElectionSettings,
 ) : Environment

@@ -15,6 +15,7 @@ import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.createForLocal
 import no.nav.syfo.platform.cache.ValkeyEnvironment
 import no.nav.syfo.platform.cache.createForLocal
+import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.database.createForLocal
 import no.nav.syfo.platform.kafka.KafkaEnvironment
@@ -80,10 +81,11 @@ private fun localApplicationModules() = applicationModules(
     leaderElection = localLeaderElectionModule(),
 )
 
-// NaisEnvironment() reads required NAIS variables, so supply every part explicitly.
+// NaisEnvironment reads infrastructure from env vars, so supply local values and synthetic required settings.
 private fun naisEnvironmentWithoutEnvVars(): NaisEnvironment {
     val localEnvironment = LocalEnvironment()
     return NaisEnvironment(
+        settings = ApplicationSettings.from(applicationConfigWithEnvironment(requiredNaisVariables)),
         database = DatabaseEnvironment.createForLocal(),
         texas = TexasEnvironment.createForLocal(),
         valkeyEnvironment = ValkeyEnvironment.createForLocal(),
@@ -96,17 +98,16 @@ private fun naisEnvironmentWithoutEnvVars(): NaisEnvironment {
         dialogportenSettings = localEnvironment.dialogportenSettings,
         eregSettings = localEnvironment.eregSettings,
         pdlSettings = localEnvironment.pdlSettings,
-        narmestelederbehovSettings = localEnvironment.narmestelederbehovSettings,
-        narmestelederbehovExpirySettings = localEnvironment.narmestelederbehovExpirySettings,
-        narmestelederrelasjonEmploymentSettings = localEnvironment.narmestelederrelasjonEmploymentSettings,
-        narmestelederrelasjonKafkaSettings = localEnvironment.narmestelederrelasjonKafkaSettings,
-        sykmeldingKafkaSettings = localEnvironment.sykmeldingKafkaSettings,
-        dialogportenTaskSettings = localEnvironment.dialogportenTaskSettings,
-        maintenanceTaskSettings = localEnvironment.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = localEnvironment.personEnrichmentTaskSettings,
-        leaderElectionSettings = localEnvironment.leaderElectionSettings,
     )
 }
+
+private val requiredNaisVariables = mapOf(
+    "PUBLIC_INGRESS_URL" to "https://ingress.example",
+    "FRONTEND_BASE_URL" to "https://frontend.example",
+    "DIALOGPORTEN_TASK_ENABLED" to "true",
+    "ELECTOR_PATH" to "elector-path",
+    "ELECTOR_SSE_URL" to "http://elector.example/sse",
+)
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
 private fun capabilityDependencies(environment: Environment) = listOf(

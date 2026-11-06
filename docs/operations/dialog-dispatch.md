@@ -1,10 +1,8 @@
 # Dialogporten dispatch: cutover and recovery
 
-This is preparation for the final worker-only cutover. The dispatcher
-and metrics are not wired into startup yet; inline and leader-only
-delivery still run. Do not execute backfill/replay or deploy these alerts
-until the cutover binary is deployed. The procedures below describe that
-binary, which also adds the gated alert-deployment job.
+Dispatch names the delivery component; `reconcile(claim)` converges a claimed
+behov's latest state with Dialogporten. There is one control row per behov,
+not an immutable command per outgoing request.
 
 The worker is disabled in dev/prod until a controlled cutover.
 `DIALOGPORTEN_TASK_ENABLED` no longer starts dialog delivery; it retains its

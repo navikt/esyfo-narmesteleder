@@ -5,8 +5,6 @@ import io.ktor.server.application.ApplicationStopPreparing
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
-import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
-import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTask
 import no.nav.syfo.platform.observability.logger
 import no.nav.syfo.platform.scheduling.LeaderChange
@@ -18,8 +16,6 @@ import kotlin.getValue
 
 internal fun Application.configureBackgroundTasks(other: OtherEnvironmentProperties) {
     val logger = logger()
-    val sendDialogTask by inject<SendDialogTask>()
-    val updateDialogTask by inject<UpdateDialogTask>()
     val expireNarmestelederbehovTask by inject<ExpireNarmestelederbehovTask>()
     val deleteOldSykmeldingerTask by inject<DeleteOldSykmeldingerTask>()
     val personEnrichmentTask by inject<PersonEnrichmentTask>()
@@ -33,15 +29,13 @@ internal fun Application.configureBackgroundTasks(other: OtherEnvironmentPropert
                 taskJobs.lock { jobs ->
                     jobs.cancelAndClear()
                     if (other.isDialogportenBackgroundTaskEnabled) {
-                        jobs += launch { sendDialogTask.runTask() }
-                        jobs += launch { updateDialogTask.runTask() }
                         if (other.personEnrichmentTaskEnabled) {
                             jobs += launch { personEnrichmentTask.runTask() }
                         }
                     } else {
                         logger.info(
                             "Integration with Dialogporten is not enabled. " +
-                                "Skipping Dialogporten background tasks",
+                                "Skipping person enrichment",
                         )
                     }
                     if (other.maintenanceTaskEnabled) {

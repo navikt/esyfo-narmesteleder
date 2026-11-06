@@ -1,17 +1,9 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
-import no.nav.syfo.ident.OrganizationNumber
-import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovDialogsRepository
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogReference
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
-import no.nav.syfo.narmestelederbehov.application.PendingNarmestelederbehovDialog
-import no.nav.syfo.narmestelederbehov.application.SendPendingNarmestelederbehovDialogsRepository
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -22,96 +14,22 @@ import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
-import org.jetbrains.exposed.v1.core.isNotNull
-import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.util.UUID
 
 class ExposedNarmestelederbehovLifecycleRepository(
     private val database: Database,
     private val scheduleDispatch: JdbcTransaction.(UUID) -> Unit = JdbcTransaction::scheduleDialogDispatch,
 ) : CreateNarmestelederbehovRepository,
-    SendPendingNarmestelederbehovDialogsRepository,
-    ExpireNarmestelederbehovRepository,
-    ExpireNarmestelederbehovDialogsRepository {
+    ExpireNarmestelederbehovRepository {
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
-
-    override suspend fun findPendingDialogs(createdBefore: Instant, limit: Int): List<PendingNarmestelederbehovDialog> = database.ioTransaction {
-        NarmestelederbehovTable.select(
-            NarmestelederbehovTable.id,
-            NarmestelederbehovTable.sykmeldtFnr,
-            NarmestelederbehovTable.orgnummer,
-            NarmestelederbehovTable.created,
-            NarmestelederbehovTable.dialogId,
-        ).where {
-            (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED) and
-                (NarmestelederbehovTable.created less createdBefore.atOffset(ZoneOffset.UTC))
-        }.orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-            .limit(limit)
-            .map { row ->
-                PendingNarmestelederbehovDialog(
-                    id = NarmestelederbehovId(row[NarmestelederbehovTable.id]),
-                    employee = Employee(
-                        PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]),
-                        OrganizationNumber(row[NarmestelederbehovTable.orgnummer]),
-                    ),
-                    created = row[NarmestelederbehovTable.created].toInstant(),
-                    dialogId = row[NarmestelederbehovTable.dialogId],
-                )
-            }
-    }
-
-    override suspend fun findDialogsToExpire(): List<NarmestelederbehovDialogReference> = database.ioTransaction {
-        NarmestelederbehovTable.select(NarmestelederbehovTable.id, NarmestelederbehovTable.dialogId)
-            .where {
-                (NarmestelederbehovTable.behovStatus inList listOf(BehovStatus.BEHOV_EXPIRED, BehovStatus.ERROR)) and
-                    NarmestelederbehovTable.expiredInDialogporten.isNull() and
-                    NarmestelederbehovTable.dialogId.isNotNull()
-            }
-            .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-            .limit(100)
-            .map { NarmestelederbehovDialogReference(NarmestelederbehovId(it[NarmestelederbehovTable.id]), requireNotNull(it[NarmestelederbehovTable.dialogId])) }
-    }
-
-    override suspend fun markDialogExpired(id: NarmestelederbehovId, expirationTime: Instant) {
-        database.ioTransaction {
-            NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {
-                it[expiredInDialogporten] = expirationTime.atOffset(ZoneOffset.UTC)
-            }
-        }
-    }
-
-    override suspend fun markDialogCreated(
-        id: NarmestelederbehovId,
-        dialogId: UUID,
-        name: BehovPersonName?,
-    ): MarkDialogCreatedResult = database.ioTransaction {
-        val updated = NarmestelederbehovTable.update({
-            (NarmestelederbehovTable.id eq id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED)
-        }) {
-            it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-            it[NarmestelederbehovTable.dialogId] = dialogId
-            it[fornavn] = name?.firstName
-            it[mellomnavn] = name?.middleName
-            it[etternavn] = name?.lastName
-        }
-        if (updated == 1) {
-            scheduleDispatch(id.value)
-            MarkDialogCreatedResult.Marked
-        } else {
-            MarkDialogCreatedResult.NotCreated
-        }
-    }
 
     // The partial unique index on open behov is the only unique constraint besides the generated id, so an ignored insert means an open behov already exists.
     override suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult = database.ioTransaction {

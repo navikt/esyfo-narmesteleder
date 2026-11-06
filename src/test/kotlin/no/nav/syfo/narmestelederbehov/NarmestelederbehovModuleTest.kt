@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -11,7 +12,7 @@ import io.mockk.mockk
 import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
-import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
+import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -28,7 +29,6 @@ import java.sql.Connection
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.time.Duration.Companion.minutes
 
 class NarmestelederbehovModuleTest :
     FunSpec({
@@ -43,7 +43,6 @@ class NarmestelederbehovModuleTest :
                     persistLeesahNlBehov = false,
                     publicIngressUrl = "https://api.example.invalid",
                     frontendBaseUrl = "https://frontend.example.invalid",
-                    dialogUpdatePollingInterval = 7.minutes,
                 )
                 val externalDependencies = module {
                     single { ApplicationState() }
@@ -61,19 +60,21 @@ class NarmestelederbehovModuleTest :
                     application {
                         platformModule(listOf(externalDependencies))
                         narmestelederbehovModule(settings)
-                        get<UpdateDialogTask>() shouldNotBe null
+                        get<DispatchNarmestelederbehovDialogUseCase>() shouldNotBe null
                     }
 
                     // Missing tokens are rejected before clients or repositories are used.
                     val publicResponse = client.request("$API_V1_PATH$path") {
                         method = httpMethod
                     }
-                    publicResponse.status shouldBe HttpStatusCode.Unauthorized
-                    publicResponse.headers[NAV_CALL_ID_HEADER] shouldNotBe null
-
-                    client.request("$INTERNAL_API_V1_PATH$path") {
+                    val internalResponse = client.request("$INTERNAL_API_V1_PATH$path") {
                         method = httpMethod
-                    }.status shouldBe HttpStatusCode.NotFound
+                    }
+                    assertSoftly {
+                        publicResponse.status shouldBe HttpStatusCode.Unauthorized
+                        publicResponse.headers[NAV_CALL_ID_HEADER] shouldNotBe null
+                        internalResponse.status shouldBe HttpStatusCode.NotFound
+                    }
                 }
             }
         }

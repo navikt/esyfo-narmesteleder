@@ -7,7 +7,6 @@ data class OtherEnvironmentProperties(
     val electorSSEUrl: String,
     val frontendBaseUrl: String,
     val publicIngressUrl: String,
-    val updateDialogportenTaskProperties: UpdateDialogportenTaskProperties,
     val maintenanceTaskDelay: String,
     val persistLeesahNlBehov: Boolean,
     val isDialogportenBackgroundTaskEnabled: Boolean,
@@ -21,6 +20,7 @@ data class OtherEnvironmentProperties(
     val employmentCheckEnabled: Boolean,
     val employmentCheckObserveSourceEnabled: Boolean,
     val employmentCheckRevokeEnabled: Boolean = false,
+    val dialogDispatchEnabled: Boolean = false,
 ) {
     init {
         require(!(employmentCheckRevokeEnabled && employmentCheckObserveSourceEnabled)) {
@@ -36,7 +36,6 @@ data class OtherEnvironmentProperties(
             publicIngressUrl = getEnvVar("PUBLIC_INGRESS_URL"),
             persistLeesahNlBehov = getEnvVar("PERSIST_LEESAH_NL_BEHOV", "true").toBoolean(),
             isDialogportenBackgroundTaskEnabled = getEnvVar("DIALOGPORTEN_TASK_ENABLED").toBoolean(),
-            updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createFromEnvVars(),
             persistSendtSykmelding = getEnvVar("PERSIST_SENDT_SYKMELDING", "false").toBoolean(),
             daysAfterTomToExpireBehovs = getEnvVar(
                 "DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS",
@@ -51,13 +50,13 @@ data class OtherEnvironmentProperties(
             employmentCheckEnabled = getEnvVar("EMPLOYMENT_CHECK_ENABLED", "false").toBoolean(),
             employmentCheckObserveSourceEnabled = getEnvVar("EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED", "false").toBoolean(),
             employmentCheckRevokeEnabled = getEnvVar("EMPLOYMENT_CHECK_REVOKE_ENABLED", "false").toBoolean(),
+            dialogDispatchEnabled = getEnvVar("DIALOG_DISPATCH_ENABLED", "false").toBoolean(),
         )
 
         fun createForLocal() = OtherEnvironmentProperties(
             electorPath = "esyfo-narmesteleder",
             frontendBaseUrl = "http://localhost:3000",
             publicIngressUrl = "http://localhost:8080",
-            updateDialogportenTaskProperties = UpdateDialogportenTaskProperties.createForLocal(),
             persistLeesahNlBehov = true,
             isDialogportenBackgroundTaskEnabled = true,
             persistSendtSykmelding = true,
@@ -72,20 +71,7 @@ data class OtherEnvironmentProperties(
             employmentCheckEnabled = false,
             employmentCheckObserveSourceEnabled = false,
             employmentCheckRevokeEnabled = false,
-        )
-    }
-}
-
-data class UpdateDialogportenTaskProperties(
-    val pollingDelay: String,
-) {
-    companion object {
-        fun createFromEnvVars() = UpdateDialogportenTaskProperties(
-            pollingDelay = getEnvVar("DIALOGPORTEN_UPDATE_POLLING_DELAY", "5m"),
-        )
-
-        fun createForLocal() = UpdateDialogportenTaskProperties(
-            pollingDelay = "30s",
+            dialogDispatchEnabled = true,
         )
     }
 }

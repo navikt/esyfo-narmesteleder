@@ -93,7 +93,7 @@ organization access and relation flows.
 | `GET /api/v1/access/organizations`            | `organisasjonstilgang`    | `ListAccessibleOrganizationsUseCase`         | Resolve organizations available to the authenticated personnel manager through Altinn Tilganger.    |
 | `GET /api/v1/linemanager/requirement` | `narmestelederbehov` | `ListNarmestelederbehovUseCase` | Check organization access, read open needs, then resolve and persist missing employee names through PDL. |
 | `GET /api/v1/linemanager/requirement/{id}` | `narmestelederbehov` | `GetNarmestelederbehovUseCase` | Read one need, resolve and persist a missing employee name through PDL, then check organization access. This legacy order is tracked by [#602](https://github.com/navikt/esyfo-narmesteleder/issues/602). |
-| `PUT /api/v1/linemanager/requirement/{id}`    | `narmestelederbehov`      | `FulfillNarmestelederbehovUseCase`           | Check access, establish a relation, mark the need fulfilled and complete its Dialogporten dialog.   |
+| `PUT /api/v1/linemanager/requirement/{id}`    | `narmestelederbehov`      | `FulfillNarmestelederbehovUseCase`           | Check access, establish a relation and atomically mark the need fulfilled with pending dialog reconciliation. |
 | `POST /api/v1/linemanager`                    | `narmestelederrelasjon`   | `SubmitNarmestelederrelasjonUseCase`         | Check access, validate the proposed relation and publish an establishment command.                  |
 | `POST /api/v1/linemanager/revoke` | `narmestelederrelasjon` | `RevokeActiveNarmestelederrelasjonUseCase` | Check organization access, resolve the employee in PDL, validate the submitted last name and read the active relation before publishing. No active relation is treated as success. |
 | `POST /internal/api/v1/lookup`                | `narmestelederrelasjon`   | `LookupActiveNarmestelederUseCase`           | Read the active relation for an employee and organization.                                          |
@@ -120,18 +120,17 @@ Operational health, metrics, OpenAPI and Swagger endpoints belong to
 
 | Execution                              | Entry point                    | Processing                                                                                                                                            |
 | -------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Elected leader                         | `SendDialogTask`               | `SendPendingNarmestelederbehovDialogsUseCase` creates missing Dialogporten dialogs for pending needs.                                                 |
-| Elected leader                         | `UpdateDialogTask`             | `CompleteFulfilledNarmestelederbehovDialogsUseCase` retries completion and `ExpireNarmestelederbehovDialogsUseCase` expires dialogs for closed needs. |
+| Every pod, database claims with leases | `dialog-dispatch` loop | `DispatchNarmestelederbehovDialogUseCase` creates, completes or expires dialogs according to the latest behov state. |
 | Elected leader                         | `ExpireNarmestelederbehovTask` | `ExpireNarmestelederbehovUseCase` expires needs after the configured sykmelding-based cutoff.                                                         |
 | Elected leader                         | `PersonEnrichmentTask`         | `EnrichPendingRelationPersonsUseCase` resolves missing person names through PDL.                                                                      |
 | Elected leader                         | `DeleteOldSykmeldingerTask`    | `DeleteOldSykmeldinger` removes sendt sykmelding records according to the retention policy.                                                           |
 | Every pod, database claims with leases | `employment-check-seed` loop   | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates reconciliation work for active relations.                                                  |
 | Every pod, database claims with leases | `employment-check` loop        | `CheckNarmestelederrelasjonEmploymentUseCase` checks employment through Aareg and optionally publishes revocations.                                   |
 
-All background work is feature-flagged. `DIALOGPORTEN_TASK_ENABLED` controls
-`SendDialogTask` and `UpdateDialogTask`. `PersonEnrichmentTask` requires both
-that flag and `PERSON_ENRICHMENT_TASK_ENABLED` because it starts inside the
-Dialogporten branch. `BEHOV_MAINTENANCE_TASK_ENABLED` controls behov expiry and
+All background work is feature-flagged. `DIALOG_DISPATCH_ENABLED` controls
+the all-pod dialog worker and is initially disabled for a controlled cutover.
+`PersonEnrichmentTask` still requires both `DIALOGPORTEN_TASK_ENABLED` and
+`PERSON_ENRICHMENT_TASK_ENABLED`. `BEHOV_MAINTENANCE_TASK_ENABLED` controls behov expiry and
 sykmelding retention. `EMPLOYMENT_CHECK_ENABLED` controls both employment
 loops, while publishing revocations additionally requires
 `EMPLOYMENT_CHECK_REVOKE_ENABLED`.
@@ -150,6 +149,7 @@ sequenceDiagram
     participant Upstream as Dinesykmeldte / PDL
     participant DB as PostgreSQL
     participant Dialog as Dialogporten
+    participant Worker as Dialog dispatch worker
 
     Kafka-->>Consumer: Sendt sykmelding without riktigNarmesteLeder answer
     Consumer->>Sykmelding: handleNarmestelederbehov
@@ -163,14 +163,12 @@ sequenceDiagram
             Behov->>Upstream: Verify active sykmelding (Dinesykmeldte)
         end
         Note over Behov: Main organization comes from the sykmelding (juridiskOrgnummer), not Aareg
-        Behov->>DB: Insert need (partial unique index guards concurrent inserts)
-        opt Need was stored with a main organization
-            Behov->>Upstream: Resolve optional person details
-            Behov->>Dialog: Create dialog
-            opt Dialog created
-                Behov->>DB: Store dialog state
-            end
-        end
+        Behov->>DB: Insert need and schedule eligible work in the same transaction
+        Worker->>DB: Claim due work and commit lease/token
+        Worker->>Upstream: Resolve optional person details
+        Worker->>DB: Persist CREATE uncertainty
+        Worker->>Dialog: Create or recover using the stable key
+        Worker->>DB: Store dialog identity with ownership checks
     else Active relation exists
         Sykmelding-->>Consumer: Skip creation
     end
@@ -179,8 +177,8 @@ sequenceDiagram
 The database unique constraint prevents concurrent sources from creating more
 than one active need for the same employee and organization. A behov stored
 without a main organization has an error status and no dialog. For a
-`BEHOV_CREATED` behov, failed dialog creation can be retried later by
-`SendDialogTask`. The behov id is the dialog's Dialogporten `idempotentKey`.
+`BEHOV_CREATED` behov, failed dialog creation is retried with backoff by the
+claim worker. The behov id is the dialog's Dialogporten `idempotentKey`.
 If Dialogporten created the dialog but the dialog state was not stored, a
 retry reuses the existing dialog instead of creating another one.
 
@@ -197,6 +195,7 @@ sequenceDiagram
     participant Command as teamsykmelding.syfo-narmesteleder
     participant DB as PostgreSQL
     participant Dialog as Dialogporten
+    participant Worker as Dialog dispatch worker
 
     Caller->>API: PUT requirement/{id}
     API->>Behov: Fulfil command
@@ -209,18 +208,31 @@ sequenceDiagram
     Relation->>Command: Publish establishment
     Command-->>Relation: Acknowledged
     Relation-->>Behov: Published
-    Behov->>DB: Mark need fulfilled
-    opt Need has a Dialogporten dialog
-        Behov->>Dialog: Complete dialog
-        Behov->>DB: Mark dialog completed
-    end
+    Behov->>DB: Mark need fulfilled and schedule work atomically
     Behov-->>API: Fulfilled
     API-->>Caller: HTTP response
+    Worker->>DB: Claim pending revision and commit lease/token
+    Worker->>Dialog: Reconcile completion
+    Worker->>DB: Persist observed state without losing newer work
 ```
 
 Publishing happens before the need is marked fulfilled. A failure stops later
-effects. If Dialogporten completion or its status update fails after the need
-is fulfilled, `UpdateDialogTask` retries it.
+effects. Dialogporten completion is eventual and never runs in the request
+path. Repository writers explicitly call `scheduleDialogDispatch` for relevant
+domain changes in their existing transaction, including creation, API/Leesah
+fulfillment and the leader-only behov expiry job. The cutover cleanup SQL also
+updates the need and schedules dispatch in one transaction; no scheduling
+trigger is installed. Manual domain changes must schedule their work explicitly.
+One control row per behov coordinates the full dialog lifecycle. Token and
+revision guards prevent stale database completion from erasing newer work;
+remote effects remain at-least-once.
+
+The worker persists CREATE uncertainty before sending, and recovers late or
+unknown outcomes before closing a dialog. Expiry uses a persisted intent and
+reads upstream state before changing it on retry. Confirmed request-validation
+failures are parked; transient and ambiguous outcomes remain retryable.
+See the [cutover and recovery runbook](operations/dialog-dispatch.md)
+for migration cleanup, legacy ambiguity, alerts and controlled replay.
 
 ### Direct relation submission
 
@@ -316,8 +328,8 @@ mapping and duplicate behavior are documented in
 The separate `LeesahNLKafkaConsumer` reads the same source topic for the behov
 lifecycle:
 
-- an active relation fulfils the employee's open needs and completes their
-  dialogs;
+- an active relation fulfils the employee's open needs and atomically schedules
+  their dialog reconciliation;
 - qualifying employee-, manager-, personnel-manager- and LPS-triggered
   deactivations request a new need. Employment-ended and new-manager
   deactivations do not.

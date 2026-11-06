@@ -69,9 +69,9 @@ class ExposedDialogDispatchRepositoryTest :
             val created = lifecycle.create(newBehov()).shouldBeInstanceOf<CreateBehovResult.Created>()
             val stored = requireNotNull(findStoredNarmestelederbehov(created.id.value))
             repository.claim(stored.created.plusSeconds(9), 60.seconds).shouldBeNull()
-            val claim = requireNotNull(repository.claim(now, 60.seconds))
+            val claim = requireNotNull(repository.claim(stored.created.plusSeconds(10), 60.seconds))
             claim.id shouldBe created.id
-            repository.finish(claim, DialogDispatchResult.Done, now) shouldBe true
+            repository.finish(claim, DialogDispatchResult.Done, stored.created.plusSeconds(10)) shouldBe true
 
             lifecycle.create(newBehov()) shouldBe CreateBehovResult.AlreadyExists
             lifecycle.create(newBehov(BehovStatus.HOVEDENHET_NOT_FOUND)).shouldBeInstanceOf<CreateBehovResult.Created>()

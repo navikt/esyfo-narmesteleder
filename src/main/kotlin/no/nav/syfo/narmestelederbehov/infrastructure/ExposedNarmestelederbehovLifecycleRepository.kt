@@ -17,13 +17,16 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.updateReturning
 import java.time.LocalDate
+import java.util.UUID
 
 class ExposedNarmestelederbehovLifecycleRepository(
     private val database: Database,
+    private val scheduleDispatch: JdbcTransaction.(UUID) -> Unit = JdbcTransaction::scheduleDialogDispatch,
 ) : CreateNarmestelederbehovRepository,
     ExpireNarmestelederbehovRepository {
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
@@ -41,7 +44,7 @@ class ExposedNarmestelederbehovLifecycleRepository(
         }.singleOrNull()
             ?.let {
                 val id = it[NarmestelederbehovTable.id]
-                scheduleDialogDispatch(id)
+                scheduleDispatch(id)
                 CreateBehovResult.Created(NarmestelederbehovId(id))
             }
             ?: CreateBehovResult.AlreadyExists
@@ -78,7 +81,7 @@ class ExposedNarmestelederbehovLifecycleRepository(
             ) {
                 it[behovStatus] = BehovStatus.BEHOV_EXPIRED
             }.map { it[NarmestelederbehovTable.id] }
-            expired.forEach { scheduleDialogDispatch(it) }
+            expired.forEach { scheduleDispatch(it) }
             expired.size
         }
     }

@@ -16,14 +16,17 @@ import org.jetbrains.exposed.v1.core.LiteralOp
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.compoundOr
+import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.lessEq
-import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.min
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
@@ -35,19 +38,18 @@ import kotlin.time.toJavaDuration
 
 class ExposedDialogDispatchRepository(private val database: Database) : DialogDispatchRepository {
     override suspend fun stats(): DialogDispatchStats = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-        requireNotNull(
-            exec(
-                """
-            SELECT count(*) FILTER (WHERE status IN ('READY', 'CLAIMED')),
-                   count(*) FILTER (WHERE status = 'PARKED'),
-                   min(pending_since) FILTER (WHERE status IN ('READY', 'CLAIMED'))
-            FROM nl_dialog_dispatch
-            WHERE status IN ('READY', 'CLAIMED', 'PARKED')
-                """.trimIndent(),
-            ) { rows ->
-                rows.next()
-                DialogDispatchStats(rows.getLong(1), rows.getLong(2), rows.getTimestamp(3)?.toInstant())
-            }
+        val count = DialogDispatchTable.behovId.count()
+        val oldestPendingSince = DialogDispatchTable.pendingSince.min()
+        val byStatus = DialogDispatchTable
+            .select(DialogDispatchTable.status, count, oldestPendingSince)
+            .where { statusIn(pendingStatuses + DialogDispatchStatus.PARKED) }
+            .groupBy(DialogDispatchTable.status)
+            .associateBy { it[DialogDispatchTable.status] }
+        val pending = pendingStatuses.mapNotNull { byStatus[it] }
+        DialogDispatchStats(
+            pending = pending.sumOf { it[count] },
+            parked = byStatus[DialogDispatchStatus.PARKED]?.get(count) ?: 0,
+            oldestPending = pending.mapNotNull { it[oldestPendingSince] }.minOrNull()?.toInstant(),
         )
     }
 
@@ -55,12 +57,7 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
         require(lease.isPositive() && lease.isFinite())
         return database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
             val row = DialogDispatchTable.selectAll().where {
-                // Fixed literals keep the partial index usable with generic prepared plans.
-                (
-                    (DialogDispatchTable.status eq LiteralOp(DialogDispatchTable.status.columnType, DialogDispatchStatus.READY)) or
-                        (DialogDispatchTable.status eq LiteralOp(DialogDispatchTable.status.columnType, DialogDispatchStatus.CLAIMED))
-                    ) and
-                    (DialogDispatchTable.availableAt lessEq now.atOffset(UTC))
+                statusIn(pendingStatuses) and (DialogDispatchTable.availableAt lessEq now.atOffset(UTC))
             }.orderBy(DialogDispatchTable.availableAt to SortOrder.ASC, DialogDispatchTable.behovId to SortOrder.ASC)
                 .limit(1)
                 .forUpdate(ForUpdateOption.PostgreSQL.ForUpdate(ForUpdateOption.PostgreSQL.MODE.SKIP_LOCKED))
@@ -161,27 +158,14 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
         transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
     ) {
         val row = DialogDispatchTable.selectAll().where { owns(claim, now) }.forUpdate().singleOrNull() ?: return@ioTransaction false
-        val changed = row[DialogDispatchTable.revision] != claim.revision
+        val next = nextDispatchState(superseded = row[DialogDispatchTable.revision] != claim.revision, result, claim.attempts, now)
         DialogDispatchTable.update({ owns(claim, now) }) {
             it[claimToken] = null
-            it[status] = when {
-                changed -> DialogDispatchStatus.READY
-                result is DialogDispatchResult.Done -> DialogDispatchStatus.IDLE
-                result is DialogDispatchResult.Parked -> DialogDispatchStatus.PARKED
-                else -> DialogDispatchStatus.READY
-            }
-            it[availableAt] = if (!changed && result is DialogDispatchResult.Retry) result.nextAttempt.atOffset(UTC) else now.atOffset(UTC)
-            it[attempts] = if (changed || result == DialogDispatchResult.Done) 0 else claim.attempts + 1
-            it[lastFailure] = if (changed) {
-                null
-            } else {
-                when (result) {
-                    DialogDispatchResult.Done -> null
-                    is DialogDispatchResult.Parked -> result.reason
-                    is DialogDispatchResult.Retry -> result.reason
-                }
-            }
-            if (!changed && result == DialogDispatchResult.Done) it[pendingSince] = null
+            it[status] = next.status
+            it[availableAt] = next.availableAt.atOffset(UTC)
+            it[attempts] = next.attempts
+            it[lastFailure] = next.lastFailure
+            if (next.clearPendingSince) it[pendingSince] = null
         } == 1
     }
 
@@ -189,4 +173,27 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
         (DialogDispatchTable.claimToken eq claim.token) and
         (DialogDispatchTable.status eq DialogDispatchStatus.CLAIMED) and
         (DialogDispatchTable.availableAt greater now.atOffset(UTC))
+}
+
+private val pendingStatuses = listOf(DialogDispatchStatus.READY, DialogDispatchStatus.CLAIMED)
+
+// Fixed literals keep the partial indexes usable with generic prepared plans.
+private fun statusIn(statuses: List<DialogDispatchStatus>): Op<Boolean> = statuses.map { DialogDispatchTable.status eq LiteralOp(DialogDispatchTable.status.columnType, it) }.compoundOr()
+
+private data class NextDispatchState(
+    val status: DialogDispatchStatus,
+    val availableAt: Instant,
+    val attempts: Int,
+    val lastFailure: String? = null,
+    val clearPendingSince: Boolean = false,
+)
+
+private fun nextDispatchState(superseded: Boolean, result: DialogDispatchResult, attempts: Int, now: Instant): NextDispatchState = if (superseded) {
+    NextDispatchState(DialogDispatchStatus.READY, now, attempts = 0)
+} else {
+    when (result) {
+        DialogDispatchResult.Done -> NextDispatchState(DialogDispatchStatus.IDLE, now, attempts = 0, clearPendingSince = true)
+        is DialogDispatchResult.Retry -> NextDispatchState(DialogDispatchStatus.READY, result.nextAttempt, attempts + 1, result.reason)
+        is DialogDispatchResult.Parked -> NextDispatchState(DialogDispatchStatus.PARKED, now, attempts + 1, result.reason)
+    }
 }

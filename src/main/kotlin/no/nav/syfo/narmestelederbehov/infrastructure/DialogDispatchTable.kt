@@ -11,7 +11,7 @@ internal enum class DialogDispatchStatus {
     PARKED,
 }
 
-internal object DialogDispatchTable : Table("nl_dialog_dispatch") {
+internal object DialogDispatchTable : Table("dialog_dispatch") {
     val behovId = javaUUID("behov_id")
     val status = enumerationByName<DialogDispatchStatus>("status", 16)
     val revision = long("revision")

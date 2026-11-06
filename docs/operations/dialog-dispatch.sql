@@ -21,17 +21,17 @@ WITH candidates AS (
     FROM candidates c WHERE b.id = c.id
     RETURNING b.id, b.dialog_id, b.created
 ), scheduled AS (
-    INSERT INTO nl_dialog_dispatch (behov_id, available_at)
+    INSERT INTO dialog_dispatch (behov_id, available_at)
     SELECT f.id, GREATEST(clock_timestamp(), f.created + interval '10 seconds')
     FROM fulfilled f
     WHERE f.dialog_id IS NOT NULL
-       OR EXISTS (SELECT 1 FROM nl_dialog_dispatch WHERE behov_id = f.id)
+       OR EXISTS (SELECT 1 FROM dialog_dispatch WHERE behov_id = f.id)
     ON CONFLICT (behov_id) DO UPDATE SET
-        revision = nl_dialog_dispatch.revision + 1,
-        status = CASE WHEN nl_dialog_dispatch.status = 'CLAIMED' THEN 'CLAIMED' ELSE 'READY' END,
-        available_at = CASE WHEN nl_dialog_dispatch.status = 'CLAIMED'
-                            THEN nl_dialog_dispatch.available_at ELSE clock_timestamp() END,
-        pending_since = COALESCE(nl_dialog_dispatch.pending_since, clock_timestamp()),
+        revision = dialog_dispatch.revision + 1,
+        status = CASE WHEN dialog_dispatch.status = 'CLAIMED' THEN 'CLAIMED' ELSE 'READY' END,
+        available_at = CASE WHEN dialog_dispatch.status = 'CLAIMED'
+                            THEN dialog_dispatch.available_at ELSE clock_timestamp() END,
+        pending_since = COALESCE(dialog_dispatch.pending_since, clock_timestamp()),
         attempts = 0,
         last_failure = NULL
     RETURNING behov_id
@@ -43,7 +43,7 @@ BEGIN;
 WITH candidates AS (
     SELECT b.id, b.behov_status, b.dialog_id
     FROM nl_behov b
-    LEFT JOIN nl_dialog_dispatch q ON q.behov_id = b.id
+    LEFT JOIN dialog_dispatch q ON q.behov_id = b.id
     WHERE (q.behov_id IS NULL
            OR (b.behov_status = 'BEHOV_CREATED' AND b.dialog_id IS NULL AND NOT q.create_started))
       AND (
@@ -56,10 +56,10 @@ WITH candidates AS (
     LIMIT 500
     FOR UPDATE OF b SKIP LOCKED
 ), seeded AS (
-    INSERT INTO nl_dialog_dispatch (behov_id, create_started)
+    INSERT INTO dialog_dispatch (behov_id, create_started)
     SELECT id, behov_status = 'BEHOV_CREATED' AND dialog_id IS NULL FROM candidates
     ON CONFLICT (behov_id) DO UPDATE SET create_started = true
-    WHERE NOT nl_dialog_dispatch.create_started AND EXCLUDED.create_started
+    WHERE NOT dialog_dispatch.create_started AND EXCLUDED.create_started
     RETURNING behov_id
 )
 SELECT count(*) AS seeded FROM seeded;

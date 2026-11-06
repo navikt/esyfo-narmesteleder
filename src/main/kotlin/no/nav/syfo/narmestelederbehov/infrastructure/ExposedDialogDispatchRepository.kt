@@ -4,11 +4,13 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.BehovPersonName
 import no.nav.syfo.narmestelederbehov.application.DialogClaim
-import no.nav.syfo.narmestelederbehov.application.DialogDispatchRepository
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchFailure
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchQueue
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchResult
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchState
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchStats
-import no.nav.syfo.narmestelederbehov.domain.BehovStatus
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchStatsReader
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchWork
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.database.ioTransaction
@@ -20,7 +22,6 @@ import org.jetbrains.exposed.v1.core.compoundOr
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.min
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
@@ -35,7 +36,10 @@ import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.toJavaDuration
 
-class ExposedDialogDispatchRepository(private val database: Database) : DialogDispatchRepository {
+class ExposedDialogDispatchRepository(private val database: Database) :
+    DialogDispatchQueue,
+    DialogDispatchWork,
+    DialogDispatchStatsReader {
     override suspend fun stats(): DialogDispatchStats = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         val count = DialogDispatchTable.behovId.count()
         val oldestPendingSince = DialogDispatchTable.pendingSince.min()
@@ -119,36 +123,15 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
     }
 
     override suspend fun saveCreated(claim: DialogClaim, dialogId: UUID, name: BehovPersonName?, now: Instant): Boolean = mutateBehov(claim, now) {
-        NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq claim.id.value }) {
-            it[NarmestelederbehovTable.dialogId] = dialogId
-            it[fornavn] = name?.firstName
-            it[mellomnavn] = name?.middleName
-            it[etternavn] = name?.lastName
-        }
-        NarmestelederbehovTable.update({
-            (NarmestelederbehovTable.id eq claim.id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED)
-        }) {
-            it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-        }
-        scheduleDialogDispatch(claim.id.value)
+        recordCreatedDialog(claim.id, dialogId, name)
     }
 
     override suspend fun saveCompleted(claim: DialogClaim, now: Instant): Boolean = mutateBehov(claim, now) {
-        val updated = NarmestelederbehovTable.update({
-            (NarmestelederbehovTable.id eq claim.id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_FULFILLED)
-        }) {
-            it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
-        }
-        if (updated == 1) scheduleDialogDispatch(claim.id.value)
+        recordCompletedDialog(claim.id)
     }
 
     override suspend fun saveExpired(claim: DialogClaim, expiry: Instant, now: Instant): Boolean = mutateBehov(claim, now) {
-        NarmestelederbehovTable.update({
-            (NarmestelederbehovTable.id eq claim.id.value) and
-                (NarmestelederbehovTable.behovStatus inList listOf(BehovStatus.BEHOV_EXPIRED, BehovStatus.ERROR))
-        }) {
-            it[expiredInDialogporten] = expiry.atOffset(UTC)
-        }
+        recordExpiredDialog(claim.id, expiry)
     }
 
     // Domain writers lock behov before dispatch state; use the same order.
@@ -171,7 +154,7 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
             it[status] = next.status
             it[availableAt] = next.availableAt.atOffset(UTC)
             it[attempts] = next.attempts
-            it[lastFailure] = next.lastFailure
+            it[lastFailure] = next.lastFailure?.value
             if (next.clearPendingSince) it[pendingSince] = null
         } == 1
     }
@@ -191,7 +174,7 @@ private data class NextDispatchState(
     val status: DialogDispatchStatus,
     val availableAt: Instant,
     val attempts: Int,
-    val lastFailure: String? = null,
+    val lastFailure: DialogDispatchFailure? = null,
     val clearPendingSince: Boolean = false,
 )
 

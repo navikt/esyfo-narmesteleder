@@ -12,11 +12,15 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.database.ioTransaction
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
+import java.sql.Connection
+import java.util.UUID
 
 class ExposedNarmestelederbehovFulfillmentRepository(
     private val database: Database,
+    private val scheduleDispatch: JdbcTransaction.(UUID) -> Unit = JdbcTransaction::scheduleDialogDispatch,
 ) : FulfillNarmestelederbehovRepository,
     FulfillNarmestelederbehovFromLeesahRepository {
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = database.ioTransaction {
@@ -41,7 +45,7 @@ class ExposedNarmestelederbehovFulfillmentRepository(
 
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
 
-    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = database.ioTransaction {
+    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         val row = NarmestelederbehovTable.select(NarmestelederbehovTable.behovStatus, NarmestelederbehovTable.dialogId)
             .where { NarmestelederbehovTable.id eq id.value }.forUpdate().singleOrNull()
             ?: return@ioTransaction MarkFulfilledResult.Missing
@@ -49,7 +53,7 @@ class ExposedNarmestelederbehovFulfillmentRepository(
             NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {
                 it[behovStatus] = BehovStatus.BEHOV_FULFILLED
             }
-            scheduleDialogDispatch(id.value)
+            scheduleDispatch(id.value)
         }
         MarkFulfilledResult.Marked(id, row[NarmestelederbehovTable.dialogId])
     }

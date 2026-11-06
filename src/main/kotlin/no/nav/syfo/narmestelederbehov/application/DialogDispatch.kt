@@ -20,20 +20,33 @@ data class DialogDispatchState(
 
 sealed interface DialogDispatchResult {
     data object Done : DialogDispatchResult
-    data class Retry(val nextAttempt: Instant, val reason: String) : DialogDispatchResult
-    data class Parked(val reason: String) : DialogDispatchResult
+    data class Retry(val nextAttempt: Instant, val reason: DialogDispatchFailure) : DialogDispatchResult
+    data class Parked(val reason: DialogDispatchFailure) : DialogDispatchResult
 }
 
-interface DialogDispatchRepository {
-    suspend fun stats(): DialogDispatchStats
+enum class DialogDispatchFailure(val value: String) {
+    INVALID_REQUEST("invalid_request"),
+    UPSTREAM("upstream"),
+    TIMEOUT("timeout"),
+    UNEXPECTED("unexpected"),
+}
+
+interface DialogDispatchQueue {
     suspend fun claim(now: Instant, lease: Duration): DialogClaim?
+    suspend fun finish(claim: DialogClaim, result: DialogDispatchResult, now: Instant): Boolean
+}
+
+interface DialogDispatchWork {
     suspend fun load(claim: DialogClaim, now: Instant): DialogDispatchState?
     suspend fun beginCreation(claim: DialogClaim, now: Instant): Boolean
     suspend fun saveCreated(claim: DialogClaim, dialogId: UUID, name: BehovPersonName?, now: Instant): Boolean
     suspend fun prepareExpiry(claim: DialogClaim, expiry: Instant, now: Instant): Boolean
     suspend fun saveCompleted(claim: DialogClaim, now: Instant): Boolean
     suspend fun saveExpired(claim: DialogClaim, expiry: Instant, now: Instant): Boolean
-    suspend fun finish(claim: DialogClaim, result: DialogDispatchResult, now: Instant): Boolean
+}
+
+fun interface DialogDispatchStatsReader {
+    suspend fun stats(): DialogDispatchStats
 }
 
 data class DialogDispatchStats(val pending: Long, val parked: Long, val oldestPending: Instant?)

@@ -12,11 +12,13 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.DialogCompletion
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchFailure
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchResult
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchSettings
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchStats
@@ -35,17 +37,24 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.insertRelation
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.io.File
+import java.sql.Connection
 import java.time.Clock
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -92,13 +101,56 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
+        test("a fulfillment writer preserves a concurrently committed claim without transaction retries") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val worker = Executors.newSingleThreadExecutor()
+            val writerDatabase = Database.connect(
+                getNewConnection = { TestDB.database.connection },
+                databaseConfig = DatabaseConfig {
+                    defaultIsolationLevel = Connection.TRANSACTION_REPEATABLE_READ
+                    defaultMaxAttempts = 1
+                },
+            )
+            try {
+                val schedule: JdbcTransaction.(UUID) -> Unit = { id ->
+                    worker.submit<Boolean> {
+                        runBlocking { requireNotNull(repository.claim(now, 60.seconds)).id.value == id }
+                    }.get(10, TimeUnit.SECONDS) shouldBe true
+                    scheduleDialogDispatch(id)
+                }
+                ExposedNarmestelederbehovFulfillmentRepository(writerDatabase, schedule).markFulfilled(NarmestelederbehovId(row.id))
+                repository.claim(now, 60.seconds).shouldBeNull()
+                val reclaimed = requireNotNull(repository.claim(now.plusSeconds(61), 60.seconds))
+                reclaimed.revision shouldBe 2L
+                requireNotNull(repository.load(reclaimed, now.plusSeconds(61))).status shouldBe BehovStatus.BEHOV_FULFILLED
+            } finally {
+                worker.shutdownNow()
+                TransactionManager.closeAndUnregister(writerDatabase)
+            }
+        }
+
+        test("saving completion acknowledges the current revision without scheduling another claim") {
+            val row = insertNarmestelederbehov(
+                created = now.minusSeconds(30),
+                behovStatus = BehovStatus.BEHOV_FULFILLED,
+                dialogId = UUID.randomUUID(),
+            )
+            val claim = requireNotNull(repository.claim(now, 60.seconds))
+            repository.saveCompleted(claim, now) shouldBe true
+            repository.finish(claim, DialogDispatchResult.Done, now) shouldBe true
+            assertSoftly {
+                findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                repository.claim(now, 60.seconds).shouldBeNull()
+            }
+        }
+
         test("stats count ready, claimed and parked work and report the oldest pending change") {
             val parked = insertNarmestelederbehov(created = now.minusSeconds(40))
             val idle = insertNarmestelederbehov(created = now.minusSeconds(30))
             val claimed = insertNarmestelederbehov(created = now.minusSeconds(20))
             val ready = insertNarmestelederbehov(created = now.minusSeconds(10))
             suspend fun claimNext(expected: UUID) = requireNotNull(repository.claim(now, 60.seconds)).also { it.id.value shouldBe expected }
-            repository.finish(claimNext(parked.id), DialogDispatchResult.Parked("invalid_request"), now) shouldBe true
+            repository.finish(claimNext(parked.id), DialogDispatchResult.Parked(DialogDispatchFailure.INVALID_REQUEST), now) shouldBe true
             repository.finish(claimNext(idle.id), DialogDispatchResult.Done, now) shouldBe true
             claimNext(claimed.id)
             val oldestPending = Instant.parse("2029-03-01T00:00:00Z")
@@ -144,8 +196,8 @@ class ExposedDialogDispatchRepositoryTest :
 
         listOf(
             DialogDispatchResult.Done,
-            DialogDispatchResult.Retry(now.plusSeconds(600), "upstream"),
-            DialogDispatchResult.Parked("invalid_request"),
+            DialogDispatchResult.Retry(now.plusSeconds(600), DialogDispatchFailure.UPSTREAM),
+            DialogDispatchResult.Parked(DialogDispatchFailure.INVALID_REQUEST),
         ).forEach { oldResult ->
             test("a domain change during a claim survives $oldResult of the older revision") {
                 val row = insertNarmestelederbehov(created = now.minusSeconds(30))
@@ -161,7 +213,8 @@ class ExposedDialogDispatchRepositoryTest :
             val row = insertNarmestelederbehov(created = now.minusSeconds(30))
             ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
             DispatchNarmestelederbehovDialogUseCase(
-                repository = repository,
+                queue = repository,
+                work = repository,
                 creation = { _, _, _ -> error("must not create a closed unattempted behov") },
                 completion = { error("must not complete") },
                 expiry = { _, _ -> error("must not expire") },
@@ -182,7 +235,8 @@ class ExposedDialogDispatchRepositoryTest :
             val calls = mutableListOf<UUID>()
             val dialogId = UUID.randomUUID()
             DispatchNarmestelederbehovDialogUseCase(
-                repository = repository,
+                queue = repository,
+                work = repository,
                 creation = { id, _, _ ->
                     calls += id.value
                     if (id.value == first.id) awaitCancellation()
@@ -211,7 +265,8 @@ class ExposedDialogDispatchRepositoryTest :
             val dialogId = UUID.randomUUID()
             val completed = mutableListOf<UUID>()
             val worker = DispatchNarmestelederbehovDialogUseCase(
-                repository = repository,
+                queue = repository,
+                work = repository,
                 creation = NarmestelederbehovDialogCreation { _, _, _ ->
                     ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
                     NarmestelederbehovDialogCreationResult.Created(dialogId)
@@ -243,9 +298,10 @@ class ExposedDialogDispatchRepositoryTest :
             )
             val claim = requireNotNull(repository.claim(now, 60.seconds))
             repository.prepareExpiry(claim, target, now) shouldBe true
-            repository.finish(claim, DialogDispatchResult.Retry(now, "timeout"), now) shouldBe true
+            repository.finish(claim, DialogDispatchResult.Retry(now, DialogDispatchFailure.TIMEOUT), now) shouldBe true
             DispatchNarmestelederbehovDialogUseCase(
-                repository = repository,
+                queue = repository,
+                work = repository,
                 creation = { _, _, _ -> error("must not create") },
                 completion = { error("must not complete") },
                 expiry = { _, _ -> error("must not postpone an applied expiry") },
@@ -268,10 +324,11 @@ class ExposedDialogDispatchRepositoryTest :
                 )
                 val claim = requireNotNull(repository.claim(now, 60.seconds))
                 repository.prepareExpiry(claim, now.plusSeconds(secondsUntilExpiry), now) shouldBe true
-                repository.finish(claim, DialogDispatchResult.Retry(now, "timeout"), now) shouldBe true
+                repository.finish(claim, DialogDispatchResult.Retry(now, DialogDispatchFailure.TIMEOUT), now) shouldBe true
                 val targets = mutableListOf<Instant>()
                 val worker = DispatchNarmestelederbehovDialogUseCase(
-                    repository = repository,
+                    queue = repository,
+                    work = repository,
                     creation = { _, _, _ -> error("must not create") },
                     completion = { error("must not complete") },
                     expiry = { _, target ->
@@ -334,7 +391,8 @@ class ExposedDialogDispatchRepositoryTest :
             val dialogId = UUID.randomUUID()
             val later = now.plusSeconds(61)
             DispatchNarmestelederbehovDialogUseCase(
-                repository = repository,
+                queue = repository,
+                work = repository,
                 creation = { id, _, _ ->
                     ids.add(id)
                     NarmestelederbehovDialogCreationResult.Created(dialogId)
@@ -397,7 +455,8 @@ class ExposedDialogDispatchRepositoryTest :
                     val metrics = MicrometerDialogDispatchMetrics(repository, registry, clock)
                     var calls = 0
                     DispatchNarmestelederbehovDialogUseCase(
-                        repository = repository,
+                        queue = repository,
+                        work = repository,
                         creation = { _, _, _ ->
                             calls++
                             NarmestelederbehovDialogCreationResult.Unavailable(

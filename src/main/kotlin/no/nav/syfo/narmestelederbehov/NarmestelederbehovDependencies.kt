@@ -6,8 +6,10 @@ import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchMetrics
-import no.nav.syfo.narmestelederbehov.application.DialogDispatchRepository
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchQueue
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchSettings
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchStatsReader
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchWork
 import no.nav.syfo.narmestelederbehov.application.DialogExpiryInspection
 import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeeNameLookup
@@ -71,12 +73,17 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
         CreateNarmestelederbehovRepository::class,
         ExpireNarmestelederbehovRepository::class,
     )
-    single<DialogDispatchRepository> { ExposedDialogDispatchRepository(get()) }
+    single { ExposedDialogDispatchRepository(get()) } binds arrayOf(
+        DialogDispatchQueue::class,
+        DialogDispatchWork::class,
+        DialogDispatchStatsReader::class,
+    )
     single { DialogDispatchSettings() }
     single { MicrometerDialogDispatchMetrics(get()) } binds arrayOf(DialogDispatchMetrics::class)
     single {
         DispatchNarmestelederbehovDialogUseCase(
-            repository = get(),
+            queue = get(),
+            work = get(),
             creation = get(),
             completion = get(),
             expiry = get(),

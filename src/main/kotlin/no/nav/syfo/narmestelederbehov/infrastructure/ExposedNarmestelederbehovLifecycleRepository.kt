@@ -21,6 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.updateReturning
+import java.sql.Connection
 import java.time.LocalDate
 import java.util.UUID
 
@@ -32,7 +33,7 @@ class ExposedNarmestelederbehovLifecycleRepository(
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
 
     // The partial unique index on open behov is the only unique constraint besides the generated id, so an ignored insert means an open behov already exists.
-    override suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult = database.ioTransaction {
+    override suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         NarmestelederbehovTable.insertReturning(returning = listOf(NarmestelederbehovTable.id), ignoreErrors = true) {
             it[orgnummer] = behov.employee.organizationNumber.value
             it[hovedenhetOrgnummer] = behov.mainOrganizationNumber
@@ -50,7 +51,7 @@ class ExposedNarmestelederbehovLifecycleRepository(
             ?: CreateBehovResult.AlreadyExists
     }
 
-    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int = database.ioTransaction {
+    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         val ids = NarmestelederbehovTable
             .join(
                 SendtSykmeldingTomTable,

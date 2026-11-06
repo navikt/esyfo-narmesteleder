@@ -37,7 +37,8 @@ class ConfigureDialogDispatchTest :
             val metrics = MicrometerDialogDispatchMetrics(repository, SimpleMeterRegistry(), clock)
             val settings = DialogDispatchSettings()
             val worker = DispatchNarmestelederbehovDialogUseCase(
-                repository = repository,
+                queue = repository,
+                work = repository,
                 creation = { _, _, _ ->
                     entered.complete(Unit)
                     try {

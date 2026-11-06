@@ -21,10 +21,10 @@ internal val TEXAS = UpstreamName("texas")
 
 class TexasHttpClient(
     val client: HttpClient,
-    val environment: TexasSettings
+    val settings: TexasSettings
 ) {
 
-    suspend fun introspectToken(identityProvider: String, token: String): TexasIntrospectionResponse = client.post(environment.tokenIntrospectionEndpoint) {
+    suspend fun introspectToken(identityProvider: String, token: String): TexasIntrospectionResponse = client.post(settings.tokenIntrospectionEndpoint) {
         contentType(ContentType.Application.Json)
         setBody(
             TexasIntrospectionRequest(
@@ -35,23 +35,23 @@ class TexasHttpClient(
     }.body<TexasIntrospectionResponse>()
 
     suspend fun azureAdSystemToken(scope: String, tokenTarget: UpstreamName): UpstreamResult<String> = requestToken(
-        endpoint = environment.tokenEndpoint,
+        endpoint = settings.tokenEndpoint,
         tokenTarget = tokenTarget,
         body = TexasTokenRequest(identityProvider = IDENTITY_PROVIDER_AZUREAD, target = getTarget(scope)),
     )
 
     suspend fun maskinportenSystemToken(target: String, tokenTarget: UpstreamName): UpstreamResult<String> = requestToken(
-        endpoint = environment.tokenEndpoint,
+        endpoint = settings.tokenEndpoint,
         tokenTarget = tokenTarget,
         body = TexasTokenRequest(identityProvider = IDENTITY_PROVIDER_MASKINPORTEN, target = target),
     )
 
     suspend fun exchangeToAltinnToken(token: String, tokenTarget: UpstreamName): UpstreamResult<String> = requestToken(
-        endpoint = environment.tokenExchangeEndpoint,
+        endpoint = settings.tokenExchangeEndpoint,
         tokenTarget = tokenTarget,
         body = TexasExchangeRequest(
             identityProvider = IDENTITY_PROVIDER_TOKENX,
-            target = environment.exchangeTargetIsAltinnTilganger,
+            target = settings.exchangeTargetIsAltinnTilganger,
             userToken = token,
         ),
     )

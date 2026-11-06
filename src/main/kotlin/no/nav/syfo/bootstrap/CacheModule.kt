@@ -6,6 +6,6 @@ import no.nav.syfo.platform.cache.ValkeySettings
 import org.koin.dsl.module
 
 internal fun cacheModule(valkey: ValkeySettings) = module {
-    single { ValkeyCache(valkeyEnvironment = valkey) }
+    single { ValkeyCache(settings = valkey) }
     single { EregCache(valkeyCache = get()) }
 }

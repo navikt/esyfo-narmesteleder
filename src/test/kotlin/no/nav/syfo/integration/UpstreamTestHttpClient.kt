@@ -27,7 +27,7 @@ internal fun upstreamHttpClient(
     upstream: MockRequestHandler,
 ): HttpClient = httpClientDefaultWithoutRetryDelay(
     MockEngine { request ->
-        if (request.url.toString() in setOf(texasEnvironment.tokenEndpoint, texasEnvironment.tokenExchangeEndpoint)) token(request) else upstream(request)
+        if (request.url.toString() in setOf(texasSettings.tokenEndpoint, texasSettings.tokenExchangeEndpoint)) token(request) else upstream(request)
     }
 )
 
@@ -39,7 +39,7 @@ internal fun httpClientDefaultWithoutRetryDelay(engine: HttpClientEngine): HttpC
     install(HttpRequestRetry) { delay { } }
 }
 
-internal fun texasHttpClient(httpClient: HttpClient) = TexasHttpClient(httpClient, texasEnvironment)
+internal fun texasHttpClient(httpClient: HttpClient) = TexasHttpClient(httpClient, texasSettings)
 
 internal fun MockRequestHandleScope.respondJson(content: String, status: HttpStatusCode = HttpStatusCode.OK) = respond(
     content = content,
@@ -47,4 +47,4 @@ internal fun MockRequestHandleScope.respondJson(content: String, status: HttpSta
     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
 )
 
-private val texasEnvironment = localTexasSettings()
+private val texasSettings = localTexasSettings()

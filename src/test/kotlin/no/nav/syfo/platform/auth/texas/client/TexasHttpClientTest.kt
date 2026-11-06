@@ -96,13 +96,13 @@ class TexasHttpClientTest :
         }
 
         test("TokenX exchange posts the configured target and user token and returns the access token") {
-            val environment = localTexasSettings()
+            val settings = localTexasSettings()
             upstreamHttpClient(
                 token = { request ->
-                    request.url.toString() shouldBe environment.tokenExchangeEndpoint
+                    request.url.toString() shouldBe settings.tokenExchangeEndpoint
                     val body = jacksonObjectMapper().readTree(request.body.toByteArray())
                     body["identity_provider"].asText() shouldBe "tokenx"
-                    body["target"].asText() shouldBe environment.exchangeTargetIsAltinnTilganger
+                    body["target"].asText() shouldBe settings.exchangeTargetIsAltinnTilganger
                     body["user_token"].asText() shouldBe "synthetic-user-token"
                     respondWithSystemToken(request)
                 },

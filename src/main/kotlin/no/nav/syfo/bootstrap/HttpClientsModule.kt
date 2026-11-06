@@ -29,7 +29,7 @@ internal fun httpClientsModule(
     altinnApi: AltinnApiSettings,
 ) = module {
     single { httpClientDefault() }
-    single { TexasHttpClient(client = get(), environment = texas) }
+    single { TexasHttpClient(client = get(), settings = texas) }
     single<AltinnTokenSource> {
         CachingAltinnTokenSource(
             delegate = TexasAltinnTokenFetcher(

@@ -151,7 +151,12 @@ class ConsumerRunner<K, V>(
             } catch (error: Throwable) {
                 if (isFatal(error)) {
                     // `consumer` is carried in MDC (launch-MDCContext); do not duplicate coroutineName as kv.
-                    logger.logEvent(KafkaConsumerLogEvents.fatalFailure, Unit, cause = error)
+                    logger.logEvent(
+                        KafkaConsumerLogEvents.fatalFailure,
+                        Unit,
+                        cause = error,
+                        upstreamFailure = error.reportedUpstreamFailure(),
+                    )
                     running.set(false)
                     onFatalError(error)
                 } else {
@@ -171,6 +176,7 @@ class ConsumerRunner<K, V>(
                         KafkaConsumerLogEvents.restart,
                         BackoffContext(backoffMillis),
                         cause = error,
+                        upstreamFailure = error.reportedUpstreamFailure(),
                     )
                 }
             } finally {

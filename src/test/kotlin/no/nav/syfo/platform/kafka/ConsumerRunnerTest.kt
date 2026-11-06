@@ -7,8 +7,12 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.longs.shouldBeExactly
 import io.kotest.matchers.shouldBe
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.observability.Heartbeat
 import no.nav.syfo.platform.observability.withProductionLogs
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
+import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterKafkaConsumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -173,7 +177,7 @@ class ConsumerRunnerTest :
                 } finally {
                     runner.close()
                 }
-                logs.logs.filter { it.fields["event_type"] == "kafka_consumer.restart" }
+                logs.logs.filter { it.fields["event_type"] == "kafka_consumer_restarted" }
                     .map { (it.fields["backoff_millis"] as Number).toLong() }
                     .shouldContainExactly(1L, 2L, 4L, 4L, 1L)
             }
@@ -254,9 +258,11 @@ class ConsumerRunnerTest :
                     assertSoftly {
                         consumer.closed() shouldBe true
                         registry.counter(ConsumerRunner.RESTARTS_METRIC, "consumer", CONSUMER_NAME).count() shouldBe 0.0
-                        logs.logs.any {
-                            it.fields["event_type"] == "kafka_consumer.fatal_failure" && it.fields["consumer"] == CONSUMER_NAME
-                        } shouldBe true
+                        logs.logs.single { it.fields["event_type"] == "kafka_consumer_crashed" }.fields.let { fields ->
+                            fields["level"] shouldBe "ERROR"
+                            fields["consumer"] shouldBe CONSUMER_NAME
+                            fields["upstream"] shouldBe "kafka"
+                        }
                         logs.logs.none { log ->
                             listOf("auth-canary", "authorization-canary", "configuration-canary")
                                 .any(log.serialized::contains)
@@ -308,8 +314,50 @@ class ConsumerRunnerTest :
                 runner.close()
 
                 assertSoftly {
-                    logs.logs.any { it.fields["event_type"] == "kafka_consumer.restart" } shouldBe true
+                    logs.logs.single { it.fields["event_type"] == "kafka_consumer_restarted" }.fields.let { fields ->
+                        fields["level"] shouldBe "WARN"
+                        fields["consumer"] shouldBe CONSUMER_NAME
+                        fields["upstream"] shouldBe "kafka"
+                    }
                     logs.logs.none { it.serialized.contains(payload) } shouldBe true
+                }
+            }
+        }
+
+        test("logs the upstream failure carried by a handler exception") {
+            val handled = CountDownLatch(1)
+            val attempts = AtomicInteger()
+            val failure = UpstreamFailure(
+                upstream = UpstreamName("aareg"),
+                stage = UpstreamFailureStage.REQUEST,
+                status = 503,
+                cause = RuntimeException("upstream unavailable"),
+            )
+            val runner = runner(
+                consumerFactory = {
+                    RecordingMockConsumer().also { consumer ->
+                        consumer.scheduleBatch(ConsumerRecord(TOPIC, 0, 0L, "key", "value"))
+                    }
+                },
+                handler = {
+                    if (attempts.getAndIncrement() == 0) throw IllegalStateException("wrapper", failure.toUpstreamUnavailableException())
+                    handled.countDown()
+                },
+                initialBackoff = 1.milliseconds,
+                maxBackoff = 1.milliseconds,
+            )
+
+            withProductionLogs(ConsumerRunner::class.java, Level.WARN) { logs ->
+                runner.start()
+                handled.awaitOrFail()
+                runner.close()
+
+                logs.logs.single { it.fields["event_type"] == "kafka_consumer_restarted" }.fields.let { fields ->
+                    assertSoftly {
+                        fields["upstream"] shouldBe "aareg"
+                        fields["failure_stage"] shouldBe "request"
+                        (fields["upstream_status"] as Number).toInt() shouldBe 503
+                    }
                 }
             }
         }

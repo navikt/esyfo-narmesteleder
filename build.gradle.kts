@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.ktor.server.micrometer)
     implementation(libs.micrometer.prometheus)
     implementation(libs.kafka.clients)
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.slf4j)
     implementation(libs.valkey.java)
 

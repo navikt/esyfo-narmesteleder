@@ -7,7 +7,7 @@ import org.jetbrains.exposed.v1.core.CustomFunction
 import org.jetbrains.exposed.v1.core.LiteralOp
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.plus
-import org.jetbrains.exposed.v1.javatime.timestampWithTimeZoneLiteral
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZoneParam
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -45,7 +45,7 @@ internal fun JdbcTransaction.scheduleDialogDispatch(behovId: UUID) {
                 "GREATEST",
                 availableAt.columnType,
                 now,
-                timestampWithTimeZoneLiteral(behov[NarmestelederbehovTable.created].plusSeconds(10)),
+                timestampWithTimeZoneParam(behov[NarmestelederbehovTable.created].plusSeconds(10)),
             )
         }
     }

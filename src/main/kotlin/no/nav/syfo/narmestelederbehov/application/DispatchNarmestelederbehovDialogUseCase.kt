@@ -36,7 +36,8 @@ fun interface DialogDispatchMetrics {
 
 /** Reconciles one revision per claim; a newer revision is left for the next owner. */
 class DispatchNarmestelederbehovDialogUseCase(
-    private val repository: DialogDispatchRepository,
+    private val queue: DialogDispatchQueue,
+    private val work: DialogDispatchWork,
     private val creation: NarmestelederbehovDialogCreation,
     private val completion: NarmestelederbehovDialog,
     private val expiry: NarmestelederbehovDialogExpiry,
@@ -51,20 +52,20 @@ class DispatchNarmestelederbehovDialogUseCase(
         repeat(settings.maxAttemptsPerRun) {
             val remaining = settings.runBudget - run.elapsedNow()
             if (remaining <= Duration.ZERO) return
-            val claim = repository.claim(clock.instant(), settings.lease) ?: return
+            val claim = queue.claim(clock.instant(), settings.lease) ?: return
             val leaseRemaining = java.time.Duration.between(clock.instant(), claim.leaseUntil).toKotlinDuration() - settings.safetyMargin
             val budget = minOf(remaining, settings.attemptBudget, leaseRemaining)
             if (budget <= Duration.ZERO) return
             val result = try {
-                withTimeoutOrNull(budget) { reconcile(claim) } ?: retry(claim, "timeout")
+                withTimeoutOrNull(budget) { reconcile(claim) } ?: retry(claim, DialogDispatchFailure.TIMEOUT)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
                 // Exception messages can contain upstream payloads. Persist only a bounded technical reason.
                 logger.logEvent(dialogDispatchFailed, claim.id.value.toString())
-                retry(claim, "unexpected")
+                retry(claim, DialogDispatchFailure.UNEXPECTED)
             }
-            if (repository.finish(claim, result, clock.instant())) {
+            if (queue.finish(claim, result, clock.instant())) {
                 metrics.record(
                     when (result) {
                         DialogDispatchResult.Done -> "done"
@@ -77,7 +78,7 @@ class DispatchNarmestelederbehovDialogUseCase(
     }
 
     private suspend fun reconcile(claim: DialogClaim): DialogDispatchResult {
-        val state = repository.load(claim, clock.instant()) ?: return DialogDispatchResult.Done
+        val state = work.load(claim, clock.instant()) ?: return DialogDispatchResult.Done
         val dialogId = state.dialogId
         if (dialogId == null) {
             if (state.status != BehovStatus.BEHOV_CREATED && !state.createStarted) return DialogDispatchResult.Done
@@ -86,7 +87,7 @@ class DispatchNarmestelederbehovDialogUseCase(
         return when (state.status) {
             BehovStatus.BEHOV_FULFILLED -> when (val completed = completion.complete(dialogId)) {
                 DialogCompletion.Completed -> {
-                    repository.saveCompleted(claim, clock.instant())
+                    work.saveCompleted(claim, clock.instant())
                     DialogDispatchResult.Done
                 }
                 is DialogCompletion.Unavailable -> failed(claim, completed.failure)
@@ -105,10 +106,10 @@ class DispatchNarmestelederbehovDialogUseCase(
         } catch (_: Exception) {
             null
         }
-        if (!repository.beginCreation(claim, clock.instant())) return DialogDispatchResult.Done
+        if (!work.beginCreation(claim, clock.instant())) return DialogDispatchResult.Done
         return when (val created = creation.create(claim.id, state.employee, person)) {
             is NarmestelederbehovDialogCreationResult.Created -> {
-                repository.saveCreated(claim, created.dialogId, person?.name, clock.instant())
+                work.saveCreated(claim, created.dialogId, person?.name, clock.instant())
                 DialogDispatchResult.Done
             }
             is NarmestelederbehovDialogCreationResult.Unavailable -> failed(claim, created.failure)
@@ -122,16 +123,16 @@ class DispatchNarmestelederbehovDialogUseCase(
         }
         val intended = state.intendedExpiry
         if (intended != null && observed == intended) {
-            repository.saveExpired(claim, intended, clock.instant())
+            work.saveExpired(claim, intended, clock.instant())
             return DialogDispatchResult.Done
         }
         val safeThrough = clock.instant().plus((settings.attemptBudget + settings.safetyMargin).toJavaDuration())
         val target = intended?.takeIf { it.isAfter(safeThrough) }
             ?: clock.instant().plusSeconds(600).truncatedTo(ChronoUnit.SECONDS)
-        if (target != intended && !repository.prepareExpiry(claim, target, clock.instant())) return DialogDispatchResult.Done
+        if (target != intended && !work.prepareExpiry(claim, target, clock.instant())) return DialogDispatchResult.Done
         return when (val expired = expiry.expire(dialogId, target)) {
             DialogExpiry.Expired -> {
-                repository.saveExpired(claim, target, clock.instant())
+                work.saveExpired(claim, target, clock.instant())
                 DialogDispatchResult.Done
             }
             is DialogExpiry.Unavailable -> failed(claim, expired.failure)
@@ -141,13 +142,13 @@ class DispatchNarmestelederbehovDialogUseCase(
     private fun failed(claim: DialogClaim, failure: UpstreamFailure): DialogDispatchResult {
         logger.logEvent(dialogDispatchFailed, claim.id.value.toString(), upstreamFailure = failure)
         return if (failure.stage == UpstreamFailureStage.RESPONSE && failure.status in setOf(400, 422)) {
-            DialogDispatchResult.Parked("invalid_request")
+            DialogDispatchResult.Parked(DialogDispatchFailure.INVALID_REQUEST)
         } else {
-            retry(claim, "upstream")
+            retry(claim, DialogDispatchFailure.UPSTREAM)
         }
     }
 
-    private fun retry(claim: DialogClaim, reason: String): DialogDispatchResult.Retry {
+    private fun retry(claim: DialogClaim, reason: DialogDispatchFailure): DialogDispatchResult.Retry {
         val capSeconds = min(900L, 5L * (1L shl min(claim.attempts, 8)))
         return DialogDispatchResult.Retry(clock.instant().plusMillis(Random.nextLong(capSeconds * 500, capSeconds * 1000 + 1)), reason)
     }

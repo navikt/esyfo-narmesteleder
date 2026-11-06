@@ -12,11 +12,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import no.nav.syfo.narmestelederrelasjon.application.leesah.LeesahNarmestelederrelasjonRecord
 import no.nav.syfo.narmestelederrelasjon.application.leesah.PersistNarmestelederrelasjonerFromLeesahUseCase
-import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.KafkaEventConsumer
 import no.nav.syfo.platform.kafka.KafkaEventLogger
 import no.nav.syfo.platform.kafka.KafkaListener
 import no.nav.syfo.platform.kafka.KafkaReason
+import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.kafka.consumerProperties
 import no.nav.syfo.platform.kafka.kafkaBatchDiscarded
 import no.nav.syfo.platform.kafka.kafkaConsumerCrashed
@@ -293,7 +293,7 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         private const val CLOSE_DURATION_SECONDS = 10L
         private const val POLL_DURATION_SECONDS = 1L
         const val NARMESTELEDER_LEESAH_PERSIST_GROUP_ID = "esyfo-narmesteleder-leesah-persist-consumer"
-        fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = consumerProperties(
+        fun kafkaConsumerProperties(env: KafkaSettings): Properties = consumerProperties(
             env = env,
             valueDeserializer = StringDeserializer::class,
             groupId = NARMESTELEDER_LEESAH_PERSIST_GROUP_ID,

@@ -4,10 +4,10 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenTaskSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
 import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTask
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.platform.observability.logger
@@ -19,7 +19,7 @@ import java.util.Collections
 import kotlin.getValue
 
 internal fun Application.configureBackgroundTasks(
-    dialogportenTaskSettings: DialogportenTaskSettings,
+    dialogportenSettings: DialogportenSettings,
     maintenanceTaskSettings: MaintenanceTaskSettings,
     personEnrichmentTaskSettings: PersonEnrichmentTaskSettings,
 ) {
@@ -38,7 +38,7 @@ internal fun Application.configureBackgroundTasks(
                 logger.info("Promoted to leader — starting background tasks")
                 taskJobs.lock { jobs ->
                     jobs.cancelAndClear()
-                    if (dialogportenTaskSettings.enabled) {
+                    if (dialogportenSettings.tasksEnabled) {
                         jobs += launch { sendDialogTask.runTask() }
                         jobs += launch { updateDialogTask.runTask() }
                         if (personEnrichmentTaskSettings.enabled) {

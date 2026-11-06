@@ -18,21 +18,21 @@ fun Application.configureDependencies(koinModules: List<Module>) {
 
 /** [externalClients] and [leaderElection] replace the real modules when given. */
 internal fun applicationModules(
-    environment: Environment,
+    settings: ApplicationSettings,
     externalClients: Module? = null,
     leaderElection: Module? = null,
 ): List<Module> = listOf(
     coreModule(),
-    databaseModule(environment.database),
-    httpClientsModule(settings = environment.httpClientsSettings(), texas = environment.texas),
-    externalClients ?: externalClientsModule(environment.httpClientsSettings()),
-    cacheModule(environment.valkeyEnvironment),
-    kafkaProducersModule(environment.kafka),
-    leaderElection ?: leaderElectionModule(environment.leaderElectionSettings),
+    databaseModule(settings.database),
+    httpClientsModule(texas = settings.texas, altinnApi = settings.altinnApi),
+    externalClients ?: externalClientsModule(settings),
+    cacheModule(settings.valkey),
+    kafkaProducersModule(settings.kafka),
+    leaderElection ?: leaderElectionModule(settings.leaderElection),
     tasksModule(
-        narmestelederbehovExpirySettings = environment.narmestelederbehovExpirySettings,
-        maintenanceTaskSettings = environment.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
+        narmestelederbehovExpirySettings = settings.narmestelederbehov.expiry,
+        maintenanceTaskSettings = settings.maintenanceTask,
+        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
     ),
 )
 
@@ -40,14 +40,3 @@ private fun coreModule() = module {
     single { ApplicationState() }
     single { Clock.systemDefaultZone() }
 }
-
-internal fun Environment.httpClientsSettings() = HttpClientsSettings(
-    aaregSettings = aaregSettings,
-    altinnApiSettings = altinnApiSettings,
-    altinnAuthorizationSettings = altinnAuthorizationSettings,
-    altinnAccessSettings = altinnAccessSettings,
-    dinesykmeldteSettings = dinesykmeldteSettings,
-    dialogportenSettings = dialogportenSettings,
-    eregSettings = eregSettings,
-    pdlSettings = pdlSettings,
-)

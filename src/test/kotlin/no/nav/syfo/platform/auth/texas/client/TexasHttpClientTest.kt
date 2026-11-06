@@ -14,8 +14,7 @@ import no.nav.syfo.integration.respondJson
 import no.nav.syfo.integration.respondWithSystemToken
 import no.nav.syfo.integration.texasHttpClient
 import no.nav.syfo.integration.upstreamHttpClient
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
-import no.nav.syfo.platform.auth.texas.createForLocal
+import no.nav.syfo.platform.auth.texas.localTexasSettings
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import no.nav.syfo.platform.upstream.UpstreamName
@@ -28,7 +27,7 @@ class TexasHttpClientTest :
         test("Maskinporten uses the token endpoint and configured target without transforming it") {
             upstreamHttpClient(
                 token = { request ->
-                    request.url.toString() shouldBe TexasEnvironment.createForLocal().tokenEndpoint
+                    request.url.toString() shouldBe localTexasSettings().tokenEndpoint
                     val body = jacksonObjectMapper().readTree(request.body.toByteArray())
                     body["identity_provider"].asText() shouldBe "maskinporten"
                     body["target"].asText() shouldBe "altinn:authorization/authorize"
@@ -97,13 +96,13 @@ class TexasHttpClientTest :
         }
 
         test("TokenX exchange posts the configured target and user token and returns the access token") {
-            val environment = TexasEnvironment.createForLocal()
+            val settings = localTexasSettings()
             upstreamHttpClient(
                 token = { request ->
-                    request.url.toString() shouldBe environment.tokenExchangeEndpoint
+                    request.url.toString() shouldBe settings.tokenExchangeEndpoint
                     val body = jacksonObjectMapper().readTree(request.body.toByteArray())
                     body["identity_provider"].asText() shouldBe "tokenx"
-                    body["target"].asText() shouldBe environment.exchangeTargetIsAltinnTilganger
+                    body["target"].asText() shouldBe settings.exchangeTargetIsAltinnTilganger
                     body["user_token"].asText() shouldBe "synthetic-user-token"
                     respondWithSystemToken(request)
                 },

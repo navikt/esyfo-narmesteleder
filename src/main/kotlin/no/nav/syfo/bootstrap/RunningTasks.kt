@@ -18,7 +18,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederLeesa
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PersistNarmestelederRegisterFromLeesahConsumer
-import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.kafka.LeaderControlledKafkaConsumer
 import no.nav.syfo.platform.kafka.consumerProperties
 import no.nav.syfo.platform.kafka.jacksonMapper
@@ -33,7 +33,7 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
 
 internal fun Application.configureKafkaConsumers(
-    kafkaSettings: KafkaEnvironment,
+    kafkaSettings: KafkaSettings,
     narmestelederrelasjonKafkaSettings: NarmestelederrelasjonKafkaSettings,
     sykmeldingKafkaSettings: SykmeldingKafkaSettings,
 ) {

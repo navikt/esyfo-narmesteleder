@@ -89,10 +89,19 @@ spec:
           namespace: fager
         - application: syfo-budstikka
           namespace: team-esyfo
+          permissions:
+            roles:
+              - linemanager-lookup
         - application: syfo-oppfolgingsplan-backend
+          permissions:
+            roles:
+              - linemanager-lookup
         - application: ditt-sykefravaer
           namespace: flex
         - application: esyfovarsel
+          permissions:
+            roles:
+              - linemanager-lookup
     outbound:
       rules:
         - application: dinesykmeldte-backend

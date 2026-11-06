@@ -16,7 +16,6 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAcc
 import no.nav.syfo.platform.auth.texas.TexasEnvironment
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.cache.ValkeyEnvironment
-import no.nav.syfo.platform.config.getEnvVar
 import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
@@ -52,33 +51,14 @@ data class NaisEnvironment(
     override val texas: TexasEnvironment = TexasEnvironment.createFromEnvVars(),
     override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createFromEnvVars(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createFromEnvVars(),
-    override val aaregSettings: AaregSettings = AaregSettings(
-        baseUrl = getEnvVar("AAREG_BASE_URL"),
-        scope = getEnvVar("AAREG_SCOPE"),
-    ),
-    override val altinnApiSettings: AltinnApiSettings = AltinnApiSettings(
-        baseUrl = getEnvVar("ALTINN_3_BASE_URL"),
-    ),
-    override val altinnAuthorizationSettings: AltinnAuthorizationSettings = AltinnAuthorizationSettings(
-        subscriptionKey = getEnvVar("PDP_SUBSCRIPTION_KEY"),
-    ),
-    override val altinnAccessSettings: AltinnAccessSettings = AltinnAccessSettings(
-        baseUrl = getEnvVar("ALTINN_TILGANGER_BASE_URL"),
-    ),
-    override val dinesykmeldteSettings: DinesykmeldteSettings = DinesykmeldteSettings(
-        baseUrl = getEnvVar("DINESYMELDTE_BASEURL"),
-        scope = getEnvVar("DINESYMELDTE_SCOPE"),
-    ),
-    override val dialogportenSettings: DialogportenSettings = DialogportenSettings(
-        baseUrl = altinnApiSettings.baseUrl,
-    ),
-    override val eregSettings: EregSettings = EregSettings(
-        baseUrl = getEnvVar("EREG_BASE_URL"),
-    ),
-    override val pdlSettings: PdlSettings = PdlSettings(
-        baseUrl = getEnvVar("PDL_BASE_URL"),
-        scope = getEnvVar("PDL_SCOPE"),
-    ),
+    override val aaregSettings: AaregSettings = settings.aaregSettings,
+    override val altinnApiSettings: AltinnApiSettings = settings.altinnApiSettings,
+    override val altinnAuthorizationSettings: AltinnAuthorizationSettings = settings.altinnAuthorizationSettings,
+    override val altinnAccessSettings: AltinnAccessSettings = settings.altinnAccessSettings,
+    override val dinesykmeldteSettings: DinesykmeldteSettings = settings.dinesykmeldteSettings,
+    override val dialogportenSettings: DialogportenSettings = settings.dialogportenSettings,
+    override val eregSettings: EregSettings = settings.eregSettings,
+    override val pdlSettings: PdlSettings = settings.pdlSettings,
     override val narmestelederbehovSettings: NarmestelederbehovSettings = settings.narmestelederbehovSettings,
     override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = settings.narmestelederbehovExpirySettings,
     override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = settings.narmestelederrelasjonEmploymentSettings,

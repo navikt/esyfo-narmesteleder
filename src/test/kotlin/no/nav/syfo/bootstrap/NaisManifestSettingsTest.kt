@@ -28,7 +28,7 @@ private fun settingsFromManifest(path: String): ApplicationSettings = Applicatio
     applicationConfigWithEnvironment(manifestEnvironment(path)),
 )
 
-/** The variables NAIS gives the pod: the manifest's `env` plus those injected by `leaderElection: true`. */
+/** The variables NAIS gives the pod: the manifest's `env`, its `envFrom` secrets and those injected by `leaderElection: true`. */
 @Suppress("UNCHECKED_CAST")
 private fun manifestEnvironment(path: String): Map<String, String> {
     // `{{image}}` is a deploy-time template, not YAML.
@@ -40,5 +40,8 @@ private fun manifestEnvironment(path: String): Map<String, String> {
     } else {
         emptyMap()
     }
-    return env + leaderElection
+    val secrets = (spec["envFrom"] as List<Map<String, Any?>>).flatMap { secretVariables.getValue(it.getValue("secret").toString()) }
+    return env + leaderElection + secrets.associateWith { "synthetic-secret" }
 }
+
+private val secretVariables = mapOf("altinn-subscription-key" to listOf("PDP_SUBSCRIPTION_KEY"))

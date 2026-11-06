@@ -5,12 +5,19 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import no.nav.syfo.integration.aareg.AaregSettings
+import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteSettings
+import no.nav.syfo.integration.ereg.EregSettings
+import no.nav.syfo.integration.pdl.PdlSettings
 import no.nav.syfo.narmestelederbehov.NarmestelederbehovSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenTaskSettings
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenSettings
 import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonEmploymentSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
+import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
@@ -21,7 +28,17 @@ import kotlin.time.Duration.Companion.seconds
 class ApplicationSettingsTest :
     FunSpec({
         test("application.conf keeps the previous defaults when only required variables are set") {
-            settingsFrom(requiredEnvironment) shouldBe ApplicationSettings(
+            val settings = settingsFrom(requiredEnvironment)
+
+            settings shouldBe ApplicationSettings(
+                aaregSettings = AaregSettings(baseUrl = "https://aareg.example", scope = "aareg-scope"),
+                altinnApiSettings = AltinnApiSettings(baseUrl = "https://altinn.example"),
+                altinnAuthorizationSettings = settings.altinnAuthorizationSettings,
+                altinnAccessSettings = AltinnAccessSettings(baseUrl = "https://altinn-tilganger.example"),
+                dinesykmeldteSettings = DinesykmeldteSettings(baseUrl = "https://dinesykmeldte.example", scope = "dinesykmeldte-scope"),
+                dialogportenSettings = DialogportenSettings(baseUrl = "https://altinn.example"),
+                eregSettings = EregSettings(baseUrl = "https://ereg.example"),
+                pdlSettings = PdlSettings(baseUrl = "https://pdl.example", scope = "pdl-scope"),
                 narmestelederbehovSettings = NarmestelederbehovSettings(
                     persistLeesahNlBehov = true,
                     publicIngressUrl = "https://ingress.example",
@@ -47,6 +64,7 @@ class ApplicationSettingsTest :
                     electorSseUrl = "http://elector.example/sse",
                 ),
             )
+            settings.altinnAuthorizationSettings.subscriptionKey shouldBe "subscription-key"
         }
 
         test("environment variables override every default in application.conf") {
@@ -94,6 +112,16 @@ class ApplicationSettingsTest :
             val failure = shouldThrow<IllegalStateException> { settingsFrom(emptyMap()) }
 
             failure.message shouldBe "Invalid configuration: " +
+                "altinn.baseUrl is missing, " +
+                "aareg.baseUrl is missing, " +
+                "aareg.scope is missing, " +
+                "altinn.authorization.subscriptionKey is missing, " +
+                "altinn.tilganger.baseUrl is missing, " +
+                "dinesykmeldte.baseUrl is missing, " +
+                "dinesykmeldte.scope is missing, " +
+                "ereg.baseUrl is missing, " +
+                "pdl.baseUrl is missing, " +
+                "pdl.scope is missing, " +
                 "narmestelederbehov.publicIngressUrl is missing, " +
                 "narmestelederbehov.frontendBaseUrl is missing, " +
                 "narmestelederbehov.dialogportenTask.enabled is missing, " +
@@ -138,6 +166,16 @@ private val requiredEnvironment = mapOf(
     "DIALOGPORTEN_TASK_ENABLED" to "true",
     "ELECTOR_PATH" to "elector-path",
     "ELECTOR_SSE_URL" to "http://elector.example/sse",
+    "AAREG_BASE_URL" to "https://aareg.example",
+    "AAREG_SCOPE" to "aareg-scope",
+    "ALTINN_3_BASE_URL" to "https://altinn.example",
+    "PDP_SUBSCRIPTION_KEY" to "subscription-key",
+    "ALTINN_TILGANGER_BASE_URL" to "https://altinn-tilganger.example",
+    "DINESYMELDTE_BASEURL" to "https://dinesykmeldte.example",
+    "DINESYMELDTE_SCOPE" to "dinesykmeldte-scope",
+    "EREG_BASE_URL" to "https://ereg.example",
+    "PDL_BASE_URL" to "https://pdl.example",
+    "PDL_SCOPE" to "pdl-scope",
 )
 
 private fun settingsFrom(environment: Map<String, String>) = ApplicationSettings.from(applicationConfigWithEnvironment(environment))

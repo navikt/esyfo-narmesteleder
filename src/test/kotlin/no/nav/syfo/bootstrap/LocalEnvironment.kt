@@ -33,33 +33,14 @@ data class LocalEnvironment(
     override val texas: TexasEnvironment = TexasEnvironment.createForLocal(),
     override val valkeyEnvironment: ValkeyEnvironment = ValkeyEnvironment.createForLocal(),
     override val kafka: KafkaEnvironment = KafkaEnvironment.createForLocal(),
-    override val aaregSettings: AaregSettings = AaregSettings(
-        baseUrl = "",
-        scope = "aareg",
-    ),
-    override val altinnApiSettings: AltinnApiSettings = AltinnApiSettings(
-        baseUrl = "http://localhost:8080/dialogporten",
-    ),
-    override val altinnAuthorizationSettings: AltinnAuthorizationSettings = AltinnAuthorizationSettings(
-        subscriptionKey = "secret-key",
-    ),
-    override val altinnAccessSettings: AltinnAccessSettings = AltinnAccessSettings(
-        baseUrl = "https://altinn-tilganger-api.dev.intern.nav.no",
-    ),
-    override val dinesykmeldteSettings: DinesykmeldteSettings = DinesykmeldteSettings(
-        baseUrl = "",
-        scope = "",
-    ),
-    override val dialogportenSettings: DialogportenSettings = DialogportenSettings(
-        baseUrl = altinnApiSettings.baseUrl,
-    ),
-    override val eregSettings: EregSettings = EregSettings(
-        baseUrl = "https://ereg-test.intern.nav.no",
-    ),
-    override val pdlSettings: PdlSettings = PdlSettings(
-        baseUrl = "https://pdl-api.dev.intern.nav.no",
-        scope = "pdl",
-    ),
+    override val aaregSettings: AaregSettings = settings.aaregSettings,
+    override val altinnApiSettings: AltinnApiSettings = settings.altinnApiSettings,
+    override val altinnAuthorizationSettings: AltinnAuthorizationSettings = settings.altinnAuthorizationSettings,
+    override val altinnAccessSettings: AltinnAccessSettings = settings.altinnAccessSettings,
+    override val dinesykmeldteSettings: DinesykmeldteSettings = settings.dinesykmeldteSettings,
+    override val dialogportenSettings: DialogportenSettings = settings.dialogportenSettings,
+    override val eregSettings: EregSettings = settings.eregSettings,
+    override val pdlSettings: PdlSettings = settings.pdlSettings,
     override val narmestelederbehovSettings: NarmestelederbehovSettings = settings.narmestelederbehovSettings,
     override val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings = settings.narmestelederbehovExpirySettings,
     override val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings = settings.narmestelederrelasjonEmploymentSettings,

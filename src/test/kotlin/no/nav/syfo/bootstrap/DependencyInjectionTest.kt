@@ -82,24 +82,13 @@ private fun localApplicationModules() = applicationModules(
 )
 
 // NaisEnvironment reads infrastructure from env vars, so supply local values and synthetic required settings.
-private fun naisEnvironmentWithoutEnvVars(): NaisEnvironment {
-    val localEnvironment = LocalEnvironment()
-    return NaisEnvironment(
-        settings = ApplicationSettings.from(applicationConfigWithEnvironment(requiredNaisVariables)),
-        database = DatabaseEnvironment.createForLocal(),
-        texas = TexasEnvironment.createForLocal(),
-        valkeyEnvironment = ValkeyEnvironment.createForLocal(),
-        kafka = KafkaEnvironment.createForLocal(),
-        aaregSettings = localEnvironment.aaregSettings,
-        altinnApiSettings = localEnvironment.altinnApiSettings,
-        altinnAuthorizationSettings = localEnvironment.altinnAuthorizationSettings,
-        altinnAccessSettings = localEnvironment.altinnAccessSettings,
-        dinesykmeldteSettings = localEnvironment.dinesykmeldteSettings,
-        dialogportenSettings = localEnvironment.dialogportenSettings,
-        eregSettings = localEnvironment.eregSettings,
-        pdlSettings = localEnvironment.pdlSettings,
-    )
-}
+private fun naisEnvironmentWithoutEnvVars() = NaisEnvironment(
+    settings = ApplicationSettings.from(applicationConfigWithEnvironment(requiredNaisVariables)),
+    database = DatabaseEnvironment.createForLocal(),
+    texas = TexasEnvironment.createForLocal(),
+    valkeyEnvironment = ValkeyEnvironment.createForLocal(),
+    kafka = KafkaEnvironment.createForLocal(),
+)
 
 private val requiredNaisVariables = mapOf(
     "PUBLIC_INGRESS_URL" to "https://ingress.example",
@@ -107,6 +96,16 @@ private val requiredNaisVariables = mapOf(
     "DIALOGPORTEN_TASK_ENABLED" to "true",
     "ELECTOR_PATH" to "elector-path",
     "ELECTOR_SSE_URL" to "http://elector.example/sse",
+    "AAREG_BASE_URL" to "https://aareg.example",
+    "AAREG_SCOPE" to "aareg-scope",
+    "ALTINN_3_BASE_URL" to "https://altinn.example",
+    "PDP_SUBSCRIPTION_KEY" to "subscription-key",
+    "ALTINN_TILGANGER_BASE_URL" to "https://altinn-tilganger.example",
+    "DINESYMELDTE_BASEURL" to "https://dinesykmeldte.example",
+    "DINESYMELDTE_SCOPE" to "dinesykmeldte-scope",
+    "EREG_BASE_URL" to "https://ereg.example",
+    "PDL_BASE_URL" to "https://pdl.example",
+    "PDL_SCOPE" to "pdl-scope",
 )
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.

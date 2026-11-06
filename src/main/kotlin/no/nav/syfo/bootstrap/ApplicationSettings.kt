@@ -1,18 +1,34 @@
 package no.nav.syfo.bootstrap
 
 import io.ktor.server.config.ApplicationConfig
+import no.nav.syfo.integration.aareg.AaregSettings
+import no.nav.syfo.integration.dinesykmeldte.DinesykmeldteSettings
+import no.nav.syfo.integration.ereg.EregSettings
+import no.nav.syfo.integration.pdl.PdlSettings
 import no.nav.syfo.narmestelederbehov.NarmestelederbehovSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.DialogportenTaskSettings
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenSettings
 import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonEmploymentSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationSettings
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnAccessSettings
+import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.config.ConfigReader
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 
-/** Application behaviour settings read from `application.conf`. */
+/** Application settings read from `application.conf`. */
 data class ApplicationSettings(
+    val aaregSettings: AaregSettings,
+    val altinnApiSettings: AltinnApiSettings,
+    val altinnAuthorizationSettings: AltinnAuthorizationSettings,
+    val altinnAccessSettings: AltinnAccessSettings,
+    val dinesykmeldteSettings: DinesykmeldteSettings,
+    val dialogportenSettings: DialogportenSettings,
+    val eregSettings: EregSettings,
+    val pdlSettings: PdlSettings,
     val narmestelederbehovSettings: NarmestelederbehovSettings,
     val narmestelederbehovExpirySettings: NarmestelederbehovExpirySettings,
     val narmestelederrelasjonEmploymentSettings: NarmestelederrelasjonEmploymentSettings,
@@ -25,7 +41,21 @@ data class ApplicationSettings(
 ) {
     companion object {
         fun from(config: ApplicationConfig): ApplicationSettings = ConfigReader.read(config) {
+            val altinnBaseUrl = string("altinn.baseUrl")
             ApplicationSettings(
+                aaregSettings = AaregSettings(baseUrl = string("aareg.baseUrl"), scope = string("aareg.scope")),
+                altinnApiSettings = AltinnApiSettings(baseUrl = altinnBaseUrl),
+                altinnAuthorizationSettings = AltinnAuthorizationSettings(
+                    subscriptionKey = string("altinn.authorization.subscriptionKey"),
+                ),
+                altinnAccessSettings = AltinnAccessSettings(baseUrl = string("altinn.tilganger.baseUrl")),
+                dinesykmeldteSettings = DinesykmeldteSettings(
+                    baseUrl = string("dinesykmeldte.baseUrl"),
+                    scope = string("dinesykmeldte.scope"),
+                ),
+                dialogportenSettings = DialogportenSettings(baseUrl = altinnBaseUrl),
+                eregSettings = EregSettings(baseUrl = string("ereg.baseUrl")),
+                pdlSettings = PdlSettings(baseUrl = string("pdl.baseUrl"), scope = string("pdl.scope")),
                 narmestelederbehovSettings = NarmestelederbehovSettings(
                     persistLeesahNlBehov = flag("narmestelederbehov.persistLeesahNlBehov"),
                     publicIngressUrl = string("narmestelederbehov.publicIngressUrl"),

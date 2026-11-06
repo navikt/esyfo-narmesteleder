@@ -66,7 +66,7 @@ This file is maintained locally in this repository; it is not generated or synch
 - Parameterized queries always — never string interpolation in SQL
 - Use `Database.ioTransaction` for suspendable Exposed JDBC transactions; do not duplicate `withContext(Dispatchers.IO)` and `suspendTransaction`
 - Follow the existing data access pattern in the repository (extension functions, repositories, etc.)
-- Put new application behaviour settings and feature flags in `src/main/resources/application.conf` with a `${?VAR}` override, map them in `ApplicationSettings` and add local values to `src/test/resources/application-local.conf`; environment variables override the file defaults
+- Put new application behaviour settings, feature flags and external system URLs and scopes in `src/main/resources/application.conf` with a `${?VAR}` override, map them in `ApplicationSettings` and add local values to `src/test/resources/application-local.conf`; environment variables override the file defaults
 - Structured logging — check which pattern this repo uses (KotlinLogging, SLF4J, kv() fields, MDC)
 - Follow existing code patterns in the repository
 

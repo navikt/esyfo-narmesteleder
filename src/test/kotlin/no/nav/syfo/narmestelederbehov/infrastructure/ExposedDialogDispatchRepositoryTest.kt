@@ -8,24 +8,34 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import no.nav.syfo.TestDB
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchFailure
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchResult
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchStats
+import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import java.sql.Connection
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
 class ExposedDialogDispatchRepositoryTest :
@@ -71,13 +81,64 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
+        listOf(BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, BehovStatus.BEHOV_FULFILLED).forEach { status ->
+            test("a writer setting $status preserves a concurrently committed claim without transaction retries") {
+                val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+                val worker = Executors.newSingleThreadExecutor()
+                val writerDatabase = Database.connect(
+                    getNewConnection = { TestDB.database.connection },
+                    databaseConfig = DatabaseConfig {
+                        defaultIsolationLevel = Connection.TRANSACTION_REPEATABLE_READ
+                        defaultMaxAttempts = 1
+                    },
+                )
+                try {
+                    val schedule: JdbcTransaction.(UUID) -> Unit = { id ->
+                        worker.submit<Boolean> {
+                            runBlocking { requireNotNull(repository.claim(now, 60.seconds)).id.value == id }
+                        }.get(10, TimeUnit.SECONDS) shouldBe true
+                        scheduleDialogDispatch(id)
+                    }
+                    val id = NarmestelederbehovId(row.id)
+                    if (status == BehovStatus.BEHOV_FULFILLED) {
+                        ExposedNarmestelederbehovFulfillmentRepository(writerDatabase, schedule).markFulfilled(id)
+                    } else {
+                        ExposedNarmestelederbehovLifecycleRepository(writerDatabase, schedule)
+                            .markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.Marked
+                    }
+                    repository.claim(now, 60.seconds).shouldBeNull()
+                    val reclaimed = requireNotNull(repository.claim(now.plusSeconds(61), 60.seconds))
+                    reclaimed.revision shouldBe 2L
+                    requireNotNull(repository.load(reclaimed, now.plusSeconds(61))).status shouldBe status
+                } finally {
+                    worker.shutdownNow()
+                    TransactionManager.closeAndUnregister(writerDatabase)
+                }
+            }
+        }
+
+        test("saving completion acknowledges the current revision without scheduling another claim") {
+            val row = insertNarmestelederbehov(
+                created = now.minusSeconds(30),
+                behovStatus = BehovStatus.BEHOV_FULFILLED,
+                dialogId = UUID.randomUUID(),
+            )
+            val claim = requireNotNull(repository.claim(now, 60.seconds))
+            repository.saveCompleted(claim, now) shouldBe true
+            repository.finish(claim, DialogDispatchResult.Done, now) shouldBe true
+            assertSoftly {
+                findStoredNarmestelederbehov(row.id)?.behovStatus shouldBe BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+                repository.claim(now, 60.seconds).shouldBeNull()
+            }
+        }
+
         test("stats count ready, claimed and parked work and report the oldest pending change") {
             val parked = insertNarmestelederbehov(created = now.minusSeconds(40))
             val idle = insertNarmestelederbehov(created = now.minusSeconds(30))
             val claimed = insertNarmestelederbehov(created = now.minusSeconds(20))
             val ready = insertNarmestelederbehov(created = now.minusSeconds(10))
             suspend fun claimNext(expected: UUID) = requireNotNull(repository.claim(now, 60.seconds)).also { it.id.value shouldBe expected }
-            repository.finish(claimNext(parked.id), DialogDispatchResult.Parked("invalid_request"), now) shouldBe true
+            repository.finish(claimNext(parked.id), DialogDispatchResult.Parked(DialogDispatchFailure.INVALID_REQUEST), now) shouldBe true
             repository.finish(claimNext(idle.id), DialogDispatchResult.Done, now) shouldBe true
             claimNext(claimed.id)
             val oldestPending = Instant.parse("2029-03-01T00:00:00Z")
@@ -123,8 +184,8 @@ class ExposedDialogDispatchRepositoryTest :
 
         listOf(
             DialogDispatchResult.Done,
-            DialogDispatchResult.Retry(now.plusSeconds(600), "upstream"),
-            DialogDispatchResult.Parked("invalid_request"),
+            DialogDispatchResult.Retry(now.plusSeconds(600), DialogDispatchFailure.UPSTREAM),
+            DialogDispatchResult.Parked(DialogDispatchFailure.INVALID_REQUEST),
         ).forEach { oldResult ->
             test("a domain change during a claim survives $oldResult of the older revision") {
                 val row = insertNarmestelederbehov(created = now.minusSeconds(30))

@@ -32,6 +32,7 @@ import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
+import java.sql.Connection
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -95,26 +96,16 @@ class ExposedNarmestelederbehovLifecycleRepository(
         id: NarmestelederbehovId,
         dialogId: UUID,
         name: BehovPersonName?,
-    ): MarkDialogCreatedResult = database.ioTransaction {
-        val updated = NarmestelederbehovTable.update({
+    ): MarkDialogCreatedResult = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+        val pending = NarmestelederbehovTable.select(NarmestelederbehovTable.id).where {
             (NarmestelederbehovTable.id eq id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_CREATED)
-        }) {
-            it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION
-            it[NarmestelederbehovTable.dialogId] = dialogId
-            it[fornavn] = name?.firstName
-            it[mellomnavn] = name?.middleName
-            it[etternavn] = name?.lastName
-        }
-        if (updated == 1) {
-            scheduleDispatch(id.value)
-            MarkDialogCreatedResult.Marked
-        } else {
-            MarkDialogCreatedResult.NotCreated
-        }
+        }.forUpdate().singleOrNull() ?: return@ioTransaction MarkDialogCreatedResult.NotCreated
+        recordCreatedDialog(NarmestelederbehovId(pending[NarmestelederbehovTable.id]), dialogId, name, scheduleDispatch)
+        MarkDialogCreatedResult.Marked
     }
 
     // The partial unique index on open behov is the only unique constraint besides the generated id, so an ignored insert means an open behov already exists.
-    override suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult = database.ioTransaction {
+    override suspend fun create(behov: NewNarmestelederbehov): CreateBehovResult = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         NarmestelederbehovTable.insertReturning(returning = listOf(NarmestelederbehovTable.id), ignoreErrors = true) {
             it[orgnummer] = behov.employee.organizationNumber.value
             it[hovedenhetOrgnummer] = behov.mainOrganizationNumber
@@ -132,7 +123,7 @@ class ExposedNarmestelederbehovLifecycleRepository(
             ?: CreateBehovResult.AlreadyExists
     }
 
-    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int = database.ioTransaction {
+    override suspend fun expireBehov(sykmeldingMaxDate: LocalDate, limit: Int): Int = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
         val ids = NarmestelederbehovTable
             .join(
                 SendtSykmeldingTomTable,

@@ -5,6 +5,7 @@ import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.longs.shouldBeExactly
+import io.kotest.matchers.longs.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.shouldBe
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
@@ -262,6 +263,7 @@ class ConsumerRunnerTest :
                             fields["level"] shouldBe "ERROR"
                             fields["consumer"] shouldBe CONSUMER_NAME
                             fields["upstream"] shouldBe "kafka"
+                            (fields["lifecycle_millis"] as Number).toLong() shouldBeGreaterThanOrEqual 0L
                         }
                         logs.logs.none { log ->
                             listOf("auth-canary", "authorization-canary", "configuration-canary")

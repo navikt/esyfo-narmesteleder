@@ -14,13 +14,14 @@ internal object KafkaConsumerLogEvents {
         fields = mapOf("timeout_seconds" to { it.timeoutSeconds }),
     )
 
-    val fatalFailure = applicationEvent<Unit>(
+    val fatalFailure = applicationEvent<LifecycleContext>(
         name = "kafka_consumer_crashed",
         level = Level.ERROR,
         message = "Consumer hit a fatal error and will not restart",
         operation = "kafka_consumer.poll",
         upstream = "kafka",
         errorCode = { "CONSUMER_FATAL_FAILURE" },
+        fields = mapOf("lifecycle_millis" to { it.lifecycleMillis }),
     )
 
     val restart = applicationEvent<BackoffContext>(
@@ -35,5 +36,7 @@ internal object KafkaConsumerLogEvents {
 }
 
 internal data class TimeoutContext(val timeoutSeconds: Long)
+
+internal data class LifecycleContext(val lifecycleMillis: Long)
 
 internal data class BackoffContext(val backoffMillis: Long)

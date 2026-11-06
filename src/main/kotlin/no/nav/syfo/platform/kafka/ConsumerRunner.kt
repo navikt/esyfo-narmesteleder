@@ -149,18 +149,18 @@ class ConsumerRunner<K, V>(
                 // completes as canceled instead of logging a misleading restart.
                 throw error
             } catch (error: Throwable) {
+                val lifecycleNanos = System.nanoTime() - lifecycleStart
                 if (isFatal(error)) {
                     // `consumer` is carried in MDC (launch-MDCContext); do not duplicate coroutineName as kv.
                     logger.logEvent(
                         KafkaConsumerLogEvents.fatalFailure,
-                        Unit,
+                        LifecycleContext(lifecycleNanos / 1_000_000),
                         cause = error,
                         upstreamFailure = error.reportedUpstreamFailure(),
                     )
                     running.set(false)
                     onFatalError(error)
                 } else {
-                    val lifecycleNanos = System.nanoTime() - lifecycleStart
                     if (lifecycleNanos > healthyResetThreshold.inWholeNanoseconds) {
                         backoffMillis = initialBackoff.inWholeMilliseconds
                         logger.info(

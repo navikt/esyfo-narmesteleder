@@ -16,11 +16,14 @@ fun Application.configureDependencies(koinModules: List<Module>) {
     }
 }
 
-/** Uses the real external clients unless local runs or tests pass [externalClients] with fakes from the test sources. */
+/**
+ * Uses the real external clients and leader election unless local runs or tests pass
+ * [externalClients] and [leaderElection] with fakes from the test sources.
+ */
 internal fun applicationModules(
     environment: Environment,
-    isLocalEnv: Boolean,
     externalClients: Module? = null,
+    leaderElection: Module? = null,
 ): List<Module> = listOf(
     coreModule(),
     databaseModule(environment.database),
@@ -28,7 +31,7 @@ internal fun applicationModules(
     externalClients ?: externalClientsModule(environment.httpClientsSettings()),
     cacheModule(environment.valkeyEnvironment),
     kafkaProducersModule(environment.kafka),
-    leaderElectionModule(environment.leaderElectionSettings, isLocalEnv),
+    leaderElection ?: leaderElectionModule(environment.leaderElectionSettings),
     tasksModule(
         narmestelederbehovExpirySettings = environment.narmestelederbehovExpirySettings,
         maintenanceTaskSettings = environment.maintenanceTaskSettings,

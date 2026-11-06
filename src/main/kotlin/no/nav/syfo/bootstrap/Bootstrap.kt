@@ -12,10 +12,11 @@ import org.koin.ktor.ext.get
 
 /**
  * Assembles the Koin graph from [environment] and starts every capability.
- * Production passes [NaisEnvironment] and the real external clients; only local runs pass [externalClients] with fakes.
+ * Production passes [NaisEnvironment] and uses the real external clients and leader election;
+ * only local runs pass [externalClients] and [leaderElection] with fakes.
  */
-fun Application.bootstrap(environment: Environment, isLocal: Boolean = false, externalClients: Module? = null) {
-    platformModule(applicationModules(environment, isLocal, externalClients), environment.texas.azurePreAuthorizedApps)
+fun Application.bootstrap(environment: Environment, externalClients: Module? = null, leaderElection: Module? = null) {
+    platformModule(applicationModules(environment, externalClients, leaderElection), environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())

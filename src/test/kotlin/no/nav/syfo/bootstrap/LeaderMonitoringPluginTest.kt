@@ -68,7 +68,7 @@ class LeaderMonitoringPluginTest :
         context("registerLeaderStatusGauge") {
             fun newListener(): LeaderChangeSSEListener {
                 val httpClient = HttpClient(MockEngine { respond("", HttpStatusCode.InternalServerError) })
-                return LeaderChangeSSEListener(httpClient, "http://localhost/elector", false)
+                return LeaderChangeSSEListener(httpClient, "http://localhost/elector")
             }
 
             test("reports 0 for a non-leader pod") {

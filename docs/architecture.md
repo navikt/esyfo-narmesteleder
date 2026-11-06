@@ -390,8 +390,8 @@ starts the platform module and then one Ktor module per
 capability:
 
 ```kotlin
-fun Application.bootstrap(environment: Environment, isLocal: Boolean = false, externalClients: Module? = null) {
-    platformModule(applicationModules(environment, isLocal, externalClients), environment.texas.azurePreAuthorizedApps)
+fun Application.bootstrap(environment: Environment, externalClients: Module? = null, leaderElection: Module? = null) {
+    platformModule(applicationModules(environment, externalClients, leaderElection), environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
@@ -417,7 +417,8 @@ fun Application.bootstrap(environment: Environment, isLocal: Boolean = false, ex
 - `NaisEnvironment` assembles owner-specific settings for capabilities,
   integrations, Kafka consumers, and platform services. `LocalEnvironment` and the
   `createForLocal()` factories live in the test sources and are used only by
-  `runLocal` and tests. Bootstrap
+  `runLocal` and tests. `runLocal` also replaces the external clients and leader
+  election with fakes, so production code has no local branches. Bootstrap
   passes each module only the settings it needs; configuration stays out of
   domain and use-case code.
 - `applicationModules` constructs `HttpClientsSettings` in `DependencyInjection`

@@ -23,7 +23,7 @@ import no.nav.syfo.platform.kafka.LeaderControlledKafkaConsumer
 import no.nav.syfo.platform.kafka.consumerProperties
 import no.nav.syfo.platform.kafka.jacksonMapper
 import no.nav.syfo.platform.observability.logger
-import no.nav.syfo.platform.scheduling.LeaderChangeSSEListener
+import no.nav.syfo.platform.scheduling.LeaderChangeListener
 import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.infrastructure.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.infrastructure.kafka.SendtSykmeldingKafkaConsumer
@@ -43,7 +43,7 @@ internal fun Application.configureKafkaConsumers(
     val persistNarmestelederrelasjonerFromLeesah by inject<PersistNarmestelederrelasjonerFromLeesahUseCase>()
     val narmestelederLeesahProducer by inject<NarmestelederLeesahProducer>()
     val updateRelationPersonNames by inject<UpdateRelationPersonNamesUseCase>()
-    val leaderChangeSSEListener by inject<LeaderChangeSSEListener>()
+    val leaderChangeListener by inject<LeaderChangeListener>()
     val logger = logger()
 
     if (!kafkaSettings.shouldConsumeTopics) {
@@ -155,7 +155,7 @@ internal fun Application.configureKafkaConsumers(
 
     monitor.subscribe(ServerReady) {
         val leaderControlledConsumersJob = launch(Dispatchers.IO) {
-            leaderChangeSSEListener.isLeader.collect { isLeader ->
+            leaderChangeListener.isLeader.collect { isLeader ->
                 leaderControlledConsumers.forEach { consumer ->
                     consumer.onLeaderChange(isLeader)
                 }

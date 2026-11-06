@@ -7,12 +7,14 @@ import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkModule
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangModule
 import no.nav.syfo.platform.observability.bindJvmAndProcessMetrics
 import no.nav.syfo.sykmelding.sykmeldingModule
+import org.koin.core.module.Module
 import org.koin.ktor.ext.get
 
-/** Reads the environment once, assembles the Koin graph and starts every capability. */
-fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
-    val environment = loadEnvironment(isLocal)
-    platformModule(applicationModules(environment, isLocal), environment.texas.azurePreAuthorizedApps)
+/**
+ * Assembles the Koin graph from [koinModules] and starts every capability with settings from [environment].
+ */
+fun Application.bootstrap(environment: Environment, koinModules: List<Module> = applicationModules(environment)) {
+    platformModule(koinModules, environment.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())

@@ -37,7 +37,6 @@ dependencies {
     implementation(libs.confluent.kafka.avro.serializer) {
         exclude(group = "org.apache.kafka", module = "kafka-clients")
     }
-    implementation(libs.datafaker)
     implementation(libs.esyfo.logger)
     implementation(libs.logback.classic)
     implementation(libs.bundles.ktor.client)
@@ -52,6 +51,7 @@ dependencies {
     implementation(libs.kafka.clients)
     implementation(libs.valkey.java)
 
+    testImplementation(libs.datafaker)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)
@@ -127,6 +127,14 @@ sourceSets {
 tasks {
     jar {
         manifest.attributes["Main-Class"] = "no.nav.syfo.ApplicationKt"
+    }
+
+    register<JavaExec>("runLocal") {
+        group = "application"
+        description = "Runs the application locally with fake external clients from the test sources."
+        classpath = sourceSets.test.get().runtimeClasspath
+        mainClass.set("no.nav.syfo.LocalApplicationKt")
+        systemProperty("logback.configurationFile", "logback-local.xml")
     }
 
     register("printVersion") {

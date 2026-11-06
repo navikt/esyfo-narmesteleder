@@ -16,13 +16,5 @@ data class ValkeyEnvironment(
             username = getEnvVar("VALKEY_USERNAME_FELLES_CACHE"),
             password = getEnvVar("VALKEY_PASSWORD_FELLES_CACHE")
         )
-
-        fun createForLocal(): ValkeyEnvironment = ValkeyEnvironment(
-            host = "localhost",
-            port = 6379,
-            username = "default",
-            password = "test",
-            ssl = false
-        )
     }
 }

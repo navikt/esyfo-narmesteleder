@@ -26,8 +26,8 @@ description = "Run build with gradle"
 run = './gradlew build'
 
 [tasks.start]
-description = "Run app using gradle"
-run = './gradlew run'
+description = "Run app locally with fake external clients using gradle"
+run = './gradlew runLocal'
 
 [tasks.test]
 description = "Run tests with gradle"

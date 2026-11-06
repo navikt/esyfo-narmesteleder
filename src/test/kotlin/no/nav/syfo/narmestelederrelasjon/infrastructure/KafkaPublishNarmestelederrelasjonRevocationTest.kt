@@ -13,6 +13,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
 import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.createForLocal
 import no.nav.syfo.platform.kafka.producerProperties
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringSerializer

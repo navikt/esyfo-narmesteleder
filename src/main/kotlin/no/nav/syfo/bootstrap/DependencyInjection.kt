@@ -16,26 +16,19 @@ fun Application.configureDependencies(koinModules: List<Module>) {
     }
 }
 
-internal fun applicationModules(environment: Environment, isLocalEnv: Boolean): List<Module> = listOf(
+/** [externalClients] and [leaderElection] replace the real modules when given. */
+internal fun applicationModules(
+    environment: Environment,
+    externalClients: Module? = null,
+    leaderElection: Module? = null,
+): List<Module> = listOf(
     coreModule(),
     databaseModule(environment.database),
-    httpClientsModule(
-        settings = HttpClientsSettings(
-            aaregSettings = environment.aaregSettings,
-            altinnApiSettings = environment.altinnApiSettings,
-            altinnAuthorizationSettings = environment.altinnAuthorizationSettings,
-            altinnAccessSettings = environment.altinnAccessSettings,
-            dinesykmeldteSettings = environment.dinesykmeldteSettings,
-            dialogportenSettings = environment.dialogportenSettings,
-            eregSettings = environment.eregSettings,
-            pdlSettings = environment.pdlSettings,
-        ),
-        texas = environment.texas,
-        isLocalEnv = isLocalEnv,
-    ),
+    httpClientsModule(settings = environment.httpClientsSettings(), texas = environment.texas),
+    externalClients ?: externalClientsModule(environment.httpClientsSettings()),
     cacheModule(environment.valkeyEnvironment),
     kafkaProducersModule(environment.kafka),
-    leaderElectionModule(environment.leaderElectionSettings, isLocalEnv),
+    leaderElection ?: leaderElectionModule(environment.leaderElectionSettings),
     tasksModule(
         narmestelederbehovExpirySettings = environment.narmestelederbehovExpirySettings,
         maintenanceTaskSettings = environment.maintenanceTaskSettings,
@@ -47,3 +40,14 @@ private fun coreModule() = module {
     single { ApplicationState() }
     single { Clock.systemDefaultZone() }
 }
+
+internal fun Environment.httpClientsSettings() = HttpClientsSettings(
+    aaregSettings = aaregSettings,
+    altinnApiSettings = altinnApiSettings,
+    altinnAuthorizationSettings = altinnAuthorizationSettings,
+    altinnAccessSettings = altinnAccessSettings,
+    dinesykmeldteSettings = dinesykmeldteSettings,
+    dialogportenSettings = dialogportenSettings,
+    eregSettings = eregSettings,
+    pdlSettings = pdlSettings,
+)

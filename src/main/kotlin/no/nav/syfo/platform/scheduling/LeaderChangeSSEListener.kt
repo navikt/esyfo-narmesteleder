@@ -53,8 +53,7 @@ private val leaderListenerFailed = applicationEvent<LeaderFailureReason>(
 class LeaderChangeSSEListener(
     private val sseHttpClient: HttpClient,
     private val electorSseUrl: String,
-    private val isLocalEnv: Boolean,
-) {
+) : LeaderChangeListener {
     private val log = logger()
 
     private val jsonMapper = jsonMapper {
@@ -64,11 +63,11 @@ class LeaderChangeSSEListener(
 
     private val _isLeader = MutableStateFlow(false)
     private val isListening = AtomicBoolean(false)
-    val isLeader: StateFlow<Boolean> = _isLeader.asStateFlow()
+    override val isLeader: StateFlow<Boolean> = _isLeader.asStateFlow()
 
     private var hostname: String? = null
 
-    fun initializeLeaderState(isLeader: Boolean) {
+    override fun initializeLeaderState(isLeader: Boolean) {
         _isLeader.value = isLeader
     }
 
@@ -77,19 +76,13 @@ class LeaderChangeSSEListener(
      * This is a suspending function that will run indefinitely, collecting SSE events.
      * Should be launched in a coroutine scope that manages the lifecycle.
      */
-    suspend fun listenForLeaderChanges() = coroutineScope {
+    override suspend fun listenForLeaderChanges() = coroutineScope {
         if (!isListening.compareAndSet(false, true)) {
             log.logEvent(leaderListenerAlreadyRunning, Unit)
             throw LeaderChangeSSEException("Already listening for leader changes. Only one connection allowed per instance.")
         }
 
         try {
-            if (isLocalEnv) {
-                log.info("Running in local environment, setting isLeader to true")
-                initializeLeaderState(isLeader = true)
-                return@coroutineScope
-            }
-
             hostname = withContext(Dispatchers.IO) { InetAddress.getLocalHost().hostName }
 
             while (isActive) {

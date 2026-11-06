@@ -27,7 +27,6 @@ import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
 import java.time.Instant
@@ -56,7 +55,7 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
     override suspend fun claim(now: Instant, lease: Duration): DialogClaim? {
         require(lease.isPositive() && lease.isFinite())
         return database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-            val row = DialogDispatchTable.selectAll().where {
+            val row = DialogDispatchTable.select(DialogDispatchTable.behovId, DialogDispatchTable.revision, DialogDispatchTable.attempts).where {
                 statusIn(pendingStatuses) and (DialogDispatchTable.availableAt lessEq now.atOffset(UTC))
             }.orderBy(DialogDispatchTable.availableAt to SortOrder.ASC, DialogDispatchTable.behovId to SortOrder.ASC)
                 .limit(1)
@@ -81,9 +80,17 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
     override suspend fun load(claim: DialogClaim, now: Instant): DialogDispatchState? = database.ioTransaction(
         transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
     ) {
-        if (DialogDispatchTable.selectAll().where { owns(claim, now) }.empty()) return@ioTransaction null
-        val row = NarmestelederbehovTable.selectAll().where { NarmestelederbehovTable.id eq claim.id.value }.single()
-        val control = DialogDispatchTable.selectAll().where { owns(claim, now) }.singleOrNull() ?: return@ioTransaction null
+        val row = NarmestelederbehovTable.select(
+            NarmestelederbehovTable.sykmeldtFnr,
+            NarmestelederbehovTable.orgnummer,
+            NarmestelederbehovTable.behovStatus,
+            NarmestelederbehovTable.dialogId,
+            NarmestelederbehovTable.expiredInDialogporten,
+        ).where { NarmestelederbehovTable.id eq claim.id.value }.singleOrNull() ?: return@ioTransaction null
+        // Read dispatch state after behov: an unchanged revision proves that the behov snapshot is current.
+        val control = DialogDispatchTable.select(DialogDispatchTable.revision, DialogDispatchTable.createStarted, DialogDispatchTable.intendedExpiry)
+            .where { owns(claim, now) }
+            .singleOrNull() ?: return@ioTransaction null
         if (control[DialogDispatchTable.revision] != claim.revision) return@ioTransaction null
         DialogDispatchState(
             Employee(PersonalIdentificationNumber(row[NarmestelederbehovTable.sykmeldtFnr]), OrganizationNumber(row[NarmestelederbehovTable.orgnummer])),
@@ -148,8 +155,8 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
     private suspend fun mutateBehov(claim: DialogClaim, now: Instant, mutation: JdbcTransaction.() -> Unit): Boolean = database.ioTransaction(
         transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
     ) {
-        NarmestelederbehovTable.selectAll().where { NarmestelederbehovTable.id eq claim.id.value }.forUpdate().single()
-        if (DialogDispatchTable.selectAll().where { owns(claim, now) }.forUpdate().empty()) return@ioTransaction false
+        NarmestelederbehovTable.select(NarmestelederbehovTable.id).where { NarmestelederbehovTable.id eq claim.id.value }.forUpdate().single()
+        if (DialogDispatchTable.select(DialogDispatchTable.behovId).where { owns(claim, now) }.forUpdate().empty()) return@ioTransaction false
         mutation()
         true
     }
@@ -157,7 +164,7 @@ class ExposedDialogDispatchRepository(private val database: Database) : DialogDi
     override suspend fun finish(claim: DialogClaim, result: DialogDispatchResult, now: Instant): Boolean = database.ioTransaction(
         transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
     ) {
-        val row = DialogDispatchTable.selectAll().where { owns(claim, now) }.forUpdate().singleOrNull() ?: return@ioTransaction false
+        val row = DialogDispatchTable.select(DialogDispatchTable.revision).where { owns(claim, now) }.forUpdate().singleOrNull() ?: return@ioTransaction false
         val next = nextDispatchState(superseded = row[DialogDispatchTable.revision] != claim.revision, result, claim.attempts, now)
         DialogDispatchTable.update({ owns(claim, now) }) {
             it[claimToken] = null

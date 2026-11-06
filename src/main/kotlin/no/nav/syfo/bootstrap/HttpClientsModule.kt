@@ -40,7 +40,7 @@ internal fun httpClientsModule(
     }
 }
 
-/** Registers the clients for external systems. Local runs and tests replace this module with fakes. */
+/** Registers the clients for external systems. */
 internal fun externalClientsModule(settings: HttpClientsSettings) = module {
     single<AaregClient> {
         HttpAaregClient(

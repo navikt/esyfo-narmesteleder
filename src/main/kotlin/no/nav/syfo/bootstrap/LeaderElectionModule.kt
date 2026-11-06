@@ -8,7 +8,7 @@ import no.nav.syfo.platform.scheduling.LeaderElection
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import org.koin.dsl.module
 
-/** Registers leader election against the NAIS elector sidecar. Local runs and tests replace this module with fakes. */
+/** Registers leader election against the NAIS elector sidecar. */
 internal fun leaderElectionModule(settings: LeaderElectionSettings) = module {
     single<LeaderChangeListener> {
         LeaderChangeSSEListener(

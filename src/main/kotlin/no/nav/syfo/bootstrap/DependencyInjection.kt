@@ -16,10 +16,7 @@ fun Application.configureDependencies(koinModules: List<Module>) {
     }
 }
 
-/**
- * Uses the real external clients and leader election unless local runs or tests pass
- * [externalClients] and [leaderElection] with fakes from the test sources.
- */
+/** [externalClients] and [leaderElection] replace the real modules when given. */
 internal fun applicationModules(
     environment: Environment,
     externalClients: Module? = null,

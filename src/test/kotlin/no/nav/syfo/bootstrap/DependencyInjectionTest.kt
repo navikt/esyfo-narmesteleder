@@ -27,15 +27,15 @@ import kotlin.time.Duration
 class DependencyInjectionTest :
     FunSpec({
         mapOf(
-            "local" to Configuration(LocalEnvironment(), localApplicationModules()),
-            "NAIS" to naisEnvironmentWithoutEnvVars().let { Configuration(it, applicationModules(it)) },
+            "local" to Configuration(localApplicationSettings(), localApplicationModules()),
+            "NAIS" to naisApplicationSettings().let { Configuration(it, applicationModules(it)) },
         ).forEach { (name, configuration) ->
-            val (environment, modules) = configuration
+            val (settings, modules) = configuration
 
             test("every registered constructor dependency is defined for $name configuration") {
                 module {
                     includes(modules)
-                    includes(capabilityDependencies(environment))
+                    includes(capabilityDependencies(settings))
                 }.verify(extraTypes = valuesNotRegisteredInKoin)
             }
 
@@ -43,7 +43,7 @@ class DependencyInjectionTest :
             test("no definition is registered twice for $name configuration") {
                 koinApplication(createEagerInstances = false) {
                     allowOverride(false)
-                    modules(modules + capabilityDependencies(environment))
+                    modules(modules + capabilityDependencies(settings))
                 }.close()
             }
         }
@@ -55,7 +55,7 @@ class DependencyInjectionTest :
         }
 
         test("production registers only real external clients and leader election") {
-            replaceableImplementations(applicationModules(naisEnvironmentWithoutEnvVars())).forAll {
+            replaceableImplementations(applicationModules(naisApplicationSettings())).forAll {
                 it.simpleName shouldNotStartWith "Fake"
             }
         }
@@ -67,18 +67,16 @@ class DependencyInjectionTest :
         }
     })
 
-private data class Configuration(val environment: Environment, val modules: List<Module>)
+private data class Configuration(val settings: ApplicationSettings, val modules: List<Module>)
 
 private fun localApplicationModules() = applicationModules(
-    environment = LocalEnvironment(),
+    settings = localApplicationSettings(),
     externalClients = localExternalClientsModule(),
     leaderElection = localLeaderElectionModule(),
 )
 
-// NaisEnvironment reads infrastructure from env vars, so supply local values and synthetic required settings.
-private fun naisEnvironmentWithoutEnvVars() = NaisEnvironment(
-    settings = ApplicationSettings.from(applicationConfigWithEnvironment(requiredNaisVariables)),
-)
+// application.conf with synthetic values for every variable NAIS must provide.
+private fun naisApplicationSettings() = ApplicationSettings.from(applicationConfigWithEnvironment(requiredNaisVariables))
 
 private val requiredNaisVariables = mapOf(
     "PUBLIC_INGRESS_URL" to "https://ingress.example",
@@ -125,19 +123,19 @@ private val requiredNaisVariables = mapOf(
 )
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
-private fun capabilityDependencies(environment: Environment) = listOf(
+private fun capabilityDependencies(settings: ApplicationSettings) = listOf(
     organisasjonstilgangDependencies(),
-    narmestelederrelasjonDependencies(environment.narmestelederrelasjonEmploymentSettings),
-    narmestelederbehovDependencies(environment.narmestelederbehovSettings),
+    narmestelederrelasjonDependencies(settings.narmestelederrelasjonEmploymentSettings),
+    narmestelederbehovDependencies(settings.narmestelederbehovSettings),
     narmestelederstatistikkDependencies(),
     sykmeldingDependencies(),
 )
 
 // Read from the real modules, so newly added clients are checked automatically.
 private fun replaceableTypes(): Set<KClass<*>> {
-    val environment = LocalEnvironment()
-    return externalClientsModule(environment.httpClientsSettings()).definedTypes() +
-        leaderElectionModule(environment.leaderElectionSettings).definedTypes()
+    val settings = localApplicationSettings()
+    return externalClientsModule(settings.httpClientsSettings()).definedTypes() +
+        leaderElectionModule(settings.leaderElectionSettings).definedTypes()
 }
 
 private fun replaceableImplementations(modules: List<Module>): List<KClass<*>> {

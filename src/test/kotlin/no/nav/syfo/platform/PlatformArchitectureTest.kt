@@ -3,7 +3,7 @@ package no.nav.syfo.platform
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
-import no.nav.syfo.bootstrap.Environment
+import no.nav.syfo.bootstrap.ApplicationSettings
 import no.nav.syfo.platform.application.Step
 import java.lang.classfile.ClassFile
 import java.lang.classfile.constantpool.ClassEntry
@@ -27,7 +27,7 @@ class PlatformArchitectureTest :
             val type = BootstrapReferenceFixture::class.java
             val bytes = requireNotNull(type.getResourceAsStream("/${type.name.replace('.', '/')}.class"))
                 .use { it.readAllBytes() }
-            forbiddenReferences(bytes) shouldContain "no/nav/syfo/bootstrap/Environment"
+            forbiddenReferences(bytes) shouldContain "no/nav/syfo/bootstrap/ApplicationSettings"
         }
     })
 
@@ -46,4 +46,4 @@ private fun forbiddenReferences(bytes: ByteArray): List<String> = ClassFile.of()
 
 // The constructor signature is the forbidden reference the guard must detect.
 @Suppress("unused")
-private class BootstrapReferenceFixture(val environment: Environment)
+private class BootstrapReferenceFixture(val settings: ApplicationSettings)

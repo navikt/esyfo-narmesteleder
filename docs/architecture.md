@@ -341,7 +341,8 @@ Contains reusable technical mechanisms without domain rules:
   and client. `platformModule` installs the providers once and resolves
   `TexasHttpClient` from Koin, so routes only select a named provider;
 - `cache`: generic Valkey cache and configuration;
-- `config`: shared environment-variable lookup;
+- `config`: HOCON loading and the `ConfigReader` that collects every missing
+  or invalid setting;
 - `database`: data source, Flyway and shared transaction infrastructure;
 - `http`: shared HTTP client construction;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics,
@@ -378,7 +379,7 @@ Owns application assembly:
 - aggregate routes and operational endpoints.
 
 Business classes do not depend on Koin or bootstrap. Capabilities never see
-the bootstrap `Environment`. Bootstrap maps it to capability-owned settings such
+the bootstrap `ApplicationSettings`. Bootstrap takes capability-owned settings such
 as `NarmestelederbehovSettings` and `NarmestelederrelasjonEmploymentSettings` and passes
 them as parameters to the capability module, which hands them on to its
 `<capability>Dependencies(settings)`; settings are not registered in Koin.
@@ -386,39 +387,39 @@ Single feature flags are passed directly to consumers. `BootstrapBoundaryTest` f
 business module references `bootstrap`.
 
 `main()` reads `application.conf` into `ApplicationSettings` and starts
-`Application.bootstrap(NaisEnvironment(settings))`, which
+`Application.bootstrap(settings)`, which
 starts the platform module and then one Ktor module per
 capability:
 
 ```kotlin
-fun Application.bootstrap(environment: Environment, koinModules: List<Module> = applicationModules(environment)) {
-    platformModule(koinModules, environment.texas.azurePreAuthorizedApps)
+fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Module> = applicationModules(settings)) {
+    platformModule(koinModules, settings.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(environment.narmestelederrelasjonEmploymentSettings)
-    narmestelederbehovModule(environment.narmestelederbehovSettings)
+    narmestelederrelasjonModule(settings.narmestelederrelasjonEmploymentSettings)
+    narmestelederbehovModule(settings.narmestelederbehovSettings)
     narmestelederstatistikkModule()
     sykmeldingModule()
     configureKafkaConsumers(
-        kafkaSettings = environment.kafka,
-        narmestelederrelasjonKafkaSettings = environment.narmestelederrelasjonKafkaSettings,
-        sykmeldingKafkaSettings = environment.sykmeldingKafkaSettings,
+        kafkaSettings = settings.kafka,
+        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjonKafkaSettings,
+        sykmeldingKafkaSettings = settings.sykmeldingKafkaSettings,
     )
     configureBackgroundTasks(
-        dialogportenTaskSettings = environment.dialogportenTaskSettings,
-        maintenanceTaskSettings = environment.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
+        dialogportenTaskSettings = settings.dialogportenTaskSettings,
+        maintenanceTaskSettings = settings.maintenanceTaskSettings,
+        personEnrichmentTaskSettings = settings.personEnrichmentTaskSettings,
     )
-    configureEmploymentChecks(environment.narmestelederrelasjonEmploymentSettings)
+    configureEmploymentChecks(settings.narmestelederrelasjonEmploymentSettings)
 }
 ```
 
-- `NaisEnvironment` assembles owner-specific settings for capabilities,
-  integrations, Kafka consumers, and platform services. `LocalEnvironment` and the
-  `createForLocal()` factories live in the test sources and are used only by
-  `runLocal` and tests. `runLocal` also replaces the external clients and leader
+- `ApplicationSettings` holds owner-specific settings for capabilities,
+  integrations, Kafka consumers, and platform services. `runLocal` and tests
+  build it from `application-local.conf` with `localApplicationSettings()` in
+  the test sources. `runLocal` also replaces the external clients and leader
   election with fakes, so production code has no local branches. Bootstrap
   passes each module only the settings it needs; configuration stays out of
   domain and use-case code.

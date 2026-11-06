@@ -1,9 +1,9 @@
 package no.nav.syfo
 
 import io.ktor.server.application.Application
-import no.nav.syfo.bootstrap.LocalEnvironment
 import no.nav.syfo.bootstrap.applicationModules
 import no.nav.syfo.bootstrap.bootstrap
+import no.nav.syfo.bootstrap.localApplicationSettings
 import no.nav.syfo.bootstrap.localExternalClientsModule
 import no.nav.syfo.bootstrap.localLeaderElectionModule
 
@@ -13,11 +13,11 @@ fun main() {
 }
 
 fun Application.localModule() {
-    val environment = LocalEnvironment()
+    val settings = localApplicationSettings()
     bootstrap(
-        environment = environment,
+        settings = settings,
         koinModules = applicationModules(
-            environment = environment,
+            settings = settings,
             externalClients = localExternalClientsModule(),
             leaderElection = localLeaderElectionModule(),
         ),

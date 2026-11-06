@@ -18,21 +18,21 @@ fun Application.configureDependencies(koinModules: List<Module>) {
 
 /** [externalClients] and [leaderElection] replace the real modules when given. */
 internal fun applicationModules(
-    environment: Environment,
+    settings: ApplicationSettings,
     externalClients: Module? = null,
     leaderElection: Module? = null,
 ): List<Module> = listOf(
     coreModule(),
-    databaseModule(environment.database),
-    httpClientsModule(settings = environment.httpClientsSettings(), texas = environment.texas),
-    externalClients ?: externalClientsModule(environment.httpClientsSettings()),
-    cacheModule(environment.valkeyEnvironment),
-    kafkaProducersModule(environment.kafka),
-    leaderElection ?: leaderElectionModule(environment.leaderElectionSettings),
+    databaseModule(settings.database),
+    httpClientsModule(settings = settings.httpClientsSettings(), texas = settings.texas),
+    externalClients ?: externalClientsModule(settings.httpClientsSettings()),
+    cacheModule(settings.valkey),
+    kafkaProducersModule(settings.kafka),
+    leaderElection ?: leaderElectionModule(settings.leaderElectionSettings),
     tasksModule(
-        narmestelederbehovExpirySettings = environment.narmestelederbehovExpirySettings,
-        maintenanceTaskSettings = environment.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
+        narmestelederbehovExpirySettings = settings.narmestelederbehovExpirySettings,
+        maintenanceTaskSettings = settings.maintenanceTaskSettings,
+        personEnrichmentTaskSettings = settings.personEnrichmentTaskSettings,
     ),
 )
 
@@ -41,7 +41,7 @@ private fun coreModule() = module {
     single { Clock.systemDefaultZone() }
 }
 
-internal fun Environment.httpClientsSettings() = HttpClientsSettings(
+internal fun ApplicationSettings.httpClientsSettings() = HttpClientsSettings(
     aaregSettings = aaregSettings,
     altinnApiSettings = altinnApiSettings,
     altinnAuthorizationSettings = altinnAuthorizationSettings,

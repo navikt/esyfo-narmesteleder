@@ -9,12 +9,12 @@ import io.kotest.matchers.shouldBe
 class NarmestelederrelasjonEmploymentSettingsTest :
     FunSpec({
         test("local defaults keep employment revocation disabled") {
-            LocalEnvironment().narmestelederrelasjonEmploymentSettings.employmentCheckRevokeEnabled shouldBe false
+            localApplicationSettings().narmestelederrelasjonEmploymentSettings.employmentCheckRevokeEnabled shouldBe false
         }
 
         test("startup rejects simultaneous employment revocation and source observation even when checks are disabled") {
             val failure = shouldThrow<IllegalArgumentException> {
-                LocalEnvironment().narmestelederrelasjonEmploymentSettings.copy(
+                localApplicationSettings().narmestelederrelasjonEmploymentSettings.copy(
                     employmentCheckRevokeEnabled = true,
                     employmentCheckObserveSourceEnabled = true,
                 )
@@ -26,7 +26,7 @@ class NarmestelederrelasjonEmploymentSettingsTest :
         listOf(false to false, true to false, false to true).forEach { (revoke, observe) ->
             test("startup accepts revoke=$revoke and observe=$observe") {
                 val properties = shouldNotThrowAny {
-                    LocalEnvironment().narmestelederrelasjonEmploymentSettings.copy(
+                    localApplicationSettings().narmestelederrelasjonEmploymentSettings.copy(
                         employmentCheckRevokeEnabled = revoke,
                         employmentCheckObserveSourceEnabled = observe,
                     )

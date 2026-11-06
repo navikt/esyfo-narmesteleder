@@ -13,6 +13,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.CreateBehovResult
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchResult
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchStats
 import no.nav.syfo.narmestelederbehov.application.NewNarmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.BehovReason
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
@@ -22,8 +23,8 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
-import java.sql.SQLException
 import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 
@@ -56,25 +57,41 @@ class ExposedDialogDispatchRepositoryTest :
             repository.claim(now, 60.seconds).shouldBeNull()
         }
 
-        test("a dispatch persistence failure rolls back repository creation") {
+        test("a dispatch scheduling failure rolls back repository creation") {
+            val failingLifecycle = ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase) { id ->
+                scheduleDialogDispatch(id)
+                error("dispatch scheduling failed")
+            }
+            shouldThrow<IllegalStateException> { failingLifecycle.create(newBehov()) }
             transaction(TestDB.exposedDatabase) {
-                exec("ALTER TABLE nl_dialog_dispatch ADD CONSTRAINT test_reject_dispatch CHECK (false)")
-            }
-            try {
-                shouldThrow<SQLException> {
-                    ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase).create(newBehov())
-                }
-                transaction(TestDB.exposedDatabase) {
-                    assertSoftly {
-                        NarmestelederbehovTable.selectAll().count() shouldBe 0
-                        DialogDispatchTable.selectAll().count() shouldBe 0
-                    }
-                }
-            } finally {
-                transaction(TestDB.exposedDatabase) {
-                    exec("ALTER TABLE nl_dialog_dispatch DROP CONSTRAINT test_reject_dispatch")
+                assertSoftly {
+                    NarmestelederbehovTable.selectAll().count() shouldBe 0
+                    DialogDispatchTable.selectAll().count() shouldBe 0
                 }
             }
+        }
+
+        test("stats count ready, claimed and parked work and report the oldest pending change") {
+            val parked = insertNarmestelederbehov(created = now.minusSeconds(40))
+            val idle = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val claimed = insertNarmestelederbehov(created = now.minusSeconds(20))
+            val ready = insertNarmestelederbehov(created = now.minusSeconds(10))
+            suspend fun claimNext(expected: UUID) = requireNotNull(repository.claim(now, 60.seconds)).also { it.id.value shouldBe expected }
+            repository.finish(claimNext(parked.id), DialogDispatchResult.Parked("invalid_request"), now) shouldBe true
+            repository.finish(claimNext(idle.id), DialogDispatchResult.Done, now) shouldBe true
+            claimNext(claimed.id)
+            val oldestPending = Instant.parse("2029-03-01T00:00:00Z")
+            transaction(TestDB.exposedDatabase) {
+                mapOf(
+                    parked.id to Instant.parse("2020-01-01T00:00:00Z"),
+                    claimed.id to oldestPending,
+                    ready.id to Instant.parse("2029-06-01T00:00:00Z"),
+                ).forEach { (id, pendingSince) ->
+                    DialogDispatchTable.update({ DialogDispatchTable.behovId eq id }) { it[DialogDispatchTable.pendingSince] = pendingSince.atOffset(ZoneOffset.UTC) }
+                }
+            }
+
+            repository.stats() shouldBe DialogDispatchStats(pending = 2, parked = 1, oldestPending = oldestPending)
         }
 
         test("committed behov changes enqueue once and concurrent workers claim different rows") {

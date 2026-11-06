@@ -27,6 +27,7 @@ import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
@@ -38,6 +39,7 @@ import java.util.UUID
 
 class ExposedNarmestelederbehovLifecycleRepository(
     private val database: Database,
+    private val scheduleDispatch: JdbcTransaction.(UUID) -> Unit = JdbcTransaction::scheduleDialogDispatch,
 ) : CreateNarmestelederbehovRepository,
     SendPendingNarmestelederbehovDialogsRepository,
     ExpireNarmestelederbehovRepository,
@@ -104,7 +106,7 @@ class ExposedNarmestelederbehovLifecycleRepository(
             it[etternavn] = name?.lastName
         }
         if (updated == 1) {
-            scheduleDialogDispatch(id.value)
+            scheduleDispatch(id.value)
             MarkDialogCreatedResult.Marked
         } else {
             MarkDialogCreatedResult.NotCreated
@@ -124,7 +126,7 @@ class ExposedNarmestelederbehovLifecycleRepository(
         }.singleOrNull()
             ?.let {
                 val id = it[NarmestelederbehovTable.id]
-                scheduleDialogDispatch(id)
+                scheduleDispatch(id)
                 CreateBehovResult.Created(NarmestelederbehovId(id))
             }
             ?: CreateBehovResult.AlreadyExists
@@ -161,7 +163,7 @@ class ExposedNarmestelederbehovLifecycleRepository(
             ) {
                 it[behovStatus] = BehovStatus.BEHOV_EXPIRED
             }.map { it[NarmestelederbehovTable.id] }
-            expired.forEach { scheduleDialogDispatch(it) }
+            expired.forEach { scheduleDispatch(it) }
             expired.size
         }
     }

@@ -6,6 +6,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
+import no.nav.syfo.platform.kafka.KafkaSecurity
+import no.nav.syfo.platform.kafka.SchemaRegistryAuth
 
 class ApplicationSettingsTest :
     FunSpec({
@@ -43,6 +45,12 @@ class ApplicationSettingsTest :
             assertSoftly {
                 settings.database.jdbcUrl() shouldBe "jdbc:postgresql://db.example:5432/narmesteleder" +
                     "?ssl=on&sslrootcert=/certs/root.pem&sslcert=/certs/cert.pem&sslmode=verify-ca&sslkey=/certs/key.pk8"
+                settings.kafka.security shouldBe KafkaSecurity.Ssl(
+                    truststoreLocation = "/kafka/truststore.jks",
+                    keystoreLocation = "/kafka/keystore.p12",
+                    credstorePassword = "credstore-password",
+                )
+                settings.kafka.schemaRegistry.auth shouldBe SchemaRegistryAuth.Basic("registry-user", "registry-password")
                 settings.toString() shouldNotContain "db-password"
                 settings.toString() shouldNotContain "valkey-password"
                 settings.toString() shouldNotContain "registry-password"

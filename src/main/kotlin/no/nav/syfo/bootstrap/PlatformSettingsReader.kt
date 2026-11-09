@@ -11,11 +11,12 @@ import no.nav.syfo.platform.config.flag
 import no.nav.syfo.platform.config.int
 import no.nav.syfo.platform.config.parsed
 import no.nav.syfo.platform.config.string
+import no.nav.syfo.platform.database.DatabaseSecurity
 import no.nav.syfo.platform.database.DatabaseSettings
-import no.nav.syfo.platform.database.DatabaseSsl
 import no.nav.syfo.platform.kafka.KafkaSchemaRegistrySettings
+import no.nav.syfo.platform.kafka.KafkaSecurity
 import no.nav.syfo.platform.kafka.KafkaSettings
-import no.nav.syfo.platform.kafka.KafkaSslSettings
+import no.nav.syfo.platform.kafka.SchemaRegistryAuth
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 
 internal fun ApplicationConfig.databaseSettings() = DatabaseSettings(
@@ -24,15 +25,15 @@ internal fun ApplicationConfig.databaseSettings() = DatabaseSettings(
     name = string("database.name"),
     username = string("database.username"),
     password = string("database.password"),
-    ssl = if (flag("database.ssl.enabled")) {
-        DatabaseSsl(
+    security = if (flag("database.ssl.enabled")) {
+        DatabaseSecurity.Ssl(
             cert = string("database.ssl.cert"),
             key = string("database.ssl.key"),
             rootCert = string("database.ssl.rootCert"),
             mode = string("database.ssl.mode"),
         )
     } else {
-        null
+        DatabaseSecurity.Plaintext
     },
 )
 
@@ -47,14 +48,14 @@ internal fun ApplicationConfig.valkeySettings() = ValkeySettings(
 internal fun ApplicationConfig.kafkaSettings() = KafkaSettings(
     brokerUrl = string("kafka.brokers"),
     schemaRegistry = schemaRegistrySettings(),
-    sslConfig = if (flag("kafka.ssl.enabled")) {
-        KafkaSslSettings(
+    security = if (flag("kafka.ssl.enabled")) {
+        KafkaSecurity.Ssl(
             truststoreLocation = string("kafka.ssl.truststorePath"),
             keystoreLocation = string("kafka.ssl.keystorePath"),
             credstorePassword = string("kafka.ssl.credstorePassword"),
         )
     } else {
-        null
+        KafkaSecurity.Plaintext
     },
     commitOnAllErrors = flag("kafka.commitOnAllErrors"),
     shouldConsumeTopics = flag("kafka.consumeTopics"),
@@ -82,11 +83,14 @@ internal fun ApplicationConfig.maintenanceTaskSettings() = MaintenanceTaskSettin
     interval = duration("maintenanceTask.interval"),
 )
 
-private fun ApplicationConfig.schemaRegistrySettings(): KafkaSchemaRegistrySettings {
-    val url = string("kafka.schemaRegistry.url")
-    return if (flag("kafka.schemaRegistry.authEnabled")) {
-        KafkaSchemaRegistrySettings(url, string("kafka.schemaRegistry.username"), string("kafka.schemaRegistry.password"))
+private fun ApplicationConfig.schemaRegistrySettings() = KafkaSchemaRegistrySettings(
+    url = string("kafka.schemaRegistry.url"),
+    auth = if (flag("kafka.schemaRegistry.authEnabled")) {
+        SchemaRegistryAuth.Basic(
+            username = string("kafka.schemaRegistry.username"),
+            password = string("kafka.schemaRegistry.password"),
+        )
     } else {
-        KafkaSchemaRegistrySettings(url, username = null, password = null)
-    }
-}
+        SchemaRegistryAuth.None
+    },
+)

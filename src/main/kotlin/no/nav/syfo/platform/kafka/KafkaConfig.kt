@@ -28,27 +28,26 @@ private val PRODUCER_DELIVERY_TIMEOUT: Duration = 120.seconds
 /** Upper bound for `send(...).get()`: blocking for metadata and buffer space, then delivery including retries. */
 val PRODUCER_MAX_SEND_DURATION: Duration = PRODUCER_MAX_BLOCK + PRODUCER_DELIVERY_TIMEOUT
 
-fun commonProperties(env: KafkaSettings): Properties {
-    val sslConfig = env.sslConfig
-
-    return HashMap<String, String>().apply {
-        sslConfig?.let {
+fun commonProperties(env: KafkaSettings): Properties = HashMap<String, String>().apply {
+    when (val security = env.security) {
+        KafkaSecurity.Plaintext -> Unit
+        is KafkaSecurity.Ssl -> {
             put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SSL)
             put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "") // Disable server host name verification
             put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, JAVA_KEYSTORE)
             put(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, PKCS12)
-            put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, sslConfig.truststoreLocation)
-            put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, sslConfig.credstorePassword)
-            put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, sslConfig.keystoreLocation)
-            put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, sslConfig.credstorePassword)
-            put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, sslConfig.credstorePassword)
+            put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, security.truststoreLocation)
+            put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, security.credstorePassword)
+            put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, security.keystoreLocation)
+            put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, security.credstorePassword)
+            put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, security.credstorePassword)
         }
-        put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, env.brokerUrl)
-        remove(SaslConfigs.SASL_MECHANISM)
-        remove(SaslConfigs.SASL_JAAS_CONFIG)
-        remove(SaslConfigs.SASL_MECHANISM)
-    }.toProperties()
-}
+    }
+    put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, env.brokerUrl)
+    remove(SaslConfigs.SASL_MECHANISM)
+    remove(SaslConfigs.SASL_JAAS_CONFIG)
+    remove(SaslConfigs.SASL_MECHANISM)
+}.toProperties()
 
 fun producerProperties(
     env: KafkaSettings,
@@ -101,11 +100,12 @@ fun avroConsumerProperties(
         put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryEnv.url)
         put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true")
 
-        val username = schemaRegistryEnv.username
-        val password = schemaRegistryEnv.password
-        if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
-            put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, "USER_INFO")
-            put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, "$username:$password")
+        when (val auth = schemaRegistryEnv.auth) {
+            SchemaRegistryAuth.None -> Unit
+            is SchemaRegistryAuth.Basic -> {
+                put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, "USER_INFO")
+                put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, "${auth.username}:${auth.password}")
+            }
         }
     }
 }

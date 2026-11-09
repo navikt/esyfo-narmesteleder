@@ -51,9 +51,9 @@ class AzureAdAuthenticationTest :
             }
         }
 
-        test("responds 200 when the Azure AD token has the required role regardless of azp") {
+        test("responds 200 when the Azure AD token has the required role") {
             val texasHttpClient = mockk<TexasHttpClient>()
-            texasHttpClient.stubAzureAd(azp = "unapproved-caller", roles = listOf("linemanager-lookup"))
+            texasHttpClient.stubAzureAd(azp = CALLING_APP, roles = listOf("linemanager-lookup"))
 
             val response = callProtectedRoute(texasHttpClient)
 

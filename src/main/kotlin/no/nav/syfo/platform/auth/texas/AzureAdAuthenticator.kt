@@ -4,7 +4,7 @@ import io.ktor.server.application.ApplicationCall
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 
-internal data class AzureAdPrincipal(val clientId: String?)
+internal data object AzureAdPrincipal
 
 internal suspend fun ApplicationCall.authenticateAzureAd(
     client: TexasHttpClient,
@@ -21,5 +21,5 @@ internal suspend fun ApplicationCall.authenticateAzureAd(
         recordTokenRejection(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED)
         throw ApiErrorException.ForbiddenException("Application is not authorized")
     }
-    return AzureAdPrincipal(introspectionResponse.azp)
+    return AzureAdPrincipal
 }

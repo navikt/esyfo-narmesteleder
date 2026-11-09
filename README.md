@@ -156,7 +156,7 @@ mise docker-down
 ```
 
 Start the application locally with `mise start` (or `./gradlew runLocal`). Local runs use fake clients for external
-systems and `LocalEnvironment` settings; the fakes, fixtures and local settings live in the test sources and are not part of the production artifact.
+systems and settings from `src/test/resources/application-local.conf`; the fakes, fixtures and local settings live in the test sources and are not part of the production artifact.
 
 ### Kafka-ui
 You can use [kafka-ui](http://localhost:9080) to inspect your consumers and topics. You can also publish or read messages on the topics

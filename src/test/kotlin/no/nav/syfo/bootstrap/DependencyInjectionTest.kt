@@ -11,14 +11,8 @@ import no.nav.syfo.narmestelederbehov.narmestelederbehovDependencies
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonDependencies
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
-import no.nav.syfo.platform.auth.texas.TexasEnvironment
-import no.nav.syfo.platform.auth.texas.createForLocal
-import no.nav.syfo.platform.cache.ValkeyEnvironment
-import no.nav.syfo.platform.cache.createForLocal
-import no.nav.syfo.platform.database.DatabaseEnvironment
-import no.nav.syfo.platform.database.createForLocal
-import no.nav.syfo.platform.kafka.KafkaEnvironment
-import no.nav.syfo.platform.kafka.createForLocal
+import no.nav.syfo.platform.auth.texas.TexasSettings
+import no.nav.syfo.platform.cache.ValkeySettings
 import no.nav.syfo.sykmelding.sykmeldingDependencies
 import org.apache.kafka.clients.producer.Producer
 import org.koin.core.annotation.KoinInternalApi
@@ -32,15 +26,15 @@ import kotlin.time.Duration
 class DependencyInjectionTest :
     FunSpec({
         mapOf(
-            "local" to Configuration(LocalEnvironment(), localApplicationModules()),
-            "NAIS" to naisEnvironmentWithoutEnvVars().let { Configuration(it, applicationModules(it)) },
+            "local" to Configuration(localApplicationSettings(), localApplicationModules()),
+            "NAIS" to naisApplicationSettings().let { Configuration(it, applicationModules(it)) },
         ).forEach { (name, configuration) ->
-            val (environment, modules) = configuration
+            val (settings, modules) = configuration
 
             test("every registered constructor dependency is defined for $name configuration") {
                 module {
                     includes(modules)
-                    includes(capabilityDependencies(environment))
+                    includes(capabilityDependencies(settings))
                 }.verify(extraTypes = valuesNotRegisteredInKoin)
             }
 
@@ -48,7 +42,7 @@ class DependencyInjectionTest :
             test("no definition is registered twice for $name configuration") {
                 koinApplication(createEagerInstances = false) {
                     allowOverride(false)
-                    modules(modules + capabilityDependencies(environment))
+                    modules(modules + capabilityDependencies(settings))
                 }.close()
             }
         }
@@ -60,7 +54,7 @@ class DependencyInjectionTest :
         }
 
         test("production registers only real external clients and leader election") {
-            replaceableImplementations(applicationModules(naisEnvironmentWithoutEnvVars())).forAll {
+            replaceableImplementations(applicationModules(naisApplicationSettings())).forAll {
                 it.simpleName shouldNotStartWith "Fake"
             }
         }
@@ -72,56 +66,30 @@ class DependencyInjectionTest :
         }
     })
 
-private data class Configuration(val environment: Environment, val modules: List<Module>)
+private data class Configuration(val settings: ApplicationSettings, val modules: List<Module>)
 
 private fun localApplicationModules() = applicationModules(
-    environment = LocalEnvironment(),
+    settings = localApplicationSettings(),
     externalClients = localExternalClientsModule(),
     leaderElection = localLeaderElectionModule(),
 )
 
-// NaisEnvironment() reads required NAIS variables, so supply every part explicitly.
-private fun naisEnvironmentWithoutEnvVars(): NaisEnvironment {
-    val localEnvironment = LocalEnvironment()
-    return NaisEnvironment(
-        database = DatabaseEnvironment.createForLocal(),
-        texas = TexasEnvironment.createForLocal(),
-        valkeyEnvironment = ValkeyEnvironment.createForLocal(),
-        kafka = KafkaEnvironment.createForLocal(),
-        aaregSettings = localEnvironment.aaregSettings,
-        altinnApiSettings = localEnvironment.altinnApiSettings,
-        altinnAuthorizationSettings = localEnvironment.altinnAuthorizationSettings,
-        altinnAccessSettings = localEnvironment.altinnAccessSettings,
-        dinesykmeldteSettings = localEnvironment.dinesykmeldteSettings,
-        dialogportenSettings = localEnvironment.dialogportenSettings,
-        eregSettings = localEnvironment.eregSettings,
-        pdlSettings = localEnvironment.pdlSettings,
-        narmestelederbehovSettings = localEnvironment.narmestelederbehovSettings,
-        narmestelederbehovExpirySettings = localEnvironment.narmestelederbehovExpirySettings,
-        narmestelederrelasjonEmploymentSettings = localEnvironment.narmestelederrelasjonEmploymentSettings,
-        narmestelederrelasjonKafkaSettings = localEnvironment.narmestelederrelasjonKafkaSettings,
-        sykmeldingKafkaSettings = localEnvironment.sykmeldingKafkaSettings,
-        dialogportenTaskSettings = localEnvironment.dialogportenTaskSettings,
-        maintenanceTaskSettings = localEnvironment.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = localEnvironment.personEnrichmentTaskSettings,
-        leaderElectionSettings = localEnvironment.leaderElectionSettings,
-    )
-}
+private fun naisApplicationSettings() = settingsFromManifest("nais/nais-prod.yaml")
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
-private fun capabilityDependencies(environment: Environment) = listOf(
+private fun capabilityDependencies(settings: ApplicationSettings) = listOf(
     organisasjonstilgangDependencies(),
-    narmestelederrelasjonDependencies(environment.narmestelederrelasjonEmploymentSettings),
-    narmestelederbehovDependencies(environment.narmestelederbehovSettings),
+    narmestelederrelasjonDependencies(settings.narmestelederrelasjon.employmentCheck),
+    narmestelederbehovDependencies(settings.narmestelederbehov),
     narmestelederstatistikkDependencies(),
     sykmeldingDependencies(),
 )
 
 // Read from the real modules, so newly added clients are checked automatically.
 private fun replaceableTypes(): Set<KClass<*>> {
-    val environment = LocalEnvironment()
-    return externalClientsModule(environment.httpClientsSettings()).definedTypes() +
-        leaderElectionModule(environment.leaderElectionSettings).definedTypes()
+    val settings = localApplicationSettings()
+    return externalClientsModule(settings).definedTypes() +
+        leaderElectionModule(settings.leaderElection).definedTypes()
 }
 
 private fun replaceableImplementations(modules: List<Module>): List<KClass<*>> {
@@ -146,8 +114,8 @@ private fun Any.unwrapCache(): Any = when (this) {
 private val valuesNotRegisteredInKoin = listOf(
     Boolean::class,
     Duration::class,
-    TexasEnvironment::class,
-    ValkeyEnvironment::class,
+    TexasSettings::class,
+    ValkeySettings::class,
     HttpClientEngine::class,
     Producer::class,
 )

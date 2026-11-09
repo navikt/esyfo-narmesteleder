@@ -341,7 +341,8 @@ Contains reusable technical mechanisms without domain rules:
   and client. `platformModule` installs the providers once and resolves
   `TexasHttpClient` from Koin, so routes only select a named provider;
 - `cache`: generic Valkey cache and configuration;
-- `config`: shared environment-variable lookup;
+- `config`: HOCON loading and typed readers that fail on a missing or invalid
+  setting;
 - `database`: data source, Flyway and shared transaction infrastructure;
 - `http`: shared HTTP client construction;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics,
@@ -368,7 +369,7 @@ Contains reusable technical mechanisms without domain rules:
 
 Owns application assembly:
 
-- parse environment variables into small typed settings;
+- read `application.conf` and environment variables once into small typed settings;
 - register the real clients for external systems. Production never selects
   fakes; local runs and tests pass fakes from the test sources through the
   `externalClients` parameter (`localExternalClientsModule()`, started with
@@ -378,53 +379,58 @@ Owns application assembly:
 - aggregate routes and operational endpoints.
 
 Business classes do not depend on Koin or bootstrap. Capabilities never see
-the bootstrap `Environment`. Bootstrap maps it to capability-owned settings such
+the bootstrap `ApplicationSettings`. Bootstrap takes capability-owned settings such
 as `NarmestelederbehovSettings` and `NarmestelederrelasjonEmploymentSettings` and passes
 them as parameters to the capability module, which hands them on to its
 `<capability>Dependencies(settings)`; settings are not registered in Koin.
 Single feature flags are passed directly to consumers. `BootstrapBoundaryTest` fails if a
 business module references `bootstrap`.
 
-`Application.module()` delegates to `Application.bootstrap(NaisEnvironment())`, which
+`main()` reads `application.conf` into `ApplicationSettings` and starts
+`Application.bootstrap(settings)`, which
 starts the platform module and then one Ktor module per
 capability:
 
 ```kotlin
-fun Application.bootstrap(environment: Environment, koinModules: List<Module> = applicationModules(environment)) {
-    platformModule(koinModules, environment.texas.azurePreAuthorizedApps)
+fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Module> = applicationModules(settings)) {
+    platformModule(koinModules, settings.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(environment.narmestelederrelasjonEmploymentSettings)
-    narmestelederbehovModule(environment.narmestelederbehovSettings)
+    narmestelederrelasjonModule(settings.narmestelederrelasjon.employmentCheck)
+    narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()
     sykmeldingModule()
     configureKafkaConsumers(
-        kafkaSettings = environment.kafka,
-        narmestelederrelasjonKafkaSettings = environment.narmestelederrelasjonKafkaSettings,
-        sykmeldingKafkaSettings = environment.sykmeldingKafkaSettings,
+        kafkaSettings = settings.kafka,
+        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjon.kafka,
+        sykmeldingKafkaSettings = settings.sykmelding,
     )
     configureBackgroundTasks(
-        dialogportenTaskSettings = environment.dialogportenTaskSettings,
-        maintenanceTaskSettings = environment.maintenanceTaskSettings,
-        personEnrichmentTaskSettings = environment.personEnrichmentTaskSettings,
+        dialogportenSettings = settings.narmestelederbehov.dialogporten,
+        maintenanceTaskSettings = settings.maintenanceTask,
+        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
     )
-    configureEmploymentChecks(environment.narmestelederrelasjonEmploymentSettings)
+    configureEmploymentChecks(settings.narmestelederrelasjon.employmentCheck)
 }
 ```
 
-- `NaisEnvironment` assembles owner-specific settings for capabilities,
-  integrations, Kafka consumers, and platform services. `LocalEnvironment` and the
-  `createForLocal()` factories live in the test sources and are used only by
-  `runLocal` and tests. `runLocal` also replaces the external clients and leader
+- `ApplicationSettings` groups settings per owner: platform services
+  (database, Valkey, Kafka, Texas, Altinn API, leader election, maintenance),
+  `IntegrationSettings` for the shared clients, and one aggregate per capability
+  (`OrganisasjonstilgangSettings`, `NarmestelederbehovSettings`,
+  `NarmestelederrelasjonSettings`, `SykmeldingKafkaSettings`). Each group is read
+  by its own `ApplicationConfig` extension in a `*SettingsReader.kt` file in
+  bootstrap, so capabilities never depend on the config library. `runLocal` and tests
+  build it from `application-local.conf` with `localApplicationSettings()` in
+  the test sources. `runLocal` also replaces the external clients and leader
   election with fakes, so production code has no local branches. Bootstrap
   passes each module only the settings it needs; configuration stays out of
   domain and use-case code.
-- `applicationModules` constructs `HttpClientsSettings` in `DependencyInjection`
-  to group the HTTP client module's inputs. This bootstrap-only grouping contains
-  owner-specific settings, including `AltinnApiSettings` and `AltinnAccessSettings`;
-  individual clients still receive only their own values.
+- `externalClientsModule` receives `ApplicationSettings` and hands each
+  external client only its own group, such as `IntegrationSettings.aareg` or
+  `OrganisasjonstilgangSettings.altinnTilganger`.
 - `platformModule` installs Koin once with the shared Koin modules
   (`applicationModules`), configures Texas `Authentication` providers, installs
   CallId, content negotiation and StatusPages, and registers pod and metric
@@ -749,9 +755,28 @@ decision.
 
 ## Configuration and dependency injection
 
-Bootstrap parses environment variables once into small typed settings.
-Adapters and tasks receive only the settings they need. Existing environment
-variable names and defaults remain compatible.
+Bootstrap reads configuration once at startup into small typed settings.
+Adapters and tasks receive only the settings they need.
+
+- Application behaviour settings, feature flags, the database, Valkey, Kafka,
+  Texas and external system URLs, scopes and keys live in `src/main/resources/application.conf`. Each key has a default or is
+  required, and an optional `${?VAR}` line lets the environment variable of the
+  same name override it. Environment variables take precedence over defaults.
+  The NAIS manifests keep the existing variable names.
+- `ApplicationSettings` maps the HOCON config to capability-owned settings and
+  stops startup on the first missing or invalid value, naming the key but not
+  the value. Flags keep the lenient parsing where only a case-insensitive `true`
+  enables them.
+- TLS for the database, Valkey and Kafka, and the Kafka schema registry
+  credentials, are controlled by explicit flags that are on
+  in `application.conf` and off only in `application-local.conf`. When TLS is
+  on, every certificate setting is required, so a missing value stops startup
+  instead of falling back to plaintext.
+- Local runs and tests read `application-local.conf` from the test resources,
+  layered over `application.conf`, and ignore environment variables.
+  `NaisManifestSettingsTest` checks that the dev and prod manifests resolve,
+  with synthetic values for the secrets they load with `envFrom` and the
+  variables NAIS injects.
 
 Each business capability provides its own Koin registration module. Focused
 platform modules register shared technical mechanisms. Root bootstrap only

@@ -323,7 +323,7 @@ class ConsumerRunnerTest :
             )
             consumer.scheduleBatch(ConsumerRecord(SENDT_SYKMELDING_TOPIC, 0, 0L, "key", payload))
 
-            val properties = SykmeldingsregisterKafkaConsumer.kafkaConsumerProperties(KafkaEnvironment.createForLocal())
+            val properties = SykmeldingsregisterKafkaConsumer.kafkaConsumerProperties(localKafkaSettings())
             assertSoftly {
                 properties.getProperty("group.id") shouldBe "esyfo-narmesteleder-sykmeldingsregister-consumer"
                 properties.getProperty("auto.offset.reset") shouldBe "earliest"

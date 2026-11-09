@@ -60,16 +60,23 @@ class AzureAdAuthenticationTest :
             response.status shouldBe HttpStatusCode.OK
         }
 
-        test("responds 403 when the Azure AD token does not have the required role") {
-            val texasHttpClient = mockk<TexasHttpClient>()
-            texasHttpClient.stubAzureAd(azp = CALLING_APP)
-            val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED)
+        mapOf<String, List<String>?>(
+            "no roles claim" to null,
+            "an empty roles claim" to emptyList(),
+            "only another role" to listOf("access_as_application"),
+            "the role in different case" to listOf("LINEMANAGER-LOOKUP"),
+        ).forEach { (case, roles) ->
+            test("responds 403 when the Azure AD token has $case") {
+                val texasHttpClient = mockk<TexasHttpClient>()
+                texasHttpClient.stubAzureAd(azp = CALLING_APP, roles = roles)
+                val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED)
 
-            val response = callProtectedRoute(texasHttpClient)
+                val response = callProtectedRoute(texasHttpClient)
 
-            assertSoftly {
-                response.status shouldBe HttpStatusCode.Forbidden
-                tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED) shouldBe before + 1
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.Forbidden
+                    tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED) shouldBe before + 1
+                }
             }
         }
 

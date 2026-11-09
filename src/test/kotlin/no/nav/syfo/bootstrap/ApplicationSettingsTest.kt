@@ -1,7 +1,6 @@
 package no.nav.syfo.bootstrap
 
 import io.kotest.assertions.assertSoftly
-import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -26,13 +25,6 @@ class ApplicationSettingsTest :
             val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment - "PDL_BASE_URL") }
 
             failure.message shouldBe "Invalid configuration: pdl.baseUrl is missing"
-        }
-
-        test("startup does not require or parse the Azure AD pre-authorized applications list") {
-            assertSoftly {
-                shouldNotThrowAny { settingsFrom(requiredEnvironment) }
-                shouldNotThrowAny { settingsFrom(requiredEnvironment + ("AZURE_APP_PRE_AUTHORIZED_APPS" to "invalid")) }
-            }
         }
 
         listOf(

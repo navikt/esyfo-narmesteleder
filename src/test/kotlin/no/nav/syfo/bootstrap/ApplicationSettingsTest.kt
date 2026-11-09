@@ -6,6 +6,9 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
+import no.nav.syfo.platform.database.DatabaseSecurity
+import no.nav.syfo.platform.database.DatabaseSettings
+import no.nav.syfo.platform.kafka.KafkaSchemaRegistrySettings
 import no.nav.syfo.platform.kafka.KafkaSecurity
 import no.nav.syfo.platform.kafka.SchemaRegistryAuth
 
@@ -39,22 +42,54 @@ class ApplicationSettingsTest :
             }
         }
 
-        test("the database and Kafka connect with the NAIS certificates and keep the passwords out of logs") {
-            val settings = settingsFrom(requiredEnvironment)
+        test("the database connects to Cloud SQL with the NAIS certificates") {
+            val database = settingsFrom(requiredEnvironment).database
 
             assertSoftly {
-                settings.database.jdbcUrl() shouldBe "jdbc:postgresql://db.example:5432/narmesteleder" +
+                database shouldBe DatabaseSettings(
+                    host = "db.example",
+                    port = "5432",
+                    name = "narmesteleder",
+                    username = "db-user",
+                    password = "db-password",
+                    security = DatabaseSecurity.Ssl(
+                        cert = "/certs/cert.pem",
+                        key = "/certs/key.pk8",
+                        rootCert = "/certs/root.pem",
+                        mode = "verify-ca",
+                    ),
+                )
+                database.jdbcUrl() shouldBe "jdbc:postgresql://db.example:5432/narmesteleder" +
                     "?ssl=on&sslrootcert=/certs/root.pem&sslcert=/certs/cert.pem&sslmode=verify-ca&sslkey=/certs/key.pk8"
-                settings.kafka.security shouldBe KafkaSecurity.Ssl(
+            }
+        }
+
+        test("Kafka connects to Aiven with the NAIS keystore") {
+            val kafka = settingsFrom(requiredEnvironment).kafka
+
+            assertSoftly {
+                kafka.brokerUrl shouldBe "kafka.example:9093"
+                kafka.security shouldBe KafkaSecurity.Ssl(
                     truststoreLocation = "/kafka/truststore.jks",
                     keystoreLocation = "/kafka/keystore.p12",
                     credstorePassword = "credstore-password",
                 )
-                settings.kafka.schemaRegistry.auth shouldBe SchemaRegistryAuth.Basic("registry-user", "registry-password")
-                settings.toString() shouldNotContain "db-password"
-                settings.toString() shouldNotContain "valkey-password"
-                settings.toString() shouldNotContain "registry-password"
-                settings.toString() shouldNotContain "credstore-password"
+            }
+        }
+
+        test("the schema registry uses basic auth from NAIS") {
+            settingsFrom(requiredEnvironment).kafka.schemaRegistry shouldBe KafkaSchemaRegistrySettings(
+                url = "https://registry.example",
+                auth = SchemaRegistryAuth.Basic(username = "registry-user", password = "registry-password"),
+            )
+        }
+
+        test("passwords stay out of logs") {
+            assertSoftly(settingsFrom(requiredEnvironment).toString()) {
+                this shouldNotContain "db-password"
+                this shouldNotContain "valkey-password"
+                this shouldNotContain "registry-password"
+                this shouldNotContain "credstore-password"
             }
         }
     })

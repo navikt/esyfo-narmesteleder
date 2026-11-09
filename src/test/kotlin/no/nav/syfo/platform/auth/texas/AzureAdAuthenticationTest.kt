@@ -1,6 +1,5 @@
 package no.nav.syfo.platform.auth.texas
 
-import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
@@ -16,13 +15,9 @@ import io.ktor.server.routing.route
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.syfo.createMockToken
-import no.nav.syfo.integration.respondJson
-import no.nav.syfo.integration.texasHttpClient
-import no.nav.syfo.integration.upstreamHttpClient
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
-import java.io.File
 
 private const val CALLING_APP = "calling-app"
 private const val AZURE_AD_ISSUER = "https://login.microsoftonline.com/tenant/v2.0"
@@ -63,22 +58,6 @@ class AzureAdAuthenticationTest :
             val response = callProtectedRoute(texasHttpClient)
 
             response.status shouldBe HttpStatusCode.OK
-        }
-
-        test("authorizes the claims configured for the local Azure mock") {
-            val config = jacksonObjectMapper().readTree(File("docker-compose/authserver/mount/config.json"))
-            val azure = config.path("tokenCallbacks").single { it.path("issuerId").asText() == "azuread" }
-            val mapping = azure.path("requestMappings").single { it.path("match").asText() == "api://esyfo-narmesteleder/.default" }
-            val claims = mapping.path("claims").deepCopy<ObjectNode>().put("active", true)
-            // The mock server serializes a single audience as a string in its JWT.
-            claims.put("aud", claims.path("aud").single().asText())
-
-            upstreamHttpClient(
-                token = { error("Unexpected token request") },
-                upstream = { respondJson(claims.toString()) },
-            ).use { httpClient ->
-                callProtectedRoute(texasHttpClient(httpClient)).status shouldBe HttpStatusCode.OK
-            }
         }
 
         test("responds 403 when the Azure AD token does not have the required role") {

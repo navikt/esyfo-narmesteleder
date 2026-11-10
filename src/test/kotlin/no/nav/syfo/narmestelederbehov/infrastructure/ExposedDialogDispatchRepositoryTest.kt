@@ -250,7 +250,11 @@ class ExposedDialogDispatchRepositoryTest :
                 personLookup = { EmployeePersonLookupResult.NotFound },
                 clock = Clock.fixed(now, ZoneOffset.UTC),
                 metrics = {},
-                settings = DialogDispatchSettings(attemptBudget = 200.milliseconds, runBudget = 3.seconds),
+                settings = DialogDispatchSettings(
+                    acknowledgementBudget = 100.milliseconds,
+                    attemptBudget = 200.milliseconds,
+                    runBudget = 3.seconds,
+                ),
             ).execute()
             val timedOut = requireNotNull(repository.claim(now.plusSeconds(6), 60.seconds))
             val state = requireNotNull(repository.load(timedOut, now.plusSeconds(6)))
@@ -336,7 +340,12 @@ class ExposedDialogDispatchRepositoryTest :
                     expiry = { _, target ->
                         targets += target
                         no.nav.syfo.narmestelederbehov.application.DialogExpiry.Unavailable(
-                            UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, 503),
+                            UpstreamFailure(
+                                DIALOGPORTEN,
+                                UpstreamFailureStage.RESPONSE,
+                                503,
+                                errors = listOf(UpstreamError("server_error")),
+                            ),
                         )
                     },
                     inspection = { DialogExpiryObservation.Found(null) },
@@ -351,6 +360,11 @@ class ExposedDialogDispatchRepositoryTest :
                 assertSoftly {
                     targets shouldBe listOf(Instant.parse("2030-01-01T10:10:00Z"))
                     state.intendedExpiry shouldBe Instant.parse("2030-01-01T10:10:00Z")
+                    transaction(TestDB.exposedDatabase) {
+                        DialogDispatchTable.selectAll()
+                            .where { DialogDispatchTable.behovId eq row.id }
+                            .single()[DialogDispatchTable.lastFailure] shouldBe DialogDispatchFailure.UPSTREAM.value
+                    }
                 }
             }
         }

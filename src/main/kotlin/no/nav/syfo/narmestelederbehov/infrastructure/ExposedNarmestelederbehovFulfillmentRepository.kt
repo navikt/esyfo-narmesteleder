@@ -19,14 +19,17 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
-import org.jetbrains.exposed.v1.jdbc.updateReturning
+import java.sql.Connection
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.UUID
 
 class ExposedNarmestelederbehovFulfillmentRepository(
     private val database: Database,
+    private val scheduleDispatch: JdbcTransaction.(UUID) -> Unit = JdbcTransaction::scheduleDialogDispatch,
 ) : FulfillNarmestelederbehovRepository,
     FulfillNarmestelederbehovFromLeesahRepository,
     CompleteFulfilledNarmestelederbehovDialogsRepository {
@@ -52,23 +55,26 @@ class ExposedNarmestelederbehovFulfillmentRepository(
 
     override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = database.findOpenNarmestelederbehovFor(employee)
 
-    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = database.ioTransaction {
-        NarmestelederbehovTable.updateReturning(
-            returning = listOf(NarmestelederbehovTable.dialogId),
-            where = { NarmestelederbehovTable.id eq id.value },
-        ) {
-            it[behovStatus] = BehovStatus.BEHOV_FULFILLED
-        }.singleOrNull()?.let { MarkFulfilledResult.Marked(id, it[NarmestelederbehovTable.dialogId]) }
-            ?: MarkFulfilledResult.Missing
+    override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+        val row = NarmestelederbehovTable.select(NarmestelederbehovTable.behovStatus, NarmestelederbehovTable.dialogId)
+            .where { NarmestelederbehovTable.id eq id.value }.forUpdate().singleOrNull()
+            ?: return@ioTransaction MarkFulfilledResult.Missing
+        if (row[NarmestelederbehovTable.behovStatus] != BehovStatus.BEHOV_FULFILLED) {
+            NarmestelederbehovTable.update({ NarmestelederbehovTable.id eq id.value }) {
+                it[behovStatus] = BehovStatus.BEHOV_FULFILLED
+            }
+            scheduleDispatch(id.value)
+        }
+        MarkFulfilledResult.Marked(id, row[NarmestelederbehovTable.dialogId])
     }
 
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = database.ioTransaction {
-        val updated = NarmestelederbehovTable.update({
-            (NarmestelederbehovTable.id eq id.value) and (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_FULFILLED)
-        }) {
-            it[behovStatus] = BehovStatus.DIALOGPORTEN_STATUS_SET_COMPLETED
+    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
+        if (recordCompletedDialog(id)) {
+            scheduleDispatch(id.value)
+            MarkDialogCompletedResult.Marked
+        } else {
+            MarkDialogCompletedResult.NotFulfilled
         }
-        if (updated == 1) MarkDialogCompletedResult.Marked else MarkDialogCompletedResult.NotFulfilled
     }
 
     override suspend fun findFulfilledDialogs(createdBefore: Instant): List<NarmestelederbehovDialogReference> = database.ioTransaction {

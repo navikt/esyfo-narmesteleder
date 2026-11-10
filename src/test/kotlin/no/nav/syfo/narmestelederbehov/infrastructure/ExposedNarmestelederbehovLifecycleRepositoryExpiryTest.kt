@@ -1,13 +1,16 @@
 package no.nav.syfo.narmestelederbehov.infrastructure
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.java.javaUUID
 import org.jetbrains.exposed.v1.javatime.date
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Instant
 import java.time.LocalDate
@@ -40,12 +43,14 @@ class ExposedNarmestelederbehovLifecycleRepositoryExpiryTest :
 
             repository.expireBehov(cutoff, limit = 500) shouldBe openStatuses.size
 
-            byStatus.forEach { (status, id) ->
-                val expected = if (status in openStatuses) BehovStatus.BEHOV_EXPIRED else status
-                storedStatus(id) shouldBe expected
-            }
-            listOf(tomAtCutoff, otherOrganization, withoutSykmelding).forEach {
-                storedStatus(it.id) shouldBe BehovStatus.BEHOV_CREATED
+            assertSoftly {
+                byStatus.forEach { (status, id) ->
+                    val expected = if (status in openStatuses) BehovStatus.BEHOV_EXPIRED else status
+                    storedStatus(id) shouldBe expected
+                }
+                listOf(tomAtCutoff, otherOrganization, withoutSykmelding).forEach {
+                    storedStatus(it.id) shouldBe BehovStatus.BEHOV_CREATED
+                }
             }
             repository.expireBehov(cutoff, limit = 500) shouldBe 0
         }
@@ -66,8 +71,16 @@ class ExposedNarmestelederbehovLifecycleRepositoryExpiryTest :
             repository.expireBehov(cutoff, limit = 2) shouldBe 2
 
             ids.map(::storedStatus) shouldBe listOf(BehovStatus.BEHOV_CREATED, BehovStatus.BEHOV_EXPIRED, BehovStatus.BEHOV_EXPIRED)
+            transaction(TestDB.exposedDatabase) {
+                ids.map { id ->
+                    DialogDispatchTable.selectAll().where { DialogDispatchTable.behovId eq id }.single()[DialogDispatchTable.revision]
+                } shouldBe listOf(1L, 2L, 2L)
+            }
             repository.expireBehov(cutoff, limit = 2) shouldBe 1
             repository.expireBehov(cutoff, limit = 2) shouldBe 0
+            transaction(TestDB.exposedDatabase) {
+                DialogDispatchTable.selectAll().map { it[DialogDispatchTable.revision] } shouldBe listOf(2L, 2L, 2L)
+            }
         }
     })
 

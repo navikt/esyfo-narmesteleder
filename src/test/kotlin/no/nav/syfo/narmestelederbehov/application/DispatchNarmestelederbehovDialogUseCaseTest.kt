@@ -15,13 +15,13 @@ import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
-import java.time.Clock
 import java.time.Instant
-import java.time.ZoneOffset
 import java.util.UUID
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toKotlinInstant
 
 class DispatchNarmestelederbehovDialogUseCaseTest :
     FunSpec({
@@ -42,8 +42,8 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
             })
             var creationStarted = false
             val useCase = useCase(
-                queue = queue,
-                work = FakeWork(
+                dispatchQueue = queue,
+                dispatchWork = FakeWork(
                     DialogDispatchState(
                         employee = employee,
                         status = BehovStatus.BEHOV_CREATED,
@@ -53,7 +53,7 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
                         expiredAt = null,
                     ),
                 ),
-                creation = { _, _, _ ->
+                dialogCreation = { _, _, _ ->
                     creationStarted = true
                     NarmestelederbehovDialogCreationResult.Created(UUID.randomUUID())
                 },
@@ -77,8 +77,8 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
                 }
             })
             val useCase = useCase(
-                queue = queue,
-                work = FakeWork(null),
+                dispatchQueue = queue,
+                dispatchWork = FakeWork(null),
                 settings = settings(runBudget = 500.milliseconds),
             )
 
@@ -99,8 +99,8 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
                 true
             })
             val useCase = useCase(
-                queue = queue,
-                work = FakeWork(null, loadBlock = { awaitCancellation() }),
+                dispatchQueue = queue,
+                dispatchWork = FakeWork(null, loadBlock = { awaitCancellation() }),
                 settings = DialogDispatchSettings(
                     acknowledgementBudget = 500.milliseconds,
                     attemptBudget = 1.seconds,
@@ -118,8 +118,8 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
 
         test("caller cancellation is propagated while claiming") {
             val useCase = useCase(
-                queue = FakeQueue(claimBlock = { awaitCancellation() }),
-                work = FakeWork(null),
+                dispatchQueue = FakeQueue(claimBlock = { awaitCancellation() }),
+                dispatchWork = FakeWork(null),
                 settings = settings(runBudget = 5.seconds),
             )
 
@@ -135,20 +135,22 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
     })
 
 private fun useCase(
-    queue: DialogDispatchQueue,
-    work: DialogDispatchWork,
-    creation: NarmestelederbehovDialogCreation = { _, _, _ -> error("must not create") },
+    dispatchQueue: DialogDispatchQueue,
+    dispatchWork: DialogDispatchWork,
+    dialogCreation: NarmestelederbehovDialogCreation = { _, _, _ -> error("must not create") },
     settings: DialogDispatchSettings,
 ) = DispatchNarmestelederbehovDialogUseCase(
-    queue = queue,
-    work = work,
-    creation = creation,
-    completion = { error("must not complete") },
-    expiry = { _, _ -> error("must not expire") },
-    inspection = { error("must not inspect") },
-    personLookup = { error("must not look up a person") },
-    clock = Clock.fixed(Instant.parse("2030-01-01T10:00:00Z"), ZoneOffset.UTC),
-    metrics = {},
+    dispatchQueue = dispatchQueue,
+    dispatchWork = dispatchWork,
+    dialogCreation = dialogCreation,
+    dialogCompletion = { error("must not complete") },
+    dialogExpiry = { _, _ -> error("must not expire") },
+    dialogExpiryInspection = { error("must not inspect") },
+    employeePersonLookup = { error("must not look up a person") },
+    clock = object : Clock {
+        override fun now() = Instant.parse("2030-01-01T10:00:00Z").toKotlinInstant()
+    },
+    dispatchMetrics = {},
     settings = settings,
 )
 

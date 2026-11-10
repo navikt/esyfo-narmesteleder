@@ -9,17 +9,18 @@ import no.nav.syfo.platform.observability.logEvent
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import org.slf4j.event.Level
-import java.time.Clock
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.math.min
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.time.TimeSource
-import kotlin.time.toJavaDuration
-import kotlin.time.toKotlinDuration
+import kotlin.time.toJavaInstant
+import kotlin.time.toKotlinInstant
 
 fun interface DialogExpiryInspection {
     suspend fun inspect(dialogId: UUID): DialogExpiryObservation
@@ -36,15 +37,15 @@ fun interface DialogDispatchMetrics {
 
 /** Reconciles one revision per claim; a newer revision is left for the next owner. */
 class DispatchNarmestelederbehovDialogUseCase(
-    private val queue: DialogDispatchQueue,
-    private val work: DialogDispatchWork,
-    private val creation: NarmestelederbehovDialogCreation,
-    private val completion: NarmestelederbehovDialog,
-    private val expiry: NarmestelederbehovDialogExpiry,
-    private val inspection: DialogExpiryInspection,
-    private val personLookup: EmployeePersonLookup,
+    private val dispatchQueue: DialogDispatchQueue,
+    private val dispatchWork: DialogDispatchWork,
+    private val dialogCreation: NarmestelederbehovDialogCreation,
+    private val dialogCompletion: NarmestelederbehovDialog,
+    private val dialogExpiry: NarmestelederbehovDialogExpiry,
+    private val dialogExpiryInspection: DialogExpiryInspection,
+    private val employeePersonLookup: EmployeePersonLookup,
     private val clock: Clock,
-    private val metrics: DialogDispatchMetrics,
+    private val dispatchMetrics: DialogDispatchMetrics,
     private val settings: DialogDispatchSettings = DialogDispatchSettings(),
 ) {
     suspend fun execute() {
@@ -52,10 +53,10 @@ class DispatchNarmestelederbehovDialogUseCase(
         withTimeoutOrNull(settings.runBudget) {
             repeat(settings.maxAttemptsPerRun) {
                 if (settings.runBudget - run.elapsedNow() <= Duration.ZERO) return@withTimeoutOrNull
-                val claim = queue.claim(clock.instant(), settings.lease) ?: return@withTimeoutOrNull
+                val claim = dispatchQueue.claim(clock.now().toJavaInstant(), settings.lease) ?: return@withTimeoutOrNull
                 val remaining = settings.runBudget - run.elapsedNow()
                 if (remaining <= settings.acknowledgementBudget) return@withTimeoutOrNull
-                val leaseRemaining = java.time.Duration.between(clock.instant(), claim.leaseUntil).toKotlinDuration() - settings.safetyMargin
+                val leaseRemaining = (claim.leaseUntil.toKotlinInstant() - clock.now()) - settings.safetyMargin
                 val reconciliationBudget = minOf(remaining, leaseRemaining) - settings.acknowledgementBudget
                 val budget = minOf(settings.attemptBudget, reconciliationBudget)
                 if (budget <= Duration.ZERO) return@withTimeoutOrNull
@@ -71,13 +72,13 @@ class DispatchNarmestelederbehovDialogUseCase(
                 val acknowledgementBudget = minOf(
                     settings.acknowledgementBudget,
                     settings.runBudget - run.elapsedNow(),
-                    java.time.Duration.between(clock.instant(), claim.leaseUntil).toKotlinDuration() - settings.safetyMargin,
+                    (claim.leaseUntil.toKotlinInstant() - clock.now()) - settings.safetyMargin,
                 )
                 if (acknowledgementBudget <= Duration.ZERO) return@withTimeoutOrNull
-                val acknowledged = withTimeoutOrNull(acknowledgementBudget) { queue.finish(claim, result, clock.instant()) }
+                val acknowledged = withTimeoutOrNull(acknowledgementBudget) { dispatchQueue.finish(claim, result, clock.now().toJavaInstant()) }
                     ?: return@withTimeoutOrNull
                 if (acknowledged) {
-                    metrics.record(
+                    dispatchMetrics.record(
                         when (result) {
                             DialogDispatchResult.Done -> "done"
                             is DialogDispatchResult.Retry -> "retry"
@@ -90,16 +91,16 @@ class DispatchNarmestelederbehovDialogUseCase(
     }
 
     private suspend fun reconcile(claim: DialogClaim): DialogDispatchResult {
-        val state = work.load(claim, clock.instant()) ?: return DialogDispatchResult.Done
+        val state = dispatchWork.load(claim, clock.now().toJavaInstant()) ?: return DialogDispatchResult.Done
         val dialogId = state.dialogId
         if (dialogId == null) {
             if (state.status != BehovStatus.BEHOV_CREATED && !state.createStarted) return DialogDispatchResult.Done
             return create(claim, state)
         }
         return when (state.status) {
-            BehovStatus.BEHOV_FULFILLED -> when (val completed = completion.complete(dialogId)) {
+            BehovStatus.BEHOV_FULFILLED -> when (val completed = dialogCompletion.complete(dialogId)) {
                 DialogCompletion.Completed -> {
-                    work.saveCompleted(claim, clock.instant())
+                    dispatchWork.saveCompleted(claim, clock.now().toJavaInstant())
                     DialogDispatchResult.Done
                 }
                 is DialogCompletion.Unavailable -> failed(claim, completed.failure)
@@ -112,16 +113,16 @@ class DispatchNarmestelederbehovDialogUseCase(
 
     private suspend fun create(claim: DialogClaim, state: DialogDispatchState): DialogDispatchResult {
         val person = try {
-            (personLookup.find(state.employee.personIdent) as? EmployeePersonLookupResult.Found)?.person
+            (employeePersonLookup.find(state.employee.personIdent) as? EmployeePersonLookupResult.Found)?.person
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             null
         }
-        if (!work.beginCreation(claim, clock.instant())) return DialogDispatchResult.Done
-        return when (val created = creation.create(claim.id, state.employee, person)) {
+        if (!dispatchWork.beginCreation(claim, clock.now().toJavaInstant())) return DialogDispatchResult.Done
+        return when (val created = dialogCreation.create(claim.id, state.employee, person)) {
             is NarmestelederbehovDialogCreationResult.Created -> {
-                work.saveCreated(claim, created.dialogId, person?.name, clock.instant())
+                dispatchWork.saveCreated(claim, created.dialogId, person?.name, clock.now().toJavaInstant())
                 DialogDispatchResult.Done
             }
             is NarmestelederbehovDialogCreationResult.Unavailable -> failed(claim, created.failure)
@@ -129,22 +130,22 @@ class DispatchNarmestelederbehovDialogUseCase(
     }
 
     private suspend fun expire(claim: DialogClaim, state: DialogDispatchState, dialogId: UUID): DialogDispatchResult {
-        val observed = when (val observation = inspection.inspect(dialogId)) {
+        val observed = when (val observation = dialogExpiryInspection.inspect(dialogId)) {
             is DialogExpiryObservation.Found -> observation.expiresAt
             is DialogExpiryObservation.Unavailable -> return failed(claim, observation.failure)
         }
-        val intended = state.intendedExpiry
+        val intended = state.intendedExpiry?.toKotlinInstant()
         if (intended != null && observed == intended) {
-            work.saveExpired(claim, intended, clock.instant())
+            dispatchWork.saveExpired(claim, intended.toJavaInstant(), clock.now().toJavaInstant())
             return DialogDispatchResult.Done
         }
-        val safeThrough = clock.instant().plus((settings.attemptBudget + settings.safetyMargin).toJavaDuration())
-        val target = intended?.takeIf { it.isAfter(safeThrough) }
-            ?: clock.instant().plusSeconds(600).truncatedTo(ChronoUnit.SECONDS)
-        if (target != intended && !work.prepareExpiry(claim, target, clock.instant())) return DialogDispatchResult.Done
-        return when (val expired = expiry.expire(dialogId, target)) {
+        val safeThrough = clock.now() + (settings.attemptBudget + settings.safetyMargin)
+        val target = intended?.takeIf { it > safeThrough }
+            ?: Instant.fromEpochSeconds((clock.now() + 10.minutes).epochSeconds)
+        if (target != intended && !dispatchWork.prepareExpiry(claim, target.toJavaInstant(), clock.now().toJavaInstant())) return DialogDispatchResult.Done
+        return when (val expired = dialogExpiry.expire(dialogId, target.toJavaInstant())) {
             DialogExpiry.Expired -> {
-                work.saveExpired(claim, target, clock.instant())
+                dispatchWork.saveExpired(claim, target.toJavaInstant(), clock.now().toJavaInstant())
                 DialogDispatchResult.Done
             }
             is DialogExpiry.Unavailable -> failed(claim, expired.failure)
@@ -162,7 +163,7 @@ class DispatchNarmestelederbehovDialogUseCase(
 
     private fun retry(claim: DialogClaim, reason: DialogDispatchFailure): DialogDispatchResult.Retry {
         val capSeconds = min(900L, 5L * (1L shl min(claim.attempts, 8)))
-        return DialogDispatchResult.Retry(clock.instant().plusMillis(Random.nextLong(capSeconds * 500, capSeconds * 1000 + 1)), reason)
+        return DialogDispatchResult.Retry((clock.now() + Random.nextLong(capSeconds * 500, capSeconds * 1000 + 1).milliseconds).toJavaInstant(), reason)
     }
 
     companion object {

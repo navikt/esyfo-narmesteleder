@@ -14,13 +14,14 @@ import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain.DialogS
 import no.nav.syfo.platform.upstream.getOrElse
 import java.time.Instant
 import java.util.UUID
+import kotlin.time.toKotlinInstant
 
 class DialogportenNarmestelederbehovDialogExpiry(private val client: DialogportenClient) :
     NarmestelederbehovDialogExpiry,
     DialogExpiryInspection {
     override suspend fun inspect(dialogId: UUID): DialogExpiryObservation {
         val existing = client.getDialogById(dialogId).getOrElse { return DialogExpiryObservation.Unavailable(it) }
-        return DialogExpiryObservation.Found(existing.expiresAt)
+        return DialogExpiryObservation.Found(existing.expiresAt?.toKotlinInstant())
     }
 
     override suspend fun expire(dialogId: UUID, expirationTime: Instant): DialogExpiry {

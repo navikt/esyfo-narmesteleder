@@ -25,6 +25,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import java.time.Instant
 import java.util.UUID
+import kotlin.time.toKotlinInstant
 
 class DialogportenNarmestelederbehovDialogExpiryTest :
     FunSpec({
@@ -32,7 +33,7 @@ class DialogportenNarmestelederbehovDialogExpiryTest :
             test("fetches revision and patches completed status plus expiresAt even when status is $status") {
                 val client = expiryClient(status)
 
-                DialogportenNarmestelederbehovDialogExpiry(client).inspect(EXPIRY_DIALOG_ID) shouldBe DialogExpiryObservation.Found(EXPIRATION_TIME)
+                DialogportenNarmestelederbehovDialogExpiry(client).inspect(EXPIRY_DIALOG_ID) shouldBe DialogExpiryObservation.Found(EXPIRATION_TIME.toKotlinInstant())
                 DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME) shouldBe DialogExpiry.Expired
 
                 assertSoftly {

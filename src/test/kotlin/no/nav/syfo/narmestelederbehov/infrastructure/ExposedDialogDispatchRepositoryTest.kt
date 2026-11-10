@@ -43,19 +43,23 @@ import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
-import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toKotlinInstant
 
 class ExposedDialogDispatchRepositoryTest :
     FunSpec({
         val repository = ExposedDialogDispatchRepository(TestDB.exposedDatabase)
         val now = Instant.parse("2030-01-01T10:00:00Z")
+        val clock = object : Clock {
+            override fun now() = now.toKotlinInstant()
+        }
         beforeTest { TestDB.clearAllData() }
 
         fun newBehov(status: BehovStatus = BehovStatus.BEHOV_CREATED) = NewNarmestelederbehov(
@@ -228,15 +232,15 @@ class ExposedDialogDispatchRepositoryTest :
             val row = insertNarmestelederbehov(created = now.minusSeconds(30))
             ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
             DispatchNarmestelederbehovDialogUseCase(
-                queue = repository,
-                work = repository,
-                creation = { _, _, _ -> error("must not create a closed unattempted behov") },
-                completion = { error("must not complete") },
-                expiry = { _, _ -> error("must not expire") },
-                inspection = { error("must not inspect") },
-                personLookup = { error("must not look up a person") },
-                clock = Clock.fixed(now, ZoneOffset.UTC),
-                metrics = {},
+                dispatchQueue = repository,
+                dispatchWork = repository,
+                dialogCreation = { _, _, _ -> error("must not create a closed unattempted behov") },
+                dialogCompletion = { error("must not complete") },
+                dialogExpiry = { _, _ -> error("must not expire") },
+                dialogExpiryInspection = { error("must not inspect") },
+                employeePersonLookup = { error("must not look up a person") },
+                clock = clock,
+                dispatchMetrics = {},
             ).execute()
             assertSoftly {
                 repository.stats().pending shouldBe 0
@@ -250,19 +254,19 @@ class ExposedDialogDispatchRepositoryTest :
             val calls = mutableListOf<UUID>()
             val dialogId = UUID.randomUUID()
             DispatchNarmestelederbehovDialogUseCase(
-                queue = repository,
-                work = repository,
-                creation = { id, _, _ ->
+                dispatchQueue = repository,
+                dispatchWork = repository,
+                dialogCreation = { id, _, _ ->
                     calls += id.value
                     if (id.value == first.id) awaitCancellation()
                     NarmestelederbehovDialogCreationResult.Created(dialogId)
                 },
-                completion = { error("must not complete") },
-                expiry = { _, _ -> error("must not expire") },
-                inspection = { error("must not inspect") },
-                personLookup = { EmployeePersonLookupResult.NotFound },
-                clock = Clock.fixed(now, ZoneOffset.UTC),
-                metrics = {},
+                dialogCompletion = { error("must not complete") },
+                dialogExpiry = { _, _ -> error("must not expire") },
+                dialogExpiryInspection = { error("must not inspect") },
+                employeePersonLookup = { EmployeePersonLookupResult.NotFound },
+                clock = clock,
+                dispatchMetrics = {},
                 settings = DialogDispatchSettings(
                     acknowledgementBudget = 100.milliseconds,
                     attemptBudget = 200.milliseconds,
@@ -284,21 +288,21 @@ class ExposedDialogDispatchRepositoryTest :
             val dialogId = UUID.randomUUID()
             val completed = mutableListOf<UUID>()
             val worker = DispatchNarmestelederbehovDialogUseCase(
-                queue = repository,
-                work = repository,
-                creation = NarmestelederbehovDialogCreation { _, _, _ ->
+                dispatchQueue = repository,
+                dispatchWork = repository,
+                dialogCreation = NarmestelederbehovDialogCreation { _, _, _ ->
                     ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
                     NarmestelederbehovDialogCreationResult.Created(dialogId)
                 },
-                completion = { id ->
+                dialogCompletion = { id ->
                     completed.add(id)
                     DialogCompletion.Completed
                 },
-                expiry = { _, _ -> error("must not expire a fulfilled dialog") },
-                inspection = { error("must not inspect expiry") },
-                personLookup = { EmployeePersonLookupResult.NotFound },
-                clock = Clock.fixed(now, ZoneOffset.UTC),
-                metrics = {},
+                dialogExpiry = { _, _ -> error("must not expire a fulfilled dialog") },
+                dialogExpiryInspection = { error("must not inspect expiry") },
+                employeePersonLookup = { EmployeePersonLookupResult.NotFound },
+                clock = clock,
+                dispatchMetrics = {},
             )
             worker.execute()
             assertSoftly {
@@ -319,15 +323,15 @@ class ExposedDialogDispatchRepositoryTest :
             repository.prepareExpiry(claim, target, now) shouldBe true
             repository.finish(claim, DialogDispatchResult.Retry(now, DialogDispatchFailure.TIMEOUT), now) shouldBe true
             DispatchNarmestelederbehovDialogUseCase(
-                queue = repository,
-                work = repository,
-                creation = { _, _, _ -> error("must not create") },
-                completion = { error("must not complete") },
-                expiry = { _, _ -> error("must not postpone an applied expiry") },
-                inspection = { DialogExpiryObservation.Found(target) },
-                personLookup = { error("must not look up a person") },
-                clock = Clock.fixed(now, ZoneOffset.UTC),
-                metrics = {},
+                dispatchQueue = repository,
+                dispatchWork = repository,
+                dialogCreation = { _, _, _ -> error("must not create") },
+                dialogCompletion = { error("must not complete") },
+                dialogExpiry = { _, _ -> error("must not postpone an applied expiry") },
+                dialogExpiryInspection = { DialogExpiryObservation.Found(target.toKotlinInstant()) },
+                employeePersonLookup = { error("must not look up a person") },
+                clock = clock,
+                dispatchMetrics = {},
                 settings = DialogDispatchSettings(maxAttemptsPerRun = 1),
             ).execute()
             findStoredNarmestelederbehov(row.id)?.expiredInDialogporten shouldBe target
@@ -335,7 +339,9 @@ class ExposedDialogDispatchRepositoryTest :
 
         listOf(-60L, 1L).forEach { secondsUntilExpiry ->
             test("an unapplied expiry $secondsUntilExpiry seconds from now gets a stable valid intent") {
-                val clock = Clock.fixed(now.plusNanos(123456789), ZoneOffset.UTC)
+                val clock = object : Clock {
+                    override fun now() = now.plusNanos(123456789).toKotlinInstant()
+                }
                 val row = insertNarmestelederbehov(
                     created = now.minusSeconds(300),
                     behovStatus = BehovStatus.BEHOV_EXPIRED,
@@ -346,11 +352,11 @@ class ExposedDialogDispatchRepositoryTest :
                 repository.finish(claim, DialogDispatchResult.Retry(now, DialogDispatchFailure.TIMEOUT), now) shouldBe true
                 val targets = mutableListOf<Instant>()
                 val worker = DispatchNarmestelederbehovDialogUseCase(
-                    queue = repository,
-                    work = repository,
-                    creation = { _, _, _ -> error("must not create") },
-                    completion = { error("must not complete") },
-                    expiry = { _, target ->
+                    dispatchQueue = repository,
+                    dispatchWork = repository,
+                    dialogCreation = { _, _, _ -> error("must not create") },
+                    dialogCompletion = { error("must not complete") },
+                    dialogExpiry = { _, target ->
                         targets += target
                         no.nav.syfo.narmestelederbehov.application.DialogExpiry.Unavailable(
                             UpstreamFailure(
@@ -361,10 +367,10 @@ class ExposedDialogDispatchRepositoryTest :
                             ),
                         )
                     },
-                    inspection = { DialogExpiryObservation.Found(null) },
-                    personLookup = { error("must not look up a person") },
+                    dialogExpiryInspection = { DialogExpiryObservation.Found(null) },
+                    employeePersonLookup = { error("must not look up a person") },
                     clock = clock,
-                    metrics = {},
+                    dispatchMetrics = {},
                     settings = DialogDispatchSettings(maxAttemptsPerRun = 1),
                 )
                 worker.execute()
@@ -420,18 +426,20 @@ class ExposedDialogDispatchRepositoryTest :
             val dialogId = UUID.randomUUID()
             val later = now.plusSeconds(61)
             DispatchNarmestelederbehovDialogUseCase(
-                queue = repository,
-                work = repository,
-                creation = { id, _, _ ->
+                dispatchQueue = repository,
+                dispatchWork = repository,
+                dialogCreation = { id, _, _ ->
                     ids.add(id)
                     NarmestelederbehovDialogCreationResult.Created(dialogId)
                 },
-                completion = { DialogCompletion.Completed },
-                expiry = { _, _ -> error("must not expire") },
-                inspection = { error("must not inspect") },
-                personLookup = { EmployeePersonLookupResult.NotFound },
-                clock = Clock.fixed(later, ZoneOffset.UTC),
-                metrics = {},
+                dialogCompletion = { DialogCompletion.Completed },
+                dialogExpiry = { _, _ -> error("must not expire") },
+                dialogExpiryInspection = { error("must not inspect") },
+                employeePersonLookup = { EmployeePersonLookupResult.NotFound },
+                clock = object : Clock {
+                    override fun now() = later.toKotlinInstant()
+                },
+                dispatchMetrics = {},
             ).execute()
             assertSoftly {
                 ids shouldBe listOf(NarmestelederbehovId(row.id))
@@ -445,20 +453,20 @@ class ExposedDialogDispatchRepositoryTest :
                 val outcomes = mutableListOf<String>()
                 var calls = 0
                 DispatchNarmestelederbehovDialogUseCase(
-                    queue = repository,
-                    work = repository,
-                    creation = { _, _, _ ->
+                    dispatchQueue = repository,
+                    dispatchWork = repository,
+                    dialogCreation = { _, _, _ ->
                         calls++
                         NarmestelederbehovDialogCreationResult.Unavailable(
                             UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("failure"))),
                         )
                     },
-                    completion = { error("must not complete") },
-                    expiry = { _, _ -> error("must not expire") },
-                    inspection = { error("must not inspect") },
-                    personLookup = { EmployeePersonLookupResult.NotFound },
-                    clock = Clock.fixed(now, ZoneOffset.UTC),
-                    metrics = { outcomes += it },
+                    dialogCompletion = { error("must not complete") },
+                    dialogExpiry = { _, _ -> error("must not expire") },
+                    dialogExpiryInspection = { error("must not inspect") },
+                    employeePersonLookup = { EmployeePersonLookupResult.NotFound },
+                    clock = clock,
+                    dispatchMetrics = { outcomes += it },
                 ).execute()
                 calls shouldBe 1
                 repository.claim(now, 60.seconds).shouldBeNull()

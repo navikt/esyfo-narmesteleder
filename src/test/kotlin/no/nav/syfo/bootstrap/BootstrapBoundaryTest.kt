@@ -12,7 +12,7 @@ import java.nio.file.Path
 class BootstrapBoundaryTest :
     FunSpec({
         test("business modules receive small settings and never reference bootstrap") {
-            val classes = Path.of(Environment::class.java.protectionDomain.codeSource.location.toURI())
+            val classes = Path.of(ApplicationSettings::class.java.protectionDomain.codeSource.location.toURI())
             val violations = (businessPackages + "integration").flatMap { pkg ->
                 Files.walk(classes.resolve("no/nav/syfo/$pkg")).use { files ->
                     files.filter { it.toString().endsWith(".class") }
@@ -25,7 +25,7 @@ class BootstrapBoundaryTest :
         }
 
         test("root packages are only business modules and supporting packages") {
-            val classes = Path.of(Environment::class.java.protectionDomain.codeSource.location.toURI())
+            val classes = Path.of(ApplicationSettings::class.java.protectionDomain.codeSource.location.toURI())
             val rootPackages = Files.list(classes.resolve("no/nav/syfo")).use { entries ->
                 entries.filter { Files.isDirectory(it) }.map { it.fileName.toString() }.toList()
             }

@@ -22,6 +22,7 @@ This is the repository for narmesteleder-api, a service that provides an API for
 ## Platform & Auth
 - **Platform**: NAIS (Kubernetes on GCP)
 - **Auth**: Azure AD (internal users), TokenX (on-behalf-of token exchange), ID-porten (citizens), Maskinporten (machine-to-machine)
+- Incoming TokenX, Azure AD and Maskinporten authentication uses Texas-backed Ktor `Authentication` providers installed in `platformModule`; protected routes select providers with `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or `authenticateAzureAd` (not Ktor's `authenticate` directly) and retain their existing use-case authorization checks. Routes are denied by default: startup fails unless every endpoint requires authentication or is declared in `publicRoutes { }`.
 - **Observability**: Prometheus metrics, Grafana Loki logs, Tempo tracing (OpenTelemetry)
 
 ## Conventions
@@ -65,6 +66,7 @@ This file is maintained locally in this repository; it is not generated or synch
 - Parameterized queries always — never string interpolation in SQL
 - Use `Database.ioTransaction` for suspendable Exposed JDBC transactions; do not duplicate `withContext(Dispatchers.IO)` and `suspendTransaction`
 - Follow the existing data access pattern in the repository (extension functions, repositories, etc.)
+- All configuration is declared in `src/main/resources/application.conf` and mapped to typed settings in `ApplicationSettings`; never read environment variables directly. Values that differ per environment or are secret are read from environment variables via `${?VAR}` and are never written in the file. Local runs override values in `src/test/resources/application-local.conf`
 - Structured logging — check which pattern this repo uses (KotlinLogging, SLF4J, kv() fields, MDC)
 - Follow existing code patterns in the repository
 

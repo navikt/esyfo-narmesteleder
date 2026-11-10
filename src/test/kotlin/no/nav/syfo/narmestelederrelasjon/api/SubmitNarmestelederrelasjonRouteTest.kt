@@ -29,6 +29,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.auth.texas.stubTokenX
@@ -215,7 +216,7 @@ private class SubmitFixture(
     fun authorize(
         provider: String,
         acr: String = "Level4",
-        scope: String = no.nav.syfo.platform.auth.texas.MASKINPORTEN_NL_SCOPE,
+        scope: String = no.nav.syfo.platform.auth.texas.LPS_NL_SCOPE,
         systemUserId: String? = null,
     ) {
         if (provider == "tokenx") {
@@ -236,7 +237,7 @@ private class SubmitFixture(
             texasHttpClient = texas,
             routes = {
                 apiV1 {
-                    registerSubmitNarmestelederrelasjonApi(SubmitNarmestelederrelasjonUseCase(access) { relationResult })
+                    authenticateMaskinportenOrTokenX { registerSubmitNarmestelederrelasjonApi(SubmitNarmestelederrelasjonUseCase(access) { relationResult }) }
                 }
             },
         ) {

@@ -2,11 +2,11 @@ package no.nav.syfo.platform.observability
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
-import io.ktor.server.routing.Routing
+import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import no.nav.syfo.platform.database.DatabaseInterface
 
-fun Routing.registerPodApi(
+fun Route.registerPodApi(
     applicationState: ApplicationState,
     database: DatabaseInterface
 ) {

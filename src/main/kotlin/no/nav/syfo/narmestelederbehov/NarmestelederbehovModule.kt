@@ -9,6 +9,7 @@ import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovUseCa
 import no.nav.syfo.narmestelederbehov.application.GetNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.platform.api.apiV1
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 
@@ -19,9 +20,11 @@ fun Application.narmestelederbehovModule(settings: NarmestelederbehovSettings) {
     val listNarmestelederbehov = get<ListNarmestelederbehovUseCase>()
     routing {
         apiV1 {
-            registerGetNarmestelederbehovApi(getNarmestelederbehov = getNarmestelederbehov)
-            registerFulfillNarmestelederbehovApi(fulfillNarmestelederbehov = fulfillNarmestelederbehov)
-            registerListNarmestelederbehovApi(listNarmestelederbehov = listNarmestelederbehov)
+            authenticateMaskinportenOrTokenX {
+                registerGetNarmestelederbehovApi(getNarmestelederbehov = getNarmestelederbehov)
+                registerFulfillNarmestelederbehovApi(fulfillNarmestelederbehov = fulfillNarmestelederbehov)
+                registerListNarmestelederbehovApi(listNarmestelederbehov = listNarmestelederbehov)
+            }
         }
     }
 }

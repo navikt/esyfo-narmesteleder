@@ -17,10 +17,13 @@ import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmeste
 import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.internalApiV1
+import no.nav.syfo.platform.auth.texas.authenticateAzureAd
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
+import no.nav.syfo.platform.auth.texas.authenticateTokenX
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 
-fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonSettings) {
+fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonEmploymentSettings) {
     koinModules(narmestelederrelasjonDependencies(settings))
     val submit = get<SubmitNarmestelederrelasjonUseCase>()
     val revoke = get<RevokeActiveNarmestelederrelasjonUseCase>()
@@ -31,20 +34,27 @@ fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonSetti
     val revokeNarmestelederrelasjon = get<RevokeNarmestelederrelasjonUseCase>()
     routing {
         apiV1 {
-            registerSubmitNarmestelederrelasjonApi(submit = submit)
-            registerRevokeActiveNarmestelederrelasjonApi(revoke = revoke)
+            authenticateMaskinportenOrTokenX {
+                registerSubmitNarmestelederrelasjonApi(submit = submit)
+                registerRevokeActiveNarmestelederrelasjonApi(revoke = revoke)
+            }
         }
         internalApiV1 {
-            registerLineManagerLookupApi(
-                lookupActiveNarmesteleder = lookupActiveNarmesteleder,
-                preAuthorizedApps = settings.lineManagerLookupPreAuthorizedApps,
-            )
-            registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = searchActiveNarmestelederrelasjoner)
-            registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = listActiveNarmesteledereForEmployee)
-            registerNarmestelederrelasjonApi(
-                getNarmestelederrelasjon = getNarmestelederrelasjon,
-                revokeNarmestelederrelasjon = revokeNarmestelederrelasjon,
-            )
+            authenticateAzureAd {
+                registerLineManagerLookupApi(
+                    lookupActiveNarmesteleder = lookupActiveNarmesteleder,
+                )
+            }
+            authenticateTokenX {
+                registerEmployeeLinemanagerApi(listActiveNarmesteledereForEmployee = listActiveNarmesteledereForEmployee)
+            }
+            authenticateMaskinportenOrTokenX {
+                registerLinemanagerSearchApi(searchActiveNarmestelederrelasjoner = searchActiveNarmestelederrelasjoner)
+                registerNarmestelederrelasjonApi(
+                    getNarmestelederrelasjon = getNarmestelederrelasjon,
+                    revokeNarmestelederrelasjon = revokeNarmestelederrelasjon,
+                )
+            }
         }
     }
 }

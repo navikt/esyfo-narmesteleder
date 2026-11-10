@@ -1,17 +1,20 @@
 package no.nav.syfo.bootstrap
 
 import no.nav.syfo.platform.http.httpClientSSE
+import no.nav.syfo.platform.scheduling.HttpLeaderElection
+import no.nav.syfo.platform.scheduling.LeaderChangeListener
 import no.nav.syfo.platform.scheduling.LeaderChangeSSEListener
 import no.nav.syfo.platform.scheduling.LeaderElection
+import no.nav.syfo.platform.scheduling.LeaderElectionSettings
 import org.koin.dsl.module
 
-internal fun leaderElectionModule(other: OtherEnvironmentProperties, isLocalEnv: Boolean) = module {
-    single {
+/** Registers leader election against the NAIS elector sidecar. */
+internal fun leaderElectionModule(settings: LeaderElectionSettings) = module {
+    single<LeaderChangeListener> {
         LeaderChangeSSEListener(
             sseHttpClient = httpClientSSE(),
-            electorSseUrl = other.electorSSEUrl,
-            isLocalEnv = isLocalEnv,
+            electorSseUrl = settings.electorSseUrl,
         )
     }
-    single { LeaderElection(httpClient = get(), electorPath = other.electorPath, isLocal = isLocalEnv) }
+    single<LeaderElection> { HttpLeaderElection(httpClient = get(), electorPath = settings.electorPath) }
 }

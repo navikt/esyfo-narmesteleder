@@ -2,14 +2,14 @@ package no.nav.syfo.narmestelederrelasjon.infrastructure.kafka
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.localKafkaSettings
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 
 class PersistNarmestelederRegisterFromLeesahConsumerConfigTest :
     FunSpec({
         test("should configure dedicated replay consumer group from earliest offsets") {
-            val properties = PersistNarmestelederRegisterFromLeesahConsumer.kafkaConsumerProperties(KafkaEnvironment.createForLocal())
+            val properties = PersistNarmestelederRegisterFromLeesahConsumer.kafkaConsumerProperties(localKafkaSettings())
 
             properties[CommonClientConfigs.GROUP_ID_CONFIG] shouldBe PersistNarmestelederRegisterFromLeesahConsumer.NARMESTELEDER_LEESAH_PERSIST_GROUP_ID
             properties[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] shouldBe "earliest"

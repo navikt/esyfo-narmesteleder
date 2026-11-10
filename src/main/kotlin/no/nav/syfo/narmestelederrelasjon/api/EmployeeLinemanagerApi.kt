@@ -15,7 +15,6 @@ import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.TokenXTokenAuthPlugin
 
 const val EMPLOYEE_LINEMANAGER_API_PATH = "/employee/linemanager"
 
@@ -25,8 +24,6 @@ fun Route.registerEmployeeLinemanagerApi(
     listActiveNarmesteledereForEmployee: ListActiveNarmesteledereForEmployeeUseCase,
 ) {
     route(EMPLOYEE_LINEMANAGER_API_PATH) {
-        install(TokenXTokenAuthPlugin)
-
         get {
             val principal = call.getMyPrincipal()
             if (principal !is UserPrincipal) {

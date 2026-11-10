@@ -25,7 +25,7 @@ private val cacheAccessFailed = applicationEvent<CacheAction>(
 )
 
 class ValkeyCache(
-    valkeyEnvironment: ValkeyEnvironment,
+    settings: ValkeySettings,
 ) {
 
     private val logger = logger()
@@ -33,11 +33,11 @@ class ValkeyCache(
 
     private val jedisPool = JedisPool(
         JedisPoolConfig(),
-        HostAndPort(valkeyEnvironment.host, valkeyEnvironment.port),
+        HostAndPort(settings.host, settings.port),
         DefaultJedisClientConfig.builder()
-            .ssl(valkeyEnvironment.ssl)
-            .user(valkeyEnvironment.username)
-            .password(valkeyEnvironment.password)
+            .ssl(settings.ssl)
+            .user(settings.username)
+            .password(settings.password)
             .build()
     )
 

@@ -24,7 +24,6 @@ import no.nav.syfo.narmestelederbehov.application.LeesahFulfillmentMetrics
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovRepository
 import no.nav.syfo.narmestelederbehov.application.ListNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationMetrics
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogExpiry
@@ -52,11 +51,11 @@ import org.koin.dsl.binds
 import org.koin.dsl.module
 
 fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = module {
-    single { NarmestelederbehovCreationSettings(persistenceEnabled = settings.persistLeesahNlBehov) }
+    single { settings.creation }
     single {
         NarmestelederbehovDialogFactory(
-            narmestelederbehovApiUrl = narmestelederbehovApiUrl(settings.publicIngressUrl),
-            frontendBaseUrl = settings.frontendBaseUrl,
+            narmestelederbehovApiUrl = narmestelederbehovApiUrl(settings.dialogporten.publicIngressUrl),
+            frontendBaseUrl = settings.dialogporten.frontendBaseUrl,
         )
     }
     single { ExposedNarmestelederbehovReadRepository(get<Database>()) } binds arrayOf(
@@ -88,7 +87,7 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
         UpdateDialogTask(
             completeFulfilledDialogs = get(),
             expireDialogs = get(),
-            pollingInterval = settings.dialogUpdatePollingInterval,
+            pollingInterval = settings.dialogporten.updatePollingInterval,
         )
     }
     single {

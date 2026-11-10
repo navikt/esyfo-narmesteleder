@@ -2,12 +2,12 @@ package no.nav.syfo.bootstrap
 
 import no.nav.syfo.platform.database.Database
 import no.nav.syfo.platform.database.DatabaseConfig
-import no.nav.syfo.platform.database.DatabaseEnvironment
 import no.nav.syfo.platform.database.DatabaseInterface
+import no.nav.syfo.platform.database.DatabaseSettings
 import org.koin.dsl.module
 import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
-internal fun databaseModule(database: DatabaseEnvironment) = module {
+internal fun databaseModule(database: DatabaseSettings) = module {
     single<DatabaseInterface> {
         Database(
             DatabaseConfig(

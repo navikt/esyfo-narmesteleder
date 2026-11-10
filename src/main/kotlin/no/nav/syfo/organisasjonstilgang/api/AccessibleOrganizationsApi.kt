@@ -13,7 +13,6 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
 
 const val ACCESSIBLE_ORGANIZATIONS_API_PATH = "/access/organizations"
 
@@ -31,8 +30,6 @@ fun Route.registerAccessibleOrganizationsApi(
     listAccessibleOrganizations: ListAccessibleOrganizationsUseCase,
 ) {
     route(ACCESSIBLE_ORGANIZATIONS_API_PATH) {
-        install(MaskinportenAndTokenXTokenAuthPlugin)
-
         get {
             val principal = call.getMyPrincipal()
             if (principal !is UserPrincipal) {

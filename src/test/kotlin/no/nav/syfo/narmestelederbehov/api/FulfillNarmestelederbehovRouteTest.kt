@@ -45,6 +45,7 @@ import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.DefaultOrganization
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -341,7 +342,7 @@ private class FakePutBehovRepository : FulfillNarmestelederbehovRepository {
 
 private fun withPutApplication(block: suspend ApplicationTestBuilder.(PutFixture) -> Unit) {
     val fixture = PutFixture()
-    testRouteApplication(texasHttpClient = fixture.texas, routes = { apiV1 { registerFulfillNarmestelederbehovApi(fixture.useCase) } }) {
+    testRouteApplication(texasHttpClient = fixture.texas, routes = { apiV1 { authenticateMaskinportenOrTokenX { registerFulfillNarmestelederbehovApi(fixture.useCase) } } }) {
         client = createJsonClient()
         block(fixture)
     }

@@ -23,7 +23,6 @@ import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
 
 const val LINEMANAGER_SEARCH_API_PATH = "/linemanager/search"
 
@@ -34,8 +33,6 @@ fun Route.registerLinemanagerSearchApi(
     searchActiveNarmestelederrelasjoner: SearchActiveNarmestelederrelasjonerUseCase,
 ) {
     route(LINEMANAGER_SEARCH_API_PATH) {
-        install(MaskinportenAndTokenXTokenAuthPlugin)
-
         post {
             val principal = call.getMyPrincipal()
             val command = call.receiveLinemanagerSearchRequest().toCommand()

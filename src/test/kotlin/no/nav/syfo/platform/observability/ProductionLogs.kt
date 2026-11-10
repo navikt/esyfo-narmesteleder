@@ -27,7 +27,6 @@ private val logMapper = jacksonObjectMapper()
 /** A fresh Logback context configured from the production logback.xml. Callers must [LoggerContext.stop] it. */
 internal fun productionLoggerContext(): LoggerContext = LoggerContext().apply {
     mdcAdapter = LogbackMDCAdapter()
-    putProperty("NAIS_CLUSTER_NAME", "test")
     try {
         JoranConfigurator().also {
             it.context = this

@@ -17,7 +17,7 @@ import no.nav.syfo.platform.observability.logger
 import no.nav.syfo.platform.observability.rethrowCancellation
 import no.nav.syfo.platform.scheduling.LeaderChange
 import no.nav.syfo.platform.scheduling.LeaderChangeEvent
-import no.nav.syfo.platform.scheduling.LeaderChangeSSEListener
+import no.nav.syfo.platform.scheduling.LeaderChangeListener
 import no.nav.syfo.platform.scheduling.LeaderElection
 import org.slf4j.event.Level
 import java.util.Collections
@@ -38,14 +38,14 @@ private val leaderStatusStates = Collections.synchronizedMap(
 )
 
 fun Application.configureLeaderMonitoring(
-    leaderChangeSSEListener: LeaderChangeSSEListener,
+    leaderChangeListener: LeaderChangeListener,
     leaderElection: LeaderElection,
 ) {
     val log = logger()
 
-    registerLeaderStatusGauge(leaderChangeSSEListener)
+    registerLeaderStatusGauge(leaderChangeListener)
     monitor.subscribe(ApplicationStopPreparing) {
-        clearLeaderStatusGauge(leaderChangeSSEListener)
+        clearLeaderStatusGauge(leaderChangeListener)
     }
 
     monitor.subscribe(ServerReady) {
@@ -53,7 +53,7 @@ fun Application.configureLeaderMonitoring(
         val job = launch {
             var wasLeader = false
             launch(start = CoroutineStart.UNDISPATCHED) {
-                leaderChangeSSEListener.isLeader.collectIndexed { index, isLeader ->
+                leaderChangeListener.isLeader.collectIndexed { index, isLeader ->
                     val event = deriveLeaderChangeEvent(index, wasLeader, isLeader)
                     wasLeader = isLeader
 
@@ -67,7 +67,7 @@ fun Application.configureLeaderMonitoring(
             runCatching {
                 leaderElection.isLeader()
             }.onSuccess { initialIsLeader ->
-                leaderChangeSSEListener.initializeLeaderState(initialIsLeader)
+                leaderChangeListener.initializeLeaderState(initialIsLeader)
                 log.info("Initialized leader state from simple API: isLeader={}", initialIsLeader)
             }.onFailure { exception ->
                 exception.rethrowCancellation()
@@ -75,7 +75,7 @@ fun Application.configureLeaderMonitoring(
             }
 
             log.info("Before listenForLeaderChanges - Application.configureLeaderMonitoring")
-            launch { leaderChangeSSEListener.listenForLeaderChanges() }
+            launch { leaderChangeListener.listenForLeaderChanges() }
         }
 
         monitor.subscribe(ApplicationStopPreparing) {
@@ -101,11 +101,11 @@ internal fun deriveLeaderChangeEvent(index: Int, wasLeader: Boolean, isLeader: B
 }
 
 internal fun registerLeaderStatusGauge(
-    leaderChangeSSEListener: LeaderChangeSSEListener,
+    leaderChangeListener: LeaderChangeListener,
     registry: MeterRegistry = METRICS_REGISTRY,
 ): Gauge {
     val leaderStatusState = leaderStatusState(registry)
-    leaderStatusState.set(leaderChangeSSEListener.isLeader)
+    leaderStatusState.set(leaderChangeListener.isLeader)
 
     return Gauge.builder(LEADER_STATUS_METRIC, leaderStatusState) { state ->
         if (state.get()?.value == true) 1.0 else 0.0
@@ -116,10 +116,10 @@ internal fun registerLeaderStatusGauge(
 }
 
 internal fun clearLeaderStatusGauge(
-    leaderChangeSSEListener: LeaderChangeSSEListener,
+    leaderChangeListener: LeaderChangeListener,
     registry: MeterRegistry = METRICS_REGISTRY,
 ) {
-    leaderStatusState(registry).compareAndSet(leaderChangeSSEListener.isLeader, null)
+    leaderStatusState(registry).compareAndSet(leaderChangeListener.isLeader, null)
 }
 
 private fun leaderStatusState(registry: MeterRegistry): AtomicReference<StateFlow<Boolean>?> = synchronized(leaderStatusStates) {

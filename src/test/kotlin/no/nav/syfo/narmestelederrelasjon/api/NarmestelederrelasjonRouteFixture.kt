@@ -18,6 +18,7 @@ import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederr
 import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubTokenX
 import java.util.UUID
@@ -66,7 +67,7 @@ internal class NarmestelederrelasjonRouteFixture {
 
     fun withTestApplication(test: suspend ApplicationTestBuilder.() -> Unit) = testRouteApplication(
         texasHttpClient = texasHttpClient,
-        routes = { internalApiV1 { registerNarmestelederrelasjonApi(getNarmestelederrelasjon, revokeNarmestelederrelasjon) } },
+        routes = { internalApiV1 { authenticateMaskinportenOrTokenX { registerNarmestelederrelasjonApi(getNarmestelederrelasjon, revokeNarmestelederrelasjon) } } },
         block = test,
     )
 

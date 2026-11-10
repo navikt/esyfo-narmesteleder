@@ -24,6 +24,7 @@ import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testApiApplication
 import no.nav.syfo.platform.auth.texas.DefaultOrganization
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubInactive
 import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
@@ -170,7 +171,7 @@ private class StatisticsApiFixture(
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {
         testApiApplication(
             texasHttpClient = texas,
-            routes = { internalApiV1 { registerLinemanagerStatisticsApi(useCase) } },
+            routes = { internalApiV1 { authenticateMaskinportenOrTokenX { registerLinemanagerStatisticsApi(useCase) } } },
             block = block,
         )
     }

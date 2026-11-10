@@ -1,10 +1,9 @@
 package no.nav.syfo.narmestelederrelasjon.api
 
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.method
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import no.nav.syfo.narmestelederrelasjon.api.model.LinemanagerRevoke
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeActiveNarmestelederrelasjonCommand
@@ -18,7 +17,6 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.toUpstreamUnavailableException
 import no.nav.syfo.platform.api.tryReceive
 import no.nav.syfo.platform.auth.getMyPrincipal
-import no.nav.syfo.platform.auth.texas.MaskinportenAndTokenXTokenAuthPlugin
 
 const val REVOKE_ACTIVE_NARMESTELEDERRELASJON_PATH = "/linemanager/revoke"
 
@@ -26,22 +24,19 @@ fun Route.registerRevokeActiveNarmestelederrelasjonApi(
     revoke: RevokeActiveNarmestelederrelasjonUseCase,
 ) {
     route(REVOKE_ACTIVE_NARMESTELEDERRELASJON_PATH) {
-        method(HttpMethod.Post) {
-            install(MaskinportenAndTokenXTokenAuthPlugin)
-            handle {
-                val principal = call.getMyPrincipal()
-                val request = call.tryReceive<LinemanagerRevoke>()
-                val result = revoke.execute(
-                    RevokeActiveNarmestelederrelasjonCommand(
-                        accessSubject = principal.toOrganizationAccessSubject(),
-                        employeeIdent = request.employeeIdentificationNumber,
-                        organizationNumber = request.orgNumber,
-                        employeeLastName = request.lastName,
-                    ),
-                )
-                countRevokeActiveNarmestelederrelasjon(result)
-                call.respond(result.toHttpStatusOrThrow())
-            }
+        post {
+            val principal = call.getMyPrincipal()
+            val request = call.tryReceive<LinemanagerRevoke>()
+            val result = revoke.execute(
+                RevokeActiveNarmestelederrelasjonCommand(
+                    accessSubject = principal.toOrganizationAccessSubject(),
+                    employeeIdent = request.employeeIdentificationNumber,
+                    organizationNumber = request.orgNumber,
+                    employeeLastName = request.lastName,
+                ),
+            )
+            countRevokeActiveNarmestelederrelasjon(result)
+            call.respond(result.toHttpStatusOrThrow())
         }
     }
 }

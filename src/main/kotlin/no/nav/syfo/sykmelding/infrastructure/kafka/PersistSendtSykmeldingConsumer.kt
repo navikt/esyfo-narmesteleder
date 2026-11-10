@@ -10,11 +10,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.KafkaEventConsumer
 import no.nav.syfo.platform.kafka.KafkaEventLogger
 import no.nav.syfo.platform.kafka.KafkaListener
 import no.nav.syfo.platform.kafka.KafkaReason
+import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.kafka.consumerProperties
 import no.nav.syfo.platform.kafka.kafkaBatchDiscarded
 import no.nav.syfo.platform.kafka.kafkaConsumerCrashed
@@ -222,7 +222,7 @@ class PersistSendtSykmeldingConsumer(
         private const val POLL_DURATION_SECONDS = 1L
         private const val SENDT_SYKMELDING_TOPIC = "teamsykmelding.syfo-sendt-sykmelding"
 
-        fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = consumerProperties(
+        fun kafkaConsumerProperties(env: KafkaSettings): Properties = consumerProperties(
             env = env,
             valueDeserializer = StringDeserializer::class,
             groupId = "esyfo-narmesteleder-persist-sendt-sykmelding-consumer"

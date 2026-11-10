@@ -16,17 +16,28 @@ fun Application.configureDependencies(koinModules: List<Module>) {
     }
 }
 
-internal fun applicationModules(environment: Environment, isLocalEnv: Boolean): List<Module> = listOf(
+/** [externalClients] and [leaderElection] replace the real modules when given. */
+internal fun applicationModules(
+    settings: ApplicationSettings,
+    externalClients: Module? = null,
+    leaderElection: Module? = null,
+): List<Module> = listOf(
     coreModule(),
-    databaseModule(environment.database),
-    httpClientsModule(environment.clientProperties, environment.texas, isLocalEnv),
-    cacheModule(environment.valkeyEnvironment),
-    kafkaProducersModule(environment.kafka),
-    leaderElectionModule(environment.otherProperties, isLocalEnv),
-    tasksModule(environment.otherProperties),
+    databaseModule(settings.database),
+    httpClientsModule(texas = settings.texas, altinnApi = settings.altinnApi),
+    externalClients ?: externalClientsModule(settings),
+    cacheModule(settings.valkey),
+    kafkaProducersModule(settings.kafka),
+    leaderElection ?: leaderElectionModule(settings.leaderElection),
+    tasksModule(
+        narmestelederbehovExpirySettings = settings.narmestelederbehov.expiry,
+        maintenanceTaskSettings = settings.maintenanceTask,
+        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
+    ),
 )
 
 private fun coreModule() = module {
     single { ApplicationState() }
     single { Clock.systemDefaultZone() }
+    single<kotlin.time.Clock> { kotlin.time.Clock.System }
 }

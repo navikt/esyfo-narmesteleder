@@ -11,7 +11,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.withTimeout
 import no.nav.syfo.TestDB
-import no.nav.syfo.narmestelederbehov.application.DialogDispatchSettings
+import no.nav.syfo.narmestelederbehov.DialogDispatchLoopSettings
 import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedDialogDispatchRepository
@@ -23,6 +23,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toKotlinInstant
 
 class ConfigureDialogDispatchTest :
     FunSpec({
@@ -35,11 +36,10 @@ class ConfigureDialogDispatchTest :
             val entered = CompletableDeferred<Unit>()
             val cancelled = CompletableDeferred<Unit>()
             val metrics = MicrometerDialogDispatchMetrics(repository, SimpleMeterRegistry(), clock)
-            val settings = DialogDispatchSettings()
             val worker = DispatchNarmestelederbehovDialogUseCase(
-                queue = repository,
-                work = repository,
-                creation = { _, _, _ ->
+                dispatchQueue = repository,
+                dispatchWork = repository,
+                dialogCreation = { _, _, _ ->
                     entered.complete(Unit)
                     try {
                         awaitCancellation()
@@ -47,13 +47,14 @@ class ConfigureDialogDispatchTest :
                         cancelled.complete(Unit)
                     }
                 },
-                completion = { error("must not complete") },
-                expiry = { _, _ -> error("must not expire") },
-                inspection = { error("must not inspect") },
-                personLookup = { EmployeePersonLookupResult.NotFound },
-                clock = clock,
-                metrics = metrics,
-                settings = settings,
+                dialogCompletion = { error("must not complete") },
+                dialogExpiry = { _, _ -> error("must not expire") },
+                dialogExpiryInspection = { error("must not inspect") },
+                employeePersonLookup = { EmployeePersonLookupResult.NotFound },
+                clock = object : kotlin.time.Clock {
+                    override fun now() = now.toKotlinInstant()
+                },
+                dispatchMetrics = metrics,
             )
             testApplication {
                 application {
@@ -62,11 +63,10 @@ class ConfigureDialogDispatchTest :
                             module {
                                 single { worker }
                                 single { metrics }
-                                single { settings }
                             }
                         )
                     }
-                    configureDialogDispatch(OtherEnvironmentProperties.createForLocal())
+                    configureDialogDispatch(DialogDispatchLoopSettings(enabled = true, interval = 5.seconds))
                     monitor.raise(ServerReady, environment)
                 }
                 startApplication()
@@ -89,7 +89,7 @@ class ConfigureDialogDispatchTest :
             testApplication {
                 application {
                     install(Koin) { modules(module { single { metrics } }) }
-                    configureDialogDispatch(OtherEnvironmentProperties.createForLocal().copy(dialogDispatchEnabled = false))
+                    configureDialogDispatch(DialogDispatchLoopSettings(enabled = false, interval = 5.seconds))
                     monitor.raise(ServerReady, environment)
                 }
                 startApplication()

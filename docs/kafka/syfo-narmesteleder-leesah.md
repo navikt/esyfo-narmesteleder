@@ -36,6 +36,9 @@ Access is granted in the topic manifests. Ask team-esyfo to be added.
 | `esyfo-narmesteleder` | readwrite | ✅ | ✅ |
 | `dinesykmeldte-backend` | read | ✅ | ✅ |
 | `esyfo-kafka-manager` | read | ✅ | — |
+| `sykepengesoknad-backend` | read | ✅ | ✅ |
+| `flex-sykmeldinger-backend` | read | ✅ | ✅ |
+| `sykepengesoknad-narmesteleder-varsler` | read | ✅ | ✅ |
 
 ## Record
 

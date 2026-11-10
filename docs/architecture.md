@@ -36,7 +36,6 @@ no.nav.syfo
 │   ├── database
 │   ├── http
 │   ├── kafka
-│   ├── local
 │   ├── observability
 │   ├── scheduling
 │   └── upstream
@@ -341,16 +340,16 @@ Contains reusable technical mechanisms without domain rules:
 - `api`: shared HTTP paths, errors, API plugins and path/query parameter
   helpers;
 - `auth`: Ktor authentication and principal construction;
-- `auth/texas`: Texas authentication plugins, token providers and client. The
-  plugins resolve `TexasHttpClient` from Koin when installed, so routes do not
-  pass it along; an explicit `client` in the plugin configuration overrides it;
+- `auth/texas`: Texas-backed Ktor `Authentication` providers, token providers
+  and client. `platformModule` installs the providers once and resolves
+  `TexasHttpClient` from Koin, so routes only select a named provider;
 - `cache`: generic Valkey cache and configuration;
-- `config`: shared environment-variable lookup;
+- `config`: HOCON loading and typed readers that fail on a missing or invalid
+  setting;
 - `database`: data source, Flyway and shared transaction infrastructure;
 - `http`: shared HTTP client construction;
 - `kafka`: producer/consumer construction and reusable lifecycle mechanics,
   including `LeaderControlledKafkaConsumer`;
-- `local`: JSON fixture loading for local adapters;
 - `observability`: metrics, health and common structured logging mechanisms;
 - `scheduling`: reusable scheduling mechanics. New scheduled work runs on
   all pods in a background loop and shares the work through database claims with a
@@ -373,46 +372,72 @@ Contains reusable technical mechanisms without domain rules:
 
 Owns application assembly:
 
-- parse environment variables into small typed settings;
-- select production or local adapters;
+- read `application.conf` and environment variables once into small typed settings;
+- register the real clients for external systems. Production never selects
+  fakes; local runs and tests pass fakes from the test sources through the
+  `externalClients` parameter (`localExternalClientsModule()`, started with
+  `./gradlew runLocal`);
 - combine Koin modules;
 - start Ktor, Kafka consumers and scheduled work;
 - aggregate routes and operational endpoints.
 
 Business classes do not depend on Koin or bootstrap. Capabilities never see
-the bootstrap `Environment`. Bootstrap maps it to capability-owned settings such
-as `NarmestelederbehovSettings` and `NarmestelederrelasjonSettings` and passes
+the bootstrap `ApplicationSettings`. Bootstrap takes capability-owned settings such
+as `NarmestelederbehovSettings` and `NarmestelederrelasjonEmploymentSettings` and passes
 them as parameters to the capability module, which hands them on to its
 `<capability>Dependencies(settings)`; settings are not registered in Koin.
 Single feature flags are passed directly to consumers. `BootstrapBoundaryTest` fails if a
 business module references `bootstrap`.
 
-`Application.module()` delegates to `Application.bootstrap()`, which reads the
-environment once, starts the platform module and then one Ktor module per
+`main()` reads `application.conf` into `ApplicationSettings` and starts
+`Application.bootstrap(settings)`, which
+starts the platform module and then one Ktor module per
 capability:
 
 ```kotlin
-fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
-    val environment = loadEnvironment(isLocal)
-    platformModule(applicationModules(environment, isLocal))
+fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Module> = applicationModules(settings)) {
+    platformModule(koinModules, settings.texas.azurePreAuthorizedApps)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(environment.narmestelederrelasjonSettings())
-    narmestelederbehovModule(environment.narmestelederbehovSettings())
+    narmestelederrelasjonModule(settings.narmestelederrelasjon.employmentCheck)
+    narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()
     sykmeldingModule()
-    configureKafkaConsumers(environment)
-    configureBackgroundTasks(environment.otherProperties)
-    configureEmploymentChecks(environment.otherProperties)
+    configureKafkaConsumers(
+        kafkaSettings = settings.kafka,
+        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjon.kafka,
+        sykmeldingKafkaSettings = settings.sykmelding,
+    )
+    configureBackgroundTasks(
+        dialogportenSettings = settings.narmestelederbehov.dialogporten,
+        maintenanceTaskSettings = settings.maintenanceTask,
+        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
+    )
+    configureEmploymentChecks(settings.narmestelederrelasjon.employmentCheck)
 }
 ```
 
+- `ApplicationSettings` groups settings per owner: platform services
+  (database, Valkey, Kafka, Texas, Altinn API, leader election, maintenance),
+  `IntegrationSettings` for the shared clients, and one aggregate per capability
+  (`OrganisasjonstilgangSettings`, `NarmestelederbehovSettings`,
+  `NarmestelederrelasjonSettings`, `SykmeldingKafkaSettings`). Each group is read
+  by its own `ApplicationConfig` extension in a `*SettingsReader.kt` file in
+  bootstrap, so capabilities never depend on the config library. `runLocal` and tests
+  build it from `application-local.conf` with `localApplicationSettings()` in
+  the test sources. `runLocal` also replaces the external clients and leader
+  election with fakes, so production code has no local branches. Bootstrap
+  passes each module only the settings it needs; configuration stays out of
+  domain and use-case code.
+- `externalClientsModule` receives `ApplicationSettings` and hands each
+  external client only its own group, such as `IntegrationSettings.aareg` or
+  `OrganisasjonstilgangSettings.altinnTilganger`.
 - `platformModule` installs Koin once with the shared Koin modules
-  (`applicationModules`), CallId, content negotiation, StatusPages, pod and
-  metric endpoints, OpenAPI and Swagger. A capability module never installs
-  Koin.
+  (`applicationModules`), configures Texas `Authentication` providers, installs
+  CallId, content negotiation and StatusPages, and registers pod and metric
+  endpoints, OpenAPI and Swagger. A capability module never installs Koin.
 - Each capability has an `Application.<capability>Module()` in
   `<Capability>Module.kt` that owns its dependencies, routes, Kafka consumers
   and lifecycle. It registers its Koin definitions with
@@ -433,15 +458,31 @@ fun Application.bootstrap(isLocal: Boolean = isLocalEnv()) {
   behov, and sykmelding after behov and relasjon. Consumers, tasks and anything
   else resolving capability definitions run after all capability modules.
 - Capability modules add routes under `apiV1 { }` or `internalApiV1 { }` from
-  `platform.api`. These helpers install `AddTokenIssuerPlugin` once per prefix,
-  so several modules can share the same prefix.
+  `platform.api`. Routes are denied by default: every endpoint must be inside
+  `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or
+  `authenticateAzureAd`, or inside `publicRoutes { }`; startup fails
+  otherwise, including for Ktor's `authenticate` used directly. The module
+  wraps its `registerXApi` calls in the helper, so route functions do not
+  choose their own provider; route tests wrap them the same way. Ktor merges
+  nested `authenticate` blocks, so an optional block inside a Texas helper
+  still requires a principal. Only `platformModule` declares public
+  routes (probes, metrics, OpenAPI and Swagger UI), and `publicRoutes` has no
+  effect under the API prefixes. The check cannot see provider `skipWhen`
+  predicates, so do not configure them. Endpoints
+  use the Texas `Authentication` providers installed once by `platformModule`:
+  TokenX, Maskinporten, and Azure AD. Routes accepting either a user or system
+  token use Ktor's `FirstSuccessful` strategy. Provider exceptions continue to
+  `StatusPages`, and handlers read the authenticated domain principal through
+  `getMyPrincipal()`.
 - A capability module can start alone with the platform module in
   `testApplication`; the test registers only the dependencies the module gets
   from outside, such as other modules' contracts and shared clients.
-- Route tests use the `testApiApplication` test helper. It installs the same
-  request-handling plugins as production (`installApiPlugins()`: CallId,
-  content negotiation and StatusPages) and install Koin with only the
-  `TexasHttpClient` the test provides.
+- Route tests use the `testApiApplication` or `testRouteApplication` helpers.
+  They install the same Texas auth providers as production, backed by the
+  provided `TexasHttpClient`, and Koin with that test client. `testApiApplication`
+  also installs the production request-handling plugins (CallId, content
+  negotiation and StatusPages); `testRouteApplication` installs them without
+  CallId.
 
 ## Dependency rules
 
@@ -547,6 +588,11 @@ Separate three concerns:
 Ktor/Texas authentication only validates credentials and constructs the
 caller principal. It must not hide PDP, Ereg, database or other business calls
 inside a Ktor authorization plugin.
+
+Every rejected token logs a `token_rejected` event with the provider as
+`upstream` and a `reason`, and increments
+`syfo-narmesteleder_token_rejected_total{provider,reason}`. Texas introspection
+failures are server errors, not rejections.
 
 Identifier types validate only their representation. They do not call
 databases or external services.
@@ -712,9 +758,28 @@ decision.
 
 ## Configuration and dependency injection
 
-Bootstrap parses environment variables once into small typed settings.
-Adapters and tasks receive only the settings they need. Existing environment
-variable names and defaults remain compatible.
+Bootstrap reads configuration once at startup into small typed settings.
+Adapters and tasks receive only the settings they need.
+
+- Application behaviour settings, feature flags, the database, Valkey, Kafka,
+  Texas and external system URLs, scopes and keys live in `src/main/resources/application.conf`. Each key has a default or is
+  required, and an optional `${?VAR}` line lets the environment variable of the
+  same name override it. Environment variables take precedence over defaults.
+  The NAIS manifests keep the existing variable names.
+- `ApplicationSettings` maps the HOCON config to capability-owned settings and
+  stops startup on the first missing or invalid value, naming the key but not
+  the value. Flags keep the lenient parsing where only a case-insensitive `true`
+  enables them.
+- TLS for the database, Valkey and Kafka, and the Kafka schema registry
+  credentials, are controlled by explicit flags that are on
+  in `application.conf` and off only in `application-local.conf`. When TLS is
+  on, every certificate setting is required, so a missing value stops startup
+  instead of falling back to plaintext.
+- Local runs and tests read `application-local.conf` from the test resources,
+  layered over `application.conf`, and ignore environment variables.
+  `NaisManifestSettingsTest` checks that the dev and prod manifests resolve,
+  with synthetic values for the secrets they load with `envFrom` and the
+  variables NAIS injects.
 
 Each business capability provides its own Koin registration module. Focused
 platform modules register shared technical mechanisms. Root bootstrap only

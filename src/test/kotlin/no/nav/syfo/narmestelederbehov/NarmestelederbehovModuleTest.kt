@@ -13,6 +13,9 @@ import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
 import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -29,6 +32,7 @@ import java.sql.Connection
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlin.time.Duration.Companion.seconds
 
 class NarmestelederbehovModuleTest :
     FunSpec({
@@ -40,15 +44,22 @@ class NarmestelederbehovModuleTest :
         ).forEach { (route, httpMethod, path) ->
             test("registers its dependencies and mounts the behov $route route only under the public API prefix") {
                 val settings = NarmestelederbehovSettings(
-                    persistLeesahNlBehov = false,
-                    publicIngressUrl = "https://api.example.invalid",
-                    frontendBaseUrl = "https://frontend.example.invalid",
+                    creation = NarmestelederbehovCreationSettings(persistenceEnabled = false),
+                    expiry = NarmestelederbehovExpirySettings(daysAfterTom = 16),
+                    dialogporten = DialogportenSettings(
+                        baseUrl = "https://altinn.example.invalid",
+                        tasksEnabled = true,
+                        publicIngressUrl = "https://api.example.invalid",
+                        frontendBaseUrl = "https://frontend.example.invalid",
+                    ),
+                    dialogDispatch = DialogDispatchLoopSettings(enabled = false, interval = 5.seconds),
                 )
                 val externalDependencies = module {
                     single { ApplicationState() }
                     single<DatabaseInterface> { UnusedDatabase }
                     single<Database> { mockk() }
                     single { Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC) }
+                    single<kotlin.time.Clock> { kotlin.time.Clock.System }
                     single<TexasHttpClient> { mockk() }
                     single<OrganizationAccess> { mockk() }
                     single<PdlClient> { mockk() }
@@ -58,7 +69,7 @@ class NarmestelederbehovModuleTest :
 
                 testApplication {
                     application {
-                        platformModule(listOf(externalDependencies))
+                        platformModule(listOf(externalDependencies), setOf("test-caller"))
                         narmestelederbehovModule(settings)
                         get<DispatchNarmestelederbehovDialogUseCase>() shouldNotBe null
                     }

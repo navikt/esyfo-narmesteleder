@@ -31,6 +31,7 @@ import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.createJsonClient
 import no.nav.syfo.platform.api.testRouteApplication
 import no.nav.syfo.platform.auth.texas.DefaultOrganization
+import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubMaskinportenSystemUser
 import no.nav.syfo.platform.observability.assertSingleUpstreamFailureLog
@@ -210,7 +211,7 @@ private class ListRouteFixture(
     }
 
     fun withApplication(block: suspend ApplicationTestBuilder.() -> Unit) {
-        testRouteApplication(texasHttpClient = texas, routes = { apiV1 { registerListNarmestelederbehovApi(useCase) } }) {
+        testRouteApplication(texasHttpClient = texas, routes = { apiV1 { authenticateMaskinportenOrTokenX { registerListNarmestelederbehovApi(useCase) } } }) {
             client = createJsonClient()
             block()
         }

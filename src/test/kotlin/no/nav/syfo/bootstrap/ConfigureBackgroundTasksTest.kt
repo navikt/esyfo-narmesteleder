@@ -9,10 +9,13 @@ import io.ktor.server.application.install
 import io.ktor.server.testing.testApplication
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.nav.syfo.narmestelederbehov.application.ExpireNarmestelederbehovUseCase
+import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.application.RecordingExpiryRepository
+import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.EnrichPendingRelationPersonsUseCase
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.FakeBulkPersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.InMemoryRelationPersonRepository
+import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.platform.scheduling.LeaderChange
 import no.nav.syfo.platform.scheduling.LeaderChangeEvent
 import no.nav.syfo.sykmelding.retention.application.DeleteOldSykmeldinger
@@ -25,6 +28,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
 private val clock = Clock.fixed(Instant.parse("2026-03-17T10:00:00Z"), ZoneOffset.UTC)
@@ -34,7 +38,11 @@ class ConfigureBackgroundTasksTest :
         test("a promoted pod starts every enabled task with the configured use cases") {
             val tasks = RecordingTasks()
 
-            tasks.promote(OtherEnvironmentProperties.createForLocal().withTaskDefaults()) {
+            tasks.promote(
+                dialogportenTasksEnabled = true,
+                maintenanceTaskSettings = MaintenanceTaskSettings(enabled = true, interval = 1.hours),
+                personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = true, pollingInterval = 1.hours),
+            ) {
                 assertSoftly {
                     tasks.relationPersons.findPendingLimits.size shouldBe 1
                     tasks.expiry.calls.map { it.first } shouldBe listOf(LocalDate.parse("2026-03-01"))
@@ -45,10 +53,12 @@ class ConfigureBackgroundTasksTest :
 
         test("a promoted pod starts only maintenance tasks when Dialogporten tasks are disabled") {
             val tasks = RecordingTasks()
-            val properties = OtherEnvironmentProperties.createForLocal().withTaskDefaults()
-                .copy(isDialogportenBackgroundTaskEnabled = false)
 
-            tasks.promote(properties) {
+            tasks.promote(
+                dialogportenTasksEnabled = false,
+                maintenanceTaskSettings = MaintenanceTaskSettings(enabled = true, interval = 1.hours),
+                personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = true, pollingInterval = 1.hours),
+            ) {
                 assertSoftly {
                     tasks.expiry.calls.size shouldBe 1
                     tasks.retention.requests.size shouldBe 1
@@ -60,10 +70,12 @@ class ConfigureBackgroundTasksTest :
 
         test("a promoted pod does not start legacy dialog processors when other tasks are disabled") {
             val tasks = RecordingTasks()
-            val properties = OtherEnvironmentProperties.createForLocal().withTaskDefaults()
-                .copy(personEnrichmentTaskEnabled = false, maintenanceTaskEnabled = false)
 
-            tasks.promote(properties) {
+            tasks.promote(
+                dialogportenTasksEnabled = true,
+                maintenanceTaskSettings = MaintenanceTaskSettings(enabled = false, interval = 1.hours),
+                personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = false, pollingInterval = 1.hours),
+            ) {
                 assertSoftly {
                     tasks.expiry.calls.shouldBeEmpty()
                     tasks.retention.requests.shouldBeEmpty()
@@ -78,13 +90,6 @@ class ConfigureBackgroundTasksTest :
         }
     })
 
-// Long intervals so each started task executes exactly once during the test.
-private fun OtherEnvironmentProperties.withTaskDefaults() = copy(
-    maintenanceTaskDelay = "1h",
-    personEnrichmentTaskDelay = "1h",
-    daysAfterTomToExpireBehovs = 16,
-)
-
 private class RecordingTasks {
     val relationPersons = InMemoryRelationPersonRepository()
     val expiry = RecordingExpiryRepository()
@@ -96,10 +101,33 @@ private class RecordingTasks {
         single { DeleteOldSykmeldinger(retention, clock, SykmeldingRetentionMetrics(SimpleMeterRegistry())) }
     }
 
-    fun promote(properties: OtherEnvironmentProperties, startedTasksHaveRun: () -> Unit) = testApplication {
+    fun promote(
+        dialogportenTasksEnabled: Boolean,
+        maintenanceTaskSettings: MaintenanceTaskSettings,
+        personEnrichmentTaskSettings: PersonEnrichmentTaskSettings,
+        startedTasksHaveRun: () -> Unit,
+    ) = testApplication {
         application {
-            install(Koin) { modules(useCases, tasksModule(properties)) }
-            configureBackgroundTasks(properties)
+            install(Koin) {
+                modules(
+                    useCases,
+                    tasksModule(
+                        narmestelederbehovExpirySettings = NarmestelederbehovExpirySettings(daysAfterTom = 16),
+                        maintenanceTaskSettings = maintenanceTaskSettings,
+                        personEnrichmentTaskSettings = personEnrichmentTaskSettings,
+                    ),
+                )
+            }
+            configureBackgroundTasks(
+                dialogportenSettings = DialogportenSettings(
+                    baseUrl = "https://altinn.example.invalid",
+                    tasksEnabled = dialogportenTasksEnabled,
+                    publicIngressUrl = "https://api.example.invalid",
+                    frontendBaseUrl = "https://frontend.example.invalid",
+                ),
+                maintenanceTaskSettings = maintenanceTaskSettings,
+                personEnrichmentTaskSettings = personEnrichmentTaskSettings,
+            )
             monitor.raise(LeaderChangeEvent, LeaderChange.Promoted)
         }
         startApplication()

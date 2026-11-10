@@ -4,9 +4,16 @@ import io.ktor.server.application.Application
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import no.nav.syfo.bootstrap.ApplicationSettings
 import no.nav.syfo.bootstrap.bootstrap
+import no.nav.syfo.platform.config.loadApplicationConfig
 
 fun main() {
+    val settings = ApplicationSettings.from(loadApplicationConfig())
+    startServer { bootstrap(settings) }
+}
+
+internal fun startServer(module: Application.() -> Unit) {
     val server = embeddedServer(
         Netty,
         configure = {
@@ -17,10 +24,8 @@ fun main() {
             workerGroupSize = 8
             callGroupSize = 16
         },
-        module = Application::module
+        module = module,
     )
 
     server.start(true)
 }
-
-fun Application.module() = bootstrap()

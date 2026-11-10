@@ -49,30 +49,42 @@ class DispatchNarmestelederbehovDialogUseCase(
 ) {
     suspend fun execute() {
         val run = TimeSource.Monotonic.markNow()
-        repeat(settings.maxAttemptsPerRun) {
-            val remaining = settings.runBudget - run.elapsedNow()
-            if (remaining <= Duration.ZERO) return
-            val claim = queue.claim(clock.instant(), settings.lease) ?: return
-            val leaseRemaining = java.time.Duration.between(clock.instant(), claim.leaseUntil).toKotlinDuration() - settings.safetyMargin
-            val budget = minOf(remaining, settings.attemptBudget, leaseRemaining)
-            if (budget <= Duration.ZERO) return
-            val result = try {
-                withTimeoutOrNull(budget) { reconcile(claim) } ?: retry(claim, DialogDispatchFailure.TIMEOUT)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Exception messages can contain upstream payloads. Persist only a bounded technical reason.
-                logger.logEvent(dialogDispatchFailed, claim.id.value.toString())
-                retry(claim, DialogDispatchFailure.UNEXPECTED)
-            }
-            if (queue.finish(claim, result, clock.instant())) {
-                metrics.record(
-                    when (result) {
-                        DialogDispatchResult.Done -> "done"
-                        is DialogDispatchResult.Retry -> "retry"
-                        is DialogDispatchResult.Parked -> "parked"
-                    },
+        withTimeoutOrNull(settings.runBudget) {
+            repeat(settings.maxAttemptsPerRun) {
+                if (settings.runBudget - run.elapsedNow() <= Duration.ZERO) return@withTimeoutOrNull
+                val claim = queue.claim(clock.instant(), settings.lease) ?: return@withTimeoutOrNull
+                val remaining = settings.runBudget - run.elapsedNow()
+                if (remaining <= settings.acknowledgementBudget) return@withTimeoutOrNull
+                val leaseRemaining = java.time.Duration.between(clock.instant(), claim.leaseUntil).toKotlinDuration() - settings.safetyMargin
+                val reconciliationBudget = minOf(remaining, leaseRemaining) - settings.acknowledgementBudget
+                val budget = minOf(settings.attemptBudget, reconciliationBudget)
+                if (budget <= Duration.ZERO) return@withTimeoutOrNull
+                val result = try {
+                    withTimeoutOrNull(budget) { reconcile(claim) } ?: retry(claim, DialogDispatchFailure.TIMEOUT)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Exception messages can contain upstream payloads. Persist only a bounded technical reason.
+                    logger.logEvent(dialogDispatchFailed, claim.id.value.toString())
+                    retry(claim, DialogDispatchFailure.UNEXPECTED)
+                }
+                val acknowledgementBudget = minOf(
+                    settings.acknowledgementBudget,
+                    settings.runBudget - run.elapsedNow(),
+                    java.time.Duration.between(clock.instant(), claim.leaseUntil).toKotlinDuration() - settings.safetyMargin,
                 )
+                if (acknowledgementBudget <= Duration.ZERO) return@withTimeoutOrNull
+                val acknowledged = withTimeoutOrNull(acknowledgementBudget) { queue.finish(claim, result, clock.instant()) }
+                    ?: return@withTimeoutOrNull
+                if (acknowledged) {
+                    metrics.record(
+                        when (result) {
+                            DialogDispatchResult.Done -> "done"
+                            is DialogDispatchResult.Retry -> "retry"
+                            is DialogDispatchResult.Parked -> "parked"
+                        },
+                    )
+                }
             }
         }
     }
@@ -169,13 +181,16 @@ data class DialogDispatchSettings(
     val interval: Duration = 5.seconds,
     val lease: Duration = 60.seconds,
     val safetyMargin: Duration = 5.seconds,
+    val acknowledgementBudget: Duration = 5.seconds,
     val attemptBudget: Duration = 20.seconds,
     val runBudget: Duration = 20.seconds,
     val maxAttemptsPerRun: Int = 10,
 ) {
     init {
-        require(listOf(interval, lease, safetyMargin, attemptBudget, runBudget).all { it.isPositive() && it.isFinite() })
+        require(listOf(interval, lease, safetyMargin, acknowledgementBudget, attemptBudget, runBudget).all { it.isPositive() && it.isFinite() })
         require(attemptBudget + safetyMargin < lease)
+        require(acknowledgementBudget + safetyMargin < lease)
+        require(acknowledgementBudget < runBudget)
         require(maxAttemptsPerRun > 0)
     }
 }

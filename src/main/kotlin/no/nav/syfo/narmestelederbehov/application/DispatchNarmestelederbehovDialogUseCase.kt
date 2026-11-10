@@ -160,14 +160,17 @@ class DispatchNarmestelederbehovDialogUseCase(
     }
 
     private suspend fun expire(claim: DialogClaim, state: DialogDispatchState, dialogId: UUID): DialogDispatchResult {
-        val observed = when (val observation = dialogExpiryInspection.inspect(dialogId)) {
-            is DialogExpiryObservation.Found -> observation.expiresAt
-            is DialogExpiryObservation.Unavailable -> return failed(claim, observation.failure)
-        }
         val intended = state.intendedExpiry?.toKotlinInstant()
-        if (intended != null && observed == intended) {
-            dispatchWork.saveExpired(claim, intended.toJavaInstant(), clock.now().toJavaInstant())
-            return DialogDispatchResult.Done
+        // The observed expiry matters only when it can match a persisted intent.
+        if (intended != null) {
+            val observed = when (val observation = dialogExpiryInspection.inspect(dialogId)) {
+                is DialogExpiryObservation.Found -> observation.expiresAt
+                is DialogExpiryObservation.Unavailable -> return failed(claim, observation.failure)
+            }
+            if (observed == intended) {
+                dispatchWork.saveExpired(claim, intended.toJavaInstant(), clock.now().toJavaInstant())
+                return DialogDispatchResult.Done
+            }
         }
         val safeThrough = clock.now() + (settings.attemptBudget + settings.safetyMargin)
         val target = intended?.takeIf { it > safeThrough }

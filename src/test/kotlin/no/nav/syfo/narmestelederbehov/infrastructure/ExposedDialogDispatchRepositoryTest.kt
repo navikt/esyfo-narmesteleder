@@ -327,7 +327,7 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
-        test("an expired behov without an expiry intent is patched once and recorded as expired") {
+        test("an expired behov without an expiry intent is patched once without inspection and recorded as expired") {
             val dialogId = UUID.randomUUID()
             val row = insertNarmestelederbehov(
                 created = now.minusSeconds(300),
@@ -341,7 +341,6 @@ class ExposedDialogDispatchRepositoryTest :
                     patches += id to target
                     DialogExpiry.Expired
                 },
-                dialogExpiryInspection = { DialogExpiryObservation.Found(null) },
                 dispatchMetrics = { outcomes += it },
             ).execute()
             val expiry = Instant.parse("2030-01-01T10:10:00Z")

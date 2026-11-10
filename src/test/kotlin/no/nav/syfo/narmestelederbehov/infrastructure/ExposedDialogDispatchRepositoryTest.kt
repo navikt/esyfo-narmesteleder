@@ -182,6 +182,19 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
+        test("a domain change during a claim stops the older revision from loading, starting creation or preparing expiry") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val claim = requireNotNull(repository.claim(now, 60.seconds))
+            ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
+            assertSoftly {
+                repository.load(claim, now.plusSeconds(1)).shouldBeNull()
+                repository.beginCreation(claim, now.plusSeconds(1)) shouldBe false
+                repository.prepareExpiry(claim, now.plusSeconds(3600), now.plusSeconds(1)) shouldBe false
+                // The lease is still owned, so the refusals above come from the revision guard.
+                repository.finish(claim, DialogDispatchResult.Done, now.plusSeconds(1)) shouldBe true
+            }
+        }
+
         listOf(
             DialogDispatchResult.Done,
             DialogDispatchResult.Retry(now.plusSeconds(600), DialogDispatchFailure.UPSTREAM),

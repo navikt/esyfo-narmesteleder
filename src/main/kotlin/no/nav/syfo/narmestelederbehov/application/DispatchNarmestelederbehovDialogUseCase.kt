@@ -83,9 +83,9 @@ class DispatchNarmestelederbehovDialogUseCase(
             withTimeoutOrNull(budget) { reconcile(claim) } ?: retry(claim, DialogDispatchFailure.TIMEOUT)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
-            // Exception messages can contain upstream payloads. Persist only a bounded technical reason.
-            logger.logEvent(dialogDispatchFailed, claim.id.value.toString())
+        } catch (e: Exception) {
+            // Exception messages can contain upstream payloads: the log keeps only technical diagnostics and the queue a bounded reason.
+            logger.logEvent(dialogDispatchFailed, claim.id.value.toString(), cause = e)
             retry(claim, DialogDispatchFailure.UNEXPECTED)
         }
         val acknowledgementBudget = minOf(settings.acknowledgementBudget, remainingRunBudget(run), remainingLease(claim))

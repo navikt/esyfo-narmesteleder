@@ -5,6 +5,7 @@ import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
@@ -168,6 +169,27 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
             assertSoftly {
                 queue.acknowledged shouldBe true
                 queue.finishedResult.shouldBeInstanceOf<DialogDispatchResult.Retry>().reason shouldBe DialogDispatchFailure.TIMEOUT
+            }
+        }
+
+        test("an unexpected failure is retried and logged with its exception type but not its message") {
+            val queue = FakeQueue()
+            val useCase = useCase(
+                dispatchQueue = queue,
+                dispatchWork = FakeWork(null, loadBlock = { throw IllegalStateException("private-payload-canary") }),
+                settings = settings(runBudget = 5.seconds),
+            )
+
+            val logs = withProductionLogs(DispatchNarmestelederbehovDialogUseCase::class.java, Level.WARN) { capture ->
+                useCase.execute()
+                capture.logs
+            }
+
+            assertSoftly {
+                queue.finishedResult.shouldBeInstanceOf<DialogDispatchResult.Retry>().reason shouldBe DialogDispatchFailure.UNEXPECTED
+                logs.map { it.eventType } shouldBe listOf("dialog_dispatch_failed")
+                logs.single().fields["exception_type"] shouldBe "IllegalStateException"
+                logs.single().serialized shouldNotContain "private-payload-canary"
             }
         }
 

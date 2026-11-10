@@ -194,6 +194,19 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
+        test("a domain change during a claim stops the older revision from loading, starting creation or preparing expiry") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val claim = requireNotNull(repository.claim(now, 60.seconds))
+            ExposedNarmestelederbehovFulfillmentRepository(TestDB.exposedDatabase).markFulfilled(NarmestelederbehovId(row.id))
+            assertSoftly {
+                repository.load(claim, now.plusSeconds(1)).shouldBeNull()
+                repository.beginCreation(claim, now.plusSeconds(1)) shouldBe false
+                repository.prepareExpiry(claim, now.plusSeconds(3600), now.plusSeconds(1)) shouldBe false
+                // The lease is still owned, so the refusals above come from the revision guard.
+                repository.finish(claim, DialogDispatchResult.Done, now.plusSeconds(1)) shouldBe true
+            }
+        }
+
         listOf(
             DialogDispatchResult.Done,
             DialogDispatchResult.Retry(now.plusSeconds(600), DialogDispatchFailure.UPSTREAM),
@@ -248,7 +261,11 @@ class ExposedDialogDispatchRepositoryTest :
                 personLookup = { EmployeePersonLookupResult.NotFound },
                 clock = Clock.fixed(now, ZoneOffset.UTC),
                 metrics = {},
-                settings = DialogDispatchSettings(attemptBudget = 200.milliseconds, runBudget = 3.seconds),
+                settings = DialogDispatchSettings(
+                    acknowledgementBudget = 100.milliseconds,
+                    attemptBudget = 200.milliseconds,
+                    runBudget = 3.seconds,
+                ),
             ).execute()
             val timedOut = requireNotNull(repository.claim(now.plusSeconds(6), 60.seconds))
             val state = requireNotNull(repository.load(timedOut, now.plusSeconds(6)))
@@ -334,7 +351,12 @@ class ExposedDialogDispatchRepositoryTest :
                     expiry = { _, target ->
                         targets += target
                         no.nav.syfo.narmestelederbehov.application.DialogExpiry.Unavailable(
-                            UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, 503),
+                            UpstreamFailure(
+                                DIALOGPORTEN,
+                                UpstreamFailureStage.RESPONSE,
+                                503,
+                                errors = listOf(UpstreamError("server_error")),
+                            ),
                         )
                     },
                     inspection = { DialogExpiryObservation.Found(null) },
@@ -349,6 +371,11 @@ class ExposedDialogDispatchRepositoryTest :
                 assertSoftly {
                     targets shouldBe listOf(Instant.parse("2030-01-01T10:10:00Z"))
                     state.intendedExpiry shouldBe Instant.parse("2030-01-01T10:10:00Z")
+                    transaction(TestDB.exposedDatabase) {
+                        DialogDispatchTable.selectAll()
+                            .where { DialogDispatchTable.behovId eq row.id }
+                            .single()[DialogDispatchTable.lastFailure] shouldBe DialogDispatchFailure.UPSTREAM.value
+                    }
                 }
             }
         }

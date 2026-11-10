@@ -12,7 +12,7 @@ import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlAvbrutt
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponse
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NlResponseSource
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.SykmeldingNarmestelederProducer
-import no.nav.syfo.platform.kafka.KafkaEnvironment
+import no.nav.syfo.platform.kafka.localKafkaSettings
 import no.nav.syfo.platform.kafka.producerProperties
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringSerializer
@@ -61,7 +61,7 @@ class KafkaPublishNarmestelederrelasjonRevocationTest :
         }
 
         test("bounds a publish by the producer's max.block.ms and delivery.timeout.ms") {
-            val properties = producerProperties(KafkaEnvironment.createForLocal(), StringSerializer::class)
+            val properties = producerProperties(localKafkaSettings(), StringSerializer::class)
             val configured = properties.getProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG).toLong() +
                 properties.getProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG).toLong()
 

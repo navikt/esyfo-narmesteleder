@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchMetrics
+import no.nav.syfo.narmestelederbehov.application.DialogDispatchOutcome
 import no.nav.syfo.narmestelederbehov.application.DialogDispatchStatsReader
 import no.nav.syfo.platform.observability.METRICS_NS
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
@@ -17,8 +18,8 @@ class MicrometerDialogDispatchMetrics(
 ) : DialogDispatchMetrics {
     private val values = listOf("pending", "parked", "oldest_pending_timestamp_seconds", "observed_timestamp_seconds", "enabled")
         .associateWith { AtomicReference(0.0) }
-    private val outcomes = listOf("done", "retry", "parked").associateWith {
-        Counter.builder("${METRICS_NS}_dialog_dispatch_attempts_total").tag("outcome", it).register(registry)
+    private val outcomes = DialogDispatchOutcome.entries.associateWith {
+        Counter.builder("${METRICS_NS}_dialog_dispatch_attempts_total").tag("outcome", it.name.lowercase()).register(registry)
     }
 
     init {
@@ -31,7 +32,7 @@ class MicrometerDialogDispatchMetrics(
         values.getValue("enabled").set(if (enabled) 1.0 else 0.0)
     }
 
-    override fun record(outcome: String) = outcomes.getValue(outcome).increment()
+    override fun record(outcome: DialogDispatchOutcome) = outcomes.getValue(outcome).increment()
 
     suspend fun refresh() {
         val now = clock.instant()

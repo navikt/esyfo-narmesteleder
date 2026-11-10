@@ -25,6 +25,7 @@ import no.nav.syfo.platform.upstream.UpstreamName
 import no.nav.syfo.platform.upstream.UpstreamResult
 import java.time.Instant
 import java.util.UUID
+import kotlin.time.toKotlinInstant
 
 class DialogportenNarmestelederbehovDialogExpiryTest :
     FunSpec({
@@ -32,10 +33,12 @@ class DialogportenNarmestelederbehovDialogExpiryTest :
             test("fetches revision and patches completed status plus expiresAt even when status is $status") {
                 val client = expiryClient(status)
 
-                DialogportenNarmestelederbehovDialogExpiry(client).inspect(EXPIRY_DIALOG_ID) shouldBe DialogExpiryObservation.Found(EXPIRATION_TIME)
-                DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME) shouldBe DialogExpiry.Expired
+                val observed = DialogportenNarmestelederbehovDialogExpiry(client).inspect(EXPIRY_DIALOG_ID)
+                val expired = DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME)
 
                 assertSoftly {
+                    observed shouldBe DialogExpiryObservation.Found(EXPIRATION_TIME.toKotlinInstant())
+                    expired shouldBe DialogExpiry.Expired
                     client.calls shouldBe listOf("get", "get", "patch")
                     client.patchRevision shouldBe EXPIRY_REVISION
                     client.patches shouldBe listOf(
@@ -50,9 +53,12 @@ class DialogportenNarmestelederbehovDialogExpiryTest :
             val client = expiryClient()
             client.patch = { UpstreamResult.Success(DialogPatchResult.RevisionConflict) }
 
-            DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME) shouldBe
-                DialogExpiry.Unavailable(dialogportenRevisionConflictFailure())
-            client.calls shouldBe listOf("get", "patch")
+            val expired = DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME)
+
+            assertSoftly {
+                expired shouldBe DialogExpiry.Unavailable(dialogportenRevisionConflictFailure())
+                client.calls shouldBe listOf("get", "patch")
+            }
         }
 
         listOf("get", "patch").forEach { step ->
@@ -62,8 +68,12 @@ class DialogportenNarmestelederbehovDialogExpiryTest :
                 if (step == "get") client.read = { UpstreamResult.Failure(failure) }
                 if (step == "patch") client.patch = { UpstreamResult.Failure(failure) }
 
-                DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME) shouldBe DialogExpiry.Unavailable(failure)
-                client.calls shouldBe if (step == "get") listOf("get") else listOf("get", "patch")
+                val expired = DialogportenNarmestelederbehovDialogExpiry(client).expire(EXPIRY_DIALOG_ID, EXPIRATION_TIME)
+
+                assertSoftly {
+                    expired shouldBe DialogExpiry.Unavailable(failure)
+                    client.calls shouldBe if (step == "get") listOf("get") else listOf("get", "patch")
+                }
             }
 
             test("cancellation at $step is propagated") {

@@ -19,7 +19,7 @@ class LeaderChangeSSEListenerTest :
                     respond("", HttpStatusCode.InternalServerError)
                 }
             val httpClient = HttpClient(mockEngine)
-            val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector", false)
+            val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector")
             val timeToWait = 20.milliseconds
             val job =
                 launch {
@@ -40,7 +40,7 @@ class LeaderChangeSSEListenerTest :
                     respond("", HttpStatusCode.InternalServerError)
                 }
             val httpClient = HttpClient(mockEngine)
-            val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector", false)
+            val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector")
 
             listener.isLeader.value shouldBe false
         }
@@ -51,7 +51,7 @@ class LeaderChangeSSEListenerTest :
                     respond("", HttpStatusCode.InternalServerError)
                 }
             val httpClient = HttpClient(mockEngine)
-            val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector", false)
+            val listener = LeaderChangeSSEListener(httpClient, "http://localhost/elector")
 
             listener.initializeLeaderState(isLeader = true)
 

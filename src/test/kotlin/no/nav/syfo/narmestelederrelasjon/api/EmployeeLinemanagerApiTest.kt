@@ -29,6 +29,7 @@ import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.api.INTERNAL_API_V1_PATH
 import no.nav.syfo.platform.api.internalApiV1
 import no.nav.syfo.platform.api.testRouteApplication
+import no.nav.syfo.platform.auth.texas.authenticateTokenX
 import no.nav.syfo.platform.auth.texas.client.TexasHttpClient
 import no.nav.syfo.platform.auth.texas.stubTokenX
 import no.nav.syfo.platform.observability.METRICS_REGISTRY
@@ -195,7 +196,7 @@ private fun withEmployeeApi(
     useCase: ListActiveNarmesteledereForEmployeeUseCase,
     texasHttpClient: TexasHttpClient,
     test: suspend ApplicationTestBuilder.() -> Unit,
-) = testRouteApplication(texasHttpClient = texasHttpClient, routes = { internalApiV1 { registerEmployeeLinemanagerApi(useCase) } }, block = test)
+) = testRouteApplication(texasHttpClient = texasHttpClient, routes = { internalApiV1 { authenticateTokenX { registerEmployeeLinemanagerApi(useCase) } } }, block = test)
 
 private fun requestCount(filtered: String): Double = METRICS_REGISTRY
     .find(EMPLOYEE_LINEMANAGER_TOTAL)

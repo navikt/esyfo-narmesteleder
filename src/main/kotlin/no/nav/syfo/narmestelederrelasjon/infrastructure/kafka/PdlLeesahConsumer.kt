@@ -12,11 +12,11 @@ import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.RelationPersonNameUpdateResult
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.emitPersonUpdateMetrics
-import no.nav.syfo.platform.kafka.KafkaEnvironment
 import no.nav.syfo.platform.kafka.KafkaEventConsumer
 import no.nav.syfo.platform.kafka.KafkaEventLogger
 import no.nav.syfo.platform.kafka.KafkaListener
 import no.nav.syfo.platform.kafka.KafkaReason
+import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.kafka.avroConsumerProperties
 import no.nav.syfo.platform.kafka.kafkaConsumerCrashed
 import no.nav.syfo.platform.kafka.kafkaConsumerFailed
@@ -364,7 +364,7 @@ class PdlLeesahConsumer(
         internal const val RESULT_TOMBSTONE = "tombstone"
         internal const val METRIC_UNKNOWN_VALUE = "unknown"
 
-        fun kafkaConsumerProperties(env: KafkaEnvironment): Properties = avroConsumerProperties(
+        fun kafkaConsumerProperties(env: KafkaSettings): Properties = avroConsumerProperties(
             groupId = PDL_LEESAH_CONSUMER_GROUP,
             env = env,
         ).apply {

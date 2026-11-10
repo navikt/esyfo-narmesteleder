@@ -15,31 +15,38 @@ import no.nav.syfo.narmestelederbehov.infrastructure.kafka.NlBehovLeesahHandler
 import no.nav.syfo.narmestelederrelasjon.application.leesah.PersistNarmestelederrelasjonerFromLeesahUseCase
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.UpdateRelationPersonNamesUseCase
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederLeesahProducer
+import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.NarmestelederrelasjonKafkaSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PdlLeesahConsumer
 import no.nav.syfo.narmestelederrelasjon.infrastructure.kafka.PersistNarmestelederRegisterFromLeesahConsumer
+import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.kafka.LeaderControlledKafkaConsumer
 import no.nav.syfo.platform.kafka.consumerProperties
 import no.nav.syfo.platform.kafka.jacksonMapper
 import no.nav.syfo.platform.observability.logger
-import no.nav.syfo.platform.scheduling.LeaderChangeSSEListener
+import no.nav.syfo.platform.scheduling.LeaderChangeListener
 import no.nav.syfo.sykmelding.application.SendtSykmeldingHandler
 import no.nav.syfo.sykmelding.infrastructure.kafka.PersistSendtSykmeldingConsumer
 import no.nav.syfo.sykmelding.infrastructure.kafka.SendtSykmeldingKafkaConsumer
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.koin.ktor.ext.inject
 
-internal fun Application.configureKafkaConsumers(environment: Environment) {
+internal fun Application.configureKafkaConsumers(
+    kafkaSettings: KafkaSettings,
+    narmestelederrelasjonKafkaSettings: NarmestelederrelasjonKafkaSettings,
+    sykmeldingKafkaSettings: SykmeldingKafkaSettings,
+) {
     val createNarmestelederbehov by inject<CreateNarmestelederbehov>()
     val fulfillBehovFromLeesah by inject<FulfillNarmestelederbehovFromLeesahUseCase>()
     val sendtSykmeldingHandler by inject<SendtSykmeldingHandler>()
     val persistNarmestelederrelasjonerFromLeesah by inject<PersistNarmestelederrelasjonerFromLeesahUseCase>()
     val narmestelederLeesahProducer by inject<NarmestelederLeesahProducer>()
     val updateRelationPersonNames by inject<UpdateRelationPersonNamesUseCase>()
-    val leaderChangeSSEListener by inject<LeaderChangeSSEListener>()
+    val leaderChangeListener by inject<LeaderChangeListener>()
     val logger = logger()
 
-    if (!environment.kafka.shouldConsumeTopics) {
+    if (!kafkaSettings.shouldConsumeTopics) {
         logger.info("Kafka consumers is not enabled, skipping configuration of consumers")
         return
     }
@@ -52,7 +59,7 @@ internal fun Application.configureKafkaConsumers(environment: Environment) {
         jacksonMapper = jacksonMapper(),
         kafkaConsumer = KafkaConsumer(
             consumerProperties(
-                env = environment.kafka,
+                env = kafkaSettings,
                 valueDeserializer = StringDeserializer::class,
                 groupId = "esyfo-narmesteleder-les-behov"
             ),
@@ -61,7 +68,7 @@ internal fun Application.configureKafkaConsumers(environment: Environment) {
         ),
         scope = this,
     ).apply {
-        commitOnAllErrors = environment.kafka.commitOnAllErrors
+        commitOnAllErrors = kafkaSettings.commitOnAllErrors
     }
 
     val sendtSykmeldingConsumer = SendtSykmeldingKafkaConsumer(
@@ -69,7 +76,7 @@ internal fun Application.configureKafkaConsumers(environment: Environment) {
         jacksonMapper = jacksonMapper(),
         kafkaConsumer = KafkaConsumer(
             consumerProperties(
-                env = environment.kafka,
+                env = kafkaSettings,
                 valueDeserializer = StringDeserializer::class,
                 groupId = "esyfo-narmesteleder-sendt-sykmelding-consumer"
             ),
@@ -84,13 +91,13 @@ internal fun Application.configureKafkaConsumers(environment: Environment) {
         jacksonMapper = jacksonMapper(),
         kafkaConsumerFactory = {
             KafkaConsumer(
-                PersistSendtSykmeldingConsumer.kafkaConsumerProperties(environment.kafka),
+                PersistSendtSykmeldingConsumer.kafkaConsumerProperties(kafkaSettings),
                 StringDeserializer(),
                 StringDeserializer(),
             )
         },
         scope = this,
-        enabled = environment.otherProperties.persistSendtSykmelding,
+        enabled = sykmeldingKafkaSettings.persistSendtSykmelding,
     )
     val leesahNarmestelederReplayConsumer = PersistNarmestelederRegisterFromLeesahConsumer(
         persistFromLeesah = persistNarmestelederrelasjonerFromLeesah,
@@ -98,24 +105,24 @@ internal fun Application.configureKafkaConsumers(environment: Environment) {
         jacksonMapper = jacksonMapper(),
         kafkaConsumerFactory = {
             KafkaConsumer(
-                PersistNarmestelederRegisterFromLeesahConsumer.kafkaConsumerProperties(environment.kafka),
+                PersistNarmestelederRegisterFromLeesahConsumer.kafkaConsumerProperties(kafkaSettings),
                 StringDeserializer(),
                 StringDeserializer(),
             )
         },
         scope = this,
-        enabled = environment.otherProperties.persistNarmestelederRegister,
+        enabled = narmestelederrelasjonKafkaSettings.persistRegister,
     ).apply {
-        commitOnAllErrors = environment.kafka.commitOnAllErrors
+        commitOnAllErrors = kafkaSettings.commitOnAllErrors
     }
 
-    val pdlLeesahConsumer = if (environment.otherProperties.pdlLeesahConsumerEnabled) {
+    val pdlLeesahConsumer = if (narmestelederrelasjonKafkaSettings.pdlConsumerEnabled) {
         PdlLeesahConsumer(
             kafkaConsumer = KafkaConsumer<String, Personhendelse>(
-                PdlLeesahConsumer.kafkaConsumerProperties(environment.kafka)
+                PdlLeesahConsumer.kafkaConsumerProperties(kafkaSettings)
             ),
             scope = this,
-            enabled = environment.otherProperties.pdlLeesahConsumerEnabled,
+            enabled = narmestelederrelasjonKafkaSettings.pdlConsumerEnabled,
             updateRelationPersonNames = updateRelationPersonNames,
         )
     } else {
@@ -127,20 +134,20 @@ internal fun Application.configureKafkaConsumers(environment: Environment) {
         add(
             LeaderControlledKafkaConsumer(
                 consumer = persistSendtSykmeldingConsumer,
-                enabled = environment.otherProperties.persistSendtSykmelding,
+                enabled = sykmeldingKafkaSettings.persistSendtSykmelding,
             )
         )
         add(
             LeaderControlledKafkaConsumer(
                 consumer = leesahNarmestelederReplayConsumer,
-                enabled = environment.otherProperties.persistNarmestelederRegister,
+                enabled = narmestelederrelasjonKafkaSettings.persistRegister,
             )
         )
         pdlLeesahConsumer?.let {
             add(
                 LeaderControlledKafkaConsumer(
                     consumer = it,
-                    enabled = environment.otherProperties.pdlLeesahConsumerEnabled,
+                    enabled = narmestelederrelasjonKafkaSettings.pdlConsumerEnabled,
                 )
             )
         }
@@ -148,7 +155,7 @@ internal fun Application.configureKafkaConsumers(environment: Environment) {
 
     monitor.subscribe(ServerReady) {
         val leaderControlledConsumersJob = launch(Dispatchers.IO) {
-            leaderChangeSSEListener.isLeader.collect { isLeader ->
+            leaderChangeListener.isLeader.collect { isLeader ->
                 leaderControlledConsumers.forEach { consumer ->
                     consumer.onLeaderChange(isLeader)
                 }

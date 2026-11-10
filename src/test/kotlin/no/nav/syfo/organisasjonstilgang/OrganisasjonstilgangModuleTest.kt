@@ -31,7 +31,7 @@ class OrganisasjonstilgangModuleTest :
 
             testApplication {
                 application {
-                    platformModule(listOf(externalDependencies))
+                    platformModule(listOf(externalDependencies), setOf("test-caller"))
                     organisasjonstilgangModule()
                 }
 

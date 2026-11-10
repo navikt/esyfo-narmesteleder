@@ -42,7 +42,7 @@ class NarmestelederstatistikkModuleTest :
 
             testApplication {
                 application {
-                    platformModule(listOf(externalDependencies))
+                    platformModule(listOf(externalDependencies), setOf("test-caller"))
                     narmestelederstatistikkModule()
                 }
 

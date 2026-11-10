@@ -1,10 +1,13 @@
 package no.nav.syfo.narmestelederbehov.application
 
+import ch.qos.logback.classic.Level
+import io.kotest.assertions.assertSoftly
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -12,9 +15,14 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
+import no.nav.syfo.integration.pdl.PDL
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
+import no.nav.syfo.platform.observability.withProductionLogs
+import no.nav.syfo.platform.upstream.UpstreamError
+import no.nav.syfo.platform.upstream.UpstreamFailure
+import no.nav.syfo.platform.upstream.UpstreamFailureStage
 import java.time.Instant
 import java.util.UUID
 import kotlin.time.Clock
@@ -41,6 +49,7 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
                 claim
             })
             var creationStarted = false
+            val outcomes = mutableListOf<DialogDispatchOutcome>()
             val useCase = useCase(
                 dispatchQueue = queue,
                 dispatchWork = FakeWork(
@@ -57,12 +66,51 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
                     creationStarted = true
                     NarmestelederbehovDialogCreationResult.Created(UUID.randomUUID())
                 },
+                dispatchMetrics = { outcomes += it },
                 settings = settings(runBudget = 40.milliseconds),
             )
 
             useCase.execute()
 
-            creationStarted shouldBe false
+            assertSoftly {
+                creationStarted shouldBe false
+                outcomes shouldBe listOf(DialogDispatchOutcome.CLAIM_LOST)
+            }
+        }
+
+        test("a run whose remaining budget only covers an acknowledgement does not take another claim") {
+            val queue = FakeQueue()
+            val useCase = useCase(
+                dispatchQueue = queue,
+                dispatchWork = FakeWork(null, loadBlock = { awaitCancellation() }),
+                settings = DialogDispatchSettings(
+                    safetyMargin = 50.milliseconds,
+                    acknowledgementBudget = 100.milliseconds,
+                    attemptBudget = 500.milliseconds,
+                    runBudget = 300.milliseconds,
+                    lease = 10.seconds,
+                    maxAttemptsPerRun = 2,
+                ),
+            )
+
+            useCase.execute()
+
+            queue.claims shouldBe 1
+        }
+
+        test("a rejected acknowledgement is recorded as a lost claim and the run continues") {
+            val acknowledgements = ArrayDeque(listOf(false, true))
+            val outcomes = mutableListOf<DialogDispatchOutcome>()
+            val useCase = useCase(
+                dispatchQueue = FakeQueue(finishBlock = { acknowledgements.removeFirst() }),
+                dispatchWork = FakeWork(null),
+                dispatchMetrics = { outcomes += it },
+                settings = settings(runBudget = 5.seconds).copy(maxAttemptsPerRun = 2),
+            )
+
+            useCase.execute()
+
+            outcomes shouldBe listOf(DialogDispatchOutcome.CLAIM_LOST, DialogDispatchOutcome.DONE)
         }
 
         test("a suspended acknowledgement is cancelled within its budget without being acknowledged") {
@@ -76,9 +124,11 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
                     finishCancelled = true
                 }
             })
+            val outcomes = mutableListOf<DialogDispatchOutcome>()
             val useCase = useCase(
                 dispatchQueue = queue,
                 dispatchWork = FakeWork(null),
+                dispatchMetrics = { outcomes += it },
                 settings = settings(runBudget = 500.milliseconds),
             )
 
@@ -87,10 +137,13 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
                 true
             }
 
-            completedWithinGuard shouldBe true
-            finishStarted shouldBe true
-            finishCancelled shouldBe true
-            queue.acknowledged shouldBe false
+            assertSoftly {
+                completedWithinGuard shouldBe true
+                finishStarted shouldBe true
+                finishCancelled shouldBe true
+                queue.acknowledged shouldBe false
+                outcomes shouldBe listOf(DialogDispatchOutcome.CLAIM_LOST)
+            }
         }
 
         test("a timed out attempt reserves run time to persist its retry") {
@@ -112,8 +165,48 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
 
             useCase.execute()
 
-            queue.acknowledged shouldBe true
-            queue.finishedResult.shouldBeInstanceOf<DialogDispatchResult.Retry>().reason shouldBe DialogDispatchFailure.TIMEOUT
+            assertSoftly {
+                queue.acknowledged shouldBe true
+                queue.finishedResult.shouldBeInstanceOf<DialogDispatchResult.Retry>().reason shouldBe DialogDispatchFailure.TIMEOUT
+            }
+        }
+
+        listOf(
+            "an unavailable" to EmployeePersonLookup { EmployeePersonLookupResult.Unavailable(UpstreamFailure(PDL, UpstreamFailureStage.RESPONSE, 503, errors = listOf(UpstreamError("server_error")))) },
+            "a failing" to EmployeePersonLookup { throw IllegalStateException("lookup failed") },
+        ).forEach { (description, lookup) ->
+            test("$description person lookup is logged and the dialog is created without person details") {
+                val persons = mutableListOf<EmployeePerson?>()
+                val useCase = useCase(
+                    dispatchQueue = FakeQueue(),
+                    dispatchWork = FakeWork(
+                        DialogDispatchState(
+                            employee = employee,
+                            status = BehovStatus.BEHOV_CREATED,
+                            dialogId = null,
+                            createStarted = false,
+                            intendedExpiry = null,
+                            expiredAt = null,
+                        ),
+                    ),
+                    dialogCreation = { _, _, person ->
+                        persons += person
+                        NarmestelederbehovDialogCreationResult.Created(UUID.randomUUID())
+                    },
+                    employeePersonLookup = lookup,
+                    settings = settings(runBudget = 5.seconds),
+                )
+
+                val logs = withProductionLogs(DispatchNarmestelederbehovDialogUseCase::class.java, Level.WARN) { capture ->
+                    useCase.execute()
+                    capture.logs
+                }
+
+                assertSoftly {
+                    persons shouldBe listOf(null)
+                    logs.map { it.fields["event_type"] } shouldBe listOf("dialog_person_enrichment_failed")
+                }
+            }
         }
 
         test("caller cancellation is propagated while claiming") {
@@ -123,14 +216,9 @@ class DispatchNarmestelederbehovDialogUseCaseTest :
                 settings = settings(runBudget = 5.seconds),
             )
 
-            var cancelled = false
-            try {
+            shouldThrow<TimeoutCancellationException> {
                 withTimeout(20.milliseconds) { useCase.execute() }
-            } catch (_: CancellationException) {
-                cancelled = true
             }
-
-            cancelled shouldBe true
         }
     })
 
@@ -138,6 +226,8 @@ private fun useCase(
     dispatchQueue: DialogDispatchQueue,
     dispatchWork: DialogDispatchWork,
     dialogCreation: NarmestelederbehovDialogCreation = { _, _, _ -> error("must not create") },
+    employeePersonLookup: EmployeePersonLookup = EmployeePersonLookup { error("must not look up a person") },
+    dispatchMetrics: DialogDispatchMetrics = DialogDispatchMetrics {},
     settings: DialogDispatchSettings,
 ) = DispatchNarmestelederbehovDialogUseCase(
     dispatchQueue = dispatchQueue,
@@ -146,11 +236,11 @@ private fun useCase(
     dialogCompletion = { error("must not complete") },
     dialogExpiry = { _, _ -> error("must not expire") },
     dialogExpiryInspection = { error("must not inspect") },
-    employeePersonLookup = { error("must not look up a person") },
+    employeePersonLookup = employeePersonLookup,
     clock = object : Clock {
         override fun now() = Instant.parse("2030-01-01T10:00:00Z").toKotlinInstant()
     },
-    dispatchMetrics = {},
+    dispatchMetrics = dispatchMetrics,
     settings = settings,
 )
 
@@ -169,8 +259,12 @@ private class FakeQueue(
 ) : DialogDispatchQueue {
     var acknowledged = false
     var finishedResult: DialogDispatchResult? = null
+    var claims = 0
 
-    override suspend fun claim(now: Instant, lease: Duration): DialogClaim? = claimBlock()
+    override suspend fun claim(now: Instant, lease: Duration): DialogClaim? {
+        claims++
+        return claimBlock()
+    }
 
     override suspend fun finish(claim: DialogClaim, result: DialogDispatchResult, now: Instant): Boolean {
         finishedResult = result

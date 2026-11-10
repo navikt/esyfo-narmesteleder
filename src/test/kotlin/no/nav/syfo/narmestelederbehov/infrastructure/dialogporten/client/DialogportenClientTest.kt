@@ -246,6 +246,34 @@ class DialogportenClientTest :
                 decoding shouldBe true
             }
         }
+        test("PATCH sends a completed status and an ISO-8601 expiresAt for the current revision") {
+            val expiry = listOf(
+                patch,
+                HttpDialogportenClient.DialogportenPatch(
+                    HttpDialogportenClient.DialogportenPatch.OPERATION.ADD,
+                    HttpDialogportenClient.DialogportenPatch.PATH.EXPIRES_AT,
+                    Instant.parse("2026-10-01T10:10:00Z").toString(),
+                ),
+            )
+            var body: String? = null
+            var ifMatch: String? = null
+            upstreamHttpClient(respondWithSystemToken) { request ->
+                ifMatch = request.headers[HttpHeaders.IfMatch]
+                body = request.body.toByteArray().decodeToString()
+                respondJson("", HttpStatusCode.NoContent)
+            }.use { http ->
+                val result = HttpDialogportenClient("https://dialogporten.test", http, provider).patchDialog(id, revision, expiry)
+
+                assertSoftly {
+                    result shouldBe UpstreamResult.Success(DialogPatchResult.Patched)
+                    ifMatch shouldBe revision.toString()
+                    mapper.readTree(body) shouldBe mapper.readTree(
+                        """[{"operation":"Replace","path":"/status","value":"Completed"},{"operation":"Add","path":"/expiresAt","value":"2026-10-01T10:10:00Z"}]""",
+                    )
+                }
+            }
+        }
+
         val existingDialogId = UUID.fromString("00000000-0000-0000-0000-000000000003")
 
         // Shape of Dialogporten's DP.CFL-00002 problem details (E2E snapshot Should_Return_409_For_Duplicate_Dialog_Id).

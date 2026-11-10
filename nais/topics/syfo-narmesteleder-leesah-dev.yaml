@@ -26,3 +26,12 @@ spec:
     - team: team-esyfo
       application: esyfo-kafka-manager
       access: read
+    - team: flex
+      application: sykepengesoknad-backend
+      access: read
+    - team: flex
+      application: flex-sykmeldinger-backend
+      access: read
+    - team: flex
+      application: sykepengesoknad-narmesteleder-varsler
+      access: read

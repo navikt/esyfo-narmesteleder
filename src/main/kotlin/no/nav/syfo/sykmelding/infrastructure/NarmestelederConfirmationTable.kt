@@ -11,7 +11,7 @@ import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
  * The sykmeldingsregister handler deletes both rows when it receives a tombstone.
  * The foreign key to `person` exists only in the migration, because `PersonTable` belongs to another capability.
  */
-internal object NarmestelederBekreftelseTable : Table("narmesteleder_bekreftelse") {
+internal object NarmestelederConfirmationTable : Table("narmesteleder_confirmation") {
     val sykmeldingId = javaUUID("sykmelding_id")
     val personId = javaUUID("person_id")
     val orgnummer = varchar("orgnummer", 9)
@@ -19,9 +19,9 @@ internal object NarmestelederBekreftelseTable : Table("narmesteleder_bekreftelse
     val created = timestampWithTimeZone("created").defaultExpression(CurrentTimestampWithTimeZone)
     val updated = timestampWithTimeZone("updated").defaultExpression(CurrentTimestampWithTimeZone)
 
-    override val primaryKey = PrimaryKey(sykmeldingId, name = "narmesteleder_bekreftelse_pkey")
+    override val primaryKey = PrimaryKey(sykmeldingId, name = "narmesteleder_confirmation_pkey")
 
     init {
-        index("narmesteleder_bekreftelse_person_orgnummer_idx", false, personId, orgnummer)
+        index("narmesteleder_confirmation_person_orgnummer_idx", false, personId, orgnummer)
     }
 }

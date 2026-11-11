@@ -17,7 +17,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
-class NarmestelederBekreftelseTableTest :
+class NarmestelederConfirmationTableTest :
     FunSpec({
         beforeTest {
             TestDB.clearAllData()
@@ -25,28 +25,28 @@ class NarmestelederBekreftelseTableTest :
 
         test("mapping matches the database schema") {
             transaction(TestDB.exposedDatabase) {
-                checkMappingConsistence(NarmestelederBekreftelseTable, withLogs = true) shouldBe emptyList()
+                checkMappingConsistence(NarmestelederConfirmationTable, withLogs = true) shouldBe emptyList()
             }
         }
 
         test("round-trips through the table mapping without a sykmelding row") {
             transaction(TestDB.exposedDatabase) {
                 val personId = insertPerson()
-                insertBekreftelse(personId)
+                insertConfirmation(personId)
 
-                val row = NarmestelederBekreftelseTable.selectAll().single()
+                val row = NarmestelederConfirmationTable.selectAll().single()
                 assertSoftly {
-                    row[NarmestelederBekreftelseTable.sykmeldingId] shouldBe SYKMELDING_ID
-                    row[NarmestelederBekreftelseTable.personId] shouldBe personId
-                    row[NarmestelederBekreftelseTable.orgnummer] shouldBe ORGNUMMER
-                    row[NarmestelederBekreftelseTable.confirmedAt].toInstant() shouldBe CONFIRMED_AT.toInstant()
+                    row[NarmestelederConfirmationTable.sykmeldingId] shouldBe SYKMELDING_ID
+                    row[NarmestelederConfirmationTable.personId] shouldBe personId
+                    row[NarmestelederConfirmationTable.orgnummer] shouldBe ORGNUMMER
+                    row[NarmestelederConfirmationTable.confirmedAt].toInstant() shouldBe CONFIRMED_AT.toInstant()
                 }
             }
         }
 
         test("requires an existing person") {
             shouldThrow<ExposedSQLException> {
-                transaction(TestDB.exposedDatabase) { insertBekreftelse(personId = UUID.randomUUID()) }
+                transaction(TestDB.exposedDatabase) { insertConfirmation(personId = UUID.randomUUID()) }
             }.sqlState shouldBe FOREIGN_KEY_VIOLATION
         }
     })
@@ -61,9 +61,9 @@ private fun insertPerson(): UUID = PersonTable.insertAndGetId {
     it[status] = "ACTIVE"
 }.value
 
-private fun insertBekreftelse(personId: UUID) = NarmestelederBekreftelseTable.insert {
+private fun insertConfirmation(personId: UUID) = NarmestelederConfirmationTable.insert {
     it[sykmeldingId] = SYKMELDING_ID
-    it[NarmestelederBekreftelseTable.personId] = personId
+    it[NarmestelederConfirmationTable.personId] = personId
     it[orgnummer] = ORGNUMMER
     it[confirmedAt] = CONFIRMED_AT
 }

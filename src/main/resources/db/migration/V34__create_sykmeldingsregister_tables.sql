@@ -31,7 +31,7 @@ CREATE TRIGGER update_sykmelding_updated
     FOR EACH ROW
 EXECUTE FUNCTION update_updated_column();
 
-CREATE TABLE narmesteleder_bekreftelse
+CREATE TABLE narmesteleder_confirmation
 (
     sykmelding_id UUID        NOT NULL,
     person_id     UUID        NOT NULL,
@@ -39,14 +39,14 @@ CREATE TABLE narmesteleder_bekreftelse
     confirmed_at  TIMESTAMPTZ NOT NULL,
     created       TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT narmesteleder_bekreftelse_pkey PRIMARY KEY (sykmelding_id),
-    CONSTRAINT narmesteleder_bekreftelse_person_fkey FOREIGN KEY (person_id) REFERENCES person (id)
+    CONSTRAINT narmesteleder_confirmation_pkey PRIMARY KEY (sykmelding_id),
+    CONSTRAINT narmesteleder_confirmation_person_fkey FOREIGN KEY (person_id) REFERENCES person (id)
 );
 
-CREATE INDEX narmesteleder_bekreftelse_person_orgnummer_idx ON narmesteleder_bekreftelse (person_id, orgnummer);
+CREATE INDEX narmesteleder_confirmation_person_orgnummer_idx ON narmesteleder_confirmation (person_id, orgnummer);
 
-CREATE TRIGGER update_narmesteleder_bekreftelse_updated
+CREATE TRIGGER update_narmesteleder_confirmation_updated
     BEFORE UPDATE
-    ON narmesteleder_bekreftelse
+    ON narmesteleder_confirmation
     FOR EACH ROW
 EXECUTE FUNCTION update_updated_column();

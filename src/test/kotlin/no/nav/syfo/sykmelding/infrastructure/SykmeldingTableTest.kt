@@ -5,7 +5,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
-import no.nav.syfo.faker
+import no.nav.syfo.digits
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonTable
 import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
@@ -57,8 +57,8 @@ class SykmeldingTableTest :
     })
 
 private const val FOREIGN_KEY_VIOLATION = "23503"
-private val FNR = faker.numerify("###########")
-private val ORGNUMMER = faker.numerify("#########")
+private val FNR = digits(11)
+private val ORGNUMMER = digits(9)
 private val SYKMELDING_ID = UUID.fromString("0f8fad5b-d9cb-469f-a165-70867728950e")
 private val SENT_AT = OffsetDateTime.of(2026, 11, 2, 10, 15, 30, 123_456_000, ZoneOffset.ofHours(1))
 private val MAX_TOM = LocalDate.of(2026, 11, 30)

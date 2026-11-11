@@ -5,6 +5,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.syfo.TestDB
+import no.nav.syfo.faker
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonTable
 import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils.checkMappingConsistence
@@ -51,12 +52,12 @@ class NarmestelederBekreftelseTableTest :
     })
 
 private const val FOREIGN_KEY_VIOLATION = "23503"
-private const val ORGNUMMER = "123456789"
+private val ORGNUMMER = faker.numerify("#########")
 private val SYKMELDING_ID = UUID.fromString("0f8fad5b-d9cb-469f-a165-70867728950e")
 private val CONFIRMED_AT = OffsetDateTime.of(2026, 11, 2, 10, 15, 30, 123_456_000, ZoneOffset.ofHours(1))
 
 private fun insertPerson(): UUID = PersonTable.insertAndGetId {
-    it[fnr] = "12345678901"
+    it[fnr] = faker.numerify("###########")
     it[status] = "ACTIVE"
 }.value
 

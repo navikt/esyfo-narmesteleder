@@ -228,14 +228,14 @@ paths:
         '401':
           description: Invalid or inactive Azure AD token.
         '403':
-          description: Calling application is not pre-authorized.
+          description: The token does not have the linemanager-lookup role.
 components:
   securitySchemes:
     azuread_jwt:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Azure AD client credentials token from a pre-authorized application.
+      description: Azure AD client credentials token with the linemanager-lookup application role.
     maskinporten_jwt:
       type: http
       scheme: bearer

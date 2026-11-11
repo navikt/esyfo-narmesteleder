@@ -14,7 +14,7 @@ import org.koin.ktor.ext.get
  * Assembles the Koin graph from [koinModules] and starts every capability with settings from [settings].
  */
 fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Module> = applicationModules(settings)) {
-    platformModule(koinModules, settings.texas.azurePreAuthorizedApps)
+    platformModule(koinModules)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())

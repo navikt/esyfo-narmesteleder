@@ -67,7 +67,7 @@ class NarmestelederbehovModuleTest :
 
                 testApplication {
                     application {
-                        platformModule(listOf(externalDependencies), setOf("test-caller"))
+                        platformModule(listOf(externalDependencies))
                         narmestelederbehovModule(settings)
                         get<UpdateDialogTask>() shouldNotBe null
                     }

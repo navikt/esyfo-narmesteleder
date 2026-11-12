@@ -1,9 +1,8 @@
 # GET /api/v1/access/organizations
 
-Internt endepunkt for `narmesteleder-frontend`. Det er ikke med i OpenAPI eller
-Swagger. Responsen er kompatibel med
-[`@navikt/virksomhetsvelger`](https://github.com/navikt/virksomhetsvelger), og
-formen står i `AccessibleOrganizationsResponse` i `AccessibleOrganizationsApi.kt`.
+Internt endepunkt for `narmesteleder-frontend`. Responsen er kompatibel med
+[`@navikt/virksomhetsvelger`](https://github.com/navikt/virksomhetsvelger).
+Kontrakten står i `src/main/resources/openapi/internal-documentation.yaml`.
 
 ## Autentisering
 

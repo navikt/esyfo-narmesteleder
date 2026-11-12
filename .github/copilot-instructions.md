@@ -2,8 +2,7 @@
 
 narmesteleder-api (team-esyfo): manages relations between sykmeldte and their
 narmeste ledere. Kotlin, Ktor, Exposed/PostgreSQL, Flyway, Kafka, Valkey,
-Kotest, MockK, Nais/GCP. Maintained by hand; removed `.github/` agents and
-skills no longer exist.
+Kotest, MockK, Nais/GCP.
 
 ## Commands
 

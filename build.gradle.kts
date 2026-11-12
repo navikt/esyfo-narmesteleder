@@ -53,7 +53,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.slf4j)
     implementation(libs.valkey.java)
 
-    testImplementation(libs.datafaker)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.mockk)

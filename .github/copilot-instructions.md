@@ -1,90 +1,78 @@
 # esyfo-narmesteleder
 
-This is the repository for narmesteleder-api, a service that provides an API for managing narmesteleder connection between employees on sick leave and their narmeste ledere.
-
-## Team
-- **Team**: team-esyfo, NAV IT
-- **Org**: navikt
+narmesteleder-api (team-esyfo, navikt) manages the narmesteleder relation
+between employees on sick leave and their narmeste ledere. Kotlin, Ktor,
+Exposed on PostgreSQL, Flyway, Kafka, Valkey, Kotest and MockK. Runs on Nais
+(GCP). This file is maintained by hand in this repository; do not assume
+removed `.github/` agents, skills or workflows still exist.
 
 ## Commands
 
 ```bash
-./gradlew build   # Build + test + lint
+./gradlew build   # Build, test and ktlint. CI runs ./gradlew check
 ./gradlew test    # Tests only
 ```
 
-## NAV Principles
-- **Team First**: Autonomous teams with circles of autonomy
-- **Product Development**: Continuous development over ad hoc approaches
-- **Essential Complexity**: Focus on essential, avoid accidental complexity
-- **DORA Metrics**: Measure and improve team performance
+## Where to look
 
-## Platform & Auth
-- **Platform**: NAIS (Kubernetes on GCP)
-- **Auth**: Azure AD (internal users), TokenX (on-behalf-of token exchange), ID-porten (citizens), Maskinporten (machine-to-machine)
-- Incoming TokenX, Azure AD and Maskinporten authentication uses Texas-backed Ktor `Authentication` providers installed in `platformModule`; protected routes select providers with `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or `authenticateAzureAd(role)` (not Ktor's `authenticate` directly) and retain their existing use-case authorization checks. Azure AD routes require a custom role granted through the matching Nais inbound permission. Routes are denied by default: startup fails unless every endpoint requires authentication or is declared in `publicRoutes { }`.
-- **Observability**: Prometheus metrics, Grafana Loki logs, Tempo tracing (OpenTelemetry)
+Read only the section you need, not whole documents.
+
+| Topic | Source |
+|---|---|
+| Modules and their responsibilities | `docs/architecture.md` → Module responsibilities |
+| Allowed dependencies between modules | `docs/architecture.md` → Dependency rules |
+| Use cases, ports, adapters | `docs/architecture.md` → Application design, Ports and adapters |
+| Errors and HTTP mapping | `docs/architecture.md` → Errors and HTTP mapping, ADR-0004 |
+| Transactions | `docs/architecture.md` → Persistence and transactions, ADR-0003 |
+| Request, Kafka and background flows | `docs/data-flow.md` (one section per flow) |
+| Logging | `docs/logging.md` |
+| Leesah topic contract | `docs/kafka/syfo-narmesteleder-leesah.md` |
+| Decisions | `docs/adr/` |
+
+Use `grep -n '^#' <file>` to find line ranges before reading.
 
 ## Conventions
-- English code and comments — Norwegian for user-facing text and domain terms (e.g. dialogmote, sykmelding, oppfolgingsplan)
-- Use Context7 (`context7-resolve-library-id` → `context7-query-docs`) for library-specific patterns (not available for NAV-internal libs like Aksel/NAIS — use aksel.nav.no and doc.nais.io instead)
-- Check existing code patterns in the repository before writing new code
-- Follow the ✅ Always / ⚠️ Ask First / 🚫 Never boundaries in agent and instruction files
 
-## Documentation and Working Notes
+- English code and comments; Norwegian for user-facing text and domain terms
+  (sykmelding, narmestelederbehov, oppfolgingsplan).
+- Follow the nearest existing pattern. Check `gradle/libs.versions.toml`
+  before suggesting libraries.
+- Modules: only `*.infrastructure` and `bootstrap` import `integration`. A
+  module never imports another module's infrastructure;
+  `CapabilityArchitectureTest` enforces this. Map cross-module foreign keys as
+  plain columns.
+- Place a port used by one use case in that use case's file; keep a separate
+  file only for ports shared by several use cases.
+- Repositories own transactions through `Database.ioTransaction`; do not wrap it
+  in `withContext(Dispatchers.IO)`. Use cases never open transactions, and no
+  transaction spans Kafka, Dialogporten or other remote calls.
+- SQL is always parameterized. Schema changes are new Flyway migrations; never
+  edit an existing one.
+- Configuration lives in `src/main/resources/application.conf` and maps to
+  `ApplicationSettings`; never read environment variables directly.
+  Per-environment and secret values come from `${?VAR}`. Local overrides are in
+  `src/test/resources/application-local.conf`.
+- Tests: new Kotest classes use `FunSpec` with flat `test("...")` blocks. Prefer
+  small hand-written fakes over heavy MockK graphs. HTTP client tests use the
+  helpers in `src/test/kotlin/no/nav/syfo/integration/UpstreamTestHttpClient.kt`.
+- When a change makes `docs/data-flow.md` or this file inaccurate, update it in
+  the same change. Put drafts and plans in `.local-notes/` (not checked in).
 
-| Tier | Location | Purpose | Persists | Checked in |
-|------|----------|---------|----------|------------|
-| **Session** | `~/.copilot/session-state/` | Scratch work for one task | No | No |
-| **Local notes** | `.local-notes/` | Plans, architecture drafts, research, AI reviews | Yes | No |
-| **Permanent docs** | `docs/` | Finalized documentation (ADRs, API docs) | Yes | Yes |
+## Authentication
 
-**Defaults**: Planning/research/drafts → `.local-notes/`. Finalized docs → `docs/`. Task tracking → session state.
-
-When a change makes `docs/data-flow.md` inaccurate, update that document in the
-same change.
-
-## Repository Instructions
-
-This file documents the repository's conventions, commands, and boundaries. Update it directly when the technology stack, build and test commands, authentication, database, messaging, or operational practices change.
-
-This file is maintained locally in this repository; it is not generated or synchronized from another repository. Do not assume that removed `.github/` agents, skills, instructions, or workflows still exist.
-
-
-## Tech Stack
-- **Language**: Kotlin
-- **Framework**: Ktor
-- **Build**: Gradle (Kotlin DSL)
-- **Database**: PostgreSQL
-- **Messaging**: Apache Kafka
-- **Testing**: Kotest, MockK
-- **Auth**: Les NAIS-manifestene i prosjektet for å finne hvilke auth-mekanismer som er konfigurert (mulige: Azure AD, TokenX, ID-porten, Maskinporten)
-
-## Backend Patterns
-- Check `build.gradle.kts` for actual dependencies before suggesting libraries
-- Use Flyway for all database migrations — never modify existing migrations
-- Parameterized queries always — never string interpolation in SQL
-- Use `Database.ioTransaction` for suspendable Exposed JDBC transactions; do not duplicate `withContext(Dispatchers.IO)` and `suspendTransaction`
-- Follow the existing data access pattern in the repository (extension functions, repositories, etc.)
-- All configuration is declared in `src/main/resources/application.conf` and mapped to typed settings in `ApplicationSettings`; never read environment variables directly. Values that differ per environment or are secret are read from environment variables via `${?VAR}` and are never written in the file. Local runs override values in `src/test/resources/application-local.conf`
-- Structured logging — check which pattern this repo uses (KotlinLogging, SLF4J, kv() fields, MDC)
-- Follow existing code patterns in the repository
+Texas-backed Ktor `Authentication` providers are installed in `platformModule`.
+Protected routes use `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or
+`authenticateAzureAd(role)`, never Ktor's `authenticate` directly, and keep
+their use-case authorization checks. Azure AD routes require a custom role
+granted through the matching Nais inbound permission. Routes are denied by
+default: startup fails unless every endpoint requires authentication or is
+declared in `publicRoutes { }`.
 
 ## Boundaries
 
-### ✅ Always
-- Run `./gradlew build` after changes
-- Use Flyway for database migrations
-- Add Prometheus metrics for business operations
-- Validate JWT issuer, audience, and expiration
-
-### ⚠️ Ask First
-- Changing database schema or Kafka event schemas
-- Modifying authentication configuration
-- Adding new GCP resources
-
-### 🚫 Never
-- Skip database migration versioning
-- Hardcode secrets or configuration values
-- Use `!!` operator without null checks
-- Bypass authentication checks
+- ✅ Always: run `./gradlew build` after changes; add Prometheus metrics for
+  business operations.
+- ⚠️ Ask first: database schema or Kafka event schema changes, authentication
+  configuration, new GCP resources.
+- 🚫 Never: hardcode secrets or configuration, use `!!` without a null check,
+  bypass authentication checks.

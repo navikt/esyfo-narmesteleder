@@ -2,7 +2,9 @@
 
 Adressen brukes til e-postvarsler til arbeidsgivere. Regelen godtar bare
 adresser et varsel kan sendes til. Den ligger i
-`narmestelederrelasjon.domain.EmailAddress`, med eksempler i `EmailAddressTest`.
+`narmestelederrelasjon.domain.EmailAddress`. Godtatte og avviste adresser, med
+årsak, står i
+[`EmailAddressTest`](../src/test/kotlin/no/nav/syfo/narmestelederrelasjon/domain/EmailAddressTest.kt).
 
 ## Bruk
 

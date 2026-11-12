@@ -23,6 +23,9 @@ import java.util.Random
 
 val faker = Faker(Random(760))
 
+/** Fixed digit string for identifiers in tests, e.g. `digits(11)` = "01234567890". */
+fun digits(length: Int): String = (0 until length).joinToString("") { (it % 10).toString() }
+
 fun manager(): Manager = Manager(
     nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
     mobile = "+47${faker.numerify("########")}",

@@ -29,7 +29,9 @@ Read only the section you need. Find headings with `grep -n '^#' <file>`.
 - Open transactions only in repositories, with `Database.ioTransaction`. Never
   wrap it in `withContext(Dispatchers.IO)`. Never span a transaction over Kafka
   or HTTP calls.
-- Parameterize all SQL. Add a new Flyway migration; never edit an existing one.
+- Access the database only through Exposed DSL (`Table`). Never write raw JDBC,
+  SQL strings or Exposed DAO code; migrate existing JDBC/DAO code you touch.
+- Add a new Flyway migration; never edit an existing one.
 - Read configuration through `application.conf` and `ApplicationSettings`,
   never from environment variables directly. Local overrides go in
   `src/test/resources/application-local.conf`.

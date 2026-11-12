@@ -2,7 +2,6 @@ package no.nav.syfo
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import net.datafaker.Faker
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederrelasjon.api.model.Linemanager
@@ -19,25 +18,22 @@ import no.nav.syfo.sykmelding.application.SykmeldingsperiodeAGDTO
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.util.Random
-
-val faker = Faker(Random(760))
 
 /** Fixed digit string for identifiers in tests, e.g. `digits(11)` = "01234567890". */
 fun digits(length: Int): String = (0 until length).joinToString("") { (it % 10).toString() }
 
 fun manager(): Manager = Manager(
-    nationalIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
-    mobile = "+47${faker.numerify("########")}",
-    email = "test+${faker.numerify("#####")}@example.com",
-    lastName = faker.name().lastName(),
+    nationalIdentificationNumber = PersonalIdentificationNumber(faker.fnr()),
+    mobile = "+47${faker.mobilnummer()}",
+    email = faker.email(),
+    lastName = faker.lastName(),
 )
 
 fun linemanager(): Linemanager = Linemanager(
     manager = manager(),
-    employeeIdentificationNumber = PersonalIdentificationNumber(faker.numerify("###########")),
-    orgNumber = OrganizationNumber(faker.numerify("#########")),
-    lastName = faker.name().lastName(),
+    employeeIdentificationNumber = PersonalIdentificationNumber(faker.fnr()),
+    orgNumber = OrganizationNumber(faker.orgnummer()),
+    lastName = faker.lastName(),
 )
 
 fun createMockToken(

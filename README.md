@@ -1,4 +1,4 @@
-# esyfo-narmesteleder
+# Nærmesteleder API
 
 [![Build Status](https://github.com/navikt/esyfo-narmesteleder/actions/workflows/build-and-deploy.yaml/badge.svg)](https://github.com/navikt/esyfo-narmesteleder/actions/workflows/build-and-deploy.yaml)
 

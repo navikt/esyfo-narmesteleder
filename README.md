@@ -18,12 +18,13 @@
 
 ## Overview
 
-narmesteleder-api lets employers report who is narmesteleder for an employee on sick leave, and maintains the
-resulting narmestelederrelasjon between the employee, the narmesteleder and the organization.
+narmesteleder-api lets employers report who is the line manager (narmesteleder) for an employee on sick leave, and
+maintains the resulting line manager relation (narmestelederrelasjon) between the employee, the line manager and the
+organization.
 
-It identifies when an employee on sick leave needs a narmesteleder from their employer, and tells the employer by
+It identifies when an employee on sick leave needs a line manager from their employer, and tells the employer by
 creating a dialog in Altinn Dialogporten. The dialog contains URLs that can be used with GET to retrieve details about
-the person on sick leave, and with PUT to assign a narmesteleder.
+the person on sick leave, and with PUT to assign a line manager.
 
 ## Documentation
 

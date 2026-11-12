@@ -91,10 +91,10 @@ https://tokenx-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp:team-esyfo:
 
 Select "på høyt nivå".
 
-- To assign a narmeste leder or break an existing relation, use the ident of a daglig leder for the
-  organisasjonsnummer you want to test with.
-- To act as a person on sick leave, use the ident of a person registered as an employee in the organisasjonsnummer.
-- To act as the narmeste leder, use the ident of a person registered as narmeste leder in the organisasjonsnummer.
+- To assign a line manager (narmesteleder) or break an existing relation, use the ident of a general manager
+  (daglig leder) for the organization number (organisasjonsnummer) you want to test with.
+- To act as a person on sick leave, use the ident of a person registered as an employee in the organization.
+- To act as the line manager, use the ident of a person registered as line manager in the organization.
 
 ## PDL Leesah Avro schema
 

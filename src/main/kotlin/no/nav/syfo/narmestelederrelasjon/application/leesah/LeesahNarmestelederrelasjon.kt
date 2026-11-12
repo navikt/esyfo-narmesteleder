@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.application.leesah
 
-import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -18,8 +17,6 @@ data class LeesahNarmestelederrelasjon(
     val aktivFom: LocalDate,
     val aktivTom: LocalDate?,
     val arbeidsgiverForskutterer: Boolean?,
-    /** When team sykmelding revoked the relation because the employment ended (`DEAKTIVERT_ARBEIDSFORHOLD`); otherwise null. */
-    val sourceEmploymentRevocationAt: Instant? = null,
 )
 
 data class LeesahNarmestelederrelasjonRecord(

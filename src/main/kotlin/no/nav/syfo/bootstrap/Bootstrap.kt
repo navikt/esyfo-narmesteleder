@@ -19,7 +19,7 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(settings.narmestelederrelasjon.employmentCheck)
+    narmestelederrelasjonModule()
     narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()
     sykmeldingModule()
@@ -33,5 +33,5 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
         maintenanceTaskSettings = settings.maintenanceTask,
         personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
     )
-    configureEmploymentChecks(settings.narmestelederrelasjon.employmentCheck)
+    configureEmploymentChecks()
 }

@@ -76,7 +76,6 @@ class ExposedEmploymentReconciliationRepositoryTest :
                 assertReadCommitted {
                     observedRepository.complete(claim, EmploymentCheckOutcome.VALID, now.plusSeconds(600), now) shouldBe true
                 }
-                assertReadCommitted { observedRepository.recordSourceRevocation(claim.narmesteLederId, now) shouldBe true }
                 assertReadCommitted { observedRepository.stats(now) }
             }
         }
@@ -178,55 +177,67 @@ class ExposedEmploymentReconciliationRepositoryTest :
             controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(600)
         }
 
-        test("live cutover claims READY WOULD_REVOKE immediately even when the next check is in the future") {
+        test("claims an old READY WOULD_REVOKE immediately even when the next check is in the future") {
             val id = insertEmploymentRelation()
-            insertControlRow(id, now.plusSeconds(86_400), EmploymentCheckOutcome.WOULD_REVOKE)
+            insertControlRow(id, now.plusSeconds(86_400), StoredEmploymentCheckOutcome.WOULD_REVOKE)
 
-            val claim = repository.claimDue(1, 5.minutes, now, revokeEnabled = true).single()
+            val claim = repository.claimDue(1, 5.minutes, now).single()
 
             claim.narmesteLederId shouldBe id
-            claim.sourceRevokedAt shouldBe null
             controlRow(id)[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.CLAIMED
             controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
         }
 
-        test("live mode does not claim ended relations with a pending comparison") {
+        test("does not claim ended relations with a pending old source comparison") {
             val id = insertEmploymentRelation(to = now)
-            insertControlRow(id, now, EmploymentCheckOutcome.WOULD_REVOKE)
-            repository.recordSourceRevocation(id, now)
+            insertControlRow(id, now, StoredEmploymentCheckOutcome.WOULD_REVOKE, sourceRevokedAt = now)
 
-            repository.claimDue(10, 5.minutes, now, revokeEnabled = true) shouldBe emptyList()
+            repository.claimDue(10, 5.minutes, now) shouldBe emptyList()
             controlRow(id)[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
-
-            repository.claimDue(10, 5.minutes, now).single().narmesteLederId shouldBe id
         }
 
-        test("live cutover never steals an unexpired claim with last outcome WOULD_REVOKE") {
+        test("an old WOULD_REVOKE never overrides an unexpired claim") {
             val id = insertEmploymentRelation()
-            insertControlRow(id, now, EmploymentCheckOutcome.WOULD_REVOKE)
+            insertControlRow(id, now, StoredEmploymentCheckOutcome.WOULD_REVOKE)
             val first = repository.claimDue(1, 5.minutes, now).single()
 
-            repository.claimDue(1, 5.minutes, now.plusSeconds(299), revokeEnabled = true) shouldBe emptyList()
+            repository.claimDue(1, 5.minutes, now.plusSeconds(299)) shouldBe emptyList()
             controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe first.claimToken
             controlRow(id)[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
 
-            val reclaimed = repository.claimDue(1, 5.minutes, now.plusSeconds(300), revokeEnabled = true).single()
+            val reclaimed = repository.claimDue(1, 5.minutes, now.plusSeconds(300)).single()
             reclaimed.narmesteLederId shouldBe id
             reclaimed.claimToken shouldNotBe first.claimToken
         }
 
-        test("shadow still waits for future WOULD_REVOKE checks and live cutover uses only the latest outcome") {
+        test("only the latest outcome makes an old WOULD_REVOKE immediately due") {
             val wouldRevoke = insertEmploymentRelation()
-            insertControlRow(wouldRevoke, now.plusSeconds(86_400), EmploymentCheckOutcome.WOULD_REVOKE)
+            insertControlRow(wouldRevoke, now.plusSeconds(86_400), StoredEmploymentCheckOutcome.WOULD_REVOKE)
             val historicShadow = insertEmploymentRelation()
-            insertControlRow(historicShadow, now.plusSeconds(86_400), EmploymentCheckOutcome.FAILED, wouldRevokeDaysAgo = 10)
+            insertControlRow(historicShadow, now.plusSeconds(86_400), StoredEmploymentCheckOutcome.FAILED, wouldRevokeDaysAgo = 10)
 
-            repository.claimDue(10, 5.minutes, now) shouldBe emptyList()
-            repository.claimDue(10, 5.minutes, now, revokeEnabled = true).map { it.narmesteLederId } shouldBe listOf(wouldRevoke)
+            repository.claimDue(10, 5.minutes, now).map { it.narmesteLederId } shouldBe listOf(wouldRevoke)
             controlRow(historicShadow)[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
         }
 
-        test("live cutover keeps deterministic due and id ordering with a bounded batch") {
+        listOf(
+            EmploymentCheckOutcome.VALID to StoredEmploymentCheckOutcome.VALID,
+            EmploymentCheckOutcome.REVOKED to StoredEmploymentCheckOutcome.REVOKED,
+            EmploymentCheckOutcome.FAILED to StoredEmploymentCheckOutcome.FAILED,
+        ).forEach { (outcome, storedOutcome) ->
+            test("completing an old WOULD_REVOKE as $outcome schedules the next check") {
+                val id = insertEmploymentRelation()
+                insertControlRow(id, now.plusSeconds(86_400), StoredEmploymentCheckOutcome.WOULD_REVOKE)
+                val claim = repository.claimDue(1, 5.minutes, now).single()
+
+                repository.complete(claim, outcome, now.plusSeconds(86_400), now.plusSeconds(1)) shouldBe true
+
+                repository.claimDue(1, 5.minutes, now.plusSeconds(2)) shouldBe emptyList()
+                controlRow(id)[EmploymentReconciliationTable.lastOutcome] shouldBe storedOutcome
+            }
+        }
+
+        test("old WOULD_REVOKE rows keep deterministic due and id ordering with a bounded batch") {
             val overdue = insertEmploymentRelation()
             insertControlRow(overdue, now.minusSeconds(1))
             val futureIds = listOf(
@@ -236,26 +247,26 @@ class ExposedEmploymentReconciliationRepositoryTest :
             )
             futureIds.reversed().forEach {
                 insertEmploymentRelation(id = it)
-                insertControlRow(it, now.plusSeconds(86_400), EmploymentCheckOutcome.WOULD_REVOKE)
+                insertControlRow(it, now.plusSeconds(86_400), StoredEmploymentCheckOutcome.WOULD_REVOKE)
             }
 
-            repository.claimDue(3, 5.minutes, now, revokeEnabled = true).map { it.narmesteLederId } shouldBe
+            repository.claimDue(3, 5.minutes, now).map { it.narmesteLederId } shouldBe
                 listOf(overdue, futureIds[0], futureIds[1])
-            repository.claimDue(3, 5.minutes, now, revokeEnabled = true).map { it.narmesteLederId } shouldBe listOf(futureIds[2])
+            repository.claimDue(3, 5.minutes, now).map { it.narmesteLederId } shouldBe listOf(futureIds[2])
         }
 
-        test("parallel live cutover claimers receive disjoint future WOULD_REVOKE batches") {
+        test("parallel claimers receive disjoint batches of old WOULD_REVOKE rows") {
             val ids = List(20) {
-                insertEmploymentRelation().also { insertControlRow(it, now.plusSeconds(86_400), EmploymentCheckOutcome.WOULD_REVOKE) }
+                insertEmploymentRelation().also { insertControlRow(it, now.plusSeconds(86_400), StoredEmploymentCheckOutcome.WOULD_REVOKE) }
             }.toSet()
 
-            val batches = concurrently { repository.claimDue(10, 5.minutes, now, revokeEnabled = true) }
+            val batches = concurrently { repository.claimDue(10, 5.minutes, now) }
                 .map { batch -> batch.map { it.narmesteLederId }.toSet() }
 
             batches.forEach { it.size shouldBe 10 }
             batches[0].intersect(batches[1]) shouldBe emptySet()
             (batches[0] + batches[1]) shouldBe ids
-            repository.claimDue(20, 5.minutes, now, revokeEnabled = true) shouldBe emptyList()
+            repository.claimDue(20, 5.minutes, now) shouldBe emptyList()
         }
 
         test("two parallel claimers receive disjoint batches covering every due row exactly once") {
@@ -311,11 +322,11 @@ class ExposedEmploymentReconciliationRepositoryTest :
             val row = controlRow(id)
             row[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
             row[EmploymentReconciliationTable.claimToken] shouldBe null
-            row[EmploymentReconciliationTable.lastOutcome] shouldBe EmploymentCheckOutcome.VALID
+            row[EmploymentReconciliationTable.lastOutcome] shouldBe StoredEmploymentCheckOutcome.VALID
             row[EmploymentReconciliationTable.lastCheckedAt]?.toInstant() shouldBe completedAt
             row[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe nextCheck
             repository.complete(claim, EmploymentCheckOutcome.FAILED, now, completedAt) shouldBe false
-            controlRow(id)[EmploymentReconciliationTable.lastOutcome] shouldBe EmploymentCheckOutcome.VALID
+            controlRow(id)[EmploymentReconciliationTable.lastOutcome] shouldBe StoredEmploymentCheckOutcome.VALID
         }
 
         test("stale-token completion after reclaim cannot overwrite the current claim") {
@@ -324,36 +335,13 @@ class ExposedEmploymentReconciliationRepositoryTest :
             val stale = repository.claimDue(1, 5.minutes, now).single()
             val current = repository.claimDue(1, 5.minutes, now.plusSeconds(300)).single()
 
-            repository.complete(stale, EmploymentCheckOutcome.WOULD_REVOKE, now, now.plusSeconds(301)) shouldBe false
+            repository.complete(stale, EmploymentCheckOutcome.REVOKED, now, now.plusSeconds(301)) shouldBe false
             val row = controlRow(id)
             row[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.CLAIMED
             row[EmploymentReconciliationTable.claimToken] shouldBe current.claimToken
             row[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(600)
             row[EmploymentReconciliationTable.lastOutcome] shouldBe null
             row[EmploymentReconciliationTable.lastCheckedAt] shouldBe null
-            row[EmploymentReconciliationTable.shadowWouldRevokeAt] shouldBe null
-        }
-
-        test("WOULD_REVOKE keeps the timestamp of the first decision in a run, and VALID ends the run") {
-            val id = insertEmploymentRelation()
-            insertControlRow(id, now)
-            val first = repository.claimDue(1, 5.minutes, now).single()
-            val firstShadow = now.plusSeconds(10)
-            repository.complete(first, EmploymentCheckOutcome.WOULD_REVOKE, now.plusSeconds(20), firstShadow) shouldBe true
-            controlRow(id)[EmploymentReconciliationTable.shadowWouldRevokeAt]?.toInstant() shouldBe firstShadow
-
-            listOf(EmploymentCheckOutcome.WOULD_REVOKE, EmploymentCheckOutcome.REVOKED, EmploymentCheckOutcome.FAILED).forEach { outcome ->
-                val claim = repository.claimDue(1, 5.minutes, now.plusSeconds(30)).single()
-                repository.complete(claim, outcome, now.plusSeconds(30), now.plusSeconds(31)) shouldBe true
-                val row = controlRow(id)
-                row[EmploymentReconciliationTable.shadowWouldRevokeAt]?.toInstant() shouldBe firstShadow
-                row[EmploymentReconciliationTable.lastOutcome] shouldBe outcome
-                row[EmploymentReconciliationTable.claimToken] shouldBe null
-            }
-
-            val kept = repository.claimDue(1, 5.minutes, now.plusSeconds(30)).single()
-            repository.complete(kept, EmploymentCheckOutcome.VALID, now.plusSeconds(40), now.plusSeconds(32)) shouldBe true
-            controlRow(id)[EmploymentReconciliationTable.shadowWouldRevokeAt] shouldBe null
         }
 
         test("claim validity requires a current unexpired token and that exact relation to remain active") {
@@ -409,74 +397,17 @@ class ExposedEmploymentReconciliationRepositoryTest :
             controlRow(id)[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
         }
 
-        listOf(true, false).forEach { seeded ->
-            test("notes the first source revocation for a ${if (seeded) "seeded" else "never seeded"} relation and makes it due first") {
-                val id = insertEmploymentRelation(to = now)
-                if (seeded) insertControlRow(id, now.plusSeconds(86_400))
-
-                repository.recordSourceRevocation(id, now) shouldBe true
-                repository.recordSourceRevocation(id, now.plusSeconds(60)) shouldBe false
-                controlRow(id).also {
-                    it[EmploymentReconciliationTable.status] shouldBe EmploymentCheckStatus.READY
-                    it[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe Instant.EPOCH
-                    it[EmploymentReconciliationTable.sourceRevocationObservedAt]?.toInstant() shouldBe now
-                }
-            }
-        }
-
-        test("concurrent redeliveries note the source revocation once and leave a claimed lease alone") {
-            val id = insertEmploymentRelation()
-            insertControlRow(id, now)
-            val claim = repository.claimDue(1, 5.minutes, now).single()
-
-            concurrently { repository.recordSourceRevocation(id, now) }.sorted() shouldBe listOf(false, true)
-
-            controlRow(id).also {
-                it[EmploymentReconciliationTable.claimToken] shouldBe claim.claimToken
-                it[EmploymentReconciliationTable.nextCheckAt].toInstant() shouldBe now.plusSeconds(300)
-            }
-        }
-
-        test("a revoked relation is claimed for comparison ahead of a backlog, and not again once compared") {
-            val backlog = insertEmploymentRelation()
-            insertControlRow(backlog, now.minusSeconds(365 * 86_400))
-            val revoked = insertEmploymentRelation(to = now)
-            insertControlRow(revoked, now.plusSeconds(86_400))
-            repository.recordSourceRevocation(revoked, now)
-
-            val comparison = repository.claimDue(1, 5.minutes, now).single()
-            comparison.narmesteLederId shouldBe revoked
-            comparison.sourceRevokedAt shouldBe now
-            repository.claimDue(1, 5.minutes, now).single().sourceRevokedAt shouldBe null
-            repository.complete(comparison, EmploymentCheckOutcome.WOULD_REVOKE, now.plusSeconds(86_400), now.plusSeconds(1)) shouldBe true
-
-            repository.claimDue(10, 5.minutes, now.plusSeconds(2 * 86_400)).map { it.narmesteLederId } shouldBe listOf(backlog)
-        }
-
-        test("a failed comparison is retried within seven days of the source's revocation, but not after") {
-            val revoked = insertEmploymentRelation(to = now)
-            repository.recordSourceRevocation(revoked, now)
-            val first = repository.claimDue(1, 5.minutes, now).single()
-            repository.complete(first, EmploymentCheckOutcome.FAILED, now.plusSeconds(86_400), now) shouldBe true
-
-            val retry = repository.claimDue(1, 5.minutes, now.plusSeconds(86_400)).single()
-            retry.sourceRevokedAt shouldBe now
-            repository.complete(retry, EmploymentCheckOutcome.FAILED, now.plusSeconds(7 * 86_400), now.plusSeconds(86_400)) shouldBe true
-
-            repository.claimDue(1, 5.minutes, now.plusSeconds(7 * 86_400)) shouldBe emptyList()
-        }
-
-        test("stats count due and would-revoke relations by age, for active relations only") {
-            insertControlRow(insertEmploymentRelation(), now, EmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 30) // Due.
-            insertControlRow(insertEmploymentRelation(), now.plusSeconds(1), EmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 31)
-            insertControlRow(insertEmploymentRelation(), now.plusSeconds(1), EmploymentCheckOutcome.VALID)
+        test("stats count due checks and expired leases for active relations only") {
+            insertControlRow(insertEmploymentRelation(), now, StoredEmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 30) // Due.
+            insertControlRow(insertEmploymentRelation(), now.plusSeconds(1), StoredEmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 31)
+            insertControlRow(insertEmploymentRelation(), now.plusSeconds(1), StoredEmploymentCheckOutcome.VALID)
             insertControlRow(insertEmploymentRelation(), now) // Due, never checked.
-            insertControlRow(insertEmploymentRelation(to = now), now, EmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 40) // Ended.
+            insertControlRow(insertEmploymentRelation(to = now), now, StoredEmploymentCheckOutcome.WOULD_REVOKE, wouldRevokeDaysAgo = 40) // Ended.
             insertControlRow(UUID.randomUUID(), now) // No relation.
             insertControlRow(insertEmploymentRelation(), now.minusSeconds(300))
             repository.claimDue(1, 5.minutes, now.minusSeconds(300)) // Due, because the lease expires at now.
 
-            repository.stats(now) shouldBe EmploymentCheckStats(onlyShadowUnder31Days = 1, onlyShadow31DaysOrMore = 1, due = 3)
+            repository.stats(now) shouldBe EmploymentCheckStats(due = 3)
         }
     })
 
@@ -536,8 +467,9 @@ private fun controlRow(id: UUID) = transaction(TestDB.exposedDatabase) {
 private fun insertControlRow(
     id: UUID,
     due: Instant,
-    outcome: EmploymentCheckOutcome? = null,
+    outcome: StoredEmploymentCheckOutcome? = null,
     wouldRevokeDaysAgo: Long? = null,
+    sourceRevokedAt: Instant? = null,
 ) {
     transaction(TestDB.exposedDatabase) {
         EmploymentReconciliationTable.insert {
@@ -546,6 +478,7 @@ private fun insertControlRow(
             it[nextCheckAt] = due.atOffset(ZoneOffset.UTC)
             it[lastOutcome] = outcome
             it[shadowWouldRevokeAt] = wouldRevokeDaysAgo?.let { days -> now.minusSeconds(days * 86_400).atOffset(ZoneOffset.UTC) }
+            it[sourceRevocationObservedAt] = sourceRevokedAt?.atOffset(ZoneOffset.UTC)
         }
     }
 }

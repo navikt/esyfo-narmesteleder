@@ -126,15 +126,15 @@ Operational health, metrics, OpenAPI and Swagger endpoints belong to
 | Elected leader                         | `PersonEnrichmentTask`         | `EnrichPendingRelationPersonsUseCase` resolves missing person names through PDL.                                                                      |
 | Elected leader                         | `DeleteOldSykmeldingerTask`    | `DeleteOldSykmeldinger` removes sendt sykmelding records according to the retention policy.                                                           |
 | Every pod, database claims with leases | `employment-check-seed` loop   | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates reconciliation work for active relations.                                                  |
-| Every pod, database claims with leases | `employment-check` loop        | `CheckNarmestelederrelasjonEmploymentUseCase` checks employment through Aareg and optionally publishes revocations.                                   |
+| Every pod, database claims with leases | `employment-check` loop        | `CheckNarmestelederrelasjonEmploymentUseCase` checks employment through Aareg and publishes revocations when employment has ended.                    |
 
-All background work is feature-flagged. `DIALOGPORTEN_TASK_ENABLED` controls
+Most background work is feature-flagged. `DIALOGPORTEN_TASK_ENABLED` controls
 `SendDialogTask` and `UpdateDialogTask`. `PersonEnrichmentTask` requires both
 that flag and `PERSON_ENRICHMENT_TASK_ENABLED` because it starts inside the
 Dialogporten branch. `BEHOV_MAINTENANCE_TASK_ENABLED` controls behov expiry and
-sykmelding retention. `EMPLOYMENT_CHECK_ENABLED` controls both employment
-loops, while publishing revocations additionally requires
-`EMPLOYMENT_CHECK_REVOKE_ENABLED`.
+sykmelding retention. Employment reconciliation starts on every pod without a
+feature flag; it claims work through the database lease and publishes a
+revocation when the Aareg rule determines that employment has ended.
 
 ## Main write flows
 
@@ -265,7 +265,7 @@ flowchart LR
 
     authorize --> publish[Publish NlAvbrutt]
     deduplicate --> publish
-    aareg -->|Employment ended and publishing enabled| publish
+    aareg -->|Employment ended| publish
 
     publish --> command[teamsykmelding.syfo-narmesteleder]
     command -.-> source[source Leesah processing]
@@ -283,8 +283,7 @@ The three triggers intentionally have different validation:
   after publishing, so a redelivered sykmelding is not published again once
   the brudd is stored; a failure between publishing and storing can still
   publish twice;
-- employment reconciliation never revokes after a failed Aareg lookup and
-  publishes only when the revocation feature flag is enabled.
+- employment reconciliation never revokes after a failed Aareg lookup.
 
 ### Ingest and republish Leesah relations
 

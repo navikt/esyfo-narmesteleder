@@ -79,7 +79,7 @@ private fun naisApplicationSettings() = settingsFromManifest("nais/nais-prod.yam
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
 private fun capabilityDependencies(settings: ApplicationSettings) = listOf(
     organisasjonstilgangDependencies(),
-    narmestelederrelasjonDependencies(settings.narmestelederrelasjon.employmentCheck),
+    narmestelederrelasjonDependencies(),
     narmestelederbehovDependencies(settings.narmestelederbehov),
     narmestelederstatistikkDependencies(),
     sykmeldingDependencies(),

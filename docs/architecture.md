@@ -152,16 +152,14 @@ Owns established and revoked narmesteleder relations:
 - revoke the relation for a sendt sykmelding without validation, publishing
   with the `ARBEIDSTAGER_SYKMELDING_REVOKE` Kafka source;
 - revoke a relation when the employee's employment in the organization has
-  ended, by checking active relations against Aareg at regular intervals (#473,
-  being introduced). It takes over the behavior of team sykmelding's
+  ended, by checking active relations against Aareg at regular intervals (#473).
+  It takes over the behavior of team sykmelding's
   `narmesteleder-arbeidsforhold`: keep the relation while the employee has an
   employment whose workplace has the relation's organization number and that
   has not ended or ended no more than four months ago. Otherwise publish with the
-  `narmesteleder-arbeidsforhold` Kafka source. A failed lookup never revokes. The
-  check runs in shadow mode first (`EMPLOYMENT_CHECK_ENABLED`), is compared with
-  team sykmelding's revocations on Leesah (`EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED`)
-  and publishes only with `EMPLOYMENT_CHECK_REVOKE_ENABLED`. Startup fails if
-  revocation and source observation are both enabled. Live mode freezes comparison.
+  `narmesteleder-arbeidsforhold` Kafka source. A failed lookup never revokes.
+  The check and its seed loop start on every pod and publish revocations
+  directly when employment has ended.
   `NlAvbrutt` deactivates all active relations for orgnr+fnr, so a new relation
   established between lookup and publish could be hit (R2). The reference app
   has the same race; it is documented, not fixed here;
@@ -379,12 +377,12 @@ Owns application assembly:
 - aggregate routes and operational endpoints.
 
 Business classes do not depend on Koin or bootstrap. Capabilities never see
-the bootstrap `ApplicationSettings`. Bootstrap takes capability-owned settings such
-as `NarmestelederbehovSettings` and `NarmestelederrelasjonEmploymentSettings` and passes
-them as parameters to the capability module, which hands them on to its
-`<capability>Dependencies(settings)`; settings are not registered in Koin.
-Single feature flags are passed directly to consumers. `BootstrapBoundaryTest` fails if a
-business module references `bootstrap`.
+the bootstrap `ApplicationSettings`. Bootstrap passes capability-owned
+settings to the modules or startup functions that need them: for example,
+`NarmestelederbehovSettings` goes through its capability module to
+`narmestelederbehovDependencies(settings)`. These settings are not registered
+in Koin. Single feature flags are passed directly to consumers.
+`BootstrapBoundaryTest` fails if a business module references `bootstrap`.
 
 `main()` reads `application.conf` into `ApplicationSettings` and starts
 `Application.bootstrap(settings)`, which
@@ -398,7 +396,7 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(settings.narmestelederrelasjon.employmentCheck)
+    narmestelederrelasjonModule()
     narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()
     sykmeldingModule()
@@ -412,7 +410,7 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
         maintenanceTaskSettings = settings.maintenanceTask,
         personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
     )
-    configureEmploymentChecks(settings.narmestelederrelasjon.employmentCheck)
+    configureEmploymentChecks()
 }
 ```
 

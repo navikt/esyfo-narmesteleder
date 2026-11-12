@@ -4,16 +4,13 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopPreparing
 import io.ktor.server.application.ServerReady
 import kotlinx.coroutines.runBlocking
-import no.nav.syfo.narmestelederrelasjon.NarmestelederrelasjonEmploymentSettings
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.CheckNarmestelederrelasjonEmploymentUseCase
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckSettings
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.SeedNarmestelederrelasjonEmploymentChecksUseCase
 import no.nav.syfo.platform.scheduling.BackgroundLoop
 import org.koin.ktor.ext.inject
 
-internal fun Application.configureEmploymentChecks(relationSettings: NarmestelederrelasjonEmploymentSettings) {
-    if (!relationSettings.employmentCheckEnabled) return
-
+internal fun Application.configureEmploymentChecks() {
     val settings by inject<EmploymentCheckSettings>()
     val check by inject<CheckNarmestelederrelasjonEmploymentUseCase>()
     val seed by inject<SeedNarmestelederrelasjonEmploymentChecksUseCase>()

@@ -13,6 +13,7 @@ Read a doc only when the task matches, and only the relevant section
 (`grep -n '^#' <file>`).
 
 - Unclear domain term: `CONTEXT.md`
+- Running locally, Docker Compose, dev tokens: `docs/development.md`
 - Adding or moving code; modules, ports, errors, transactions: `docs/architecture.md`
 - Changing an endpoint, Kafka consumer/producer or scheduled task: `docs/data-flow.md`
 - Adding or changing logs: `docs/logging.md`

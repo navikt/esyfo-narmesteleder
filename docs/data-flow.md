@@ -105,7 +105,7 @@ Health, metrics and Swagger belong to `platform`.
 | sendt sykmelding | `PersistSendtSykmeldingConsumer` | Normalize, deduplicate and store records for search, statistics, expiry and retention. |
 | source Leesah | `LeesahNLKafkaConsumer` | Behov lifecycle, see [Leesah](#ingest-and-republish-leesah). |
 | source Leesah | `PersistNarmestelederRegisterFromLeesahConsumer` | Store the local relation register and republish. |
-| `pdl.leesah-v1` | `PdlLeesahConsumer` | Refresh names in the relation-person projection on `NAVN_V1`. |
+| `pdl.leesah-v1` | `PdlLeesahConsumer` | Refresh names in the relation-person projection on `NAVN_V1`. Updates existing persons only. |
 
 All except the first and third are leader-controlled. Flags:
 `PERSIST_SENDT_SYKMELDING`, `PERSIST_NARMESTELEDER_REGISTER`,

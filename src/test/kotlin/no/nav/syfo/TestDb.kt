@@ -11,16 +11,14 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
-import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
+import org.testcontainers.postgresql.PostgreSQLContainer
 import java.sql.Connection
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 import kotlin.use
 import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
-
-class PsqlContainer : PostgreSQLContainer<PsqlContainer>("postgres:18-alpine")
 
 private val log = LoggerFactory.getLogger(TestDB::class.qualifiedName)
 
@@ -73,12 +71,12 @@ class TestDB private constructor() {
             )
         }
 
-        private val psqlContainer: PsqlContainer
+        private val psqlContainer: PostgreSQLContainer
 
         init {
             try {
                 psqlContainer =
-                    PsqlContainer()
+                    PostgreSQLContainer("postgres:18-alpine")
                         .withExposedPorts(5432)
                         .withUsername("username")
                         .withPassword("password")

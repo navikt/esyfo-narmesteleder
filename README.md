@@ -41,3 +41,8 @@ the person on sick leave, and with PUT to assign a line manager.
 ## For Nav-ansatte
 
 Interne henvendelser kan sendes via Slack i kanalen [#esyfo](https://nav-it.slack.com/archives/C012X796B4L).
+
+## For eksterne konsumenter
+
+Eksterne konsumenter, som leverandører av lønns- og personalsystem (LPS), kan stille spørsmål via Slack i kanalen
+[#api-sykepenger-arbeidsgiver](https://nav-it.slack.com/archives/C08KWH7CSTW).

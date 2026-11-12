@@ -3,6 +3,7 @@
 ## Levels
 
 - WARN and ERROR: typed events, `logger.logEvent(event, details, cause = e)`.
+  Always pass `cause`; it records class names and stack frames, never messages.
 - INFO and DEBUG: plain SLF4J. Use an event only for an INFO outcome worth querying.
 
 ## Events

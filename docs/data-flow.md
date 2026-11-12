@@ -114,7 +114,7 @@ Operational health, metrics, OpenAPI and Swagger endpoints belong to
 | `teamsykmelding.syfo-sendt-sykmelding`     | `PersistSendtSykmeldingConsumer`                 | Normalizes, deduplicates and persists sendt sykmelding records used by searches, statistics, expiry and retention. Leader-controlled and feature-flagged.                               |
 | `teamsykmelding.syfo-narmesteleder-leesah` | `LeesahNLKafkaConsumer` | Requests a need for qualifying employee-, manager-, personnel-manager- or LPS-triggered deactivations, and fulfils open needs when an active relation is observed. |
 | `teamsykmelding.syfo-narmesteleder-leesah` | `PersistNarmestelederRegisterFromLeesahConsumer` | Validates and stores the local relation register, registers persons for enrichment and republishes valid records to the team-esyfo Leesah topic. Leader-controlled and feature-flagged. |
-| `pdl.leesah-v1`                            | `PdlLeesahConsumer`                              | Refreshes names in the relation-person projection after relevant PDL name events. Leader-controlled and feature-flagged.                                                                |
+| `pdl.leesah-v1`                            | `PdlLeesahConsumer`                              | Refreshes names in the relation-person projection after relevant PDL name events. Updates existing persons only. Leader-controlled and feature-flagged.                                 |
 
 ### Background work
 

@@ -92,7 +92,7 @@ organization access and relation flows.
 | --------------------------------------------- | ------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `GET /api/v1/access/organizations`            | `organisasjonstilgang`    | `ListAccessibleOrganizationsUseCase`         | Resolve organizations available to the authenticated personnel manager through Altinn Tilganger.    |
 | `GET /api/v1/linemanager/requirement` | `narmestelederbehov` | `ListNarmestelederbehovUseCase` | Check organization access, read open needs, then resolve and persist missing employee names through PDL. |
-| `GET /api/v1/linemanager/requirement/{id}` | `narmestelederbehov` | `GetNarmestelederbehovUseCase` | Read one need, resolve and persist a missing employee name through PDL, then check organization access. This legacy order is tracked by [#602](https://github.com/navikt/esyfo-narmesteleder/issues/602). |
+| `GET /api/v1/linemanager/requirement/{id}` | `narmestelederbehov` | `GetNarmestelederbehovUseCase` | Read one need, resolve and persist a missing employee name through PDL, then check organization access. |
 | `PUT /api/v1/linemanager/requirement/{id}`    | `narmestelederbehov`      | `FulfillNarmestelederbehovUseCase`           | Check access, establish a relation, mark the need fulfilled and complete its Dialogporten dialog.   |
 | `POST /api/v1/linemanager`                    | `narmestelederrelasjon`   | `SubmitNarmestelederrelasjonUseCase`         | Check access, validate the proposed relation and publish an establishment command.                  |
 | `POST /api/v1/linemanager/revoke` | `narmestelederrelasjon` | `RevokeActiveNarmestelederrelasjonUseCase` | Check organization access, resolve the employee in PDL, validate the submitted last name and read the active relation before publishing. No active relation is treated as success. |
@@ -285,7 +285,7 @@ The three triggers intentionally have different validation:
   after publishing, so a redelivered sykmelding is not published again once
   the brudd is stored; a failure between publishing and storing can still
   publish twice. It publishes with the `ARBEIDSTAGER_SYKMELDING_REVOKE` source;
-- employment reconciliation (#473) replaces team sykmelding's
+- employment reconciliation replaces team sykmelding's
   `narmesteleder-arbeidsforhold`. It keeps a relation while the employee has an
   employment at the relation's organization number that has not ended or ended
   at most four months ago, and otherwise publishes with the
@@ -380,9 +380,7 @@ flowchart LR
 The behov GET endpoints are not currently read-only. When an employee name is
 missing, they resolve it through PDL and persist it in `nl_behov`. The list
 endpoint checks organization access first. The single-behov endpoint performs
-the name lookup and write before its organization-access check; this legacy
-ordering is tracked by
-[#602](https://github.com/navikt/esyfo-narmesteleder/issues/602).
+the name lookup and write before its organization-access check.
 
 `GetNarmestelederstatistikkUseCase` is the widest cross-table read model: it
 checks organization access, then reads private table projections over

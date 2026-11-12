@@ -18,8 +18,8 @@
 
 ## Overview
 
-narmesteleder-api lets employers report who is the line manager (narmesteleder) for an employee on sick leave, and
-maintains the resulting line manager relation (narmestelederrelasjon) between the employee, the line manager and the
+narmesteleder-api lets employers report who is the line manager (nærmesteleder) for an employee on sick leave, and
+maintains the resulting line manager relation (nærmestelederrelasjon) between the employee, the line manager and the
 organization.
 
 It identifies when an employee on sick leave needs a line manager from their employer, and tells the employer by

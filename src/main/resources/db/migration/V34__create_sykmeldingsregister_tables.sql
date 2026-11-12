@@ -2,10 +2,13 @@ CREATE TABLE sykmeldingsregister_dead_letter
 (
     source_partition INTEGER     NOT NULL,
     source_offset    BIGINT      NOT NULL,
+    sykmelding_id    UUID,
     reason           TEXT        NOT NULL,
     created          TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT sykmeldingsregister_dead_letter_pkey PRIMARY KEY (source_partition, source_offset)
 );
+
+CREATE INDEX sykmeldingsregister_dead_letter_sykmelding_id_idx ON sykmeldingsregister_dead_letter (sykmelding_id);
 
 CREATE TABLE sykmelding
 (

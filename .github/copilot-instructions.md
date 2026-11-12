@@ -29,6 +29,15 @@ Read only the section you need. Find headings with `grep -n '^#' <file>`.
 - Open transactions only in repositories, with `Database.ioTransaction`. Never
   wrap it in `withContext(Dispatchers.IO)`. Never span a transaction over Kafka
   or HTTP calls.
+- Pass `Connection.TRANSACTION_READ_COMMITTED` to `ioTransaction` for claims
+  and queues; the pool's default `REPEATABLE_READ` raises 40001 on concurrent
+  row updates.
+- Make transactions and HTTP calls safe to repeat: Exposed retries
+  `ioTransaction` up to 3 times on any `SQLException` (opt out with
+  `maxAttempts = 1`), and `httpClientDefault` retries all methods, including
+  POST, twice on non-4xx failures and throws on non-2xx.
+- Match new `NlResponseSource` values to the source strings team sykmelding's
+  `narmesteleder` app reads.
 - Access the database only through Exposed DSL (`Table`). Never write raw JDBC,
   SQL strings or Exposed DAO code; migrate existing JDBC/DAO code you touch.
 - Add a new Flyway migration; never edit an existing one.

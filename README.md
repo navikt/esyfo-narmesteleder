@@ -9,18 +9,12 @@
 
 ## Environments
 
-🚀 [Production, internal](https://narmesteleder-api.intern.nav.no)
-
-🚀 [Production, external](https://narmesteleder-api.nav.no/swagger)
-
-🛠️ [Development, internal](https://narmesteleder-api.intern.dev.nav.no)
-
-🛠️ [Development, external](https://narmesteleder-api.ekstern.dev.nav.no/swagger)
-
-## OpenAPI
-
-- External API: https://narmesteleder-api.nav.no/swagger
-- Internal API: https://narmesteleder-api.intern.nav.no/internal/swagger
+| | API | OpenAPI |
+| --- | --- | --- |
+| 🚀 Production, external | `narmesteleder-api.nav.no` | [Swagger](https://narmesteleder-api.nav.no/swagger) |
+| 🚀 Production, internal | `narmesteleder-api.intern.nav.no` | [Swagger](https://narmesteleder-api.intern.nav.no/internal/swagger) |
+| 🛠️ Development, external | `narmesteleder-api.ekstern.dev.nav.no` | [Swagger](https://narmesteleder-api.ekstern.dev.nav.no/swagger) |
+| 🛠️ Development, internal | `narmesteleder-api.intern.dev.nav.no` | [Swagger](https://narmesteleder-api.intern.dev.nav.no/internal/swagger) |
 
 ## Overview
 

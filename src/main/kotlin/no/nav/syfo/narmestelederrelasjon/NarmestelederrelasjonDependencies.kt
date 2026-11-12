@@ -15,7 +15,6 @@ import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentC
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckSettings
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentHistoryLookup
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentReconciliationRepository
-import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.RecordSourceEmploymentRevocationUseCase
 import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.SeedNarmestelederrelasjonEmploymentChecksUseCase
 import no.nav.syfo.narmestelederrelasjon.application.establish.EmploymentLookup
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
@@ -69,7 +68,7 @@ import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 private val LOOKUP_DISCARDED_EMAIL_ADDRESS_METRICS = named("lookupDiscardedEmailAddressMetrics")
 private val EMPLOYEE_LINEMANAGER_DISCARDED_EMAIL_ADDRESS_METRICS = named("employeeLinemanagerDiscardedEmailAddressMetrics")
 
-fun narmestelederrelasjonDependencies(settings: NarmestelederrelasjonEmploymentSettings) = module {
+fun narmestelederrelasjonDependencies() = module {
     single<PublishNarmestelederrelasjon> { KafkaPublishNarmestelederrelasjon(get()) }
     single<PublishNarmestelederrelasjonRevocation> { KafkaPublishNarmestelederrelasjonRevocation(get()) }
     single<NarmestelederrelasjonRepository> { ExposedNarmestelederrelasjonRepository(get()) }
@@ -101,7 +100,6 @@ fun narmestelederrelasjonDependencies(settings: NarmestelederrelasjonEmploymentS
         PersistNarmestelederrelasjonerFromLeesahUseCase(
             repository = get(),
             metrics = get(),
-            recordSourceEmploymentRevocation = if (settings.employmentCheckObserveSourceEnabled) get() else null,
         )
     }
     single { EmploymentCheckSettings() }
@@ -116,11 +114,9 @@ fun narmestelederrelasjonDependencies(settings: NarmestelederrelasjonEmploymentS
             clock = get(),
             metrics = get(),
             publisher = get(),
-            revokeEnabled = settings.employmentCheckRevokeEnabled,
         )
     }
     single { SeedNarmestelederrelasjonEmploymentChecksUseCase(get(), get(), get(), get()) }
-    single { RecordSourceEmploymentRevocationUseCase(get(), get(), get()) }
     single<RelationPersonRepository> { ExposedRelationPersonRepository(get<ExposedDatabase>()) }
     single<BulkPersonLookup> { PdlBulkPersonLookup(get()) }
     single<RelationPersonNameUpdateMetrics> { MicrometerRelationPersonNameUpdateMetrics() }

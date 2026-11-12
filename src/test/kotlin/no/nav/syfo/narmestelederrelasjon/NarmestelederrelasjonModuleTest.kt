@@ -30,11 +30,6 @@ import java.sql.Connection
 class NarmestelederrelasjonModuleTest :
     FunSpec({
         test("registers its dependencies and mounts relasjon routes on their own API prefixes") {
-            val settings = NarmestelederrelasjonEmploymentSettings(
-                employmentCheckEnabled = false,
-                employmentCheckObserveSourceEnabled = false,
-                employmentCheckRevokeEnabled = false,
-            )
             val externalDependencies = module {
                 single { ApplicationState() }
                 single<DatabaseInterface> { UnusedDatabase }
@@ -52,7 +47,7 @@ class NarmestelederrelasjonModuleTest :
             testApplication {
                 application {
                     platformModule(listOf(externalDependencies))
-                    narmestelederrelasjonModule(settings)
+                    narmestelederrelasjonModule()
                 }
 
                 // Missing tokens are rejected before clients or repositories are used.

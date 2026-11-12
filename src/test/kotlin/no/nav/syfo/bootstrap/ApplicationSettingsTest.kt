@@ -14,10 +14,9 @@ import no.nav.syfo.platform.kafka.SchemaRegistryAuth
 
 class ApplicationSettingsTest :
     FunSpec({
-        test("switches that change data or skip error handling are off unless NAIS enables them") {
+        test("Kafka commits on errors are disabled unless NAIS enables them") {
             assertSoftly(settingsFrom(requiredEnvironment)) {
                 kafka.commitOnAllErrors shouldBe false
-                narmestelederrelasjon.employmentCheck.employmentCheckRevokeEnabled shouldBe false
             }
         }
 

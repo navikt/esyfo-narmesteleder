@@ -6,21 +6,75 @@ Domain terms: [`CONTEXT.md`](../CONTEXT.md).
 
 ## Overview
 
-- **In:** HTTP callers; Kafka `teamsykmelding.syfo-sendt-sykmelding`,
-  `teamsykmelding.syfo-narmesteleder-leesah` (source Leesah) and
-  `pdl.leesah-v1`; background tasks.
-- **Out:** commands to `teamsykmelding.syfo-narmesteleder`, republished
-  relations to `team-esyfo.syfo-narmesteleder-leesah`, dialogs in Dialogporten.
-- **Upstream:** PDL, Aareg, Ereg, Dinesykmeldte, Altinn Tilganger/PDP. Valkey
-  caches Ereg organizations and PDL person details.
-- **Capability calls:** `sykmelding` → `narmestelederbehov`,
-  `narmestelederrelasjon`; `narmestelederbehov` → `organisasjonstilgang`,
-  `narmestelederrelasjon`; `narmestelederrelasjon` and
-  `narmestelederstatistikk` → `organisasjonstilgang`.
-- **Database:** one PostgreSQL database; table ownership follows capability
-  boundaries. `narmestelederstatistikk`, relation search and behov expiry read
-  other capabilities' tables (`nl_behov`, `narmeste_leder`,
-  `sendt_sykmelding`) only through private read-only projections.
+Solid arrows are synchronous calls; dashed arrows are Kafka or background
+processing.
+
+```mermaid
+flowchart LR
+    callers[API consumers]
+    sendtTopic[teamsykmelding.syfo-sendt-sykmelding]
+    sourceLeesah[teamsykmelding.syfo-narmesteleder-leesah]
+    pdlLeesah[pdl.leesah-v1]
+
+    subgraph app[esyfo-narmesteleder]
+        access[organisasjonstilgang]
+        behov[narmestelederbehov]
+        relation[narmestelederrelasjon]
+        sykmelding[sykmelding]
+        statistics[narmestelederstatistikk]
+        tasks[Background tasks]
+        db[(PostgreSQL)]
+        cache[(Valkey)]
+    end
+
+    external[PDL / Aareg / Ereg / Dinesykmeldte]
+    altinn[Altinn Tilganger / PDP]
+    dialogporten[Dialogporten]
+    commandTopic[teamsykmelding.syfo-narmesteleder]
+    esyfoLeesah[team-esyfo.syfo-narmesteleder-leesah]
+
+    callers --> access
+    callers --> behov
+    callers --> relation
+    callers --> statistics
+
+    sendtTopic -.-> sykmelding
+    sourceLeesah -.-> behov
+    sourceLeesah -.-> relation
+    pdlLeesah -.-> relation
+    tasks -.-> behov
+    tasks -.-> relation
+    tasks -.-> sykmelding
+
+    behov --> access
+    behov --> relation
+    sykmelding --> behov
+    sykmelding --> relation
+    relation --> access
+    statistics --> access
+
+    access --> altinn
+    access --> external
+    behov --> external
+    relation --> external
+    behov --> dialogporten
+
+    behov --> db
+    relation --> db
+    sykmelding --> db
+    statistics --> db
+    access --> cache
+    relation --> cache
+
+    relation --> commandTopic
+    relation -.-> esyfoLeesah
+```
+
+One PostgreSQL database; table ownership follows capability boundaries.
+`narmestelederstatistikk`, relation search and behov expiry read other
+capabilities' tables (`nl_behov`, `narmeste_leder`, `sendt_sykmelding`) only
+through private read-only projections. Valkey caches Ereg organizations and PDL
+person details.
 
 ## Entry points
 

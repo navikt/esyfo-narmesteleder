@@ -1,8 +1,6 @@
 # esyfo-narmesteleder
 
-narmesteleder-api (team-esyfo): manages relations between sykmeldte and their
-narmeste ledere. Kotlin, Ktor, Exposed/PostgreSQL, Flyway, Kafka, Valkey,
-Kotest, MockK, Nais/GCP.
+Manages relations between sykmeldte and their narmeste ledere.
 
 ## Commands
 

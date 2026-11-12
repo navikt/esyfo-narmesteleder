@@ -1,31 +1,30 @@
 # System-user access rejections
 
-System-user requests are checked against the requested organization in Altinn PDP.
-Only `Permit` grants access. After a normal `Deny` or `NotApplicable`, the
-fallback checks whether the system user's organization belongs to the requested
-organization's Ereg hierarchy and, if so, asks PDP for that organization.
+## Decision
 
-## Stop on upstream failures
+- Altinn PDP checks the system user against the requested organization. Only
+  `Permit` grants access.
+- After `Deny` or `NotApplicable`, check whether the system user's organization
+  is in the requested organization's Ereg hierarchy. If it is, ask PDP for that
+  organization.
+- `Indeterminate` is a denial (HTTP 403), not an upstream failure.
+- Empty, malformed or multiple PDP decisions fail closed.
 
-Failures from Texas, the Altinn token exchange, PDP or Ereg return
-`OrganizationAccessResult.Unavailable(originalFailure)` immediately. No further
-fallback or rejection log is produced. The API returns HTTP 500
-`UPSTREAM_SERVICE_UNAVAILABLE`, logs `api_request_failed` once at the edge and
-counts `get_narmestelederrelasjon_total{outcome="upstream_unavailable"}`.
-Ereg `Success(null)` still gives HTTP 400 `ORGANIZATION_NOT_FOUND`.
+## Upstream failures
 
-PDP `Indeterminate` is a denial, not an upstream failure: it is logged as
-`pdp_decision = Indeterminate` in the rejection event and keeps HTTP 403, so
-LPS providers are not met with a 500 for a missing delegation.
-Token exchange failures retain `texas` or `altinn-authentication` as their source
-and use `TOKEN_EXCHANGE`. See ADR-0004 and [logging.md](logging.md).
-Empty, malformed or multiple PDP decisions fail closed rather than granting
-based on the first decision.
+- A Texas, Altinn token exchange, PDP or Ereg failure returns
+  `OrganizationAccessResult.Unavailable(originalFailure)` at once: no fallback
+  and no rejection log.
+- The API answers HTTP 500 `UPSTREAM_SERVICE_UNAVAILABLE`, logs
+  `api_request_failed` once at the edge and counts
+  `get_narmestelederrelasjon_total{outcome="upstream_unavailable"}`.
+- Ereg `Success(null)` gives HTTP 400 `ORGANIZATION_NOT_FOUND`.
 
-## One event for the final rejection
+## Rejection event
 
-When both completed checks deny access, `AltinnOrganizationAccess` emits one
-`WARN` through `esyfo-logger`. `SystemUserAccessRejection` owns the typed event:
+When both checks deny, `AltinnOrganizationAccess` logs one WARN, owned by
+`SystemUserAccessRejection`. The response stays HTTP 403 and StatusPages does
+not log it again.
 
 | Field | Value |
 | --- | --- |
@@ -34,23 +33,13 @@ When both completed checks deny access, `AltinnOrganizationAccess` emits one
 | `operation` | `validate_system_user_access` |
 | `rejection_reason` | `SYSTEM_USER_ACCESS_NOT_GRANTED` |
 | `pdp_decision` | `Deny`, `NotApplicable` or `Indeterminate` |
-| `pdp_fallback_decision` | `Deny`, `NotApplicable`, `Indeterminate`, or `not_checked` outside the hierarchy |
+| `pdp_fallback_decision` | Same values, or `not_checked` outside the hierarchy |
 
-`Permit` can never occur in a rejection; `Indeterminate` is logged as a denial. The diagnostic
-fields are not metric labels. Existing `trace_id` is preserved. A fallback
-`Permit` succeeds without a rejection. Completed denials retain HTTP 403 and
-the existing API error type and message; StatusPages does not log them again.
+- The event does not say why access is missing.
+- Never add tokens, system-user IDs, organization numbers, provider messages or
+  payloads. Do not use the fields as metric labels.
 
-The event does not establish why access is missing or prove a missing delegation.
-Use an approved environment for investigation requiring caller identity.
-Never add tokens, system-user IDs, organization numbers, provider messages or
-raw payloads to diagnostics. Do not change policy merely to reduce counts.
+## Tests
 
-## Verification and pre-merge gate
-
-Run `./gradlew test --tests '*AltinnOrganizationAccessLoggingContractTest'`.
-The test covers direct/fallback decisions, original failures with no rejection,
-cancellation, trace context and identifier canaries using fakes. It validates
-the packaged v1 contract and local event catalog with `esyfo-logger-testkit`,
-capturing JSON from the NAIS `stdout_json` encoder in `src/main/resources/logback.xml`.
-Schema validation is part of the normal Gradle test; the testkit remains test-only.
+`AltinnOrganizationAccessTest` covers decisions, fallback, upstream failures,
+cancellation, trace context and the log contract.

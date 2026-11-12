@@ -249,7 +249,9 @@ sequenceDiagram
 
 Submission and fulfilment share the relation capability's establishment
 contract. Neither flow writes the relation register directly. The resulting
-relation is stored when it later arrives on Leesah.
+relation is stored when it later arrives on Leesah, so all validation happens
+before publishing. Name-validation metrics are recorded right after matching,
+before any side effect can fail.
 
 ### Revoke a relation
 
@@ -282,8 +284,17 @@ The three triggers intentionally have different validation:
 - sendt sykmelding revocation trusts the event and records the processed brudd
   after publishing, so a redelivered sykmelding is not published again once
   the brudd is stored; a failure between publishing and storing can still
-  publish twice;
-- employment reconciliation never revokes after a failed Aareg lookup.
+  publish twice. It publishes with the `ARBEIDSTAGER_SYKMELDING_REVOKE` source;
+- employment reconciliation (#473) replaces team sykmelding's
+  `narmesteleder-arbeidsforhold`. It keeps a relation while the employee has an
+  employment at the relation's organization number that has not ended or ended
+  at most four months ago, and otherwise publishes with the
+  `narmesteleder-arbeidsforhold` source. It never revokes after a failed Aareg
+  lookup and publishes only with `EMPLOYMENT_CHECK_REVOKE_ENABLED`.
+  `EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED` compares with team sykmelding's
+  revocations; startup fails if both flags are on. `NlAvbrutt` deactivates all
+  active relations for orgnr and fnr, so a relation established between lookup
+  and publish can be revoked; the reference app has the same race.
 
 ### Ingest and republish Leesah relations
 

@@ -23,8 +23,8 @@ Each business module under `no.nav.syfo` has the layers it needs: `api`,
 | Module | Owns | Does not |
 |---|---|---|
 | `narmestelederbehov` | Need lifecycle (`nl_behov`): create without duplicates, fulfil, expire, query; Dialogporten state and retries; Leesah consumer that creates and fulfils needs | Validate relations or use relation repositories, ports, domain or Kafka models |
-| `narmestelederrelasjon` | Establish, revoke and validate relations; publish relation messages; local register from Leesah and republishing; lookup, search, `HasActiveNarmestelederrelasjon`; `RelationPerson` projection until #602; employment check against Aareg (#473) | |
-| `sykmelding` | Sendt sykmelding: normalize, deduplicate, persist, retention; trigger need creation and revocation through contracts; the stored `kilde` per brudd | Call Dinesykmeldte for other modules (they keep their own `ActiveSykmeldingLookup` until #508) |
+| `narmestelederrelasjon` | Establish, revoke and validate relations; publish relation messages; local register from Leesah and republishing; lookup, search, `HasActiveNarmestelederrelasjon`; `RelationPerson` projection (moving to `person`); employment check against Aareg | |
+| `sykmelding` | Sendt sykmelding: normalize, deduplicate, persist, retention; trigger need creation and revocation through contracts; the stored `kilde` per brudd | Call Dinesykmeldte for other modules (each keeps its own `ActiveSykmeldingLookup` against Dinesykmeldte) |
 | `organisasjonstilgang` | Organization access: Altinn Tilganger, PDP, Ereg hierarchy; returns allow, deny or `Unavailable` | Load behov or relations; the caller owns lookup, authorization order and non-disclosure |
 | `narmestelederstatistikk` | Read-only statistics over `nl_behov`, `narmeste_leder`, `sendt_sykmelding` via private table definitions | Write; no `domain`; nothing depends on it |
 | `person` (proposed) | `person` table, idempotent registration, enrichment, `NAVN_V1` updates, cleanup of unreferenced rows | Write behov or relation state. See [ADR-0005](adr/ADR-0005-person-eier-lokale-personopplysninger.md) |
@@ -41,7 +41,7 @@ Supporting packages:
   `application` holds `Step`, which never appears in public contracts or ports.
   `scheduling`: new scheduled work uses database claims with a lease on all
   pods ([ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md));
-  `ScheduledLeaderTask` jobs keep leader election until #519.
+  existing `ScheduledLeaderTask` jobs still use leader election.
 
 ## Dependency rules
 
@@ -120,7 +120,7 @@ configure provider `skipWhen`. Routes accepting user or system tokens use
 - Ports and results carry an `Unavailable` variant; use cases stop with it via
   `Step`. HTTP edges map it to 500 `UPSTREAM_SERVICE_UNAVAILABLE`; Kafka
   consumers and jobs apply their own retry rule. The Dinesykmeldte client still
-  throws (#683).
+  throws.
 - Database failures, Kafka publishing failures and programming errors remain
   exceptions. Kafka adapters classify them as retry, permanent or fatal.
 
@@ -179,7 +179,7 @@ Keep these out of structural pull requests:
 
 - outbox or changed relation-delivery guarantees;
 - removing Kafka leader gating or changing consumer topology;
-- #508: local sykmelding lookup instead of Dinesykmeldte;
+- local sykmelding lookup instead of Dinesykmeldte;
 - splitting requirement and Dialogporten state in the database;
 - separate Gradle modules or deployable services;
-- the person ownership rollout (#602), which follows ADR-0005 slice by slice.
+- the person ownership rollout, which follows ADR-0005 slice by slice.

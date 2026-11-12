@@ -33,8 +33,6 @@ the person on sick leave, and with PUT to assign a narmeste leder.
 - [Kafka topic `team-esyfo.syfo-narmesteleder-leesah`](docs/kafka/syfo-narmesteleder-leesah.md) and its
   [JSON Schema](docs/kafka/syfo-narmesteleder-leesah.schema.json)
 - [Architecture decision records](docs/adr)
-- [Flex Arkitektur](https://flex-arkitektur.nav.no/?apper=prod-gcp.team-esyfo.esyfo-narmesteleder): always up-to-date
-  runtime diagram
 
 ## For Nav-ansatte
 

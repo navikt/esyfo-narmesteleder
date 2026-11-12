@@ -1,12 +1,12 @@
 # Application logging
 
-WARN and ERROR are typed, named events. INFO and DEBUG are usually ordinary
-SLF4J logs; an INFO outcome worth querying may also be an event.
+## Levels
 
-## Defining an event
+- WARN and ERROR: typed, named events via `logger.logEvent(event, details, cause = e)`.
+- INFO and DEBUG: plain SLF4J. Use an event only for an INFO outcome worth querying.
+- Code already using `applicationLogger` keeps it.
 
-Define the event next to the code that owns the outcome, or in a small
-`*Events.kt` file when several classes share it:
+## Events
 
 ```kotlin
 internal val dialogportenDialogFailed = applicationEvent<DialogEventDetails>(
@@ -16,113 +16,70 @@ internal val dialogportenDialogFailed = applicationEvent<DialogEventDetails>(
     upstream = "dialogporten",
     fields = mapOf("behov_id" to { it.behovId?.toString() }, "action" to { it.action?.name }),
 )
-
-logger.logEvent(dialogportenDialogFailed, details, cause = exception)
 ```
 
-- One event per operational outcome. Variants become a bounded `reason` or
-  `action` enum, logged as the enum name.
-- The helper in `platform/observability/FailureEvent.kt` adds technical fields derived from the
-  cause: `failure_kind`, `exception_type`, `cause_type(s)`, `upstream`,
-  `upstream_status`, `failure_stage` and `sql_state`. It also logs a sanitized
-  stack trace that contains class names and frames, never exception messages.
-- `logEvent` also accepts `upstreamFailure`. Its `upstream`, `failure_stage` and
-  validated `upstream_status` override throwable-derived metadata.
-  Når `upstreamFailure.cause` finnes, brukes en eksplisitt cause, eller
-  `upstreamFailure.cause`, til klassifisering og renset stack.
-  Uten `upstreamFailure.cause` beskriver diagnostikken selve feilsvaret.
-- The contract fields `exception_type`, `cause_type`, `upstream_status` and
-  `sql_state` come from the esyfo-logger 0.3.0 helpers, so they always match the
-  team's runtime-error contract. Nested classes keep their binary name, so
-  `ApiErrorException.InternalServerErrorException` is logged as
-  `ApiErrorException$InternalServerErrorException`. Classification,
-  `failure_stage`, `cause_types` (simple names) and the sanitized
-  TechnicalFailure stack stay in the app.
-- Kafka consumers share the events in `platform/kafka/KafkaEvents.kt` and
-  log them through `KafkaEventLogger`, which adds a bounded `consumer` field.
-- Code already using `applicationLogger` keeps using it.
+- Define the event next to its owner, or in a `*Events.kt` file when shared.
+- Use one event per outcome. Express variants as a bounded `reason` or `action`
+  enum name.
+- `logEvent` (`platform/observability/FailureEvent.kt`) adds `failure_kind`,
+  `exception_type`, `cause_type(s)`, `upstream`, `upstream_status`,
+  `failure_stage`, `sql_state` and a stack with class names and frames only.
+  The contract fields come from esyfo-logger; nested classes use binary names
+  (`Outer$Inner`).
+- Pass `upstreamFailure` to override `upstream`, `failure_stage` and
+  `upstream_status`. Without a cause, it describes the error response:
+  `failure_kind = error_response`, no stack.
+- Kafka consumers use the events in `platform/kafka/KafkaEvents.kt` through
+  `KafkaEventLogger`, which adds `consumer`.
 
 ## Who logs
 
-- Each terminal outcome is logged once, by the code that handles it. Clients
-  propagate failures; the service or consumer that catches them logs.
-- StatusPages logs only what has not already been logged: unexpected 5xx as
-  ERROR `api_request_failed` with the cause, other 4xx as WARN
-  `api_request_invalid` with `error_type`, and 404 as INFO.
-- `ApiErrorException.upstreamFailure` is passed to `api_request_failed` by
-  StatusPages, which logs the upstream failure once at the HTTP edge.
-- Altinn Tilganger-feil følger kanten som `UpstreamFailure`. Klienten og
-  `AltinnTilgangerService` logger ikke. `StatusPages` logger
-  `api_request_failed` én gang med `upstream`, `failure_stage`,
-  `upstream_status` og eventuelle `upstream_errors`.
-  `isError = true` gir `upstream = arbeidsgiver-altinn-tilganger`,
-  `failure_stage = response`, `upstream_status = 200` og
-  `upstream_errors = [{code: "is_error"}]`, uten `cause` eller stack.
-  Det gjelder også når hierarkiet inneholder data.
-  TokenX-vekslingsfeil har `upstream = texas` og
-  `failure_stage = token_exchange`. HTTP-feilsvar fra Texas gir OAuth-koden
-  i `upstream_errors`, begrenset til små bokstaver av `OAuthFailureCode`.
-  Ukjente, manglende eller uleselige koder blir `unknown`.
-  `error_description`, tokens og svartekst fra Texas eller Altinn Tilganger
-  logges aldri.
-  Alle tokenfeil fra Texas (AzureAD, Maskinporten og TokenX) har i tillegg
-  `token_target` med systemet tokenet skulle brukes mot, for eksempel `aareg`,
-  `pdl`, `dinesykmeldte-backend`, `altinn-authentication` eller
-  `arbeidsgiver-altinn-tilganger`. `upstream` er fortsatt `texas`.
-- Systembrukerløpet sender feil fra Texas, Altinn-vekslingen, PDP og Ereg videre
-  uendret som `Unavailable`. Første feil stopper sjekken uten fallback eller
-  `api_request_rejected`; HTTP-kanten logger én `api_request_failed` og svarer
-  500 `UPSTREAM_SERVICE_UNAVAILABLE`.
-  Maskinporten-tokenfeil har `upstream = texas`, `failure_stage = token_exchange`
-  og samme begrensede OAuth-feilkode som TokenX-vekslingen ovenfor.
-  Altinn-vekslingsfeil, også ugyldige tokens, har
-  `upstream = altinn-authentication`, `failure_stage = token_exchange` og
-  status når Altinn svarte.
-  PDP-feil har `upstream = altinn-pdp`: HTTP-feil, ugyldige/tomme/flertydige svar
-  har `failure_stage = response` og status; timeout og IO har
-  `failure_stage = request` uten status.
-  `StatusMessage`, `StatusDetails`, rå provider-svar, tokens, systembruker-ID
-  og organisasjonsnummer logges aldri. Avvisningsloggen inneholder
-  `Deny`-, `NotApplicable`- og `Indeterminate`-beslutninger.
-- For enkeltoppslag i PDL følger feilene kanten som verdier. Feltet
-  `upstream_errors` er en liste med `code`, `detail`, `path` og `message` fra
-  `UpstreamFailure.errors`. `message` settes bare når upstream dokumenterer at
-  feilmeldingene ikke inneholder personopplysninger (i dag PDL-spesifikke
-  feil). `cause` er valgfri; minst ett av `cause` og
-  `errors` må ha innhold. Uten `cause` blir `failure_kind = error_response`,
-  og verken exception-meldinger eller stack logges, selv om HTTP-kanten
-  bruker en `ApiErrorException`.
-  PDLs `message` tas med (maks 200 tegn) bare når feilen har
-  `extensions.code`. `detail` er `extensions.id`, og `path` har
-  punktum mellom leddene. Ugyldig ident (`bad_request` med
-  `id = ugyldig_ident`) behandles som ikke funnet, ikke som en oppstrømsfeil.
-  `getPerson` logger derfor ikke `pdl_lookup_degraded`; bolkoppslaget
-  beholder dagens logging.
-- A deliberate, domain-owned rejection worth following up, such as rejected
-  system-user access, uses the library's shared `apiRequestRejected` with an
-  `operation` and a `rejection_reason`. Do not use it for ordinary client errors.
-- At a boundary catching `Exception` or `Throwable`, rethrow a direct
-  `CancellationException` before logging. Logging never throws.
+- Log each terminal outcome once, where it is handled. Clients propagate; the
+  service, consumer or HTTP edge logs.
+- StatusPages logs only what is not yet logged: 5xx as ERROR
+  `api_request_failed` (with `upstreamFailure` when present), other 4xx as WARN
+  `api_request_invalid` with `error_type`, 404 as INFO.
+- Log deliberate domain rejections, such as denied system-user access, with
+  `apiRequestRejected` plus `operation` and `rejection_reason`. Not for ordinary
+  client errors.
+- Rethrow a direct `CancellationException` before logging in a catch of
+  `Exception` or `Throwable`. Logging never throws.
+
+## Upstream failures
+
+These clients do not log; the failure reaches the HTTP edge as an
+`UpstreamFailure` and is logged once as `api_request_failed`.
+
+| Upstream | `upstream` | `failure_stage` | Notes |
+|---|---|---|---|
+| Texas token (Azure AD, Maskinporten, TokenX) | `texas` | `token_exchange` | `token_target` names the target system. `upstream_errors` holds the lowercase `OAuthFailureCode`, else `unknown` |
+| Altinn Tilganger | `arbeidsgiver-altinn-tilganger` | `response` | `isError = true` gives status 200 and `upstream_errors = [{code: "is_error"}]`, no cause, even with data |
+| Altinn token exchange | `altinn-authentication` | `token_exchange` | Status when Altinn answered, including invalid tokens |
+| Altinn PDP | `altinn-pdp` | `response` with status; `request` without status for timeout and IO | Invalid, empty or ambiguous answers count as `response` |
+| PDL single lookup | `pdl` | `response` for GraphQL errors | `upstream_errors` entries have `code`, `detail` (`extensions.id`), dot-joined `path`, and `message` (max 200 chars, only with `extensions.code`). `ugyldig_ident` is not found, not a failure, so no `pdl_lookup_degraded` |
+
+- System-user check: the first failure from Texas, Altinn exchange, PDP or Ereg
+  stops the check as `Unavailable`, with no fallback and no
+  `api_request_rejected`. The edge answers 500 `UPSTREAM_SERVICE_UNAVAILABLE`.
+  The rejection log covers `Deny`, `NotApplicable` and `Indeterminate`.
+- PDL bulk lookup keeps its existing logging, with `pdl_errors` in the same
+  shape as `upstream_errors`.
 
 ## Privacy
 
-Events never contain person identifiers, names, contact details, organization
-numbers, tokens, request or response bodies, or exception messages. Correlation IDs,
-bounded enum values, HTTP statuses and allowlisted SQL states are fine. PDL
-`errors[]` may be logged as `pdl_errors` with `code`, `detail`, dot-joined `path` and
-`message`, the same shape as `upstream_errors`. `message` is included (max 200
-characters) only for PDL-specific errors with `extensions.code`; PDL documents that
-these contain no personal data. It never contains response `data` or request variables.
+Never log person identifiers, names, contact details, organization numbers,
+system-user IDs, tokens, request or response bodies, exception messages,
+`error_description`, `StatusMessage` or `StatusDetails`. Correlation IDs,
+bounded enums, HTTP statuses, allowlisted SQL states and PDL `message` (rules
+above) are allowed.
 
 ## Testing
 
-Test the owner with the production Logback JSON encoder and validate every
-captured record with `RuntimeLogContract` before filtering by event name. Use
-the shared test helper `ProductionLogs` for the encoder. Its `logs` check the
-schema shape and reject `logging_context_invalid`, but they build the catalog
-from the captured records, so they do not check event names against a closed
-catalog. A test that locks event names validates `records` with its own
-`RuntimeLogContract` catalog.
-Assert level, event count, fields and sensitive-data canaries. The schema
-validates shape, not privacy. `LoggingArchitectureTest` keeps migrated packages
-on the local logging entry point.
+- Capture logs with `ProductionLogs` (production Logback JSON encoder).
+- Validate every record with `RuntimeLogContract` before filtering by event.
+  `ProductionLogs.logs` checks shape only; to lock event names, validate
+  `records` with your own catalog.
+- Assert level, count, fields and sensitive-data canaries; the schema does not
+  check privacy.
+- `LoggingArchitectureTest` keeps migrated packages on the local logging entry
+  point.

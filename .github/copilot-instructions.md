@@ -9,12 +9,19 @@ Manages relations between sykmeldte and their narmeste ledere.
 
 ## Docs
 
-Read only the section you need. Find headings with `grep -n '^#' <file>`.
+Read a doc only when the task matches, and only the relevant section
+(`grep -n '^#' <file>`).
 
-- Modules, dependencies, ports, errors, transactions: `docs/architecture.md`
-- Request, Kafka and background flows: `docs/data-flow.md`
-- Logging: `docs/logging.md`
-- Decisions: `docs/adr/`
+- Unclear domain term: `CONTEXT.md`
+- Adding or moving code; modules, ports, errors, transactions: `docs/architecture.md`
+- Changing an endpoint, Kafka consumer/producer or scheduled task: `docs/data-flow.md`
+- Adding or changing logs: `docs/logging.md`
+- Changing the Leesah topic payload: `docs/kafka/syfo-narmesteleder-leesah.md` and its schema
+- System-user 403 or Altinn PDP: `docs/system-user-access-diagnostics.md`
+- E-mail validation: `docs/email-address-rule.md`
+- `/api/v1/access/organizations` or `/internal/api/v1/employee/linemanager`: matching file in `docs/`
+- Questioning a design choice: `docs/adr/` (REST revocation, modules, claim/lease,
+  upstream errors as results, legal frame, person data)
 
 ## Rules
 

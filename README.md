@@ -38,11 +38,11 @@ the person on sick leave, and with PUT to assign a line manager.
   [JSON Schema](docs/kafka/syfo-narmesteleder-leesah.schema.json)
 - [Architecture decision records](docs/adr)
 
-## For Nav-ansatte
+## For Nav employees
 
-Interne henvendelser kan sendes via Slack i kanalen [#esyfo](https://nav-it.slack.com/archives/C012X796B4L).
+Internal questions can be sent via Slack in the channel [#esyfo](https://nav-it.slack.com/archives/C012X796B4L).
 
-## For eksterne konsumenter
+## For external consumers
 
-Eksterne konsumenter, som leverandører av lønns- og personalsystem (LPS), kan stille spørsmål via Slack i kanalen
+External consumers, such as payroll and HR system vendors (LPS), can ask questions via Slack in the channel
 [#api-sykepenger-arbeidsgiver](https://nav-it.slack.com/archives/C08KWH7CSTW).

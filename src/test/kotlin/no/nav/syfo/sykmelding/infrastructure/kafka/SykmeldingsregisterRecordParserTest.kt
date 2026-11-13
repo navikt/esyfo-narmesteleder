@@ -69,6 +69,7 @@ class SykmeldingsregisterRecordParserTest :
                 InvalidRecord("missing key", key = null, value = validJson(), sykmeldingId = null, reason = "MISSING_KEY"),
                 InvalidRecord("invalid key", key = "not-a-uuid", value = validJson(), sykmeldingId = null, reason = "INVALID_KEY"),
                 InvalidRecord("not JSON", value = "{$FNR", reason = "MALFORMED_PAYLOAD"),
+                InvalidRecord("JSON null", value = "null", reason = "MALFORMED_PAYLOAD"),
                 InvalidRecord(
                     "missing required field",
                     value = """{"kafkaMetadata":{"fnr":"$FNR"}}""",

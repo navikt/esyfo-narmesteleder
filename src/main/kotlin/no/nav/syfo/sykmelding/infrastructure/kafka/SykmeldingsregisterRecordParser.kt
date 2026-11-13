@@ -3,6 +3,7 @@ package no.nav.syfo.sykmelding.infrastructure.kafka
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetter
@@ -43,11 +44,13 @@ class SykmeldingsregisterRecordParser(
     ): ParsedSykmeldingsregisterRecord {
         if (value == null) return ParsedSykmeldingsregisterRecord.Accepted(SykmeldingsregisterMessage.Tombstone(sykmeldingId, position))
 
+        fun malformed(fieldPath: String? = null) = rejected(position, sykmeldingId, SykmeldingsregisterRejection.MALFORMED_PAYLOAD, fieldPath)
+
         val message = try {
-            jacksonMapper.readValue(value, SykmeldingsregisterRecordDto::class.java)
+            jacksonMapper.readValue<SykmeldingsregisterRecordDto?>(value) ?: return malformed()
         } catch (e: JsonProcessingException) {
-            return rejected(position, sykmeldingId, SykmeldingsregisterRejection.MALFORMED_PAYLOAD, e.fieldPath())
-        } ?: return rejected(position, sykmeldingId, SykmeldingsregisterRejection.MALFORMED_PAYLOAD)
+            return malformed(e.fieldPath())
+        }
 
         return validateSentSykmelding(message, sykmeldingId, position)
     }
@@ -65,7 +68,6 @@ class SykmeldingsregisterRecordParser(
         if (!OrganizationNumber.isValid(arbeidsgiver.orgnummer)) return invalid("event.arbeidsgiver.orgnummer")
         val perioder = message.sykmelding.sykmeldingsperioder
         if (perioder.isEmpty() || null in perioder) return invalid("sykmelding.sykmeldingsperioder")
-        val maxTom = perioder.filterNotNull().maxOf { it.tom }
 
         return ParsedSykmeldingsregisterRecord.Accepted(
             SykmeldingsregisterMessage.Sent(
@@ -74,7 +76,7 @@ class SykmeldingsregisterRecordParser(
                 employee = PersonalIdentificationNumber(fnr),
                 organizationNumber = OrganizationNumber(arbeidsgiver.orgnummer),
                 sentAt = message.event.timestamp,
-                maxTom = maxTom,
+                maxTom = perioder.filterNotNull().maxOf { it.tom },
                 narmestelederConfirmed = message.event.brukerSvar?.riktigNarmesteLeder?.svar == CONFIRMED_ANSWER,
             ),
         )

@@ -4,6 +4,7 @@ import no.nav.syfo.platform.database.ioTransaction
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetter
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetterRepository
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterPosition
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import java.sql.Connection
@@ -28,13 +29,13 @@ class ExposedSykmeldingsregisterDeadLetterRepository(
                 this[SykmeldingsregisterDeadLetterTable.sourceOffset] = deadLetter.position.offset
                 this[SykmeldingsregisterDeadLetterTable.sykmeldingId] = deadLetter.sykmeldingId
                 this[SykmeldingsregisterDeadLetterTable.reason] = deadLetter.reason
-            }.map {
-                SykmeldingsregisterPosition(
-                    it[SykmeldingsregisterDeadLetterTable.sourcePartition],
-                    it[SykmeldingsregisterDeadLetterTable.sourceOffset],
-                )
-            }.toSet()
+            }.map { it.toPosition() }.toSet()
         }
         return deadLetters.filter { it.position in inserted }
     }
 }
+
+private fun ResultRow.toPosition() = SykmeldingsregisterPosition(
+    this[SykmeldingsregisterDeadLetterTable.sourcePartition],
+    this[SykmeldingsregisterDeadLetterTable.sourceOffset],
+)

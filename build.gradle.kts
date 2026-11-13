@@ -160,9 +160,6 @@ tasks {
         inputs.dir("docs/kafka")
             .withPropertyName("kafkaTopicDocs")
             .withPathSensitivity(PathSensitivity.RELATIVE)
-        inputs.file("docs/operations/dialog-dispatch.sql")
-            .withPropertyName("dialogDispatchMigrationProcedure")
-            .withPathSensitivity(PathSensitivity.RELATIVE)
         testlogger {
             theme = ThemeType.MOCHA_PARALLEL
             showFullStackTraces = true

@@ -72,28 +72,28 @@ class SykmeldingsregisterRecordParser(
             return PayloadResult.Invalid(SykmeldingsregisterRejection.MALFORMED_PAYLOAD, e.fieldPath())
         }
 
-        return validateSentSykmelding(message, sykmeldingId)
+        return message.validateToPayloadResult(sykmeldingId)
     }
 }
 
-private fun validateSentSykmelding(message: SykmeldingsregisterRecordDto, sykmeldingId: UUID): PayloadResult {
+private fun SykmeldingsregisterRecordDto.validateToPayloadResult(sykmeldingId: UUID): PayloadResult {
     fun invalid(fieldPath: String) = PayloadResult.Invalid(SykmeldingsregisterRejection.INVALID_PAYLOAD, fieldPath)
 
-    if (message.kafkaMetadata.sykmeldingId != sykmeldingId) return invalid("kafkaMetadata.sykmeldingId")
-    if (message.event.sykmeldingId != sykmeldingId) return invalid("event.sykmeldingId")
-    val fnr = message.kafkaMetadata.fnr
+    if (kafkaMetadata.sykmeldingId != sykmeldingId) return invalid("kafkaMetadata.sykmeldingId")
+    if (event.sykmeldingId != sykmeldingId) return invalid("event.sykmeldingId")
+    val fnr = kafkaMetadata.fnr
     if (!PersonalIdentificationNumber.isValid(fnr)) return invalid("kafkaMetadata.fnr")
-    val arbeidsgiver = message.event.arbeidsgiver ?: return invalid("event.arbeidsgiver")
+    val arbeidsgiver = event.arbeidsgiver ?: return invalid("event.arbeidsgiver")
     if (!OrganizationNumber.isValid(arbeidsgiver.orgnummer)) return invalid("event.arbeidsgiver.orgnummer")
-    val perioder = message.sykmelding.sykmeldingsperioder
+    val perioder = sykmelding.sykmeldingsperioder
     if (perioder.isEmpty() || null in perioder) return invalid("sykmelding.sykmeldingsperioder")
 
     return PayloadResult.Sent(
         employee = PersonalIdentificationNumber(fnr),
         organizationNumber = OrganizationNumber(arbeidsgiver.orgnummer),
-        sentAt = message.event.timestamp,
+        sentAt = event.timestamp,
         maxTom = perioder.filterNotNull().maxOf { it.tom },
-        narmestelederConfirmed = message.event.brukerSvar?.riktigNarmesteLeder?.svar == CONFIRMED_ANSWER,
+        narmestelederConfirmed = event.brukerSvar?.riktigNarmesteLeder?.svar == CONFIRMED_ANSWER,
     )
 }
 
